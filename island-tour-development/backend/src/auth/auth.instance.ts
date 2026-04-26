@@ -5,6 +5,7 @@ import { PrismaClient, Role, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { openAPI } from 'better-auth/plugins';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
+import { mailService } from '@/mail/mail.singleton';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -28,8 +29,21 @@ export const auth = betterAuth({
   // ── Email & Password ───────────────────────────────────────────────────────
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // set true when mail service is wired (Phase 16)
+    requireEmailVerification: true, // enforced — verification email sent on every sign-in until verified
     minPasswordLength: 12,
+    resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
+    revokeSessionsOnPasswordReset: true,
+
+    sendResetPassword: async ({ user, url }) => {
+      void mailService.sendPasswordResetEmail(user.email, url);
+    },
+  },
+
+  // ── Email Verification ─────────────────────────────────────────────────────
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      void mailService.sendVerificationEmail(user.email, url, user.name ?? undefined);
+    },
   },
 
   // ── Social Providers ───────────────────────────────────────────────────────

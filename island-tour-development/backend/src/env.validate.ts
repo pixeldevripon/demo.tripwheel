@@ -18,6 +18,8 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
       ? null
       : 'must be one of: development, production, test',
   PORT: (v) => (isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null),
+  SMTP_USER: () => null,
+  SMTP_PASS: () => null,
 };
 
 // Optional — validated only when present (seeding-specific vars)
@@ -33,6 +35,9 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
     if (v.length < 12) return 'must be at least 12 characters';
     return null;
   },
+  SMTP_HOST: () => null,
+  SMTP_PORT: (v) => (isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null),
+  MAIL_FROM: () => null,
 };
 
 export function validateEnv(): void {

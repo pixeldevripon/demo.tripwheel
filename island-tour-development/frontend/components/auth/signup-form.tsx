@@ -16,6 +16,7 @@ export function SignupForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,13 +28,14 @@ export function SignupForm() {
         name,
         email,
         password,
+        callbackURL: `${window.location.origin}/dashboard`,
       });
 
       if (authError) {
         setError(authError.message || "Failed to sign up");
       } else {
-        router.push("/dashboard");
-        router.refresh();
+        // Email verification is required — show confirmation instead of redirecting
+        setVerificationSent(true);
       }
     } catch (err: any) {
       setError(err?.message || "An unexpected error occurred");
@@ -41,6 +43,25 @@ export function SignupForm() {
       setLoading(false);
     }
   };
+
+  if (verificationSent) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Check your email</CardTitle>
+          <CardDescription>
+            We&apos;ve sent a verification link to <strong>{email}</strong>.
+            Click the link to activate your account, then sign in.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <a href="/login" className="text-sm underline hover:text-primary">
+            Go to sign in
+          </a>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
