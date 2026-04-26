@@ -1,0 +1,22 @@
+model Webhooks {
+  id          String         @id @default("default")
+  webhookUrls WebhookPoint[]
+
+  @@map("webhooks")
+}
+
+model WebhookPoint {
+  id         String   @id @default(uuid())
+  type       String   // e.g. "zapier_leads_catch_url", "n8n_leads_catch_url"
+  url        String
+  webhooksId String   // NOT unique — many points can belong to one Webhooks record
+  webhook    Webhooks @relation(fields: [webhooksId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([webhooksId, type]) // unique per type within a webhook set
+  @@index([id])
+  @@index([webhooksId])
+  @@map("webhook_urls")
+}

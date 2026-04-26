@@ -1,0 +1,168 @@
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core site information (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SiteInfo {
+  id String @id @default("default")
+
+  siteName        String?  @default("")
+  siteTagline     String?  @default("")
+  siteDescription String?  @default("")
+  bookingFormStyle     String?  @default("v2")
+
+  logo     String?  @default("")
+  favicon   String? @default("")
+
+  enableWhatsappChat Boolean? @default(false)
+  whatsappNumber     String?  @default("")
+  instagramWidgetId  String?  @default("")
+  enableInstagram    Boolean? @default(false)
+
+  faqs     Json?    @default("[]")
+
+  @@map("site_info")
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEO meta tags (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SiteSEO {
+  id String @id @default("default")
+
+  metaTitle       String? @default("")
+  metaDescription String? @default("")
+  metaKeywords    String? @default("")
+  canonicalUrl    String? @default("")
+  robotsMeta      String? @default("")
+
+  ogTitle       String?      @default("")
+  ogDescription String?      @default("")
+  ogImage       String?      @default("")
+
+  twitterTitle       String?           @default("")
+  twitterDescription String?           @default("")
+  twitterImage       String?           @default("")
+
+  googleAnalyticsId   String? @default("")
+  googleTagManagerId  String? @default("")
+  googleSearchConsole String? @default("")
+  facebookPixelId     String? @default("")
+  schemaType          String? @default("")
+  customSchema        String? @default("")
+  autoGenerateSitemap String? @default("")
+  robotsTxt           String? @default("")
+
+  @@map("site_seo")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Social media links (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SocialMedia {
+  id String @id @default("default")
+
+  facebookUrl  String? @default("")
+  twitterUrl   String? @default("")
+  linkedinUrl  String? @default("")
+  instagramUrl String? @default("")
+
+  @@map("social_media")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SMTP configuration (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SMTP {
+  id String @id @default("default")
+
+  smtpHost     String?  @default("")
+  smtpPort     String?  @default("")
+  smtpUsername String?  @default("")
+  smtpPassword String?  @default("")
+  smtpSecure   Boolean? @default(true)
+
+  @@map("smtp_configuration")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mailchimp configuration (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Mailchimp {
+  id String @id @default("default")
+
+  apiKey       String? @default("")
+  audienceId   String? @default("")
+  serverPrefix String? @default("")
+
+  @@map("mailchimp_configuration")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Company informations (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CompanyInformations {
+  id String @id @default("default")
+
+  companyName    String?
+  companyEmail   String?
+  companyPhone   String?
+  companyWebsite String?
+  companyAddress String?
+  companyCity    String?
+  companyState   String?
+  companyZip     String?
+  companyCountry String?
+  companyVat     String?
+  companySize    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("company_informations")
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stripe configuration (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StripeConfiguration {
+  id             String   @id @default("default")
+  paymentLabel   String   @default("Stripe")
+  publishableKey String   @default("")
+  secretKey      String   @default("")
+  webhookSecret  String   @default("")
+  paymentMethods String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stripe_configuration")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mollie configuration (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model mollieConfiguration {
+  id             String   @id @default("default")
+  paymentLabel   String   @default("Mollie")
+  apiKey         String   @default("")
+  paymentMethods String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([id])
+  @@map("mollie_configuration")
+}
+
+
