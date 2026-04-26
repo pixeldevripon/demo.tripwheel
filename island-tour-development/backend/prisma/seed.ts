@@ -1,7 +1,4 @@
 import 'dotenv/config';
-// Enable seeding bypass for auth.instance.ts hooks
-process.env.IS_SEEDING = 'true';
-
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Role } from '@prisma/client';
 import { auth } from '../src/auth/auth.instance';
@@ -24,9 +21,7 @@ async function main() {
 
   console.log(`Checking if admin user ${email} exists...`);
 
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email },
-  });
+  const existingAdmin = await prisma.user.findUnique({ where: { email } });
 
   if (existingAdmin) {
     console.log(`Admin user ${email} already exists. Skipping.`);
@@ -35,16 +30,18 @@ async function main() {
 
   console.log(`Creating admin user ${email}...`);
 
-  // We use Better Auth's signUpEmail to properly hash the password
-  // and create credentials. The 'before' hook will allow this because
-  // we set process.env.IS_SEEDING = 'true' at the top of this script.
+  // Step 1: Create user via Better Auth so the password is properly hashed.
+  // role is not sent — role.input=false means it's ignored anyway. User is
+  // created with the default TOUR_OPERATOR role.
   await auth.api.signUpEmail({
-    body: {
-      email,
-      password,
-      name: 'System Admin',
-      role: Role.ADMIN,
-    },
+    body: { email, password, name: 'System Admin' },
+  });
+
+  // Step 2: Elevate to ADMIN directly via Prisma. This bypasses the public
+  // sign-up hook which only blocks ADMIN creation through self-registration.
+  await prisma.user.update({
+    where: { email },
+    data: { role: Role.ADMIN },
   });
 
   console.log(`Successfully created admin user ${email}!`);

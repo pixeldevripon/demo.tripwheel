@@ -7,18 +7,24 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Role } from '@prisma/client';
 import { ROLES_KEY } from '@/auth/decorators/roles.decorator';
+import type { AuthenticatedRequest } from '@/auth/auth.types';
 
 /**
  * Checks that the authenticated user has one of the required roles.
  *
- * Must be used AFTER AuthGuard (which attaches request.user).
- * If no roles are declared on the handler, all authenticated users pass.
+ * Registered as APP_GUARD in AuthModule — runs after AuthGuard on every route.
+ * If no @Roles() are declared on the handler or class, all authenticated users pass.
  *
  * Usage:
- *   @Roles(Role.ADMIN)
- *   @UseGuards(RolesGuard)
- *   @Post()
- *   createCategory() {}
+ *   Restrict a handler to admins only:
+ *     @Roles(Role.ADMIN)
+ *     @Post('/categories')
+ *     createCategory() {}
+ *
+ *   Restrict an entire controller to admins:
+ *     @Roles(Role.ADMIN)
+ *     @Controller('admin')
+ *     export class AdminController {}
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -30,14 +36,16 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // No role restriction on this route
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    const { user } = context.switchToHttp().getRequest<{
-      user: { role: Role };
-    }>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    if (!requiredRoles.includes(user.role)) {
+    // Guard against @Public() + @Roles() being used together on the same route
+    if (!request.user) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (!requiredRoles.includes(request.user.role)) {
       throw new ForbiddenException(
         `Required role: ${requiredRoles.join(' or ')}`,
       );

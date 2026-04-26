@@ -7,6 +7,7 @@ import { AppModule } from '@/app.module';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { validateEnv } from '@/env.validate';
 import { auth } from '@/auth/auth.instance';
+import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 
 async function bootstrap() {
   validateEnv();
@@ -35,9 +36,7 @@ async function bootstrap() {
   );
 
   // ── CORS ────────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
-    .split(',')
-    .map((o) => o.trim());
+  const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
 
   app.enableCors({
     origin: (
@@ -63,7 +62,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
+      // enableImplicitConversion removed — use explicit @Type() decorators on DTOs
     }),
   );
 
@@ -84,30 +83,24 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
 
     try {
-      // Fetch the generated schema from Better Auth natively
       const authSchema = await auth.api.generateOpenAPISchema();
 
       const transformedAuthPaths: any = {};
       for (const [pathKey, pathItem] of Object.entries(authSchema.paths)) {
         const newPathKey = `/api/auth${pathKey}`;
         const newPathItem: any = { ...pathItem };
-        
+
         for (const method of ['get', 'post', 'put', 'delete', 'patch', 'options', 'head']) {
           if (newPathItem[method]) {
             newPathItem[method].tags = ['Auth'];
           }
         }
-        
+
         transformedAuthPaths[newPathKey] = newPathItem;
       }
 
-      // Merge paths into NestJS Swagger doc (cast as any to resolve strict TS mismatches)
-      document.paths = {
-        ...document.paths,
-        ...transformedAuthPaths,
-      };
+      document.paths = { ...document.paths, ...transformedAuthPaths };
 
-      // Merge schemas (types/models)
       if (authSchema.components?.schemas) {
         document.components = document.components || {};
         document.components.schemas = {
@@ -119,11 +112,7 @@ async function bootstrap() {
       console.warn('Failed to merge Better Auth OpenAPI schema:', err);
     }
 
-    SwaggerModule.setup(
-      'api/docs',
-      app,
-      document,
-    );
+    SwaggerModule.setup('api/docs', app, document);
   }
 
   // ── Graceful shutdown ───────────────────────────────────────────────────────

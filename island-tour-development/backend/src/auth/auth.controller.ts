@@ -1,4 +1,5 @@
 import { auth } from '@/auth/auth.instance';
+import { Public } from '@/auth/decorators/public.decorator';
 import { All, Controller, Req, Res } from '@nestjs/common';
 import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { toNodeHandler } from 'better-auth/node';
@@ -16,14 +17,14 @@ import type { Request, Response } from 'express';
  *   POST /api/auth/reset-password
  *   GET  /api/auth/callback/google   (if Google OAuth is configured)
  *
- * The NestJS global prefix is set to "api/v1" for app routes, but auth routes
- * intentionally sit at "api/auth" (no version) per the CLAUDE.md convention.
- * The controller is excluded from the global prefix in auth.module.ts.
+ * @Public() is required — unauthenticated users must reach sign-in/sign-up
+ * without being blocked by AuthGuard.
  */
 @Controller()
 export class AuthController {
   private readonly handler = toNodeHandler(auth);
 
+  @Public()
   @ApiExcludeEndpoint()
   @All('/api/auth/*splat')
   async handleAuth(@Req() req: Request, @Res() res: Response): Promise<void> {

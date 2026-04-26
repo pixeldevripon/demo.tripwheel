@@ -8,54 +8,48 @@ import { Reflector } from '@nestjs/core';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '@/auth/auth.instance';
 import { IS_PUBLIC_KEY } from '@/auth/decorators/public.decorator';
+import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
 
 /**
  * Global auth guard — validates the Better Auth session cookie (or Bearer token).
  *
+ * Registered as APP_GUARD in AuthModule — runs on every route automatically.
  * Routes decorated with @Public() skip this check entirely.
- * On success, attaches `request.user` and `request.session` for use in controllers.
+ * On success, attaches `request.user` (TypedAuthUser) and `request.session`.
  *
  * Usage:
- *   Register globally in AppModule providers:
- *     { provide: APP_GUARD, useClass: AuthGuard }
- *
- *   Skip for public routes:
+ *   Skip auth for a public route:
  *     @Public()
  *     @Get('/health')
  *     healthCheck() {}
+ *
+ *   Access the authenticated user in a controller:
+ *     @Get('/me')
+ *     getMe(@AuthenticatedUser() user: TypedAuthUser) { return user; }
+ *
+ *   Webhook endpoints must also add @SkipThrottle() — see Critical Rule #11.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Allow routes marked @Public() to bypass auth
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
     if (isPublic) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    /**
-     * Resolve the active session via Better Auth natively.
-     * 
-     * Better Auth automatically extracts credentials from the incoming headers:
-     * 1. Web/Browser Clients: Parses the configured session Cookie (e.g., better-auth.session_token).
-     * 2. Mobile/API Clients: Parses the `Authorization: Bearer <token>` header.
-     * 
-     * If valid credentials are found, it verifies the session (checking DB or Cache)
-     * and returns the strongly-typed `user` and `session` objects.
-     */
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
     });
 
     if (!session) throw new UnauthorizedException('No active session');
 
-    // Attach to request so controllers and other guards can read without re-querying
-    request.user = session.user;
+    // Cast is safe: role/status values at runtime are always valid enum members
+    request.user = session.user as unknown as TypedAuthUser;
     request.session = session.session;
 
     return true;

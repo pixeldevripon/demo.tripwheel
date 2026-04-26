@@ -20,6 +20,7 @@
     "prisma:migrate:deploy": "cd backend && pnpm prisma:migrate:deploy",
     "prisma:migrate:reset": "cd backend && pnpm prisma:migrate:reset",
     "prisma:studio": "cd backend && pnpm prisma:studio",
+    "prisma:seed": "cd backend && pnpm prisma:seed",
     "prisma:format": "cd backend && pnpm prisma:format"
   },
   "devDependencies": {

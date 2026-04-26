@@ -5,21 +5,28 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Role } from '@prisma/client';
 import { Permission } from '@prisma/client';
 import { PERMISSIONS_KEY } from '@/auth/decorators/require-permissions.decorator';
 import { ROLE_PERMISSIONS } from '@/config/roles.config';
+import type { AuthenticatedRequest } from '@/auth/auth.types';
 
 /**
  * Checks that the authenticated user's role grants all required permissions.
  *
- * Must be used AFTER AuthGuard (which attaches request.user).
+ * Registered as APP_GUARD in AuthModule — runs after RolesGuard on every route.
+ * If no @RequirePermissions() are declared on the handler or class, all pass.
+ * Permissions are looked up from ROLE_PERMISSIONS in roles.config.ts.
  *
  * Usage:
- *   @RequirePermissions(Permission.CREATE_CATEGORY)
- *   @UseGuards(PermissionsGuard)
- *   @Post()
- *   createCategory() {}
+ *   Require a specific permission:
+ *     @RequirePermissions(Permission.CREATE_CONTENT)
+ *     @Post('/trips')
+ *     createTrip() {}
+ *
+ *   Require multiple permissions (ALL must be granted):
+ *     @RequirePermissions(Permission.MANAGE_TRIPS, Permission.VIEW_SLOT_ANALYTICS)
+ *     @Get('/operator/dashboard')
+ *     getDashboard() {}
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -33,11 +40,15 @@ export class PermissionsGuard implements CanActivate {
 
     if (!required || required.length === 0) return true;
 
-    const { user } = context.switchToHttp().getRequest<{
-      user: { role: Role };
-    }>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    const userPermissions = ROLE_PERMISSIONS[user.role] ?? [];
+    // Guard against @Public() + @RequirePermissions() being used together
+    if (!request.user) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const userPermissions: Permission[] =
+      ROLE_PERMISSIONS[request.user.role] ?? [];
     const missing = required.filter((p) => !userPermissions.includes(p));
 
     if (missing.length > 0) {

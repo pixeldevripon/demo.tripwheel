@@ -1,18 +1,16 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { AuthUser } from '@/auth/auth.instance';
+import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
 
 /**
  * Extracts the authenticated user from the request object.
- * AuthGuard must run before this decorator is used.
+ * Returns undefined on @Public() routes where AuthGuard does not run.
  *
  * @example
  *   @Get('/me')
- *   getProfile(@AuthenticatedUser() user: AuthUser) {
- *     return user;
- *   }
+ *   getProfile(@AuthenticatedUser() user: TypedAuthUser) { ... }
  */
 export const AuthenticatedUser = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): AuthUser => {
-    return ctx.switchToHttp().getRequest<{ user: AuthUser }>().user;
+  (_: unknown, ctx: ExecutionContext): TypedAuthUser | undefined => {
+    return ctx.switchToHttp().getRequest<AuthenticatedRequest>().user;
   },
 );

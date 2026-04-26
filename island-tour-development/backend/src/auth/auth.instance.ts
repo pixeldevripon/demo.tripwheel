@@ -2,53 +2,37 @@ import 'dotenv/config';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaClient, Role, UserStatus } from '@prisma/client';
-
 import { PrismaPg } from '@prisma/adapter-pg';
 import { openAPI } from 'better-auth/plugins';
+import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 
-/**
- * Standalone PrismaClient for Better Auth.
- * Better Auth manages its own DB connection — separate from NestJS PrismaService.
- */
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
-const prisma = new PrismaClient({ adapter });
 
-/**
- * Trusted origins built from CORS_ORIGINS env var (comma-separated).
- * Better Auth uses this list for CSRF protection.
- */
-const trustedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+// Exported so AuthModule can disconnect it on app shutdown
+export const authPrismaClient = new PrismaClient({ adapter });
+
+const trustedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
 
 export const auth = betterAuth({
   appName: 'Island Tours',
 
-  database: prismaAdapter(prisma, {
+  database: prismaAdapter(authPrismaClient, {
     provider: 'postgresql',
   }),
 
   // BETTER_AUTH_URL and BETTER_AUTH_SECRET are read from env automatically.
-  // Only set baseURL/secret here if the env vars are NOT available.
   trustedOrigins,
 
   // ── Email & Password ───────────────────────────────────────────────────────
   emailAndPassword: {
     enabled: true,
-    // Email must be verified before operators can publish trips.
-    // USER accounts are created programmatically (not via sign-up) so they
-    // receive credentials by email and verify on first login.
     requireEmailVerification: false, // set true when mail service is wired (Phase 16)
-
-    // Minimum password length
-    minPasswordLength: 8,
+    minPasswordLength: 12,
   },
 
   // ── Social Providers ───────────────────────────────────────────────────────
-  // Only included when credentials are present — prevents startup errors in dev
   socialProviders: {
     ...(process.env.GOOGLE_CLIENT_ID &&
       process.env.GOOGLE_CLIENT_SECRET && {
@@ -71,40 +55,28 @@ export const auth = betterAuth({
 
   // ── Rate Limit ─────────────────────────────────────────────────────────────
   rateLimit: {
-    window: 60, // 1 minute
-    max: 100, // Default 100 req/min for general endpoints (e.g. session checks)
+    window: 60,
+    max: 100,
     customRules: {
-      '/sign-in/email': {
-        window: 60,
-        max: 5, // Tight limit for sign-ins to prevent brute force
-      },
-      '/sign-up/email': {
-        window: 60,
-        max: 5, // Tight limit for sign-ups
-      },
-      '/forget-password': {
-        window: 60,
-        max: 5,
-      },
-      '/reset-password': {
-        window: 60,
-        max: 5,
-      },
+      '/sign-in/email': { window: 60, max: 5 },
+      '/sign-up/email': { window: 60, max: 5 },
+      '/forget-password': { window: 60, max: 5 },
+      '/reset-password': { window: 60, max: 5 },
     },
   },
 
   // ── User model mapping ─────────────────────────────────────────────────────
   user: {
-    // Better Auth model name must match the Prisma model name (not the @@map table name).
     modelName: 'user',
     additionalFields: {
       role: {
         type: 'string',
         defaultValue: Role.TOUR_OPERATOR,
-        // Exposed in session so guards can read it without an extra DB query
         returned: true,
-        // Allow passing role programmatically (e.g., USER)
-        input: true,
+        // input: false — role must never be supplied by the client.
+        // Roles are assigned server-side only (defaultValue for self-registration,
+        // protected admin endpoint for promotions). Critical Rule #9.
+        input: false,
       },
       status: {
         type: 'string',
@@ -115,14 +87,16 @@ export const auth = betterAuth({
     },
   },
 
-  // ── Database hooks — ADMIN sign-up guard ───────────────────────────────────
+  // ── Database hooks — defense-in-depth ADMIN guard ──────────────────────────
   databaseHooks: {
     user: {
       create: {
         before: async (userData) => {
-          // ADMIN accounts must NEVER be created via the public sign-up endpoint.
-          // They are seeded programmatically via auth.api.createUser() in seed.ts.
-          if ((userData as { role?: string }).role === Role.ADMIN && process.env.IS_SEEDING !== 'true') {
+          // ADMIN accounts must never be created via the public sign-up endpoint.
+          // The seed script creates admins via prisma.user.update() after creation,
+          // not through this hook. With role.input=false this guard should never
+          // fire in practice — it exists as a safety net only.
+          if ((userData as { role?: string }).role === Role.ADMIN) {
             throw new Error(
               'ADMIN accounts cannot be created through self-registration.',
             );
@@ -133,11 +107,11 @@ export const auth = betterAuth({
     },
   },
 
+  // openAPI plugin exposes the auth schema — dev only, never in production
   plugins: [
-    openAPI(),
+    ...(process.env.NODE_ENV !== 'production' ? [openAPI()] : []),
   ],
 });
 
-// Export inferred session type for use in guards and decorators
 export type AuthSession = typeof auth.$Infer.Session;
 export type AuthUser = typeof auth.$Infer.Session.user;

@@ -8,6 +8,7 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
     return null;
   },
   BETTER_AUTH_URL: () => null,
+  FRONTEND_URL: () => null,
   CORS_ORIGINS: (v) =>
     v.trim().length === 0
       ? 'must be a non-empty comma-separated list of origins'
@@ -19,6 +20,21 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
   PORT: (v) => (isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null),
 };
 
+// Optional — validated only when present (seeding-specific vars)
+const OPTIONAL: Record<string, (v: string) => string | null> = {
+  ADMIN_PASSWORD: (v) => {
+    if (
+      v === 'yourPassword' ||
+      v.startsWith('REPLACE_ME') ||
+      v.includes('change-me')
+    ) {
+      return 'placeholder detected — set a strong password before running the seed';
+    }
+    if (v.length < 12) return 'must be at least 12 characters';
+    return null;
+  },
+};
+
 export function validateEnv(): void {
   const errors: string[] = [];
 
@@ -27,6 +43,14 @@ export function validateEnv(): void {
     if (!value) {
       errors.push(`${key} is missing`);
     } else {
+      const msg = validate(value);
+      if (msg) errors.push(`${key}: ${msg}`);
+    }
+  }
+
+  for (const [key, validate] of Object.entries(OPTIONAL)) {
+    const value = process.env[key];
+    if (value) {
       const msg = validate(value);
       if (msg) errors.push(`${key}: ${msg}`);
     }

@@ -22,9 +22,25 @@ island-tours/
 │   │   ├── app.service.ts
 │   │   ├── env.validate.ts        ← required env check — runs before Nest boots
 │   │   ├── main.ts
+│   │   ├── auth/
+│   │   │   ├── auth.instance.ts   ← Better Auth singleton + authPrismaClient export
+│   │   │   ├── auth.module.ts     ← ThrottlerModule + all 4 APP_GUARDs + OnModuleDestroy
+│   │   │   ├── auth.controller.ts ← mounts /api/auth/* via toNodeHandler (@Public())
+│   │   │   ├── auth.types.ts      ← AuthenticatedRequest, TypedAuthUser
+│   │   │   ├── guards/
+│   │   │   │   ├── auth.guard.ts
+│   │   │   │   ├── roles.guard.ts
+│   │   │   │   └── permissions.guard.ts
+│   │   │   └── decorators/
+│   │   │       ├── public.decorator.ts
+│   │   │       ├── roles.decorator.ts
+│   │   │       ├── require-permissions.decorator.ts
+│   │   │       └── authenticated-user.decorator.ts
 │   │   ├── common/
-│   │   │   └── filters/
-│   │   │       └── http-exception.filter.ts
+│   │   │   ├── filters/
+│   │   │   │   └── http-exception.filter.ts
+│   │   │   └── utils/
+│   │   │       └── parse-cors-origins.ts  ← shared CORS origin parser
 │   │   └── prisma/
 │   │       ├── prisma.module.ts   ← @Global() — inject PrismaService anywhere
 │   │       └── prisma.service.ts  ← extends PrismaClient with PrismaPg adapter
@@ -117,19 +133,20 @@ The frontend `.env.local` has NO secrets — no DATABASE_URL, no auth secrets, n
 
 ### Backend env variables (current)
 
-| Variable | Required now | Notes |
+| Variable | Required | Notes |
 |---|---|---|
 | `PORT` | Yes | Default `5050` |
 | `NODE_ENV` | Yes | `development` / `production` |
-| `FRONTEND_URL` | Yes | Used as fallback display only |
-| `CORS_ORIGINS` | Yes | Comma-separated trusted origins |
+| `FRONTEND_URL` | Yes | Validated at startup |
+| `CORS_ORIGINS` | Yes | Comma-separated trusted origins — parsed by `parseCorsOrigins()` |
 | `DATABASE_URL` | Yes | Postgres — fill before Phase 2 |
 | `BETTER_AUTH_SECRET` | Yes | Min 32 chars — pre-generated in `.env` |
 | `BETTER_AUTH_URL` | Yes | Backend public URL |
+| `ADMIN_EMAIL` | Seeding only | Not validated at startup; checked by seed script |
+| `ADMIN_PASSWORD` | Seeding only | Validated when present (min 12 chars, placeholder rejected) |
 | `REDIS_URL` | Phase 5 | BullMQ + pub/sub (TCP ioredis) |
 | `EMAIL_*` | Phase 16 | Nodemailer SMTP |
 | `CLOUDINARY_*` | Phase 4 | File uploads |
-| `ADMIN_SEED_PASSWORD` | Phase 4 | DB seeding |
 | `GOOGLE_CLIENT_*` | Phase 3 | OAuth (GitHub TBD — see G11) |
 
 ---
@@ -230,16 +247,18 @@ The frontend never runs `betterAuth()`. It only uses `createAuthClient()` pointi
 ### 2. CORS must have `credentials: true`
 Without this, the browser strips the `better-auth.session_token` cookie from cross-origin requests. Every session check fails silently.
 
+Always use `parseCorsOrigins()` (from `@/common/utils/parse-cors-origins`) — it trims, splits, and filters empty strings consistently. Use it in both `main.ts` and `auth.instance.ts` so the allowed origin lists never drift.
+
 ```typescript
-// backend/src/main.ts — origin list comes from CORS_ORIGINS env (comma-separated)
-const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
-  .split(',')
-  .map((o) => o.trim());
+// backend/src/main.ts
+import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
+
+const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
 
 app.enableCors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error(`Origin ${origin} not allowed by CORS`));
+    else callback(new Error('CORS: origin not allowed'));
   },
   credentials: true,
 });
@@ -289,8 +308,12 @@ Adding it after `prisma migrate dev --name init` requires a new migration. Defin
 ### 13. Global ValidationPipe strips unknown fields
 `ValidationPipe` is registered globally with `whitelist: true` and `forbidNonWhitelisted: true`. Any DTO field not decorated with a `class-validator` decorator is stripped, and sending extra fields returns a 400. Every request body must have a matching DTO class — never use plain `object` or `any` as a body type.
 
-### 14. Rate limiting — ThrottlerGuard is global
-Three tiers active on every route: 20 req/s · 300 req/min · 3 000 req/hr. Use `@SkipThrottle()` on health checks and payment webhooks. Use `@Throttle({ short: { limit: 5, ttl: 60_000 } })` to tighten auth-sensitive routes (login, register, forgot-password). ThrottlerModule uses **in-memory storage** until Phase 5 — swap to `@nest-lab/throttler-storage-redis` when Redis is added so limits work across multiple instances.
+### 14. Rate limiting — ThrottlerGuard is global and runs first
+Three tiers active on every route: 20 req/s · 300 req/min · 3 000 req/hr. Use `@SkipThrottle()` on health checks and payment webhooks. Use `@Throttle({ short: { limit: 5, ttl: 60_000 } })` to tighten auth-sensitive routes (login, register, forgot-password).
+
+`ThrottlerModule` and `ThrottlerGuard` live in **`AuthModule`** (not `AppModule`) so the rate-limit guard is registered before the auth guards and fires first on every request — rejecting high-rate clients before any DB session lookup happens. Do not move them back to `AppModule`.
+
+ThrottlerModule uses **in-memory storage** until Phase 5 — swap to `@nest-lab/throttler-storage-redis` when Redis is added so limits work across multiple instances.
 
 ### 15. Use `@/` path alias for all internal imports
 Every internal import must use the `@/` base path alias (e.g., `import { X } from '@/common/...'`). The Prisma client is the exception — import it from the standard `@prisma/client` package:
@@ -298,6 +321,55 @@ Every internal import must use the `@/` base path alias (e.g., `import { X } fro
 import { PrismaClient } from '@prisma/client';  // ✅ standard, always correct
 ```
 Do not create a custom Prisma output location — it creates unnecessary build complexity (assets copying, tsconfig exclusions, rootDir inference issues).
+
+### 16. `role` must always be `input: false` in Better Auth additional fields
+The `role` field in `auth.instance.ts` `additionalFields` must always have `input: false`. Clients must never be able to supply a role in any request body — not at sign-up, not in profile updates. Roles are assigned server-side only: `defaultValue` for self-registration, `prisma.user.update()` for promotions via protected admin endpoints (Critical Rule #9).
+
+```typescript
+// auth.instance.ts — CORRECT
+role: { type: 'string', defaultValue: Role.TOUR_OPERATOR, returned: true, input: false }
+
+// NEVER do this — allows any client to self-assign any role
+role: { type: 'string', defaultValue: Role.TOUR_OPERATOR, returned: true, input: true }
+```
+
+### 17. Admin seeding is always a two-step operation
+Never use `IS_SEEDING` env flags or hook bypasses. The seed script creates the admin account in two steps:
+
+```typescript
+// Step 1: create via Better Auth to get proper password hashing
+await auth.api.signUpEmail({ body: { email, password, name: 'System Admin' } });
+
+// Step 2: elevate role directly via Prisma — bypasses the public sign-up hook safely
+await prisma.user.update({ where: { email }, data: { role: Role.ADMIN } });
+```
+
+### 18. Use `AuthenticatedRequest` and `TypedAuthUser` for typed guard/decorator access
+All guards and param decorators must use the shared types from `@/auth/auth.types`:
+
+```typescript
+import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
+
+// In a guard:
+const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+if (!request.user) throw new ForbiddenException('Access denied');
+
+// In AuthGuard, casting from Better Auth's inferred string role to the typed Role enum:
+request.user = session.user as unknown as TypedAuthUser;
+```
+
+Never inline `getRequest<{ user: { role: Role } }>()` — that pattern is replaced by `AuthenticatedRequest`.
+
+### 19. Guards and decorators must keep instructional JSDoc with Usage examples
+Guards (`AuthGuard`, `RolesGuard`, `PermissionsGuard`) and decorators (`@Public()`, `@Roles()`, `@RequirePermissions()`, `@AuthenticatedUser()`) are framework infrastructure. They must carry a JSDoc block that includes:
+- What the guard/decorator does
+- Which guard it depends on (e.g. "Must run after AuthGuard")
+- A **Usage:** section with realistic decorator examples showing how a controller developer should use it
+
+When editing guards, **preserve these comments**. Do not trim them to a one-liner.
+
+### 20. ADMIN role must be a strict superset of all lower roles
+`ROLE_PERMISSIONS[Role.ADMIN]` in `roles.config.ts` must always include every permission granted to `TOUR_OPERATOR` and `USER`. If a new permission is added to any lower role, add it to ADMIN too. Missing permissions cause unexpected 403s for admins. Check the full list whenever `Permission` enum is extended.
 
 ---
 
@@ -424,6 +496,44 @@ pnpm prisma:generate                   # regenerate client after any schema chan
 "exclude": [..., "prisma.config.ts"]
 ```
 If a stale `prisma.config.js` ever appears at the backend root, delete it immediately — it means the file was accidentally compiled by `tsc`.
+
+---
+
+## Auth Module Architecture
+
+### Guard execution order
+All four global guards are registered in `AuthModule` in this exact order — do not reorder them:
+
+```
+ThrottlerGuard        ← blocks rate-limited clients before any DB work
+AuthGuard             ← validates session cookie/Bearer; populates request.user
+RolesGuard            ← checks @Roles() metadata
+PermissionsGuard      ← checks @RequirePermissions() metadata
+```
+
+### Key files and their responsibilities
+
+| File | Responsibility |
+|---|---|
+| `auth/auth.instance.ts` | Better Auth singleton; exports `auth`, `authPrismaClient`, `AuthSession`, `AuthUser` |
+| `auth/auth.types.ts` | `AuthenticatedRequest` (typed request), `TypedAuthUser` (role narrowed to `Role` enum) |
+| `auth/auth.module.ts` | Imports ThrottlerModule; registers all 4 APP_GUARDs; disconnects `authPrismaClient` on shutdown |
+| `auth/auth.controller.ts` | Mounts `/api/auth/*` via `toNodeHandler(auth)`; must have `@Public()` |
+| `common/utils/parse-cors-origins.ts` | Shared CORS origin parser — splits, trims, filters blanks |
+
+### Better Auth instance rules
+
+- `authPrismaClient` is a standalone `PrismaClient` separate from `PrismaService` — it's exported from `auth.instance.ts` and disconnected in `AuthModule.onModuleDestroy()`
+- `minPasswordLength: 12` — minimum enforced by Better Auth at sign-up/reset
+- `openAPI()` plugin is dev-only (`NODE_ENV !== 'production'`) — never expose the auth schema in production
+- `cookieCache.maxAge: 300s` — sessions are cached client-side for 5 minutes; role/status changes may take up to 5 min to propagate
+
+### env.validate.ts structure
+
+Two sections — required (crash on missing) and optional (validated only when present):
+- **Required**: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FRONTEND_URL`, `CORS_ORIGINS`, `NODE_ENV`, `PORT`
+- **Optional/validated**: `ADMIN_PASSWORD` (min 12 chars, placeholder rejection)
+- Seeding vars (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) are checked by the seed script itself, not by `validateEnv()`
 
 ---
 
