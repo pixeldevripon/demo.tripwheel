@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from '@/app.module';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { validateEnv } from '@/env.validate';
+import { auth } from '@/auth/auth.instance';
 
 async function bootstrap() {
   validateEnv();
@@ -67,7 +68,9 @@ async function bootstrap() {
   );
 
   // ── Routing ─────────────────────────────────────────────────────────────────
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['api/auth/*path'],
+  });
 
   // ── Swagger (non-production only) ───────────────────────────────────────────
   if (!isProd) {
@@ -78,10 +81,48 @@ async function bootstrap() {
       .addCookieAuth('better-auth.session_token')
       .build();
 
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+
+    try {
+      // Fetch the generated schema from Better Auth natively
+      const authSchema = await auth.api.generateOpenAPISchema();
+
+      const transformedAuthPaths: any = {};
+      for (const [pathKey, pathItem] of Object.entries(authSchema.paths)) {
+        const newPathKey = `/api/auth${pathKey}`;
+        const newPathItem: any = { ...pathItem };
+        
+        for (const method of ['get', 'post', 'put', 'delete', 'patch', 'options', 'head']) {
+          if (newPathItem[method]) {
+            newPathItem[method].tags = ['Auth'];
+          }
+        }
+        
+        transformedAuthPaths[newPathKey] = newPathItem;
+      }
+
+      // Merge paths into NestJS Swagger doc (cast as any to resolve strict TS mismatches)
+      document.paths = {
+        ...document.paths,
+        ...transformedAuthPaths,
+      };
+
+      // Merge schemas (types/models)
+      if (authSchema.components?.schemas) {
+        document.components = document.components || {};
+        document.components.schemas = {
+          ...document.components.schemas,
+          ...(authSchema.components.schemas as any),
+        };
+      }
+    } catch (err) {
+      console.warn('Failed to merge Better Auth OpenAPI schema:', err);
+    }
+
     SwaggerModule.setup(
       'api/docs',
       app,
-      SwaggerModule.createDocument(app, swaggerConfig),
+      document,
     );
   }
 

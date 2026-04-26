@@ -1,2 +1,118 @@
 // All project-wide enums live here.
-// Add enums as each domain module is implemented.
+
+// ── User / Auth ───────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  TOUR_OPERATOR
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// ── Permissions (used in ROLE_PERMISSIONS map — not stored on the User row) ───
+// Full list from IMPLEMENTATION_GUIDE.md § 3.6
+
+enum Permission {
+  // User management
+  MANAGE_USERS
+  VIEW_USERS
+  CREATE_USER
+  UPDATE_USER
+  DELETE_USER
+
+  // Content
+  CREATE_CONTENT
+  VIEW_CONTENT
+  EDIT_CONTENT
+  DELETE_CONTENT
+
+  // Categories
+  CREATE_CATEGORY
+  VIEW_CATEGORIES
+  EDIT_CATEGORY
+  DELETE_CATEGORY
+
+  // Media
+  UPLOAD_MEDIA
+  MANAGE_MEDIA
+  VIEW_MEDIA
+
+  // Orders & Payments
+  VIEW_ORDERS
+  EDIT_ORDER
+  DELETE_ORDER
+  VIEW_PAYMENTS
+  EDIT_PAYMENT
+  DELETE_PAYMENT
+
+  // Profile & Settings
+  VIEW_PROFILE
+  EDIT_PROFILE
+  MANAGE_SETTINGS
+  VIEW_SETTINGS
+
+  // Analytics & Data
+  VIEW_ANALYTICS
+  EXPORT_DATA
+  BULK_OPERATIONS
+
+  // Platform-level
+  MANAGE_SYSTEM
+  MANAGE_TRIPS
+  MANAGE_SLOTS
+  VIEW_SLOT_ANALYTICS
+}
+
+// ── Trip ──────────────────────────────────────────────────────────────────────
+
+enum TripStatus {
+  DRAFT
+  PENDING_REVIEW
+  LIVE
+  PAUSED
+  ARCHIVED
+}
+
+// ── Featured Slots ────────────────────────────────────────────────────────────
+
+enum SlotStatus {
+  AVAILABLE
+  SOFT_LOCKED
+  HARD_RESERVED
+}
+
+// ── Waitlist ──────────────────────────────────────────────────────────────────
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  CLAIMED
+  PASSED
+  EXPIRED
+  CANCELLED
+}
+
+// ── Bookings ──────────────────────────────────────────────────────────────────
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+// ── Operator ──────────────────────────────────────────────────────────────────
+
+enum OperatorVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}

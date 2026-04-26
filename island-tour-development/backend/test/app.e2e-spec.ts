@@ -17,7 +17,11 @@ describe('AppController (e2e)', () => {
     app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new AllExceptionsFilter());
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
   });

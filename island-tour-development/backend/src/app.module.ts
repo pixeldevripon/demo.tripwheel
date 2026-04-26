@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
+import { AuthModule } from '@/auth/auth.module';
 
 // NOTE: ThrottlerModule uses in-memory storage by default.
 // In production with multiple instances, swap to Redis storage:
@@ -14,6 +15,7 @@ import { PrismaModule } from '@/prisma/prisma.module';
 @Module({
   imports: [
     PrismaModule,
+    AuthModule,
     ThrottlerModule.forRoot({
       throttlers: [
         { name: 'short', ttl: 1_000, limit: 20 }, // burst: 20 req/s

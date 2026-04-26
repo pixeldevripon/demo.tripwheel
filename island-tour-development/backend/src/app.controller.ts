@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { AppService } from '@/app.service';
+import { Public } from '@/auth/decorators/public.decorator';
 
 // ── Per-route throttle examples ──────────────────────────────────────────────
 //
@@ -23,6 +24,7 @@ import { AppService } from '@/app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @SkipThrottle()
   @Get('health')
   @ApiOperation({ summary: 'Health check' })

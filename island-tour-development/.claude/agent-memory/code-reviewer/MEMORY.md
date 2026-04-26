@@ -1,0 +1,1 @@
+- [Auth Module Review](auth_module_review.md) — first review session: auth module patterns, violations found, and good patterns

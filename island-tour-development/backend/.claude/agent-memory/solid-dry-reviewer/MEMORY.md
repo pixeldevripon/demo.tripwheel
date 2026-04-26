@@ -1,0 +1,3 @@
+- [Auth Module Patterns](auth_module_patterns.md) — guard chain, decorator patterns, and known issues in the auth module
+- [CORS Origins DRY Violation](cors_dry_violation.md) — CORS origin parsing duplicated between main.ts and auth.instance.ts
+- [Any Types in main.ts](any_types_main.md) — `any` casts in Swagger OpenAPI merge block need proper typing

@@ -89,11 +89,12 @@ pnpm test:backend
 pnpm test:e2e
 
 # Prisma (run from root or backend)
-pnpm prisma:generate       # regenerate client after schema changes
-pnpm prisma:migrate        # create + apply a migration (dev)
-pnpm prisma:migrate:deploy # apply pending migrations (production)
-pnpm prisma:studio         # open Prisma Studio GUI
-pnpm prisma:format         # format all .prisma files
+pnpm prisma:generate         # regenerate client after schema changes
+pnpm prisma:migrate          # create + apply a migration (dev)
+pnpm prisma:migrate:deploy   # apply pending migrations (production)
+pnpm prisma:migrate:reset    # reset DB and re-apply all migrations (dev only)
+pnpm prisma:studio           # open Prisma Studio GUI
+pnpm prisma:format           # format all .prisma files
 ```
 
 ---
@@ -291,8 +292,12 @@ Adding it after `prisma migrate dev --name init` requires a new migration. Defin
 ### 14. Rate limiting — ThrottlerGuard is global
 Three tiers active on every route: 20 req/s · 300 req/min · 3 000 req/hr. Use `@SkipThrottle()` on health checks and payment webhooks. Use `@Throttle({ short: { limit: 5, ttl: 60_000 } })` to tighten auth-sensitive routes (login, register, forgot-password). ThrottlerModule uses **in-memory storage** until Phase 5 — swap to `@nest-lab/throttler-storage-redis` when Redis is added so limits work across multiple instances.
 
-### 15. Unified `@/` path alias (Backend)
-Every internal backend import must use the `@/` base path alias (e.g., `import { X } from '@/common/...'`). This includes the generated Prisma client, which is imported from `@/generated/prisma`. The separate `@generated/prisma` alias has been removed to ensure a single, consistent import pattern.
+### 15. Use `@/` path alias for all internal imports
+Every internal import must use the `@/` base path alias (e.g., `import { X } from '@/common/...'`). The Prisma client is the exception — import it from the standard `@prisma/client` package:
+```typescript
+import { PrismaClient } from '@prisma/client';  // ✅ standard, always correct
+```
+Do not create a custom Prisma output location — it creates unnecessary build complexity (assets copying, tsconfig exclusions, rootDir inference issues).
 
 ---
 
@@ -405,8 +410,20 @@ Migration commands:
 ```bash
 pnpm prisma:migrate -- --name <name>   # create + apply (dev)
 pnpm prisma:migrate:deploy             # apply pending (production)
+pnpm prisma:migrate:reset              # reset DB + re-run all migrations (dev only)
 pnpm prisma:generate                   # regenerate client after any schema change
 ```
+
+### Prisma Build Setup
+
+**`prisma generate` runs automatically** — `build`, `start`, `start:dev`, and `start:debug` in `backend/package.json` all prepend `prisma generate &&`. This ensures the client in `node_modules/@prisma/client` always matches the current schema before the app starts.
+
+**`prisma.config.ts` is excluded from TypeScript compilation** — it lives at the backend root (outside `src/`) and uses ESM `export default`. Prisma 7 loads it directly with its own TypeScript runner. Both tsconfigs exclude it to prevent `tsc` from picking it up:
+```json
+// tsconfig.json + tsconfig.build.json
+"exclude": [..., "prisma.config.ts"]
+```
+If a stale `prisma.config.js` ever appears at the backend root, delete it immediately — it means the file was accidentally compiled by `tsc`.
 
 ---
 

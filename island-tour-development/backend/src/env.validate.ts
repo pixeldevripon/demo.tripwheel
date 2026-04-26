@@ -16,8 +16,7 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
     ['development', 'production', 'test'].includes(v)
       ? null
       : 'must be one of: development, production, test',
-  PORT: (v) =>
-    isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null,
+  PORT: (v) => (isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null),
 };
 
 export function validateEnv(): void {

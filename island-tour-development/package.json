@@ -18,6 +18,7 @@
     "prisma:generate": "cd backend && pnpm prisma:generate",
     "prisma:migrate": "cd backend && pnpm prisma:migrate",
     "prisma:migrate:deploy": "cd backend && pnpm prisma:migrate:deploy",
+    "prisma:migrate:reset": "cd backend && pnpm prisma:migrate:reset",
     "prisma:studio": "cd backend && pnpm prisma:studio",
     "prisma:format": "cd backend && pnpm prisma:format"
   },

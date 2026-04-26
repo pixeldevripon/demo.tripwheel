@@ -28,7 +28,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const message =
       typeof responseBody === 'string'
         ? responseBody
-        : typeof responseBody === 'object' && responseBody !== null && 'message' in responseBody
+        : typeof responseBody === 'object' &&
+            responseBody !== null &&
+            'message' in responseBody
           ? (responseBody as Record<string, unknown>).message
           : 'Internal server error';
 
