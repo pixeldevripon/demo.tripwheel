@@ -1,0 +1,3 @@
+- [Test Setup Patterns](test-setup-patterns.md) — How to bootstrap the NestJS test app, mirror main.ts config, and use PrismaClient for cleanup
+- [Auth Testing Patterns](auth-testing-patterns.md) — Better Auth cookie extraction, sign-up/sign-in helpers, session lifecycle patterns
+- [Path Alias Handling](path-alias-handling.md) — @/ alias not resolved in jest-e2e.json; test files must use relative imports

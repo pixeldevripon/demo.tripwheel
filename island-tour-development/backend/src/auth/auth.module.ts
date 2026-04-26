@@ -24,11 +24,16 @@ import { authPrismaClient } from '@/auth/auth.instance';
 @Module({
   imports: [
     ThrottlerModule.forRoot({
-      throttlers: [
-        { name: 'short', ttl: 1_000, limit: 20 }, // burst: 20 req/s
-        { name: 'medium', ttl: 60_000, limit: 300 }, // sustained: 300 req/min
-        { name: 'long', ttl: 3_600_000, limit: 3_000 }, // hourly cap: 3 000 req/hr
-      ],
+      // In test, use a single permissive throttler so E2E suites don't hit 429s.
+      // Production uses three tiers: burst / sustained / hourly.
+      throttlers:
+        process.env.NODE_ENV === 'test'
+          ? [{ name: 'test', ttl: 60_000, limit: 10_000 }]
+          : [
+              { name: 'short', ttl: 1_000, limit: 20 }, // burst: 20 req/s
+              { name: 'medium', ttl: 60_000, limit: 300 }, // sustained: 300 req/min
+              { name: 'long', ttl: 3_600_000, limit: 3_000 }, // hourly cap: 3 000 req/hr
+            ],
     }),
   ],
   controllers: [AuthController],

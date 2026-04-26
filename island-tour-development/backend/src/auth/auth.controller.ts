@@ -12,7 +12,7 @@ import type { Request, Response } from 'express';
  *   POST /api/auth/sign-up/email
  *   POST /api/auth/sign-in/email
  *   POST /api/auth/sign-out
- *   GET  /api/auth/session
+ *   GET  /api/auth/get-session
  *   POST /api/auth/forget-password
  *   POST /api/auth/reset-password
  *   GET  /api/auth/callback/google   (if Google OAuth is configured)
