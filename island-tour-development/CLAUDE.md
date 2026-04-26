@@ -37,10 +37,18 @@ island-tours/
 │   │   │       ├── require-permissions.decorator.ts
 │   │   │       └── authenticated-user.decorator.ts
 │   │   ├── common/
+│   │   │   ├── dto/
+│   │   │   │   └── error-responses.dto.ts ← shared Swagger error DTOs (400/401/403/404/409/500)
 │   │   │   ├── filters/
 │   │   │   │   └── http-exception.filter.ts
 │   │   │   └── utils/
 │   │   │       └── parse-cors-origins.ts  ← shared CORS origin parser
+│   │   ├── users/                         ← user + operator management (Phase 3)
+│   │   │   ├── dto/user.dto.ts            ← query, request, and response DTOs
+│   │   │   ├── user.swagger.ts            ← per-endpoint Swagger decorators
+│   │   │   ├── user.service.ts
+│   │   │   ├── user.controller.ts
+│   │   │   └── user.module.ts
 │   │   └── prisma/
 │   │       ├── prisma.module.ts   ← @Global() — inject PrismaService anywhere
 │   │       └── prisma.service.ts  ← extends PrismaClient with PrismaPg adapter
@@ -180,11 +188,12 @@ Modules to build (in order per `IMPLEMENTATION_GUIDE.md`):
 
 ```
 src/
-├── auth/           Phase 3  — Better Auth instance, AuthGuard, RolesGuard, decorators
-├── prisma/         Phase 2  — PrismaService (global)
+├── auth/           Phase 3  — Better Auth instance, AuthGuard, RolesGuard, decorators  ✓ done
+├── prisma/         Phase 2  — PrismaService (global)                                    ✓ done
+├── users/          Phase 3  — user + operator management (list, update role/status)     ✓ done
 ├── upload/         Phase 4  — Cloudinary upload endpoint
 ├── categories/     Phase 4  — CRUD, auto-seeds 3 FeaturedSlot rows on create
-├── operators/      Phase 4  — apply, approve, reject
+├── operators/      Phase 4  — apply, approve, reject (OperatorProfile, verif. status)
 ├── trips/          Phase 4  — CRUD + publish (race condition endpoint)
 ├── reviews/        Phase 4  — create, list by trip
 ├── bookings/       Phase 4  — create (auto-creates guest user), confirm, cancel
@@ -534,6 +543,227 @@ Two sections — required (crash on missing) and optional (validated only when p
 - **Required**: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FRONTEND_URL`, `CORS_ORIGINS`, `NODE_ENV`, `PORT`
 - **Optional/validated**: `ADMIN_PASSWORD` (min 12 chars, placeholder rejection)
 - Seeding vars (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) are checked by the seed script itself, not by `validateEnv()`
+
+---
+
+## Module Code Patterns
+
+Every new backend module must follow the patterns established in `src/users/`. This section is the authoritative reference — check it before creating any new module.
+
+---
+
+### File structure (per module)
+
+```
+src/<module>/
+├── dto/
+│   └── <module>.dto.ts      ← ALL DTOs: query, request, and response shapes
+├── <module>.swagger.ts       ← one exported decorator function per endpoint
+├── <module>.service.ts       ← all business logic; inject PrismaService
+├── <module>.controller.ts    ← thin routing layer only
+└── <module>.module.ts        ← module declaration; export service if other modules need it
+```
+
+Shared Swagger error types live in `src/common/dto/error-responses.dto.ts`. Import from there — never re-declare error DTOs inside a module.
+
+---
+
+### DTO conventions (`dto/<module>.dto.ts`)
+
+**Three categories of DTO — always keep them in this order in the file:**
+
+```typescript
+// 1. Response DTOs — describe the exact shape returned by the service
+export class ThingResponseDto { ... }           // full object
+export class ThingSummaryResponseDto { ... }    // trimmed shape (e.g. after role/status update)
+export class PaginatedThingsResponseDto { ... } // { total, page, limit, data: ThingResponseDto[] }
+export class DeleteThingResponseDto { ... }     // { message: string }
+
+// 2. Query DTOs — for GET list endpoints
+export class ThingQueryDto { ... }
+
+// 3. Request DTOs — for POST/PATCH body
+export class CreateThingDto { ... }
+export class UpdateThingDto { ... }
+```
+
+**Rules:**
+- Required fields on response DTOs use `!` (`id!: string`) — strict TS without constructor initializer
+- Optional fields on request DTOs use `?` with `@IsOptional()`
+- Numeric query params always get `@Type(() => Number)` + `@IsInt()` — `enableImplicitConversion` is off
+- Enum request fields that are always required use `!` (`role!: Role`), not a default value
+- `@ApiProperty` on every field of every response DTO, including the `example:` value
+- `@ApiPropertyOptional` on every optional request/query field
+
+```typescript
+// Response DTO — required fields, examples on every property
+export class UserResponseDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  id!: string;
+
+  @ApiProperty({ enum: Role, example: Role.TOUR_OPERATOR })
+  role!: Role;
+}
+
+// Paginated wrapper — always the same shape
+export class PaginatedUsersResponseDto {
+  @ApiProperty({ example: 42 })   total!: number;
+  @ApiProperty({ example: 1 })    page!: number;
+  @ApiProperty({ example: 20 })   limit!: number;
+  @ApiProperty({ type: [UserResponseDto] }) data!: UserResponseDto[];
+}
+
+// Numeric query param
+export class ThingQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+}
+```
+
+---
+
+### Swagger conventions (`<module>.swagger.ts`)
+
+```typescript
+// Shared error arrays — always defined at the top of the file
+const commonErrors = [
+  ApiResponse({ status: 400, type: BadRequestErrorDto, ... }),
+  ApiResponse({ status: 401, type: UnauthorizedErrorDto, ... }),
+  ApiResponse({ status: 500, type: InternalServerErrorDto, ... }),
+];
+
+const adminErrors = [
+  ...commonErrors,
+  ApiResponse({ status: 403, type: ForbiddenErrorDto, ... }),
+];
+
+// One exported function per endpoint — named Api<Action><Resource>Docs()
+export function ApiGetAllThingsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: '...' }),
+    ApiQuery({ ... }),                          // all query params listed
+    ApiResponse({ status: 200, type: PaginatedThingsResponseDto }), // always type:, never schema:
+    ...adminErrors,
+  );
+}
+```
+
+**Rules:**
+- Every `status: 200` response must have `type:` pointing to a response DTO — never a plain `description` string alone
+- `404` responses always use `type: NotFoundErrorDto`
+- Admin-only endpoints use `...adminErrors`; authenticated-but-not-admin endpoints use `...commonErrors`
+- Import response DTO classes from the module's own `dto/` file; import error DTOs from `@/common/dto/error-responses.dto`
+
+---
+
+### Controller conventions (`<module>.controller.ts`)
+
+```typescript
+@ApiTags('Things')
+@Controller('things')
+export class ThingController {
+  constructor(private readonly thingService: ThingService) {}
+
+  // ⚠ Static routes MUST be declared before dynamic (:id) routes.
+  // NestJS matches routes top-to-bottom; 'me' or 'export' would otherwise
+  // be treated as an :id segment.
+
+  @Get('export')               // static — first
+  @RequirePermissions(Permission.EXPORT_DATA)
+  @ApiExportThingsDocs()
+  export() { ... }
+
+  @Get(':id')                  // dynamic — after all statics
+  @RequirePermissions(Permission.VIEW_CONTENT)
+  @ApiGetThingByIdDocs()
+  getById(@Param('id') id: string) { ... }
+}
+```
+
+**Rules:**
+- `import type { TypedAuthUser } from '@/auth/auth.types'` — always `import type` to satisfy `isolatedModules` + `emitDecoratorMetadata`
+- Every admin route gets `@RequirePermissions(Permission.X)` — never rely on role checks alone
+- Controllers are thin: no business logic, no try-catch, no Prisma calls — delegate everything to the service
+- No `@Roles()` on individual endpoints — permission checks via `@RequirePermissions()` are sufficient; `@Roles()` is for coarse class-level guards only
+
+---
+
+### Service conventions (`<module>.service.ts`)
+
+```typescript
+@Injectable()
+export class ThingService {
+  private readonly logger = new Logger(ThingService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+}
+```
+
+**Rules:**
+
+**No try-catch for HttpExceptions** — NestJS catches `NotFoundException`, `ForbiddenException`, `BadRequestException` automatically. Only add try-catch when translating a Prisma error into a meaningful HTTP response:
+
+```typescript
+// Only case that warrants try-catch: unique constraint → 409
+try {
+  await this.prisma.thing.update({ where: { id }, data: { email } });
+} catch (e) {
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    throw new ConflictException('Email already in use');
+  }
+  throw e;
+}
+```
+
+**Always use `select:` in Prisma queries** — never return raw DB rows. Explicitly list every field the response needs:
+
+```typescript
+await this.prisma.user.findUnique({
+  where: { id },
+  select: { id: true, name: true, email: true, role: true, status: true, createdAt: true, updatedAt: true },
+});
+```
+
+**Guard business rules in the service, not the controller:**
+
+```typescript
+// Self-action guards
+if (id === requestingUserId) throw new BadRequestException('...');
+
+// Cross-role guards
+if (target.role === Role.ADMIN) throw new ForbiddenException('...');
+```
+
+**Log mutating admin actions** with `this.logger.log(...)` so they are traceable:
+
+```typescript
+this.logger.log(`Admin ${requestingUserId} changed user ${id} status to ${dto.status}`);
+```
+
+---
+
+### Module registration
+
+Every new module must be added to `AppModule.imports` in `src/app.module.ts`:
+
+```typescript
+@Module({
+  imports: [PrismaModule, AuthModule, MailModule, UserModule, ThingModule],
+})
+export class AppModule {}
+```
+
+`PrismaService` is `@Global()` — do **not** import `PrismaModule` inside individual modules. It is already available everywhere.
+
+---
+
+### Bearer token auth
+
+The `bearer()` plugin is registered in `auth.instance.ts`. This enables `Authorization: Bearer <token>` alongside cookie auth. The token value is `session.token` (the raw DB token — not the cookie value which includes an HMAC suffix).
 
 ---
 
