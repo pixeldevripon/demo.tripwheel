@@ -1,0 +1,22 @@
+{
+  "name": "island-tours",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"pnpm dev:backend\" \"pnpm dev:frontend\"",
+    "dev:backend": "cd backend && pnpm start:dev",
+    "dev:frontend": "cd frontend && pnpm dev",
+    "build": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"pnpm build:backend\" \"pnpm build:frontend\"",
+    "build:backend": "cd backend && pnpm build",
+    "build:frontend": "cd frontend && pnpm build",
+    "install:all": "pnpm install && cd backend && pnpm install && cd ../frontend && pnpm install",
+    "lint": "concurrently \"pnpm lint:backend\" \"pnpm lint:frontend\"",
+    "lint:backend": "cd backend && pnpm lint",
+    "lint:frontend": "cd frontend && pnpm lint",
+    "test:backend": "cd backend && pnpm test",
+    "test:e2e": "cd backend && pnpm test:e2e"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
