@@ -1,13 +1,13 @@
-import 'dotenv/config';
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
 import { AppModule } from '@/app.module';
-import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
-import { validateEnv } from '@/env.validate';
 import { auth } from '@/auth/auth.instance';
+import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
+import { validateEnv } from '@/env.validate';
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import 'dotenv/config';
+import helmet from 'helmet';
 
 async function bootstrap() {
   validateEnv();
@@ -43,7 +43,8 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (Postman, curl, server-to-server) and listed origins
+      if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('CORS: origin not allowed'));
@@ -90,7 +91,15 @@ async function bootstrap() {
         const newPathKey = `/api/auth${pathKey}`;
         const newPathItem: any = { ...pathItem };
 
-        for (const method of ['get', 'post', 'put', 'delete', 'patch', 'options', 'head']) {
+        for (const method of [
+          'get',
+          'post',
+          'put',
+          'delete',
+          'patch',
+          'options',
+          'head',
+        ]) {
           if (newPathItem[method]) {
             newPathItem[method].tags = ['Auth'];
           }
