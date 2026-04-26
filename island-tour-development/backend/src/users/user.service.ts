@@ -15,6 +15,7 @@ import {
   UpdateUserStatusDto,
   UserQueryDto,
 } from './dto/user.dto';
+import { ROLE_PERMISSIONS } from '@/config/roles.config';
 
 @Injectable()
 export class UserService {
@@ -111,6 +112,12 @@ export class UserService {
 
   async getCurrentUser(userId: string) {
     return this.getUserById(userId);
+  }
+
+  async getUserPermissions(id: string) {
+    const user = await this.getUserById(id);
+    const permissions = ROLE_PERMISSIONS[user.role] || [];
+    return { permissions };
   }
 
   async updateUserProfile(userId: string, dto: UpdateUserProfileDto) {

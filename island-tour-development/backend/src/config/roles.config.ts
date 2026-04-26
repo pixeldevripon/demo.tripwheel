@@ -13,6 +13,7 @@ import { Permission, Role } from '@prisma/client';
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.ADMIN]: [
     Permission.MANAGE_USERS,
+    Permission.VIEW_PERMISSIONS,
     Permission.VIEW_USERS,
     Permission.CREATE_USER,
     Permission.UPDATE_USER,
@@ -46,6 +47,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 
   [Role.TOUR_OPERATOR]: [
+    Permission.VIEW_PERMISSIONS,
     Permission.CREATE_CONTENT,
     Permission.EDIT_CONTENT,
     Permission.DELETE_CONTENT,

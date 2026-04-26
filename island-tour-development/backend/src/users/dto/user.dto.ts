@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Role, UserStatus } from '@prisma/client';
+import { Permission, Role, UserStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEmail,
@@ -40,6 +40,11 @@ export class UserResponseDto {
 
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' })
   updatedAt!: Date;
+}
+
+export class UserPermissionsResponseDto {
+  @ApiProperty({ enum: Permission, isArray: true })
+  permissions!: Permission[];
 }
 
 export class UserSummaryResponseDto {

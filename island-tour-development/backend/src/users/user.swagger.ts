@@ -13,6 +13,7 @@ import {
   PaginatedUsersResponseDto,
   UserResponseDto,
   UserSummaryResponseDto,
+  UserPermissionsResponseDto,
 } from './dto/user.dto';
 
 const commonErrors = [
@@ -186,5 +187,37 @@ export function ApiDeleteUserDocs() {
       type: NotFoundErrorDto,
     }),
     ...adminErrors,
+  );
+}
+
+export function ApiGetUserPermissionsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Get permissions of a specific user (Admin only)' }),
+    ApiParam({ name: 'id', description: 'User UUID' }),
+    ApiResponse({
+      status: 200,
+      description: 'User permissions retrieved successfully',
+      type: UserPermissionsResponseDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'User not found',
+      type: NotFoundErrorDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiGetCurrentUserPermissionsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get permissions of the currently authenticated user',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Current user permissions retrieved successfully',
+      type: UserPermissionsResponseDto,
+    }),
+    ...commonErrors,
   );
 }

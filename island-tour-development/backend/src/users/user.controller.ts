@@ -26,7 +26,9 @@ import {
   ApiGetAllOperatorsDocs,
   ApiGetAllUsersDocs,
   ApiGetCurrentUserDocs,
+  ApiGetCurrentUserPermissionsDocs,
   ApiGetUserByIdDocs,
+  ApiGetUserPermissionsDocs,
   ApiUpdateUserByAdminDocs,
   ApiUpdateUserProfileDocs,
   ApiUpdateUserRoleDocs,
@@ -49,6 +51,12 @@ export class UserController {
     return this.userService.getCurrentUser(user.id);
   }
 
+  @Get('me/permissions')
+  @ApiGetCurrentUserPermissionsDocs()
+  getCurrentUserPermissions(@AuthenticatedUser() user: TypedAuthUser) {
+    return this.userService.getUserPermissions(user.id);
+  }
+
   @Get('operators')
   @RequirePermissions(Permission.VIEW_USERS)
   @ApiGetAllOperatorsDocs()
@@ -68,6 +76,12 @@ export class UserController {
   @ApiGetUserByIdDocs()
   getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
+  }
+
+  @Get(':id/permissions')
+  @ApiGetUserPermissionsDocs()
+  getUserPermissions(@Param('id') id: string) {
+    return this.userService.getUserPermissions(id);
   }
 
   @Patch('me')

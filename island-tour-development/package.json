@@ -14,6 +14,7 @@
     "lint:backend": "cd backend && pnpm lint",
     "lint:frontend": "cd frontend && pnpm lint",
     "test:backend": "cd backend && pnpm test",
+    "test:backend:verbose": "cd backend && pnpm test:verbose",
     "test:e2e": "cd backend && pnpm test:e2e",
     "prisma:generate": "cd backend && pnpm prisma:generate",
     "prisma:migrate": "cd backend && pnpm prisma:migrate",

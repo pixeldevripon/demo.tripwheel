@@ -19,6 +19,7 @@ enum UserStatus {
 // Full list from IMPLEMENTATION_GUIDE.md § 3.6
 
 enum Permission {
+  VIEW_PERMISSIONS
   // User management
   MANAGE_USERS
   VIEW_USERS
