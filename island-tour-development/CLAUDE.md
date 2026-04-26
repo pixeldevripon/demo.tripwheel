@@ -20,6 +20,7 @@ island-tours/
 │   │   ├── app.module.ts
 │   │   ├── app.controller.ts
 │   │   ├── app.service.ts
+│   │   ├── env.validate.ts   ← required env check — runs before Nest boots
 │   │   └── main.ts
 │   ├── prisma/       ← schema lives here (split by domain) — created in Phase 2
 │   ├── .env          ← copy from .env.example and fill in
@@ -33,6 +34,12 @@ island-tours/
 │   ├── .env.local    ← copy from .env.local.example and fill in
 │   └── package.json
 │
+├── .claude/
+│   └── agents/               ← project-wide Claude Code agents
+│       ├── security-code-reviewer.md
+│       ├── solid-dry-reviewer.md
+│       ├── e2e-test-writer.md
+│       └── test-writer.md
 ├── package.json      ← root: concurrently scripts only, no shared code
 ├── CLAUDE.md         ← this file
 └── .gitignore
@@ -88,7 +95,7 @@ The frontend `.env.local` has NO secrets — no DATABASE_URL, no auth secrets, n
 
 | Variable | Required now | Notes |
 |---|---|---|
-| `PORT` | Yes | Default `5000` |
+| `PORT` | Yes | Default `5050` |
 | `NODE_ENV` | Yes | `development` / `production` |
 | `FRONTEND_URL` | Yes | Used as fallback display only |
 | `CORS_ORIGINS` | Yes | Comma-separated trusted origins |
@@ -118,6 +125,11 @@ The frontend `.env.local` has NO secrets — no DATABASE_URL, no auth secrets, n
 | File uploads | Cloudinary | Trip photos, operator profile images |
 | Email | Nodemailer | Pluggable provider |
 | Package manager | pnpm | Both apps + root |
+| API docs | `@nestjs/swagger` | Swagger UI at `/api/docs` |
+| Security headers | `helmet` | HTTP headers — configured in `main.ts` |
+| Rate limiting | `@nestjs/throttler` | Global guard; per-route via `@Throttle()` / `@SkipThrottle()` |
+| Validation | `class-validator` + `class-transformer` | Global `ValidationPipe` — whitelist + forbidNonWhitelisted |
+| Env loading | `dotenv` | `import 'dotenv/config'` — first line of `main.ts` |
 
 ---
 
@@ -244,11 +256,17 @@ Role changes (`USER → OPERATOR`, `OPERATOR → ADMIN`) must only happen throug
 ### 10. Store BullMQ job IDs
 Store `bullJobId` on `SlotLock` and `offerJobId` on `WaitlistEntry`. You need these to cancel jobs when they're no longer needed (operator publishes before TTL expires, operator claims offer before 24h window closes).
 
-### 11. Webhook endpoints bypass AuthGuard
-Payment provider webhooks (`/webhooks/stripe`, etc.) are server-to-server calls with no session cookie. Mark them `@Public()` or exclude from global guards. Verify them with gateway signatures instead.
+### 11. Webhook endpoints bypass AuthGuard and ThrottlerGuard
+Payment provider webhooks (`/webhooks/stripe`, etc.) are server-to-server calls with no session cookie. They must be marked `@Public()` to skip `AuthGuard` and `@SkipThrottle()` to skip the global rate limiter. Verify them with gateway signatures instead of session auth.
 
 ### 12. Wishlist model must be added before the first migration
 Adding it after `prisma migrate dev --name init` requires a new migration. Define it in `bookings.prisma` before running the first migration.
+
+### 13. Global ValidationPipe strips unknown fields
+`ValidationPipe` is registered globally with `whitelist: true` and `forbidNonWhitelisted: true`. Any DTO field not decorated with a `class-validator` decorator is stripped, and sending extra fields returns a 400. Every request body must have a matching DTO class — never use plain `object` or `any` as a body type.
+
+### 14. Rate limiting — ThrottlerGuard is global
+Three tiers active on every route: 20 req/s · 300 req/min · 3 000 req/hr. Use `@SkipThrottle()` on health checks and payment webhooks. Use `@Throttle({ short: { limit: 5, ttl: 60_000 } })` to tighten auth-sensitive routes (login, register, forgot-password). ThrottlerModule uses **in-memory storage** until Phase 5 — swap to `@nest-lab/throttler-storage-redis` when Redis is added so limits work across multiple instances.
 
 ---
 

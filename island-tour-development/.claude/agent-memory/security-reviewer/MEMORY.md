@@ -1,0 +1,1 @@
+- [Bootstrap Phase Security Findings](project_bootstrap_security.md) — Phase 1 audit: confirmed secure patterns + known gaps to watch in future phases (exception filter, Swagger gate, implicit conversion, source maps)
