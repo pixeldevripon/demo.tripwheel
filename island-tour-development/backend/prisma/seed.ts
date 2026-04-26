@@ -1,6 +1,6 @@
-import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Role } from '@prisma/client';
+import 'dotenv/config';
 import { auth } from '../src/auth/auth.instance';
 
 const adapter = new PrismaPg({
@@ -41,7 +41,7 @@ async function main() {
   // sign-up hook which only blocks ADMIN creation through self-registration.
   await prisma.user.update({
     where: { email },
-    data: { role: Role.ADMIN },
+    data: { role: Role.ADMIN, emailVerified: true },
   });
 
   console.log(`Successfully created admin user ${email}!`);

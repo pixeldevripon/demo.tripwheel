@@ -3,7 +3,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaClient, Role, UserStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { openAPI } from 'better-auth/plugins';
+import { bearer, openAPI } from 'better-auth/plugins';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { mailService } from '@/mail/mail.singleton';
 
@@ -123,6 +123,7 @@ export const auth = betterAuth({
 
   // openAPI plugin exposes the auth schema — dev only, never in production
   plugins: [
+    bearer(), // enables Authorization: Bearer <token> alongside cookie auth
     ...(process.env.NODE_ENV !== 'production' ? [openAPI()] : []),
   ],
 });
