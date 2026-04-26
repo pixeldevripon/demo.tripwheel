@@ -3,9 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
-import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
-import { validateEnv } from './env.validate';
+import { AppModule } from '@/app.module';
+import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
+import { validateEnv } from '@/env.validate';
 
 async function bootstrap() {
   validateEnv();

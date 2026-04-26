@@ -1,0 +1,3 @@
+// Bookings domain — Phase 4
+// Models: Booking, Review, Wishlist
+// IMPORTANT: Add Wishlist model here before running the first migration (Critical Rule #12)

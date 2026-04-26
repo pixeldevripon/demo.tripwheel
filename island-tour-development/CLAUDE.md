@@ -20,10 +20,26 @@ island-tours/
 │   │   ├── app.module.ts
 │   │   ├── app.controller.ts
 │   │   ├── app.service.ts
-│   │   ├── env.validate.ts   ← required env check — runs before Nest boots
-│   │   └── main.ts
-│   ├── prisma/       ← schema lives here (split by domain) — created in Phase 2
-│   ├── .env          ← copy from .env.example and fill in
+│   │   ├── env.validate.ts        ← required env check — runs before Nest boots
+│   │   ├── main.ts
+│   │   ├── common/
+│   │   │   └── filters/
+│   │   │       └── http-exception.filter.ts
+│   │   └── prisma/
+│   │       ├── prisma.module.ts   ← @Global() — inject PrismaService anywhere
+│   │       └── prisma.service.ts  ← extends PrismaClient with PrismaPg adapter
+│   ├── prisma/                    ← split schema (one file per domain)
+│   │   ├── schema.prisma          ← generator + datasource provider
+│   │   ├── enums.prisma
+│   │   ├── user.prisma
+│   │   ├── operator.prisma
+│   │   ├── categories.prisma
+│   │   ├── trips.prisma
+│   │   ├── featured-slots.prisma
+│   │   ├── bookings.prisma
+│   │   └── migrations/
+│   ├── prisma.config.ts           ← Prisma 7 config — DATABASE_URL + schema path
+│   ├── .env                       ← copy from .env.example and fill in
 │   └── package.json
 │
 ├── frontend/         ← Next.js 16, App Router — UI only, no auth logic, no DB
@@ -71,6 +87,13 @@ pnpm lint
 # Tests (backend only)
 pnpm test:backend
 pnpm test:e2e
+
+# Prisma (run from root or backend)
+pnpm prisma:generate       # regenerate client after schema changes
+pnpm prisma:migrate        # create + apply a migration (dev)
+pnpm prisma:migrate:deploy # apply pending migrations (production)
+pnpm prisma:studio         # open Prisma Studio GUI
+pnpm prisma:format         # format all .prisma files
 ```
 
 ---
@@ -268,6 +291,9 @@ Adding it after `prisma migrate dev --name init` requires a new migration. Defin
 ### 14. Rate limiting — ThrottlerGuard is global
 Three tiers active on every route: 20 req/s · 300 req/min · 3 000 req/hr. Use `@SkipThrottle()` on health checks and payment webhooks. Use `@Throttle({ short: { limit: 5, ttl: 60_000 } })` to tighten auth-sensitive routes (login, register, forgot-password). ThrottlerModule uses **in-memory storage** until Phase 5 — swap to `@nest-lab/throttler-storage-redis` when Redis is added so limits work across multiple instances.
 
+### 15. Unified `@/` path alias (Backend)
+Every internal backend import must use the `@/` base path alias (e.g., `import { X } from '@/common/...'`). This includes the generated Prisma client, which is imported from `@/generated/prisma`. The separate `@generated/prisma` alias has been removed to ensure a single, consistent import pattern.
+
 ---
 
 ## Slot Economy — Quick Reference
@@ -351,20 +377,36 @@ DRAFT → LIVE ⇄ PAUSED → ARCHIVED
 
 ## Prisma Schema Layout
 
-Split schema in `backend/prisma/schema/` (one file per domain):
+Split schema in `backend/prisma/` (one file per domain). Prisma 7 merges all `.prisma` files in the directory automatically — configured via `prisma.config.ts`.
 
 ```
-schema.prisma          ← entry file (prismaSchemaFolder preview feature)
-enums.prisma           ← all enums
-user.prisma            ← User, Session, Account, Verification (Better Auth tables)
-operator.prisma        ← OperatorProfile
-categories.prisma      ← Category, SubCategory
-trips.prisma           ← Trip, TripSchedule
-featured-slots.prisma  ← FeaturedSlot, SlotLock, WaitlistEntry, SlotHistory
-bookings.prisma        ← Booking, Review, Wishlist
+prisma/
+├── schema.prisma          ← generator + datasource provider (no url — in prisma.config.ts)
+├── enums.prisma           ← all enums
+├── user.prisma            ← User, Session, Account, Verification (Better Auth tables)
+├── operator.prisma        ← OperatorProfile
+├── categories.prisma      ← Category, SubCategory
+├── trips.prisma           ← Trip, TripSchedule
+├── featured-slots.prisma  ← FeaturedSlot, SlotLock, WaitlistEntry, SlotHistory
+├── bookings.prisma        ← Booking, Review, Wishlist
+└── migrations/            ← auto-generated, do not edit manually
 ```
 
-Migration command: `cd backend && pnpm prisma migrate dev --name <name> --schema=./prisma/schema.prisma`
+`prisma.config.ts` (backend root) — owns the connection URL and schema path:
+```typescript
+export default defineConfig({
+  schema: 'prisma/',
+  migrations: { path: 'prisma/migrations' },
+  datasource: { url: env('DATABASE_URL') },
+})
+```
+
+Migration commands:
+```bash
+pnpm prisma:migrate -- --name <name>   # create + apply (dev)
+pnpm prisma:migrate:deploy             # apply pending (production)
+pnpm prisma:generate                   # regenerate client after any schema change
+```
 
 ---
 

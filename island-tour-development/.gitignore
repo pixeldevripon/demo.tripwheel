@@ -18,6 +18,7 @@ out/
 
 # Prisma
 backend/prisma/migrations/
+backend/src/generated/
 *.db
 *.db-journal
 

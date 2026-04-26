@@ -14,7 +14,12 @@
     "lint:backend": "cd backend && pnpm lint",
     "lint:frontend": "cd frontend && pnpm lint",
     "test:backend": "cd backend && pnpm test",
-    "test:e2e": "cd backend && pnpm test:e2e"
+    "test:e2e": "cd backend && pnpm test:e2e",
+    "prisma:generate": "cd backend && pnpm prisma:generate",
+    "prisma:migrate": "cd backend && pnpm prisma:migrate",
+    "prisma:migrate:deploy": "cd backend && pnpm prisma:migrate:deploy",
+    "prisma:studio": "cd backend && pnpm prisma:studio",
+    "prisma:format": "cd backend && pnpm prisma:format"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -1,0 +1,3 @@
+// Better Auth tables — Phase 3
+// Models: User, Session, Account, Verification
+// All @@map names must stay lowercase (Critical Rule #3)

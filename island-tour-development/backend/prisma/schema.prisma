@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+// Connection URL is configured in prisma.config.ts (Prisma 7)
+datasource db {
+  provider = "postgresql"
+}
+
+// Domain models live in separate files alongside this one:
+//   enums.prisma          ← all enums
+//   user.prisma           ← User, Session, Account, Verification (Better Auth)
+//   operator.prisma       ← OperatorProfile
+//   categories.prisma     ← Category, SubCategory
+//   trips.prisma          ← Trip, TripSchedule
+//   featured-slots.prisma ← FeaturedSlot, SlotLock, WaitlistEntry, SlotHistory
+//   bookings.prisma       ← Booking, Review, Wishlist

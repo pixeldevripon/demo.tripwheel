@@ -1,0 +1,3 @@
+// Slot economy — Phase 5
+// Models: FeaturedSlot, SlotLock, WaitlistEntry, SlotHistory
+// CRITICAL: Never DELETE FeaturedSlot rows — only UPDATE (Critical Rule #7)

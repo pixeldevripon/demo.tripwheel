@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { AppService } from './app.service';
+import { AppService } from '@/app.service';
 
 // ── Per-route throttle examples ──────────────────────────────────────────────
 //
