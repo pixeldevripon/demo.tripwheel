@@ -1,11 +1,11 @@
-import 'dotenv/config';
-import { betterAuth } from 'better-auth';
-import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { PrismaClient, Role, UserStatus } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { bearer, openAPI } from 'better-auth/plugins';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { mailService } from '@/mail/mail.singleton';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Role, UserStatus } from '@prisma/client';
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { bearer, openAPI } from 'better-auth/plugins';
+import 'dotenv/config';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -42,7 +42,11 @@ export const auth = betterAuth({
   // ── Email Verification ─────────────────────────────────────────────────────
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      void mailService.sendVerificationEmail(user.email, url, user.name ?? undefined);
+      void mailService.sendVerificationEmail(
+        user.email,
+        url,
+        user.name ?? undefined,
+      );
     },
   },
 
@@ -87,10 +91,9 @@ export const auth = betterAuth({
         type: 'string',
         defaultValue: Role.TOUR_OPERATOR,
         returned: true,
-        // input: false — role must never be supplied by the client.
-        // Roles are assigned server-side only (defaultValue for self-registration,
-        // protected admin endpoint for promotions). Critical Rule #9.
-        input: false,
+        // input: true — allows selecting TOUR_OPERATOR during signup.
+        // The databaseHook below ensures no one can sign up as ADMIN.
+        input: true,
       },
       status: {
         type: 'string',
@@ -105,17 +108,38 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (userData) => {
-          // ADMIN accounts must never be created via the public sign-up endpoint.
-          // The seed script creates admins via prisma.user.update() after creation,
-          // not through this hook. With role.input=false this guard should never
-          // fire in practice — it exists as a safety net only.
-          if ((userData as { role?: string }).role === Role.ADMIN) {
+        before: async (userData, ctx) => {
+          // ── Path 1: Email signup ───────────────────────────────
+          // role comes via userData directly (input: true)
+          let incomingRole = (userData as any).role ?? null;
+
+          // ── Path 2: OAuth signup (first time only) ────────────
+          // The hook only fires on CREATE — returning users never
+          // reach this point. So reading the cookie here is safe:
+          // it will only ever affect brand-new accounts.
+          if (!incomingRole && ctx?.request) {
+            const cookieHeader = ctx.request.headers.get('cookie') ?? '';
+            const match = cookieHeader.match(/(?:^|;\s*)pending_role=([^;]+)/);
+            incomingRole = match?.[1] ?? null;
+          }
+
+          // ── Security: block ADMIN self-registration ────────────
+          if (incomingRole === Role.ADMIN) {
             throw new Error(
               'ADMIN accounts cannot be created through self-registration.',
             );
           }
-          return { data: userData };
+
+          // ── Validate or fall back to safe default ─────────────
+          const allowedRoles: Role[] = [Role.USER, Role.TOUR_OPERATOR];
+          const finalRole: Role = allowedRoles.includes(incomingRole as Role)
+            ? (incomingRole as Role)
+            : Role.USER; // 👈 default to USER, not TOUR_OPERATOR
+          //    (safer: elevated roles should be explicitly requested)
+
+          return {
+            data: { ...userData, role: finalRole },
+          };
         },
       },
     },

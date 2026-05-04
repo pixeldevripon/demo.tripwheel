@@ -38,6 +38,7 @@ const dashboardNav: NavItem[] = [
     title: 'Overview',
     url: '',
     icon: LayoutDashboard,
+    permissions: [Permission.VIEW_ANALYTICS],
   },
 
   // ─── Analytics ─────────────────────────────────────────────────────────────
@@ -110,6 +111,12 @@ const dashboardNav: NavItem[] = [
     icon: Calendar,
     permissions: [Permission.VIEW_BOOKINGS],
   },
+  {
+    title: 'My Bookings',
+    url: 'bookings',
+    icon: Calendar,
+    permissions: [Permission.VIEW_MY_BOOKINGS],
+  },
 
   // ─── Payments ──────────────────────────────────────────────────────────────
   {
@@ -117,6 +124,12 @@ const dashboardNav: NavItem[] = [
     url: 'payments',
     icon: CreditCard,
     permissions: [Permission.VIEW_PAYMENTS],
+  },
+  {
+    title: 'My Payments',
+    url: 'payments',
+    icon: CreditCard,
+    permissions: [Permission.VIEW_MY_PAYMENTS],
   },
 
   // ─── Users / Customers ─────────────────────────────────────────────────────

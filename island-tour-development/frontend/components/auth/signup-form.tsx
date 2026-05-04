@@ -17,11 +17,15 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { signIn, signUp } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 export function SignupForm() {
-    const router = useRouter();
+    const searchParams = useSearchParams();
+    const rawRole = searchParams.get('role');
+    // Map URL param to Role enum
+    const role = rawRole === 'operator' ? 'TOUR_OPERATOR' : 'USER';
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -40,7 +44,9 @@ export function SignupForm() {
                 name,
                 email,
                 password,
-                callbackURL: `${window.location.origin}/dashboard`,
+                // @ts-ignore - 'role' is an additional field in the backend schema
+                role,
+                callbackURL: `${window.location.origin}/dashboard?role=${role}`,
             });
 
             if (authError) {
@@ -56,6 +62,23 @@ export function SignupForm() {
         }
     };
 
+    const handleGoogleSignup = async () => {
+        setIsGoogleLoading(true);
+
+        // HttpOnly can't be set from JS, but Lax+Secure+short-lived is enough
+        // since we only use it once during the OAuth handshake
+        document.cookie = `pending_role=${role}; path=/; max-age=300; SameSite=Lax; Secure`;
+
+        try {
+            await signIn.social({
+                provider: 'google',
+                callbackURL: `${window.location.origin}/dashboard`,
+            });
+        } catch (err: any) {
+            setError(err?.message || 'Google signup failed');
+            setIsGoogleLoading(false);
+        }
+    };
     if (verificationSent) {
         return (
             <Card className='w-full max-w-md mx-auto'>
@@ -133,8 +156,8 @@ export function SignupForm() {
                             <Input
                                 id='password'
                                 type='password'
-                  value={password}
-                  placeholder='Password'
+                                value={password}
+                                placeholder='Password'
                                 onChange={e => setPassword(e.target.value)}
                                 required
                                 aria-invalid={!!error}
@@ -152,7 +175,7 @@ export function SignupForm() {
                     </Button>
 
                     <div className='relative w-full text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border'>
-                        <span className='relative z-10 bg-background px-2 text-muted-foreground'>
+                        <span className='relative z-10 bg-card px-2 text-muted-foreground'>
                             Or continue with
                         </span>
                     </div>
@@ -161,7 +184,7 @@ export function SignupForm() {
                         type='button'
                         variant='outline'
                         className='w-full'
-                        onClick={handleGoogleSignIn}
+                        onClick={handleGoogleSignup}
                         disabled={loading || isGoogleLoading}>
                         {isGoogleLoading
                             ? 'Connecting...'

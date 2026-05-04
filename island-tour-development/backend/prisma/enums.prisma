@@ -3,14 +3,12 @@
 // ── User / Auth ───────────────────────────────────────────────────────────────
 
 enum Role {
-  SUPER_ADMIN
   ADMIN
   EDITOR
   STAFF
   GUIDE
   TOUR_OPERATOR
   USER
-  TRAVELLER
 }
 
 enum UserStatus {

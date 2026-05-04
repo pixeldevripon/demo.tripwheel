@@ -67,6 +67,10 @@ export const Permission = {
     EDIT_PAYMENT: 'EDIT_PAYMENT',
     DELETE_PAYMENT: 'DELETE_PAYMENT',
 
+    // Personal / User specific
+    VIEW_MY_BOOKINGS: 'VIEW_MY_BOOKINGS',
+    VIEW_MY_PAYMENTS: 'VIEW_MY_PAYMENTS',
+
     // Enquiries
     VIEW_ENQUIRIES: 'VIEW_ENQUIRIES',
     DELETE_ENQUIRY: 'DELETE_ENQUIRY',
@@ -110,24 +114,16 @@ export const ALL_PERMISSIONS = Object.values(Permission);
 
 // Role enum values
 export const Role = {
-    SUPER_ADMIN: 'SUPER_ADMIN',
     ADMIN: 'ADMIN',
     EDITOR: 'EDITOR',
     STAFF: 'STAFF',
     GUIDE: 'GUIDE',
     TOUR_OPERATOR: 'TOUR_OPERATOR',
     USER: 'USER',
-    TRAVELLER: 'TRAVELLER',
 };
 
 export const ROLE_PERMISSIONS: any = {
-    [Role.SUPER_ADMIN]: [
-        ...ALL_PERMISSIONS
-    ],
-
-    [Role.ADMIN]: [
-        ...ALL_PERMISSIONS
-    ],
+    [Role.ADMIN]: [...ALL_PERMISSIONS],
 
     [Role.EDITOR]: [
         Permission.CREATE_TRIP,
@@ -247,22 +243,9 @@ export const ROLE_PERMISSIONS: any = {
     ],
 
     [Role.USER]: [
-        Permission.VIEW_TRIPS,
-        Permission.VIEW_BLOGS,
         Permission.VIEW_PROFILE,
-        Permission.EDIT_PROFILE,
-        Permission.VIEW_REVIEWS,
-        Permission.VIEW_CONTENT,
-        Permission.VIEW_ORDERS,
-    ],
-
-    [Role.TRAVELLER]: [
-        Permission.VIEW_TRIPS,
-        Permission.VIEW_BLOGS,
-        Permission.VIEW_ANALYTICS,
-        Permission.VIEW_PROFILE,
-        Permission.EDIT_PROFILE,
-        Permission.VIEW_REVIEWS,
+        Permission.VIEW_MY_BOOKINGS,
+        Permission.VIEW_MY_PAYMENTS,
     ],
 };
 
