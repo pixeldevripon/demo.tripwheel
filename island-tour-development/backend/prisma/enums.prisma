@@ -3,9 +3,14 @@
 // ── User / Auth ───────────────────────────────────────────────────────────────
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
+  EDITOR
+  STAFF
+  GUIDE
   TOUR_OPERATOR
   USER
+  TRAVELLER
 }
 
 enum UserStatus {
@@ -16,22 +21,60 @@ enum UserStatus {
 }
 
 // ── Permissions (used in ROLE_PERMISSIONS map — not stored on the User row) ───
-// Full list from IMPLEMENTATION_GUIDE.md § 3.6
+// Full list from legacy RBAC + Monorepo new requirements
 
 enum Permission {
+  // Monorepo specific / System
   VIEW_PERMISSIONS
-  // User management
+  MANAGE_SYSTEM
+  MANAGE_TRIPS
+  MANAGE_SLOTS
+  VIEW_SLOT_ANALYTICS
+  CREATE_CONTENT
+  VIEW_CONTENT
+  EDIT_CONTENT
+  DELETE_CONTENT
+  VIEW_MEDIA
+  VIEW_ORDERS
+  EDIT_ORDER
+  DELETE_ORDER
+
+  // Users
   MANAGE_USERS
   VIEW_USERS
   CREATE_USER
   UPDATE_USER
   DELETE_USER
 
-  // Content
-  CREATE_CONTENT
-  VIEW_CONTENT
-  EDIT_CONTENT
-  DELETE_CONTENT
+  // Trips (Legacy compatibility)
+  CREATE_TRIP
+  VIEW_TRIPS
+  EDIT_TRIP
+  DELETE_TRIP
+
+  // Blogs
+  CREATE_BLOG
+  VIEW_BLOGS
+  EDIT_BLOG
+  DELETE_BLOG
+
+  // Destinations
+  CREATE_DESTINATION
+  VIEW_DESTINATIONS
+  EDIT_DESTINATION
+  DELETE_DESTINATION
+
+  // Activities
+  CREATE_ACTIVITY
+  VIEW_ACTIVITIES
+  EDIT_ACTIVITY
+  DELETE_ACTIVITY
+
+  // Pickups & Drops
+  CREATE_PICKUP_DROP
+  VIEW_PICKUP_DROPS
+  EDIT_PICKUP_DROP
+  DELETE_PICKUP_DROP
 
   // Categories
   CREATE_CATEGORY
@@ -39,22 +82,46 @@ enum Permission {
   EDIT_CATEGORY
   DELETE_CATEGORY
 
-  // Media
-  UPLOAD_MEDIA
-  MANAGE_MEDIA
-  VIEW_MEDIA
+  // Bookings
+  VIEW_BOOKINGS
+  EDIT_BOOKING
+  DELETE_BOOKING
 
-  // Orders & Payments
-  VIEW_ORDERS
-  EDIT_ORDER
-  DELETE_ORDER
+  // Payments
   VIEW_PAYMENTS
   EDIT_PAYMENT
   DELETE_PAYMENT
 
-  // Profile & Settings
+  // Enquiries
+  VIEW_ENQUIRIES
+  DELETE_ENQUIRY
+  REPLY_ENQUIRY
+
+  // Leads
+  VIEW_LEADS
+  EDIT_LEAD
+  DELETE_LEAD
+
+  // Reviews
+  VIEW_REVIEWS
+  EDIT_REVIEW
+  DELETE_REVIEW
+
+  // Partners
+  CREATE_PARTNER
+  VIEW_PARTNERS
+  EDIT_PARTNER
+  DELETE_PARTNER
+
+  // Files & Media
+  UPLOAD_MEDIA
+  MANAGE_MEDIA
+
+  // Profile
   VIEW_PROFILE
   EDIT_PROFILE
+
+  // Settings
   MANAGE_SETTINGS
   VIEW_SETTINGS
 
@@ -62,12 +129,6 @@ enum Permission {
   VIEW_ANALYTICS
   EXPORT_DATA
   BULK_OPERATIONS
-
-  // Platform-level
-  MANAGE_SYSTEM
-  MANAGE_TRIPS
-  MANAGE_SLOTS
-  VIEW_SLOT_ANALYTICS
 }
 
 // ── Trip ──────────────────────────────────────────────────────────────────────
