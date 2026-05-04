@@ -134,9 +134,7 @@ export const auth = betterAuth({
           const allowedRoles: Role[] = [Role.USER, Role.TOUR_OPERATOR];
           const finalRole: Role = allowedRoles.includes(incomingRole as Role)
             ? (incomingRole as Role)
-            : Role.USER; // 👈 default to USER, not TOUR_OPERATOR
-          //    (safer: elevated roles should be explicitly requested)
-
+            : Role.TOUR_OPERATOR;
           return {
             data: { ...userData, role: finalRole },
           };

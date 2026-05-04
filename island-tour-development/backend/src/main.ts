@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 import { AppModule } from '@/app.module';
 import { auth } from '@/auth/auth.instance';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
@@ -6,7 +8,7 @@ import { validateEnv } from '@/env.validate';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import 'dotenv/config';
+
 import helmet from 'helmet';
 
 async function bootstrap() {

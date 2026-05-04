@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { signIn, signUp } from '@/lib/auth-client';
+import { Role } from '@/RBAC.config';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
@@ -24,7 +25,7 @@ export function SignupForm() {
     const searchParams = useSearchParams();
     const rawRole = searchParams.get('role');
     // Map URL param to Role enum
-    const role = rawRole === 'operator' ? 'TOUR_OPERATOR' : 'USER';
+    const role = rawRole === 'user' ? Role.USER : Role.TOUR_OPERATOR;
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -46,7 +47,7 @@ export function SignupForm() {
                 password,
                 // @ts-ignore - 'role' is an additional field in the backend schema
                 role,
-                callbackURL: `${window.location.origin}/dashboard?role=${role}`,
+                callbackURL: `${window.location.origin}/dashboard`,
             });
 
             if (authError) {

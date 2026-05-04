@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import {
-  passwordResetTemplate,
-  emailVerificationTemplate,
-} from './templates';
+import { emailVerificationTemplate, passwordResetTemplate } from './templates';
 
 export interface SendMailOptions {
   to: string;
@@ -20,12 +17,16 @@ export class MailService {
 
   constructor() {
     const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
+    const smtpPort = process.env.SMTP_PORT
+      ? parseInt(process.env.SMTP_PORT, 10)
+      : 465;
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
 
     if (!smtpUser || !smtpPass) {
-      this.logger.warn('SMTP_USER or SMTP_PASS is missing. Email sending will fail.');
+      this.logger.warn(
+        'SMTP_USER or SMTP_PASS is missing. Email sending will fail.',
+      );
     }
 
     this.transporter = nodemailer.createTransport({
