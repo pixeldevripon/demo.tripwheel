@@ -161,11 +161,20 @@ export class OperatorsService {
       // publishableKey is public — no encryption needed
     };
 
-    return this.prisma.operatorStripeConfig.upsert({
+    const result = await this.prisma.operatorStripeConfig.upsert({
       where: { operatorId },
       update: { ...data },
       create: { operatorId, ...data },
     });
+    return {
+      ...result,
+      secretKey: result.secretKey
+        ? '••••••••' + decrypt(result.secretKey).slice(-4)
+        : null,
+      webhookSecret: result.webhookSecret
+        ? '••••••••' + decrypt(result.webhookSecret).slice(-4)
+        : null,
+    };
   }
 
   async getStripeConfig(operatorId: string) {
@@ -178,9 +187,11 @@ export class OperatorsService {
 
     return {
       ...config,
-      secretKey: config.secretKey ? decrypt(config.secretKey) : null,
+      secretKey: config.secretKey
+        ? '••••••••' + decrypt(config.secretKey).slice(-4)
+        : null,
       webhookSecret: config.webhookSecret
-        ? decrypt(config.webhookSecret)
+        ? '••••••••' + decrypt(config.webhookSecret).slice(-4)
         : null,
     };
   }
@@ -201,11 +212,17 @@ export class OperatorsService {
       ...(dto.apiKey && { apiKey: encrypt(dto.apiKey) }),
     };
 
-    return this.prisma.operatorMollieConfig.upsert({
+    const result = await this.prisma.operatorMollieConfig.upsert({
       where: { operatorId },
       update: { ...data },
       create: { operatorId, ...data },
     });
+    return {
+      ...result,
+      apiKey: result.apiKey
+        ? '••••••••' + decrypt(result.apiKey).slice(-4)
+        : null,
+    };
   }
 
   async getMollieConfig(operatorId: string) {
@@ -218,7 +235,9 @@ export class OperatorsService {
 
     return {
       ...config,
-      apiKey: config.apiKey ? decrypt(config.apiKey) : null,
+      apiKey: config.apiKey
+        ? '••••••••' + decrypt(config.apiKey).slice(-4)
+        : null,
     };
   }
 }

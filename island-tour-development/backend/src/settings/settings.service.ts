@@ -91,9 +91,11 @@ export class SettingsService {
     });
     return {
       ...config,
-      secretKey: config.secretKey ? decrypt(config.secretKey) : null,
+      secretKey: config.secretKey
+        ? '••••••••' + decrypt(config.secretKey).slice(-4)
+        : null,
       webhookSecret: config.webhookSecret
-        ? decrypt(config.webhookSecret)
+        ? '••••••••' + decrypt(config.webhookSecret).slice(-4)
         : null,
     };
   }
@@ -105,11 +107,20 @@ export class SettingsService {
       ...(dto.webhookSecret && { webhookSecret: encrypt(dto.webhookSecret) }),
       // publishableKey is public — no encryption needed
     };
-    return this.prisma.stripeConfiguration.upsert({
+    const result = await this.prisma.stripeConfiguration.upsert({
       where: { id: 'default' },
       update: { ...data },
       create: { id: 'default', ...data },
     });
+    return {
+      ...result,
+      secretKey: result.secretKey
+        ? '••••••••' + decrypt(result.secretKey).slice(-4)
+        : null,
+      webhookSecret: result.webhookSecret
+        ? '••••••••' + decrypt(result.webhookSecret).slice(-4)
+        : null,
+    };
   }
 
   // ── Mollie Configuration ───────────────────────────────────────────────────
@@ -122,7 +133,9 @@ export class SettingsService {
     });
     return {
       ...config,
-      apiKey: config.apiKey ? decrypt(config.apiKey) : null,
+      apiKey: config.apiKey
+        ? '••••••••' + decrypt(config.apiKey).slice(-4)
+        : null,
     };
   }
 
@@ -131,10 +144,16 @@ export class SettingsService {
       ...dto,
       ...(dto.apiKey && { apiKey: encrypt(dto.apiKey) }),
     };
-    return this.prisma.mollieConfiguration.upsert({
+    const result = await this.prisma.mollieConfiguration.upsert({
       where: { id: 'default' },
       update: data,
       create: { id: 'default', ...data },
     });
+    return {
+      ...result,
+      apiKey: result.apiKey
+        ? '••••••••' + decrypt(result.apiKey).slice(-4)
+        : null,
+    };
   }
 }
