@@ -4,8 +4,6 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
-  IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
@@ -137,7 +135,10 @@ export class SocialMediaResponseDto {
   @ApiProperty({ example: 'https://twitter.com/islandtour', nullable: true })
   twitterUrl!: string | null;
 
-  @ApiProperty({ example: 'https://linkedin.com/company/islandtour', nullable: true })
+  @ApiProperty({
+    example: 'https://linkedin.com/company/islandtour',
+    nullable: true,
+  })
   linkedinUrl!: string | null;
 
   @ApiProperty({ example: 'https://instagram.com/islandtour', nullable: true })

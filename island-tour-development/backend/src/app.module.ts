@@ -7,12 +7,13 @@ import { MailModule } from '@/mail/mail.module';
 import { UserModule } from '@/users/user.module';
 import { SettingsModule } from './settings/settings.module';
 import { OperatorsModule } from './operators/operators.module';
+import { MediaGalleryModule } from './media-gallery/media-gallery.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
 
 @Module({
-  imports: [PrismaModule, AuthModule, MailModule, UserModule, SettingsModule, OperatorsModule],
+  imports: [PrismaModule, AuthModule, MailModule, UserModule, SettingsModule, OperatorsModule, MediaGalleryModule],
   controllers: [AppController],
   providers: [AppService],
 })

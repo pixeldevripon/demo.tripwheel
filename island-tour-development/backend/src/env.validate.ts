@@ -17,7 +17,12 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
       ? null
       : 'must be one of: development, production, test',
   PORT: (v) => (isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null),
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: () => null,
+  CLOUDINARY_API_KEY: () => null,
+  CLOUDINARY_API_SECRET: () => null,
 };
+
 
 const OPTIONAL: Record<string, (v: string) => string | null> = {
   ADMIN_PASSWORD: (v) => {
@@ -80,6 +85,22 @@ export function validateEnv(): void {
       '⚠  No SMTP config found — email sending (verification, password reset) will be disabled.',
     );
   }
+
+  // ── Redis / Upstash check ────────────────────────────────────────────────────
+  const upstashUrl = process.env.UPSTASH_REDIS_URL;
+  const redisHost = process.env.REDIS_HOST;
+  const redisPort = process.env.REDIS_PORT;
+
+  if (!upstashUrl && (!redisHost || !redisPort)) {
+    errors.push(
+      'Redis config missing — provide either UPSTASH_REDIS_URL or both REDIS_HOST and REDIS_PORT.',
+    );
+  } else if (upstashUrl && upstashUrl.startsWith('https://')) {
+    errors.push(
+      'UPSTASH_REDIS_URL must be a rediss:// URL for BullMQ, not a https:// REST URL.',
+    );
+  }
+
 
   if (errors.length > 0) {
     throw new Error(

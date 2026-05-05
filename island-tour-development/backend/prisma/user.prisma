@@ -8,6 +8,9 @@ model User {
   email          String      @unique
   emailVerified  Boolean     @default(false)
   image          String?
+  timezone       String      @default("UTC+06:00")
+  phone          String?
+  location       String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -19,7 +22,7 @@ model User {
   sessions        Session[]
   operator        Operator?
   accounts        Account[]
-
+  media           MediaGallery[]
   @@index([id, email])
   @@index([role])
   @@map("user")

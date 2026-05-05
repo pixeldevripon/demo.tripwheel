@@ -22,7 +22,8 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["jest", "node"]
+    "types": ["jest", "node", "multer"]
   },
   "exclude": ["node_modules", "dist", "prisma.config.ts"]
 }
+
