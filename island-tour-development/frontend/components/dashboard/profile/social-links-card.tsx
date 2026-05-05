@@ -1,16 +1,16 @@
 'use client';
 
-import {
-    Facebook01Icon,
-    Globe02Icon,
-    InstagramIcon,
-    Share01Icon,
-    WhatsappIcon,
-} from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Facebook01Icon,
+    InstagramIcon,
+    Linkedin,
+    NewTwitterRectangleFreeIcons,
+    Share01Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 interface SocialLinksCardProps {
     user: any;
@@ -34,18 +34,18 @@ export function SocialLinksCard({ user, isEditing }: SocialLinksCardProps) {
             defaultValue: user?.socials?.facebook || '',
         },
         {
-            id: 'whatsapp',
-            label: 'WhatsApp',
-            icon: WhatsappIcon,
-            placeholder: '+1 234 567 890',
-            defaultValue: user?.socials?.whatsapp || '',
+            id: 'linkedin',
+            label: 'LinkedIn',
+            icon: Linkedin,
+            placeholder: 'linkedin.com/in/youraccount',
+            defaultValue: user?.socials?.linkedin || '',
         },
         {
-            id: 'website',
-            label: 'Website',
-            icon: Globe02Icon,
-            placeholder: 'https://yourwebsite.com',
-            defaultValue: user?.socials?.website || '',
+            id: 'twitter',
+            label: 'Twitter / X',
+            icon: NewTwitterRectangleFreeIcons,
+            placeholder: 'https://x.com/youraccount',
+            defaultValue: user?.socials?.twitter || '',
         },
     ];
 
@@ -53,13 +53,16 @@ export function SocialLinksCard({ user, isEditing }: SocialLinksCardProps) {
         <Card className='border-none shadow-sm bg-card rounded-2xl'>
             <CardHeader className='pb-4'>
                 <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                    <HugeiconsIcon icon={Share01Icon} className='w-5 h-5 text-primary' />
+                    <HugeiconsIcon
+                        icon={Share01Icon}
+                        className='w-5 h-5 text-primary'
+                    />
                     Social Media & Links
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                    {socialFields.map((field) => (
+                    {socialFields.map(field => (
                         <div key={field.id} className='space-y-2'>
                             <Label
                                 htmlFor={field.id}
@@ -86,3 +89,4 @@ export function SocialLinksCard({ user, isEditing }: SocialLinksCardProps) {
         </Card>
     );
 }
+
