@@ -68,8 +68,14 @@ export class UserService {
         status: true,
         createdAt: true,
         updatedAt: true,
+        operator: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
+
 
     if (!user) throw new NotFoundException(`User ${id} not found`);
 

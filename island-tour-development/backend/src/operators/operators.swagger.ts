@@ -113,6 +113,19 @@ export function ApiDeleteOperatorDocs() {
   );
 }
 
+export function ApiOnboardOperatorDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Self-service onboarding for tour operators' }),
+    ApiResponse({
+      status: 201,
+      description: 'Operator profile created successfully',
+      type: OperatorResponseDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+
 export function ApiGetOperatorCompanyInfoDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Get operator company information' }),

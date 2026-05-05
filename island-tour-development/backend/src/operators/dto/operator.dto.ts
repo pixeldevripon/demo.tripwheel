@@ -184,6 +184,35 @@ export class UpdateOperatorCompanyInfoDto {
   yearlySalesTarget?: number;
 }
 
+export class OnboardOperatorDto {
+  @ApiProperty({ example: 'Travel Co.' })
+  @IsString()
+  companyName!: string;
+
+  @ApiProperty({ example: 'USA' })
+  @IsString()
+  companyCountry!: string;
+
+  @ApiProperty({ example: 'New York' })
+  @IsString()
+  companyCity!: string;
+
+  @ApiProperty({ example: '+1234567890' })
+  @IsString()
+  companyPhone!: string;
+
+  @ApiProperty({ example: 10 })
+  @IsInt()
+  @Min(0)
+  plannedTripCount!: number;
+
+  @ApiProperty({ example: 50000 })
+  @IsInt()
+  @Min(0)
+  yearlySalesTarget!: number;
+}
+
+
 export class UpdateOperatorSocialMediaDto {
   @ApiPropertyOptional()
   @IsOptional()

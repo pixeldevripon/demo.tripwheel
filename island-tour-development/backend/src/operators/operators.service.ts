@@ -8,6 +8,7 @@ import {
 import { Role } from '@prisma/client';
 import {
   CreateOperatorDto,
+  OnboardOperatorDto,
   OperatorQueryDto,
   UpdateOperatorCompanyInfoDto,
   UpdateOperatorDto,
@@ -15,6 +16,7 @@ import {
   UpdateOperatorSocialMediaDto,
   UpdateOperatorStripeConfigDto,
 } from './dto/operator.dto';
+
 
 @Injectable()
 export class OperatorsService {
@@ -53,6 +55,41 @@ export class OperatorsService {
       data: dto,
     });
   }
+
+  async onboard(userId: string, dto: OnboardOperatorDto) {
+    const {
+      companyName,
+      companyCountry,
+      companyCity,
+      companyPhone,
+      plannedTripCount,
+      yearlySalesTarget,
+    } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      const operator = await tx.operator.create({
+        data: {
+          userId,
+          isActive: true,
+        },
+      });
+
+      await tx.operatorCompanyInfo.create({
+        data: {
+          operatorId: operator.id,
+          companyName,
+          companyCountry,
+          companyCity,
+          companyPhone,
+          plannedTripCount,
+          yearlySalesTarget,
+        },
+      });
+
+      return operator;
+    });
+  }
+
 
   async findAll(query: OperatorQueryDto) {
     const { page = 1, limit = 20 } = query;

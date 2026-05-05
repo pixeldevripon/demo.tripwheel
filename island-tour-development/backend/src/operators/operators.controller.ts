@@ -15,6 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
 import {
   CreateOperatorDto,
+  OnboardOperatorDto,
   OperatorQueryDto,
   UpdateOperatorCompanyInfoDto,
   UpdateOperatorDto,
@@ -32,12 +33,14 @@ import {
   ApiGetOperatorMollieConfigDocs,
   ApiGetOperatorSocialMediaDocs,
   ApiGetOperatorStripeConfigDocs,
+  ApiOnboardOperatorDocs,
   ApiUpdateOperatorCompanyInfoDocs,
   ApiUpdateOperatorDocs,
   ApiUpdateOperatorMollieConfigDocs,
   ApiUpdateOperatorSocialMediaDocs,
   ApiUpdateOperatorStripeConfigDocs,
 } from './operators.swagger';
+
 
 @ApiTags('Operators')
 @Controller('operators')
@@ -52,6 +55,16 @@ export class OperatorsController {
   create(@Body() dto: CreateOperatorDto) {
     return this.operatorsService.create(dto);
   }
+
+  @Post('onboarding')
+  @ApiOnboardOperatorDocs()
+  onboard(
+    @Body() dto: OnboardOperatorDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.onboard(user.id, dto);
+  }
+
 
   @Get()
   @RequirePermissions(Permission.MANAGE_OPERATORS)
