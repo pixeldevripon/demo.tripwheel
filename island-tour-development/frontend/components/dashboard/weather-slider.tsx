@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/utils/intl-utils';
 import { getCurrentLocationWeather } from '@/utils/weather';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
@@ -88,16 +89,7 @@ const WeatherSlide = ({ loggedInUser }: WeatherSlideProps) => {
         await fetchWeatherData(true);
     };
 
-    const getCurrentDate = () => {
-        const now = new Date();
-        const options: Intl.DateTimeFormatOptions = {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        };
-        return now.toLocaleDateString('en-US', options);
-    };
+    const formattedDate = formatDate();
 
     const getWeatherSlide = () => {
         if (loading) return 'Loading weather...';
@@ -128,7 +120,7 @@ const WeatherSlide = ({ loggedInUser }: WeatherSlideProps) => {
 
     const slides = [
         `Howdy ${loggedInUser?.name?.split(' ')[0] || 'Admin'} !`,
-        getCurrentDate(),
+        formattedDate,
         getWeatherSlide(),
     ];
 

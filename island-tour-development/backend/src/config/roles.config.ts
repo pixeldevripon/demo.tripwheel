@@ -11,9 +11,13 @@ import { Permission, Role } from '@prisma/client';
  *   USER         — traveler browsing and self-management only
  */
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-
   [Role.ADMIN]: [
     Permission.VIEW_PERMISSIONS,
+    Permission.MANAGE_OPERATORS,
+    Permission.CREATE_OPERATOR,
+    Permission.VIEW_OPERATOR_PROFILE,
+    Permission.EDIT_OPERATOR_PROFILE,
+    Permission.MANAGE_OPERATOR_PAYMENTS,
     Permission.MANAGE_SYSTEM,
     Permission.MANAGE_TRIPS,
     Permission.MANAGE_SLOTS,
@@ -177,6 +181,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 
   [Role.TOUR_OPERATOR]: [
+    Permission.CREATE_OPERATOR,
+    Permission.VIEW_OPERATOR_PROFILE,
+    Permission.EDIT_OPERATOR_PROFILE,
+    Permission.MANAGE_OPERATOR_PAYMENTS,
     Permission.VIEW_USERS,
     Permission.CREATE_TRIP,
     Permission.EDIT_TRIP,
@@ -210,5 +218,4 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_CONTENT,
     Permission.VIEW_ORDERS,
   ],
-
 };

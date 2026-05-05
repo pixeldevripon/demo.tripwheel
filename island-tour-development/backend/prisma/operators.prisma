@@ -1,0 +1,80 @@
+model Operator {
+  id        String  @id @default(uuid())
+  userId    String  @unique  // linked to  auth User
+  isActive  Boolean @default(true)
+
+  // relations
+  user          User                  @relation(fields: [userId], references: [id])
+  companyInfo   OperatorCompanyInfo?
+  socialMedia   OperatorSocialMedia?
+  stripeConfig  OperatorStripeConfig?
+  mollieConfig  OperatorMollieConfig?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("operators")
+}
+
+model OperatorCompanyInfo {
+  id         String @id @default(cuid())
+  operatorId String @unique
+
+  // Business identity
+  companyName String?
+  companyCountry     String?
+  companyCity        String?
+  companyPhone       String?
+
+  // Business intent
+  plannedTripCount  Int?
+  yearlySalesTarget Int?
+
+  operator  Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("operator_company_info")
+}
+
+model OperatorSocialMedia {
+  id         String  @id @default(cuid())
+  operatorId String  @unique
+  facebookUrl  String? @default("")
+  instagramUrl String? @default("")
+  twitterUrl   String? @default("")
+  linkedinUrl  String? @default("")
+
+  operator  Operator @relation(fields: [operatorId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  @@map("operator_social_media")
+}
+
+model OperatorStripeConfig {
+  id         String   @id @default(cuid())
+  operatorId String   @unique
+  publishableKey String @default("")
+  secretKey      String @default("")
+  webhookSecret  String @default("")
+  paymentMethods String[] @default([])
+  isActive       Boolean  @default(false)
+
+  operator  Operator @relation(fields: [operatorId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  @@map("operator_stripe_config")
+}
+
+model OperatorMollieConfig {
+  id         String   @id @default(cuid())
+  operatorId String   @unique
+  apiKey         String @default("")
+  paymentMethods String[] @default([])
+  isActive       Boolean @default(false)
+
+  operator  Operator @relation(fields: [operatorId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  @@map("operator_mollie_config")
+}

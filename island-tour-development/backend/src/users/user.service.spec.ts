@@ -5,23 +5,22 @@
  * guard logic (self-modification checks, admin-protection checks).
  */
 
-import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { Role, UserStatus } from '@prisma/client';
-import { UserService } from './user.service';
-import { PrismaService } from '@/prisma/prisma.service';
 import {
-  OperatorQueryDto,
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
   UpdateUserRoleDto,
   UpdateUserStatusDto,
   UserQueryDto,
 } from './dto/user.dto';
+import { UserService } from './user.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -38,17 +37,19 @@ function createMockPrismaService() {
 }
 
 /** Minimal user shape returned by Prisma `select` projections used in the service. */
-function makeUserRecord(overrides: Partial<{
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  image: string | null;
-  role: Role;
-  status: UserStatus;
-  createdAt: Date;
-  updatedAt: Date;
-}> = {}) {
+function makeUserRecord(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    image: string | null;
+    role: Role;
+    status: UserStatus;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {},
+) {
   return {
     id: 'user-1',
     name: 'Alice',
@@ -64,14 +65,16 @@ function makeUserRecord(overrides: Partial<{
 }
 
 /** Slim shape returned by updateUserRole / updateUserStatus / deleteUser. */
-function makeUserSummary(overrides: Partial<{
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  status: UserStatus;
-  updatedAt: Date;
-}> = {}) {
+function makeUserSummary(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+    status: UserStatus;
+    updatedAt: Date;
+  }> = {},
+) {
   return {
     id: 'user-1',
     name: 'Alice',
@@ -93,10 +96,7 @@ describe('UserService', () => {
     prisma = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [UserService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<UserService>(UserService);
@@ -125,7 +125,11 @@ describe('UserService', () => {
       prisma.user.count.mockResolvedValue(0);
       prisma.user.findMany.mockResolvedValue([]);
 
-      const query: UserQueryDto = { role: Role.TOUR_OPERATOR, page: 1, limit: 20 };
+      const query: UserQueryDto = {
+        role: Role.TOUR_OPERATOR,
+        page: 1,
+        limit: 20,
+      };
       await service.getAllUsers(query);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
@@ -140,7 +144,11 @@ describe('UserService', () => {
       prisma.user.count.mockResolvedValue(0);
       prisma.user.findMany.mockResolvedValue([]);
 
-      const query: UserQueryDto = { status: UserStatus.SUSPENDED, page: 1, limit: 20 };
+      const query: UserQueryDto = {
+        status: UserStatus.SUSPENDED,
+        page: 1,
+        limit: 20,
+      };
       await service.getAllUsers(query);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
@@ -205,56 +213,6 @@ describe('UserService', () => {
   });
 
   // ── getAllOperators ──────────────────────────────────────────────────────────
-
-  describe('getAllOperators', () => {
-    it('always includes role=TOUR_OPERATOR in the where clause', async () => {
-      prisma.user.count.mockResolvedValue(0);
-      prisma.user.findMany.mockResolvedValue([]);
-
-      const query: OperatorQueryDto = { page: 1, limit: 20 };
-      await service.getAllOperators(query);
-
-      expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { role: Role.TOUR_OPERATOR },
-      });
-      expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { role: Role.TOUR_OPERATOR } }),
-      );
-    });
-
-    it('adds status filter on top of the forced role filter', async () => {
-      prisma.user.count.mockResolvedValue(0);
-      prisma.user.findMany.mockResolvedValue([]);
-
-      const query: OperatorQueryDto = { status: UserStatus.ACTIVE, page: 1, limit: 20 };
-      await service.getAllOperators(query);
-
-      expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { role: Role.TOUR_OPERATOR, status: UserStatus.ACTIVE },
-      });
-    });
-
-    it('returns paginated shape with correct metadata', async () => {
-      const operators = [makeUserRecord({ role: Role.TOUR_OPERATOR })];
-      prisma.user.count.mockResolvedValue(1);
-      prisma.user.findMany.mockResolvedValue(operators);
-
-      const result = await service.getAllOperators({ page: 1, limit: 20 });
-
-      expect(result).toEqual({ total: 1, page: 1, limit: 20, data: operators });
-    });
-
-    it('calculates skip correctly on page 2 with limit 5', async () => {
-      prisma.user.count.mockResolvedValue(10);
-      prisma.user.findMany.mockResolvedValue([]);
-
-      await service.getAllOperators({ page: 2, limit: 5 });
-
-      expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 5, take: 5 }),
-      );
-    });
-  });
 
   // ── getUserById ──────────────────────────────────────────────────────────────
 
@@ -332,11 +290,17 @@ describe('UserService', () => {
 
     it('calls prisma.user.update with the provided dto data', async () => {
       const existing = makeUserRecord();
-      const updated = makeUserRecord({ name: 'New Name', image: 'https://cdn.example.com/img.jpg' });
+      const updated = makeUserRecord({
+        name: 'New Name',
+        image: 'https://cdn.example.com/img.jpg',
+      });
       prisma.user.findUnique.mockResolvedValue(existing);
       prisma.user.update.mockResolvedValue(updated);
 
-      const dto: UpdateUserProfileDto = { name: 'New Name', image: 'https://cdn.example.com/img.jpg' };
+      const dto: UpdateUserProfileDto = {
+        name: 'New Name',
+        image: 'https://cdn.example.com/img.jpg',
+      };
       const result = await service.updateUserProfile('user-1', dto);
 
       expect(prisma.user.update).toHaveBeenCalledWith(
@@ -376,11 +340,18 @@ describe('UserService', () => {
 
     it('calls prisma.user.update with the admin dto', async () => {
       const existing = makeUserRecord({ id: 'user-2' });
-      const updated = makeUserRecord({ id: 'user-2', name: 'Bob', email: 'bob@example.com' });
+      const updated = makeUserRecord({
+        id: 'user-2',
+        name: 'Bob',
+        email: 'bob@example.com',
+      });
       prisma.user.findUnique.mockResolvedValue(existing);
       prisma.user.update.mockResolvedValue(updated);
 
-      const dto: UpdateUserByAdminDto = { name: 'Bob', email: 'bob@example.com' };
+      const dto: UpdateUserByAdminDto = {
+        name: 'Bob',
+        email: 'bob@example.com',
+      };
       const result = await service.updateUserByAdmin('user-2', dto);
 
       expect(prisma.user.update).toHaveBeenCalledWith(
@@ -563,9 +534,9 @@ describe('UserService', () => {
     it('throws NotFoundException when target user does not exist', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.deleteUser('nonexistent', 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteUser('nonexistent', 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.user.delete).not.toHaveBeenCalled();
     });
 

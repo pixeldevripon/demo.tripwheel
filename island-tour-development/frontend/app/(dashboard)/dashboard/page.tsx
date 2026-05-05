@@ -18,7 +18,7 @@ export default async function DashboardPage() {
     const statsPromise = getDashboardStats();
 
     return (
-        <div className='flex flex-1 flex-col gap-4 py-8! p-4 pt-0'>
+        <div className='flex flex-1 flex-col gap-4'>
             <PageComponents
                 statsPromise={statsPromise}
                 loggedInUser={user}

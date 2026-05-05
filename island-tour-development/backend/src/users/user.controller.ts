@@ -13,7 +13,6 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
 import {
-  OperatorQueryDto,
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
   UpdateUserRoleDto,
@@ -23,7 +22,6 @@ import {
 import { UserService } from './user.service';
 import {
   ApiDeleteUserDocs,
-  ApiGetAllOperatorsDocs,
   ApiGetAllUsersDocs,
   ApiGetCurrentUserDocs,
   ApiGetCurrentUserPermissionsDocs,
@@ -105,21 +103,6 @@ export class UserController {
   }
 
   // ─── Admin / privileged reads ────────────────────────────────────────────
-
-  /**
-   * GET /users/operators
-   *
-   * Lists all users whose role is TOUR_OPERATOR, with optional filters.
-   * Used by the admin panel to manage operator accounts.
-   *
-   * Security: requires `VIEW_USERS` — granted to ADMIN only.
-   */
-  @Get('operators')
-  @RequirePermissions(Permission.VIEW_USERS)
-  @ApiGetAllOperatorsDocs()
-  getAllOperators(@Query() query: OperatorQueryDto) {
-    return this.userService.getAllOperators(query);
-  }
 
   /**
    * GET /users

@@ -1,3 +1,4 @@
+import { ROLE_PERMISSIONS } from '@/config/roles.config';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -8,14 +9,12 @@ import {
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import {
-  OperatorQueryDto,
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
   UpdateUserRoleDto,
   UpdateUserStatusDto,
   UserQueryDto,
 } from './dto/user.dto';
-import { ROLE_PERMISSIONS } from '@/config/roles.config';
 
 @Injectable()
 export class UserService {
@@ -29,39 +28,6 @@ export class UserService {
 
     const where = {
       ...(role && { role }),
-      ...(status && { status }),
-    };
-
-    const [total, data] = await Promise.all([
-      this.prisma.user.count({ where }),
-      this.prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          emailVerified: true,
-          image: true,
-          role: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-    ]);
-
-    return { total, page, limit, data };
-  }
-
-  async getAllOperators(query: OperatorQueryDto) {
-    const { status, page = 1, limit = 20 } = query;
-    const skip = (page - 1) * limit;
-
-    const where = {
-      role: Role.TOUR_OPERATOR,
       ...(status && { status }),
     };
 
@@ -180,9 +146,7 @@ export class UserService {
     }
 
     if (dto.role === Role.ADMIN) {
-      throw new ForbiddenException(
-        'ADMIN role cannot be assigned.',
-      );
+      throw new ForbiddenException('ADMIN role cannot be assigned.');
     }
 
     const updated = await this.prisma.user.update({

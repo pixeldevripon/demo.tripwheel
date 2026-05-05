@@ -27,6 +27,13 @@ export const Permission = {
     EDIT_TRIP: 'EDIT_TRIP',
     DELETE_TRIP: 'DELETE_TRIP',
 
+    //Operator
+    MANAGE_OPERATOR: 'MANAGE_OPERATOR',
+    MANAGE_OPERATOR_PAYMENTS: 'MANAGE_OPERATOR_PAYMENTS',
+    CREATE_OPERATOR: 'CREATE_OPERATOR',
+    VIEW_OPERATOR_PROFILE: 'VIEW_OPERATOR_PROFILE',
+    EDIT_OPERATOR_PROFILE: 'EDIT_OPERATOR_PROFILE',
+
     // Blogs
     CREATE_BLOG: 'CREATE_BLOG',
     VIEW_BLOGS: 'VIEW_BLOGS',
@@ -218,6 +225,10 @@ export const ROLE_PERMISSIONS: any = {
     ],
 
     [Role.TOUR_OPERATOR]: [
+        Permission.CREATE_OPERATOR,
+        Permission.VIEW_OPERATOR_PROFILE,
+        Permission.EDIT_OPERATOR_PROFILE,
+        Permission.MANAGE_OPERATOR_PAYMENTS,
         Permission.VIEW_USERS,
         Permission.CREATE_TRIP,
         Permission.EDIT_TRIP,

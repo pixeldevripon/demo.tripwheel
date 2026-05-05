@@ -26,7 +26,10 @@ export class UserResponseDto {
   @ApiProperty({ example: true })
   emailVerified!: boolean;
 
-  @ApiProperty({ example: 'https://cdn.example.com/avatar.jpg', nullable: true })
+  @ApiProperty({
+    example: 'https://cdn.example.com/avatar.jpg',
+    nullable: true,
+  })
   image!: string | null;
 
   @ApiProperty({ enum: Role, example: Role.TOUR_OPERATOR })
@@ -97,31 +100,6 @@ export class UserQueryDto {
   @ApiPropertyOptional({
     enum: UserStatus,
     description: 'Filter users by status',
-  })
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
-
-  @ApiPropertyOptional({ description: 'Page number (1-based)', default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: 'Items per page', default: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
-}
-
-export class OperatorQueryDto {
-  @ApiPropertyOptional({
-    enum: UserStatus,
-    description: 'Filter operators by status',
   })
   @IsOptional()
   @IsEnum(UserStatus)

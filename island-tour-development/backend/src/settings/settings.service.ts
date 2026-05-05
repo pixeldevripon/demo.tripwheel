@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
 import {
+  UpdateCompanyInformationsDto,
+  UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
-  UpdateCompanyInformationsDto,
   UpdateStripeConfigurationDto,
-  UpdateMollieConfigurationDto,
 } from './dto/settings.dto';
 
 @Injectable()
@@ -83,36 +84,57 @@ export class SettingsService {
   // ── Stripe Configuration ───────────────────────────────────────────────────
 
   async getStripeConfiguration() {
-    return this.prisma.stripeConfiguration.upsert({
+    const config = await this.prisma.stripeConfiguration.upsert({
       where: { id: 'default' },
       update: {},
       create: { id: 'default' },
     });
+    return {
+      ...config,
+      secretKey: config.secretKey ? decrypt(config.secretKey) : null,
+      webhookSecret: config.webhookSecret
+        ? decrypt(config.webhookSecret)
+        : null,
+    };
   }
 
   async updateStripeConfiguration(dto: UpdateStripeConfigurationDto) {
+    const data = {
+      ...dto,
+      ...(dto.secretKey && { secretKey: encrypt(dto.secretKey) }),
+      ...(dto.webhookSecret && { webhookSecret: encrypt(dto.webhookSecret) }),
+      // publishableKey is public — no encryption needed
+    };
     return this.prisma.stripeConfiguration.upsert({
       where: { id: 'default' },
-      update: dto,
-      create: { id: 'default', ...dto },
+      update: { ...data },
+      create: { id: 'default', ...data },
     });
   }
 
   // ── Mollie Configuration ───────────────────────────────────────────────────
 
   async getMollieConfiguration() {
-    return this.prisma.mollieConfiguration.upsert({
+    const config = await this.prisma.mollieConfiguration.upsert({
       where: { id: 'default' },
       update: {},
       create: { id: 'default' },
     });
+    return {
+      ...config,
+      apiKey: config.apiKey ? decrypt(config.apiKey) : null,
+    };
   }
 
   async updateMollieConfiguration(dto: UpdateMollieConfigurationDto) {
+    const data = {
+      ...dto,
+      ...(dto.apiKey && { apiKey: encrypt(dto.apiKey) }),
+    };
     return this.prisma.mollieConfiguration.upsert({
       where: { id: 'default' },
-      update: dto,
-      create: { id: 'default', ...dto },
+      update: data,
+      create: { id: 'default', ...data },
     });
   }
 }

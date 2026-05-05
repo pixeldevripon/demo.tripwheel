@@ -17,6 +17,7 @@ model User {
 
   // Relations
   sessions        Session[]
+  operator        Operator?
   accounts        Account[]
 
   @@index([id, email])

@@ -50,7 +50,7 @@ export default function DashboardWrapper({
                 userRole={userRole}
                 userName={userName}
             />
-            <SidebarInset className='bg-white dark:bg-sidebar !shadow-none md:peer-data-[variant=inset]:rounded-2xl overflow-hidden'>
+            <SidebarInset className='bg-white dark:bg-sidebar shadow-none! md:peer-data-[variant=inset]:rounded-2xl overflow-hidden'>
                 <SiteHeader
                     userName={userName}
                     userEmail={userEmail}
@@ -69,7 +69,7 @@ export default function DashboardWrapper({
                                         stiffness: 300,
                                         duration: 0.2,
                                     }}
-                                    className='px-4 will-change-transform relative'>
+                                    className='lg:p-8 will-change-transform relative'>
                                     {children}
                                 </motion.div>
                             </AnimatePresence>
