@@ -3,6 +3,11 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
     cacheComponents: true,
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '100mb',
+        },
+    },
     turbopack: {
         root: path.resolve(__dirname),
     },
@@ -24,4 +29,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
 

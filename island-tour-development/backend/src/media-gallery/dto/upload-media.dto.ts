@@ -121,3 +121,13 @@ export class DeleteMediaResponseDto {
   @ApiProperty({ example: 'Media deleted successfully' })
   message!: string;
 }
+
+export class BulkDeleteMediaDto {
+  @ApiProperty({
+    description: 'Array of media IDs to delete',
+    example: ['uuid-1', 'uuid-2'],
+    type: [String],
+  })
+  @IsString({ each: true })
+  ids!: string[];
+}

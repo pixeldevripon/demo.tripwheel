@@ -19,6 +19,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
+  BulkDeleteMediaDto,
   ConfirmUploadDto,
   MediaGalleryQueryDto,
 } from './dto/upload-media.dto';
@@ -230,6 +231,25 @@ export class MediaGalleryController {
   }
 
   // ─── Mutations ────────────────────────────────────────────────────────────────
+
+  /**
+   * DELETE /media-gallery/bulk
+   *
+   * Bulk-deletes multiple media records owned by the authenticated user.
+   * Cloudinary deletions run in parallel; a single Cloudinary failure does NOT
+   * abort the batch — all matched DB rows are always removed.
+   * Returns { deleted, failed } counts.
+   *
+   * NOTE: This static route MUST come before the dynamic ':id' route so that
+   * NestJS does not interpret 'bulk' as a media ID.
+   */
+  @Delete('bulk')
+  bulkDeleteMedia(
+    @Body() dto: BulkDeleteMediaDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.mediaGalleryService.bulkDeleteMedia(dto.ids, user.id);
+  }
 
   /**
    * DELETE /media-gallery/:id

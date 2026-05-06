@@ -33,8 +33,13 @@ function buildRedisConnection() {
       password: url.password || undefined,
       // Upstash requires TLS — the protocol is rediss://
       tls: url.protocol === 'rediss:' ? {} : undefined,
-      // Upstash REST connections time out quickly; keep-alive helps BullMQ
-      enableOfflineQueue: false,
+      /**
+       * BullMQ worker requirements:
+       * 1. maxRetriesPerRequest must be null to prevent worker crashes on connection drops.
+       * 2. enableOfflineQueue should be true (default) to queue commands while reconnecting.
+       */
+      maxRetriesPerRequest: null,
+      connectTimeout: 10000,
     };
   }
 
@@ -42,6 +47,7 @@ function buildRedisConnection() {
   return {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT) || 6379,
+    maxRetriesPerRequest: null,
   };
 }
 

@@ -43,51 +43,55 @@ export class MediaGalleryService {
     files: Express.Multer.File[],
     userId: string,
   ): Promise<MediaGallery[]> {
-    const saved: MediaGallery[] = [];
+    // 1. Upload all files to Cloudinary in parallel
+    const cloudResults = await Promise.allSettled(
+      files.map((file) => this.cloudinaryService.uploadFile(file, userId)),
+    );
 
-    for (const file of files) {
-      let cloudResult: {
-        publicId: string;
-        url: string;
-        resourceType: string;
-      } | null = null;
+    const succeeded: { publicId: string; url: string; resourceType: string }[] =
+      [];
+    const failed: string[] = [];
 
-      try {
-        // 1. Upload to Cloudinary
-        cloudResult = await this.cloudinaryService.uploadFile(file, userId);
-
-        // 2. Persist to DB
-        const record = await this.prisma.mediaGallery.create({
-          data: {
-            url: cloudResult.url,
-            publicId: cloudResult.publicId,
-            resourceType: cloudResult.resourceType,
-            userId,
-          },
-        });
-
-        saved.push(record);
-        this.logger.log(
-          `Uploaded and saved media ${record.id} for user ${userId}`,
-        );
-      } catch (err) {
-        // If Cloudinary succeeded but DB failed → rollback the cloud asset
-        if (cloudResult) {
-          this.logger.warn(
-            `DB write failed for ${cloudResult.publicId}, rolling back Cloudinary upload`,
-          );
-          await this.cloudinaryService.deleteFile(cloudResult.publicId);
-        }
+    for (let i = 0; i < cloudResults.length; i++) {
+      const r = cloudResults[i];
+      if (r.status === 'fulfilled') {
+        succeeded.push(r.value);
+      } else {
         this.logger.error(
-          `Upload failed for file ${file.originalname}: ${(err as Error).message}`,
+          `Cloudinary upload failed for ${files[i].originalname}: ${r.reason}`,
         );
-        throw err;
+        failed.push(files[i].originalname);
       }
     }
 
-    return saved;
-  }
+    if (succeeded.length === 0) {
+      throw new Error(`All uploads failed: ${failed.join(', ')}`);
+    }
 
+    // 2. Batch DB write in a transaction — returns records, no second query needed
+    try {
+      return await this.prisma.$transaction(
+        succeeded.map((r) =>
+          this.prisma.mediaGallery.create({
+            data: {
+              url: r.url,
+              publicId: r.publicId,
+              resourceType: r.resourceType,
+              userId,
+            },
+          }),
+        ),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Batch DB write failed, rolling back ${succeeded.length} Cloudinary assets`,
+      );
+      await Promise.allSettled(
+        succeeded.map((r) => this.cloudinaryService.deleteFile(r.publicId)),
+      );
+      throw err;
+    }
+  }
   // ─── Signed upload flow (direct client → Cloudinary) ────────────────────────
 
   /**
@@ -117,7 +121,10 @@ export class MediaGalleryService {
 
     const record = await this.prisma.mediaGallery.create({
       data: {
-        url: dto.url,
+        url: this.cloudinaryService.getOptimizedUrl(
+          dto.publicId,
+          dto.resourceType,
+        ),
         publicId: dto.publicId,
         resourceType: dto.resourceType,
         userId,
@@ -174,7 +181,10 @@ export class MediaGalleryService {
     return { message: 'Media deleted successfully' };
   }
 
-  async deleteMediaByPublicId(publicId: string, userId: string): Promise<{ message: string }> {
+  async deleteMediaByPublicId(
+    publicId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
     const media = await this.prisma.mediaGallery.findFirst({
       where: { publicId, userId },
     });
@@ -189,8 +199,59 @@ export class MediaGalleryService {
     // Delete from DB
     await this.prisma.mediaGallery.delete({ where: { id: media.id } });
 
-    this.logger.log(`Deleted media with publicId ${publicId} for user ${userId}`);
+    this.logger.log(
+      `Deleted media with publicId ${publicId} for user ${userId}`,
+    );
 
     return { message: 'Media deleted successfully' };
   }
+
+  // ─── Bulk delete ─────────────────────────────────────────────────────────────
+
+  /**
+   * Bulk delete: removes each record from Cloudinary and then batch-deletes
+   * all DB rows in a single Prisma call.  Per-file Cloudinary failures are
+   * logged but do NOT abort the batch — we always remove the DB record so the
+   * UI stays consistent.
+   */
+  async bulkDeleteMedia(
+    ids: string[],
+    userId: string,
+  ): Promise<{ deleted: number; failed: number }> {
+    // 1. Fetch all matching records owned by this user (prevents IDOR)
+    const records = await this.prisma.mediaGallery.findMany({
+      where: { id: { in: ids }, userId },
+    });
+
+    let deleted = 0;
+    let failed = 0;
+
+    // 2. Delete each Cloudinary asset (best-effort, parallel)
+    await Promise.allSettled(
+      records.map(async (record) => {
+        try {
+          await this.cloudinaryService.deleteFile(record.publicId);
+        } catch (err) {
+          this.logger.warn(
+            `Cloudinary delete failed for publicId ${record.publicId}: ${(err as Error).message}`,
+          );
+        }
+      }),
+    );
+
+    // 3. Batch-delete from DB in one query
+    const result = await this.prisma.mediaGallery.deleteMany({
+      where: { id: { in: records.map((r) => r.id) }, userId },
+    });
+
+    deleted = result.count;
+    failed = ids.length - deleted;
+
+    this.logger.log(
+      `Bulk delete: ${deleted} deleted, ${failed} failed for user ${userId}`,
+    );
+
+    return { deleted, failed };
+  }
 }
+

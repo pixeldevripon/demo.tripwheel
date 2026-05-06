@@ -35,29 +35,30 @@ export class CloudinaryService {
   ): Promise<CloudinaryUploadResult> {
     const folder = `users/${userId}`;
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: 'auto' },
-        (error, result) => {
-          if (error) {
-            return reject(
-              new Error(
-                `Cloudinary upload failed: ${error.message ?? JSON.stringify(error)}`,
-              ),
-            );
-          }
-          if (!result) {
-            return reject(new Error('Cloudinary upload returned no result'));
-          }
-          resolve({
-            publicId: result.public_id,
-            url: result.secure_url,
-            resourceType: result.resource_type,
-          });
-        },
-      );
+    // Convert buffer to base64 data URI — eliminates stream overhead
+    const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 
-      Readable.from(file.buffer).pipe(uploadStream);
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: 'auto',
+    });
+
+    return {
+      publicId: result.public_id,
+      url: this.getOptimizedUrl(result.public_id, result.resource_type),
+      resourceType: result.resource_type,
+    };
+  }
+
+  /**
+   * Helper to generate a Cloudinary URL with f_auto and q_auto transformations.
+   */
+  getOptimizedUrl(publicId: string, resourceType: string = 'image'): string {
+    return cloudinary.url(publicId, {
+      resource_type: resourceType,
+      secure: true,
+      fetch_format: 'auto',
+      quality: 'auto',
     });
   }
 

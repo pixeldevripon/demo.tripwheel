@@ -57,10 +57,8 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             <div className='mb-6'>
                 <h1 className='text-lg font-semibold text-foreground mb-2'>
                     Welcome
-                    {loggedInUser?.name
-                        ? ` ${loggedInUser.name}`
-                        : ''}
-                    , your new site is almost ready
+                    {loggedInUser?.name ? ` ${loggedInUser.name}` : ''}, your
+                    new site is almost ready
                 </h1>
                 <p className='text-sm text-muted-foreground'>
                     Follow these quick steps to configure your site. You can
@@ -77,8 +75,8 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             </div>
 
             <Card>
-                <CardHeader className="border-b mb-6">
-                    <CardTitle className="text-sm">SETUP GUIDE</CardTitle>
+                <CardHeader className='border-b mb-6'>
+                    <CardTitle className='text-sm'>SETUP GUIDE</CardTitle>
                     <CardDescription>
                         Complete these steps to get your site up and running
                     </CardDescription>
@@ -91,7 +89,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                                 key={step.number}
                                 className='flex items-start gap-4'>
                                 {/* Step Number with Connector */}
-                                <div className='flex-shrink-0 flex flex-col items-center'>
+                                <div className='shrink-0 flex flex-col items-center'>
                                     <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-semibold text-primary border border-primary/20'>
                                         {step.number}
                                     </div>
@@ -111,7 +109,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                                 </div>
 
                                 {/* Action Button */}
-                                <div className='flex-shrink-0'>
+                                <div className='shrink-0'>
                                     <Link
                                         href={step.linkTo}
                                         className='gap-2 flex items-center border p-[6px] px-3 text-sm rounded-full hover:bg-secondary transform transition-colors duration-200'>
@@ -127,3 +125,4 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
         </div>
     );
 };
+
