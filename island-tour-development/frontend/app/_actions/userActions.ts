@@ -142,6 +142,15 @@ export async function updateOperatorSocialMedia(operatorId: string, data: any) {
     const authHeaders = await getAuthHeaders();
     if (!authHeaders.cookie) return { success: false, error: 'Unauthorized' };
 
+    const sessionRes = await authClient.getSession({
+        fetchOptions: { headers: { cookie: authHeaders.cookie } },
+    });
+    const userRole = (sessionRes.data?.user as any)?.role;
+
+    if (userRole === 'USER') {
+        return { success: false, error: 'Unauthorized: Users cannot update social media.' };
+    }
+
     try {
         const response = await fetch(
             `${BACKEND_URL}/api/v1/operators/${operatorId}/social-media`,
@@ -174,6 +183,15 @@ export async function updateOperatorSocialMedia(operatorId: string, data: any) {
 export async function updateAdminSocialMedia(data: any) {
     const authHeaders = await getAuthHeaders();
     if (!authHeaders.cookie) return { success: false, error: 'Unauthorized' };
+
+    const sessionRes = await authClient.getSession({
+        fetchOptions: { headers: { cookie: authHeaders.cookie } },
+    });
+    const userRole = (sessionRes.data?.user as any)?.role;
+
+    if (userRole !== 'ADMIN') {
+        return { success: false, error: 'Unauthorized: Only admins can update platform social media.' };
+    }
 
     try {
         const response = await fetch(

@@ -41,6 +41,11 @@ export class OperatorsService {
     requestingUserRole: Role,
   ) {
     if (requestingUserRole === Role.ADMIN) return; // admin bypasses ownership
+    if (requestingUserRole === Role.USER) {
+      throw new ForbiddenException(
+        'Traveler accounts are not allowed to manage operator resources',
+      );
+    }
     if (operator.userId !== requestingUserId) {
       throw new ForbiddenException(
         'You can only manage your own operator profile',

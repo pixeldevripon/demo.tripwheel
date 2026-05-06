@@ -1,18 +1,26 @@
 'use client';
 
+import {
+    updateAdminSocialMedia,
+    updateOperatorSocialMedia,
+    updateUserProfile,
+} from '@/app/_actions/userActions';
+import {
+    profileSchema,
+    type ProfileFormValues,
+} from '@/lib/validations/profile';
+import { Role } from '@/RBAC.config';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { useState, useTransition, useEffect } from 'react';
+import { useEffect, useState, useTransition } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { AccountStatusCard } from './account-status-card';
 import { PersonalInfoCard } from './personal-info-card';
 import { ProfileHeader } from './profile-header';
 import { ProfilePhotoCard } from './profile-photo-card';
 import { SecurityCard } from './security-card';
 import { SocialLinksCard } from './social-links-card';
-import { toast } from 'sonner';
-import { updateAdminSocialMedia, updateOperatorSocialMedia, updateUserProfile } from '@/app/_actions/userActions';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { profileSchema, type ProfileFormValues } from '@/lib/validations/profile';
 
 interface ProfileClientProps {
     user: any;
@@ -78,30 +86,40 @@ export function ProfileClient({ user }: ProfileClientProps) {
                 if (user.role === 'ADMIN') {
                     actions.push(updateAdminSocialMedia(socialData));
                 } else if (user.role === 'TOUR_OPERATOR' && user.operator?.id) {
-                    actions.push(updateOperatorSocialMedia(user.operator.id, socialData));
+                    actions.push(
+                        updateOperatorSocialMedia(user.operator.id, socialData)
+                    );
                 }
 
                 // Execute all updates in parallel (Eliminating network waterfall)
                 const results = await Promise.all(actions);
-                
+
                 const userResult = results[0];
                 const socialResult = results[1]; // might be undefined if no social action was added
 
                 // Aggregate and handle errors
                 const errors: string[] = [];
-                if (!userResult.success) errors.push(userResult.error || 'Personal info update failed');
-                if (socialResult && !socialResult.success) errors.push(socialResult.error || 'Social media update failed');
+                if (!userResult.success)
+                    errors.push(
+                        userResult.error || 'Personal info update failed'
+                    );
+                if (socialResult && !socialResult.success)
+                    errors.push(
+                        socialResult.error || 'Social media update failed'
+                    );
 
                 if (errors.length > 0) {
                     // Show specific failures
                     errors.forEach(err => toast.error(err));
-                    
+
                     // If at least one part succeeded, notify the user
                     const successCount = results.filter(r => r.success).length;
                     if (successCount > 0) {
-                        toast.info('Some changes were saved, but others failed. Please check the fields and try again.');
+                        toast.info(
+                            'Some changes were saved, but others failed. Please check the fields and try again.'
+                        );
                     }
-                    
+
                     // Keep editing mode active so they can fix errors
                     return;
                 }
@@ -130,9 +148,9 @@ export function ProfileClient({ user }: ProfileClientProps) {
     return (
         <FormProvider {...methods}>
             <div className='max-w-7xl space-y-8 pb-10'>
-                <ProfileHeader 
-                    isEditing={isEditing} 
-                    setIsEditing={setIsEditing} 
+                <ProfileHeader
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
                     onSave={methods.handleSubmit(handleSave)}
                     isLoading={isPending}
                 />
@@ -146,8 +164,16 @@ export function ProfileClient({ user }: ProfileClientProps) {
                         {/* Left Column - Main Info */}
                         <div className='col-span-12 lg:col-span-8 space-y-8'>
                             <ProfilePhotoCard user={user} />
-                            <PersonalInfoCard user={user} isEditing={isEditing} />
-                            <SocialLinksCard user={user} isEditing={isEditing} />
+                            <PersonalInfoCard
+                                user={user}
+                                isEditing={isEditing}
+                            />
+                            {user.role !== Role.USER && (
+                                <SocialLinksCard
+                                    user={user}
+                                    isEditing={isEditing}
+                                />
+                            )}
                         </div>
 
                         {/* Right Column - Secondary Info & Security */}
