@@ -241,7 +241,7 @@ export default function MediaGallery({
                             title='Deleting Media Files'
                             state='Deleting'
                         />
-                    ) : !filteredItems || filteredItems.length === 0 ? (
+                    ) : (!filteredItems || filteredItems.length === 0) && uploadingFiles.length === 0 ? (
                         <NoMediaUi
                             searchTerm={searchTerm}
                             setIsFormOpen={setIsFormOpen}
