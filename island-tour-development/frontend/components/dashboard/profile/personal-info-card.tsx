@@ -152,10 +152,11 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                             name='timezone'
                             control={control}
                             render={({ field }) => (
-                                <Popover 
-                                    open={isEditing ? open : false} 
-                                    onOpenChange={(val) => isEditing && setOpen(val)}
-                                >
+                                <Popover
+                                    open={isEditing ? open : false}
+                                    onOpenChange={val =>
+                                        isEditing && setOpen(val)
+                                    }>
                                     <div className='relative'>
                                         <Clock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10' />
                                         <PopoverTrigger asChild>
@@ -166,8 +167,10 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                 disabled={!isEditing}
                                                 className={cn(
                                                     'w-full justify-between pl-10 h-11 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all font-normal text-left overflow-hidden',
-                                                    errors.timezone && 'border-destructive',
-                                                    !isEditing && 'cursor-default opacity-100 hover:bg-muted/30'
+                                                    errors.timezone &&
+                                                        'border-destructive',
+                                                    !isEditing &&
+                                                        'cursor-default opacity-100 hover:bg-muted/30'
                                                 )}>
                                                 <span className='truncate'>
                                                     {field.value
@@ -179,7 +182,9 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                           field.value
                                                         : 'Select timezone...'}
                                                 </span>
-                                                {isEditing && <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />}
+                                                {isEditing && (
+                                                    <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                                                )}
                                             </Button>
                                         </PopoverTrigger>
                                     </div>

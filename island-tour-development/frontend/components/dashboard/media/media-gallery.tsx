@@ -83,9 +83,9 @@ export default function MediaGallery({
                 return;
             }
             const current = bulkSelectedItems || currentSelection || [];
-            const isAlready = current.some(i => i.id === selected.id);
+            const isAlready = current.some(i => i.id === selected.id || i.url === selected.url);
             if (isAlready) {
-                setbulkSelectedItems(prev => prev.filter(i => i.id !== selected.id));
+                setbulkSelectedItems(prev => prev.filter(i => i.id !== selected.id && i.url !== selected.url));
             } else {
                 if (current.length >= (maxFiles ?? Infinity)) {
                     toast.warning(`Maximum ${maxFiles} images allowed`);

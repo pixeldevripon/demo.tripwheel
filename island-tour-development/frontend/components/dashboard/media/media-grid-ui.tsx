@@ -122,7 +122,9 @@ const MediaGridUi = ({
                 {filteredItems.map(item => {
                     const isSelected =
                         bulkSelectedItems &&
-                        bulkSelectedItems.some(s => s.id === item.id);
+                        bulkSelectedItems.some(
+                            s => s.id === item.id || s.url === item.url
+                        );
                     const isBeingDeleted =
                         (itemToDelete === 'bulk' && isDeleting && isSelected) ||
                         (itemToDelete === item.id && isDeleting);

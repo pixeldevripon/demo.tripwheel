@@ -106,7 +106,7 @@ const MediaListUi = ({
                 ))}
                 {filteredItems.map(item => {
                     const isSelected = bulkSelectedItems.some(
-                        s => s.id === item.id
+                        s => s.id === item.id || s.url === item.url
                     );
                     const isBeingDeleted =
                         (itemToDelete === 'bulk' && isDeleting && isSelected) ||
