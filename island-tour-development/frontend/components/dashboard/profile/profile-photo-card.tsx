@@ -1,50 +1,187 @@
 'use client';
 
-import { Camera, Upload } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import {
+    updateUserProfile,
+    uploadProfilePhoto,
+} from '@/app/_actions/userActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Camera, Loader2, Trash2, Upload } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+// bundle-dynamic-imports: Load heavy cropper only when needed
+const ImageCropper = dynamic(() => import('./image-cropper'), {
+    loading: () => (
+        <Loader2 className='w-10 h-10 animate-spin text-primary mx-auto my-10' />
+    ),
+    ssr: false, // Cropper uses canvas/DOM
+});
 
 export function ProfilePhotoCard({ user }: { user: any }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploading, setUploading] = useState(false);
+    const [openCropper, setOpenCropper] = useState(false);
+    const [tempImageSrc, setTempImageSrc] = useState<string>('');
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File too large. Max size is 5MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setTempImageSrc(reader.result as string);
+            setOpenCropper(true);
+        };
+        reader.readAsDataURL(file);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleCropComplete = async (file: File) => {
+        setOpenCropper(false);
+        setUploading(true);
+
+        const formData = new FormData();
+        formData.append('files', file);
+
+        try {
+            // Use server action for upload
+            const uploadResult = await uploadProfilePhoto(formData);
+
+            if (!uploadResult.success) {
+                toast.error(uploadResult.error || 'Upload failed');
+                return;
+            }
+
+            const imageUrl = uploadResult.data[0].url;
+
+            // Update user profile with new image URL
+            const result = await updateUserProfile({ image: imageUrl });
+
+            if (result.success) {
+                toast.success('Profile photo updated successfully');
+            } else {
+                toast.error(result.error || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            toast.error('Failed to upload image. Please try again.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleRemovePhoto = async () => {
+        setUploading(true);
+        try {
+            const result = await updateUserProfile({ image: null });
+            if (result.success) {
+                toast.success('Profile photo removed');
+            } else {
+                toast.error(result.error || 'Failed to remove photo');
+            }
+        } catch (error) {
+            toast.error('Failed to remove photo');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
-        <Card className="border-none shadow-sm bg-card overflow-hidden rounded-2xl">
-            <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Camera className="w-5 h-5 text-primary" />
+        <Card className='border-none shadow-sm bg-card overflow-hidden '>
+            <CardHeader className='pb-4'>
+                <CardTitle className='text-lg font-semibold flex items-center gap-2'>
+                    <Camera className='w-5 h-5 text-primary' />
                     Profile Photo
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                    <div className="relative group">
-                        <Avatar className="w-32 h-32 border-4 border-background shadow-xl ring-1 ring-border group-hover:opacity-90 transition-all duration-300">
-                            <AvatarImage src={user?.image || "https://github.com/shadcn.png"} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                <div className='flex flex-col md:flex-row items-center gap-8'>
+                    <div className='relative group'>
+                        <Avatar className='w-32 h-32 border-4 border-background shadow-xl ring-1 ring-border group-hover:opacity-90 transition-all duration-300'>
+                            <AvatarImage
+                                src={user?.image || ''}
+                                className='object-cover'
+                            />
+                            <AvatarFallback className='bg-primary/10 text-primary text-2xl'>
                                 {user?.name?.charAt(0) || 'U'}
                             </AvatarFallback>
                         </Avatar>
-                        <button className="absolute bottom-1 right-1 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform duration-200 ring-2 ring-background">
-                            <Upload className="w-4 h-4" />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className='absolute bottom-1 right-1 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform duration-200 ring-2 ring-background disabled:opacity-50 disabled:scale-100'>
+                            {uploading ? (
+                                <Loader2 className='w-4 h-4 animate-spin' />
+                            ) : (
+                                <Upload className='w-4 h-4' />
+                            )}
                         </button>
                     </div>
-                    <div className="flex-1 space-y-4 text-center md:text-left">
-                        <div className="space-y-1">
-                            <h3 className="font-medium text-foreground">Update your photo</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Supported formats: JPG, PNG or WEBP. Max size 5MB.
+                    <div className='flex-1 space-y-4 text-center md:text-left'>
+                        <div className='space-y-1'>
+                            <h3 className='font-medium text-foreground'>
+                                Update your photo
+                            </h3>
+                            <p className='text-sm text-muted-foreground'>
+                                Supported formats: JPG, PNG or WEBP. Max size
+                                5MB.
                             </p>
                         </div>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                            <Button size="sm" variant="outline" className="rounded-lg h-9">
+                        <div className='flex flex-wrap justify-center md:justify-start gap-2'>
+                            <input
+                                type='file'
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept='image/*'
+                                className='hidden'
+                            />
+                            <Button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                size='sm'
+                                variant='outline'
+                                className='rounded-lg h-9 gap-2'>
+                                {uploading ? (
+                                    <Loader2 className='w-4 h-4 animate-spin' />
+                                ) : null}
                                 Upload New
                             </Button>
-                            <Button size="sm" variant="ghost" className="rounded-lg h-9 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                Remove
-                            </Button>
+                            {user?.image ? (
+                                <Button
+                                    onClick={handleRemovePhoto}
+                                    disabled={uploading}
+                                    size='sm'
+                                    variant='ghost'
+                                    className='rounded-lg h-9 text-destructive hover:text-destructive hover:bg-destructive/10 gap-2'>
+                                    <Trash2 className='w-4 h-4' />
+                                    Remove
+                                </Button>
+                            ) : null}
                         </div>
                     </div>
                 </div>
+
+                {openCropper ? (
+                    <ImageCropper
+                        open={openCropper}
+                        imageSrc={tempImageSrc}
+                        onClose={() => setOpenCropper(false)}
+                        onCropComplete={handleCropComplete}
+                    />
+                ) : null}
             </CardContent>
         </Card>
     );
 }
+

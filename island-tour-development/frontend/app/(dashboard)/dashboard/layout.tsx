@@ -2,31 +2,39 @@ import DashboardWrapper from '@/components/dashboard/dashbaord-wraper';
 import { authClient } from '@/lib/auth-client';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import { DashboardSkeleton } from '@/components/skelitons/dashboard-skeleton';
+import { getUserProfile } from '@/app/_actions/userActions';
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    return (
+        <Suspense fallback={<DashboardSkeleton />}>
+            <DashboardContent>{children}</DashboardContent>
+        </Suspense>
+    );
+}
+
+async function DashboardContent({ children }: { children: React.ReactNode }) {
     const reqHeaders = await headers();
+    const cookie = reqHeaders.get('cookie') || '';
 
-    const { data: sessionData } = await authClient.getSession({
-        fetchOptions: { headers: reqHeaders },
-    });
+    // Use our cached getUserProfile which is connected to the 'user-profile' tag
+    const user = await getUserProfile(cookie);
 
-    if (!sessionData?.session) {
+    if (!user) {
         redirect('/login');
     }
 
-    const { user } = sessionData;
     const userRole = (user as unknown as { role?: string }).role;
 
-    // ── Onboarding Guard ───────────────────────────────────────────────────────
-    // If the user is a TOUR_OPERATOR, we must ensure they have an operator profile.
-    // We check this on the server side using our helper action.
     if (userRole === 'TOUR_OPERATOR') {
-        const { checkOnboardingStatus } =
-            await import('@/app/_actions/onboardingActions');
+        const { checkOnboardingStatus } = await import(
+            '@/app/_actions/onboardingActions'
+        );
         const { needsOnboarding } = await checkOnboardingStatus();
         if (needsOnboarding) {
             redirect('/onboarding');
@@ -37,7 +45,8 @@ export default async function DashboardLayout({
         <DashboardWrapper
             userName={user.name}
             userEmail={user.email}
-            userRole={userRole}>
+            userRole={userRole}
+            userImage={user.image}>
             {children}
         </DashboardWrapper>
     );

@@ -1,20 +1,26 @@
+import { getUserProfile } from '@/app/_actions/userActions';
+import { ProfileSkeleton } from '@/components/skelitons/profile-skeleton';
+import { headers } from 'next/headers';
+import { Suspense } from 'react';
 import { ProfileClient } from '../../../../components/dashboard/profile/profile-client';
 
-// This is a Server Component
 export default async function ProfilePage() {
-    // In a real app, you'd fetch user data here
-    // const user = await getUser();
+    return (
+        <Suspense fallback={<ProfileSkeleton />}>
+            <ProfileDataWrapper />
+        </Suspense>
+    );
+}
 
-    const mockUser = {
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+1 (555) 000-0000',
-        dob: '1990-01-01',
-        nationality: 'American',
-        location: 'New York, USA',
-        image: 'https://github.com/shadcn.png',
-    };
+async function ProfileDataWrapper() {
+    const reqHeaders = await headers();
+    const cookie = reqHeaders.get('cookie') || '';
+    const user = await getUserProfile(cookie);
 
-    return <ProfileClient user={mockUser} />;
+    if (!user) {
+        return <div>Error loading profile. Please try again.</div>;
+    }
+
+    return <ProfileClient user={user} />;
 }
 

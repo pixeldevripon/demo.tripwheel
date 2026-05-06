@@ -101,6 +101,17 @@ export const auth = betterAuth({
         returned: true,
         input: false,
       },
+      hasPassword: {
+        type: 'boolean',
+        defaultValue: false,
+        returned: true,
+        input: false,
+      },
+      passwordChangedAt: {
+        type: 'date',
+        returned: true,
+        input: false,
+      },
     },
   },
 
@@ -138,6 +149,34 @@ export const auth = betterAuth({
           return {
             data: { ...userData, role: finalRole },
           };
+        },
+      },
+    },
+    account: {
+      create: {
+        after: async (account) => {
+          if (account.password) {
+            await authPrismaClient.user.update({
+              where: { id: account.userId },
+              data: {
+                hasPassword: true,
+                passwordChangedAt: new Date(),
+              },
+            });
+          }
+        },
+      },
+      update: {
+        after: async (account) => {
+          if (account.password) {
+            await authPrismaClient.user.update({
+              where: { id: account.userId },
+              data: {
+                hasPassword: true,
+                passwordChangedAt: new Date(),
+              },
+            });
+          }
         },
       },
     },

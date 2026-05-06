@@ -19,6 +19,7 @@ import {
   MapPin,
   Activity,
   Building2,
+  CircleUser,
 } from 'lucide-react';
 
 import type { NavItem } from '@/lib/rbac-utils';
@@ -198,7 +199,7 @@ const dashboardNav: NavItem[] = [
   {
     title: 'My Profile',
     url: 'profile',
-    icon: Shield,
+    icon: CircleUser,
     permissions: [Permission.VIEW_PROFILE],
   },
 

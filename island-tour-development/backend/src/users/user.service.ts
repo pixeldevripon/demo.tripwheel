@@ -43,6 +43,9 @@ export class UserService {
           image: true,
           role: true,
           status: true,
+          timezone: true,
+          phone: true,
+          location: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -66,6 +69,9 @@ export class UserService {
         image: true,
         role: true,
         status: true,
+        timezone: true,
+        phone: true,
+        location: true,
         createdAt: true,
         updatedAt: true,
         operator: {
@@ -75,7 +81,6 @@ export class UserService {
         },
       },
     });
-
 
     if (!user) throw new NotFoundException(`User ${id} not found`);
 
@@ -106,6 +111,9 @@ export class UserService {
         image: true,
         role: true,
         status: true,
+        timezone: true,
+        phone: true,
+        location: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -128,6 +136,9 @@ export class UserService {
         image: true,
         role: true,
         status: true,
+        timezone: true,
+        phone: true,
+        location: true,
         createdAt: true,
         updatedAt: true,
       },

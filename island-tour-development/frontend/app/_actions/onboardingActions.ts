@@ -7,6 +7,15 @@ import { OnboardingData } from '@/lib/validations/onboarding';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
 
+async function safeJson(res: Response) {
+  try {
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function getAuthHeaders() {
   const reqHeaders = await headers();
   return {
@@ -44,7 +53,10 @@ export async function checkOnboardingStatus() {
       return { needsOnboarding: false, error: 'Failed to fetch user profile' };
     }
 
-    const userData = await response.json();
+    const userData = await safeJson(response);
+    if (!userData) {
+      return { needsOnboarding: false, error: 'Failed to parse user profile' };
+    }
     // In our backend, if operator is null, it means they need onboarding
     return { needsOnboarding: !userData.operator };
   } catch (error) {
@@ -67,8 +79,8 @@ export async function onboardOperator(data: OnboardingData) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      return { success: false, error: errorData.message || 'Failed to onboard' };
+      const errorData = await safeJson(response);
+      return { success: false, error: errorData?.message || 'Failed to onboard' };
     }
 
     return { success: true };

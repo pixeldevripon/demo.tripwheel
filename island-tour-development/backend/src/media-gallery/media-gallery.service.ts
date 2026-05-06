@@ -170,8 +170,26 @@ export class MediaGalleryService {
     await this.cloudinaryService.deleteFile(media.publicId);
 
     await this.prisma.mediaGallery.delete({ where: { id } });
-
     this.logger.log(`Deleted media ${id} for user ${userId}`);
+    return { message: 'Media deleted successfully' };
+  }
+
+  async deleteMediaByPublicId(publicId: string, userId: string): Promise<{ message: string }> {
+    const media = await this.prisma.mediaGallery.findFirst({
+      where: { publicId, userId },
+    });
+
+    if (!media) {
+      throw new NotFoundException(`Media with publicId ${publicId} not found`);
+    }
+
+    // Delete from Cloudinary
+    await this.cloudinaryService.deleteFile(media.publicId);
+
+    // Delete from DB
+    await this.prisma.mediaGallery.delete({ where: { id: media.id } });
+
+    this.logger.log(`Deleted media with publicId ${publicId} for user ${userId}`);
 
     return { message: 'Media deleted successfully' };
   }

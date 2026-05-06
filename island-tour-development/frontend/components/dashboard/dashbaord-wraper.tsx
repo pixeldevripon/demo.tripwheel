@@ -12,6 +12,7 @@ interface DashboardWrapperProps {
     userName?: string;
     userEmail?: string;
     userRole?: string;
+    userImage?: string | null;
 }
 
 // Animation variants for super smooth slide directions matching legacy project
@@ -33,6 +34,7 @@ export default function DashboardWrapper({
     userName,
     userEmail,
     userRole,
+    userImage,
 }: DashboardWrapperProps) {
     const pathname = usePathname();
 
@@ -49,12 +51,14 @@ export default function DashboardWrapper({
                 variant='inset'
                 userRole={userRole}
                 userName={userName}
+                userImage={userImage}
             />
             <SidebarInset className='bg-white dark:bg-sidebar shadow-none! md:peer-data-[variant=inset]:rounded-2xl overflow-hidden'>
                 <SiteHeader
                     userName={userName}
                     userEmail={userEmail}
                     userRole={userRole}
+                    userImage={userImage}
                 />
                 <div className='flex flex-1 flex-col p-5 bg-[#F4F7FB] dark:bg-background'>
                     <div className='@container/main flex flex-1 flex-col gap-2'>

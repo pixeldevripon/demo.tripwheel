@@ -245,4 +245,19 @@ export class MediaGalleryController {
   ) {
     return this.mediaGalleryService.deleteMedia(id, user.id);
   }
+
+  /**
+   * DELETE /media-gallery/public/:publicId
+   *
+   * Deletes the media record from the DB and removes the asset from Cloudinary
+   * using the publicId.
+   */
+  @Delete('public/:publicId')
+  @ApiDeleteMediaDocs() // We can reuse the docs decorator or create a new one
+  deleteMediaByPublicId(
+    @Param('publicId') publicId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.mediaGalleryService.deleteMediaByPublicId(publicId, user.id);
+  }
 }

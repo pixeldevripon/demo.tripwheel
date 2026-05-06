@@ -17,6 +17,8 @@ model User {
   // Platform-specific fields
   role           Role        @default(TOUR_OPERATOR)
   status         UserStatus  @default(ACTIVE)
+  hasPassword    Boolean     @default(false)
+  passwordChangedAt DateTime?
 
   // Relations
   sessions        Session[]

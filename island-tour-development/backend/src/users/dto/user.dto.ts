@@ -38,11 +38,17 @@ export class UserResponseDto {
   @ApiProperty({ enum: UserStatus, example: UserStatus.ACTIVE })
   status!: UserStatus;
 
-  @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
-  createdAt!: Date;
-
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' })
   updatedAt!: Date;
+
+  @ApiPropertyOptional({ example: 'UTC+06:00' })
+  timezone?: string;
+
+  @ApiPropertyOptional({ example: '+1234567890' })
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'New York, USA' })
+  location?: string;
 }
 
 export class UserPermissionsResponseDto {
@@ -131,6 +137,21 @@ export class UpdateUserProfileDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @ApiPropertyOptional({ description: 'User timezone' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ description: 'User phone number' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ description: 'User location' })
+  @IsOptional()
+  @IsString()
+  location?: string;
 }
 
 export class UpdateUserByAdminDto {
@@ -148,6 +169,21 @@ export class UpdateUserByAdminDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @ApiPropertyOptional({ description: 'User timezone' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ description: 'User phone number' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ description: 'User location' })
+  @IsOptional()
+  @IsString()
+  location?: string;
 
   @ApiPropertyOptional({ enum: UserStatus })
   @IsOptional()

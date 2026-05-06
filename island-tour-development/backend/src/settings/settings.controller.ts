@@ -7,6 +7,7 @@ import { SettingsService } from './settings.service';
 import {
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
+  UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
   UpdateMollieConfigurationDto,
   UpdateCompanyInformationsDto,
@@ -22,6 +23,8 @@ import {
   ApiUpdateMollieConfigurationDocs,
   ApiGetCompanyInformationsDocs,
   ApiUpdateCompanyInformationsDocs,
+  ApiGetSocialMediaDocs,
+  ApiUpdateSocialMediaDocs,
 } from './settings.swagger';
 
 @ApiTags('Settings')
@@ -224,4 +227,33 @@ export class SettingsController {
   updateCompanyInformations(@Body() dto: UpdateCompanyInformationsDto) {
     return this.settingsService.updateCompanyInformations(dto);
   }
+
+  // ── Social Media ───────────────────────────────────────────────────────────
+
+  /**
+   * GET /settings/social-media
+   *
+   * Returns the platform's social media links.
+   * Security: requires VIEW_SETTINGS.
+   */
+  @Get('social-media')
+  @RequirePermissions(Permission.VIEW_SETTINGS)
+  @ApiGetSocialMediaDocs()
+  getSocialMedia() {
+    return this.settingsService.getSocialMedia();
+  }
+
+  /**
+   * PATCH /settings/social-media
+   *
+   * Updates platform-wide social media links.
+   * Security: requires MANAGE_SETTINGS.
+   */
+  @Patch('social-media')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdateSocialMediaDocs()
+  updateSocialMedia(@Body() dto: UpdateSocialMediaDto) {
+    return this.settingsService.updateSocialMedia(dto);
+  }
 }
+  

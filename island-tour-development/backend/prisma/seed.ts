@@ -41,7 +41,7 @@ async function main() {
   // sign-up hook which only blocks ADMIN creation through self-registration.
   await prisma.user.update({
     where: { email },
-    data: { role: Role.ADMIN, emailVerified: true },
+    data: { role: Role.ADMIN, emailVerified: true, hasPassword: true },
   });
 
   console.log(`Successfully created admin user ${email}!`);

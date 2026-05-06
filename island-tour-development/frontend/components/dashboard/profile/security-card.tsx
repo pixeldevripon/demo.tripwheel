@@ -1,16 +1,22 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { authClient } from '@/lib/auth-client';
+import { formatDate } from '@/utils/intl-utils';
 import { ChevronRight, Lock, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { ChangePasswordDialog } from './change-password-dialog';
 
 export function SecurityCard() {
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+    const { data: session } = authClient.useSession();
+    const user = session?.user;
+    const hasPassword = (user as any)?.hasPassword;
+    const passwordChangedAt = (user as any)?.passwordChangedAt;
 
     return (
         <>
-            <Card className='border-none shadow-sm bg-card rounded-2xl'>
+            <Card className='border-none shadow-sm bg-card '>
                 <CardHeader className='pb-4'>
                     <CardTitle className='text-lg font-semibold flex items-center gap-2'>
                         <ShieldCheck className='w-5 h-5 text-primary' />
@@ -27,10 +33,18 @@ export function SecurityCard() {
                             </div>
                             <div>
                                 <p className='text-sm font-medium'>
-                                    Change Password
+                                    {hasPassword ? 'Change Password' : 'Set Password'}
                                 </p>
                                 <p className='text-xs text-muted-foreground'>
-                                    Last changed 3 months ago
+                                    {hasPassword ? (
+                                        passwordChangedAt ? (
+                                            <>Last changed: {formatDate(passwordChangedAt, { year: 'numeric', month: 'short', day: 'numeric' })}</>
+                                        ) : (
+                                            'Password set but date unknown'
+                                        )
+                                    ) : (
+                                        'Using Google login'
+                                    )}
                                 </p>
                             </div>
                         </div>

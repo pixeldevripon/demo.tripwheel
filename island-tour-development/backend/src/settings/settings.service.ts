@@ -6,6 +6,7 @@ import {
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
+  UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
 
@@ -155,5 +156,23 @@ export class SettingsService {
         ? '••••••••' + decrypt(result.apiKey).slice(-4)
         : null,
     };
+  }
+
+  // ── Social Media ───────────────────────────────────────────────────────────
+
+  async getSocialMedia() {
+    return this.prisma.socialMedia.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+  }
+
+  async updateSocialMedia(dto: any) {
+    return this.prisma.socialMedia.upsert({
+      where: { id: 'default' },
+      update: dto,
+      create: { id: 'default', ...dto },
+    });
   }
 }

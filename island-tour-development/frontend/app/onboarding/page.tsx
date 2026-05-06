@@ -1,7 +1,9 @@
 import { OnboardingForm } from '@/components/onboarding/onboarding-form';
+import OnboardingSkeleton from '@/components/skelitons/onboarding-skelitons';
 import { authClient } from '@/lib/auth-client';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { checkOnboardingStatus } from '../_actions/onboardingActions';
 
 export const metadata = {
@@ -9,7 +11,7 @@ export const metadata = {
     description: 'Complete your tour operator profile to get started.',
 };
 
-export default async function OnboardingPage() {
+async function OnboardingContent() {
     const reqHeaders = await headers();
     const { data: sessionData } = await authClient.getSession({
         fetchOptions: { headers: reqHeaders },
@@ -31,11 +33,15 @@ export default async function OnboardingPage() {
         redirect('/dashboard');
     }
 
+    return <OnboardingForm />;
+}
+
+export default function OnboardingPage() {
     return (
         <div className='min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-8'>
             <div className='w-full max-w-3xl space-y-8 relative z-10'>
                 <div className='text-center space-y-3'>
-                    <h1 className='text-4xl  font-bold tracking-tight text-white'>
+                    <h1 className='text-4xl font-bold tracking-tight text-white'>
                         Welcome to Island Tours
                     </h1>
                     <p className='text-slate-400 text-lg'>
@@ -43,7 +49,9 @@ export default async function OnboardingPage() {
                     </p>
                 </div>
 
-                <OnboardingForm />
+                <Suspense fallback={<OnboardingSkeleton />}>
+                    <OnboardingContent />
+                </Suspense>
             </div>
         </div>
     );
