@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Island Tours · Platform Wireframes</title>
+<meta name="viewport" content="width=1280">
+<link rel="stylesheet" href="styles/wireframe.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+.topbar{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:2px solid var(--ink);padding:10px 20px;display:flex;gap:20px;align-items:center}
+.topbar .brand{font-family:var(--font-marker);font-size:22px}
+.topbar .brand b{color:var(--amber)}
+.chapter-nav{display:flex;gap:6px;flex-wrap:wrap}
+.chapter-nav a{font-family:var(--font-marker);font-size:14px;color:var(--ink-2);text-decoration:none;padding:4px 10px;border:1.5px solid transparent;border-radius:999px}
+.chapter-nav a.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.page{max-width:1280px;margin:0 auto;padding:28px 28px 120px}
+.chapter{margin-top:40px}
+.chapter-head{display:flex;align-items:baseline;gap:16px;margin-bottom:6px}
+.chapter-num{font-family:var(--font-caveat);font-size:48px;color:var(--amber);line-height:1}
+.chapter-desc{font-family:var(--font-caveat);font-size:20px;color:var(--ink-3);max-width:720px;margin-bottom:20px}
+.section-head{display:flex;align-items:center;gap:14px;margin:30px 0 14px}
+.section-head h3{margin:0}
+.section-head .line-fill{flex:1;height:0;border-top:1.5px dashed var(--ink-3)}
+#tweaks-panel{position:fixed;right:16px;bottom:16px;width:280px;background:var(--paper);border:2px solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 rgba(27,26,23,.2);padding:14px;z-index:100;display:none}
+#tweaks-panel.on{display:block}
+#tweaks-panel h4{margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+#tweaks-panel .tweak{margin-bottom:10px}
+#tweaks-panel label{font-family:var(--font-marker);font-size:13px;color:var(--ink-2);display:block;margin-bottom:4px}
+#tweaks-panel select,#tweaks-panel input[type=range]{width:100%;font-family:var(--font-hand);font-size:14px;padding:4px 6px;border:1.5px solid var(--ink);border-radius:6px;background:var(--paper)}
+.kbd{font-family:var(--font-marker);font-size:12px;border:1px solid var(--ink);border-radius:4px;padding:1px 6px;background:var(--paper-2)}
+.cover h1{font-size:56px;margin:0}
+.cover .sub{font-family:var(--font-caveat);font-size:24px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">🏝 Island Tours · <b>wireframes</b></div>
+  <div class="chapter-nav" id="chapter-nav"></div>
+  <div style="flex:1"></div>
+  <span class="chip amber" id="mode-chip">operator</span>
+  <span class="tiny muted">press <span class="kbd">T</span> for tweaks</span>
+</div>
+<div class="page">
+  <header class="cover">
+    <h1>Island Tours — platform wireframes</h1>
+    <div class="sub">Operator flow · slot economy · edge cases · admin · traveler side</div>
+    <div class="sk-dbl pad-md" style="margin-top:22px;max-width:920px;background:var(--paper-2)">
+      <div class="row gap-md" style="align-items:flex-start">
+        <div style="flex:1">
+          <h3>The system in one breath</h3>
+          <p style="font-family:var(--font-caveat);font-size:19px;color:var(--ink-2);line-height:1.35">
+            Operators list trips. Standard listings pay <b>20%</b>. A category has <b>3 featured slots</b> ranked by prominence: slot 1 pays <b>22%</b>, slot 2 pays <b>25%</b>, slot 3 pays <b>30%</b>. Picking a slot soft-locks it for 15 min. Submission revalidates. Losers reopen the picker or join the waitlist.
+          </p>
+        </div>
+        <div class="col gap-sm" style="width:280px">
+          <div class="sticky">🔒 soft-lock · 15 min TTL</div>
+          <div class="sticky green">✓ hard-reserve on publish</div>
+          <div class="sticky red">⚠ race on submit — 1st wins</div>
+          <div class="sticky blue">⏱ 24h pre-book window</div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div id="root"></div>
+</div>
+<div id="tweaks-panel">
+  <h4>Tweaks <button class="btn ghost" style="padding:2px 8px;font-size:13px" onclick="toggleTweaks(false)">×</button></h4>
+  <div class="tweak"><label>Edge case demo</label><select id="tw-edge"><option value="none">(happy path)</option><option value="all-taken">01 · All slots taken</option><option value="race">02 · Race condition</option><option value="edit-live">03 · Editing live trip</option><option value="ttl-expire">04 · TTL expired</option><option value="pre-book">05 · Pre-book activates</option><option value="removed">06 · Removed / paused</option></select></div>
+  <div class="tweak"><label>Flow path</label><select id="tw-flow"><option value="standard">Standard (20%)</option><option value="featured" selected>Featured (22/25/30%)</option></select></div>
+  <div class="tweak"><label>Slot availability</label><select id="tw-avail"><option value="open" selected>Slots open</option><option value="one">1 slot left</option><option value="full">All taken</option></select></div>
+  <div class="tweak"><label>Viewer</label><select id="tw-view"><option value="operator" selected>Operator</option><option value="admin">Admin</option><option value="traveler">Traveler</option></select></div>
+  <div class="tweak"><label>TTL countdown</label><input type="range" id="tw-ttl" min="0" max="900" step="15" value="780"><div class="tiny muted" id="tw-ttl-label">13:00 remaining</div></div>
+  <div class="tweak"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tw-annot" checked> Show annotations</label></div>
+</div>
+<script type="text/babel" src="components/shared.jsx"></script>
+<script type="text/babel" src="components/operator_flow.jsx"></script>
+<script type="text/babel" src="components/slot_picker.jsx"></script>
+<script type="text/babel" src="components/edge_cases.jsx"></script>
+<script type="text/babel" src="components/admin.jsx"></script>
+<script type="text/babel" src="components/traveler.jsx"></script>
+<script type="text/babel" src="components/waitlist.jsx"></script>
+<script type="text/babel" src="components/app.jsx"></script>
+<script>
+const EDIT_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "edge": "none",
+  "flow": "featured",
+  "avail": "open",
+  "view": "operator",
+  "ttl": 780,
+  "showAnnot": true
+}/*EDITMODE-END*/;
+const saved = JSON.parse(localStorage.getItem('it-tweaks')||'null') || EDIT_DEFAULTS;
+const tweaks = {...EDIT_DEFAULTS, ...saved};
+function applyTweaks(){
+  document.getElementById('tw-edge').value = tweaks.edge;
+  document.getElementById('tw-flow').value = tweaks.flow;
+  document.getElementById('tw-avail').value = tweaks.avail;
+  document.getElementById('tw-view').value = tweaks.view;
+  document.getElementById('tw-ttl').value = tweaks.ttl;
+  document.getElementById('tw-annot').checked = tweaks.showAnnot;
+  const mm = Math.floor(tweaks.ttl/60), ss = tweaks.ttl%60;
+  document.getElementById('tw-ttl-label').textContent = `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')} remaining`;
+  document.getElementById('mode-chip').textContent = tweaks.view;
+  document.body.classList.toggle('hide-annot', !tweaks.showAnnot);
+  window.__tweaks = tweaks;
+  window.dispatchEvent(new CustomEvent('tweakschange',{detail:tweaks}));
+}
+function setTweak(k,v){tweaks[k]=v;localStorage.setItem('it-tweaks',JSON.stringify(tweaks));applyTweaks();try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')}catch(e){}}
+['edge','flow','avail','view'].forEach(k=>document.getElementById('tw-'+k).addEventListener('change',e=>setTweak(k,e.target.value)));
+document.getElementById('tw-ttl').addEventListener('input',e=>setTweak('ttl',+e.target.value));
+document.getElementById('tw-annot').addEventListener('change',e=>setTweak('showAnnot',e.target.checked));
+function toggleTweaks(on){const el=document.getElementById('tweaks-panel');if(on===undefined)on=!el.classList.contains('on');el.classList.toggle('on',on)}
+window.toggleTweaks=toggleTweaks;
+document.addEventListener('keydown',e=>{if(e.key==='t'||e.key==='T')toggleTweaks()});
+window.addEventListener('message',ev=>{if(ev.data?.type==='__activate_edit_mode')toggleTweaks(true);if(ev.data?.type==='__deactivate_edit_mode')toggleTweaks(false)});
+window.parent.postMessage({type:'__edit_mode_available'},'*');
+applyTweaks();
+</script>
+</body>
+</html>
