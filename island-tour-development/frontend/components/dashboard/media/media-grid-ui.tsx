@@ -1,12 +1,12 @@
 'use client';
 
+import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { CloudUploadIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import MediaItemCard, { type MediaItem } from './media-item';
-import { type UploadingFile } from './media-uploader';
 
 interface MediaGridUiProps {
     filteredItems: MediaItem[];
@@ -21,9 +21,6 @@ interface MediaGridUiProps {
     getImageHeight?: (item: MediaItem) => number;
     handleCopyUrl: (item: MediaItem) => void;
     selector?: boolean;
-    uploadingFiles?: UploadingFile[];
-    uploadProgress?: Record<string, number>;
-    previewUrls?: Record<string, string>;
 }
 
 const MediaGridUi = ({
@@ -37,10 +34,12 @@ const MediaGridUi = ({
     selectMode,
     handleCopyUrl,
     selector,
-    uploadingFiles = [],
-    uploadProgress = {},
-    previewUrls = {},
 }: MediaGridUiProps) => {
+    // Read upload state directly from Zustand — no prop drilling needed
+    const uploadingFiles = useUploadStore(s => s.uploadingFiles);
+    const uploadProgress = useUploadStore(s => s.uploadProgress);
+    const previewUrls = useUploadStore(s => s.previewUrls);
+
     function handleMediaClick(item: MediaItem) {
         if (selectMode) {
             handleItemSelection(item);
@@ -63,9 +62,9 @@ const MediaGridUi = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         className='aspect-square w-full relative border border-border/50 rounded-lg overflow-hidden bg-muted/30 group'>
-                        {fileObj.file.type.startsWith('image/') && (
+                        {fileObj.file.type.startsWith('image/') && previewUrls[fileObj.id] && (
                             <Image
-                                src={previewUrls[fileObj.id] || ''}
+                                src={previewUrls[fileObj.id]}
                                 alt='preview'
                                 fill
                                 className='object-cover opacity-40 grayscale blur-[1px]'
@@ -74,26 +73,13 @@ const MediaGridUi = ({
                         <div className='absolute inset-0 z-20 flex flex-col items-center justify-center p-3 bg-black/60 backdrop-blur-[2px]'>
                             <div className='grow flex flex-col items-center justify-center'>
                                 <motion.div
-                                    animate={{
-                                        y: [0, -8, 0],
-                                        opacity: [0.7, 1, 0.7],
-                                    }}
-                                    transition={{
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        ease: 'easeInOut',
-                                    }}
+                                    animate={{ y: [0, -8, 0], opacity: [0.7, 1, 0.7] }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                                     className='mb-2 text-primary'>
-                                    <HugeiconsIcon
-                                        icon={CloudUploadIcon}
-                                        size={20}
-                                    />
+                                    <HugeiconsIcon icon={CloudUploadIcon} size={20} />
                                 </motion.div>
                                 <span className='text-2xl font-bold text-white tabular-nums drop-shadow-lg transition-all duration-300'>
-                                    {Math.round(
-                                        uploadProgress[fileObj.id] || 0
-                                    )}
-                                    %
+                                    {Math.round(uploadProgress[fileObj.id] || 0)}%
                                 </span>
                             </div>
                             <div className='w-full space-y-1.5'>
@@ -104,14 +90,8 @@ const MediaGridUi = ({
                                     <motion.div
                                         className='h-full bg-primary'
                                         initial={{ width: 0 }}
-                                        animate={{
-                                            width: `${uploadProgress[fileObj.id] || 0}%`,
-                                        }}
-                                        transition={{
-                                            type: 'spring',
-                                            bounce: 0,
-                                            duration: 0.5,
-                                        }}
+                                        animate={{ width: `${uploadProgress[fileObj.id] || 0}%` }}
+                                        transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
                                     />
                                 </div>
                             </div>
@@ -120,11 +100,7 @@ const MediaGridUi = ({
                 ))}
 
                 {filteredItems.map(item => {
-                    const isSelected =
-                        bulkSelectedItems &&
-                        bulkSelectedItems.some(
-                            s => s.id === item.id || s.url === item.url
-                        );
+                    const isSelected = bulkSelectedItems.some(s => s.id === item.id || s.url === item.url);
                     const isBeingDeleted =
                         (itemToDelete === 'bulk' && isDeleting && isSelected) ||
                         (itemToDelete === item.id && isDeleting);
@@ -153,32 +129,18 @@ const MediaGridUi = ({
                                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-md ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-border hover:border-primary hover:bg-accent/20'}`}
                                         onClick={e => {
                                             e.stopPropagation();
-                                            if (!isDeleting)
-                                                handleItemSelection(item);
+                                            if (!isDeleting) handleItemSelection(item);
                                         }}>
-                                        {isSelected && (
-                                            <HugeiconsIcon
-                                                icon={Tick02Icon}
-                                                size={14}
-                                            />
-                                        )}
+                                        {isSelected && <HugeiconsIcon icon={Tick02Icon} size={14} />}
                                     </div>
                                 </div>
                             )}
 
                             <MediaItemCard
                                 item={item}
-                                onClick={
-                                    !isDeleting
-                                        ? () => handleMediaClick(item)
-                                        : () => {}
-                                }
-                                onDelete={
-                                    !isDeleting ? handleDeleteItem : () => {}
-                                }
-                                onCopyUrl={
-                                    !isDeleting ? handleCopyUrl : () => {}
-                                }
+                                onClick={!isDeleting ? () => handleMediaClick(item) : () => {}}
+                                onDelete={!isDeleting ? handleDeleteItem : () => {}}
+                                onCopyUrl={!isDeleting ? handleCopyUrl : () => {}}
                                 viewMode='grid'
                                 selectMode={selectMode}
                                 className={`h-full w-full rounded-lg overflow-hidden transition-all duration-300 ${!isDeleting ? 'hover:shadow-md hover:scale-[1.02]' : ''} ${isSelected && showSelectionUI ? 'border-2 border-primary shadow-md' : ''}`}
@@ -193,4 +155,3 @@ const MediaGridUi = ({
 };
 
 export default MediaGridUi;
-

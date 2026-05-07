@@ -1,16 +1,17 @@
 'use client';
 
-import { getAllMedia } from '@/app/_actions/mediaActions';
+import { useMediaList, prependMediaToCache } from '@/lib/queries/use-media-query';
+import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import MediaGallery from './media-gallery';
 import type { MediaItem } from './media-item';
 import MediaSearchControls from './media-search-controls';
 
 interface MediaGalleryManagerProps {
-    /** Initial media prefetched on the server (SSR) */
+    /** Initial media prefetched on the server — used as TanStack Query initialData */
     media?: MediaItem[];
-    /** Selector mode — used when embedding the gallery inside a form */
     selector?: boolean;
     onMediaSelect?: (items: MediaItem[]) => void;
     currentSelection?: MediaItem[];
@@ -26,50 +27,32 @@ const MediaGalleryManager = ({
     maxFiles,
     media,
 }: MediaGalleryManagerProps) => {
+    const queryClient = useQueryClient();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectMode, setSelectMode] = useState(false);
     const [bulkSelectedItems, setBulkSelectedItems] = useState<MediaItem[]>([]);
-    const [mediaItems, setMediaItems] = useState<MediaItem[]>(media || []);
-    const [loading, setLoading] = useState(false);
 
-    // Refresh from API on mount (latest data, regardless of SSR prefetch)
-    useEffect(() => {
-        // Only fetch if we don't have media already, or if we want to ensure latest on mount
-        // Let's still fetch but be careful not to overwrite with empty on error
-        fetchMedia();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // ── TanStack Query — replaces manual fetchMedia + useState ──────────────
+    // refetchOnWindowFocus: true (set in QueryClient defaults + hook) means
+    // the gallery automatically refreshes when the user returns to this tab.
+    const { data: mediaItems = [], isLoading } = useMediaList('limit=100&page=1', media);
 
-    // Sync external selection
+    const isUploading = useUploadStore(s => s.uploadingFiles.length > 0);
+
+    // Sync external selection (selector mode)
     useEffect(() => {
         setBulkSelectedItems(currentSelection || []);
     }, [currentSelection]);
 
-    async function fetchMedia() {
-        try {
-            setLoading(true);
-            const res = await getAllMedia('limit=100&page=1');
-            console.log('Client-side media response:', res);
-
-            if (res?.success) {
-                setMediaItems(res.result?.media || []);
-            } else {
-                console.error('Failed to fetch media on client:', res?.error);
-                // If we already have media from SSR, don't clear it on client failure
-                if (!mediaItems || mediaItems.length === 0) {
-                    setMediaItems([]);
-                }
-            }
-        } catch (err) {
-            console.error('Error in fetchMedia:', err);
-        } finally {
-            setLoading(false);
-        }
+    /* ── Handle newly uploaded files ─────────────────────────────────── */
+    function handleUploadSuccess(newItems: MediaItem[]) {
+        // Insert directly into TanStack Query cache — no extra network round-trip
+        prependMediaToCache(queryClient, newItems);
     }
 
-    /* ─── Insert selected items into parent form ─────────────────────── */
+    /* ── Insert selected items into parent form ──────────────────────── */
     function handleInsertToForm() {
         if (bulkSelectedItems.length === 0) {
             toast.warning('Please select at least one image');
@@ -86,20 +69,17 @@ const MediaGalleryManager = ({
         onMediaSelect?.(bulkSelectedItems);
     }
 
-    /* ─── Bulk selection helpers ─────────────────────────────────────── */
+    /* ── Bulk selection helpers ──────────────────────────────────────── */
     function handleBulkSelection(action: 'all' | 'clear') {
         if (action === 'clear') {
             setBulkSelectedItems([]);
         } else {
+            const lower = searchTerm.toLowerCase();
             const filtered = searchTerm
                 ? mediaItems.filter(
                       item =>
-                          item?.originalName
-                              ?.toLowerCase()
-                              .includes(searchTerm.toLowerCase()) ||
-                          item?.fileName
-                              ?.toLowerCase()
-                              .includes(searchTerm.toLowerCase())
+                          item?.originalName?.toLowerCase().includes(lower) ||
+                          item?.fileName?.toLowerCase().includes(lower)
                   )
                 : mediaItems;
             setBulkSelectedItems(filtered);
@@ -127,7 +107,7 @@ const MediaGalleryManager = ({
                     mediaItems={mediaItems}
                     bulkSelectedItems={bulkSelectedItems}
                     selector={selector}
-                    loading={loading}
+                    loading={isLoading}
                 />
             </div>
 
@@ -140,17 +120,16 @@ const MediaGalleryManager = ({
                 bulkSelectedItems={bulkSelectedItems}
                 setbulkSelectedItems={setBulkSelectedItems}
                 mediaItems={mediaItems}
-                setMediaItems={setMediaItems}
-                loading={loading}
+                loading={isLoading && !isUploading}
                 selector={selector}
                 handleInserToForm={handleInsertToForm}
                 currentSelection={currentSelection}
                 multiple={multiple}
                 maxFiles={maxFiles}
+                onUploadSuccess={handleUploadSuccess}
             />
         </div>
     );
 };
 
 export default MediaGalleryManager;
-

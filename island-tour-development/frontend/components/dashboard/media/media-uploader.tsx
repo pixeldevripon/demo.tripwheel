@@ -1,20 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useUploadStore, xhrMap, type UploadingFile } from '@/lib/stores/use-upload-store';
+import { useCallback, useEffect, useRef } from 'react';
 import type { MediaItem } from './media-item';
 
-export interface UploadingFile {
-    file: File;
-    id: string;
-    progress: number;
-    isValid: boolean;
-    error: string | null;
-}
+// Re-export so existing imports from this file still compile
+export type { UploadingFile };
 
 interface MediaUploaderProps {
-    value?: MediaItem | MediaItem[] | null;
-    setMediaItems: React.Dispatch<React.SetStateAction<MediaItem[]>>;
     multiple?: boolean;
     maxFiles?: number;
     maxFileSize?: number;
@@ -24,334 +17,209 @@ interface MediaUploaderProps {
     setIsFormOpen: (open: boolean) => void;
     isFormOpen: boolean;
     bulkSelectedItems?: MediaItem[];
-    uploadingFiles: UploadingFile[];
-    setUploadingFiles: React.Dispatch<React.SetStateAction<UploadingFile[]>>;
-    uploadProgress: Record<string, number>;
-    setUploadProgress: React.Dispatch<
-        React.SetStateAction<Record<string, number>>
-    >;
-    previewUrls: Record<string, string>;
-    setPreviewUrls: React.Dispatch<
-        React.SetStateAction<Record<string, string>>
-    >;
+    /** Called with successfully uploaded items so parent can update the cache */
+    onUploadSuccess: (items: MediaItem[]) => void;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
+
 export const MediaUploader = ({
-    value,
-    setMediaItems,
     multiple = true,
     maxFiles = 50,
-    maxFileSize = 10 * 1024 * 1024, // 10 MB
-    folder = 'users/media',
+    maxFileSize = 10 * 1024 * 1024,
     selector = false,
     setbulkSelectedItems,
     setIsFormOpen,
     isFormOpen,
     bulkSelectedItems,
-    uploadingFiles,
-    setUploadingFiles,
-    uploadProgress,
-    setUploadProgress,
-    previewUrls,
-    setPreviewUrls,
+    onUploadSuccess,
 }: MediaUploaderProps) => {
-    const [dragActive, setDragActive] = useState(false);
-    const [errors, setErrors] = useState<string[]>([]);
-    const [fileDialogOpened, setFileDialogOpened] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    // Use a ref (not state) so we don't cause extra renders and the value
+    // is always current inside event listeners.
+    const dialogOpenRef = useRef(false);
 
-    const isUploading = uploadingFiles.length > 0;
+    const { addFiles, setPreviewUrl, setProgress, removeFiles } = useUploadStore();
 
+    /* ── Open the native file picker when isFormOpen flips to true ── */
     useEffect(() => {
-        if (isFormOpen && !fileDialogOpened) {
-            setFileDialogOpened(true);
-            inputRef.current?.click();
+        if (isFormOpen && !dialogOpenRef.current) {
+            dialogOpenRef.current = true;
+            // Small delay so the browser finishes the state-update paint cycle
+            const t = setTimeout(() => inputRef.current?.click(), 50);
+            return () => clearTimeout(t);
         }
-    }, [isFormOpen, fileDialogOpened]);
+        if (!isFormOpen) {
+            dialogOpenRef.current = false;
+        }
+    }, [isFormOpen]);
 
+    /* ── Detect "user cancelled file dialog" via window focus ── */
     useEffect(() => {
-        const handleWindowFocus = () => {
-            if (fileDialogOpened && isFormOpen) {
-                setTimeout(() => {
-                    if (
-                        fileDialogOpened &&
-                        isFormOpen &&
-                        uploadingFiles.length === 0
-                    ) {
-                        setIsFormOpen(false);
-                        setFileDialogOpened(false);
-                    }
-                }, 500);
-            }
+        const onFocus = () => {
+            if (!dialogOpenRef.current) return;
+            // Give onChange 400 ms to fire first (fires if files were selected)
+            const t = setTimeout(() => {
+                if (dialogOpenRef.current) {
+                    dialogOpenRef.current = false;
+                    setIsFormOpen(false);
+                }
+            }, 400);
+            return () => clearTimeout(t);
         };
-        window.addEventListener('focus', handleWindowFocus);
-        return () => window.removeEventListener('focus', handleWindowFocus);
-    }, [fileDialogOpened, isFormOpen, setIsFormOpen, uploadingFiles.length]);
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, [setIsFormOpen]);
 
-    const createPreviewUrl = useCallback(
-        (file: File, id: string) => {
-            if (!previewUrls[id]) {
-                const url = URL.createObjectURL(file);
-                setPreviewUrls(prev => ({ ...prev, [id]: url }));
-                return url;
-            }
-            return previewUrls[id];
-        },
-        [previewUrls]
-    );
-
-    const cleanupPreviewUrl = useCallback(
-        (id: string) => {
-            if (previewUrls[id]) {
-                URL.revokeObjectURL(previewUrls[id]);
-                setPreviewUrls(prev => {
-                    const next = { ...prev };
-                    delete next[id];
-                    return next;
-                });
-            }
-        },
-        [previewUrls]
-    );
-
-    const formatFileSize = (bytes: number) => {
-        if (!bytes) return '0 Bytes';
+    /* ── Helpers ── */
+    const formatSize = (bytes: number) => {
         const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const s = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${s[i]}`;
     };
 
     const validateFiles = (files: FileList | File[]) => {
-        const validFiles: File[] = [];
-        const invalidFiles: { file: File; error: string }[] = [];
+        const valid: File[] = [];
+        const invalid: { file: File; error: string }[] = [];
+        Array.from(files).forEach(f => {
+            if (f.size > maxFileSize) {
+                invalid.push({ file: f, error: `Too large (max ${formatSize(maxFileSize)})` });
+            } else if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
+                invalid.push({ file: f, error: 'Unsupported format' });
+            } else {
+                valid.push(f);
+            }
+        });
+        return { valid, invalid };
+    };
 
-        Array.from(files).forEach(file => {
-            if (file.size > maxFileSize) {
-                invalidFiles.push({
+    /* ── XHR upload for a single file — progress tracked in Zustand ── */
+    const uploadOne = useCallback(
+        (file: File, id: string): Promise<any> =>
+            new Promise((resolve, reject) => {
+                const fd = new FormData();
+                fd.append('files', file);
+
+                const xhr = new XMLHttpRequest();
+                xhrMap.set(id, xhr); // stored in module-level Map for abort support
+
+                xhr.open('POST', `${BACKEND_URL}/api/v1/media-gallery/upload`, true);
+                xhr.withCredentials = true;
+
+                // Momentum progress simulation
+                let momentum = 0;
+                const timer = setInterval(() => {
+                    momentum = Math.min(95, momentum + Math.random() * 15);
+                    setProgress(id, Math.min(momentum, 95));
+                    if (momentum >= 95) clearInterval(timer);
+                }, 200);
+
+                xhr.upload.onprogress = e => {
+                    if (e.lengthComputable) {
+                        clearInterval(timer);
+                        const real = Math.min(98, (e.loaded / e.total) * 100);
+                        setProgress(id, real);
+                    }
+                };
+
+                xhr.onload = () => {
+                    clearInterval(timer);
+                    xhrMap.delete(id);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try { resolve(JSON.parse(xhr.responseText)); }
+                        catch { resolve(xhr.responseText); }
+                    } else {
+                        try { reject(new Error(JSON.parse(xhr.responseText).message || 'Upload failed')); }
+                        catch { reject(new Error(`Upload failed (${xhr.status})`)); }
+                    }
+                };
+
+                xhr.onerror = () => { clearInterval(timer); xhrMap.delete(id); reject(new Error('Network error')); };
+                xhr.onabort = () => { clearInterval(timer); xhrMap.delete(id); reject(new Error('Cancelled')); };
+
+                xhr.send(fd);
+            }),
+        [setProgress]
+    );
+
+    /* ── Main handler ── */
+    const handleFiles = useCallback(
+        async (files: FileList | File[]) => {
+            const { valid, invalid } = validateFiles(files);
+            const currentCount = (bulkSelectedItems ?? []).length;
+            const toProcess = valid.slice(0, Math.max(0, maxFiles - currentCount));
+
+            // Register all entries immediately so progress cards appear at once
+            const entries: UploadingFile[] = [
+                ...toProcess.map(f => ({
+                    file: f,
+                    id: `upload-${f.name}-${Date.now()}-${Math.random()}`,
+                    progress: 0,
+                    isValid: true,
+                    error: null,
+                })),
+                ...invalid.map(({ file, error }) => ({
                     file,
-                    error: `File is too large. Max ${formatFileSize(maxFileSize)}.`,
-                });
-                return;
-            }
-            if (
-                !file.type.startsWith('image/') &&
-                !file.type.startsWith('video/')
-            ) {
-                invalidFiles.push({ file, error: `Unsupported format.` });
-                return;
-            }
-            validFiles.push(file);
-        });
+                    id: `invalid-${file.name}-${Date.now()}`,
+                    progress: 0,
+                    isValid: false,
+                    error,
+                })),
+            ];
 
-        return { validFiles, invalidFiles };
-    };
-
-    const uploadFileWithProgress = (file: File, id: string): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('files', file);
-
-            const xhr = new XMLHttpRequest();
-            const backendUrl =
-                process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
-
-            xhr.open('POST', `${backendUrl}/api/v1/media-gallery/upload`, true);
-            xhr.withCredentials = true;
-
-            // Use user-provided simulation logic for momentum
-            let momentumProgress = 0;
-            const momentumInterval = setInterval(() => {
-                momentumProgress += Math.random() * 15;
-                if (momentumProgress >= 95) {
-                    momentumProgress = 95;
-                    // Don't clear yet, as we might still be waiting for server
-                }
-
-                setUploadProgress(prev => {
-                    const current = prev[id] || 0;
-                    // Only update if momentum is ahead of real progress
-                    return {
-                        ...prev,
-                        [id]: Math.max(current, Math.min(momentumProgress, 95)),
-                    };
-                });
-
-                if (momentumProgress >= 95) clearInterval(momentumInterval);
-            }, 200);
-
-            xhr.upload.onprogress = event => {
-                if (event.lengthComputable) {
-                    const realProgress = (event.loaded / event.total) * 100;
-                    // Cap real progress at 98% until server responds
-                    const cappedReal = Math.min(98, realProgress);
-                    setUploadProgress(prev => {
-                        const current = prev[id] || 0;
-                        return { ...prev, [id]: Math.max(current, cappedReal) };
-                    });
-                }
-            };
-
-            xhr.onload = () => {
-                clearInterval(momentumInterval);
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        resolve(response);
-                    } catch (e) {
-                        resolve(xhr.responseText);
-                    }
-                } else {
-                    try {
-                        const errorData = JSON.parse(xhr.responseText);
-                        reject(new Error(errorData.message || 'Upload failed'));
-                    } catch (e) {
-                        reject(new Error('Upload failed'));
-                    }
-                }
-            };
-
-            xhr.onerror = () => {
-                clearInterval(momentumInterval);
-                reject(new Error('Network error'));
-            };
-
-            xhr.send(formData);
-        });
-    };
-
-    const removeUploadingFile = (fileId: string) => {
-        cleanupPreviewUrl(fileId);
-        setUploadingFiles(prev => prev.filter(({ id }) => id !== fileId));
-        setUploadProgress(prev => {
-            const next = { ...prev };
-            delete next[fileId];
-            return next;
-        });
-    };
-
-    const handleFiles = async (files: FileList | File[]) => {
-        const currentImages = Array.isArray(value)
-            ? value
-            : value
-              ? [value]
-              : [];
-        const { validFiles, invalidFiles } = validateFiles(files);
-
-        const allFileObjects: UploadingFile[] = [
-            ...validFiles.map(file => ({
-                file,
-                id: `upload-${file.name}-${Date.now()}-${Math.random()}`,
-                progress: 0,
-                isValid: true,
-                error: null,
-            })),
-            ...invalidFiles.map(({ file, error }) => ({
-                file,
-                id: `invalid-${file.name}-${Date.now()}-${Math.random()}`,
-                progress: 0,
-                isValid: false,
-                error,
-            })),
-        ];
-
-        allFileObjects.forEach(({ file, id }) => {
-            if (file.type.startsWith('image/')) createPreviewUrl(file, id);
-        });
-
-        setUploadingFiles(prev => [...prev, ...allFileObjects]);
-
-        if (validFiles.length === 0) return;
-
-        const filesToProcess = validFiles.slice(
-            0,
-            maxFiles - currentImages.length
-        );
-        if (filesToProcess.length === 0) {
-            toast.warning(`Maximum ${maxFiles} images allowed`);
-            return;
-        }
-
-        setErrors([]);
-
-        const validFileObjects = allFileObjects.filter(
-            obj => obj.isValid && filesToProcess.includes(obj.file)
-        );
-
-        try {
-            // Upload files in parallel (individually to track real progress per file)
-            const uploadPromises = validFileObjects.map(obj =>
-                uploadFileWithProgress(obj.file, obj.id)
-            );
-
-            const results = await Promise.allSettled(uploadPromises);
-
-            const succeededMedia: MediaItem[] = [];
-            const failedNames: string[] = [];
-
-            results.forEach((res, index) => {
-                if (res.status === 'fulfilled') {
-                    // Backend returns MediaGallery[] (usually of size 1 if we send 1 file)
-                    const data = Array.isArray(res.value) ? res.value : [];
-                    succeededMedia.push(...data);
-                    // Jump to 100 only after server confirms success
-                    setUploadProgress(prev => ({
-                        ...prev,
-                        [validFileObjects[index].id]: 100,
-                    }));
-                } else {
-                    failedNames.push(validFileObjects[index].file.name);
+            // Create blob preview URLs immediately
+            entries.forEach(({ file, id, isValid }) => {
+                if (isValid && file.type.startsWith('image/')) {
+                    setPreviewUrl(id, URL.createObjectURL(file));
                 }
             });
 
-            // Small delay to let user see "100%" then swap
+            addFiles(entries);
+
+            const validEntries = entries.filter(e => e.isValid);
+            if (validEntries.length === 0) return;
+
+            // Upload all valid files in parallel
+            const results = await Promise.allSettled(
+                validEntries.map(e => uploadOne(e.file, e.id))
+            );
+
+            const succeeded: MediaItem[] = [];
+            const failedNames: string[] = [];
+
+            results.forEach((res, i) => {
+                if (res.status === 'fulfilled') {
+                    const data = Array.isArray(res.value) ? res.value : [];
+                    succeeded.push(...data);
+                    setProgress(validEntries[i].id, 100);
+                } else {
+                    failedNames.push(validEntries[i].file.name);
+                }
+            });
+
+            // Brief pause to show 100%, then clean up progress cards
             setTimeout(() => {
-                const finishedIds = validFileObjects.map(obj => obj.id);
+                removeFiles(validEntries.map(e => e.id));
 
-                // 1. Cleanup preview URLs
-                finishedIds.forEach(id => cleanupPreviewUrl(id));
+                if (succeeded.length > 0) {
+                    onUploadSuccess(succeeded);
 
-                // 2. Batch remove from uploading state
-                setUploadingFiles(prev =>
-                    prev.filter(f => !finishedIds.includes(f.id))
-                );
-                setUploadProgress(prev => {
-                    const next = { ...prev };
-                    finishedIds.forEach(id => delete next[id]);
-                    return next;
-                });
-
-                // 3. Add real items to the list
-                setMediaItems(prev => [...succeededMedia, ...prev]);
-
-                if (selector && setbulkSelectedItems) {
-                    if (multiple) {
-                        setbulkSelectedItems(prev => [
-                            ...(prev || []),
-                            ...succeededMedia,
-                        ]);
-                    } else if (succeededMedia.length > 0) {
-                        setbulkSelectedItems([succeededMedia[0]]);
+                    if (selector && setbulkSelectedItems) {
+                        if (multiple) {
+                            setbulkSelectedItems(prev => [...(prev ?? []), ...succeeded]);
+                        } else {
+                            setbulkSelectedItems([succeeded[0]]);
+                        }
                     }
                 }
+            }, 600);
 
-                if (succeededMedia.length > 0) {
-                    toast.success(
-                        `Successfully uploaded ${succeededMedia.length} file(s)`
-                    );
-                }
-                if (failedNames.length > 0) {
-                    toast.error(`Failed to upload: ${failedNames.join(', ')}`);
-                }
-            }, 500);
-
-            setTimeout(() => setIsFormOpen(false), 1500);
-        } catch (err: any) {
-            setErrors(prev => [...prev, err.message]);
-            toast.error(err.message || 'Upload failed');
-            validFileObjects.forEach(({ id }) => cleanupPreviewUrl(id));
-        }
-    };
+            setTimeout(() => setIsFormOpen(false), 1200);
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [maxFiles, multiple, selector, bulkSelectedItems, onUploadSuccess, setbulkSelectedItems, setIsFormOpen, uploadOne, addFiles, setPreviewUrl, removeFiles]
+    );
 
     return (
         <div className='hidden'>
@@ -361,6 +229,8 @@ export const MediaUploader = ({
                 multiple={multiple}
                 ref={inputRef}
                 onChange={e => {
+                    // Cancel the focus-based dialog-close since onChange fired
+                    dialogOpenRef.current = false;
                     if (e.target.files?.length) handleFiles(e.target.files);
                     e.target.value = '';
                 }}
@@ -371,4 +241,3 @@ export const MediaUploader = ({
 };
 
 export default MediaUploader;
-
