@@ -1,2 +1,24 @@
-// Categories domain — Phase 4
-// Models: Category, SubCategory
+// Categories domain — activity types (Boat Tours, Sunset Cruises, etc.)
+// Admin-only create. Categories are GLOBAL — not destination-specific.
+// On create: slug_registry rows inserted for ALL active destinations (same transaction).
+// On create: exactly 3 FeaturedSlot rows auto-seeded per category.
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique  // 'boat-tours' — always English, globally unique
+  isSeeded Boolean @default(false)
+  isActive Boolean @default(true)
+  createdBy String?          // null = seeded; userId = admin who created
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator           User?                @relation("CategoryCreator", fields: [createdBy], references: [id])
+  allowedInHubs     HubAllowedCategory[]
+  featuredSlots     FeaturedSlot[]
+  trips             Trip[]
+
+  @@index([slug])
+  @@map("categories")
+}

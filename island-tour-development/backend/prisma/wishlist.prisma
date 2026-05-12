@@ -1,0 +1,17 @@
+// Wishlist domain
+// Authenticated user saves. Unauthenticated saves use sessionStorage on the client.
+// Critical Rule #12: Wishlist defined before first migration.
+
+model Wishlist {
+  id      String   @id @default(uuid())
+  userId  String
+  tripId  String
+  savedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tripId])
+  @@index([userId])
+  @@map("wishlists")
+}

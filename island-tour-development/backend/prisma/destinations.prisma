@@ -1,0 +1,138 @@
+// Destinations domain — Caribbean islands + Activity Hubs
+// Admin-only create. Operators cannot create destinations or hubs.
+// Critical Rule #21–#23: slug_registry rows written in same transaction as entity create.
+
+model Destination {
+  id        String  @id @default(uuid())
+  name      String
+  slug      String  @unique   // 'curacao', 'aruba' — always English
+  heroImage String?
+  isSeeded  Boolean @default(false)  // true = seeded at launch; guard delete in service
+  isActive  Boolean @default(true)
+  createdBy String?            // null = seeded; userId = admin who created
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator   User?   @relation("DestinationCreator", fields: [createdBy], references: [id])
+  hubs      Hub[]
+  trips     Trip[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("destinations")
+}
+
+// Activity Hubs — destination-specific special locations (e.g. Klein Curaçao)
+// Admin-only create. Destination is mandatory.
+model Hub {
+  id            String  @id @default(uuid())
+  destinationId String
+  name          String
+  slug          String   // locale-independent English slug; unique per destination
+  description   String?
+  isActive      Boolean @default(true)
+  createdBy     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  destination        Destination          @relation(fields: [destinationId], references: [id])
+  creator            User?                @relation("HubCreator", fields: [createdBy], references: [id])
+  allowedCategories  HubAllowedCategory[]
+  ourPicks           HubOurPick[]
+  comparisonGroups   HubComparisonGroup[]
+  content            HubContent[]
+  trips              Trip[]
+
+  @@unique([destinationId, slug])
+  @@index([destinationId])
+  @@map("hubs")
+}
+
+// Defines which categories of tours may be assigned to a hub.
+// Operator tour creation checks this before showing the hub selector.
+model HubAllowedCategory {
+  id         String @id @default(uuid())
+  hubId      String
+  categoryId String
+
+  hub      Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([hubId, categoryId])
+  @@map("hub_allowed_categories")
+}
+
+// Admin editorial "Our Pick" selections for a hub page tab.
+model HubOurPick {
+  id           String      @id @default(uuid())
+  hubId        String
+  tourId       String
+  pickType     HubPickType
+  description  String      // admin-written editorial text
+  displayOrder Int         @default(0)
+
+  hub  Hub  @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  tour Trip @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([hubId, tourId])
+  @@map("hub_our_picks")
+}
+
+// Comparison groups for the hub's "Compare" tab (e.g. "Comfort trips" vs "Adventure trips").
+model HubComparisonGroup {
+  id           String @id @default(uuid())
+  hubId        String
+  groupName    String
+  displayOrder Int    @default(0)
+
+  hub              Hub                  @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  comparisonTours  HubComparisonTour[]
+
+  @@map("hub_comparison_groups")
+}
+
+model HubComparisonTour {
+  id           String @id @default(uuid())
+  groupId      String
+  tourId       String
+  displayOrder Int    @default(0)
+
+  group HubComparisonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  tour  Trip               @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, tourId])
+  @@map("hub_comparison_tours")
+}
+
+// Admin-managed editorial content per hub (about text, tips, FAQ intro, etc.).
+model HubContent {
+  id     String @id @default(uuid())
+  hubId  String
+  locale String // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
+  field  String // 'about' | 'tips' | 'our_pick_intro' | 'meta_title' | 'meta_description'
+  value  String
+
+  hub Hub @relation(fields: [hubId], references: [id], onDelete: Cascade)
+
+  @@unique([hubId, locale, field])
+  @@index([hubId, locale])
+  @@map("hub_content")
+}
+
+// "Top Island Experiences" section — categories and hubs only, never individual tours.
+// Admin manually curates + attaches video clips.
+model FeaturedExperience {
+  id           String             @id @default(uuid())
+  entityType   FeaturedEntityType // CATEGORY | HUB only
+  entityId     String             // id of the Category or Hub
+  destinationId String?           // null = show everywhere; set = show for that destination only
+  videoUrl     String?
+  displayOrder Int                @default(0)
+  isActive     Boolean            @default(true)
+
+  @@index([entityType, entityId])
+  @@index([destinationId])
+  @@map("featured_experiences")
+}

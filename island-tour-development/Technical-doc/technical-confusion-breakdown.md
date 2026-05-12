@@ -345,6 +345,8 @@ tour.pickup_model = 'none'        → "Meeting point only"
 
 ---
 
+
+
 ## ১২. Slug Registry — Full Architecture
 
 ### সমস্যাটা কী?

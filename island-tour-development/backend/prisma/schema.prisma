@@ -10,8 +10,16 @@ datasource db {
 // Domain models live in separate files alongside this one:
 //   enums.prisma          ← all enums
 //   user.prisma           ← User, Session, Account, Verification (Better Auth)
-//   operator.prisma       ← OperatorProfile
-//   categories.prisma     ← Category, SubCategory
-//   trips.prisma          ← Trip, TripSchedule
-//   featured-slots.prisma ← FeaturedSlot, SlotLock, WaitlistEntry, SlotHistory
-//   bookings.prisma       ← Booking, Review, Wishlist
+//   operators.prisma      ← Operator, OperatorCompanyInfo, OperatorSocialMedia, payment configs
+//   destinations.prisma   ← Destination, Hub, HubAllowedCategory, HubOurPick, HubComparisonGroup, FeaturedExperience
+//   categories.prisma     ← Category
+//   content.prisma        ← SlugRegistry, Translation, PageContent, Faq
+//   trips.prisma          ← Trip + child models (TourImage, TourAgeBand, TourAddOn, TourHighlight, TourInclusion, TourSchedule, etc.)
+//   featured-slots.prisma ← FeaturedSlot, SlotLock, SlotHistory
+//   waitlist.prisma       ← WaitlistEntry
+//   bookings.prisma       ← Booking
+//   reviews.prisma        ← Review
+//   wishlist.prisma       ← Wishlist
+//   media-gallery.prisma  ← MediaGallery
+//   settings.prisma       ← SiteInfo, SiteSEO, SocialMedia, SMTP, Mailchimp, StripeConfiguration, etc.
+//   webhooks.prisma       ← Webhooks, WebhookPoint

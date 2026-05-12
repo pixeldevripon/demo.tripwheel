@@ -19,10 +19,9 @@ enum UserStatus {
 }
 
 // ── Permissions (used in ROLE_PERMISSIONS map — not stored on the User row) ───
-// Full list from legacy RBAC + Monorepo new requirements
 
 enum Permission {
-  // Monorepo specific / System
+  // System
   VIEW_PERMISSIONS
   MANAGE_SYSTEM
   MANAGE_TRIPS
@@ -51,7 +50,7 @@ enum Permission {
   EDIT_OPERATOR_PROFILE
   MANAGE_OPERATOR_PAYMENTS
 
-  // Trips (Legacy compatibility)
+  // Trips
   CREATE_TRIP
   VIEW_TRIPS
   EDIT_TRIP
@@ -63,11 +62,12 @@ enum Permission {
   EDIT_BLOG
   DELETE_BLOG
 
-  // Destinations
+  // Destinations & Hubs
   CREATE_DESTINATION
   VIEW_DESTINATIONS
   EDIT_DESTINATION
   DELETE_DESTINATION
+  MANAGE_HUBS
 
   // Activities
   CREATE_ACTIVITY
@@ -111,6 +111,7 @@ enum Permission {
   VIEW_REVIEWS
   EDIT_REVIEW
   DELETE_REVIEW
+  APPROVE_REVIEW
 
   // Partners
   CREATE_PARTNER
@@ -140,10 +141,70 @@ enum Permission {
 
 enum TripStatus {
   DRAFT
-  PENDING_REVIEW
   LIVE
   PAUSED
   ARCHIVED
+}
+
+// ── Tour-specific ─────────────────────────────────────────────────────────────
+
+enum PricingModel {
+  PER_PERSON
+  UNIT
+}
+
+enum UnitType {
+  GROUP
+  BOAT
+  VEHICLE
+  AIRCRAFT
+  PACKAGE
+}
+
+enum PickupModel {
+  INCLUDED
+  PAID_ADDON
+  NONE
+}
+
+enum AgeBandType {
+  ADULT
+  CHILD
+  INFANT
+}
+
+enum AddOnUnit {
+  PER_PERSON
+  FLAT
+}
+
+enum ScheduleStatus {
+  AVAILABLE
+  SOLD_OUT
+  CLOSED
+  CANCELLED
+}
+
+// ── Destinations & Hubs ───────────────────────────────────────────────────────
+
+enum SlugEntityType {
+  TOUR
+  CATEGORY
+  HUB
+  COLLECTION
+  RESERVED
+}
+
+enum FeaturedEntityType {
+  CATEGORY
+  HUB
+}
+
+enum HubPickType {
+  BEST_OVERALL
+  MOST_POPULAR
+  BEST_FOR_FAMILIES
+  BEST_VALUE
 }
 
 // ── Featured Slots ────────────────────────────────────────────────────────────

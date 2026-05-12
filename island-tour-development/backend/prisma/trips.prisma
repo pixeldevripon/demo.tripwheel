@@ -1,2 +1,250 @@
-// Trips domain — Phase 4
-// Models: Trip, TripSchedule
+// Trips domain — Tour listings and all related child models.
+// Operators create trips; admins can moderate.
+// Publish blocks: <5 images, no hero, overview empty, highlights <3.
+
+model Trip {
+  id            String    @id @default(uuid())
+  operatorId    String
+  destinationId String
+  categoryId    String
+  hubId         String?   // null = destination-only tour; set = hub-anchored
+
+  name          String
+  slug          String    // English only, unique per destination
+  status        TripStatus @default(DRAFT)
+
+  // Pricing
+  pricingModel          PricingModel @default(PER_PERSON)
+  unitType              UnitType?    // required when pricingModel = UNIT
+  basePrice             Decimal?     @db.Decimal(10, 2)
+  priceFrom             Decimal?     @db.Decimal(10, 2)  // cached min price for display
+
+  // Tour properties
+  durationMinutes       Int?
+  pickupModel           PickupModel @default(NONE)
+  maxPartySize          Int?
+  minPartySize          Int         @default(1)
+  bookingCutoffMinutes  Int         @default(120)  // 0–10080 minutes
+  cancellationHours     Int         @default(24)
+
+  // SEO / Content overrides
+  h1Override       String?  // when template-generated H1 is awkward
+  breadcrumbLabel  String?  // short-form when H1 > 35 chars
+
+  // Cached operator aggregates (updated on review approve)
+  aggregateRating       Float?
+  aggregateReviewCount  Int      @default(0)
+  aggregatesUpdatedAt   DateTime?
+
+  // Flags
+  isSponsored Boolean @default(false)  // admin toggles for promoted tours
+  isActive    Boolean @default(true)
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  operator           Operator            @relation(fields: [operatorId], references: [id])
+  destination        Destination         @relation(fields: [destinationId], references: [id])
+  category           Category            @relation(fields: [categoryId], references: [id])
+  hub                Hub?                @relation(fields: [hubId], references: [id])
+  images             TourImage[]
+  ageBands           TourAgeBand[]
+  addOns             TourAddOn[]
+  languages          TourLanguage[]
+  highlights         TourHighlight[]
+  inclusions         TourInclusion[]
+  translations       TripTranslation[]
+  schedules          TourSchedule[]
+  featuredSlot       FeaturedSlot?
+  slotLock           SlotLock?
+  waitlistEntries    WaitlistEntry[]
+  bookings           Booking[]
+  reviews            Review[]
+  wishlists          Wishlist[]
+  hubOurPicks        HubOurPick[]
+  hubComparisonTours HubComparisonTour[]
+
+  @@unique([destinationId, slug])
+  @@index([operatorId])
+  @@index([destinationId])
+  @@index([categoryId])
+  @@index([hubId])
+  @@index([status])
+  @@map("trips")
+}
+
+// ── Tour Images ───────────────────────────────────────────────────────────────
+// Ordered array. First image with isHero = true is the LCP hero.
+// Min 5 images required to publish. Max 24. AVIF + WebP + JPEG stored on CDN.
+model TourImage {
+  id           String  @id @default(uuid())
+  tripId       String
+  url          String  // JPEG/WebP URL (primary)
+  urlAvif      String? // AVIF variant
+  urlWebp      String? // WebP variant
+  isHero       Boolean @default(false)
+  focalX       Float   @default(0.5)  // 0.0 left → 1.0 right
+  focalY       Float   @default(0.5)  // 0.0 top → 1.0 bottom
+  altText      String?
+  displayOrder Int     @default(0)
+  width        Int
+  height       Int
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, displayOrder])
+  @@map("tour_images")
+}
+
+// ── Age Bands ─────────────────────────────────────────────────────────────────
+// Optional age-banded pricing (Adult/Child/Infant with individual prices).
+model TourAgeBand {
+  id           String      @id @default(uuid())
+  tripId       String
+  bandType     AgeBandType // ADULT | CHILD | INFANT
+  label        String      // 'Adults (13+)', 'Children (3-12)'
+  minAge       Int?
+  maxAge       Int?
+  price        Decimal     @db.Decimal(10, 2)
+  minCount     Int         @default(0)
+  maxCount     Int?
+  displayOrder Int         @default(0)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("tour_age_bands")
+}
+
+// ── Add-Ons ───────────────────────────────────────────────────────────────────
+// Optional extras shown after date+time+party selection in booking widget.
+// EU Digital Fairness Act: never pre-checked in frontend — always starts unchecked.
+model TourAddOn {
+  id           String    @id @default(uuid())
+  tripId       String
+  name         String    // 'Hotel pickup', 'Snorkel mask rental'
+  description  String?
+  price        Decimal   @db.Decimal(10, 2)
+  unit         AddOnUnit @default(PER_PERSON)
+  maxQuantity  Int       @default(1)
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("tour_addons")
+}
+
+// ── Tour Languages ────────────────────────────────────────────────────────────
+// Language codes shown in the "Languages" quick-info badge (e.g. 'en', 'nl', 'es').
+model TourLanguage {
+  id       String @id @default(uuid())
+  tripId   String
+  language String // ISO 639-1 code: 'en' | 'nl' | 'es' | 'de' | ...
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, language])
+  @@map("tour_languages")
+}
+
+// ── Highlights ────────────────────────────────────────────────────────────────
+// 3–6 bullet points per tour, 5–15 words each. Per-locale translations.
+model TourHighlight {
+  id           String @id @default(uuid())
+  tripId       String
+  displayOrder Int    @default(0)
+
+  trip         Trip                       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  translations TourHighlightTranslation[]
+
+  @@index([tripId, displayOrder])
+  @@map("tour_highlights")
+}
+
+model TourHighlightTranslation {
+  id                  String  @id @default(uuid())
+  highlightId         String
+  locale              String  // 'en' | 'es' | ...
+  text                String  // 5–15 words
+  isMachineTranslated Boolean @default(false)
+
+  highlight TourHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+
+  @@unique([highlightId, locale])
+  @@map("tour_highlight_translations")
+}
+
+// ── Inclusions ────────────────────────────────────────────────────────────────
+// What's included in the tour (e.g. 'Open bar', 'Snorkel equipment').
+model TourInclusion {
+  id           String @id @default(uuid())
+  tripId       String
+  icon         String @default("check") // icon slug for UI
+  displayOrder Int    @default(0)
+
+  trip         Trip                        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  translations TourInclusionTranslation[]
+
+  @@index([tripId])
+  @@map("tour_inclusions")
+}
+
+model TourInclusionTranslation {
+  id                  String  @id @default(uuid())
+  inclusionId         String
+  locale              String
+  label               String  // 'Open bar', 'Snorkel equipment'
+  isMachineTranslated Boolean @default(false)
+
+  inclusion TourInclusion @relation(fields: [inclusionId], references: [id], onDelete: Cascade)
+
+  @@unique([inclusionId, locale])
+  @@map("tour_inclusion_translations")
+}
+
+// ── Trip Translations ─────────────────────────────────────────────────────────
+// Per-locale content for overview and description fields.
+// Highlights use TourHighlightTranslation (array fields need child tables).
+model TripTranslation {
+  id                  String   @id @default(uuid())
+  tripId              String
+  locale              String   // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
+  title               String?
+  overview            String?  // 80–200 words, paragraph breaks only
+  description         String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, locale])
+  @@index([tripId, locale])
+  @@map("trip_translations")
+}
+
+// ── Tour Schedules ────────────────────────────────────────────────────────────
+// Specific departure dates/times. Availability API works on top of these.
+model TourSchedule {
+  id             String         @id @default(uuid())
+  tripId         String
+  startDate      DateTime       @db.Date
+  endDate        DateTime?      @db.Date  // for multi-day tours
+  startTime      String         // '09:00' — store as HH:MM string
+  totalSpots     Int
+  availableSpots Int
+  status         ScheduleStatus @default(AVAILABLE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tripId, startDate])
+  @@index([tripId, status])
+  @@map("tour_schedules")
+}

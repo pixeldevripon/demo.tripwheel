@@ -21,10 +21,17 @@ model User {
   passwordChangedAt DateTime?
 
   // Relations
-  sessions        Session[]
-  operator        Operator?
-  accounts        Account[]
-  media           MediaGallery[]
+  sessions            Session[]
+  operator            Operator?
+  accounts            Account[]
+  media               MediaGallery[]
+  bookings            Booking[]
+  reviews             Review[]
+  wishlists           Wishlist[]
+  destinationsCreated Destination[] @relation("DestinationCreator")
+  hubsCreated         Hub[]         @relation("HubCreator")
+  categoriesCreated   Category[]    @relation("CategoryCreator")
+
   @@index([id, email])
   @@index([role])
   @@map("user")

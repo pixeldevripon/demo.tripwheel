@@ -1,3 +1,38 @@
-// Bookings domain — Phase 4
-// Models: Booking, Review, Wishlist
-// IMPORTANT: Add Wishlist model here before running the first migration (Critical Rule #12)
+// Bookings domain
+
+model Booking {
+  id               String        @id @default(uuid())
+  tripId           String
+  userId           String
+  operatorId       String
+  scheduleId       String?       // references a specific TourSchedule
+
+  // Booking details
+  date             DateTime      @db.Date
+  time             String?       // 'HH:MM' — null for single-departure tours
+  partySize        Int
+  totalAmount      Decimal       @db.Decimal(10, 2)
+  depositAmount    Decimal       @db.Decimal(10, 2)
+  status           BookingStatus @default(PENDING)
+  confirmationCode String        @unique @default(uuid())
+
+  // Selected add-ons stored as JSON: [{ addOnId, qty, price }]
+  selectedAddOns   Json?         @default("[]")
+  notes            String?       // guest notes to operator
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip     Trip          @relation(fields: [tripId], references: [id])
+  user     User          @relation(fields: [userId], references: [id])
+  operator Operator      @relation(fields: [operatorId], references: [id])
+  schedule TourSchedule? @relation(fields: [scheduleId], references: [id])
+  review   Review?
+
+  @@index([tripId])
+  @@index([userId])
+  @@index([operatorId])
+  @@index([status])
+  @@index([confirmationCode])
+  @@map("bookings")
+}

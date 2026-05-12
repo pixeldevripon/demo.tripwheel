@@ -1,0 +1,26 @@
+// Reviews domain
+// One review per booking. Must be approved before showing on tour page.
+// Provider Rating rule (LD11): tour needs ≥3 approved reviews to show own rating.
+// Operator aggregate shown as fallback only if ≥10 reviews AND ≥4.0 avg.
+
+model Review {
+  id         String  @id @default(uuid())
+  bookingId  String  @unique
+  tripId     String
+  operatorId String
+  userId     String
+  rating     Int     // 1–5
+  comment    String?
+  isApproved Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+  trip     Trip     @relation(fields: [tripId], references: [id])
+  operator Operator @relation(fields: [operatorId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([tripId, isApproved])
+  @@index([operatorId, isApproved])
+  @@map("reviews")
+}

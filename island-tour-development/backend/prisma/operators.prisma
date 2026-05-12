@@ -1,18 +1,35 @@
 model Operator {
-  id        String  @id @default(uuid())
-  userId    String  @unique  // linked to  auth User
-  isActive  Boolean @default(true)
+  id                   String                     @id @default(uuid())
+  userId               String                     @unique  // linked to auth User
+  isActive             Boolean                    @default(true)
+  verificationStatus   OperatorVerificationStatus @default(UNVERIFIED)
 
-  // relations
-  user          User                  @relation(fields: [userId], references: [id])
-  companyInfo   OperatorCompanyInfo?
-  socialMedia   OperatorSocialMedia?
-  stripeConfig  OperatorStripeConfig?
-  mollieConfig  OperatorMollieConfig?
+  // Cached review aggregates (updated on review approve — see LD11 in CLAUDE.md)
+  aggregateRating      Float?
+  aggregateReviewCount Int                        @default(0)
+  aggregatesUpdatedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations — auth
+  user            User                  @relation(fields: [userId], references: [id])
+
+  // Relations — business
+  companyInfo     OperatorCompanyInfo?
+  socialMedia     OperatorSocialMedia?
+  stripeConfig    OperatorStripeConfig?
+  mollieConfig    OperatorMollieConfig?
+
+  // Relations — platform
+  trips           Trip[]
+  featuredSlots   FeaturedSlot[]
+  slotLocks       SlotLock[]
+  waitlistEntries WaitlistEntry[]
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@index([verificationStatus])
   @@map("operators")
 }
 
