@@ -14,13 +14,50 @@ model Destination {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator   User?   @relation("DestinationCreator", fields: [createdBy], references: [id])
-  hubs      Hub[]
-  trips     Trip[]
+  creator      User?   @relation("DestinationCreator", fields: [createdBy], references: [id])
+  hubs         Hub[]
+  trips        Trip[]
+  translations DestinationTranslation[]
+  pageContents DestinationPageContent[]
 
   @@index([slug])
   @@index([isActive])
   @@map("destinations")
+}
+
+// Per-locale translations for a destination.
+// Destination names are proper nouns (Curaçao, Aruba) — never AI-translated.
+// Admin sets manually. isMachineTranslated should always be false for destinations.
+model DestinationTranslation {
+  id                  String      @id @default(uuid())
+  destinationId       String
+  destination         Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  locale              Locale
+  name                String?     // localized display name; null falls back to Destination.name
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean     @default(false)
+  updatedAt           DateTime    @updatedAt
+
+  @@unique([destinationId, locale])
+  @@index([destinationId, locale])
+  @@map("destination_translations")
+}
+
+// Per-locale editorial page content for a destination (about text, SEO metadata).
+model DestinationPageContent {
+  id              String      @id @default(uuid())
+  destinationId   String
+  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+
+  @@unique([destinationId, locale])
+  @@index([destinationId, locale])
+  @@map("destination_page_content")
 }
 
 // Activity Hubs — destination-specific special locations (e.g. Klein Curaçao)
@@ -43,12 +80,47 @@ model Hub {
   allowedCategories  HubAllowedCategory[]
   ourPicks           HubOurPick[]
   comparisonGroups   HubComparisonGroup[]
-  content            HubContent[]
+  translations       HubTranslation[]
+  pageContents       HubPageContent[]
   trips              Trip[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])
   @@map("hubs")
+}
+
+// Per-locale translations for a hub.
+// Hub names are proper nouns (Klein Curaçao) — never AI-translated. Admin sets manually.
+model HubTranslation {
+  id                  String   @id @default(uuid())
+  hubId               String
+  hub                 Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  locale              Locale
+  name                String?  // null falls back to Hub.name
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  @@unique([hubId, locale])
+  @@index([hubId, locale])
+  @@map("hub_translations")
+}
+
+// Per-locale editorial page content for a hub (about text, SEO metadata).
+model HubPageContent {
+  id              String   @id @default(uuid())
+  hubId           String
+  hub             Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+
+  @@unique([hubId, locale])
+  @@index([hubId, locale])
+  @@map("hub_page_content")
 }
 
 // Defines which categories of tours may be assigned to a hub.
@@ -105,21 +177,6 @@ model HubComparisonTour {
 
   @@unique([groupId, tourId])
   @@map("hub_comparison_tours")
-}
-
-// Admin-managed editorial content per hub (about text, tips, FAQ intro, etc.).
-model HubContent {
-  id     String @id @default(uuid())
-  hubId  String
-  locale Locale
-  field  String // 'about' | 'tips' | 'our_pick_intro' | 'meta_title' | 'meta_description'
-  value  String
-
-  hub Hub @relation(fields: [hubId], references: [id], onDelete: Cascade)
-
-  @@unique([hubId, locale, field])
-  @@index([hubId, locale])
-  @@map("hub_content")
 }
 
 // "Top Island Experiences" section — categories and hubs only, never individual tours.

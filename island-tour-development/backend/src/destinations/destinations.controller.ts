@@ -13,21 +13,37 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Permission } from '@prisma/client';
+import { Locale, Permission } from '@prisma/client';
 import { DestinationService } from './destinations.service';
 import {
   ApiCreateDestinationDocs,
+  ApiCreateFaqDocs,
   ApiDeleteDestinationDocs,
+  ApiDeleteFaqDocs,
+  ApiDeleteTranslationsDocs,
   ApiGetActiveDestinationsDocs,
   ApiGetAllDestinationsDocs,
+  ApiGetAllTranslationsDocs,
   ApiGetDestinationByIdDocs,
   ApiGetDestinationBySlugDocs,
+  ApiGetFaqsDocs,
+  ApiGetPageContentDocs,
+  ApiGetTranslationsByLocaleDocs,
   ApiUpdateDestinationDocs,
+  ApiUpdateFaqDocs,
+  ApiUpsertPageContentDocs,
+  ApiUpsertTranslationsDocs,
 } from './destinations.swagger';
 import {
   CreateDestinationDto,
+  CreateFaqDto,
   DestinationQueryDto,
+  FaqLocaleQueryDto,
+  LocaleQueryDto,
   UpdateDestinationDto,
+  UpdateFaqDto,
+  UpsertDestinationPageContentDto,
+  UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
 
 @ApiTags('Destinations')
@@ -38,27 +54,21 @@ import {
  * ## Access-Control Strategy
  * - GET endpoints are `@Public()` — destinations are needed for frontend SSR.
  * - Mutating endpoints require explicit destination permissions (Admin + Editor only).
+ * - `@Roles()` is deliberately NOT used — `@RequirePermissions()` alone is sufficient.
  *
- * ## Slug lifecycle
- * - Slug is auto-generated from name at creation; immutable after creation.
- * - DELETE is a soft-delete (`isActive = false`); seeded destinations and those
- *   with active trips cannot be deactivated.
- *
- * ## Create transaction
- * - Creates destination + seeds one RESERVED 'tours' slug_registry row
- *   + seeds one CATEGORY slug_registry row per existing active category.
+ * ## Multilingual
+ * - All public GET endpoints accept `?locale=` (default `en`).
+ * - Destination names are proper nouns — translations are admin-managed, never AI-generated.
+ * - Translation management, page content, and FAQs are admin-managed sub-resources.
  *
  * ## Route ordering
- * Static segment `active` MUST be declared before the dynamic `:id` segment.
+ * Static segments (`active`, `slug`) MUST appear before the dynamic `:id` segment.
  */
 export class DestinationController {
   constructor(private readonly destinationService: DestinationService) {}
 
-  /**
-   * GET /destinations
-   *
-   * Public paginated list. Supports filtering by isActive.
-   */
+  // ── Public list / lookup ──────────────────────────────────────────────────────
+
   @Get()
   @Public()
   @ApiGetAllDestinationsDocs()
@@ -66,72 +76,36 @@ export class DestinationController {
     return this.destinationService.getAll(query);
   }
 
-  /**
-   * GET /destinations/active
-   *
-   * Returns all active destinations without pagination.
-   * Declared before `:id` to prevent NestJS matching "active" as a UUID param.
-   */
   @Get('active')
   @Public()
   @ApiGetActiveDestinationsDocs()
-  getActive() {
-    return this.destinationService.getActive();
+  getActive(@Query() query: LocaleQueryDto) {
+    return this.destinationService.getActive(query.locale ?? 'en');
   }
 
-  /**
-   * GET /destinations/slug/:slug
-   *
-   * Public lookup by destination slug. Destination slugs are globally unique.
-   * Declared before `:id` to avoid NestJS treating "slug" as a UUID.
-   */
   @Get('slug/:slug')
   @Public()
   @ApiGetDestinationBySlugDocs()
-  getBySlug(@Param('slug') slug: string) {
-    return this.destinationService.getBySlug(slug);
+  getBySlug(@Param('slug') slug: string, @Query() query: LocaleQueryDto) {
+    return this.destinationService.getBySlug(slug, query.locale ?? 'en');
   }
 
-  /**
-   * GET /destinations/:id
-   *
-   * Public single-destination lookup by UUID.
-   */
   @Get(':id')
   @Public()
   @ApiGetDestinationByIdDocs()
-  getById(@Param('id') id: string) {
-    return this.destinationService.getById(id);
+  getById(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.destinationService.getById(id, query.locale ?? 'en');
   }
 
-  /**
-   * POST /destinations
-   *
-   * Admin/Editor only. In one atomic transaction:
-   *  - creates the destination with an auto-generated slug
-   *  - seeds one RESERVED slug_registry row for 'tours'
-   *  - seeds one CATEGORY slug_registry row per existing active category
-   *
-   * Security: requires `CREATE_DESTINATION`.
-   */
+  // ── Admin CRUD ────────────────────────────────────────────────────────────────
+
   @Post()
   @RequirePermissions(Permission.CREATE_DESTINATION)
   @ApiCreateDestinationDocs()
-  create(
-    @Body() dto: CreateDestinationDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
+  create(@Body() dto: CreateDestinationDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.destinationService.create(dto, user.id);
   }
 
-  /**
-   * PATCH /destinations/:id
-   *
-   * Admin/Editor only. Updates display name, hero image, or active status.
-   * Slug is immutable after creation.
-   *
-   * Security: requires `EDIT_DESTINATION`.
-   */
   @Patch(':id')
   @RequirePermissions(Permission.EDIT_DESTINATION)
   @ApiUpdateDestinationDocs()
@@ -143,21 +117,113 @@ export class DestinationController {
     return this.destinationService.update(id, dto, user.id);
   }
 
-  /**
-   * DELETE /destinations/:id
-   *
-   * Admin/Editor only. Soft-delete: sets `isActive = false`.
-   * Seeded destinations and those with existing trips are blocked.
-   *
-   * Security: requires `DELETE_DESTINATION`.
-   */
   @Delete(':id')
   @RequirePermissions(Permission.DELETE_DESTINATION)
   @ApiDeleteDestinationDocs()
-  remove(
+  remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.destinationService.remove(id, user.id);
+  }
+
+  // ── Translation management (Admin) ────────────────────────────────────────────
+
+  @Get(':id/translations')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiGetAllTranslationsDocs()
+  getAllTranslations(@Param('id') id: string) {
+    return this.destinationService.getAllTranslations(id);
+  }
+
+  @Get(':id/translations/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiGetTranslationsByLocaleDocs()
+  getTranslationsByLocale(@Param('id') id: string, @Param('locale') locale: string) {
+    return this.destinationService.getTranslationsByLocale(id, locale as Locale);
+  }
+
+  @Patch(':id/translations/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpsertTranslationsDocs()
+  upsertTranslations(
     @Param('id') id: string,
+    @Param('locale') locale: string,
+    @Body() dto: UpsertDestinationTranslationsDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.destinationService.remove(id, user.id);
+    return this.destinationService.upsertTranslations(id, locale as Locale, dto, user.id);
+  }
+
+  @Delete(':id/translations/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiDeleteTranslationsDocs()
+  deleteTranslations(
+    @Param('id') id: string,
+    @Param('locale') locale: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.deleteTranslations(id, locale as Locale, user.id);
+  }
+
+  // ── Page Content (public GET, admin PATCH) ────────────────────────────────────
+
+  @Get(':id/page-content')
+  @Public()
+  @ApiGetPageContentDocs()
+  getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.destinationService.getPageContent(id, query.locale ?? 'en');
+  }
+
+  @Patch(':id/page-content/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpsertPageContentDocs()
+  upsertPageContent(
+    @Param('id') id: string,
+    @Param('locale') locale: string,
+    @Body() dto: UpsertDestinationPageContentDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.upsertPageContent(id, locale as Locale, dto, user.id);
+  }
+
+  // ── FAQ (public GET, admin write) ─────────────────────────────────────────────
+
+  @Get(':id/faqs')
+  @Public()
+  @ApiGetFaqsDocs()
+  getFaqs(@Param('id') id: string, @Query() query: FaqLocaleQueryDto) {
+    return this.destinationService.getFaqs(id, query);
+  }
+
+  @Post(':id/faqs')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiCreateFaqDocs()
+  createFaq(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.createFaq(id, dto, user.id);
+  }
+
+  @Patch(':id/faqs/:faqId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpdateFaqDocs()
+  updateFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @Body() dto: UpdateFaqDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.updateFaq(id, faqId, dto, user.id);
+  }
+
+  @Delete(':id/faqs/:faqId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiDeleteFaqDocs()
+  deleteFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.deleteFaq(id, faqId, user.id);
   }
 }

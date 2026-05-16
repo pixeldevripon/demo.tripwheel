@@ -1,915 +1,399 @@
+# Dynamic Content Translation — Architecture & Strategy
 
-# Dynamic Content Translation — Backend Strategy
-
-## Database Schema
-
-Spec এ বলা আছে এই approach:
-
-```sql
-translations (
-  id,
-  entity_type,   -- 'tour' | 'destination' | 'category' | 'hub'
-  entity_id,     -- foreign key to respective table
-  locale,        -- 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
-  field,         -- 'overview' | 'highlights' | 'h1_override' | 'breadcrumb_label'
-  value,         -- actual translated text (TEXT type)
-  is_machine_translated,  -- boolean, "Translated" badge এর জন্য
-  updated_at
-)
-```
-
-এটা EAV (Entity-Attribute-Value) pattern। Flexible কিন্তু query করতে একটু কাজ লাগে।
+> Describes how dynamic (database-driven) multilingual content is structured, stored, fetched, and rendered across the Island Tours platform.
+> For step-by-step implementation flows see: `category-translation-flow.md` · `destination-translation-flow.md`
 
 ---
 
-## API থেকে Data Fetch করার Pattern
+## Supported Locales
+
+| Code | Language   | Currency |
+|------|------------|----------|
+| `en` | English    | EUR (primary) |
+| `nl` | Dutch      | EUR |
+| `de` | German     | EUR |
+| `fr` | French     | EUR |
+| `es` | Spanish    | EUR |
+| `pt` | Portuguese | EUR |
+| `zh` | Chinese    | USD |
+
+All 7 locales are active from launch. The `Locale` enum is DB-native — enforced at the database level, not just in application code.
+
+```prisma
+// prisma/enums.prisma
+enum Locale { en  es  nl  pt  fr  de  zh }
+```
+
+Import everywhere as:
 
 ```typescript
-// lib/api/tours.ts
+import { Locale } from '@/common/constants/locales'; // thin re-export of @prisma/client
+```
 
-async function getTourWithTranslations(tourSlug: string, locale: string) {
-  // Step 1: Base tour data (locale-independent fields)
-  const tour = await db.tours.findFirst({
-    where: { slug: tourSlug }
-  });
+Validate with `@IsEnum(Locale)` — never a plain string array.
 
-  // Step 2: Translated fields — requested locale first, English fallback
-  const translations = await db.translations.findMany({
-    where: {
-      entity_type: 'tour',
-      entity_id: tour.id,
-      locale: { in: [locale, 'en'] }  // দুটোই fetch করো
-    }
-  });
+---
 
-  // Step 3: Merge — requested locale wins, English fallback
-  const merged = mergeTranslations(translations, locale);
+## Translation Pattern — Per-Entity Typed Tables
 
-  return { ...tour, ...merged };
-}
+The platform uses **per-entity translation tables**, not a generic EAV `translations` table.
 
-function mergeTranslations(translations, requestedLocale) {
-  const result = {};
-  const byLocale = groupBy(translations, 'locale');
+### Why not EAV
 
-  const enFields = byLocale['en'] || [];
-  const targetFields = byLocale[requestedLocale] || [];
+An EAV table (`entity_type, entity_id, locale, field, value`) has no DB-level type safety, allows field name typos that create silent orphaned rows, and cannot enforce which fields belong to which entity. TypeScript cannot type it without casts.
 
-  // English দিয়ে শুরু করো
-  for (const t of enFields) {
-    result[t.field] = { value: t.value, isFallback: true };
-  }
+### What is used instead
 
-  // Target locale দিয়ে override করো
-  for (const t of targetFields) {
-    result[t.field] = { value: t.value, isFallback: false };
-  }
+Each entity that has translatable content owns its own typed translation table. Fields are explicit columns — not a `field/value` pair.
 
-  return result;
+```
+Category         → CategoryTranslation         @@unique([categoryId, locale])
+Destination      → DestinationTranslation      @@unique([destinationId, locale])
+Hub              → HubTranslation              @@unique([hubId, locale])   (Phase 3)
+Trip             → TripTranslation             @@unique([tripId, locale])  (Phase 4)
+TourHighlight    → TourHighlightTranslation    (Phase 4)
+TourInclusion    → TourInclusionTranslation    (Phase 4)
+```
+
+Every translation table follows the same structure:
+
+```prisma
+model CategoryTranslation {
+  id                  String   @id @default(uuid())
+  categoryId          String
+  category            Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale              Locale                         // DB-enforced enum
+  name                String?                        // null → falls back to Category.name
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  @@unique([categoryId, locale])
+  @@index([categoryId, locale])
+  @@map("category_translations")
 }
 ```
 
-### Frontend এ "Translated" Badge দেখানো
+---
+
+## SEO Page Content — Separate Concern
+
+Editorial SEO content (`aboutText`, `metaTitle`, `metaDescription`) lives in its own table, separate from the core translations. This allows the SEO team to update meta tags without touching the translation workflow.
+
+```prisma
+model CategoryPageContent {
+  id              String   @id @default(uuid())
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+
+  @@unique([categoryId, locale])
+  @@map("category_page_content")
+}
+```
+
+Same pattern: `DestinationPageContent`, `HubPageContent`.
+
+---
+
+## FAQ — Shared Polymorphic Table
+
+FAQs share one table across all entity types. This is not EAV — it has fixed, typed columns. The `pageType` discriminator enforces which entity type owns each row.
+
+```prisma
+model Faq {
+  id           String  @id @default(uuid())
+  pageType     String  // 'category' | 'destination' | 'hub' | 'tour'
+  entityId     String  // UUID of owning entity
+  locale       Locale
+  question     String
+  answer       String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  @@index([pageType, entityId, locale])
+  @@map("faqs")
+}
+```
+
+The service layer enforces that `entityId` belongs to the correct `pageType` before any write.
+
+---
+
+## Fetch Pattern — Single Locale Query + Service Fallback
+
+The backend fetches only the requested locale in one query. Fallback to English happens in the service layer, not by fetching both locales from the DB.
 
 ```typescript
-// TourOverview.tsx
-export function TourOverview({ overview }) {
-  return (
-    <section>
-      {overview.isFallback && (
-        <span className="text-xs text-gray-400">Translated</span>
-      )}
-      <p>{overview.value}</p>
-    </section>
-  );
-}
-```
-
----
-
-## Translation কোথা থেকে আসবে?
-
-Spec অনুযায়ী তিনটা source:
-
-| Content | Method |
-|---|---|
-| Tour title, highlights, FAQ | Human translation at launch |
-| Itinerary body, host bio | AI-assisted + editorial review at scale |
-| Missing translation | English fallback + "Translated" badge |
-
-Admin panel এ একটা simple interface থাকবে যেখানে per-tour, per-locale content edit করা যাবে। AI translation button থাকতে পারে যেটা value populate করবে এবং `is_machine_translated = true` set করবে।
-
----
-
-## একটা Practical সমস্যা — highlights field
-
-Highlights হলো array (`string[]`), কিন্তু translations table এ value একটা TEXT field। এটা handle করার দুটো option:
-
-**Option A: JSON হিসেবে store করো**
-
-```sql
-value = '["Reach the island in 1h15", "Snorkel with sea turtles"]'
-```
-
-**Option B: আলাদা translation_array_items table বানাও**
-
-```sql
-translation_array_items (
-  translation_id, index, value
-)
-```
-
-Option A সহজ, Option B বেশি queryable। Launch এর জন্য Option A ই যথেষ্ট।
-
----
-
-## Trip Create করলে কী হয়?
-
-তুমি Admin panel এ description লিখলে English এ। সেটা save হবে এভাবে:
-
-```sql
--- tours table এ base data
-INSERT INTO tours (id, slug, duration_minutes, ...) 
-VALUES (42, 'miss-ann-klein-curacao', 480, ...);
-
--- translations table এ English content
-INSERT INTO translations (entity_type, entity_id, locale, field, value, is_machine_translated)
-VALUES ('tour', 42, 'en', 'overview', 'The boat trip locals tell their friends...', false);
-```
-
-এই মুহূর্তে শুধু English translation আছে। বাকি ৬টা locale এ কিছু নেই।
-
----
-
-## Translation কীভাবে হবে?
-
-দুটো approach আছে। Project এর spec অনুযায়ী দুটোই use হবে:
-
-### Approach A — Human Translation (launch এ mandatory)
-
-Admin panel এ manually প্রতিটা locale এর জন্য লিখবে বা paste করবে।
-
-### Approach B — AI Auto-Translation (scale এ)
-
-Backend এ একটা translation job trigger হবে। তুমি Anthropic API বা DeepL/Google Translate use করতে পারো।
-
-```typescript
-// lib/translation-service.ts
-
-async function translateTourContent(tourId: number, sourceLocale = 'en') {
-  const targetLocales = ['es', 'nl', 'pt', 'fr', 'de', 'zh'];
-  
-  // English content আনো
-  const sourceTranslations = await db.translations.findMany({
-    where: { entity_type: 'tour', entity_id: tourId, locale: sourceLocale }
-  });
-
-  for (const locale of targetLocales) {
-    for (const t of sourceTranslations) {
-      
-      // AI দিয়ে translate করো
-      const translated = await translateText(t.value, locale);
-      
-      // Database এ save করো
-      await db.translations.upsert({
-        where: {
-          entity_type_entity_id_locale_field: {
-            entity_type: 'tour',
-            entity_id: tourId,
-            locale,
-            field: t.field
-          }
-        },
-        update: { value: translated, is_machine_translated: true },
-        create: {
-          entity_type: 'tour',
-          entity_id: tourId,
-          locale,
-          field: t.field,
-          value: translated,
-          is_machine_translated: true
-        }
-      });
-    }
-  }
-}
-
-async function translateText(text: string, targetLocale: string): Promise<string> {
-  const localeNames = {
-    es: 'Spanish', nl: 'Dutch', pt: 'Portuguese',
-    fr: 'French', de: 'German', zh: 'Chinese'
-  };
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `Translate the following tour description to ${localeNames[targetLocale]}. 
-        Return only the translated text, nothing else.
-        
-        Text: ${text}`
-      }]
-    })
-  });
-
-  const data = await response.json();
-  return data.content[0].text;
-}
-```
-
-### Translation কখন trigger হবে?
-
-| Option | কখন হবে | Trade-off |
-|---|---|---|
-| Immediate | Trip save হওয়ার সাথে সাথে | User কে wait করাবে |
-| Background job | Save এর পরে async queue তে | User wait করবে না, কিন্তু কিছুক্ষণ শুধু English থাকবে |
-
-Background job ই ভালো। Bull queue বা similar দিয়ে করো।
-
----
-
-## Frontend এ Show করা
-
-User যখন `/es/curacao/klein-curacao/miss-ann/` তে যাবে, Next.js route থেকে `locale = 'es'` পাবে।
-
-```typescript
-// app/[locale]/[destination]/[slug]/[tourSlug]/page.tsx
-
-export default async function TourDetailPage({ params }) {
-  const { locale, tourSlug } = params;
-  
-  // locale পাঠিয়ে দাও API তে
-  const tour = await getTourWithTranslations(tourSlug, locale);
-  
-  return <TourDetail tour={tour} locale={locale} />;
-}
-```
-
-```typescript
-// lib/api/tours.ts
-
-async function getTourWithTranslations(slug: string, locale: string) {
-  const tour = await db.tours.findFirst({ where: { slug } });
-
-  // Requested locale + English fallback — দুটোই এক query তে আনো
-  const translations = await db.translations.findMany({
-    where: {
-      entity_type: 'tour',
-      entity_id: tour.id,
-      locale: { in: [locale, 'en'] }
-    }
-  });
-
-  // Merge করো — target locale wins, English fallback
-  const content = {};
-  
-  // আগে English দিয়ে fill করো
-  translations
-    .filter(t => t.locale === 'en')
-    .forEach(t => {
-      content[t.field] = { value: t.value, isMachineTranslated: false };
-    });
-  
-  // তারপর target locale দিয়ে override করো
-  translations
-    .filter(t => t.locale === locale)
-    .forEach(t => {
-      content[t.field] = { 
-        value: t.value, 
-        isMachineTranslated: t.is_machine_translated 
-      };
-    });
-
-  return { ...tour, content };
-}
-```
-
-```typescript
-// components/tour-detail/TourOverview.tsx
-
-export function TourOverview({ overview }) {
-  return (
-    <section>
-      <p>{overview.value}</p>
-      
-      {/* AI translate হলে badge দেখাও */}
-      {overview.isMachineTranslated && (
-        <span className="text-xs text-gray-400">Translated</span>
-      )}
-    </section>
-  );
-}
-```
-
----
-
-## পুরো Flow একসাথে
-
-```
-Admin trip create করলো (English description লিখলো)
-        ↓
-Database এ English translation save হলো
-        ↓
-Background job trigger হলো
-        ↓
-AI বাকি ৬ locale এ translate করলো
-        ↓
-Database এ ৬টা নতুন row insert হলো (is_machine_translated = true)
-        ↓
-User /es/... তে গেলো
-        ↓
-API locale='es' দিয়ে query করলো
-        ↓
-Spanish translation পেলো → show করলো
-Spanish না থাকলে → English দেখালো + "Translated" badge
-```
-
----
-
-## Hub, Category, Destination Name — Same Way তে হবে?
-
-হ্যাঁ, same pattern — কিন্তু কিছু পার্থক্য আছে।
-
-### Same Pattern, কিন্তু entity_type আলাদা
-
-```sql
--- Destination name translate
-INSERT INTO translations (entity_type, entity_id, locale, field, value)
-VALUES ('destination', 1, 'es', 'name', 'Curazao', false);
-
--- Category name translate  
-INSERT INTO translations (entity_type, entity_id, locale, field, value)
-VALUES ('category', 5, 'es', 'name', 'Tours en barco', false);
-
--- Hub name translate
-INSERT INTO translations (entity_type, entity_id, locale, field, value)
-VALUES ('hub', 2, 'es', 'name', 'Klein Curazao', false);
-```
-
-একই translations table, শুধু entity_type বদলায়।
-
-### কিন্তু একটা Important পার্থক্য আছে
-
-Tour description — AI দিয়ে translate করা practical। কিন্তু:
-
-| Content | AI Translation? | কারণ |
-|---|---|---|
-| Tour description (500 words) | ✅ হ্যাঁ | Long form, AI ভালো করে |
-| Destination name ("Curaçao") | ❌ না | Proper noun, translate হয় না |
-| Hub name ("Klein Curaçao") | ❌ না | Proper noun |
-| Category name ("Boat Tours") | ✅ হ্যাঁ, কিন্তু manually verify করো | Short, sensitive to tone |
-| About section (long text) | ✅ হ্যাঁ | Long form |
-| FAQ content | ✅ হ্যাঁ | Long form |
-
-Destination আর Hub name গুলো Admin manually set করবে — AI এ দিও না। "Curaçao" সব locale এ "Curaçao" ই থাকবে।
-
-### Slug কখনো Translate হবে না
-
-এটা spec এ clearly বলা আছে —
-
-```
-/en/curacao/klein-curacao/   ✅
-/es/curacao/klein-curacao/   ✅  ← slug same, শুধু locale prefix বদলায়
-/es/curazao/klein-curazao/   ❌  ← এটা করবে না
-```
-
-Slug সবসময় English। শুধু page এর content translate হয়।
-
-### Practically কীভাবে করবে
-
-Translation service এ entity_type parameter add করো:
-
-```typescript
-async function translateEntityContent(
-  entityType: 'tour' | 'category' | 'hub' | 'destination',
-  entityId: number,
-  fieldsToTranslate: string[]  // কোন fields translate করবে সেটা specify করো
-) {
-  // Destination/Hub name? Skip AI, admin manually করবে
-  if (entityType === 'destination') {
-    console.log('Destination names need manual translation');
-    return;
-  }
-
-  // বাকিগুলো আগের মতোই
-  await translateTourContent(entityId, entityType, fieldsToTranslate);
-}
-```
-
--------
-
-
-# Island Tours — Multilingual Architecture & Dynamic Content Strategy
-
----
-
-## ১. Translation Schema — কোন Approach নেওয়া হয়েছে
-
-### ❌ Avoid — Same Table এ Locale Columns
-
-```sql
-tours (
-  title_en, title_es, title_nl, ...  -- ১৪০+ column হয়ে যাবে
-)
-```
-
-### ✅ Recommended — Dedicated Translation Tables
-
-Base table এ শুধু locale-independent data, আলাদা translation table এ translated content।
-
-```sql
--- Base table — locale-independent
-tours (
-  id,
-  slug,               -- সবসময় English, never translates
-  destination_id,
-  category_id,
-  duration_minutes,
-  price_adult,
-  price_child,
-  pickup_model,       -- 'included' | 'paid_addon' | 'none'
-  is_active,
-  created_at
-)
-
--- Translated content
-tour_translations (
-  id,
-  tour_id,            -- FK → tours.id
-  locale,             -- 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
-  title,
-  overview,
-  description,
-  is_machine_translated,
-  updated_at,
-
-  UNIQUE(tour_id, locale)
-)
-```
-
-```sql
--- Category base
-categories (
-  id,
-  slug,
-  destination_id,
-  type,               -- 'regular' | 'hub'
-  is_active
-)
-
--- Category translated content
-category_translations (
-  id,
-  category_id,
-  locale,
-  name,
-  about_text,
-  meta_title,
-  is_machine_translated,
-  updated_at,
-
-  UNIQUE(category_id, locale)
-)
-```
-
----
-
-## ২. Array Fields — Highlights ও Inclusions
-
-Highlights ও Inclusions list-based, তাই এগুলোর জন্য আলাদা child table।
-
-```sql
-tour_highlights (
-  id,
-  tour_id,
-  display_order
-)
-
-tour_highlight_translations (
-  id,
-  highlight_id,
-  locale,
-  text,
-  is_machine_translated
-)
-
-tour_inclusions (
-  id,
-  tour_id,
-  icon,               -- 'meal' | 'drink' | 'equipment'
-  display_order
-)
-
-tour_inclusion_translations (
-  id,
-  inclusion_id,
-  locale,
-  label
-)
-```
-
-### পুরো Structure একসাথে
-
-```
-tours ──────────────── tour_translations       (title, overview, description per locale)
-  │
-  ├── tour_highlights ─── tour_highlight_translations  (text per locale)
-  │
-  └── tour_inclusions ─── tour_inclusion_translations  (label per locale)
-
-categories ─────────── category_translations   (name, about_text per locale)
-```
-
----
-
-## ৩. Required Indexes
-
-```sql
-CREATE INDEX ON tour_translations(tour_id, locale);
-CREATE INDEX ON tour_highlight_translations(highlight_id, locale);
-CREATE INDEX ON tour_inclusion_translations(inclusion_id, locale);
-```
-
----
-
-## ৪. AI Auto-Translation Flow
-
-### Trip Create হলে কী হয়
-
-```
-Admin English এ tour create করলো
-        ↓
-tours table এ base data save
-        ↓
-tour_translations এ English row insert (locale='en')
-        ↓
-Background job trigger
-        ↓
-AI বাকি ৬ locale এ translate করলো
-        ↓
-tour_translations এ ৬টা নতুন row (is_machine_translated=true)
-```
-
-### Translation Service
-
-```typescript
-// lib/translation-service.ts
-
-async function translateTourContent(tourId: number, sourceLocale = 'en') {
-  const targetLocales = ['es', 'nl', 'pt', 'fr', 'de', 'zh'];
-
-  const sourceTranslations = await db.tour_translations.findFirst({
-    where: { tour_id: tourId, locale: sourceLocale }
-  });
-
-  for (const locale of targetLocales) {
-    const translated = await translateText(sourceTranslations.overview, locale);
-
-    await db.tour_translations.upsert({
-      where: { tour_id_locale: { tour_id: tourId, locale } },
-      update: { overview: translated, is_machine_translated: true },
-      create: { tour_id: tourId, locale, overview: translated, is_machine_translated: true }
-    });
-  }
-}
-
-async function translateText(text: string, targetLocale: string): Promise<string> {
-  const localeNames = {
-    es: 'Spanish', nl: 'Dutch', pt: 'Portuguese',
-    fr: 'French', de: 'German', zh: 'Chinese'
-  };
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `Translate the following tour description to ${localeNames[targetLocale]}.
-Return only the translated text, nothing else.
-
-Text: ${text}`
-      }]
-    })
-  });
-
-  const data = await response.json();
-  return data.content[0].text;
-}
-```
-
-### Background Job (Bull Queue)
-
-```typescript
-// jobs/translation.job.ts
-import Queue from 'bull';
-
-const translationQueue = new Queue('translation');
-
-// Tour create হলে job add করো
-translationQueue.add({ tourId: 42 });
-
-// Worker
-translationQueue.process(async (job) => {
-  await translateTourContent(job.data.tourId);
+// categories.service.ts → getById()
+
+const category = await this.prisma.category.findUnique({
+  where: { id },
+  select: {
+    id: true, name: true, slug: true, isActive: true, isSeeded: true,
+    createdAt: true, updatedAt: true,
+    translations: {
+      where: { locale },                              // single locale — not { in: [locale, 'en'] }
+      select: { name, overview, h1Override, breadcrumbLabel, isMachineTranslated },
+    },
+  },
 });
+
+const t = category.translations[0];
+
+return {
+  ...applyTranslation(category, t, locale),           // name fallback handled here
+  overview:        t?.overview        ?? null,
+  h1Override:      t?.h1Override      ?? null,
+  breadcrumbLabel: t?.breadcrumbLabel ?? null,
+};
 ```
 
-> **Immediate vs Background:** Immediate হলে user কে wait করাবে। Background job ই ভালো — save হবে সাথে সাথে, translation কিছুক্ষণ পরে ready হবে।
-
----
-
-## ৫. AI Translation — কোন Fields এ হবে, কোনটায় না
-
-| Content | AI Translation? | কারণ |
-|---|---|---|
-| Tour description (500 words) | ✅ হ্যাঁ | Long form, AI ভালো করে |
-| Tour highlights, FAQ | ✅ হ্যাঁ | Long form |
-| Category name ("Boat Tours") | ✅ হ্যাঁ, manually verify করো | Short, tone-sensitive |
-| About section (long text) | ✅ হ্যাঁ | Long form |
-| Destination name ("Curaçao") | ❌ না | Proper noun |
-| Hub name ("Klein Curaçao") | ❌ না | Proper noun |
-
 ```typescript
-async function translateEntityContent(
-  entityType: 'tour' | 'category' | 'hub' | 'destination',
-  entityId: number
+// applyTranslation helper — used in every entity service
+private applyTranslation<T extends { name: string }>(
+  base: T,
+  t: { name: string | null; isMachineTranslated: boolean } | undefined,
+  locale: Locale,
 ) {
-  // Destination/Hub name — Admin manually করবে
-  if (entityType === 'destination') return;
-
-  await translateTourContent(entityId);
-}
-```
-
----
-
-## ৬. Slug কখনো Translate হয় না
-
-```
-/en/curacao/klein-curacao/   ✅
-/es/curacao/klein-curacao/   ✅  ← slug same, শুধু locale prefix বদলায়
-/es/curazao/klein-curazao/   ❌  ← এটা করবে না
-```
-
----
-
-## ৭. Data Fetching Flow — Next.js Frontend + Backend
-
-### Big Picture
-
-```
-User visits /es/curacao/miss-ann
-        ↓
-Next.js middleware → locale = 'es' confirm
-        ↓
-Page component (Server Component) → slug resolve
-        ↓
-Single Prisma query → tour + translations fetch
-        ↓
-Merge logic → 'es' না থাকলে 'en' fallback
-        ↓
-Clean tour object → Component এ render
-```
-
-### Middleware
-
-```typescript
-// middleware.ts
-import createMiddleware from 'next-intl/middleware';
-
-export default createMiddleware({
-  locales: ['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh'],
-  defaultLocale: 'en',
-  localePrefix: 'always'
-});
-```
-
-### Page Component (Server Component)
-
-```typescript
-// app/[locale]/[destination]/[slug]/page.tsx
-
-export const revalidate = 300; // ISR — 5 minutes cache
-
-export default async function TourPage({ params }) {
-  const { locale, slug } = params;
-  const tour = await getTourBySlug(slug, locale);
-
-  if (!tour) notFound();
-
-  return (
-    <>
-      {/* Cached — fast */}
-      <TourTitle title={tour.title} />
-      <TourOverview overview={tour.overview} isMachineTranslated={tour.isMachineTranslated} />
-      <Highlights items={tour.highlights} />
-      <Inclusions items={tour.inclusions} />
-
-      {/* Client component — real-time */}
-      <BookingWidget tourId={tour.id} />
-    </>
-  );
-}
-```
-
-### API Layer — Fetch + Merge
-
-```typescript
-// lib/api/tours.ts
-
-export async function getTourBySlug(slug: string, locale: string) {
-
-  const tour = await db.tours.findFirst({
-    where: { slug },
-    include: {
-      translations: {
-        where: { locale: { in: [locale, 'en'] } }
-      },
-      highlights: {
-        orderBy: { display_order: 'asc' },
-        include: {
-          translations: {
-            where: { locale: { in: [locale, 'en'] } }
-          }
-        }
-      },
-      inclusions: {
-        include: {
-          translations: {
-            where: { locale: { in: [locale, 'en'] } }
-          }
-        }
-      }
-    }
-  });
-
-  if (!tour) return null;
-
-  return mergeTourTranslations(tour, locale);
-}
-```
-
-### Merge Logic — Requested Locale Wins, English Fallback
-
-```typescript
-function mergeTourTranslations(tour, locale) {
-  const enTrans = tour.translations.find(t => t.locale === 'en');
-  const localeTrans = tour.translations.find(t => t.locale === locale);
-  const activeTrans = localeTrans ?? enTrans;
-
   return {
-    // Locale-independent
-    id: tour.id,
-    slug: tour.slug,
-    price_adult: tour.price_adult,
-    duration_minutes: tour.duration_minutes,
-    pickup_model: tour.pickup_model,
-
-    // Translated
-    title: activeTrans?.title ?? '',
-    overview: activeTrans?.overview ?? '',
-    description: activeTrans?.description ?? '',
-    isMachineTranslated: activeTrans?.is_machine_translated ?? false,
-
-    highlights: tour.highlights.map(h => {
-      const active = h.translations.find(t => t.locale === locale)
-                  ?? h.translations.find(t => t.locale === 'en');
-      return { id: h.id, text: active?.text ?? '', isMachineTranslated: active?.is_machine_translated ?? false };
-    }),
-
-    inclusions: tour.inclusions.map(inc => {
-      const active = inc.translations.find(t => t.locale === locale)
-                  ?? inc.translations.find(t => t.locale === 'en');
-      return { id: inc.id, icon: inc.icon, label: active?.label ?? '' };
-    })
+    ...base,
+    name: t?.name ?? base.name,               // fallback to canonical English name
+    locale,
+    isMachineTranslated: t?.isMachineTranslated ?? false,
   };
 }
 ```
 
-> **DB Query কতবার হচ্ছে?** একটাই Prisma query — tours + translations + highlights + inclusions সব একসাথে JOIN হয়। N+1 problem নেই।
+### Fallback behaviour
 
----
-
-## ৮. Booking Widget — Client-Side Fetch (Real-time)
-
-```typescript
-// components/BookingWidget.tsx
-'use client';
-
-export function BookingWidget({ tourId }) {
-  const [availability, setAvailability] = useState(null);
-
-  async function handleDateSelect(date) {
-    const data = await fetch(`/api/availability?tourId=${tourId}&date=${date}`);
-    setAvailability(await data.json());
-  }
-
-  return (
-    <div>
-      <DatePicker onSelect={handleDateSelect} />
-      {availability && <TimeSlots data={availability} />}
-    </div>
-  );
-}
-```
-
----
-
-## ৯. On-Demand Revalidation — Admin Update করলে
-
-```typescript
-// app/api/revalidate/route.ts
-import { revalidatePath } from 'next/cache';
-
-export async function POST(req) {
-  const { slug } = await req.json();
-
-  const locales = ['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh'];
-  locales.forEach(locale => {
-    revalidatePath(`/${locale}/curacao/${slug}`);
-  });
-
-  return Response.json({ revalidated: true });
-}
-```
-
-Admin tour edit করলে সাথে সাথে সব locale এর cache clear হবে।
-
----
-
-## ১০. কেন Slow হবে না
-
-| কারণ | ব্যাখ্যা |
-|---|---|
-| Server Component | Browser extra fetch করে না, server থেকে HTML ready আসে |
-| Single query | সব JOIN একটাই Prisma query তে |
-| Index | Properly indexed হলে 5-15ms DB response |
-| ISR cache | বেশিরভাগ request DB hit করে না |
-| Availability আলাদা | Real-time data page load block করে না |
-
----
-
-## ১১. Admin Translation UI — Recommended Approach
-
-### ❌ Force করা উচিত না
-
-Create form এ ৭টা language এর tab রাখলে cognitive overload হয়। Tour create করার সময় admin শুধু English এ focus করুক।
-
-### ✅ "Save first, translate later"
-
-```
-Create tour (English only) → Save →
-Translations tab এ গিয়ে per-locale edit করো
-```
-
-### Translation Tab UI
-
-```
-Tour: Miss Ann Klein Curaçao
-[Overview] [Pricing] [Schedule] [Translations] [SEO]
-
-Translations
-─────────────────────────────────────
-  [EN] [ES] [NL] [PT] [FR] [DE] [ZH]
-
-  Spanish — 0/3 fields translated
-  ┌──────────────────────────────────────┐
-  │ Overview                             │
-  │ [Auto-translate] [Clear]             │
-  │ ┌────────────────────────────────┐   │
-  │ │ El viaje en barco que los...   │   │
-  │ └────────────────────────────────┘   │
-  └──────────────────────────────────────┘
-  [Save Spanish translations]
-```
-
-Progress indicator দেখাবে — কোন locale এ কতটুকু done।
-
----
-
-## ১২. Page Rendering Strategy — Summary
-
-```
-Tour Detail Page
-├── Tour content (title, description, highlights)
-│     → ISR, revalidate=300
-│     → Admin update করলে on-demand revalidate
-│
-└── Booking widget (availability, pricing)
-      → Client-side fetch
-      → User date select করলে তখন load
-```
-
-| Content | Rendering | Revalidation |
+| State | `name` returned | Other translated fields |
 |---|---|---|
-| Tour content, translations | ISR (Server Component) | 300s + on-demand |
-| Static UI strings | Build-time (next-intl) | On deploy |
-| Availability / pricing | Client fetch | On date select |
-| Hreflang tags | SSR (head) | Per page |
+| Translation row exists, `name` set | Translated name | As stored |
+| Translation row exists, `name` is `null` | Canonical English name | Other fields as stored (may be null) |
+| No translation row at all | Canonical English name | All null |
+| `locale` not in enum | — | 400 Bad Request (ValidationPipe) |
+
+`name` is **always** non-null thanks to the canonical fallback. Frontend never needs a null-check on `name`.
+
+---
+
+## Upsert Pattern — Partial Field Updates
+
+Translation writes use `upsert` with the composite unique key. Only supplied fields are written — omitted fields stay unchanged.
+
+```typescript
+await this.prisma.categoryTranslation.upsert({
+  where: { categoryId_locale: { categoryId: id, locale } },
+  create: {
+    categoryId: id, locale, isMachineTranslated,
+    name: fields.name,
+    overview: fields.overview,
+    h1Override: fields.h1Override,
+    breadcrumbLabel: fields.breadcrumbLabel,
+  },
+  update: {
+    isMachineTranslated,
+    ...(fields.name !== undefined        && { name: fields.name }),
+    ...(fields.overview !== undefined    && { overview: fields.overview }),
+    ...(fields.h1Override !== undefined  && { h1Override: fields.h1Override }),
+    ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
+  },
+  select: { locale: true, name: true, overview: true, h1Override: true,
+            breadcrumbLabel: true, isMachineTranslated: true },
+});
+// First call  → INSERT (no row for this locale)
+// Second call → UPDATE (@@unique match found)
+```
+
+---
+
+## AI Translation Rules
+
+| Content | AI-translate? | Reason |
+|---|---|---|
+| Category name, overview, h1Override | Yes — BullMQ background job | Short-to-medium text, AI produces good results |
+| Trip overview, highlights, inclusions | Yes — BullMQ background job | Long-form editorial, AI handles well |
+| FAQ questions and answers | Yes — BullMQ background job | Structured Q&A, consistent tone |
+| **Destination name** (Curaçao, Aruba) | **Never** | Proper noun — identical across all locales |
+| **Hub name** (Klein Curaçao) | **Never** | Proper noun — admin sets manually |
+| Slug | **Never** | Always English — URL segments are never translated |
+
+When an AI translation is saved, `isMachineTranslated = true` is set. The frontend renders a "Machine translated" badge when this flag is true.
+
+### BullMQ background job (Phase 7)
+
+AI translation runs as an async background job triggered after English content is saved. The job must use `ioredis` with a TCP Redis URL — never the Upstash HTTP REST client.
+
+```typescript
+// workers/translation.worker.ts (Phase 7)
+
+const translationQueue = new Queue('translation', { connection: ioredis });
+
+// Triggered after English category content saved
+translationQueue.add('translate-category', { categoryId, fields: ['name', 'overview'] });
+
+// Worker processes job
+translationQueue.process('translate-category', async (job) => {
+  const { categoryId, fields } = job.data;
+  const targetLocales: Locale[] = ['es', 'nl', 'pt', 'fr', 'de', 'zh']; // never 'en'
+
+  for (const locale of targetLocales) {
+    const translated = await aiTranslateFields(fields, locale);
+    await categoryTranslation.upsert({
+      where: { categoryId_locale: { categoryId, locale } },
+      // ...
+      data: { ...translated, isMachineTranslated: true },
+    });
+  }
+});
+```
+
+---
+
+## Array Fields — Highlights & Inclusions (Phase 4)
+
+Highlights and inclusions are list-based. Each item has its own parent row; translations live in separate child tables — not JSON columns.
+
+```
+TourHighlight ──── TourHighlightTranslation (highlight_id, locale, text, is_machine_translated)
+TourInclusion ──── TourInclusionTranslation (inclusion_id, locale, text, is_machine_translated)
+```
+
+This keeps translations queryable, indexable, and individually updateable without rewriting the whole array.
+
+---
+
+## Slug Registry — Locale-Agnostic URL Resolution
+
+Slugs are always English. The same slug is served at every locale prefix:
+
+```
+/en/curacao/boat-tours/   ✅
+/nl/curacao/boat-tours/   ✅   ← slug unchanged, only locale prefix changes
+/nl/curacao/boottochten/  ❌   ← translated slugs are never used
+```
+
+The slug registry table resolves the ambiguous `[slug]` URL segment (could be category, hub, or tour):
+
+```sql
+slug_registry
+  destination_slug  VARCHAR(100)   -- 'curacao'
+  slug              VARCHAR(100)   -- 'boat-tours'
+  entity_type       VARCHAR(20)    -- 'CATEGORY' | 'HUB' | 'TOUR' | 'RESERVED'
+  entity_id         UUID nullable
+  is_active         BOOLEAN        -- false = entity deactivated, page returns 404
+  UNIQUE (destination_slug, slug)
+```
+
+Frontend slug resolver (`app/[locale]/[destination]/[slug]/page.tsx`) queries this table, then dispatches to the correct page component with the resolved `entityId` and requested `locale`.
+
+---
+
+## Parallel Server Component Data Fetching
+
+Each entity page fires 3 concurrent backend calls in the Next.js server component. All resolve in a single network round-trip.
+
+```typescript
+// app/[locale]/[destination]/[slug]/page.tsx (CategoryPage example)
+
+const [category, pageContent, faqs] = await Promise.all([
+  fetch(`/api/v1/categories/${entityId}?locale=${locale}`),
+  fetch(`/api/v1/categories/${entityId}/page-content?locale=${locale}`),
+  fetch(`/api/v1/categories/${entityId}/faqs?locale=${locale}`),
+]);
+```
+
+| Call | Returns |
+|---|---|
+| Entity detail | `name`, `overview`, `h1Override`, `breadcrumbLabel`, `isMachineTranslated` |
+| Page content | `aboutText`, `metaTitle`, `metaDescription` |
+| FAQs | Ordered array of `question`, `answer` for requested locale |
+
+Page content and FAQs return an empty shape (not 404) when no row exists — missing content is valid state, not an error.
+
+---
+
+## On-Demand ISR Revalidation
+
+After any translation or page content write, the service triggers cache busting for every locale × destination combination that references the updated entity.
+
+```typescript
+// Triggered after PATCH /categories/:id/translations/:locale
+//                   or PATCH /categories/:id/page-content/:locale
+
+const locales = ['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh'];
+const destinations = ['curacao', 'aruba', 'sint-maarten']; // all active destination slugs
+
+for (const locale of locales) {
+  for (const dest of destinations) {
+    revalidatePath(`/${locale}/${dest}/boat-tours/`);
+  }
+}
+```
+
+Next.js drops the stale ISR page. The next visitor triggers a fresh server render and sees updated content immediately.
+
+---
+
+## Rendering Strategy
+
+| Content | Method | Revalidation |
+|---|---|---|
+| Entity name, overview, H1, breadcrumb | SSR / ISR | 300s (tour detail) · 60s (listing pages) |
+| About text, meta title/description | SSR / ISR | On-demand after admin write |
+| FAQs | SSR / ISR | On-demand after admin write |
+| Tour availability | Client-side fetch | On date-picker open only — never on page load |
+| Booking widget | Client hydration (`requestIdleCallback` after LCP) | Per interaction |
+| Static UI strings | Build-time (`next-intl`) | On deploy |
+| Hreflang tags | SSR (`<head>`) | Per page |
+
+Every entity page must output hreflang tags for all 7 locales plus `x-default → English`:
+
+```html
+<link rel="alternate" hreflang="en" href="/en/curacao/boat-tours/" />
+<link rel="alternate" hreflang="nl" href="/nl/curacao/boat-tours/" />
+<link rel="alternate" hreflang="es" href="/es/curacao/boat-tours/" />
+<link rel="alternate" hreflang="de" href="/de/curacao/boat-tours/" />
+<link rel="alternate" hreflang="fr" href="/fr/curacao/boat-tours/" />
+<link rel="alternate" hreflang="pt" href="/pt/curacao/boat-tours/" />
+<link rel="alternate" hreflang="zh" href="/zh/curacao/boat-tours/" />
+<link rel="alternate" hreflang="x-default" href="/en/curacao/boat-tours/" />
+```
+
+---
+
+## Admin Translation Workflow
+
+Admins do not translate at creation time. The workflow is:
+
+```
+1. Create entity (English content only) → 201 response
+2. Open Translations tab → GET /:id/translations → shows [] or existing rows
+3. Select locale → fill fields → PATCH /:id/translations/:locale
+4. Repeat for each locale
+5. Open SEO tab → PATCH /:id/page-content/:locale (aboutText, metaTitle, metaDescription)
+6. Open FAQs tab → POST /:id/faqs (one item per request, per locale)
+```
+
+For category and trip content, an "Auto-translate" button in the admin UI triggers the BullMQ job which fills the remaining 6 locales with `isMachineTranslated = true`. The admin can then review and manually override individual fields.
+
+Destination and hub names are always set manually — the admin panel should not show an "Auto-translate" button for name fields on these entities.
+
+---
+
+## What is Implemented vs Planned
+
+| Entity | Translation table | Page content table | FAQ | Status |
+|---|---|---|---|---|
+| Category | `category_translations` | `category_page_content` | `faqs` (pageType='category') | Done |
+| Destination | `destination_translations` | `destination_page_content` | `faqs` (pageType='destination') | Done |
+| Hub | `hub_translations` | `hub_page_content` | `faqs` (pageType='hub') | Phase 3 |
+| Trip | `trip_translations` | — | `faqs` (pageType='tour') | Phase 4 |
+| TourHighlight | `tour_highlight_translations` | — | — | Phase 4 |
+| TourInclusion | `tour_inclusion_translations` | — | — | Phase 4 |

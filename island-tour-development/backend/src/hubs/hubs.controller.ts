@@ -13,26 +13,43 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Permission } from '@prisma/client';
+import { Locale, Permission } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
+  CreateFaqDto,
   CreateHubDto,
+  FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
+  LocaleQueryDto,
+  UpdateFaqDto,
   UpdateHubDto,
+  UpsertHubPageContentDto,
+  UpsertHubTranslationsDto,
 } from './dto/hub.dto';
 import { HubService } from './hubs.service';
 import {
   ApiAddAllowedCategoryDocs,
+  ApiCreateFaqDocs,
   ApiCreateHubDocs,
+  ApiDeleteFaqDocs,
   ApiDeleteHubDocs,
+  ApiDeleteTranslationsDocs,
   ApiGetActiveHubsDocs,
   ApiGetAllHubsDocs,
+  ApiGetAllowedCategoriesDocs,
+  ApiGetAllTranslationsDocs,
+  ApiGetFaqsDocs,
   ApiGetHubByIdDocs,
   ApiGetHubBySlugDocs,
+  ApiGetPageContentDocs,
+  ApiGetTranslationsByLocaleDocs,
   ApiRemoveAllowedCategoryDocs,
+  ApiUpdateFaqDocs,
   ApiUpdateHubDocs,
+  ApiUpsertPageContentDocs,
+  ApiUpsertTranslationsDocs,
 } from './hubs.swagger';
 
 @ApiTags('Hubs')
@@ -44,26 +61,23 @@ import {
  * - GET endpoints are `@Public()` — needed for frontend SSR and tour-creation wizard.
  * - All mutating endpoints require `MANAGE_HUBS` permission (Admin + Editor only).
  *
+ * ## Multilingual
+ * - All public GET endpoints accept `?locale=` (default `en`).
+ * - Hub names are proper nouns — translations are admin-managed, never AI-generated.
+ * - Translation management, page content, and FAQs are admin-managed sub-resources.
+ *
  * ## Slug lifecycle
  * - Slug auto-generated from name at creation; immutable after creation.
  * - DELETE is a soft-delete (`isActive = false`) because slug_registry rows are permanent.
- * - Seeded hubs (isSeeded = true) and hubs with active trips cannot be deactivated.
- *
- * ## Allowed categories sub-routes
- * - `POST /hubs/:id/allowed-categories` and `DELETE /hubs/:id/allowed-categories/:categoryId`
- *   control which tour categories can be assigned to trips in this hub.
  *
  * ## Route ordering
- * Static segment `active` MUST be declared before the dynamic `:id` segment.
+ * Static segments (`active`, `slug`) MUST appear before the dynamic `:id` segment.
  */
 export class HubController {
   constructor(private readonly hubService: HubService) {}
 
-  /**
-   * GET /hubs
-   *
-   * Public paginated list. Supports filtering by destinationId and isActive.
-   */
+  // ── Public list / lookup ──────────────────────────────────────────────────────
+
   @Get()
   @Public()
   @ApiGetAllHubsDocs()
@@ -71,12 +85,6 @@ export class HubController {
     return this.hubService.getAll(query);
   }
 
-  /**
-   * GET /hubs/active
-   *
-   * Returns all active hubs, optionally filtered by destinationId.
-   * Declared before `:id` to prevent NestJS matching "active" as a UUID param.
-   */
   @Get('active')
   @Public()
   @ApiGetActiveHubsDocs()
@@ -84,64 +92,29 @@ export class HubController {
     return this.hubService.getActive(query);
   }
 
-  /**
-   * GET /hubs/slug/:slug?destinationSlug=curacao
-   *
-   * Public lookup by hub slug. Hub slugs are unique per destination, so
-   * `destinationSlug` is a required query param.
-   * Declared before `:id` to avoid NestJS treating "slug" as a UUID.
-   */
   @Get('slug/:slug')
   @Public()
   @ApiGetHubBySlugDocs()
-  getBySlug(
-    @Param('slug') slug: string,
-    @Query() query: HubBySlugQueryDto,
-  ) {
+  getBySlug(@Param('slug') slug: string, @Query() query: HubBySlugQueryDto) {
     return this.hubService.getBySlug(slug, query);
   }
 
-  /**
-   * GET /hubs/:id
-   *
-   * Public single-hub lookup by UUID. Includes allowedCategories.
-   */
   @Get(':id')
   @Public()
   @ApiGetHubByIdDocs()
-  getById(@Param('id') id: string) {
-    return this.hubService.getById(id);
+  getById(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.hubService.getById(id, query.locale ?? 'en');
   }
 
-  /**
-   * POST /hubs
-   *
-   * Admin/Editor only. In one atomic transaction:
-   *  - creates the hub with an auto-generated slug
-   *  - seeds one slug_registry row for the hub's destination
-   *  - optionally seeds initial allowed category rows
-   *
-   * Security: requires `MANAGE_HUBS`.
-   */
+  // ── Admin CRUD ────────────────────────────────────────────────────────────────
+
   @Post()
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiCreateHubDocs()
-  create(
-    @Body() dto: CreateHubDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
+  create(@Body() dto: CreateHubDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.hubService.create(dto, user.id);
   }
 
-  /**
-   * PATCH /hubs/:id
-   *
-   * Admin/Editor only. Updates display name, description, or active status.
-   * Slug is immutable after creation. If `isActive` changes, the slug_registry
-   * row is mirrored in the same transaction.
-   *
-   * Security: requires `MANAGE_HUBS`.
-   */
   @Patch(':id')
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiUpdateHubDocs()
@@ -153,32 +126,125 @@ export class HubController {
     return this.hubService.update(id, dto, user.id);
   }
 
-  /**
-   * DELETE /hubs/:id
-   *
-   * Admin/Editor only. Soft-delete: sets `isActive = false` on the hub and
-   * its slug_registry row. Seeded hubs and those with active trips are blocked.
-   *
-   * Security: requires `MANAGE_HUBS`.
-   */
   @Delete(':id')
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiDeleteHubDocs()
-  remove(
-    @Param('id') id: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
+  remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.hubService.remove(id, user.id);
   }
 
-  /**
-   * POST /hubs/:id/allowed-categories
-   *
-   * Adds a category to the hub's allowed list. Operators can only assign
-   * categories from this list when creating hub-anchored trips.
-   *
-   * Security: requires `MANAGE_HUBS`.
-   */
+  // ── Translation management (Admin) ────────────────────────────────────────────
+
+  @Get(':id/translations')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiGetAllTranslationsDocs()
+  getAllTranslations(@Param('id') id: string) {
+    return this.hubService.getAllTranslations(id);
+  }
+
+  @Get(':id/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiGetTranslationsByLocaleDocs()
+  getTranslationsByLocale(@Param('id') id: string, @Param('locale') locale: string) {
+    return this.hubService.getTranslationsByLocale(id, locale as Locale);
+  }
+
+  @Patch(':id/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertTranslationsDocs()
+  upsertTranslations(
+    @Param('id') id: string,
+    @Param('locale') locale: string,
+    @Body() dto: UpsertHubTranslationsDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertTranslations(id, locale as Locale, dto, user.id);
+  }
+
+  @Delete(':id/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiDeleteTranslationsDocs()
+  deleteTranslations(
+    @Param('id') id: string,
+    @Param('locale') locale: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteTranslations(id, locale as Locale, user.id);
+  }
+
+  // ── Page Content (public GET, admin PATCH) ────────────────────────────────────
+
+  @Get(':id/page-content')
+  @Public()
+  @ApiGetPageContentDocs()
+  getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.hubService.getPageContent(id, query.locale ?? 'en');
+  }
+
+  @Patch(':id/page-content/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertPageContentDocs()
+  upsertPageContent(
+    @Param('id') id: string,
+    @Param('locale') locale: string,
+    @Body() dto: UpsertHubPageContentDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertPageContent(id, locale as Locale, dto, user.id);
+  }
+
+  // ── FAQ (public GET, admin write) ─────────────────────────────────────────────
+
+  @Get(':id/faqs')
+  @Public()
+  @ApiGetFaqsDocs()
+  getFaqs(@Param('id') id: string, @Query() query: FaqLocaleQueryDto) {
+    return this.hubService.getFaqs(id, query);
+  }
+
+  @Post(':id/faqs')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiCreateFaqDocs()
+  createFaq(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.createFaq(id, dto, user.id);
+  }
+
+  @Patch(':id/faqs/:faqId')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpdateFaqDocs()
+  updateFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @Body() dto: UpdateFaqDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.updateFaq(id, faqId, dto, user.id);
+  }
+
+  @Delete(':id/faqs/:faqId')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiDeleteFaqDocs()
+  deleteFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteFaq(id, faqId, user.id);
+  }
+
+  // ── Allowed categories sub-routes ─────────────────────────────────────────────
+
+  @Get(':id/allowed-categories')
+  @Public()
+  @ApiGetAllowedCategoriesDocs()
+  getAllowedCategories(@Param('id') id: string) {
+    return this.hubService.getAllowedCategories(id);
+  }
+
   @Post(':id/allowed-categories')
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiAddAllowedCategoryDocs()
@@ -190,13 +256,6 @@ export class HubController {
     return this.hubService.addAllowedCategory(id, dto, user.id);
   }
 
-  /**
-   * DELETE /hubs/:id/allowed-categories/:categoryId
-   *
-   * Removes a category from the hub's allowed list.
-   *
-   * Security: requires `MANAGE_HUBS`.
-   */
   @Delete(':id/allowed-categories/:categoryId')
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiRemoveAllowedCategoryDocs()

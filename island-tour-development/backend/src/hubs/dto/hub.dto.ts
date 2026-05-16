@@ -1,8 +1,10 @@
+import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -10,6 +12,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 
 // ── Response DTOs ──────────────────────────────────────────────────────────────
@@ -36,15 +39,48 @@ export class HubResponseDto {
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) updatedAt!: Date;
 }
 
-export class HubDetailResponseDto extends HubResponseDto {
+export class HubLocalizedResponseDto extends HubResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: false }) isMachineTranslated!: boolean;
+}
+
+export class HubDetailLocalizedResponseDto extends HubLocalizedResponseDto {
+  @ApiPropertyOptional({ nullable: true, example: null }) overview!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: null }) h1Override!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: null }) breadcrumbLabel!: string | null;
   @ApiProperty({ type: [AllowedCategoryItemDto] }) allowedCategories!: AllowedCategoryItemDto[];
 }
 
-export class PaginatedHubsResponseDto {
+export class PaginatedLocalizedHubsResponseDto {
   @ApiProperty({ example: 1 }) total!: number;
   @ApiProperty({ example: 1 }) page!: number;
   @ApiProperty({ example: 20 }) limit!: number;
-  @ApiProperty({ type: [HubResponseDto] }) data!: HubResponseDto[];
+  @ApiProperty({ type: [HubLocalizedResponseDto] }) data!: HubLocalizedResponseDto[];
+}
+
+export class HubTranslationEntryDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiPropertyOptional({ nullable: true }) name!: string | null;
+  @ApiPropertyOptional({ nullable: true }) overview!: string | null;
+  @ApiPropertyOptional({ nullable: true }) h1Override!: string | null;
+  @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
+  @ApiProperty({ example: false }) isMachineTranslated!: boolean;
+}
+
+export class HubPageContentResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiPropertyOptional({ nullable: true }) aboutText!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaTitle!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
+}
+
+export class FaqResponseDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
+  @ApiProperty({ example: 'What should I bring?' }) question!: string;
+  @ApiProperty({ example: 'Bring sunscreen, water, and a hat.' }) answer!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ example: true }) isActive!: boolean;
 }
 
 export class AddAllowedCategoryResponseDto {
@@ -60,7 +96,25 @@ export class DeleteHubResponseDto {
   @ApiProperty({ example: 'Hub deactivated successfully' }) message!: string;
 }
 
+export class DeleteMessageResponseDto {
+  @ApiProperty({ example: 'Deleted successfully' }) message!: string;
+}
+
 // ── Query DTOs ─────────────────────────────────────────────────────────────────
+
+export class LocaleQueryDto {
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+}
+
+export class FaqLocaleQueryDto {
+  @ApiPropertyOptional({ enum: Locale, example: Locale.en, description: 'Filter FAQs by locale — omit to return all locales' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale;
+}
 
 export class HubQueryDto {
   @ApiPropertyOptional({ description: 'Filter by destination UUID' })
@@ -92,6 +146,11 @@ export class HubQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }
 
 export class ActiveHubsQueryDto {
@@ -99,12 +158,22 @@ export class ActiveHubsQueryDto {
   @IsOptional()
   @IsUUID()
   destinationId?: string;
+
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }
 
 export class HubBySlugQueryDto {
   @ApiProperty({ example: 'curacao', description: 'Destination slug — required because hub slugs are unique per destination' })
   @IsString()
   destinationSlug!: string;
+
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }
 
 // ── Request DTOs ───────────────────────────────────────────────────────────────
@@ -157,4 +226,103 @@ export class AddAllowedCategoryDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsUUID()
   categoryId!: string;
+}
+
+export class HubTranslationFieldsDto {
+  @ApiPropertyOptional({ example: 'Klein Curaçao' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'A stunning uninhabited island.' })
+  @IsOptional()
+  @IsString()
+  overview?: string;
+
+  @ApiPropertyOptional({ example: 'Day Trips to Klein Curaçao' })
+  @IsOptional()
+  @IsString()
+  h1Override?: string;
+
+  @ApiPropertyOptional({ example: 'Klein Curaçao' })
+  @IsOptional()
+  @IsString()
+  breadcrumbLabel?: string;
+}
+
+export class UpsertHubTranslationsDto {
+  @ApiProperty({ type: HubTranslationFieldsDto })
+  @ValidateNested()
+  @Type(() => HubTranslationFieldsDto)
+  fields!: HubTranslationFieldsDto;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean = false;
+}
+
+export class UpsertHubPageContentDto {
+  @ApiPropertyOptional({ example: 'Klein Curaçao is a small uninhabited island.' })
+  @IsOptional()
+  @IsString()
+  aboutText?: string;
+
+  @ApiPropertyOptional({ example: 'Klein Curaçao Day Trips — Island Tours' })
+  @IsOptional()
+  @IsString()
+  metaTitle?: string;
+
+  @ApiPropertyOptional({ example: 'Book day trips to Klein Curaçao.' })
+  @IsOptional()
+  @IsString()
+  metaDescription?: string;
+}
+
+export class CreateFaqDto {
+  @ApiProperty({ enum: Locale, example: Locale.en })
+  @IsEnum(Locale)
+  locale!: Locale;
+
+  @ApiProperty({ example: 'What should I bring to Klein Curaçao?' })
+  @IsString()
+  @MinLength(5)
+  question!: string;
+
+  @ApiProperty({ example: 'Bring sunscreen, drinking water, and snorkelling gear.' })
+  @IsString()
+  @MinLength(10)
+  answer!: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateFaqDto {
+  @ApiPropertyOptional({ example: 'What should I bring?' })
+  @IsOptional()
+  @IsString()
+  @MinLength(5)
+  question?: string;
+
+  @ApiPropertyOptional({ example: 'Bring sunscreen and water.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  answer?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

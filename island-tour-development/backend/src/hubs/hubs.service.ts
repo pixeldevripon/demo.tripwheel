@@ -1,3 +1,4 @@
+import { Locale } from '@/common/constants/locales';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
@@ -11,11 +12,24 @@ import { SlugEntityType } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
+  CreateFaqDto,
   CreateHubDto,
+  FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
+  UpdateFaqDto,
   UpdateHubDto,
+  UpsertHubPageContentDto,
+  UpsertHubTranslationsDto,
 } from './dto/hub.dto';
+
+const translationSelect = {
+  name: true,
+  overview: true,
+  h1Override: true,
+  breadcrumbLabel: true,
+  isMachineTranslated: true,
+} as const;
 
 @Injectable()
 export class HubService {
@@ -60,8 +74,43 @@ export class HubService {
     category: { select: { id: true, name: true, slug: true } },
   } as const;
 
+  private readonly faqSelect = {
+    id: true,
+    question: true,
+    answer: true,
+    displayOrder: true,
+    isActive: true,
+    locale: true,
+  } as const;
+
+  // ── Internal helpers ──────────────────────────────────────────────────────────
+
+  private async findHubOrThrow(id: string) {
+    const hub = await this.prisma.hub.findUnique({
+      where: { id },
+      select: this.hubSelect,
+    });
+    if (!hub) throw new NotFoundException(`Hub ${id} not found`);
+    return hub;
+  }
+
+  private applyTranslation<T extends { name: string }>(
+    base: T,
+    t: { name: string | null; isMachineTranslated: boolean } | undefined,
+    locale: Locale,
+  ) {
+    return {
+      ...base,
+      name: t?.name ?? base.name,
+      locale,
+      isMachineTranslated: t?.isMachineTranslated ?? false,
+    };
+  }
+
+  // ── Public CRUD ───────────────────────────────────────────────────────────────
+
   async getAll(query: HubQueryDto) {
-    const { destinationId, isActive, page = 1, limit = 20 } = query;
+    const { destinationId, isActive, page = 1, limit = 20, locale = Locale.en } = query;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -73,47 +122,77 @@ export class HubService {
       this.prisma.hub.count({ where }),
       this.prisma.hub.findMany({
         where,
-        select: this.hubSelect,
+        select: {
+          ...this.hubSelect,
+          translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+        },
         orderBy: { name: 'asc' },
         skip,
         take: limit,
       }),
     ]);
 
-    return { total, page, limit, data };
+    const localizedData = data.map(({ translations, ...hub }) =>
+      this.applyTranslation(hub, translations[0], locale),
+    );
+
+    return { total, page, limit, data: localizedData };
   }
 
   async getActive(query: ActiveHubsQueryDto) {
-    const { destinationId } = query;
+    const { destinationId, locale = Locale.en } = query;
 
-    return this.prisma.hub.findMany({
+    const data = await this.prisma.hub.findMany({
       where: {
         isActive: true,
         ...(destinationId !== undefined && { destinationId }),
       },
-      select: this.hubDetailSelect,
+      select: {
+        ...this.hubDetailSelect,
+        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+      },
       orderBy: { name: 'asc' },
     });
+
+    return data.map(({ translations, ...hub }) =>
+      this.applyTranslation(hub, translations[0], locale),
+    );
   }
 
-  async getById(id: string) {
+  async getById(id: string, locale: Locale = Locale.en) {
     const hub = await this.prisma.hub.findUnique({
       where: { id },
-      select: this.hubDetailSelect,
+      select: {
+        ...this.hubDetailSelect,
+        translations: { where: { locale }, select: translationSelect },
+      },
     });
 
     if (!hub) throw new NotFoundException(`Hub ${id} not found`);
 
-    return hub;
+    const { translations, ...hubData } = hub;
+    const t = translations[0];
+
+    return {
+      ...this.applyTranslation(hubData, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+    };
   }
 
   async getBySlug(slug: string, query: HubBySlugQueryDto) {
+    const locale = query.locale ?? Locale.en;
+
     const hub = await this.prisma.hub.findFirst({
       where: {
         slug,
         destination: { slug: query.destinationSlug },
       },
-      select: this.hubDetailSelect,
+      select: {
+        ...this.hubDetailSelect,
+        translations: { where: { locale }, select: translationSelect },
+      },
     });
 
     if (!hub) {
@@ -122,7 +201,15 @@ export class HubService {
       );
     }
 
-    return hub;
+    const { translations, ...hubData } = hub;
+    const t = translations[0];
+
+    return {
+      ...this.applyTranslation(hubData, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+    };
   }
 
   async create(dto: CreateHubDto, adminId: string) {
@@ -130,7 +217,6 @@ export class HubService {
 
     return this.prisma
       .$transaction(async (tx) => {
-        // 1. Verify destination exists and get its slug for slug_registry
         const destination = await tx.destination.findUnique({
           where: { id: dto.destinationId },
           select: { slug: true },
@@ -139,7 +225,6 @@ export class HubService {
           throw new NotFoundException(`Destination ${dto.destinationId} not found`);
         }
 
-        // 2. Create the hub
         const hub = await tx.hub
           .create({
             data: {
@@ -160,7 +245,6 @@ export class HubService {
             throw err;
           });
 
-        // 3. Seed one slug_registry row for this hub's destination (Critical Rule)
         await tx.slugRegistry
           .create({
             data: {
@@ -179,7 +263,6 @@ export class HubService {
             throw err;
           });
 
-        // 4. Seed initial allowed categories if provided
         if (dto.allowedCategoryIds && dto.allowedCategoryIds.length > 0) {
           await tx.hubAllowedCategory.createMany({
             data: dto.allowedCategoryIds.map((categoryId) => ({
@@ -200,14 +283,13 @@ export class HubService {
         });
       })
       .catch((err: any) => {
-        // Re-throw HttpExceptions as-is; only unexpected errors reach here
         if (err?.status) throw err;
         throw err;
       });
   }
 
   async update(id: string, dto: UpdateHubDto, adminId: string) {
-    await this.getById(id);
+    await this.findHubOrThrow(id);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.hub.update({
@@ -220,7 +302,6 @@ export class HubService {
         select: this.hubDetailSelect,
       });
 
-      // Mirror isActive onto the hub's slug_registry row
       if (dto.isActive !== undefined) {
         await tx.slugRegistry.updateMany({
           where: { entityType: SlugEntityType.HUB, entityId: id },
@@ -235,7 +316,7 @@ export class HubService {
   }
 
   async remove(id: string, adminId: string) {
-    const hub = await this.getById(id);
+    const hub = await this.findHubOrThrow(id);
 
     if (hub.isSeeded) {
       throw new ForbiddenException('Seeded hubs cannot be deactivated');
@@ -265,8 +346,21 @@ export class HubService {
     return { message: 'Hub deactivated successfully' };
   }
 
+  // ── Allowed categories ────────────────────────────────────────────────────────
+
+  async getAllowedCategories(id: string) {
+    const hub = await this.prisma.hub.findUnique({
+      where: { id },
+      select: { allowedCategories: { select: this.allowedCategorySelect } },
+    });
+
+    if (!hub) throw new NotFoundException(`Hub ${id} not found`);
+
+    return hub.allowedCategories;
+  }
+
   async addAllowedCategory(hubId: string, dto: AddAllowedCategoryDto, adminId: string) {
-    await this.getById(hubId);
+    await this.findHubOrThrow(hubId);
 
     const category = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
@@ -299,7 +393,7 @@ export class HubService {
   }
 
   async removeAllowedCategory(hubId: string, categoryId: string, adminId: string) {
-    await this.getById(hubId);
+    await this.findHubOrThrow(hubId);
 
     const existing = await this.prisma.hubAllowedCategory.findUnique({
       where: { hubId_categoryId: { hubId, categoryId } },
@@ -319,5 +413,199 @@ export class HubService {
     );
 
     return { message: 'Allowed category removed successfully' };
+  }
+
+  // ── Translations ──────────────────────────────────────────────────────────────
+
+  async getAllTranslations(id: string) {
+    await this.findHubOrThrow(id);
+
+    return this.prisma.hubTranslation.findMany({
+      where: { hubId: id },
+      select: { locale: true, ...translationSelect },
+      orderBy: { locale: 'asc' },
+    });
+  }
+
+  async getTranslationsByLocale(id: string, locale: Locale) {
+    await this.findHubOrThrow(id);
+
+    const translation = await this.prisma.hubTranslation.findUnique({
+      where: { hubId_locale: { hubId: id, locale } },
+      select: { locale: true, ...translationSelect },
+    });
+
+    return (
+      translation ?? {
+        locale,
+        name: null,
+        overview: null,
+        h1Override: null,
+        breadcrumbLabel: null,
+        isMachineTranslated: false,
+      }
+    );
+  }
+
+  async upsertTranslations(
+    id: string,
+    locale: Locale,
+    dto: UpsertHubTranslationsDto,
+    adminId: string,
+  ) {
+    await this.findHubOrThrow(id);
+
+    const { fields, isMachineTranslated = false } = dto;
+
+    const result = await this.prisma.hubTranslation.upsert({
+      where: { hubId_locale: { hubId: id, locale } },
+      create: {
+        hubId: id,
+        locale,
+        isMachineTranslated,
+        name: fields.name,
+        overview: fields.overview,
+        h1Override: fields.h1Override,
+        breadcrumbLabel: fields.breadcrumbLabel,
+      },
+      update: {
+        isMachineTranslated,
+        ...(fields.name !== undefined && { name: fields.name }),
+        ...(fields.overview !== undefined && { overview: fields.overview }),
+        ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
+        ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
+      },
+      select: { locale: true, ...translationSelect },
+    });
+
+    this.logger.log(`Admin ${adminId} upserted translation for hub ${id} [${locale}]`);
+    return result;
+  }
+
+  async deleteTranslations(id: string, locale: Locale, adminId: string) {
+    await this.findHubOrThrow(id);
+
+    const existing = await this.prisma.hubTranslation.findUnique({
+      where: { hubId_locale: { hubId: id, locale } },
+    });
+    if (!existing) throw new NotFoundException(`No translation found for locale "${locale}"`);
+
+    await this.prisma.hubTranslation.delete({
+      where: { hubId_locale: { hubId: id, locale } },
+    });
+
+    this.logger.log(`Admin ${adminId} deleted translation for hub ${id} [${locale}]`);
+    return { message: `Translation for locale "${locale}" deleted` };
+  }
+
+  // ── Page Content ──────────────────────────────────────────────────────────────
+
+  async getPageContent(id: string, locale: Locale) {
+    await this.findHubOrThrow(id);
+
+    const row = await this.prisma.hubPageContent.findUnique({
+      where: { hubId_locale: { hubId: id, locale } },
+      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+    });
+
+    return row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null };
+  }
+
+  async upsertPageContent(
+    id: string,
+    locale: Locale,
+    dto: UpsertHubPageContentDto,
+    adminId: string,
+  ) {
+    await this.findHubOrThrow(id);
+
+    const result = await this.prisma.hubPageContent.upsert({
+      where: { hubId_locale: { hubId: id, locale } },
+      create: {
+        hubId: id,
+        locale,
+        aboutText: dto.aboutText,
+        metaTitle: dto.metaTitle,
+        metaDescription: dto.metaDescription,
+      },
+      update: {
+        ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
+        ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
+        ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
+      },
+      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+    });
+
+    this.logger.log(`Admin ${adminId} upserted page content for hub ${id} [${locale}]`);
+    return result;
+  }
+
+  // ── FAQ ───────────────────────────────────────────────────────────────────────
+
+  async getFaqs(id: string, query: FaqLocaleQueryDto) {
+    await this.findHubOrThrow(id);
+
+    return this.prisma.faq.findMany({
+      where: {
+        pageType: 'hub',
+        entityId: id,
+        isActive: true,
+        ...(query.locale && { locale: query.locale }),
+      },
+      select: this.faqSelect,
+      orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  async createFaq(id: string, dto: CreateFaqDto, adminId: string) {
+    await this.findHubOrThrow(id);
+
+    const faq = await this.prisma.faq.create({
+      data: {
+        pageType: 'hub',
+        entityId: id,
+        locale: dto.locale,
+        question: dto.question,
+        answer: dto.answer,
+        displayOrder: dto.displayOrder ?? 0,
+      },
+      select: this.faqSelect,
+    });
+
+    this.logger.log(`Admin ${adminId} created FAQ for hub ${id} [${dto.locale}]`);
+    return faq;
+  }
+
+  async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
+    const faq = await this.prisma.faq.findFirst({
+      where: { id: faqId, pageType: 'hub', entityId: id },
+    });
+    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for hub ${id}`);
+
+    const updated = await this.prisma.faq.update({
+      where: { id: faqId },
+      data: {
+        ...(dto.question !== undefined && { question: dto.question }),
+        ...(dto.answer !== undefined && { answer: dto.answer }),
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+      select: this.faqSelect,
+    });
+
+    this.logger.log(`Admin ${adminId} updated FAQ ${faqId} for hub ${id}`);
+    return updated;
+  }
+
+  async deleteFaq(id: string, faqId: string, adminId: string) {
+    const faq = await this.prisma.faq.findFirst({
+      where: { id: faqId, pageType: 'hub', entityId: id },
+    });
+    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for hub ${id}`);
+
+    await this.prisma.faq.delete({ where: { id: faqId } });
+
+    this.logger.log(`Admin ${adminId} deleted FAQ ${faqId} for hub ${id}`);
+    return { message: 'FAQ deleted successfully' };
   }
 }
