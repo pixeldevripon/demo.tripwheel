@@ -4,21 +4,58 @@
 // On create: exactly 3 FeaturedSlot rows auto-seeded per category.
 
 model Category {
-  id       String  @id @default(uuid())
-  name     String
-  slug     String  @unique  // 'boat-tours' — always English, globally unique
-  isSeeded Boolean @default(false)
-  isActive Boolean @default(true)
-  createdBy String?          // null = seeded; userId = admin who created
+  id        String  @id @default(uuid())
+  name      String
+  slug      String  @unique  // 'boat-tours' — always English, globally unique
+  isSeeded  Boolean @default(false)
+  isActive  Boolean @default(true)
+  createdBy String?           // null = seeded; userId = admin who created
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator           User?                @relation("CategoryCreator", fields: [createdBy], references: [id])
+  creator           User?                  @relation("CategoryCreator", fields: [createdBy], references: [id])
   allowedInHubs     HubAllowedCategory[]
   featuredSlots     FeaturedSlot[]
   trips             Trip[]
+  translations      CategoryTranslation[]
+  pageContents      CategoryPageContent[]
 
   @@index([slug])
   @@map("categories")
+}
+
+// Per-locale editorial page content for a category (about text, SEO metadata).
+model CategoryPageContent {
+  id              String   @id @default(uuid())
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+
+  @@unique([categoryId, locale])
+  @@index([categoryId, locale])
+  @@map("category_page_content")
+}
+
+// Per-locale translations for a category.
+// English content lives on Category.name; all other locales (and optional English
+// overrides for overview/h1Override/breadcrumbLabel) go here.
+model CategoryTranslation {
+  id                  String   @id @default(uuid())
+  categoryId          String
+  category            Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale              Locale
+  name                String?  // localized name; null falls back to Category.name
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  @@unique([categoryId, locale])
+  @@index([categoryId, locale])
+  @@map("category_translations")
 }

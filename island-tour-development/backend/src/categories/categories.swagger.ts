@@ -6,10 +6,11 @@ import {
   NotFoundErrorDto,
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
-import { SUPPORTED_LOCALES } from '@/common/constants/locales';
+import { Locale } from '@/common/constants/locales';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
+  CategoryDetailResponseDto,
   CategoryLocalizedResponseDto,
   CategoryPageContentResponseDto,
   CategoryResponseDto,
@@ -40,7 +41,7 @@ const adminErrors = [
 const localeParam = ApiQuery({
   name: 'locale',
   required: false,
-  enum: SUPPORTED_LOCALES,
+  enum: Locale,
   example: 'en',
   description: 'Content locale — falls back to English when translation is missing',
 });
@@ -73,7 +74,7 @@ export function ApiGetCategoryBySlugDocs() {
     ApiOperation({ summary: 'Get category by slug (public)' }),
     ApiParam({ name: 'slug', example: 'boat-tours' }),
     localeParam,
-    ApiResponse({ status: 200, type: CategoryLocalizedResponseDto }),
+    ApiResponse({ status: 200, type: CategoryDetailResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );
@@ -84,7 +85,7 @@ export function ApiGetCategoryByIdDocs() {
     ApiOperation({ summary: 'Get category by ID (public)' }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     localeParam,
-    ApiResponse({ status: 200, type: CategoryLocalizedResponseDto }),
+    ApiResponse({ status: 200, type: CategoryDetailResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );
@@ -153,7 +154,7 @@ export function ApiGetTranslationsByLocaleDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Get translations for a specific locale (Admin/Editor)' }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiParam({ name: 'locale', enum: SUPPORTED_LOCALES, example: 'nl' }),
+    ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: CategoryTranslationEntryDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -163,12 +164,12 @@ export function ApiGetTranslationsByLocaleDocs() {
 export function ApiUpsertTranslationsDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Upsert translations for a locale (Admin/Editor)',
+      summary: 'Patch translations for a locale (Admin/Editor)',
       description:
-        'Creates or updates translated fields for the given locale. Only supplied fields are updated — omitted fields are left unchanged.',
+        'Creates or updates translated fields for the given locale. Only supplied fields are written — omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiParam({ name: 'locale', enum: SUPPORTED_LOCALES, example: 'nl' }),
+    ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: CategoryTranslationEntryDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -182,7 +183,7 @@ export function ApiDeleteTranslationsDocs() {
       description: 'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint — update the category name field instead.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiParam({ name: 'locale', enum: SUPPORTED_LOCALES, example: 'nl' }),
+    ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -208,11 +209,11 @@ export function ApiGetPageContentDocs() {
 export function ApiUpsertPageContentDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Upsert editorial page content for a locale (Admin/Editor)',
-      description: 'Creates or updates about text, meta title, and meta description. Only supplied fields are updated.',
+      summary: 'Patch editorial page content for a locale (Admin/Editor)',
+      description: 'Creates or updates about text, meta title, and meta description. Only supplied fields are written — omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiParam({ name: 'locale', enum: SUPPORTED_LOCALES, example: 'nl' }),
+    ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: CategoryPageContentResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -228,7 +229,7 @@ export function ApiGetFaqsDocs() {
       description: 'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiQuery({ name: 'locale', required: false, enum: SUPPORTED_LOCALES, example: 'en' }),
+    ApiQuery({ name: 'locale', required: false, enum: Locale, example: Locale.en }),
     ApiResponse({ status: 200, type: [FaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,

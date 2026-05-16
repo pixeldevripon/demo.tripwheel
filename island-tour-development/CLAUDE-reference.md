@@ -20,33 +20,84 @@ const t = useTranslations('booking.cta');
 return <button>{t('check_availability')}</button>;
 ```
 
-### Dynamic content → `translations` database table (EAV pattern)
-Tour names, overviews, highlights, FAQ, category about-text — all per entity+locale.
+### Dynamic content → per-entity translation tables
+Each entity with translatable content owns its own typed translation table — no generic EAV. The `Locale` enum is defined in `prisma/enums.prisma` and enforced at the DB level.
 
-```sql
-translations (
-  id, entity_type, entity_id, locale, field, value,
-  is_machine_translated BOOLEAN,
-  UNIQUE (entity_type, entity_id, locale, field)
-)
--- entity_type: 'tour' | 'destination' | 'category' | 'hub'
--- field: 'overview' | 'highlights' | 'h1_override' | 'breadcrumb_label' | 'name' | 'about_text'
+**Locale enum (Prisma / DB-native):**
+```prisma
+enum Locale { en  es  nl  pt  fr  de  zh }
+```
+Import everywhere as `import { Locale } from '@/common/constants/locales'` (thin re-export of `@prisma/client`). Validate with `@IsEnum(Locale)` — never a string array.
+
+**Per-entity translation tables (typed columns, `@@unique([entityId, locale])`):**
+```prisma
+model CategoryTranslation {
+  id                  String   @id @default(uuid())
+  categoryId          String
+  category            Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale              Locale
+  name                String?
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+  @@unique([categoryId, locale])
+  @@map("category_translations")
+}
+-- Same pattern: DestinationTranslation, HubTranslation
 ```
 
-**Fetch pattern:** single query with `locale: { in: [locale, 'en'] }`, then merge (requested locale wins):
+**Per-entity page content tables (SEO + editorial, separate from core translations):**
+```prisma
+model CategoryPageContent {
+  id              String   @id @default(uuid())
+  categoryId      String
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+  @@unique([categoryId, locale])
+  @@map("category_page_content")
+}
+-- Same pattern: DestinationPageContent, HubPageContent
+```
+
+**FAQ — shared polymorphic table** (not EAV — has fixed typed columns):
+```prisma
+model Faq {
+  id           String   @id @default(uuid())
+  pageType     String   -- 'category' | 'destination' | 'hub'
+  entityId     String   -- UUID of the owning entity
+  locale       Locale
+  question     String
+  answer       String
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+}
+```
+
+**Trip child translation tables** (separate child rows, not EAV):
+```sql
+tour_highlight_translations (id, highlight_id, locale Locale, text, is_machine_translated)
+tour_inclusion_translations (id, inclusion_id, locale Locale, text, is_machine_translated)
+trip_translations           (id, trip_id, locale Locale, name, overview, h1Override, breadcrumbLabel, is_machine_translated)
+```
+
+**Fetch pattern** — single locale query; service applies fallback to the English canonical name:
 ```typescript
-const translations = await db.translations.findMany({
-  where: { entity_type: 'tour', entity_id: tour.id, locale: { in: [locale, 'en'] } }
+const category = await prisma.category.findUnique({
+  where: { id },
+  select: {
+    ...categorySelect,
+    translations: { where: { locale }, select: translationSelect },
+  },
 });
+const t = category.translations[0];
+return { ...category, name: t?.name ?? category.name, locale, isMachineTranslated: t?.isMachineTranslated ?? false };
 ```
 
-**Array fields** (highlights, inclusions) need child translation tables:
-```sql
-tour_highlights (id, tour_id, display_order)
-tour_highlight_translations (id, highlight_id, locale, text, is_machine_translated)
-```
-
-**AI translation:** Background job (BullMQ) triggers after English content saved. Translates to 6 locales, sets `is_machine_translated = true`. Destination/Hub names are proper nouns — never AI-translate, admin sets manually.
+**AI translation:** Background job (BullMQ) triggers after English content saved. Translates to 6 locales, sets `isMachineTranslated = true`. Destination/Hub names are proper nouns — never AI-translate, admin sets manually.
 
 **On-demand revalidation** when admin updates content:
 ```typescript

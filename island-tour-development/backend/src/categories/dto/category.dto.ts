@@ -1,9 +1,9 @@
-import { SUPPORTED_LOCALES } from '@/common/constants/locales';
+import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -39,11 +39,23 @@ export class CategoryResponseDto {
 }
 
 export class CategoryLocalizedResponseDto extends CategoryResponseDto {
-  @ApiProperty({ enum: SUPPORTED_LOCALES, example: 'nl' })
-  locale!: string;
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  locale!: Locale;
 
   @ApiProperty({ example: false })
   isMachineTranslated!: boolean;
+}
+
+// Returned by getById / getBySlug — includes all translated fields
+export class CategoryDetailResponseDto extends CategoryLocalizedResponseDto {
+  @ApiPropertyOptional({ example: 'Discover stunning boat tours around the island.', nullable: true })
+  overview!: string | null;
+
+  @ApiPropertyOptional({ example: 'Boat Tours in Curaçao', nullable: true })
+  h1Override!: string | null;
+
+  @ApiPropertyOptional({ example: 'Boat Tours', nullable: true })
+  breadcrumbLabel!: string | null;
 }
 
 export class PaginatedLocalizedCategoriesResponseDto {
@@ -108,13 +120,20 @@ export class UpsertCategoryTranslationsDto {
 }
 
 export class CategoryTranslationEntryDto {
-  @ApiProperty({ enum: SUPPORTED_LOCALES, example: 'nl' })
-  locale!: string;
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  locale!: Locale;
 
-  @ApiProperty({
-    example: { name: 'Boottochten', overview: 'Ontdek...', h1Override: null, breadcrumbLabel: null },
-  })
-  fields!: Record<string, string>;
+  @ApiPropertyOptional({ example: 'Boottochten', nullable: true })
+  name!: string | null;
+
+  @ApiPropertyOptional({ example: 'Ontdek de mooiste boottochten van het eiland.', nullable: true })
+  overview!: string | null;
+
+  @ApiPropertyOptional({ example: 'Boottochten op Curaçao', nullable: true })
+  h1Override!: string | null;
+
+  @ApiPropertyOptional({ example: 'Boottochten', nullable: true })
+  breadcrumbLabel!: string | null;
 
   @ApiProperty({ example: false })
   isMachineTranslated!: boolean;
@@ -122,7 +141,7 @@ export class CategoryTranslationEntryDto {
 
 // ── Page Content DTOs ─────────────────────────────────────────────────────────
 
-export class CategoryPageContentFieldsDto {
+export class UpsertCategoryPageContentDto {
   @ApiPropertyOptional({ example: 'Boat tours in Curaçao offer stunning Caribbean views...' })
   @IsOptional()
   @IsString()
@@ -139,25 +158,18 @@ export class CategoryPageContentFieldsDto {
   metaDescription?: string;
 }
 
-export class UpsertCategoryPageContentDto {
-  @ApiProperty({ type: CategoryPageContentFieldsDto })
-  @ValidateNested()
-  @Type(() => CategoryPageContentFieldsDto)
-  fields!: CategoryPageContentFieldsDto;
-}
-
 export class CategoryPageContentResponseDto {
-  @ApiProperty({ enum: SUPPORTED_LOCALES, example: 'nl' })
-  locale!: string;
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  locale!: Locale;
 
-  @ApiProperty({
-    example: {
-      aboutText: 'Boottochten op Curaçao zijn...',
-      metaTitle: 'Beste Boottochten | Island Tours',
-      metaDescription: 'Ontdek...',
-    },
-  })
-  fields!: Record<string, string>;
+  @ApiPropertyOptional({ example: 'Boottochten op Curaçao zijn...', nullable: true })
+  aboutText!: string | null;
+
+  @ApiPropertyOptional({ example: 'Beste Boottochten | Island Tours', nullable: true })
+  metaTitle!: string | null;
+
+  @ApiPropertyOptional({ example: 'Ontdek topbeoordeelde boottochten...', nullable: true })
+  metaDescription!: string | null;
 }
 
 // ── FAQ DTOs ──────────────────────────────────────────────────────────────────
@@ -178,14 +190,14 @@ export class FaqResponseDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
-  @ApiProperty({ enum: SUPPORTED_LOCALES, example: 'en' })
-  locale!: string;
+  @ApiProperty({ enum: Locale, example: Locale.en })
+  locale!: Locale;
 }
 
 export class CreateFaqDto {
-  @ApiProperty({ enum: SUPPORTED_LOCALES, example: 'en' })
-  @IsIn(SUPPORTED_LOCALES)
-  locale!: string;
+  @ApiProperty({ enum: Locale, example: Locale.en })
+  @IsEnum(Locale)
+  locale!: Locale;
 
   @ApiProperty({ example: 'What is included in the tour?' })
   @IsString()
@@ -257,27 +269,27 @@ export class CategoryQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Content locale', enum: SUPPORTED_LOCALES, default: 'en' })
+  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
   @IsOptional()
-  @IsIn(SUPPORTED_LOCALES)
-  locale?: string = 'en';
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }
 
 export class LocaleQueryDto {
-  @ApiPropertyOptional({ description: 'Content locale', enum: SUPPORTED_LOCALES, default: 'en' })
+  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
   @IsOptional()
-  @IsIn(SUPPORTED_LOCALES)
-  locale?: string = 'en';
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }
 
 export class FaqLocaleQueryDto {
   @ApiPropertyOptional({
     description: 'Filter FAQs by locale. Omit to return all locales.',
-    enum: SUPPORTED_LOCALES,
+    enum: Locale,
   })
   @IsOptional()
-  @IsIn(SUPPORTED_LOCALES)
-  locale?: string;
+  @IsEnum(Locale)
+  locale?: Locale;
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────

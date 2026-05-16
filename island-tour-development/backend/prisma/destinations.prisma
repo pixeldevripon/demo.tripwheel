@@ -111,7 +111,7 @@ model HubComparisonTour {
 model HubContent {
   id     String @id @default(uuid())
   hubId  String
-  locale String // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
+  locale Locale
   field  String // 'about' | 'tips' | 'our_pick_intro' | 'meta_title' | 'meta_description'
   value  String
 

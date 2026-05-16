@@ -1,0 +1,18 @@
+// FAQ — admin-managed FAQ items for any entity page.
+// Uses a pageType discriminator (polymorphic association) instead of per-entity
+// tables because the FAQ structure is identical across all entity types:
+// question + answer + displayOrder + locale + isActive.
+// The service layer enforces that entityId belongs to the correct pageType.
+model Faq {
+  id           String  @id @default(uuid())
+  pageType     String  // 'category' | 'hub' | 'destination' | 'tour'
+  entityId     String  // UUID of the owning entity
+  locale       Locale
+  question     String
+  answer       String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  @@index([pageType, entityId, locale])
+  @@map("faqs")
+}

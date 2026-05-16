@@ -146,8 +146,9 @@ prisma/
 ├── user.prisma            ← User, Session, Account, Verification (Better Auth)
 ├── operators.prisma       ← Operator, OperatorCompanyInfo, OperatorSocialMedia, OperatorStripeConfig, OperatorMollieConfig
 ├── destinations.prisma    ← Destination, Hub, HubAllowedCategory, HubOurPick, HubComparisonGroup, HubComparisonTour, HubContent, FeaturedExperience
-├── categories.prisma      ← Category
-├── content.prisma         ← SlugRegistry, Translation, PageContent, Faq
+├── categories.prisma      ← Category, CategoryTranslation, CategoryPageContent
+├── slug-registry.prisma   ← SlugRegistry
+├── faq.prisma             ← Faq (shared polymorphic; pageType + entityId discriminator)
 ├── trips.prisma           ← Trip + all child models (TourImage, TourSchedule, TourAgeBand, TourAddOn, TourHighlight, TourInclusion…)
 ├── featured-slots.prisma  ← FeaturedSlot, SlotLock, SlotHistory
 ├── waitlist.prisma        ← WaitlistEntry

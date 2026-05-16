@@ -10,11 +10,10 @@ import {
   Param,
   Patch,
   Post,
-  Put,
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Permission } from '@prisma/client';
+import { Locale, Permission } from '@prisma/client';
 import { CategoryService } from './categories.service';
 import {
   ApiCreateCategoryDocs,
@@ -139,10 +138,10 @@ export class CategoryController {
   @RequirePermissions(Permission.EDIT_CATEGORY)
   @ApiGetTranslationsByLocaleDocs()
   getTranslationsByLocale(@Param('id') id: string, @Param('locale') locale: string) {
-    return this.categoryService.getTranslationsByLocale(id, locale);
+    return this.categoryService.getTranslationsByLocale(id, locale as Locale);
   }
 
-  @Put(':id/translations/:locale')
+  @Patch(':id/translations/:locale')
   @RequirePermissions(Permission.EDIT_CATEGORY)
   @ApiUpsertTranslationsDocs()
   upsertTranslations(
@@ -151,7 +150,7 @@ export class CategoryController {
     @Body() dto: UpsertCategoryTranslationsDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.categoryService.upsertTranslations(id, locale, dto, user.id);
+    return this.categoryService.upsertTranslations(id, locale as Locale, dto, user.id);
   }
 
   @Delete(':id/translations/:locale')
@@ -162,7 +161,7 @@ export class CategoryController {
     @Param('locale') locale: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.categoryService.deleteTranslations(id, locale, user.id);
+    return this.categoryService.deleteTranslations(id, locale as Locale, user.id);
   }
 
   // ── Page Content (public GET, admin PUT) ──────────────────────────────────────
@@ -174,7 +173,7 @@ export class CategoryController {
     return this.categoryService.getPageContent(id, query.locale ?? 'en');
   }
 
-  @Put(':id/page-content/:locale')
+  @Patch(':id/page-content/:locale')
   @RequirePermissions(Permission.EDIT_CATEGORY)
   @ApiUpsertPageContentDocs()
   upsertPageContent(
@@ -183,7 +182,7 @@ export class CategoryController {
     @Body() dto: UpsertCategoryPageContentDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.categoryService.upsertPageContent(id, locale, dto, user.id);
+    return this.categoryService.upsertPageContent(id, locale as Locale, dto, user.id);
   }
 
   // ── FAQ (public GET, admin write) ─────────────────────────────────────────────

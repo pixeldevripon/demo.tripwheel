@@ -168,7 +168,7 @@ model TourHighlight {
 model TourHighlightTranslation {
   id                  String  @id @default(uuid())
   highlightId         String
-  locale              String  // 'en' | 'es' | ...
+  locale              Locale
   text                String  // 5–15 words
   isMachineTranslated Boolean @default(false)
 
@@ -196,7 +196,7 @@ model TourInclusion {
 model TourInclusionTranslation {
   id                  String  @id @default(uuid())
   inclusionId         String
-  locale              String
+  locale              Locale
   label               String  // 'Open bar', 'Snorkel equipment'
   isMachineTranslated Boolean @default(false)
 
@@ -212,7 +212,7 @@ model TourInclusionTranslation {
 model TripTranslation {
   id                  String   @id @default(uuid())
   tripId              String
-  locale              String   // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
+  locale              Locale   // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
   title               String?
   overview            String?  // 80–200 words, paragraph breaks only
   description         String?

@@ -1,5 +1,17 @@
 // All project-wide enums live here.
 
+// ── Localisation ──────────────────────────────────────────────────────────────
+
+enum Locale {
+  en
+  es
+  nl
+  pt
+  fr
+  de
+  zh
+}
+
 // ── User / Auth ───────────────────────────────────────────────────────────────
 
 enum Role {

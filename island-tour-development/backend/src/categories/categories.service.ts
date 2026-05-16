@@ -1,3 +1,4 @@
+import { Locale } from '@/common/constants/locales';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
@@ -19,10 +20,13 @@ import {
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
 
-const TRANSLATION_FIELDS = ['name', 'overview', 'h1Override', 'breadcrumbLabel'] as const;
-
-type TranslationEntry = { value: string; isMachineTranslated: boolean };
-type TranslationMap = Map<string, Record<string, TranslationEntry>>;
+const translationSelect = {
+  name: true,
+  overview: true,
+  h1Override: true,
+  breadcrumbLabel: true,
+  isMachineTranslated: true,
+} as const;
 
 @Injectable()
 export class CategoryService {
@@ -60,54 +64,23 @@ export class CategoryService {
     return category;
   }
 
-  private async fetchTranslations(
-    entityIds: string[],
-    locale: string,
-    fields: readonly string[],
-  ): Promise<TranslationMap> {
-    if (entityIds.length === 0 || locale === 'en') return new Map();
-
-    const rows = await this.prisma.translation.findMany({
-      where: {
-        entityType: 'category',
-        entityId: { in: entityIds },
-        locale: { in: [locale, 'en'] },
-        field: { in: [...fields] },
-      },
-      select: { entityId: true, locale: true, field: true, value: true, isMachineTranslated: true },
-    });
-
-    const result: TranslationMap = new Map();
-    for (const row of rows) {
-      if (!result.has(row.entityId)) result.set(row.entityId, {});
-      const fieldMap = result.get(row.entityId)!;
-      // Requested locale wins over 'en' fallback
-      if (!fieldMap[row.field] || row.locale === locale) {
-        fieldMap[row.field] = { value: row.value, isMachineTranslated: row.isMachineTranslated };
-      }
-    }
-    return result;
-  }
-
-  private applyLocale<T extends { id: string; name: string }>(
-    entity: T,
-    translationMap: TranslationMap,
-    locale: string,
+  private applyTranslation<T extends { name: string }>(
+    base: T,
+    t: { name: string | null; isMachineTranslated: boolean } | undefined,
+    locale: Locale,
   ) {
-    const fields = translationMap.get(entity.id) ?? {};
-    const nameTranslation = fields['name'];
     return {
-      ...entity,
-      name: nameTranslation?.value ?? entity.name,
+      ...base,
+      name: t?.name ?? base.name,
       locale,
-      isMachineTranslated: nameTranslation?.isMachineTranslated ?? false,
+      isMachineTranslated: t?.isMachineTranslated ?? false,
     };
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
 
   async getAll(query: CategoryQueryDto) {
-    const { isActive, page = 1, limit = 20, locale = 'en' } = query;
+    const { isActive, page = 1, limit = 20, locale = Locale.en } = query;
     const skip = (page - 1) * limit;
 
     const where = { ...(isActive !== undefined && { isActive }) };
@@ -116,43 +89,78 @@ export class CategoryService {
       this.prisma.category.count({ where }),
       this.prisma.category.findMany({
         where,
-        select: this.categorySelect,
+        select: {
+          ...this.categorySelect,
+          translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+        },
         orderBy: { name: 'asc' },
         skip,
         take: limit,
       }),
     ]);
 
-    const translationMap = await this.fetchTranslations(data.map((c) => c.id), locale, ['name']);
-    return { total, page, limit, data: data.map((c) => this.applyLocale(c, translationMap, locale)) };
+    const localizedData = data.map(({ translations, ...cat }) =>
+      this.applyTranslation(cat, translations[0], locale),
+    );
+
+    return { total, page, limit, data: localizedData };
   }
 
-  async getActive(locale = 'en') {
+  async getActive(locale: Locale = Locale.en) {
     const data = await this.prisma.category.findMany({
       where: { isActive: true },
-      select: this.categorySelect,
+      select: {
+        ...this.categorySelect,
+        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
-    const translationMap = await this.fetchTranslations(data.map((c) => c.id), locale, ['name']);
-    return data.map((c) => this.applyLocale(c, translationMap, locale));
+    return data.map(({ translations, ...cat }) =>
+      this.applyTranslation(cat, translations[0], locale),
+    );
   }
 
-  async getById(id: string, locale = 'en') {
-    const category = await this.findCategoryOrThrow(id);
-    const translationMap = await this.fetchTranslations([id], locale, TRANSLATION_FIELDS);
-    return this.applyLocale(category, translationMap, locale);
+  async getById(id: string, locale: Locale = Locale.en) {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      select: {
+        ...this.categorySelect,
+        translations: { where: { locale }, select: translationSelect },
+      },
+    });
+    if (!category) throw new NotFoundException(`Category ${id} not found`);
+
+    const { translations, ...cat } = category;
+    const t = translations[0];
+
+    return {
+      ...this.applyTranslation(cat, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+    };
   }
 
-  async getBySlug(slug: string, locale = 'en') {
+  async getBySlug(slug: string, locale: Locale = Locale.en) {
     const category = await this.prisma.category.findUnique({
       where: { slug },
-      select: this.categorySelect,
+      select: {
+        ...this.categorySelect,
+        translations: { where: { locale }, select: translationSelect },
+      },
     });
     if (!category) throw new NotFoundException(`Category with slug "${slug}" not found`);
 
-    const translationMap = await this.fetchTranslations([category.id], locale, TRANSLATION_FIELDS);
-    return this.applyLocale(category, translationMap, locale);
+    const { translations, ...cat } = category;
+    const t = translations[0];
+
+    return {
+      ...this.applyTranslation(cat, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+    };
   }
 
   async create(dto: CreateCategoryDto, adminId: string) {
@@ -259,132 +267,115 @@ export class CategoryService {
   async getAllTranslations(id: string) {
     await this.findCategoryOrThrow(id);
 
-    const rows = await this.prisma.translation.findMany({
-      where: { entityType: 'category', entityId: id },
-      select: { locale: true, field: true, value: true, isMachineTranslated: true },
-      orderBy: [{ locale: 'asc' }, { field: 'asc' }],
+    return this.prisma.categoryTranslation.findMany({
+      where: { categoryId: id },
+      select: { locale: true, ...translationSelect },
+      orderBy: { locale: 'asc' },
     });
-
-    const grouped: Record<string, { fields: Record<string, string>; isMachineTranslated: boolean }> = {};
-    for (const row of rows) {
-      if (!grouped[row.locale]) {
-        grouped[row.locale] = { fields: {}, isMachineTranslated: row.isMachineTranslated };
-      }
-      grouped[row.locale].fields[row.field] = row.value;
-    }
-
-    return Object.entries(grouped).map(([locale, data]) => ({
-      locale,
-      fields: data.fields,
-      isMachineTranslated: data.isMachineTranslated,
-    }));
   }
 
-  async getTranslationsByLocale(id: string, locale: string) {
-    const rows = await this.prisma.translation.findMany({
-      where: { entityType: 'category', entityId: id, locale },
-      select: { field: true, value: true, isMachineTranslated: true },
+  async getTranslationsByLocale(id: string, locale: Locale) {
+    await this.findCategoryOrThrow(id);
+
+    const translation = await this.prisma.categoryTranslation.findUnique({
+      where: { categoryId_locale: { categoryId: id, locale } },
+      select: { locale: true, ...translationSelect },
     });
 
-    const fields: Record<string, string> = {};
-    let isMachineTranslated = false;
-    for (const row of rows) {
-      fields[row.field] = row.value;
-      isMachineTranslated = row.isMachineTranslated;
-    }
-
-    return { locale, fields, isMachineTranslated };
+    return translation ?? { locale, name: null, overview: null, h1Override: null, breadcrumbLabel: null, isMachineTranslated: false };
   }
 
   async upsertTranslations(
     id: string,
-    locale: string,
+    locale: Locale,
     dto: UpsertCategoryTranslationsDto,
     adminId: string,
   ) {
     await this.findCategoryOrThrow(id);
 
-    const { isMachineTranslated = false } = dto;
-    const entries = (Object.entries(dto.fields) as [string, string | undefined][]).filter(
-      ([, v]) => v !== undefined && v !== null,
-    ) as [string, string][];
+    const { fields, isMachineTranslated = false } = dto;
 
-    if (entries.length > 0) {
-      await this.prisma.$transaction(
-        entries.map(([field, value]) =>
-          this.prisma.translation.upsert({
-            where: {
-              entityType_entityId_locale_field: { entityType: 'category', entityId: id, locale, field },
-            },
-            create: { entityType: 'category', entityId: id, locale, field, value, isMachineTranslated },
-            update: { value, isMachineTranslated },
-          }),
-        ),
-      );
-    }
-
-    this.logger.log(
-      `Admin ${adminId} upserted ${entries.length} translation(s) for category ${id} [${locale}]`,
-    );
-
-    return this.getTranslationsByLocale(id, locale);
-  }
-
-  async deleteTranslations(id: string, locale: string, adminId: string) {
-    await this.findCategoryOrThrow(id);
-
-    const { count } = await this.prisma.translation.deleteMany({
-      where: { entityType: 'category', entityId: id, locale },
+    const result = await this.prisma.categoryTranslation.upsert({
+      where: { categoryId_locale: { categoryId: id, locale } },
+      create: {
+        categoryId: id,
+        locale,
+        isMachineTranslated,
+        name: fields.name,
+        overview: fields.overview,
+        h1Override: fields.h1Override,
+        breadcrumbLabel: fields.breadcrumbLabel,
+      },
+      update: {
+        isMachineTranslated,
+        ...(fields.name !== undefined && { name: fields.name }),
+        ...(fields.overview !== undefined && { overview: fields.overview }),
+        ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
+        ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
+      },
+      select: { locale: true, ...translationSelect },
     });
 
-    this.logger.log(`Admin ${adminId} deleted ${count} translation(s) for category ${id} [${locale}]`);
-    return { message: `Deleted ${count} translation(s) for locale "${locale}"` };
+    this.logger.log(`Admin ${adminId} upserted translation for category ${id} [${locale}]`);
+    return result;
+  }
+
+  async deleteTranslations(id: string, locale: Locale, adminId: string) {
+    await this.findCategoryOrThrow(id);
+
+    const existing = await this.prisma.categoryTranslation.findUnique({
+      where: { categoryId_locale: { categoryId: id, locale } },
+    });
+    if (!existing) throw new NotFoundException(`No translation found for locale "${locale}"`);
+
+    await this.prisma.categoryTranslation.delete({
+      where: { categoryId_locale: { categoryId: id, locale } },
+    });
+
+    this.logger.log(`Admin ${adminId} deleted translation for category ${id} [${locale}]`);
+    return { message: `Translation for locale "${locale}" deleted` };
   }
 
   // ── Page Content ──────────────────────────────────────────────────────────────
 
-  async getPageContent(id: string, locale: string) {
+  async getPageContent(id: string, locale: Locale) {
     await this.findCategoryOrThrow(id);
 
-    const rows = await this.prisma.pageContent.findMany({
-      where: { pageType: 'category', entityId: id, locale },
-      select: { field: true, value: true },
+    const row = await this.prisma.categoryPageContent.findUnique({
+      where: { categoryId_locale: { categoryId: id, locale } },
+      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
     });
 
-    const fields: Record<string, string> = {};
-    for (const row of rows) fields[row.field] = row.value;
-
-    return { locale, fields };
+    return row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null };
   }
 
   async upsertPageContent(
     id: string,
-    locale: string,
+    locale: Locale,
     dto: UpsertCategoryPageContentDto,
     adminId: string,
   ) {
     await this.findCategoryOrThrow(id);
 
-    const entries = (Object.entries(dto.fields) as [string, string | undefined][]).filter(
-      ([, v]) => v !== undefined && v !== null,
-    ) as [string, string][];
-
-    if (entries.length > 0) {
-      await this.prisma.$transaction(
-        entries.map(([field, value]) =>
-          this.prisma.pageContent.upsert({
-            where: {
-              pageType_entityId_locale_field: { pageType: 'category', entityId: id, locale, field },
-            },
-            create: { pageType: 'category', entityId: id, locale, field, value },
-            update: { value },
-          }),
-        ),
-      );
-    }
+    const result = await this.prisma.categoryPageContent.upsert({
+      where: { categoryId_locale: { categoryId: id, locale } },
+      create: {
+        categoryId: id,
+        locale,
+        aboutText: dto.aboutText,
+        metaTitle: dto.metaTitle,
+        metaDescription: dto.metaDescription,
+      },
+      update: {
+        ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
+        ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
+        ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
+      },
+      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+    });
 
     this.logger.log(`Admin ${adminId} upserted page content for category ${id} [${locale}]`);
-    return this.getPageContent(id, locale);
+    return result;
   }
 
   // ── FAQ ───────────────────────────────────────────────────────────────────────
