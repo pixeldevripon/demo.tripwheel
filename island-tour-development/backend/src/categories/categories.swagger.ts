@@ -128,7 +128,6 @@ export function ApiDeleteCategoryDocs() {
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: DeleteCategoryResponseDto }),
-    ApiResponse({ status: 403, description: 'Seeded category', type: ForbiddenErrorDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ApiResponse({ status: 409, description: 'Category has active trips', type: ConflictErrorDto }),
     ...adminErrors,

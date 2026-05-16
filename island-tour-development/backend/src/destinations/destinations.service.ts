@@ -1,14 +1,17 @@
+import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
+import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType } from '@prisma/client';
+import { SlugEntityType, TripStatus } from '@prisma/client';
 import {
   CreateDestinationDto,
   CreateFaqDto,
@@ -19,14 +22,6 @@ import {
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
-
-const translationSelect = {
-  name: true,
-  overview: true,
-  h1Override: true,
-  breadcrumbLabel: true,
-  isMachineTranslated: true,
-} as const;
 
 @Injectable()
 export class DestinationService {
@@ -45,15 +40,6 @@ export class DestinationService {
     updatedAt: true,
   } as const;
 
-  private readonly faqSelect = {
-    id: true,
-    question: true,
-    answer: true,
-    displayOrder: true,
-    isActive: true,
-    locale: true,
-  } as const;
-
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   private async findDestinationOrThrow(id: string) {
@@ -63,19 +49,6 @@ export class DestinationService {
     });
     if (!destination) throw new NotFoundException(`Destination ${id} not found`);
     return destination;
-  }
-
-  private applyTranslation<T extends { name: string }>(
-    base: T,
-    t: { name: string | null; isMachineTranslated: boolean } | undefined,
-    locale: Locale,
-  ) {
-    return {
-      ...base,
-      name: t?.name ?? base.name,
-      locale,
-      isMachineTranslated: t?.isMachineTranslated ?? false,
-    };
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
@@ -101,7 +74,7 @@ export class DestinationService {
     ]);
 
     const localizedData = data.map(({ translations, ...dest }) =>
-      this.applyTranslation(dest, translations[0], locale),
+      applyTranslation(dest, translations[0], locale),
     );
 
     return { total, page, limit, data: localizedData };
@@ -118,7 +91,7 @@ export class DestinationService {
     });
 
     return data.map(({ translations, ...dest }) =>
-      this.applyTranslation(dest, translations[0], locale),
+      applyTranslation(dest, translations[0], locale),
     );
   }
 
@@ -136,7 +109,7 @@ export class DestinationService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(dest, t, locale),
+      ...applyTranslation(dest, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -157,7 +130,7 @@ export class DestinationService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(dest, t, locale),
+      ...applyTranslation(dest, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -176,7 +149,7 @@ export class DestinationService {
             heroImage: dto.heroImage,
             createdBy: adminId,
           },
-          select: { id: true, slug: true },
+          select: this.destinationSelect,
         })
         .catch((err: any) => {
           if (err?.code === 'P2002') {
@@ -210,33 +183,31 @@ export class DestinationService {
         });
       }
 
-      const result = await tx.destination.findUniqueOrThrow({
-        where: { id: destination.id },
-        select: this.destinationSelect,
-      });
-
       this.logger.log(
         `Admin ${adminId} created destination "${dto.name}" (${destination.id}), ` +
           `seeded ${categories.length} category slug(s) + 1 reserved`,
       );
 
-      return result;
+      return destination;
     });
   }
 
   async update(id: string, dto: UpdateDestinationDto, adminId: string) {
-    await this.findDestinationOrThrow(id);
-
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.destination.update({
-        where: { id },
-        data: {
-          ...(dto.name !== undefined && { name: dto.name }),
-          ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
-          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-        },
-        select: this.destinationSelect,
-      });
+      const updated = await tx.destination
+        .update({
+          where: { id },
+          data: {
+            ...(dto.name !== undefined && { name: dto.name }),
+            ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+            ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+          },
+          select: this.destinationSelect,
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2025') throw new NotFoundException(`Destination ${id} not found`);
+          throw err;
+        });
 
       if (dto.isActive !== undefined) {
         await tx.slugRegistry.updateMany({
@@ -251,17 +222,23 @@ export class DestinationService {
   }
 
   async remove(id: string, adminId: string) {
-    const destination = await this.findDestinationOrThrow(id);
-
-    if (destination.isSeeded) {
-      throw new ForbiddenException('Seeded destinations cannot be deactivated');
-    }
-
     await this.prisma.$transaction(async (tx) => {
-      const tripCount = await tx.trip.count({ where: { destinationId: id } });
+      const destination = await tx.destination.findUnique({
+        where: { id },
+        select: this.destinationSelect,
+      });
+      if (!destination) throw new NotFoundException(`Destination ${id} not found`);
+
+      if (destination.isSeeded) {
+        throw new ForbiddenException('Seeded destinations cannot be deactivated');
+      }
+
+      const tripCount = await tx.trip.count({
+        where: { destinationId: id, isActive: true, status: { not: TripStatus.DRAFT } },
+      });
       if (tripCount > 0) {
         throw new ConflictException(
-          `Cannot deactivate destination: ${tripCount} trip(s) are still assigned to it`,
+          `Cannot deactivate destination: ${tripCount} active trip(s) are still assigned to it`,
         );
       }
 
@@ -308,21 +285,21 @@ export class DestinationService {
   ) {
     await this.findDestinationOrThrow(id);
 
-    const { fields, isMachineTranslated = false } = dto;
+    const { fields, isMachineTranslated } = dto;
 
     const result = await this.prisma.destinationTranslation.upsert({
       where: { destinationId_locale: { destinationId: id, locale } },
       create: {
         destinationId: id,
         locale,
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         name: fields.name,
         overview: fields.overview,
         h1Override: fields.h1Override,
         breadcrumbLabel: fields.breadcrumbLabel,
       },
       update: {
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
@@ -336,16 +313,22 @@ export class DestinationService {
   }
 
   async deleteTranslations(id: string, locale: Locale, adminId: string) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'The English translation cannot be deleted. Update the destination name field instead.',
+      );
+    }
+
     await this.findDestinationOrThrow(id);
 
-    const existing = await this.prisma.destinationTranslation.findUnique({
-      where: { destinationId_locale: { destinationId: id, locale } },
-    });
-    if (!existing) throw new NotFoundException(`No translation found for locale "${locale}"`);
-
-    await this.prisma.destinationTranslation.delete({
-      where: { destinationId_locale: { destinationId: id, locale } },
-    });
+    await this.prisma.destinationTranslation
+      .delete({ where: { destinationId_locale: { destinationId: id, locale } } })
+      .catch((err: any) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException(`No translation found for locale "${locale}"`);
+        }
+        throw err;
+      });
 
     this.logger.log(`Admin ${adminId} deleted translation for destination ${id} [${locale}]`);
     return { message: `Translation for locale "${locale}" deleted` };
@@ -400,12 +383,12 @@ export class DestinationService {
 
     return this.prisma.faq.findMany({
       where: {
-        pageType: 'destination',
+        pageType: FAQ_PAGE_TYPE.DESTINATION,
         entityId: id,
         isActive: true,
         ...(query.locale && { locale: query.locale }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
   }
@@ -415,14 +398,14 @@ export class DestinationService {
 
     const faq = await this.prisma.faq.create({
       data: {
-        pageType: 'destination',
+        pageType: FAQ_PAGE_TYPE.DESTINATION,
         entityId: id,
         locale: dto.locale,
         question: dto.question,
         answer: dto.answer,
         displayOrder: dto.displayOrder ?? 0,
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} created FAQ for destination ${id} [${dto.locale}]`);
@@ -431,7 +414,7 @@ export class DestinationService {
 
   async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'destination', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.DESTINATION, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for destination ${id}`);
 
@@ -443,7 +426,7 @@ export class DestinationService {
         ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} updated FAQ ${faqId} for destination ${id}`);
@@ -452,7 +435,7 @@ export class DestinationService {
 
   async deleteFaq(id: string, faqId: string, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'destination', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.DESTINATION, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for destination ${id}`);
 

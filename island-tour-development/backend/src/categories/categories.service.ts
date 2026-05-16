@@ -1,14 +1,17 @@
+import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
+import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType } from '@prisma/client';
+import { SlugEntityType, TripStatus } from '@prisma/client';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
@@ -19,14 +22,6 @@ import {
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
-
-const translationSelect = {
-  name: true,
-  overview: true,
-  h1Override: true,
-  breadcrumbLabel: true,
-  isMachineTranslated: true,
-} as const;
 
 @Injectable()
 export class CategoryService {
@@ -44,15 +39,6 @@ export class CategoryService {
     updatedAt: true,
   } as const;
 
-  private readonly faqSelect = {
-    id: true,
-    question: true,
-    answer: true,
-    displayOrder: true,
-    isActive: true,
-    locale: true,
-  } as const;
-
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   private async findCategoryOrThrow(id: string) {
@@ -62,19 +48,6 @@ export class CategoryService {
     });
     if (!category) throw new NotFoundException(`Category ${id} not found`);
     return category;
-  }
-
-  private applyTranslation<T extends { name: string }>(
-    base: T,
-    t: { name: string | null; isMachineTranslated: boolean } | undefined,
-    locale: Locale,
-  ) {
-    return {
-      ...base,
-      name: t?.name ?? base.name,
-      locale,
-      isMachineTranslated: t?.isMachineTranslated ?? false,
-    };
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
@@ -100,7 +73,7 @@ export class CategoryService {
     ]);
 
     const localizedData = data.map(({ translations, ...cat }) =>
-      this.applyTranslation(cat, translations[0], locale),
+      applyTranslation(cat, translations[0], locale),
     );
 
     return { total, page, limit, data: localizedData };
@@ -117,7 +90,7 @@ export class CategoryService {
     });
 
     return data.map(({ translations, ...cat }) =>
-      this.applyTranslation(cat, translations[0], locale),
+      applyTranslation(cat, translations[0], locale),
     );
   }
 
@@ -135,7 +108,7 @@ export class CategoryService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(cat, t, locale),
+      ...applyTranslation(cat, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -156,7 +129,7 @@ export class CategoryService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(cat, t, locale),
+      ...applyTranslation(cat, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -212,17 +185,20 @@ export class CategoryService {
   }
 
   async update(id: string, dto: UpdateCategoryDto, adminId: string) {
-    await this.findCategoryOrThrow(id);
-
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.category.update({
-        where: { id },
-        data: {
-          ...(dto.name !== undefined && { name: dto.name }),
-          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-        },
-        select: this.categorySelect,
-      });
+      const updated = await tx.category
+        .update({
+          where: { id },
+          data: {
+            ...(dto.name !== undefined && { name: dto.name }),
+            ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+          },
+          select: this.categorySelect,
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2025') throw new NotFoundException(`Category ${id} not found`);
+          throw err;
+        });
 
       if (dto.isActive !== undefined) {
         await tx.slugRegistry.updateMany({
@@ -243,14 +219,16 @@ export class CategoryService {
       throw new ForbiddenException('Seeded categories cannot be deactivated');
     }
 
-    const tripCount = await this.prisma.trip.count({ where: { categoryId: id } });
-    if (tripCount > 0) {
-      throw new ConflictException(
-        `Cannot deactivate category: ${tripCount} trip(s) are still assigned to it`,
-      );
-    }
-
     await this.prisma.$transaction(async (tx) => {
+      const tripCount = await tx.trip.count({
+        where: { categoryId: id, isActive: true, status: { not: TripStatus.DRAFT } },
+      });
+      if (tripCount > 0) {
+        throw new ConflictException(
+          `Cannot deactivate category: ${tripCount} active trip(s) are still assigned to it`,
+        );
+      }
+
       await tx.category.update({ where: { id }, data: { isActive: false } });
       await tx.slugRegistry.updateMany({
         where: { entityType: SlugEntityType.CATEGORY, entityId: id },
@@ -293,21 +271,21 @@ export class CategoryService {
   ) {
     await this.findCategoryOrThrow(id);
 
-    const { fields, isMachineTranslated = false } = dto;
+    const { fields, isMachineTranslated } = dto;
 
     const result = await this.prisma.categoryTranslation.upsert({
       where: { categoryId_locale: { categoryId: id, locale } },
       create: {
         categoryId: id,
         locale,
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         name: fields.name,
         overview: fields.overview,
         h1Override: fields.h1Override,
         breadcrumbLabel: fields.breadcrumbLabel,
       },
       update: {
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
@@ -321,16 +299,22 @@ export class CategoryService {
   }
 
   async deleteTranslations(id: string, locale: Locale, adminId: string) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'The English translation cannot be deleted. Update the category name field instead.',
+      );
+    }
+
     await this.findCategoryOrThrow(id);
 
-    const existing = await this.prisma.categoryTranslation.findUnique({
-      where: { categoryId_locale: { categoryId: id, locale } },
-    });
-    if (!existing) throw new NotFoundException(`No translation found for locale "${locale}"`);
-
-    await this.prisma.categoryTranslation.delete({
-      where: { categoryId_locale: { categoryId: id, locale } },
-    });
+    await this.prisma.categoryTranslation
+      .delete({ where: { categoryId_locale: { categoryId: id, locale } } })
+      .catch((err: any) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException(`No translation found for locale "${locale}"`);
+        }
+        throw err;
+      });
 
     this.logger.log(`Admin ${adminId} deleted translation for category ${id} [${locale}]`);
     return { message: `Translation for locale "${locale}" deleted` };
@@ -385,12 +369,12 @@ export class CategoryService {
 
     return this.prisma.faq.findMany({
       where: {
-        pageType: 'category',
+        pageType: FAQ_PAGE_TYPE.CATEGORY,
         entityId: id,
         isActive: true,
         ...(query.locale && { locale: query.locale }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
   }
@@ -400,14 +384,14 @@ export class CategoryService {
 
     const faq = await this.prisma.faq.create({
       data: {
-        pageType: 'category',
+        pageType: FAQ_PAGE_TYPE.CATEGORY,
         entityId: id,
         locale: dto.locale,
         question: dto.question,
         answer: dto.answer,
         displayOrder: dto.displayOrder ?? 0,
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} created FAQ for category ${id} [${dto.locale}]`);
@@ -416,7 +400,7 @@ export class CategoryService {
 
   async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'category', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
 
@@ -428,7 +412,7 @@ export class CategoryService {
         ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} updated FAQ ${faqId} for category ${id}`);
@@ -437,7 +421,7 @@ export class CategoryService {
 
   async deleteFaq(id: string, faqId: string, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'category', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
 

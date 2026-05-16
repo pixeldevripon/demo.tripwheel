@@ -8,6 +8,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
   Query,
@@ -103,7 +104,7 @@ export class HubController {
   @Public()
   @ApiGetHubByIdDocs()
   getById(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.hubService.getById(id, query.locale ?? 'en');
+    return this.hubService.getById(id, query.locale);
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -145,8 +146,11 @@ export class HubController {
   @Get(':id/translations/:locale')
   @RequirePermissions(Permission.MANAGE_HUBS)
   @ApiGetTranslationsByLocaleDocs()
-  getTranslationsByLocale(@Param('id') id: string, @Param('locale') locale: string) {
-    return this.hubService.getTranslationsByLocale(id, locale as Locale);
+  getTranslationsByLocale(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+  ) {
+    return this.hubService.getTranslationsByLocale(id, locale);
   }
 
   @Patch(':id/translations/:locale')
@@ -154,11 +158,11 @@ export class HubController {
   @ApiUpsertTranslationsDocs()
   upsertTranslations(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertHubTranslationsDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.hubService.upsertTranslations(id, locale as Locale, dto, user.id);
+    return this.hubService.upsertTranslations(id, locale, dto, user.id);
   }
 
   @Delete(':id/translations/:locale')
@@ -166,10 +170,10 @@ export class HubController {
   @ApiDeleteTranslationsDocs()
   deleteTranslations(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.hubService.deleteTranslations(id, locale as Locale, user.id);
+    return this.hubService.deleteTranslations(id, locale, user.id);
   }
 
   // ── Page Content (public GET, admin PATCH) ────────────────────────────────────
@@ -178,7 +182,7 @@ export class HubController {
   @Public()
   @ApiGetPageContentDocs()
   getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.hubService.getPageContent(id, query.locale ?? 'en');
+    return this.hubService.getPageContent(id, query.locale!);
   }
 
   @Patch(':id/page-content/:locale')
@@ -186,11 +190,11 @@ export class HubController {
   @ApiUpsertPageContentDocs()
   upsertPageContent(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertHubPageContentDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.hubService.upsertPageContent(id, locale as Locale, dto, user.id);
+    return this.hubService.upsertPageContent(id, locale, dto, user.id);
   }
 
   // ── FAQ (public GET, admin write) ─────────────────────────────────────────────

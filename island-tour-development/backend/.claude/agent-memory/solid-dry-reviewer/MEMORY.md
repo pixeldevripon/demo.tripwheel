@@ -1,3 +1,8 @@
 - [Auth Module Patterns](auth_module_patterns.md) — guard chain, decorator patterns, and known issues in the auth module
 - [CORS Origins DRY Violation](cors_dry_violation.md) — CORS origin parsing duplicated between main.ts and auth.instance.ts
 - [Any Types in main.ts](any_types_main.md) — `any` casts in Swagger OpenAPI merge block need proper typing
+- [Destination/Hub/Category Shared Patterns](destination_hub_shared_patterns.md) — translationSelect, applyTranslation, faqSelect, and FAQ CRUD duplicated across all three content modules; locale cast unsafe in controllers
+- [user-profile.md](user-profile.md) — Senior full-stack dev building Island Tours; prefers actionable targeted fixes over rewrites
+- [categories-module-review.md](categories-module-review.md) — Detailed review findings for the categories module (May 2026), including TOCTOU and locale validation gaps
+- [cross-module-patterns.md](cross-module-patterns.md) — Canonical list of project-wide DRY violations and good patterns to preserve
+- [hubs-module-review.md](hubs-module-review.md) — Code review findings for src/hubs/ (May 2026): locale param bypass, en-deletion gap, TOCTOU in remove(), dead catch block

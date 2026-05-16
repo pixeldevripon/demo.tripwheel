@@ -197,24 +197,24 @@ describe('SettingsService', () => {
 
   describe('getStripeConfiguration', () => {
     it('returns Stripe settings via the default singleton ID', async () => {
-      const mockResult = { id: 'default', paymentLabel: 'Stripe' };
-      prisma.stripeConfiguration.upsert.mockResolvedValue(mockResult);
+      const dbResult = { id: 'default', paymentLabel: 'Stripe', secretKey: null, webhookSecret: null };
+      prisma.stripeConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.getStripeConfiguration();
 
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual({ id: 'default', paymentLabel: 'Stripe', secretKey: null, webhookSecret: null });
     });
   });
 
   describe('updateStripeConfiguration', () => {
     it('persists Stripe configuration updates via upsert', async () => {
       const dto: UpdateStripeConfigurationDto = { publishableKey: 'pk_test' };
-      const mockResult = { id: 'default', ...dto };
-      prisma.stripeConfiguration.upsert.mockResolvedValue(mockResult);
+      const dbResult = { id: 'default', publishableKey: 'pk_test', secretKey: null, webhookSecret: null };
+      prisma.stripeConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.updateStripeConfiguration(dto);
 
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual({ id: 'default', publishableKey: 'pk_test', secretKey: null, webhookSecret: null });
       expect(prisma.stripeConfiguration.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'default' } }),
       );
@@ -225,24 +225,25 @@ describe('SettingsService', () => {
 
   describe('getMollieConfiguration', () => {
     it('returns Mollie settings via the default singleton ID', async () => {
-      const mockResult = { id: 'default', paymentLabel: 'Mollie' };
-      prisma.mollieConfiguration.upsert.mockResolvedValue(mockResult);
+      const dbResult = { id: 'default', paymentLabel: 'Mollie', apiKey: null };
+      prisma.mollieConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.getMollieConfiguration();
 
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual({ id: 'default', paymentLabel: 'Mollie', apiKey: null });
     });
   });
 
   describe('updateMollieConfiguration', () => {
     it('persists Mollie configuration updates via upsert', async () => {
       const dto: UpdateMollieConfigurationDto = { apiKey: 'live_test' };
-      const mockResult = { id: 'default', ...dto };
-      prisma.mollieConfiguration.upsert.mockResolvedValue(mockResult);
+      // DB returns null for apiKey to avoid decrypt being called on plain text
+      const dbResult = { id: 'default', apiKey: null };
+      prisma.mollieConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.updateMollieConfiguration(dto);
 
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual({ id: 'default', apiKey: null });
       expect(prisma.mollieConfiguration.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'default' } }),
       );

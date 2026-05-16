@@ -8,6 +8,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
   Query,
@@ -80,21 +81,21 @@ export class DestinationController {
   @Public()
   @ApiGetActiveDestinationsDocs()
   getActive(@Query() query: LocaleQueryDto) {
-    return this.destinationService.getActive(query.locale ?? 'en');
+    return this.destinationService.getActive(query.locale);
   }
 
   @Get('slug/:slug')
   @Public()
   @ApiGetDestinationBySlugDocs()
   getBySlug(@Param('slug') slug: string, @Query() query: LocaleQueryDto) {
-    return this.destinationService.getBySlug(slug, query.locale ?? 'en');
+    return this.destinationService.getBySlug(slug, query.locale);
   }
 
   @Get(':id')
   @Public()
   @ApiGetDestinationByIdDocs()
   getById(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.destinationService.getById(id, query.locale ?? 'en');
+    return this.destinationService.getById(id, query.locale);
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -136,8 +137,11 @@ export class DestinationController {
   @Get(':id/translations/:locale')
   @RequirePermissions(Permission.EDIT_DESTINATION)
   @ApiGetTranslationsByLocaleDocs()
-  getTranslationsByLocale(@Param('id') id: string, @Param('locale') locale: string) {
-    return this.destinationService.getTranslationsByLocale(id, locale as Locale);
+  getTranslationsByLocale(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+  ) {
+    return this.destinationService.getTranslationsByLocale(id, locale);
   }
 
   @Patch(':id/translations/:locale')
@@ -145,11 +149,11 @@ export class DestinationController {
   @ApiUpsertTranslationsDocs()
   upsertTranslations(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertDestinationTranslationsDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.destinationService.upsertTranslations(id, locale as Locale, dto, user.id);
+    return this.destinationService.upsertTranslations(id, locale, dto, user.id);
   }
 
   @Delete(':id/translations/:locale')
@@ -157,10 +161,10 @@ export class DestinationController {
   @ApiDeleteTranslationsDocs()
   deleteTranslations(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.destinationService.deleteTranslations(id, locale as Locale, user.id);
+    return this.destinationService.deleteTranslations(id, locale, user.id);
   }
 
   // ── Page Content (public GET, admin PATCH) ────────────────────────────────────
@@ -169,7 +173,7 @@ export class DestinationController {
   @Public()
   @ApiGetPageContentDocs()
   getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.destinationService.getPageContent(id, query.locale ?? 'en');
+    return this.destinationService.getPageContent(id, query.locale!);
   }
 
   @Patch(':id/page-content/:locale')
@@ -177,11 +181,11 @@ export class DestinationController {
   @ApiUpsertPageContentDocs()
   upsertPageContent(
     @Param('id') id: string,
-    @Param('locale') locale: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertDestinationPageContentDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.destinationService.upsertPageContent(id, locale as Locale, dto, user.id);
+    return this.destinationService.upsertPageContent(id, locale, dto, user.id);
   }
 
   // ── FAQ (public GET, admin write) ─────────────────────────────────────────────

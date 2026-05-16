@@ -1,14 +1,17 @@
+import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
+import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType } from '@prisma/client';
+import { SlugEntityType, TripStatus } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -22,14 +25,6 @@ import {
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
 } from './dto/hub.dto';
-
-const translationSelect = {
-  name: true,
-  overview: true,
-  h1Override: true,
-  breadcrumbLabel: true,
-  isMachineTranslated: true,
-} as const;
 
 @Injectable()
 export class HubService {
@@ -74,15 +69,6 @@ export class HubService {
     category: { select: { id: true, name: true, slug: true } },
   } as const;
 
-  private readonly faqSelect = {
-    id: true,
-    question: true,
-    answer: true,
-    displayOrder: true,
-    isActive: true,
-    locale: true,
-  } as const;
-
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   private async findHubOrThrow(id: string) {
@@ -92,19 +78,6 @@ export class HubService {
     });
     if (!hub) throw new NotFoundException(`Hub ${id} not found`);
     return hub;
-  }
-
-  private applyTranslation<T extends { name: string }>(
-    base: T,
-    t: { name: string | null; isMachineTranslated: boolean } | undefined,
-    locale: Locale,
-  ) {
-    return {
-      ...base,
-      name: t?.name ?? base.name,
-      locale,
-      isMachineTranslated: t?.isMachineTranslated ?? false,
-    };
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
@@ -133,7 +106,7 @@ export class HubService {
     ]);
 
     const localizedData = data.map(({ translations, ...hub }) =>
-      this.applyTranslation(hub, translations[0], locale),
+      applyTranslation(hub, translations[0], locale),
     );
 
     return { total, page, limit, data: localizedData };
@@ -155,7 +128,7 @@ export class HubService {
     });
 
     return data.map(({ translations, ...hub }) =>
-      this.applyTranslation(hub, translations[0], locale),
+      applyTranslation(hub, translations[0], locale),
     );
   }
 
@@ -174,7 +147,7 @@ export class HubService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(hubData, t, locale),
+      ...applyTranslation(hubData, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -205,7 +178,7 @@ export class HubService {
     const t = translations[0];
 
     return {
-      ...this.applyTranslation(hubData, t, locale),
+      ...applyTranslation(hubData, t, locale),
       overview: t?.overview ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
@@ -215,92 +188,90 @@ export class HubService {
   async create(dto: CreateHubDto, adminId: string) {
     const slug = generateSlug(dto.name);
 
-    return this.prisma
-      .$transaction(async (tx) => {
-        const destination = await tx.destination.findUnique({
-          where: { id: dto.destinationId },
-          select: { slug: true },
-        });
-        if (!destination) {
-          throw new NotFoundException(`Destination ${dto.destinationId} not found`);
-        }
-
-        const hub = await tx.hub
-          .create({
-            data: {
-              destinationId: dto.destinationId,
-              name: dto.name,
-              slug,
-              description: dto.description,
-              createdBy: adminId,
-            },
-            select: { id: true },
-          })
-          .catch((err: any) => {
-            if (err?.code === 'P2002') {
-              throw new ConflictException(
-                `Hub slug "${slug}" already exists for this destination`,
-              );
-            }
-            throw err;
-          });
-
-        await tx.slugRegistry
-          .create({
-            data: {
-              destinationSlug: destination.slug,
-              slug,
-              entityType: SlugEntityType.HUB,
-              entityId: hub.id,
-            },
-          })
-          .catch((err: any) => {
-            if (err?.code === 'P2002') {
-              throw new ConflictException(
-                `Slug "${slug}" is already taken for destination "${destination.slug}"`,
-              );
-            }
-            throw err;
-          });
-
-        if (dto.allowedCategoryIds && dto.allowedCategoryIds.length > 0) {
-          await tx.hubAllowedCategory.createMany({
-            data: dto.allowedCategoryIds.map((categoryId) => ({
-              hubId: hub.id,
-              categoryId,
-            })),
-            skipDuplicates: true,
-          });
-        }
-
-        this.logger.log(
-          `Admin ${adminId} created hub "${dto.name}" (${hub.id}) for destination ${dto.destinationId}`,
-        );
-
-        return tx.hub.findUniqueOrThrow({
-          where: { id: hub.id },
-          select: this.hubDetailSelect,
-        });
-      })
-      .catch((err: any) => {
-        if (err?.status) throw err;
-        throw err;
+    return this.prisma.$transaction(async (tx) => {
+      const destination = await tx.destination.findUnique({
+        where: { id: dto.destinationId },
+        select: { slug: true },
       });
+      if (!destination) {
+        throw new NotFoundException(`Destination ${dto.destinationId} not found`);
+      }
+
+      const hub = await tx.hub
+        .create({
+          data: {
+            destinationId: dto.destinationId,
+            name: dto.name,
+            slug,
+            description: dto.description,
+            createdBy: adminId,
+          },
+          select: { id: true },
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2002') {
+            throw new ConflictException(
+              `Hub slug "${slug}" already exists for this destination`,
+            );
+          }
+          throw err;
+        });
+
+      await tx.slugRegistry
+        .create({
+          data: {
+            destinationSlug: destination.slug,
+            slug,
+            entityType: SlugEntityType.HUB,
+            entityId: hub.id,
+          },
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2002') {
+            throw new ConflictException(
+              `Slug "${slug}" is already taken for destination "${destination.slug}"`,
+            );
+          }
+          throw err;
+        });
+
+      if (dto.allowedCategoryIds && dto.allowedCategoryIds.length > 0) {
+        await tx.hubAllowedCategory.createMany({
+          data: dto.allowedCategoryIds.map((categoryId) => ({
+            hubId: hub.id,
+            categoryId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      this.logger.log(
+        `Admin ${adminId} created hub "${dto.name}" (${hub.id}) for destination ${dto.destinationId}`,
+      );
+
+      return tx.hub.findUniqueOrThrow({
+        where: { id: hub.id },
+        select: this.hubDetailSelect,
+      });
+    });
   }
 
   async update(id: string, dto: UpdateHubDto, adminId: string) {
-    await this.findHubOrThrow(id);
-
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.hub.update({
-        where: { id },
-        data: {
-          ...(dto.name !== undefined && { name: dto.name }),
-          ...(dto.description !== undefined && { description: dto.description }),
-          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-        },
-        select: this.hubDetailSelect,
-      });
+      const updated = await tx.hub
+        .update({
+          where: { id },
+          data: {
+            ...(dto.name !== undefined && { name: dto.name }),
+            ...(dto.description !== undefined && { description: dto.description }),
+            ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+          },
+          select: this.hubDetailSelect,
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2025') throw new NotFoundException(`Hub ${id} not found`);
+          throw err;
+        });
 
       if (dto.isActive !== undefined) {
         await tx.slugRegistry.updateMany({
@@ -322,18 +293,17 @@ export class HubService {
       throw new ForbiddenException('Seeded hubs cannot be deactivated');
     }
 
-    const tripCount = await this.prisma.trip.count({ where: { hubId: id } });
-    if (tripCount > 0) {
-      throw new ConflictException(
-        `Cannot deactivate hub: ${tripCount} trip(s) are still assigned to it`,
-      );
-    }
-
     await this.prisma.$transaction(async (tx) => {
-      await tx.hub.update({
-        where: { id },
-        data: { isActive: false },
+      const tripCount = await tx.trip.count({
+        where: { hubId: id, isActive: true, status: { not: TripStatus.DRAFT } },
       });
+      if (tripCount > 0) {
+        throw new ConflictException(
+          `Cannot deactivate hub: ${tripCount} active trip(s) are still assigned to it`,
+        );
+      }
+
+      await tx.hub.update({ where: { id }, data: { isActive: false } });
 
       await tx.slugRegistry.updateMany({
         where: { entityType: SlugEntityType.HUB, entityId: id },
@@ -349,14 +319,13 @@ export class HubService {
   // ── Allowed categories ────────────────────────────────────────────────────────
 
   async getAllowedCategories(id: string) {
-    const hub = await this.prisma.hub.findUnique({
-      where: { id },
-      select: { allowedCategories: { select: this.allowedCategorySelect } },
+    await this.findHubOrThrow(id);
+
+    return this.prisma.hubAllowedCategory.findMany({
+      where: { hubId: id },
+      select: this.allowedCategorySelect,
+      orderBy: { category: { name: 'asc' } },
     });
-
-    if (!hub) throw new NotFoundException(`Hub ${id} not found`);
-
-    return hub.allowedCategories;
   }
 
   async addAllowedCategory(hubId: string, dto: AddAllowedCategoryDto, adminId: string) {
@@ -455,21 +424,21 @@ export class HubService {
   ) {
     await this.findHubOrThrow(id);
 
-    const { fields, isMachineTranslated = false } = dto;
+    const { fields, isMachineTranslated } = dto;
 
     const result = await this.prisma.hubTranslation.upsert({
       where: { hubId_locale: { hubId: id, locale } },
       create: {
         hubId: id,
         locale,
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         name: fields.name,
         overview: fields.overview,
         h1Override: fields.h1Override,
         breadcrumbLabel: fields.breadcrumbLabel,
       },
       update: {
-        isMachineTranslated,
+        isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
@@ -483,16 +452,22 @@ export class HubService {
   }
 
   async deleteTranslations(id: string, locale: Locale, adminId: string) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'The English translation cannot be deleted. Update the hub name field instead.',
+      );
+    }
+
     await this.findHubOrThrow(id);
 
-    const existing = await this.prisma.hubTranslation.findUnique({
-      where: { hubId_locale: { hubId: id, locale } },
-    });
-    if (!existing) throw new NotFoundException(`No translation found for locale "${locale}"`);
-
-    await this.prisma.hubTranslation.delete({
-      where: { hubId_locale: { hubId: id, locale } },
-    });
+    await this.prisma.hubTranslation
+      .delete({ where: { hubId_locale: { hubId: id, locale } } })
+      .catch((err: any) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException(`No translation found for locale "${locale}"`);
+        }
+        throw err;
+      });
 
     this.logger.log(`Admin ${adminId} deleted translation for hub ${id} [${locale}]`);
     return { message: `Translation for locale "${locale}" deleted` };
@@ -547,12 +522,12 @@ export class HubService {
 
     return this.prisma.faq.findMany({
       where: {
-        pageType: 'hub',
+        pageType: FAQ_PAGE_TYPE.HUB,
         entityId: id,
         isActive: true,
         ...(query.locale && { locale: query.locale }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
   }
@@ -562,14 +537,14 @@ export class HubService {
 
     const faq = await this.prisma.faq.create({
       data: {
-        pageType: 'hub',
+        pageType: FAQ_PAGE_TYPE.HUB,
         entityId: id,
         locale: dto.locale,
         question: dto.question,
         answer: dto.answer,
         displayOrder: dto.displayOrder ?? 0,
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} created FAQ for hub ${id} [${dto.locale}]`);
@@ -578,7 +553,7 @@ export class HubService {
 
   async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'hub', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.HUB, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for hub ${id}`);
 
@@ -590,7 +565,7 @@ export class HubService {
         ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
-      select: this.faqSelect,
+      select: faqSelect,
     });
 
     this.logger.log(`Admin ${adminId} updated FAQ ${faqId} for hub ${id}`);
@@ -599,7 +574,7 @@ export class HubService {
 
   async deleteFaq(id: string, faqId: string, adminId: string) {
     const faq = await this.prisma.faq.findFirst({
-      where: { id: faqId, pageType: 'hub', entityId: id },
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.HUB, entityId: id },
     });
     if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for hub ${id}`);
 
