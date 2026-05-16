@@ -31,6 +31,7 @@ model Hub {
   name          String
   slug          String   // locale-independent English slug; unique per destination
   description   String?
+  isSeeded      Boolean @default(false)  // true = seeded at launch; guard delete in service
   isActive      Boolean @default(true)
   createdBy     String?
 
