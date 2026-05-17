@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sidebar';
 import { filterNavigationByPermissions } from '@/lib/rbac-utils';
 import { getNavigations } from '@/navigations/navigations';
-import { ROLE_PERMISSIONS } from '@/RBAC.config';
+import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { CommandIcon } from 'lucide-react';
 import { NavMain } from './nav-main';
 

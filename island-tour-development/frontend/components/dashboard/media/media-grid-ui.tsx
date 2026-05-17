@@ -6,7 +6,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import MediaItemCard, { type MediaItem } from './media-item';
+import MediaItemCard from './media-item';
+import type { MediaItem } from '@/types/media';
 
 interface MediaGridUiProps {
     filteredItems: MediaItem[];

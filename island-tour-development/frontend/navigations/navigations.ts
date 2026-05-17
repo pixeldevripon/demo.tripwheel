@@ -23,14 +23,14 @@ import {
 } from 'lucide-react';
 
 import type { NavItem } from '@/lib/rbac-utils';
-import { Permission } from '@/RBAC.config';
+import { Permission } from '@/lib/config/rbac';
 
 /**
  * Dashboard navigation definitions.
  *
  * `permissions` values must exactly match the `Permission` keys declared in
- * /frontend/RBAC.config.ts — these are what the AppSidebar filter compares
- * against. Role→Permission mapping is also in RBAC.config.ts, whose role
+ * /frontend/lib/config/rbac.ts — these are what the AppSidebar filter compares
+ * against. Role→Permission mapping is also in lib/config/rbac.ts, whose role
  * strings (ADMIN, TOUR_OPERATOR, USER…) come from the backend.
  */
 const dashboardNav: NavItem[] = [
@@ -112,12 +112,6 @@ const dashboardNav: NavItem[] = [
     icon: Calendar,
     permissions: [Permission.VIEW_BOOKINGS],
   },
-  {
-    title: 'My Bookings',
-    url: 'bookings',
-    icon: Calendar,
-    permissions: [Permission.VIEW_MY_BOOKINGS],
-  },
 
   // ─── Payments ──────────────────────────────────────────────────────────────
   {
@@ -125,12 +119,6 @@ const dashboardNav: NavItem[] = [
     url: 'payments',
     icon: CreditCard,
     permissions: [Permission.VIEW_PAYMENTS],
-  },
-  {
-    title: 'My Payments',
-    url: 'payments',
-    icon: CreditCard,
-    permissions: [Permission.VIEW_MY_PAYMENTS],
   },
 
   // ─── Users / Customers ─────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Grid3x3 } from 'lucide-react';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 
 interface MediaSearchControlsProps {
     searchTerm: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeleteMedia, useBulkDeleteMedia, mediaKeys } from '@/lib/queries/use-media-query';
+import { useDeleteMedia, useBulkDeleteMedia, mediaKeys } from '@/hooks/media/use-media';
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
 import { Delete02Icon } from '@hugeicons/core-free-icons';
@@ -13,7 +13,7 @@ import BulkActionSpinner from './bulk-action-spinner';
 import DeleteConfirmationDialog from './delete-confirmation-dialog';
 import MasonrySkeletonWithStyles from './loading-skeleton';
 import MediaGridUi from './media-grid-ui';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 import MediaListUi from './media-list-ui';
 import { MediaUploader } from './media-uploader';
 import MediaViewer from './media-viewer';

@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { UserProfile } from '@/types/profile';
 
 interface AccountStatusCardProps {
-    user: any;
+    user: UserProfile;
 }
 
 export function AccountStatusCard({ user }: AccountStatusCardProps) {

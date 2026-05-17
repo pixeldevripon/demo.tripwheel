@@ -1,17 +1,15 @@
 'use client';
 
-import { useMediaList, prependMediaToCache } from '@/lib/queries/use-media-query';
+import { useMediaList, prependMediaToCache } from '@/hooks/media/use-media';
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import MediaGallery from './media-gallery';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 import MediaSearchControls from './media-search-controls';
 
 interface MediaGalleryManagerProps {
-    /** Initial media prefetched on the server — used as TanStack Query initialData */
-    media?: MediaItem[];
     selector?: boolean;
     onMediaSelect?: (items: MediaItem[]) => void;
     currentSelection?: MediaItem[];
@@ -25,7 +23,6 @@ const MediaGalleryManager = ({
     currentSelection,
     multiple,
     maxFiles,
-    media,
 }: MediaGalleryManagerProps) => {
     const queryClient = useQueryClient();
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,7 +34,7 @@ const MediaGalleryManager = ({
     // ── TanStack Query — replaces manual fetchMedia + useState ──────────────
     // refetchOnWindowFocus: true (set in QueryClient defaults + hook) means
     // the gallery automatically refreshes when the user returns to this tab.
-    const { data: mediaItems = [], isLoading } = useMediaList('limit=100&page=1', media);
+    const { data: mediaItems = [], isLoading } = useMediaList('limit=100&page=1');
 
     const isUploading = useUploadStore(s => s.uploadingFiles.length > 0);
 

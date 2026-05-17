@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { signIn, signUp } from '@/lib/auth-client';
-import { Role } from '@/RBAC.config';
+import { Role } from '@/lib/config/rbac';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 

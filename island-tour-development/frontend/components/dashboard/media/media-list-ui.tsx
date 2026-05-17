@@ -7,7 +7,7 @@ import { Copy01Icon, Delete01Icon, CloudUploadIcon } from '@hugeicons/core-free-
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Check, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MediaListUiProps {

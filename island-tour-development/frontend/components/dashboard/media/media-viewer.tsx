@@ -12,7 +12,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 
 interface MediaViewerProps {
     item: MediaItem;

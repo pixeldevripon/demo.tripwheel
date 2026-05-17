@@ -15,11 +15,10 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { useFormContext } from 'react-hook-form';
 
 interface SocialLinksCardProps {
-    user: any;
     isEditing: boolean;
 }
 
-export function SocialLinksCard({ user, isEditing }: SocialLinksCardProps) {
+export function SocialLinksCard({ isEditing }: SocialLinksCardProps) {
     const {
         register,
         formState: { errors },

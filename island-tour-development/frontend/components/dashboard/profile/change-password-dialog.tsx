@@ -20,6 +20,7 @@ import {
     FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { authApi } from '@/lib/api/auth';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
@@ -30,9 +31,10 @@ import {
 } from '@/lib/validations/profile';
 import { formatDate } from '@/utils/intl-utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { Eye, EyeOff, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -45,7 +47,6 @@ export function ChangePasswordDialog({
     open,
     onOpenChange,
 }: ChangePasswordDialogProps) {
-    const [isPending, startTransition] = useTransition();
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -61,81 +62,50 @@ export function ChangePasswordDialog({
         formState: { errors },
     } = useForm<ChangePasswordFormValues | SetPasswordFormValues>({
         resolver: zodResolver(hasPassword ? changePasswordSchema : setPasswordSchema),
-        defaultValues: {
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: '',
-        },
+        defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
     });
 
-
-
-    const onSubmit = async (values: any) => {
-        startTransition(async () => {
-            try {
-                let result;
-                if (hasPassword) {
-                    result = await authClient.changePassword({
-                        newPassword: values.newPassword,
-                        currentPassword: values.currentPassword,
-                        revokeOtherSessions: true,
-                    });
-                } else {
-                    // Call our custom server action for social users
-                    const { setPasswordAction } =
-                        await import('@/app/_actions/userActions');
-                    result = await setPasswordAction(values.newPassword);
-                }
-
-                if ((result as any).error) {
-                    const error = (result as any).error;
-                    const message =
-                        error.message || 'Failed to update password';
-
-                    if (
-                        error.status === 401 ||
-                        error.code === 'INVALID_PASSWORD'
-                    ) {
-                        toast.error('Verification failed', {
-                            description:
-                                'The current password you entered is incorrect.',
-                        });
-                    } else if (error.code === 'PASSWORD_TOO_SHORT') {
-                        toast.error('Password too short', {
-                            description:
-                                'Your new password must be at least 12 characters.',
-                        });
-                    } else {
-                        toast.error(message);
-                    }
-                    return;
-                }
-
-                toast.success(
-                    hasPassword ? 'Password updated' : 'Password set',
-                    {
-                        description:
-                            'Your security credentials have been successfully updated.',
-                    }
-                );
-
-                onOpenChange(false);
-                reset();
-                router.refresh();
-            } catch (err) {
-                toast.error('System error', {
-                    description:
-                        'An unexpected error occurred while communicating with the auth server.',
+    const mutation = useMutation({
+        mutationFn: async (values: ChangePasswordFormValues | SetPasswordFormValues) => {
+            if (hasPassword) {
+                const result = await authClient.changePassword({
+                    newPassword: values.newPassword,
+                    currentPassword: (values as ChangePasswordFormValues).currentPassword,
+                    revokeOtherSessions: true,
                 });
+                if (result.error) throw result.error;
+            } else {
+                await authApi.setPassword(values.newPassword);
             }
-        });
-    };
+        },
+        onSuccess: () => {
+            toast.success(hasPassword ? 'Password updated' : 'Password set', {
+                description: 'Your security credentials have been successfully updated.',
+            });
+            onOpenChange(false);
+            reset();
+            router.refresh();
+        },
+        onError: (err: any) => {
+            if (err?.status === 401 || err?.code === 'INVALID_PASSWORD') {
+                toast.error('Verification failed', {
+                    description: 'The current password you entered is incorrect.',
+                });
+            } else if (err?.code === 'PASSWORD_TOO_SHORT') {
+                toast.error('Password too short', {
+                    description: 'Your new password must be at least 12 characters.',
+                });
+            } else {
+                toast.error(err?.message || 'Failed to update password');
+            }
+        },
+    });
 
     return (
         <Dialog
             open={open}
             onOpenChange={val => {
-                if (!isPending) {
+                if (!mutation.isPending) {
                     onOpenChange(val);
                     if (!val) reset();
                 }
@@ -149,9 +119,7 @@ export function ChangePasswordDialog({
                             </div>
                             <div className='space-y-1'>
                                 <DialogTitle className='text-xl font-bold tracking-tight'>
-                                    {hasPassword
-                                        ? 'Security Settings'
-                                        : 'Create Password'}
+                                    {hasPassword ? 'Security Settings' : 'Create Password'}
                                 </DialogTitle>
                                 <DialogDescription className='text-muted-foreground text-xs leading-relaxed'>
                                     {hasPassword
@@ -161,46 +129,35 @@ export function ChangePasswordDialog({
                             </div>
                         </div>
 
-                        {hasPassword &&
-                            (session?.user as any)?.passwordChangedAt && (
-                                <div className='px-3 py-2 bg-muted/50 rounded-lg border border-border/50 flex items-center gap-2'>
-                                    <Lock className='w-3.5 h-3.5 text-muted-foreground' />
-                                    <span className='text-[11px] text-muted-foreground font-medium'>
-                                        Last changed:{' '}
-                                        {formatDate(
-                                            (session?.user as any)
-                                                .passwordChangedAt,
-                                            {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            }
-                                        )}
-                                    </span>
-                                </div>
-                            )}
+                        {hasPassword && (session?.user as any)?.passwordChangedAt && (
+                            <div className='px-3 py-2 bg-muted/50 rounded-lg border border-border/50 flex items-center gap-2'>
+                                <Lock className='w-3.5 h-3.5 text-muted-foreground' />
+                                <span className='text-[11px] text-muted-foreground font-medium'>
+                                    Last changed:{' '}
+                                    {formatDate((session?.user as any).passwordChangedAt, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </span>
+                            </div>
+                        )}
                     </CardHeader>
 
-                    <form onSubmit={handleSubmit(onSubmit)}>
+                    <form onSubmit={handleSubmit(values => mutation.mutate(values))}>
                         <CardContent className='space-y-6'>
                             <FieldGroup className='gap-6'>
-                                {/* Current Password - Only show if user has one */}
                                 {hasPassword && (
-                                    <Field
-                                        data-invalid={!!(errors as any).currentPassword}>
+                                    <Field data-invalid={!!(errors as any).currentPassword}>
                                         <FieldLabel htmlFor='currentPassword'>
                                             Current Password
                                         </FieldLabel>
                                         <div className='relative group/input'>
                                             <Input
                                                 id='currentPassword'
-                                                type={
-                                                    showCurrent
-                                                        ? 'text'
-                                                        : 'password'
-                                                }
+                                                type={showCurrent ? 'text' : 'password'}
                                                 placeholder='Enter current password'
                                                 {...register('currentPassword' as any)}
                                                 className={cn(
@@ -211,31 +168,20 @@ export function ChangePasswordDialog({
                                             />
                                             <button
                                                 type='button'
-                                                onClick={() =>
-                                                    setShowCurrent(!showCurrent)
-                                                }
+                                                onClick={() => setShowCurrent(!showCurrent)}
                                                 className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                                {showCurrent ? (
-                                                    <EyeOff size={16} />
-                                                ) : (
-                                                    <Eye size={16} />
-                                                )}
+                                                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
                                             </button>
                                         </div>
                                         {(errors as any).currentPassword && (
-                                            <FieldError>
-                                                {(errors as any).currentPassword.message}
-                                            </FieldError>
+                                            <FieldError>{(errors as any).currentPassword.message}</FieldError>
                                         )}
                                     </Field>
                                 )}
 
-                                {/* New Password */}
                                 <Field data-invalid={!!errors.newPassword}>
                                     <FieldLabel htmlFor='newPassword'>
-                                        {hasPassword
-                                            ? 'New Password'
-                                            : 'Password'}
+                                        {hasPassword ? 'New Password' : 'Password'}
                                     </FieldLabel>
                                     <div className='relative group/input'>
                                         <Input
@@ -253,21 +199,14 @@ export function ChangePasswordDialog({
                                             type='button'
                                             onClick={() => setShowNew(!showNew)}
                                             className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                            {showNew ? (
-                                                <EyeOff size={16} />
-                                            ) : (
-                                                <Eye size={16} />
-                                            )}
+                                            {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     </div>
                                     {errors.newPassword && (
-                                        <FieldError>
-                                            {errors.newPassword.message}
-                                        </FieldError>
+                                        <FieldError>{errors.newPassword.message}</FieldError>
                                     )}
                                 </Field>
 
-                                {/* Confirm Password */}
                                 <Field data-invalid={!!errors.confirmPassword}>
                                     <FieldLabel htmlFor='confirmPassword'>
                                         Confirm Password
@@ -275,11 +214,7 @@ export function ChangePasswordDialog({
                                     <div className='relative group/input'>
                                         <Input
                                             id='confirmPassword'
-                                            type={
-                                                showConfirm
-                                                    ? 'text'
-                                                    : 'password'
-                                            }
+                                            type={showConfirm ? 'text' : 'password'}
                                             placeholder='Repeat new password'
                                             {...register('confirmPassword')}
                                             className={cn(
@@ -290,21 +225,13 @@ export function ChangePasswordDialog({
                                         />
                                         <button
                                             type='button'
-                                            onClick={() =>
-                                                setShowConfirm(!showConfirm)
-                                            }
+                                            onClick={() => setShowConfirm(!showConfirm)}
                                             className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                            {showConfirm ? (
-                                                <EyeOff size={16} />
-                                            ) : (
-                                                <Eye size={16} />
-                                            )}
+                                            {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     </div>
                                     {errors.confirmPassword && (
-                                        <FieldError>
-                                            {errors.confirmPassword.message}
-                                        </FieldError>
+                                        <FieldError>{errors.confirmPassword.message}</FieldError>
                                     )}
                                 </Field>
                             </FieldGroup>
@@ -313,17 +240,13 @@ export function ChangePasswordDialog({
                         <CardFooter className='flex flex-col sm:flex-row gap-3 pt-6 pb-8 px-8'>
                             <Button
                                 type='submit'
-                                disabled={isPending}
+                                disabled={mutation.isPending}
                                 className='w-full sm:flex-1 h-12 order-1 sm:order-2 font-bold text-sm tracking-wide shadow-lg transition-all active:scale-[0.98]'>
-                                {isPending ? (
+                                {mutation.isPending ? (
                                     <>
                                         <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                                        {hasPassword
-                                            ? 'Updating...'
-                                            : 'Setting...'}
+                                        {hasPassword ? 'Updating...' : 'Setting...'}
                                     </>
-                                ) : hasPassword ? (
-                                    'SAVE PASSWORD'
                                 ) : (
                                     'SAVE PASSWORD'
                                 )}
@@ -332,7 +255,7 @@ export function ChangePasswordDialog({
                                 type='button'
                                 variant='outline'
                                 onClick={() => onOpenChange(false)}
-                                disabled={isPending}
+                                disabled={mutation.isPending}
                                 className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs tracking-wider uppercase opacity-70 hover:opacity-100 transition-opacity'>
                                 Cancel
                             </Button>
@@ -343,4 +266,3 @@ export function ChangePasswordDialog({
         </Dialog>
     );
 }
-

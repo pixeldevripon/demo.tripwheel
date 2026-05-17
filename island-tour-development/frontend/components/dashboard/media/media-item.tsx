@@ -11,27 +11,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import { useState } from 'react';
-
-export interface MediaItem {
-    id: string;
-    url: string;
-    publicId: string;
-    resourceType: string;
-    uploadedAt: string;
-    userId: string;
-    createdAt?: string;
-    updatedAt?: string;
-    // Optional metadata fields (not persisted server-side yet)
-    fileName?: string;
-    altText?: string;
-    caption?: string;
-    originalName?: string;
-    thumbnail?: string;
-    width?: number;
-    height?: number;
-    size?: number;
-    format?: string;
-}
+import type { MediaItem } from '@/types/media';
 
 interface MediaItemProps {
     item: MediaItem;

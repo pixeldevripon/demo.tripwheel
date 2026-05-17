@@ -2,7 +2,7 @@
 
 import { useUploadStore, xhrMap, type UploadingFile } from '@/lib/stores/use-upload-store';
 import { useCallback, useEffect, useRef } from 'react';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 
 // Re-export so existing imports from this file still compile
 export type { UploadingFile };

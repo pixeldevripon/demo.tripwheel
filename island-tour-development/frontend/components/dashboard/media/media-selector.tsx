@@ -7,7 +7,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import MediaGalleryManager from './media-gallery-manager';
-import type { MediaItem } from './media-item';
+import type { MediaItem } from '@/types/media';
 
 interface MediaSelectorProps {
     open: boolean;

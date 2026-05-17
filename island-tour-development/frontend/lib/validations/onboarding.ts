@@ -10,11 +10,11 @@ export const onboardingSchema = z.object({
   // Step 2: Business Intent
   plannedTripCount: z.preprocess(
     (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
-    z.number({ required_error: 'Please select a trip count' }).min(1, 'Please select a trip count')
+    z.number().min(1, 'Please select a trip count')
   ),
   yearlySalesTarget: z.preprocess(
     (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
-    z.number({ required_error: 'Please select a sales target' }).min(1, 'Please select a sales target')
+    z.number().min(1, 'Please select a sales target')
   ),
 });
 

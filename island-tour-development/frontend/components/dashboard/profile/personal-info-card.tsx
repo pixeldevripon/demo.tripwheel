@@ -32,8 +32,10 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
+import type { UserProfile } from '@/types/profile';
+
 interface PersonalInfoCardProps {
-    user: any;
+    user: UserProfile;
     isEditing: boolean;
 }
 

@@ -1,9 +1,8 @@
 'use client';
 
-import {
-    updateUserProfile,
-    uploadProfilePhoto,
-} from '@/app/_actions/userActions';
+import { mediaApi } from '@/lib/api/media';
+import { useUpdateProfilePhoto } from '@/hooks/profile/use-profile';
+import type { UserProfile } from '@/types/profile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,14 +16,15 @@ const ImageCropper = dynamic(() => import('./image-cropper'), {
     loading: () => (
         <Loader2 className='w-10 h-10 animate-spin text-primary mx-auto my-10' />
     ),
-    ssr: false, // Cropper uses canvas/DOM
+    ssr: false,
 });
 
-export function ProfilePhotoCard({ user }: { user: any }) {
+export function ProfilePhotoCard({ user }: { user: UserProfile }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
     const [openCropper, setOpenCropper] = useState(false);
     const [tempImageSrc, setTempImageSrc] = useState<string>('');
+    const updatePhoto = useUpdateProfilePhoto();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -42,40 +42,19 @@ export function ProfilePhotoCard({ user }: { user: any }) {
         };
         reader.readAsDataURL(file);
 
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleCropComplete = async (file: File) => {
         setOpenCropper(false);
         setUploading(true);
-
-        const formData = new FormData();
-        formData.append('files', file);
-
         try {
-            // Use server action for upload
-            const uploadResult = await uploadProfilePhoto(formData);
-
-            if (!uploadResult.success) {
-                toast.error(uploadResult.error || 'Upload failed');
-                return;
-            }
-
-            const imageUrl = uploadResult.data[0].url;
-
-            // Update user profile with new image URL
-            const result = await updateUserProfile({ image: imageUrl });
-
-            if (result.success) {
-                toast.success('Profile photo updated successfully');
-            } else {
-                toast.error(result.error || 'Failed to update profile');
-            }
-        } catch (error) {
-            console.error('Error uploading image:', error);
-            toast.error('Failed to upload image. Please try again.');
+            const [uploaded] = await mediaApi.upload([file]);
+            if (!uploaded?.url) { toast.error('Upload failed'); return; }
+            await updatePhoto.mutateAsync(uploaded.url);
+            toast.success('Profile photo updated successfully');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to upload image');
         } finally {
             setUploading(false);
         }
@@ -84,21 +63,17 @@ export function ProfilePhotoCard({ user }: { user: any }) {
     const handleRemovePhoto = async () => {
         setUploading(true);
         try {
-            const result = await updateUserProfile({ image: null });
-            if (result.success) {
-                toast.success('Profile photo removed');
-            } else {
-                toast.error(result.error || 'Failed to remove photo');
-            }
-        } catch (error) {
-            toast.error('Failed to remove photo');
+            await updatePhoto.mutateAsync(null);
+            toast.success('Profile photo removed');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to remove photo');
         } finally {
             setUploading(false);
         }
     };
 
     return (
-        <Card className='border-none shadow-sm bg-card overflow-hidden '>
+        <Card className='border-none shadow-sm bg-card overflow-hidden'>
             <CardHeader className='pb-4'>
                 <CardTitle className='text-lg font-semibold flex items-center gap-2'>
                     <Camera className='w-5 h-5 text-primary' />
@@ -109,12 +84,9 @@ export function ProfilePhotoCard({ user }: { user: any }) {
                 <div className='flex flex-col md:flex-row items-center gap-8'>
                     <div className='relative group'>
                         <Avatar className='w-32 h-32 border-4 border-background shadow-xl ring-1 ring-border group-hover:opacity-90 transition-all duration-300'>
-                            <AvatarImage
-                                src={user?.image || ''}
-                                className='object-cover'
-                            />
+                            <AvatarImage src={user.image ?? ''} className='object-cover' />
                             <AvatarFallback className='bg-primary/10 text-primary text-2xl'>
-                                {user?.name?.charAt(0) || 'U'}
+                                {user.name?.charAt(0) || 'U'}
                             </AvatarFallback>
                         </Avatar>
                         <button
@@ -130,12 +102,9 @@ export function ProfilePhotoCard({ user }: { user: any }) {
                     </div>
                     <div className='flex-1 space-y-4 text-center md:text-left'>
                         <div className='space-y-1'>
-                            <h3 className='font-medium text-foreground'>
-                                Update your photo
-                            </h3>
+                            <h3 className='font-medium text-foreground'>Update your photo</h3>
                             <p className='text-sm text-muted-foreground'>
-                                Supported formats: JPG, PNG or WEBP. Max size
-                                5MB.
+                                Supported formats: JPG, PNG or WEBP. Max size 5MB.
                             </p>
                         </div>
                         <div className='flex flex-wrap justify-center md:justify-start gap-2'>
@@ -152,12 +121,10 @@ export function ProfilePhotoCard({ user }: { user: any }) {
                                 size='sm'
                                 variant='outline'
                                 className='rounded-lg h-9 gap-2'>
-                                {uploading ? (
-                                    <Loader2 className='w-4 h-4 animate-spin' />
-                                ) : null}
+                                {uploading ? <Loader2 className='w-4 h-4 animate-spin' /> : null}
                                 Upload New
                             </Button>
-                            {user?.image ? (
+                            {user.image ? (
                                 <Button
                                     onClick={handleRemovePhoto}
                                     disabled={uploading}
@@ -184,4 +151,3 @@ export function ProfilePhotoCard({ user }: { user: any }) {
         </Card>
     );
 }
-
