@@ -11,9 +11,10 @@ import { Role, UserStatus } from '@prisma/client';
 import {
   DeleteUserResponseDto,
   PaginatedUsersResponseDto,
+  SetPasswordResponseDto,
+  UserPermissionsResponseDto,
   UserResponseDto,
   UserSummaryResponseDto,
-  UserPermissionsResponseDto,
 } from './dto/user.dto';
 
 const commonErrors = [
@@ -205,6 +206,20 @@ export function ApiGetUserPermissionsDocs() {
       type: NotFoundErrorDto,
     }),
     ...adminErrors,
+  );
+}
+
+export function ApiSetPasswordDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Set password for OAuth-registered users (no existing password)',
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'Password set successfully',
+      type: SetPasswordResponseDto,
+    }),
+    ...commonErrors,
   );
 }
 

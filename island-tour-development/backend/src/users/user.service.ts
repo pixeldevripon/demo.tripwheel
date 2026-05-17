@@ -1,3 +1,4 @@
+import { auth } from '@/auth/auth.instance';
 import { ROLE_PERMISSIONS } from '@/config/roles.config';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
@@ -221,6 +222,28 @@ export class UserService {
     );
 
     return updated;
+  }
+
+  // ─── Set password (OAuth users only) ─────────────────────────────────────────
+
+  async setPassword(newPassword: string, cookie: string): Promise<{ status: boolean }> {
+    try {
+      const result = await auth.api.setPassword({
+        body: { newPassword },
+        headers: new Headers({ cookie }),
+      });
+      return result as { status: boolean };
+    } catch (err: any) {
+      const code = err?.body?.code as string | undefined;
+      if (code === 'PASSWORD_ALREADY_SET') {
+        throw new BadRequestException(
+          'A password is already set on this account. Use change password instead.',
+        );
+      }
+      throw new BadRequestException(
+        err?.body?.message || 'Failed to set password',
+      );
+    }
   }
 
   async deleteUser(id: string, requestingUserId: string) {

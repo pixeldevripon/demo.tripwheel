@@ -9,6 +9,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut } from '@/lib/auth-client';
@@ -24,6 +25,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
   // Close on outside click
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
         await signOut({
           fetchOptions: {
             onSuccess: () => {
+              queryClient.clear();
               router.push('/login');
             },
           },

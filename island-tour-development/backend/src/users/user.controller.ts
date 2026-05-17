@@ -8,11 +8,15 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
+import type { Request } from 'express';
 import {
+  SetPasswordDto,
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
   UpdateUserRoleDto,
@@ -27,6 +31,7 @@ import {
   ApiGetCurrentUserPermissionsDocs,
   ApiGetUserByIdDocs,
   ApiGetUserPermissionsDocs,
+  ApiSetPasswordDocs,
   ApiUpdateUserByAdminDocs,
   ApiUpdateUserProfileDocs,
   ApiUpdateUserRoleDocs,
@@ -151,6 +156,24 @@ export class UserController {
   }
 
   // ─── Self-service mutations ──────────────────────────────────────────────
+
+  /**
+   * POST /users/me/set-password
+   *
+   * Sets a password for users who registered via OAuth and have no credentials.
+   * Calls auth.api.setPassword() server-side with the session headers — the
+   * only supported way to call this Better Auth API per their documentation.
+   *
+   * Security: intentionally ungated beyond AuthGuard. Any authenticated user
+   * without a credential account may set a password. Better Auth's
+   * sensitiveSessionMiddleware validates the session a second time internally.
+   */
+  @Post('me/set-password')
+  @ApiSetPasswordDocs()
+  setPassword(@Body() dto: SetPasswordDto, @Req() req: Request) {
+    const cookie = (req.headers['cookie'] as string) ?? '';
+    return this.userService.setPassword(dto.newPassword, cookie);
+  }
 
   /**
    * PATCH /users/me

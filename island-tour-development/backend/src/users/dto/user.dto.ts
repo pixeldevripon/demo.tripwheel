@@ -8,7 +8,9 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
@@ -210,4 +212,22 @@ export class UpdateUserStatusDto {
     message: `Status must be one of: ${Object.values(UserStatus).join(', ')}`,
   })
   status!: UserStatus;
+}
+
+// ── Set Password ──────────────────────────────────────────────────────────────
+
+export class SetPasswordDto {
+  @ApiProperty({
+    description: 'New password for OAuth-registered users (min 12 characters)',
+    example: 'MySecurePassword123!',
+  })
+  @IsString()
+  @MinLength(12, { message: 'Password must be at least 12 characters' })
+  @MaxLength(32, { message: 'Password cannot exceed 32 characters' })
+  newPassword!: string;
+}
+
+export class SetPasswordResponseDto {
+  @ApiProperty({ example: true })
+  status!: boolean;
 }

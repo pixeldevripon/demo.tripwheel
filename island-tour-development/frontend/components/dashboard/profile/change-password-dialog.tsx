@@ -20,7 +20,7 @@ import {
     FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { authApi } from '@/lib/api/auth';
+import { setPasswordAction } from '@/app/_actions/userActions';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
@@ -75,7 +75,7 @@ export function ChangePasswordDialog({
                 });
                 if (result.error) throw result.error;
             } else {
-                await authApi.setPassword(values.newPassword);
+                await setPasswordAction(values.newPassword);
             }
         },
         onSuccess: () => {
