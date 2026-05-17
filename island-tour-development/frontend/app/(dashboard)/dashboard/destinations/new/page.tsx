@@ -20,7 +20,7 @@ export default function NewDestinationPage() {
         </h1>
       </div>
 
-      <div className="max-w-2xl">
+      <div className="max-w-6xl">
         <DestinationForm />
       </div>
     </div>

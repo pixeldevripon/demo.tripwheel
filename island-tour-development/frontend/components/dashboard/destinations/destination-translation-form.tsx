@@ -210,13 +210,16 @@ export function DestinationTranslationForm({
       </CardHeader>
       <CardContent className="pt-8">
         <Tabs defaultValue="en">
-          <TabsList variant="line" className="mb-6">
-            {ALL_LOCALES.map((locale) => (
-              <TabsTrigger key={locale} value={locale}>
-                {LOCALE_LABELS[locale]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="overflow-x-auto pb-2 mb-6">
+            <TabsList variant="line" className="w-max">
+              {ALL_LOCALES.map((locale) => (
+                <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
+                  <span className="sm:hidden uppercase">{locale}</span>
+                  <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           <TabsContent value="en">
             <div className="space-y-4">
@@ -232,24 +235,24 @@ export function DestinationTranslationForm({
                 <div className="space-y-4">
                   <Field>
                     <Label className="text-xs font-semibold uppercase">Name</Label>
-                    <Input value={baseDestination?.name ?? ''} readOnly className="bg-muted" />
+                    <Input value={baseDestination?.name ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
                   </Field>
                   <Field>
                     <Label className="text-xs font-semibold uppercase">Overview</Label>
                     <Textarea
                       value={baseDestination?.overview ?? ''}
                       readOnly
-                      className="bg-muted"
+                      className="opacity-60 cursor-not-allowed"
                       rows={4}
                     />
                   </Field>
                   <Field>
                     <Label className="text-xs font-semibold uppercase">H1 Override</Label>
-                    <Input value={baseDestination?.h1Override ?? ''} readOnly className="bg-muted" />
+                    <Input value={baseDestination?.h1Override ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
                   </Field>
                   <Field>
                     <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
-                    <Input value={baseDestination?.breadcrumbLabel ?? ''} readOnly className="bg-muted" />
+                    <Input value={baseDestination?.breadcrumbLabel ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
                   </Field>
                 </div>
               )}

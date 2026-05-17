@@ -316,7 +316,7 @@ function CreateFaqDialog({ destinationId, onSuccess }: CreateFaqDialogProps) {
           Add FAQ
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add FAQ</DialogTitle>
         </DialogHeader>

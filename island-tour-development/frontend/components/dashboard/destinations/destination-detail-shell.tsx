@@ -46,7 +46,7 @@ export function DestinationDetailShell({
 
       <DestinationSubNav destinationId={id} />
 
-      <div className={maxWidth === 'lg' ? 'max-w-3xl' : 'max-w-2xl'}>
+      <div className={maxWidth === 'lg' ? 'max-w-6xl' : 'max-w-6xl'}>
         {children}
       </div>
     </div>
