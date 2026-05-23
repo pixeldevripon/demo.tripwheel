@@ -64,6 +64,7 @@ export interface DestinationsQueryParams {
 
 export interface CreateDestinationPayload {
   name: string;
+  slug?: string;
   heroImage?: string | null;
 }
 
@@ -73,11 +74,16 @@ export interface UpdateDestinationPayload {
   isActive?: boolean;
 }
 
-export interface UpsertTranslationPayload {
+export interface TranslationFields {
   name?: string | null;
   overview?: string | null;
   h1Override?: string | null;
   breadcrumbLabel?: string | null;
+}
+
+export interface UpsertTranslationPayload {
+  fields: TranslationFields;
+  isMachineTranslated?: boolean;
 }
 
 export interface UpsertPageContentPayload {

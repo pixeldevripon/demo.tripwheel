@@ -138,7 +138,7 @@ export class DestinationService {
   }
 
   async create(dto: CreateDestinationDto, adminId: string) {
-    const slug = generateSlug(dto.name);
+    const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     return this.prisma.$transaction(async (tx) => {
       const destination = await tx.destination

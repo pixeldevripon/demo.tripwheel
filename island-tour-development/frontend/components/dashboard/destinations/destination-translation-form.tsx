@@ -15,7 +15,6 @@ import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  useDestination,
   useDestinationTranslationByLocale,
   useUpsertTranslation,
   useDeleteTranslation,
@@ -34,9 +33,10 @@ type TranslationFormValues = z.infer<typeof translationSchema>;
 interface LocaleTabProps {
   destinationId: string;
   locale: Locale;
+  disableNameField?: boolean;
 }
 
-function LocaleTab({ destinationId, locale }: LocaleTabProps) {
+function LocaleTab({ destinationId, locale, disableNameField }: LocaleTabProps) {
   const { data: translation, isLoading } = useDestinationTranslationByLocale(destinationId, locale);
   const { mutate: upsert, isPending: isUpserting } = useUpsertTranslation();
   const { mutate: deleteTranslation, isPending: isDeleting } = useDeleteTranslation();
@@ -74,10 +74,12 @@ function LocaleTab({ destinationId, locale }: LocaleTabProps) {
         id: destinationId,
         locale,
         payload: {
-          name: values.name || null,
-          overview: values.overview || null,
-          h1Override: values.h1Override || null,
-          breadcrumbLabel: values.breadcrumbLabel || null,
+          fields: {
+            name: values.name || null,
+            overview: values.overview || null,
+            h1Override: values.h1Override || null,
+            breadcrumbLabel: values.breadcrumbLabel || null,
+          },
         },
       },
       {
@@ -89,18 +91,37 @@ function LocaleTab({ destinationId, locale }: LocaleTabProps) {
   }
 
   function handleDelete() {
-    deleteTranslation(
-      { id: destinationId, locale },
-      {
-        onSuccess: () => {
-          toast.success(`${LOCALE_LABELS[locale]} translation deleted.`);
-          setShowDeleteConfirm(false);
-          reset({ name: '', overview: '', h1Override: '', breadcrumbLabel: '' });
+    if (disableNameField) {
+      upsert(
+        {
+          id: destinationId,
+          locale,
+          payload: { fields: { overview: null, h1Override: null, breadcrumbLabel: null } },
         },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Failed to delete translation.'),
-      }
-    );
+        {
+          onSuccess: () => {
+            toast.success('English optional fields cleared.');
+            setShowDeleteConfirm(false);
+            reset((prev) => ({ ...prev, overview: '', h1Override: '', breadcrumbLabel: '' }));
+          },
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : 'Failed to clear fields.'),
+        }
+      );
+    } else {
+      deleteTranslation(
+        { id: destinationId, locale },
+        {
+          onSuccess: () => {
+            toast.success(`${LOCALE_LABELS[locale]} translation deleted.`);
+            setShowDeleteConfirm(false);
+            reset({ name: '', overview: '', h1Override: '', breadcrumbLabel: '' });
+          },
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : 'Failed to delete translation.'),
+        }
+      );
+    }
   }
 
   if (isLoading) {
@@ -124,8 +145,17 @@ function LocaleTab({ destinationId, locale }: LocaleTabProps) {
 
       <Field>
         <Label className="text-xs font-semibold uppercase">Name</Label>
-        <Input {...register('name')} placeholder={`Name in ${LOCALE_LABELS[locale]}`} aria-invalid={!!errors.name} />
-        <FieldError>{errors.name?.message}</FieldError>
+        <Input
+          {...register('name')}
+          placeholder={`Name in ${LOCALE_LABELS[locale]}`}
+          aria-invalid={!!errors.name}
+          readOnly={disableNameField}
+          className={disableNameField ? 'opacity-60 cursor-not-allowed' : undefined}
+        />
+        {disableNameField
+          ? <FieldDescription>Name is managed in the Details tab.</FieldDescription>
+          : <FieldError>{errors.name?.message}</FieldError>
+        }
       </Field>
 
       <Field>
@@ -159,7 +189,7 @@ function LocaleTab({ destinationId, locale }: LocaleTabProps) {
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => setShowDeleteConfirm(true)}
             >
-              Delete Translation
+              {disableNameField ? 'Clear Fields' : 'Delete Translation'}
             </Button>
           ) : (
             <div className="flex items-center gap-2">
@@ -169,9 +199,11 @@ function LocaleTab({ destinationId, locale }: LocaleTabProps) {
                 variant="destructive"
                 size="xs"
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={disableNameField ? isUpserting : isDeleting}
               >
-                {isDeleting ? 'Deleting...' : 'Yes, delete'}
+                {disableNameField
+                  ? (isUpserting ? 'Clearing...' : 'Yes, clear')
+                  : (isDeleting ? 'Deleting...' : 'Yes, delete')}
               </Button>
               <Button
                 type="button"
@@ -201,8 +233,6 @@ export function DestinationTranslationForm({
   destinationId,
   destinationName,
 }: DestinationTranslationFormProps) {
-  const { data: baseDestination, isLoading: isLoadingBase } = useDestination(destinationId, 'en');
-
   return (
     <Card>
       <CardHeader className="border-b pb-8">
@@ -224,38 +254,9 @@ export function DestinationTranslationForm({
           <TabsContent value="en">
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                English is the base locale. Edit the base values in the Details tab.
+                English is the base locale. Name is read-only — edit it in the Details tab.
               </div>
-              {isLoadingBase ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Field>
-                    <Label className="text-xs font-semibold uppercase">Name</Label>
-                    <Input value={baseDestination?.name ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
-                  </Field>
-                  <Field>
-                    <Label className="text-xs font-semibold uppercase">Overview</Label>
-                    <Textarea
-                      value={baseDestination?.overview ?? ''}
-                      readOnly
-                      className="opacity-60 cursor-not-allowed"
-                      rows={4}
-                    />
-                  </Field>
-                  <Field>
-                    <Label className="text-xs font-semibold uppercase">H1 Override</Label>
-                    <Input value={baseDestination?.h1Override ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
-                  </Field>
-                  <Field>
-                    <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
-                    <Input value={baseDestination?.breadcrumbLabel ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
-                  </Field>
-                </div>
-              )}
+              <LocaleTab destinationId={destinationId} locale="en" disableNameField />
             </div>
           </TabsContent>
 

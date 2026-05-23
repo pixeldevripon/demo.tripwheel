@@ -16,14 +16,27 @@ import type { DestinationDetail } from '@/types/destination';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ShieldAlertIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { DestinationDeleteDialog } from './destination-delete-dialog';
 
+function toSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const destinationSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
+    slug: z.string().min(2, 'Slug must be at least 2 characters').regex(/^[a-z0-9-]+$/, 'Slug may only contain lowercase letters, numbers, and hyphens'),
     heroImage: z.string().optional(),
     isActive: z.boolean().optional(),
 });
@@ -59,6 +72,7 @@ export function DestinationForm({
         resolver: zodResolver(destinationSchema),
         defaultValues: {
             name: destination?.name ?? '',
+            slug: destination?.slug ?? '',
             heroImage: destination?.heroImage ?? '',
             isActive: destination?.isActive ?? true,
         },
@@ -66,6 +80,15 @@ export function DestinationForm({
 
     const heroImageValue = watch('heroImage');
     const isActiveValue = watch('isActive');
+    const nameValue = watch('name');
+
+    // Auto-generate slug from name only in create mode and only when not manually edited
+    const [slugTouched, setSlugTouched] = useState(false);
+    useEffect(() => {
+        if (!isEditMode && !slugTouched) {
+            setValue('slug', toSlug(nameValue), { shouldValidate: !!nameValue });
+        }
+    }, [nameValue, isEditMode, slugTouched, setValue]);
 
     function onSubmit(values: DestinationFormValues) {
         if (isEditMode && destination) {
@@ -94,7 +117,7 @@ export function DestinationForm({
             );
         } else {
             createDestination(
-                { name: values.name, heroImage: values.heroImage || null },
+                { name: values.name, slug: values.slug, heroImage: values.heroImage || null },
                 {
                     onSuccess: created => {
                         toast.success('Destination created successfully.');
@@ -135,6 +158,35 @@ export function DestinationForm({
                                 aria-invalid={!!errors.name}
                             />
                             <FieldError>{errors.name?.message}</FieldError>
+                        </Field>
+
+                        <Field>
+                            <Label className='text-xs font-semibold uppercase'>
+                                Slug {!isEditMode && <span className='text-destructive'>*</span>}
+                            </Label>
+                            {isEditMode ? (
+                                <Input
+                                    value={destination?.slug ?? ''}
+                                    readOnly
+                                    className='opacity-60 cursor-not-allowed'
+                                />
+                            ) : (
+                                <Input
+                                    {...register('slug')}
+                                    placeholder='e.g. curacao'
+                                    aria-invalid={!!errors.slug}
+                                    onChange={(e) => {
+                                        setSlugTouched(true);
+                                        setValue('slug', e.target.value, { shouldValidate: true });
+                                    }}
+                                />
+                            )}
+                            <FieldDescription>
+                                {isEditMode
+                                    ? 'Slug cannot be changed after creation.'
+                                    : 'Used in the URL. Auto-generated from the name, but you can customise it.'}
+                            </FieldDescription>
+                            {!isEditMode && <FieldError>{errors.slug?.message}</FieldError>}
                         </Field>
 
                         <Field>

@@ -281,11 +281,20 @@ export class FaqLocaleQueryDto {
 export class CreateDestinationDto {
   @ApiProperty({
     example: 'Aruba',
-    description: 'Destination display name. Slug is auto-generated from the name.',
+    description: 'Destination display name.',
   })
   @IsString()
   @MinLength(2)
   name!: string;
+
+  @ApiPropertyOptional({
+    example: 'aruba',
+    description: 'URL slug. Auto-generated from the name when omitted.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  slug?: string;
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/aruba-hero.jpg',
