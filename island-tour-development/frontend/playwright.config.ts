@@ -4,7 +4,8 @@ import path from 'path';
 const authFile = path.join(__dirname, 'e2e/.auth/user.json');
 
 export default defineConfig({
-  testDir: './e2e',
+  globalSetup: './e2e/auth.setup.ts',
+  testDir: './e2e/tests',
   outputDir: './e2e/test-results',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -17,6 +18,7 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://localhost:3000',
+    storageState: authFile,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     reducedMotion: 'reduce',
@@ -24,17 +26,8 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'setup',
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
       name: 'chromium',
-      testMatch: '**/tests/**/*.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: authFile,
-      },
-      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

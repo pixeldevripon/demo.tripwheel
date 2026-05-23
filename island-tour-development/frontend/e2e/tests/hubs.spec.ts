@@ -86,18 +86,13 @@ async function mockHubsList(page: import('@playwright/test').Page) {
 }
 
 async function mockActiveDestinations(page: import('@playwright/test').Page) {
-  // The HubForm calls useActiveDestinations which queries /api/v1/destinations?isActive=true&locale=en
-  await page.route('**/api/v1/destinations**', (route) => {
+  // useActiveDestinations calls /api/v1/destinations/active which returns a plain array
+  await page.route('**/api/v1/destinations/active**', (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: MOCK_DESTINATIONS,
-          total: 1,
-          page: 1,
-          limit: 100,
-        }),
+        body: JSON.stringify(MOCK_DESTINATIONS),
       });
     } else {
       route.continue();
