@@ -1,27 +1,14 @@
 'use client';
 
-import { Trash2Icon } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useDeleteDestination } from '@/hooks/destinations/use-destinations';
 import type { DestinationLocalized } from '@/types/destination';
+import { DeactivateDialog } from '@/components/dashboard/common/deactivate-dialog';
 
 interface DestinationDeleteDialogProps {
   destination: DestinationLocalized;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  trigger?: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
@@ -29,7 +16,6 @@ export function DestinationDeleteDialog({
   destination,
   open,
   onOpenChange,
-  trigger,
   onSuccess,
 }: DestinationDeleteDialogProps) {
   const { mutate: deleteDestination, isPending } = useDeleteDestination();
@@ -37,44 +23,25 @@ export function DestinationDeleteDialog({
   function handleConfirm() {
     deleteDestination(destination.id, {
       onSuccess: () => {
-        toast.success(`"${destination.name}" deleted successfully.`);
+        toast.success(`"${destination.name}" deactivated successfully.`);
+        onOpenChange(false);
         onSuccess?.();
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to delete destination.');
+        toast.error(err instanceof Error ? err.message : 'Failed to deactivate destination.');
       },
     });
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <Trash2Icon className="size-8 text-destructive" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Delete Destination</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete{' '}
-            <strong className="text-foreground">{destination.name}</strong>? This action cannot be
-            undone. All associated slug registry entries will be removed.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={isPending}
-            onClick={(e) => {
-              e.preventDefault();
-              handleConfirm();
-            }}
-          >
-            {isPending ? 'Deleting...' : 'Delete'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DeactivateDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Deactivate Destination"
+      entityName={destination.name}
+      preservationNote='The record is preserved in the database — not permanently deleted. This protects its URL slug from being reused and keeps all booking history intact. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
+      onConfirm={handleConfirm}
+      isPending={isPending}
+    />
   );
 }

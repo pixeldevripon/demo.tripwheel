@@ -33,6 +33,7 @@ export class CategoryService {
     id: true,
     name: true,
     slug: true,
+    heroImage: true,
     isActive: true,
     isSeeded: true,
     createdAt: true,
@@ -137,12 +138,12 @@ export class CategoryService {
   }
 
   async create(dto: CreateCategoryDto, adminId: string) {
-    const slug = generateSlug(dto.name);
+    const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     return this.prisma.$transaction(async (tx) => {
       const category = await tx.category
         .create({
-          data: { name: dto.name, slug, createdBy: adminId },
+          data: { name: dto.name, slug, heroImage: dto.heroImage ?? null, createdBy: adminId },
           select: this.categorySelect,
         })
         .catch((err: any) => {
@@ -191,6 +192,7 @@ export class CategoryService {
           where: { id },
           data: {
             ...(dto.name !== undefined && { name: dto.name }),
+            ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.categorySelect,

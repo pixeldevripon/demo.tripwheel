@@ -25,6 +25,9 @@ export class CategoryResponseDto {
   @ApiProperty({ example: 'boat-tours' })
   slug!: string;
 
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  heroImage!: string | null;
+
   @ApiProperty({ example: true })
   isActive!: boolean;
 
@@ -302,6 +305,17 @@ export class CreateCategoryDto {
   @IsString()
   @MinLength(2)
   name!: string;
+
+  @ApiPropertyOptional({ example: 'sunset-cruises', description: 'URL slug. Auto-generated from the name when omitted.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  slug?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  @IsOptional()
+  @IsString()
+  heroImage?: string | null;
 }
 
 export class UpdateCategoryDto {
@@ -310,6 +324,11 @@ export class UpdateCategoryDto {
   @IsString()
   @MinLength(2)
   name?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  @IsOptional()
+  @IsString()
+  heroImage?: string | null;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

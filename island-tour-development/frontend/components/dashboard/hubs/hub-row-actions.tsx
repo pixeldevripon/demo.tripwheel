@@ -9,6 +9,7 @@ import {
   LanguagesIcon,
   FileTextIcon,
   HelpCircleIcon,
+  TagsIcon,
   ToggleLeftIcon,
   ToggleRightIcon,
   Trash2Icon,
@@ -24,34 +25,32 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useUpdateDestination } from '@/hooks/destinations/use-destinations';
+import { useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useRole } from '@/contexts/role-context';
-import type { DestinationLocalized } from '@/types/destination';
-import { DestinationQuickEditDialog } from './destination-quick-edit-dialog';
-import { DestinationDeleteDialog } from './destination-delete-dialog';
+import type { HubLocalized } from '@/types/hub';
+import { HubQuickEditDialog } from './hub-quick-edit-dialog';
+import { HubDeleteDialog } from './hub-delete-dialog';
 
-interface DestinationRowActionsProps {
-  destination: DestinationLocalized;
+interface HubRowActionsProps {
+  hub: HubLocalized;
 }
 
-export function DestinationRowActions({ destination }: DestinationRowActionsProps) {
+export function HubRowActions({ hub }: HubRowActionsProps) {
   const router = useRouter();
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { mutate: updateDestination, isPending } = useUpdateDestination();
+  const { mutate: updateHub, isPending } = useUpdateHub();
   const { can } = useRole();
 
   function handleToggleActive() {
-    updateDestination(
-      { id: destination.id, payload: { isActive: !destination.isActive } },
+    updateHub(
+      { id: hub.id, payload: { isActive: !hub.isActive } },
       {
         onSuccess: () => {
-          toast.success(
-            `Destination ${!destination.isActive ? 'activated' : 'deactivated'} successfully.`
-          );
+          toast.success(`Hub ${!hub.isActive ? 'activated' : 'deactivated'} successfully.`);
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Failed to update destination.');
+          toast.error(err instanceof Error ? err.message : 'Failed to update hub.');
         },
       }
     );
@@ -68,11 +67,11 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/hubs/${hub.id}`)}>
             <EyeIcon />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit`)}>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit`)}>
             <PencilIcon />
             Edit
           </DropdownMenuItem>
@@ -82,32 +81,38 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/translations`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/translations`)}
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/page-content`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/page-content`)}
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/faqs`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/allowed-categories`)}
+          >
+            <TagsIcon />
+            Allowed Categories
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleToggleActive}
-            disabled={isPending || destination.isSeeded}
+            disabled={isPending || hub.isSeeded}
           >
-            {destination.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
-            {destination.isActive ? 'Deactivate' : 'Activate'}
+            {hub.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+            {hub.isActive ? 'Deactivate' : 'Activate'}
           </DropdownMenuItem>
-          {can('DELETE_DESTINATION') && !destination.isSeeded && destination.isActive && (
+          {can('MANAGE_HUBS') && !hub.isSeeded && hub.isActive && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -122,17 +127,8 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DestinationQuickEditDialog
-        destination={destination}
-        open={quickEditOpen}
-        onOpenChange={setQuickEditOpen}
-      />
-
-      <DestinationDeleteDialog
-        destination={destination}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      <HubQuickEditDialog hub={hub} open={quickEditOpen} onOpenChange={setQuickEditOpen} />
+      <HubDeleteDialog hub={hub} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   );
 }

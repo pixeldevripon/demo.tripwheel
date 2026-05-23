@@ -24,34 +24,34 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useUpdateDestination } from '@/hooks/destinations/use-destinations';
+import { useUpdateCategory } from '@/hooks/categories/use-categories';
 import { useRole } from '@/contexts/role-context';
-import type { DestinationLocalized } from '@/types/destination';
-import { DestinationQuickEditDialog } from './destination-quick-edit-dialog';
-import { DestinationDeleteDialog } from './destination-delete-dialog';
+import type { CategoryLocalized } from '@/types/category';
+import { CategoryQuickEditDialog } from './category-quick-edit-dialog';
+import { CategoryDeleteDialog } from './category-delete-dialog';
 
-interface DestinationRowActionsProps {
-  destination: DestinationLocalized;
+interface CategoryRowActionsProps {
+  category: CategoryLocalized;
 }
 
-export function DestinationRowActions({ destination }: DestinationRowActionsProps) {
+export function CategoryRowActions({ category }: CategoryRowActionsProps) {
   const router = useRouter();
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { mutate: updateDestination, isPending } = useUpdateDestination();
+  const { mutate: updateCategory, isPending } = useUpdateCategory();
   const { can } = useRole();
 
   function handleToggleActive() {
-    updateDestination(
-      { id: destination.id, payload: { isActive: !destination.isActive } },
+    updateCategory(
+      { id: category.id, payload: { isActive: !category.isActive } },
       {
         onSuccess: () => {
           toast.success(
-            `Destination ${!destination.isActive ? 'activated' : 'deactivated'} successfully.`
+            `Category ${!category.isActive ? 'activated' : 'deactivated'} successfully.`
           );
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : 'Failed to update destination.');
+          toast.error(err instanceof Error ? err.message : 'Failed to update category.');
         },
       }
     );
@@ -68,11 +68,11 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/categories/${category.id}`)}>
             <EyeIcon />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit`)}>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/categories/${category.id}/edit`)}>
             <PencilIcon />
             Edit
           </DropdownMenuItem>
@@ -82,19 +82,19 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/translations`)}
+            onClick={() => router.push(`/dashboard/categories/${category.id}/translations`)}
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/page-content`)}
+            onClick={() => router.push(`/dashboard/categories/${category.id}/page-content`)}
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/faqs`)}
+            onClick={() => router.push(`/dashboard/categories/${category.id}/faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
@@ -102,12 +102,12 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleToggleActive}
-            disabled={isPending || destination.isSeeded}
+            disabled={isPending || category.isSeeded}
           >
-            {destination.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
-            {destination.isActive ? 'Deactivate' : 'Activate'}
+            {category.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+            {category.isActive ? 'Deactivate' : 'Activate'}
           </DropdownMenuItem>
-          {can('DELETE_DESTINATION') && !destination.isSeeded && destination.isActive && (
+          {can('DELETE_CATEGORY') && !category.isSeeded && category.isActive && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -122,14 +122,14 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DestinationQuickEditDialog
-        destination={destination}
+      <CategoryQuickEditDialog
+        category={category}
         open={quickEditOpen}
         onOpenChange={setQuickEditOpen}
       />
 
-      <DestinationDeleteDialog
-        destination={destination}
+      <CategoryDeleteDialog
+        category={category}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
       />

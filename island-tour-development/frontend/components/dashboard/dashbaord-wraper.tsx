@@ -3,6 +3,7 @@
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { RoleProvider } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
@@ -39,6 +40,7 @@ export default function DashboardWrapper({
     const pathname = usePathname();
 
     return (
+        <RoleProvider role={userRole}>
         <SidebarProvider
             className='bg-[#f1f4fa] shadow-none font-sans'
             style={
@@ -82,6 +84,7 @@ export default function DashboardWrapper({
                 </div>
             </SidebarInset>
         </SidebarProvider>
+        </RoleProvider>
     );
 }
 

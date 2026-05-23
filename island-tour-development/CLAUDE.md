@@ -476,3 +476,60 @@ useEffect(() => {
 // Input — edit mode
 <Input value={existing.slug} readOnly className="opacity-60 cursor-not-allowed" />
 ```
+
+---
+
+## Frontend Dashboard RBAC Pattern
+
+Control rendering based on the logged-in user's role. The role is resolved server-side in the dashboard layout and distributed to all client components via `RoleContext`.
+
+### Infrastructure
+
+- **`lib/config/rbac.ts`** — Source of truth: `Permission` constants, `Role` constants, `ROLE_PERMISSIONS` map, `hasPermission` / `hasAnyPermission` helpers. **Must stay in sync with `backend/src/config/roles.config.ts`.**
+- **`contexts/role-context.tsx`** — `RoleProvider` wraps `DashboardWrapper` children. `useRole()` returns `{ role, can, canAny }`.
+- `DashboardWrapper` (`components/dashboard/dashbaord-wraper.tsx`) wraps all dashboard content in `<RoleProvider role={userRole}>`.
+
+### Hook usage
+
+```tsx
+import { useRole } from '@/contexts/role-context';
+
+const { can, canAny } = useRole();
+
+// Single permission check
+{can('CREATE_DESTINATION') && <Button>Add Destination</Button>}
+
+// Multiple permissions (any one suffices)
+{canAny(['EDIT_DESTINATION', 'DELETE_DESTINATION']) && <ActionsMenu />}
+```
+
+### What to gate (DO apply RBAC)
+
+| UI Element | Permission to check |
+|---|---|
+| "Add X" button on list pages | `CREATE_*` or `MANAGE_*` |
+| Bulk Delete button in tables | `DELETE_*` or `MANAGE_*` |
+| Delete item in row-actions dropdown | `DELETE_*` or `MANAGE_*` |
+| Danger Zone card on edit forms | `DELETE_*` or `MANAGE_*` |
+| Admin-only panels (Settings, Users) | `MANAGE_SYSTEM` / `MANAGE_USERS` |
+
+### What NOT to gate (skip RBAC)
+
+- Every tiny sub-action inside a page already protected at the nav level
+- Deeply nested conditional UI that only appears after multiple guarded steps
+- Fields within a form (gate the form/page, not individual inputs)
+
+### Permission map for existing modules
+
+| Module | Create | Edit | Delete |
+|---|---|---|---|
+| Destinations | `CREATE_DESTINATION` | `EDIT_DESTINATION` | `DELETE_DESTINATION` |
+| Categories | `CREATE_CATEGORY` | `EDIT_CATEGORY` | `DELETE_CATEGORY` |
+| Hubs | `MANAGE_HUBS` | `MANAGE_HUBS` | `MANAGE_HUBS` |
+
+### Apply this pattern to every new module
+
+When adding a new module, always:
+1. Check `lib/config/rbac.ts` for the correct `Permission` key(s)
+2. Import `useRole` in the table, row-actions, and form components
+3. Gate: `Add X` button, bulk Delete button, Delete row-action item, Danger Zone card

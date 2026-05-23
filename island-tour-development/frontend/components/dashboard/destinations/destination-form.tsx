@@ -21,6 +21,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { DestinationDeleteDialog } from './destination-delete-dialog';
+import { useRole } from '@/contexts/role-context';
 
 function toSlug(value: string) {
   return value
@@ -55,6 +56,7 @@ export function DestinationForm({
     const router = useRouter();
     const isEditMode = !!destination;
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const { can } = useRole();
 
     const { mutate: createDestination, isPending: isCreating } =
         useCreateDestination();
@@ -246,7 +248,7 @@ export function DestinationForm({
                 </CardContent>
             </Card>
 
-            {isEditMode && destination && (
+            {isEditMode && destination && can('DELETE_DESTINATION') && (
                 <Card className='border-destructive/30 ring-destructive/10'>
                     <CardHeader className='border-b pb-8'>
                         <CardTitle className='text-destructive'>
@@ -257,12 +259,12 @@ export function DestinationForm({
                         <div className='flex items-start justify-between gap-4'>
                             <div>
                                 <p className='text-sm font-medium'>
-                                    Delete this destination
+                                    Deactivate this destination
                                 </p>
                                 <p className='text-sm text-muted-foreground mt-1'>
-                                    Permanently remove this destination and all
-                                    associated slug registry entries. This
-                                    action cannot be undone.
+                                    Hides this destination from the public site.
+                                    The record is preserved to protect its URL
+                                    slug and booking history.
                                 </p>
                                 {destination.isSeeded && (
                                     <div className='mt-3 flex items-center gap-2 text-sm text-amber-600'>
@@ -297,7 +299,7 @@ export function DestinationForm({
                 </Card>
             )}
 
-            {isEditMode && destination && (
+            {isEditMode && destination && can('DELETE_DESTINATION') && (
                 <DestinationDeleteDialog
                     destination={destination}
                     open={deleteOpen}

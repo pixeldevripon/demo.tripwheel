@@ -1,0 +1,235 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { hubsApi } from '@/lib/api/hubs';
+import type {
+  CreateHubPayload,
+  CreateHubFaqPayload,
+  HubsQueryParams,
+  Locale,
+  UpdateHubPayload,
+  UpdateHubFaqPayload,
+  UpsertHubPageContentPayload,
+  UpsertHubTranslationPayload,
+} from '@/types/hub';
+
+export const hubKeys = {
+  all: ['hubs'] as const,
+  lists: () => [...hubKeys.all, 'list'] as const,
+  list: (params: HubsQueryParams) => [...hubKeys.lists(), params] as const,
+  active: (destinationId?: string) => [...hubKeys.all, 'active', destinationId] as const,
+  details: () => [...hubKeys.all, 'detail'] as const,
+  detail: (id: string, locale?: Locale) => [...hubKeys.details(), id, locale] as const,
+  translations: (id: string) => [...hubKeys.all, 'translations', id] as const,
+  translationByLocale: (id: string, locale: Locale) => [...hubKeys.translations(id), locale] as const,
+  pageContent: (id: string, locale?: Locale) => [...hubKeys.all, 'page-content', id, locale] as const,
+  faqs: (id: string, locale?: Locale) => [...hubKeys.all, 'faqs', id, locale] as const,
+  allowedCategories: (id: string) => [...hubKeys.all, 'allowed-categories', id] as const,
+};
+
+export function useHubs(params: HubsQueryParams = {}) {
+  return useQuery({
+    queryKey: hubKeys.list(params),
+    queryFn: () => hubsApi.getAll(params),
+  });
+}
+
+export function useActiveHubs(destinationId?: string) {
+  return useQuery({
+    queryKey: hubKeys.active(destinationId),
+    queryFn: () => hubsApi.getActive(destinationId),
+  });
+}
+
+export function useHub(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.detail(id, locale),
+    queryFn: () => hubsApi.getById(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useHubTranslations(id: string) {
+  return useQuery({
+    queryKey: hubKeys.translations(id),
+    queryFn: () => hubsApi.getTranslations(id),
+    enabled: !!id,
+  });
+}
+
+export function useHubTranslationByLocale(id: string, locale: Locale) {
+  return useQuery({
+    queryKey: hubKeys.translationByLocale(id, locale),
+    queryFn: () => hubsApi.getTranslationByLocale(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useHubPageContent(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.pageContent(id, locale),
+    queryFn: () => hubsApi.getPageContent(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useHubFaqs(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.faqs(id, locale),
+    queryFn: () => hubsApi.getFaqs(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useHubAllowedCategories(id: string) {
+  return useQuery({
+    queryKey: hubKeys.allowedCategories(id),
+    queryFn: () => hubsApi.getAllowedCategories(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateHub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateHubPayload) => hubsApi.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.all });
+    },
+  });
+}
+
+export function useUpdateHub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateHubPayload }) =>
+      hubsApi.update(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.all });
+      queryClient.invalidateQueries({ queryKey: hubKeys.detail(data.id) });
+    },
+  });
+}
+
+export function useDeleteHub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => hubsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.all });
+    },
+  });
+}
+
+export function useUpsertHubTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      locale,
+      payload,
+    }: {
+      id: string;
+      locale: Locale;
+      payload: UpsertHubTranslationPayload;
+    }) => hubsApi.upsertTranslation(id, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.translations(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteHubTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, locale }: { id: string; locale: Locale }) =>
+      hubsApi.deleteTranslation(id, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.translations(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.detail(variables.id) });
+    },
+  });
+}
+
+export function useUpsertHubPageContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      locale,
+      payload,
+    }: {
+      id: string;
+      locale: Locale;
+      payload: UpsertHubPageContentPayload;
+    }) => hubsApi.upsertPageContent(id, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.pageContent(variables.id) });
+    },
+  });
+}
+
+export function useCreateHubFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: CreateHubFaqPayload }) =>
+      hubsApi.createFaq(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.faqs(variables.id) });
+    },
+  });
+}
+
+export function useUpdateHubFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      faqId,
+      payload,
+    }: {
+      id: string;
+      faqId: string;
+      payload: UpdateHubFaqPayload;
+    }) => hubsApi.updateFaq(id, faqId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.faqs(variables.id) });
+    },
+  });
+}
+
+export function useDeleteHubFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, faqId }: { id: string; faqId: string }) =>
+      hubsApi.deleteFaq(id, faqId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.faqs(variables.id) });
+    },
+  });
+}
+
+export function useAddHubAllowedCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
+      hubsApi.addAllowedCategory(id, categoryId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.allowedCategories(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.detail(variables.id) });
+    },
+  });
+}
+
+export function useRemoveHubAllowedCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
+      hubsApi.removeAllowedCategory(id, categoryId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.allowedCategories(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.detail(variables.id) });
+    },
+  });
+}

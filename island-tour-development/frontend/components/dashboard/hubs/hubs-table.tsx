@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,7 +12,16 @@ import {
   type VisibilityState,
   type RowSelectionState,
 } from '@tanstack/react-table';
-import { PlusIcon, SearchIcon, MapPinIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, Settings2Icon } from 'lucide-react';
+import {
+  PlusIcon,
+  SearchIcon,
+  NavigationIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  Settings2Icon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -40,17 +49,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { destinationColumns } from './destination-columns';
-import { useUpdateDestination, useDeleteDestination } from '@/hooks/destinations/use-destinations';
+import { buildHubColumns } from './hub-columns';
+import { useUpdateHub, useDeleteHub } from '@/hooks/hubs/use-hubs';
 import { useRole } from '@/contexts/role-context';
+import type { HubLocalized } from '@/types/hub';
 import type { DestinationLocalized } from '@/types/destination';
 
-interface DestinationsTableProps {
-  data: DestinationLocalized[];
+interface HubsTableProps {
+  data: HubLocalized[];
   total: number;
   page: number;
   limit: number;
   isLoading: boolean;
+  destinations: DestinationLocalized[];
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   onFilterChange: (key: string, value: string | undefined) => void;
@@ -58,30 +69,39 @@ interface DestinationsTableProps {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
-export function DestinationsTable({
+export function HubsTable({
   data,
   total,
   page,
   limit,
   isLoading,
+  destinations,
   onPageChange,
   onLimitChange,
   onFilterChange,
-}: DestinationsTableProps) {
+}: HubsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [destinationFilter, setDestinationFilter] = useState<string>('all');
 
-  const { mutate: updateDestination } = useUpdateDestination();
-  const { mutate: deleteDestination } = useDeleteDestination();
+  const { mutate: updateHub } = useUpdateHub();
+  const { mutate: deleteHub } = useDeleteHub();
   const { can } = useRole();
+
+  const destinationsMap = useMemo(
+    () => new Map(destinations.map((d) => [d.id, d.name])),
+    [destinations]
+  );
+
+  const columns = useMemo(() => buildHubColumns({ destinationsMap }), [destinationsMap]);
 
   const table = useReactTable({
     data,
-    columns: destinationColumns,
+    columns,
     state: {
       sorting,
       columnFilters,
@@ -107,53 +127,50 @@ export function DestinationsTable({
 
   function handleStatusFilterChange(value: string) {
     setStatusFilter(value);
-    if (value === 'all') {
-      onFilterChange('isActive', undefined);
-    } else {
-      onFilterChange('isActive', value === 'active' ? 'true' : 'false');
-    }
+    onFilterChange('isActive', value === 'all' ? undefined : value === 'active' ? 'true' : 'false');
+  }
+
+  function handleDestinationFilterChange(value: string) {
+    setDestinationFilter(value);
+    onFilterChange('destinationId', value === 'all' ? undefined : value);
   }
 
   function handleBulkActivate() {
     const ids = selectedRows.map((r) => r.original.id);
     ids.forEach((id) =>
-      updateDestination(
+      updateHub(
         { id, payload: { isActive: true } },
-        {
-          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to activate.'),
-        }
+        { onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to activate.') }
       )
     );
-    toast.success(`${ids.length} destination(s) activated.`);
+    toast.success(`${ids.length} hub(s) activated.`);
     setRowSelection({});
   }
 
   function handleBulkDeactivate() {
     const ids = selectedRows.map((r) => r.original.id);
     ids.forEach((id) =>
-      updateDestination(
+      updateHub(
         { id, payload: { isActive: false } },
-        {
-          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to deactivate.'),
-        }
+        { onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to deactivate.') }
       )
     );
-    toast.success(`${ids.length} destination(s) deactivated.`);
+    toast.success(`${ids.length} hub(s) deactivated.`);
     setRowSelection({});
   }
 
   function handleBulkDelete() {
     const rows = selectedRows.filter((r) => !r.original.isSeeded);
     if (rows.length === 0) {
-      toast.error('No deletable destinations selected. Seeded destinations are protected.');
+      toast.error('No deletable hubs selected. Seeded hubs are protected.');
       return;
     }
     rows.forEach((r) =>
-      deleteDestination(r.original.id, {
+      deleteHub(r.original.id, {
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete.'),
       })
     );
-    toast.success(`${rows.length} destination(s) deleted.`);
+    toast.success(`${rows.length} hub(s) deleted.`);
     setRowSelection({});
   }
 
@@ -170,11 +187,11 @@ export function DestinationsTable({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search destinations..."
+              placeholder="Search hubs..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               className="pl-9"
@@ -188,6 +205,19 @@ export function DestinationsTable({
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={destinationFilter} onValueChange={handleDestinationFilterChange}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Destination" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Destinations</SelectItem>
+              {destinations.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -216,11 +246,11 @@ export function DestinationsTable({
                 ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {can('CREATE_DESTINATION') && (
+          {can('MANAGE_HUBS') && (
             <Button asChild size="sm">
-              <Link href="/dashboard/destinations/new">
+              <Link href="/dashboard/hubs/new">
                 <PlusIcon />
-                Add Destination
+                Add Hub
               </Link>
             </Button>
           )}
@@ -239,7 +269,7 @@ export function DestinationsTable({
             <Button size="xs" variant="outline" onClick={handleBulkDeactivate}>
               Deactivate
             </Button>
-            {can('DELETE_DESTINATION') && (
+            {can('MANAGE_HUBS') && (
               <Button size="xs" variant="destructive" onClick={handleBulkDelete}>
                 Delete
               </Button>
@@ -270,11 +300,11 @@ export function DestinationsTable({
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={destinationColumns.length} className="h-32 text-center">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <MapPinIcon className="size-8 opacity-40" />
-                    <p className="text-sm">No destinations found.</p>
-                    <p className="text-xs">Add your first destination to get started.</p>
+                    <NavigationIcon className="size-8 opacity-40" />
+                    <p className="text-sm">No hubs found.</p>
+                    <p className="text-xs">Add your first hub to get started.</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -316,36 +346,16 @@ export function DestinationsTable({
           <span className="text-xs text-muted-foreground mr-2">
             Page {page} of {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(1)}
-            disabled={page <= 1}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(1)} disabled={page <= 1}>
             <ChevronsLeftIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
             <ChevronLeftIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
             <ChevronRightIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(totalPages)}
-            disabled={page >= totalPages}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
             <ChevronsRightIcon />
           </Button>
         </div>

@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { DestinationsTable } from './destinations-table';
-import { useDestinations } from '@/hooks/destinations/use-destinations';
+import { CategoriesTable } from './categories-table';
+import { useCategories } from '@/hooks/categories/use-categories';
 
-export function DestinationsListView() {
+export function CategoriesListView() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [filters, setFilters] = useState<Record<string, string | undefined>>({ isActive: 'true' });
 
-  const { data, isLoading } = useDestinations({
+  const { data, isLoading } = useCategories({
     page,
     limit,
     locale: 'en',
@@ -27,7 +27,7 @@ export function DestinationsListView() {
   }
 
   return (
-    <DestinationsTable
+    <CategoriesTable
       data={data?.data ?? []}
       total={data?.total ?? 0}
       page={page}

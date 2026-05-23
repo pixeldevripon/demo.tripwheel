@@ -12,7 +12,7 @@ import {
   type VisibilityState,
   type RowSelectionState,
 } from '@tanstack/react-table';
-import { PlusIcon, SearchIcon, MapPinIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, Settings2Icon } from 'lucide-react';
+import { PlusIcon, SearchIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, Settings2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -40,13 +40,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { destinationColumns } from './destination-columns';
-import { useUpdateDestination, useDeleteDestination } from '@/hooks/destinations/use-destinations';
+import { categoryColumns } from './category-columns';
+import { useUpdateCategory, useDeleteCategory } from '@/hooks/categories/use-categories';
 import { useRole } from '@/contexts/role-context';
-import type { DestinationLocalized } from '@/types/destination';
+import type { CategoryLocalized } from '@/types/category';
 
-interface DestinationsTableProps {
-  data: DestinationLocalized[];
+interface CategoriesTableProps {
+  data: CategoryLocalized[];
   total: number;
   page: number;
   limit: number;
@@ -58,7 +58,7 @@ interface DestinationsTableProps {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
-export function DestinationsTable({
+export function CategoriesTable({
   data,
   total,
   page,
@@ -67,7 +67,7 @@ export function DestinationsTable({
   onPageChange,
   onLimitChange,
   onFilterChange,
-}: DestinationsTableProps) {
+}: CategoriesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -75,13 +75,13 @@ export function DestinationsTable({
   const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('active');
 
-  const { mutate: updateDestination } = useUpdateDestination();
-  const { mutate: deleteDestination } = useDeleteDestination();
+  const { mutate: updateCategory } = useUpdateCategory();
+  const { mutate: deleteCategory } = useDeleteCategory();
   const { can } = useRole();
 
   const table = useReactTable({
     data,
-    columns: destinationColumns,
+    columns: categoryColumns,
     state: {
       sorting,
       columnFilters,
@@ -117,43 +117,43 @@ export function DestinationsTable({
   function handleBulkActivate() {
     const ids = selectedRows.map((r) => r.original.id);
     ids.forEach((id) =>
-      updateDestination(
+      updateCategory(
         { id, payload: { isActive: true } },
         {
           onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to activate.'),
         }
       )
     );
-    toast.success(`${ids.length} destination(s) activated.`);
+    toast.success(`${ids.length} category(s) activated.`);
     setRowSelection({});
   }
 
   function handleBulkDeactivate() {
     const ids = selectedRows.map((r) => r.original.id);
     ids.forEach((id) =>
-      updateDestination(
+      updateCategory(
         { id, payload: { isActive: false } },
         {
           onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to deactivate.'),
         }
       )
     );
-    toast.success(`${ids.length} destination(s) deactivated.`);
+    toast.success(`${ids.length} category(s) deactivated.`);
     setRowSelection({});
   }
 
   function handleBulkDelete() {
     const rows = selectedRows.filter((r) => !r.original.isSeeded);
     if (rows.length === 0) {
-      toast.error('No deletable destinations selected. Seeded destinations are protected.');
+      toast.error('No deletable categories selected. Seeded categories are protected.');
       return;
     }
     rows.forEach((r) =>
-      deleteDestination(r.original.id, {
+      deleteCategory(r.original.id, {
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete.'),
       })
     );
-    toast.success(`${rows.length} destination(s) deleted.`);
+    toast.success(`${rows.length} category(s) deleted.`);
     setRowSelection({});
   }
 
@@ -174,7 +174,7 @@ export function DestinationsTable({
           <div className="relative flex-1 max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search destinations..."
+              placeholder="Search categories..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               className="pl-9"
@@ -216,11 +216,11 @@ export function DestinationsTable({
                 ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {can('CREATE_DESTINATION') && (
+          {can('CREATE_CATEGORY') && (
             <Button asChild size="sm">
-              <Link href="/dashboard/destinations/new">
+              <Link href="/dashboard/categories/new">
                 <PlusIcon />
-                Add Destination
+                Add Category
               </Link>
             </Button>
           )}
@@ -239,7 +239,7 @@ export function DestinationsTable({
             <Button size="xs" variant="outline" onClick={handleBulkDeactivate}>
               Deactivate
             </Button>
-            {can('DELETE_DESTINATION') && (
+            {can('DELETE_CATEGORY') && (
               <Button size="xs" variant="destructive" onClick={handleBulkDelete}>
                 Delete
               </Button>
@@ -270,11 +270,11 @@ export function DestinationsTable({
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={destinationColumns.length} className="h-32 text-center">
+                <TableCell colSpan={categoryColumns.length} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <MapPinIcon className="size-8 opacity-40" />
-                    <p className="text-sm">No destinations found.</p>
-                    <p className="text-xs">Add your first destination to get started.</p>
+                    <TagIcon className="size-8 opacity-40" />
+                    <p className="text-sm">No categories found.</p>
+                    <p className="text-xs">Add your first category to get started.</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -314,38 +314,18 @@ export function DestinationsTable({
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground mr-2">
-            Page {page} of {totalPages}
+            Page {page} of {totalPages || 1}
           </span>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(1)}
-            disabled={page <= 1}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(1)} disabled={page <= 1}>
             <ChevronsLeftIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
             <ChevronLeftIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
             <ChevronRightIcon />
           </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            onClick={() => onPageChange(totalPages)}
-            disabled={page >= totalPages}
-          >
+          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
             <ChevronsRightIcon />
           </Button>
         </div>
