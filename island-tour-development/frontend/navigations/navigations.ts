@@ -71,21 +71,10 @@ const dashboardNav: NavItem[] = [
     {
         title: 'Destinations',
         icon: Globe,
+        url: 'destinations',
         permissions: [
             Permission.VIEW_DESTINATIONS,
             Permission.CREATE_DESTINATION,
-        ],
-        items: [
-            {
-                title: 'All Destinations',
-                url: 'destinations',
-                permissions: [Permission.VIEW_DESTINATIONS],
-            },
-            {
-                title: 'Add Destination',
-                url: 'destinations/new',
-                permissions: [Permission.CREATE_DESTINATION],
-            },
         ],
     },
     {

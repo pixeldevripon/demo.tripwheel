@@ -1,0 +1,4 @@
+- [Playwright auth setup](playwright-auth-setup.md) — storageState pattern for admin session; auth.setup.ts already written at e2e/auth.setup.ts
+- [Playwright config](playwright-config.md) — config file location, project setup/chromium dependency, baseURL, webServer config
+- [API mock patterns](api-mock-patterns.md) — page.route() patterns for list GET, PATCH toggle, DELETE, active-destinations for HubForm
+- [Dashboard component selectors](dashboard-selectors.md) — Reliable selectors for row-actions button, dialog roles, form inputs, toast assertions
