@@ -382,3 +382,97 @@ Preserve the JSDoc with What it does + Dependencies + Usage examples. Do not tri
 
 ### 18. Store BullMQ job IDs
 Store `bullJobId` on `SlotLock` and `offerJobId` on `WaitlistEntry` to cancel them early when no longer needed.
+
+---
+
+## Frontend Translation Form Patterns
+
+These patterns apply to every multilingual module (Category, Hub, and any future entity with translations).
+
+### Upsert translation payload shape
+The backend wraps translation fields inside a `fields` key — never send them flat:
+```typescript
+// ✅ correct
+{ fields: { name, overview, h1Override, breadcrumbLabel }, isMachineTranslated?: false }
+
+// ❌ wrong — causes 400 "property X should not exist" (forbidNonWhitelisted)
+{ name, overview, h1Override, breadcrumbLabel }
+```
+Frontend type must match:
+```typescript
+export interface UpsertTranslationPayload {
+  fields: {
+    name?: string | null;
+    // ...other translatable fields
+  };
+  isMachineTranslated?: boolean;
+}
+```
+
+### English (base locale) tab rules
+- Name is **read-only** — it's the canonical value, edited only in the Details tab
+- All other fields (overview, h1Override, breadcrumbLabel, etc.) are **fully editable** via `LocaleTab` with `disableNameField` prop
+- The "Delete Translation" button on English must **not** call the delete endpoint (backend blocks it). Instead it should call upsert with the editable fields set to `null` — label it "Clear Fields"
+- Pattern: pass `disableNameField` prop to `LocaleTab`; branch `handleDelete` on this prop
+
+```tsx
+// English tab
+<LocaleTab destinationId={id} locale="en" disableNameField />
+
+// In LocaleTab — name field
+<Input
+  {...register('name')}
+  readOnly={disableNameField}
+  className={disableNameField ? 'opacity-60 cursor-not-allowed' : undefined}
+/>
+
+// In handleDelete
+if (disableNameField) {
+  upsert({ id, locale, payload: { fields: { overview: null, h1Override: null, breadcrumbLabel: null } } })
+} else {
+  deleteTranslation({ id, locale })
+}
+```
+
+---
+
+## Frontend Create Form — Slug Field Pattern
+
+Every entity with a URL slug must expose an editable slug field on create and lock it on edit.
+
+### Rules
+- **Create mode**: slug field shown, auto-generates from name as the user types; once manually edited (`slugTouched` flag), auto-generation stops
+- **Edit mode**: slug shown as read-only input with a "cannot be changed after creation" note
+- Backend `CreateXxxDto` always accepts an optional `slug?: string`; service uses `dto.slug ?? generateSlug(dto.name)` and always runs the value through `generateSlug` to normalise it
+
+### Frontend pattern
+```typescript
+// toSlug mirrors the backend generateSlug util — keep them in sync
+function toSlug(value: string) {
+  return value
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Zod field
+slug: z.string().min(2).regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, hyphens only')
+
+// Auto-generate, stop on manual edit
+const [slugTouched, setSlugTouched] = useState(false);
+useEffect(() => {
+  if (!isEditMode && !slugTouched) setValue('slug', toSlug(nameValue));
+}, [nameValue, isEditMode, slugTouched, setValue]);
+
+// Input — create mode
+<Input
+  {...register('slug')}
+  onChange={(e) => { setSlugTouched(true); setValue('slug', e.target.value, { shouldValidate: true }); }}
+/>
+
+// Input — edit mode
+<Input value={existing.slug} readOnly className="opacity-60 cursor-not-allowed" />
+```
