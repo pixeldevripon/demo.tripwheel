@@ -38,7 +38,6 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
@@ -46,11 +45,18 @@ export class AuthGuard implements CanActivate {
       headers: fromNodeHeaders(request.headers),
     });
 
-    if (!session) throw new UnauthorizedException('No active session');
+    if (session) {
+      // Cast is safe: role/status values at runtime are always valid enum members
+      request.user = session.user as unknown as TypedAuthUser;
+      request.session = session.session;
+    }
 
-    // Cast is safe: role/status values at runtime are always valid enum members
-    request.user = session.user as unknown as TypedAuthUser;
-    request.session = session.session;
+    // Public routes: always allow through regardless of session presence.
+    // req.user is populated above when a valid session cookie IS present,
+    // so service-layer ownership checks work correctly for authenticated callers.
+    if (isPublic) return true;
+
+    if (!session) throw new UnauthorizedException('No active session');
 
     return true;
   }

@@ -71,7 +71,7 @@ export class TripsController {
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetMyTripsDocs()
   findMyTrips(@Query() query: MyTripsQueryDto, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.findMyTrips(user.id, query);
+    return this.tripsService.findMyTrips(user.id, user.role, query);
   }
 
   // ── Create ────────────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ export class TripsController {
   @RequirePermissions(Permission.CREATE_TRIP)
   @ApiCreateTripDocs()
   create(@Body() dto: CreateTripDto, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.create(dto, user.id);
+    return this.tripsService.create(dto, user.id, user.role);
   }
 
   // ── Single trip (semi-public) ─────────────────────────────────────────────────
@@ -113,21 +113,21 @@ export class TripsController {
   @RequirePermissions(Permission.MANAGE_TRIPS)
   @ApiPublishTripDocs()
   publish(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.publish(id, user.id);
+    return this.tripsService.publish(id, user.id, user.role);
   }
 
   @Post(':id/pause')
   @RequirePermissions(Permission.MANAGE_TRIPS)
   @ApiPauseTripDocs()
   pause(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.pause(id, user.id);
+    return this.tripsService.pause(id, user.id, user.role);
   }
 
   @Post(':id/unpause')
   @RequirePermissions(Permission.MANAGE_TRIPS)
   @ApiUnpauseTripDocs()
   unpause(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.unpause(id, user.id);
+    return this.tripsService.unpause(id, user.id, user.role);
   }
 
   @Post(':id/archive')
@@ -141,6 +141,6 @@ export class TripsController {
   @RequirePermissions(Permission.DELETE_TRIP)
   @ApiDeleteTripDocs()
   remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripsService.remove(id, user.id);
+    return this.tripsService.remove(id, user.id, user.role);
   }
 }

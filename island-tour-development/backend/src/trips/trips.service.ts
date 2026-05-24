@@ -59,13 +59,34 @@ export class TripsService {
     return trip;
   }
 
-  private assertOwnership(
+  private async resolveOperatorId(userId: string, role?: Role): Promise<string> {
+    const operator = await this.prisma.operator.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (operator) return operator.id;
+
+    if (role === Role.ADMIN) {
+      // Auto-provision an operator record for admin users on first use
+      const created = await this.prisma.operator.create({
+        data: { userId },
+        select: { id: true },
+      });
+      this.logger.log(`Auto-provisioned operator profile for admin user ${userId}`);
+      return created.id;
+    }
+
+    throw new BadRequestException('No operator profile found. Please complete your operator registration first.');
+  }
+
+  private async assertOwnership(
     trip: { operatorId: string },
-    requesterId: string,
+    userId: string,
     requesterRole: Role,
   ) {
     if (requesterRole === Role.ADMIN) return;
-    if (trip.operatorId !== requesterId) {
+    const operatorId = await this.resolveOperatorId(userId);
+    if (trip.operatorId !== operatorId) {
       throw new ForbiddenException('You do not have permission to modify this trip');
     }
   }
@@ -111,7 +132,8 @@ export class TripsService {
 
   // ── Operator "my trips" ───────────────────────────────────────────────────────
 
-  async findMyTrips(operatorId: string, query: MyTripsQueryDto) {
+  async findMyTrips(userId: string, userRole: Role, query: MyTripsQueryDto) {
+    const operatorId = await this.resolveOperatorId(userId, userRole);
     const { status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
@@ -330,7 +352,9 @@ export class TripsService {
 
   // ── Create ────────────────────────────────────────────────────────────────────
 
-  async create(dto: CreateTripDto, operatorId: string) {
+  async create(dto: CreateTripDto, userId: string, userRole: Role) {
+    const operatorId = await this.resolveOperatorId(userId, userRole);
+
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     // Validate destination
@@ -472,7 +496,7 @@ export class TripsService {
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
 
-  async publish(id: string, operatorId: string) {
+  async publish(id: string, userId: string, userRole: Role) {
     const trip = await this.prisma.trip.findUnique({
       where: { id },
       select: {
@@ -483,8 +507,11 @@ export class TripsService {
       },
     });
     if (!trip) throw new NotFoundException(`Trip ${id} not found`);
-    if (trip.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to publish this trip');
+    if (userRole !== Role.ADMIN) {
+      const operatorId = await this.resolveOperatorId(userId);
+      if (trip.operatorId !== operatorId) {
+        throw new ForbiddenException('You do not have permission to publish this trip');
+      }
     }
     if (trip.status !== TripStatus.DRAFT) {
       throw new BadRequestException('Trip must be in DRAFT status to publish');
@@ -507,14 +534,17 @@ export class TripsService {
       select: this.tripSelect,
     });
 
-    this.logger.log(`Operator ${operatorId} published trip ${id}`);
+    this.logger.log(`User ${userId} published trip ${id}`);
     return updated;
   }
 
-  async pause(id: string, operatorId: string) {
+  async pause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (trip.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to pause this trip');
+    if (userRole !== Role.ADMIN) {
+      const operatorId = await this.resolveOperatorId(userId);
+      if (trip.operatorId !== operatorId) {
+        throw new ForbiddenException('You do not have permission to pause this trip');
+      }
     }
     if (trip.status !== TripStatus.LIVE) {
       throw new BadRequestException('Trip must be LIVE to pause');
@@ -528,14 +558,17 @@ export class TripsService {
       select: this.tripSelect,
     });
 
-    this.logger.log(`Operator ${operatorId} paused trip ${id}`);
+    this.logger.log(`User ${userId} paused trip ${id}`);
     return updated;
   }
 
-  async unpause(id: string, operatorId: string) {
+  async unpause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (trip.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to unpause this trip');
+    if (userRole !== Role.ADMIN) {
+      const operatorId = await this.resolveOperatorId(userId);
+      if (trip.operatorId !== operatorId) {
+        throw new ForbiddenException('You do not have permission to unpause this trip');
+      }
     }
     if (trip.status !== TripStatus.PAUSED) {
       throw new BadRequestException('Trip must be PAUSED to unpause');
@@ -547,7 +580,7 @@ export class TripsService {
       select: this.tripSelect,
     });
 
-    this.logger.log(`Operator ${operatorId} unpaused trip ${id}`);
+    this.logger.log(`User ${userId} unpaused trip ${id}`);
     return updated;
   }
 
@@ -584,10 +617,13 @@ export class TripsService {
     });
   }
 
-  async remove(id: string, operatorId: string) {
+  async remove(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (trip.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to delete this trip');
+    if (userRole !== Role.ADMIN) {
+      const operatorId = await this.resolveOperatorId(userId);
+      if (trip.operatorId !== operatorId) {
+        throw new ForbiddenException('You do not have permission to delete this trip');
+      }
     }
     if (trip.status !== TripStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT trips can be deleted');
@@ -604,7 +640,7 @@ export class TripsService {
       await tx.trip.delete({ where: { id } });
     });
 
-    this.logger.log(`Operator ${operatorId} deleted trip ${id}`);
+    this.logger.log(`User ${userId} deleted trip ${id}`);
     return { message: 'Trip deleted successfully' };
   }
 }

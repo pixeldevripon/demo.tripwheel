@@ -383,6 +383,21 @@ Preserve the JSDoc with What it does + Dependencies + Usage examples. Do not tri
 ### 18. Store BullMQ job IDs
 Store `bullJobId` on `SlotLock` and `offerJobId` on `WaitlistEntry` to cancel them early when no longer needed.
 
+### 19. Trip ownership uses `operator.id`, not `user.id`
+`trips.operatorId` is a FK to `operators.id` — **not** `users.id`. Controllers pass `user.id`; the service must resolve it to `operator.id` before any DB write or ownership check. Use the private `resolveOperatorId(userId, role?)` helper in `trips.service.ts`.
+
+```typescript
+// ✅ correct — resolve first
+const operatorId = await this.resolveOperatorId(userId, userRole);
+
+// ❌ wrong — user.id ≠ operator.id
+await prisma.trip.create({ data: { operatorId: userId, ... } });
+```
+
+**Admin auto-provisioning:** If the caller is `Role.ADMIN` and has no operator record, `resolveOperatorId` silently creates one (`{ userId }` — all other fields optional). This lets admins create and own trips without a separate registration step. For `Role.TOUR_OPERATOR` with no operator record, it throws `400`.
+
+**Lifecycle ownership bypass:** `publish`, `pause`, `unpause`, `remove`, and `assertOwnership` all skip the ownership check when `userRole === Role.ADMIN`, so admins can manage any operator's trip. Operators are always checked against their own `operatorId`.
+
 ---
 
 ## Frontend Translation Form Patterns

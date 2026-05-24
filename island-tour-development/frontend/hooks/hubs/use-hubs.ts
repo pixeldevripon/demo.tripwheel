@@ -89,6 +89,27 @@ export function useHubAllowedCategories(id: string) {
   });
 }
 
+export function useHubMatchForCategory(destinationId?: string, categoryId?: string) {
+  return useQuery({
+    queryKey: ['hub-match', destinationId, categoryId] as const,
+    enabled: !!destinationId && !!categoryId,
+    queryFn: async () => {
+      const hubs = await hubsApi.getActive(destinationId!);
+      if (!hubs.length) return null;
+      const results = await Promise.all(
+        hubs.map(async (hub) => {
+          const cats = await hubsApi.getAllowedCategories(hub.id);
+          return { hub, cats };
+        })
+      );
+      const match = results.find(({ cats }) =>
+        cats.some((ac) => ac.categoryId === categoryId)
+      );
+      return match?.hub ?? null;
+    },
+  });
+}
+
 export function useCreateHub() {
   const queryClient = useQueryClient();
   return useMutation({

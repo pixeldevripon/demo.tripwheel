@@ -311,6 +311,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_USERS',
     'CREATE_TRIP',
     'EDIT_TRIP',
+    'DELETE_TRIP',
     'VIEW_TRIPS',
     'VIEW_BLOGS',
     'VIEW_ANALYTICS',
