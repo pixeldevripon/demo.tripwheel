@@ -190,6 +190,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_USERS,
     Permission.CREATE_TRIP,
     Permission.EDIT_TRIP,
+    Permission.DELETE_TRIP,
     Permission.VIEW_TRIPS,
     Permission.VIEW_BLOGS,
     Permission.VIEW_ANALYTICS,
