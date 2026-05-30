@@ -1,7 +1,7 @@
 # Island Tours — Master Implementation Checklist
 
 > **Legend:** ✅ Implemented · ⬜ Not implemented · ⚠️ Partial / placeholder UI only  
-> **Source of truth:** Implementation status verified against the actual codebase on 2026-05-30.  
+> **Source of truth:** Implementation status verified against the actual codebase on 2026-05-30. Last updated: 2026-05-30.  
 > Items are sorted by phase then priority. Within each phase, critical-path items appear first.
 
 ---
@@ -153,6 +153,7 @@
 | 4.4.4 | FAQs sub-resource — `createFaq`, `updateFaq`, `deleteFaq`, `reorderFaqs` | ✅ |
 | 4.4.5 | `DestinationsController` — full REST with nested translation/faq/page-content routes | ✅ |
 | 4.4.6 | Unit tests (`destinations.service.spec.ts`, `destinations.controller.spec.ts`) | ✅ |
+| 4.4.7 | Force delete (`DELETE /destinations/:id/force`) — permanently removes inactive, non-seeded destination; clears all `slug_registry` rows for that destination slug; Prisma cascade handles hubs, translations, FAQs, page content; guarded by `MANAGE_SYSTEM` | ✅ |
 
 ### 4.5 — Categories Module
 
@@ -165,6 +166,7 @@
 | 4.5.5 | FAQs sub-resource | ✅ |
 | 4.5.6 | `CategoriesController` — full REST + nested routes | ✅ |
 | 4.5.7 | Unit tests | ✅ |
+| 4.5.8 | Force delete (`DELETE /categories/:id/force`) — permanently removes inactive, non-seeded category; explicitly deletes SlotLock → SlotHistory → WaitlistEntry → FeaturedSlot → SlugRegistry in order (no cascade defined); Prisma cascade then handles translations, FAQs, page content; guarded by `MANAGE_SYSTEM` | ✅ |
 
 ### 4.6 — Hubs Module
 
@@ -228,6 +230,7 @@
 | 4.10.16 | `findOne()` ownership bug fixed — compares `operatorId` not raw `userId` | ✅ |
 | 4.10.17 | Admin all-trips endpoint (`GET /trips/admin/all`) — filters by status, operatorId, search | ✅ |
 | 4.10.18 | Featured slot rank (`featuredSlotNumber`, `featuredSlotStatus`) included in `findMyTrips()` + `findOne()` | ✅ |
+| 4.10.19 | Admin force delete — `remove()` bypasses DRAFT-only restriction for `ADMIN` role; admin can permanently delete LIVE/PAUSED/ARCHIVED trips | ✅ |
 
 ### 4.11 — Upload Module *(Gap G4)*
 
@@ -279,6 +282,40 @@
 | 4.15.3 | `WishlistService.getAll()` — all wishlisted trips with trip join | ⬜ |
 | 4.15.4 | `WishlistController` — `POST /api/v1/wishlist`, `DELETE /api/v1/wishlist/:tripId`, `GET /api/v1/wishlist` | ⬜ |
 | 4.15.5 | `WishlistModule` imported in `AppModule` | ⬜ |
+
+### 4.16 — Admin User Management Module *(F-05)*
+
+> Create and manage platform-internal staff (EDITOR / STAFF / GUIDE roles). Admins invite staff via email; all role changes are server-side only.
+
+| # | Task | Status |
+|---|---|---|
+| 4.16.1 | `User` schema additions — `invitedBy UUID?`, `invitedAt DateTime?`, `accountStatus` enum (ACTIVE / SUSPENDED / DEACTIVATED) | ⬜ |
+| 4.16.2 | `EDITOR`, `STAFF`, `GUIDE` roles in `Role` enum (`enums.prisma`) and `ROLE_PERMISSIONS` map (`roles.config.ts`) | ⬜ |
+| 4.16.3 | `AdminUsersService.inviteStaff()` — creates user account with temporary password; sets `invitedBy + invitedAt`; sends invite email | ⬜ |
+| 4.16.4 | `AdminUsersService.updateRole()` — changes role; blocks `ADMIN` assignment via API; logs change | ⬜ |
+| 4.16.5 | `AdminUsersService.deactivate()` — soft-deactivates account (`accountStatus = DEACTIVATED`); revokes active sessions | ⬜ |
+| 4.16.6 | `AdminUsersController` — `POST /admin/staff`, `GET /admin/users`, `PATCH /admin/users/:id/role`, `DELETE /admin/users/:id`; all guarded by `MANAGE_USERS` | ⬜ |
+| 4.16.7 | Email template: staff invite — credentials + assigned role + dashboard link | ⬜ |
+| 4.16.8 | `AdminUsersModule` imported in `AppModule` | ⬜ |
+
+### 4.17 — Operator Team Management Module *(F-12)*
+
+> Multi-seat operator accounts. An OWNER can invite MANAGER / STAFF members who act within the operator's account scope.
+
+| # | Task | Status |
+|---|---|---|
+| 4.17.1 | `OperatorTeamMember` schema — `id`, `operatorId`, `userId`, `teamRole` (OWNER / MANAGER / STAFF), `invitedBy`, `invitedAt`, `status` (PENDING / ACTIVE / REVOKED) | ⬜ |
+| 4.17.2 | `teamRole` enum added to `enums.prisma` | ⬜ |
+| 4.17.3 | `OperatorTeamService.invite()` — creates PENDING record; sends invite email with accept token | ⬜ |
+| 4.17.4 | `OperatorTeamService.acceptInvite()` — validates token; creates User if new; sets status ACTIVE | ⬜ |
+| 4.17.5 | `OperatorTeamService.updateRole()` — OWNER only; blocks self-demotion below OWNER | ⬜ |
+| 4.17.6 | `OperatorTeamService.revoke()` — sets status REVOKED; revokes sessions | ⬜ |
+| 4.17.7 | `OperatorTeamService.listMembers()` — returns all team members for current operator | ⬜ |
+| 4.17.8 | `OperatorTeamController` — `GET /operators/team`, `POST /operators/team/invite`, `PATCH /operators/team/:id/role`, `DELETE /operators/team/:id` | ⬜ |
+| 4.17.9 | Accept-invite public endpoint — `POST /operators/team/accept/:token`; `@Public()` | ⬜ |
+| 4.17.10 | `resolveOperatorId()` in `TripsService` updated — resolves for active team members (maps `userId → operatorId` via `OperatorTeamMember`) | ⬜ |
+| 4.17.11 | Email template: operator team invite | ⬜ |
+| 4.17.12 | `OperatorTeamModule` imported in `AppModule` | ⬜ |
 
 ---
 
@@ -415,6 +452,9 @@
 | 12.1.14 | Settings page (`dashboard/settings/page.tsx`) with system sub-section | ✅ |
 | 12.1.15 | Profile page (`dashboard/profile/page.tsx`) | ✅ |
 | 12.1.16 | Dashboard RBAC — `useRole().can()` gates Add buttons, bulk Delete, row-action Delete, Danger Zone | ✅ |
+| 12.1.17 | `ForceDeleteDialog` common component (`components/dashboard/common/force-delete-dialog.tsx`) — shared destructive confirmation with entity name, consequence note, and irreversibility warning | ✅ |
+| 12.1.18 | Force delete in destination and category row actions — admin-only, visible only on inactive non-seeded entities; hooks `useForceDeleteDestination` / `useForceDeleteCategory` wired to `DELETE /:id/force` API | ✅ |
+| 12.1.19 | Force delete in trip row actions — admin-only on non-DRAFT trips; `TripDeleteDialog` adapted with `isForce` prop for distinct warning copy | ✅ |
 
 ### 12.2 — Placeholder Pages (UI shell only — no real API integration)
 
@@ -443,6 +483,20 @@
 | 12.3.5 | Operator dashboard — Payouts / earnings page | ⬜ |
 | 12.3.6 | Hub edit translation/faq/page-content tabs (same pattern as destinations) | ⬜ |
 | 12.3.7 | Dashboard stats wired to real API (replace `dashboardActions.ts` mock) | ⬜ |
+
+### 12.4 — Admin User & Team Management UI *(F-05 / F-12)*
+
+| # | Task | Status |
+|---|---|---|
+| 12.4.1 | Admin users page — replace placeholder (`12.2.1`) with real API; list EDITOR/STAFF/GUIDE users; filter by role + status; show `invitedBy`, `accountStatus` badge | ⬜ |
+| 12.4.2 | Invite staff dialog — role selector (EDITOR / STAFF / GUIDE only; ADMIN blocked); email input; submits to `POST /admin/staff` | ⬜ |
+| 12.4.3 | Edit user role dialog — change role with confirmation; ADMIN option excluded from dropdown | ⬜ |
+| 12.4.4 | Deactivate user action — row-action "Deactivate" calls `DELETE /admin/users/:id`; confirmation dialog | ⬜ |
+| 12.4.5 | Operator team management page (`dashboard/settings/team`) — list team members with role badge + status; invite and revoke actions | ⬜ |
+| 12.4.6 | Invite team member modal — email + role (MANAGER / STAFF); submits to `POST /operators/team/invite` | ⬜ |
+| 12.4.7 | Change team member role dialog — OWNER only; blocks self-demotion | ⬜ |
+| 12.4.8 | Accept-invite page (`/invite/[token]`) — public page; new invitees set password + activate account | ⬜ |
+| 12.4.9 | GUIDE assigned trips tab — "Guides" tab on trip edit page; list assigned guides; assign/remove via `POST/DELETE /trips/:id/guides` | ⬜ |
 
 ---
 
@@ -590,7 +644,7 @@
 | Phase 1 — Environment | 6 | 6 | 0 | 0 |
 | Phase 2 — Prisma Schema | 20 | 20 | 0 | 0 |
 | Phase 3 — Auth & Authorization | 16 | 15 | 0 | 1 |
-| Phase 4 — Backend Core Modules | 65 | 40 | 1 | 24 |
+| Phase 4 — Backend Core Modules | 88 | 43 | 1 | 44 |
 | Phase 5 — Slot Economy | 7 | 0 | 0 | 7 |
 | Phase 6 — Waitlist System | 7 | 0 | 0 | 7 |
 | Phase 7 — BullMQ Background Jobs | 6 | 1 | 0 | 5 |
@@ -598,7 +652,7 @@
 | Phase 9 — Frontend Structure | 18 | 11 | 0 | 7 |
 | Phase 10 — Frontend Auth | 7 | 5 | 0 | 2 |
 | Phase 11 — Traveler Pages | 9 | 0 | 0 | 9 |
-| Phase 12 — Dashboard | 28 | 16 | 11 | 7 |
+| Phase 12 — Dashboard | 40 | 19 | 11 | 16 |
 | Phase 13 — Slot Picker | 6 | 0 | 0 | 6 |
 | Phase 14 — Trip Creation Wizard | 9 | 0 | 3 | 6 |
 | Phase 15 — Edge Cases | 7 | 0 | 0 | 7 |
@@ -606,7 +660,7 @@
 | Phase 17 — Admin Moderation | 9 | 0 | 0 | 9 |
 | Phase 18 — Wishlist | 4 | 0 | 0 | 4 |
 | Missing Features (F-01 to F-23) | 23 | 0 | 0 | 23 |
-| **TOTAL** | **276** | **120** | **15** | **141** |
+| **TOTAL** | **311** | **126** | **15** | **170** |
 
-**Completion: ~44% of total scope implemented.**  
+**Completion: ~41% of total scope implemented.**  
 Core infrastructure (schema, auth, admin modules) is solid. The next highest-priority unimplemented blocks are: **Slot Economy (Phase 5)** → **BullMQ Workers (Phase 7)** → **Bookings + Payments (Phase 4.13–4.14)** → **Traveler Pages (Phase 11)**.

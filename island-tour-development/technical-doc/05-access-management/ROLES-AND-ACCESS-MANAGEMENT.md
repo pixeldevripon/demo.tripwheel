@@ -14,7 +14,8 @@
 6. [Business Rules & Constraints per Role](#6-business-rules--constraints-per-role)
 7. [Authentication Method per Role](#7-authentication-method-per-role)
 8. [What Each Role Cannot Do](#8-what-each-role-cannot-do)
-9. [Missing Features — Industry-Best & Business Requirements](#9-missing-features--industry-best--business-requirements)
+9. [User Creation Hierarchy & Sub-Account Management](#9-user-creation-hierarchy--sub-account-management)
+10. [Missing Features — Industry-Best & Business Requirements](#10-missing-features--industry-best--business-requirements)
 
 ---
 
@@ -556,7 +557,273 @@ USER          → My Profile only (no dashboard, uses public-facing site)
 
 ---
 
-## 9. Missing Features — Industry-Best & Business Requirements
+## 9. User Creation Hierarchy & Sub-Account Management
+
+This section defines exactly **who can create which users**, what those created users are allowed to do, and how their permissions are scoped. This covers both platform-level users (created by admin) and operator-level team members (created by an operator for their own business).
+
+---
+
+### 9.1 User Creation Hierarchy
+
+```
+DATABASE SEED
+    └── ADMIN  ──────────────────────────────────────┐
+                │ creates                             │ creates (on approval)
+                ▼                                     ▼
+         EDITOR / STAFF / GUIDE               TOUR_OPERATOR
+         (platform staff)                      (operator business)
+                                                     │ invites team members (F-12)
+                                                     ▼
+                                         OPERATOR OWNER / MANAGER / STAFF
+                                         (scoped to that operator account only)
+
+USER   ← auto-created on first booking (no human initiates this)
+```
+
+| Who creates them | Role(s) created | Method |
+|---|---|---|
+| Database seed script (engineering) | `ADMIN` | `signUpEmail` + `prisma.user.update({ role: ADMIN })` — no UI, no self-registration |
+| `ADMIN` only | `EDITOR`, `STAFF`, `GUIDE` | Backend endpoint `POST /api/v1/admin/staff` + invite email (F-05) |
+| `ADMIN` only (on approval) | `TOUR_OPERATOR` | Operator self-registers → admin approves via `PATCH /api/v1/operators/:id/approve` |
+| `ADMIN` (directly) | `TOUR_OPERATOR` | Admin can create an operator account directly, skipping the self-registration flow |
+| `TOUR_OPERATOR` (OWNER role) | Operator team members | `POST /api/v1/operators/team/invite` — invite by email with a team role (F-12) |
+| System (automatic) | `USER` | Created on first booking; credentials sent by email; no human trigger |
+
+> **Hard rule:** The `ADMIN` role can **only** be assigned via a direct database operation. No API endpoint, no dashboard action, and no self-registration path can ever produce an `ADMIN` account. This is enforced at the backend — `PATCH /api/v1/admin/users/:id/role` explicitly blocks promotion to `ADMIN`.
+
+---
+
+### 9.2 Admin-Created Platform Users
+
+Admins create internal staff accounts to delegate platform management responsibilities. Each staff role has a strictly defined permission ceiling.
+
+---
+
+#### EDITOR — Content & Operations Manager
+
+**Created by:** ADMIN only  
+**Creation method:** `POST /api/v1/admin/staff` with `{ role: "EDITOR", email, name }` → invite email sent with temporary password
+
+**Purpose:** Full platform content management and day-to-day operations without access to system configuration or user/operator governance.
+
+**Responsibilities:**
+- Create, edit, and publish trips, blog posts, destinations, hubs, categories, activities, and pickup/drop points
+- Manage bookings and payments (view, edit, cancel)
+- Respond to enquiries and manage leads
+- Moderate reviews
+- Manage partners
+- Manage the media gallery
+- View analytics and export reports
+
+**Key permissions granted:**
+| Permission | Notes |
+|---|---|
+| `CREATE_TRIP`, `EDIT_TRIP`, `DELETE_TRIP` | Platform-wide, not scoped to an operator |
+| `CREATE_DESTINATION`, `EDIT_DESTINATION`, `DELETE_DESTINATION` | Non-seeded destinations only |
+| `CREATE_CATEGORY`, `EDIT_CATEGORY`, `DELETE_CATEGORY` | All categories |
+| `MANAGE_HUBS` | Full hub management |
+| `VIEW_BOOKINGS`, `EDIT_BOOKING`, `DELETE_BOOKING` | All bookings on the platform |
+| `VIEW_PAYMENTS`, `EDIT_PAYMENT`, `DELETE_PAYMENT` | All payments |
+| `VIEW_ENQUIRIES`, `DELETE_ENQUIRY`, `REPLY_ENQUIRY` | All enquiries |
+| `VIEW_LEADS`, `EDIT_LEAD`, `DELETE_LEAD` | All leads |
+| `VIEW_REVIEWS`, `EDIT_REVIEW`, `DELETE_REVIEW` | All reviews |
+| `CREATE_BLOG`, `EDIT_BLOG`, `DELETE_BLOG` | Blog posts |
+| `UPLOAD_MEDIA`, `MANAGE_MEDIA` | Full media access |
+| `VIEW_ANALYTICS`, `EXPORT_DATA`, `BULK_OPERATIONS` | Analytics and data export |
+
+**Permissions explicitly denied (ADMIN-only):**
+| Permission | Why denied |
+|---|---|
+| `MANAGE_SYSTEM` | Cannot touch platform-level settings |
+| `MANAGE_SETTINGS`, `VIEW_SETTINGS` | No access to SMTP, payment gateways, SEO config |
+| `MANAGE_USERS`, `CREATE_USER`, `UPDATE_USER`, `DELETE_USER` | Cannot manage user accounts |
+| `MANAGE_OPERATORS` | Cannot approve, reject, or suspend operators |
+| `MANAGE_SLOTS`, `VIEW_SLOT_ANALYTICS` | No featured slot override or analytics |
+
+---
+
+#### STAFF — Operations Support
+
+**Created by:** ADMIN only  
+**Creation method:** Same as EDITOR — invite by email with role `"STAFF"`
+
+**Purpose:** Handle day-to-day operational tasks (bookings, payments, enquiries, reviews) without the ability to create or modify platform structure (destinations, categories, hubs) or editorial content (trips, blogs at edit level).
+
+**Responsibilities:**
+- Handle bookings and payments (view, edit, cancel)
+- Respond to enquiries and manage leads
+- Moderate and manage reviews
+- Manage the media gallery
+- Create blog posts (cannot edit or delete existing ones)
+- Create trips (cannot edit or delete)
+- Manage partners
+- View analytics (cannot export)
+
+**Key permissions granted:**
+| Permission | Notes |
+|---|---|
+| `VIEW_BOOKINGS`, `EDIT_BOOKING`, `DELETE_BOOKING` | All bookings |
+| `VIEW_PAYMENTS`, `EDIT_PAYMENT`, `DELETE_PAYMENT` | All payments |
+| `VIEW_ENQUIRIES`, `DELETE_ENQUIRY`, `REPLY_ENQUIRY` | All enquiries |
+| `VIEW_LEADS`, `EDIT_LEAD`, `DELETE_LEAD` | All leads |
+| `VIEW_REVIEWS`, `EDIT_REVIEW`, `DELETE_REVIEW` | All reviews |
+| `CREATE_TRIP`, `VIEW_TRIPS` | Can create trips, but **cannot edit or delete** |
+| `CREATE_BLOG`, `VIEW_BLOGS` | Can create blog posts, but **cannot edit or delete** |
+| `CREATE_PARTNER`, `VIEW_PARTNERS`, `EDIT_PARTNER`, `DELETE_PARTNER` | Full partner management |
+| `UPLOAD_MEDIA`, `MANAGE_MEDIA` | Full media access |
+| `VIEW_ANALYTICS` | View only — no export |
+
+**Permissions explicitly denied (EDITOR and above):**
+| Permission | Why denied |
+|---|---|
+| `EDIT_TRIP`, `DELETE_TRIP` | Cannot modify existing trips |
+| `CREATE_DESTINATION`, `EDIT_DESTINATION`, `DELETE_DESTINATION` | No destination management |
+| `MANAGE_HUBS` | No hub management |
+| `CREATE_CATEGORY`, `EDIT_CATEGORY`, `DELETE_CATEGORY` | No category management |
+| `CREATE_ACTIVITY`, `EDIT_ACTIVITY`, `DELETE_ACTIVITY` | No activity management |
+| `EDIT_BLOG`, `DELETE_BLOG` | No blog editorial control |
+| `EXPORT_DATA`, `BULK_OPERATIONS` | No bulk or export operations |
+
+---
+
+#### GUIDE — Read-Only Observer
+
+**Created by:** ADMIN only  
+**Creation method:** Same invite flow with role `"GUIDE"`
+
+**Purpose:** A local tour guide or external collaborator who needs visibility into trips and their bookings, but should never be able to modify anything on the platform.
+
+**Responsibilities:**
+- View assigned trips and their schedules (see F-06 for per-trip scoping, currently global)
+- View bookings to prepare departure manifests
+- View reviews for quality awareness
+- No write access of any kind
+
+**Permissions granted (read-only subset):**
+| Permission | Notes |
+|---|---|
+| `VIEW_TRIPS` | See trip details and schedules |
+| `VIEW_BOOKINGS` | See who is booked — currently platform-wide (scoped per trip in F-06) |
+| `VIEW_REVIEWS` | Read reviews for quality awareness |
+| `VIEW_USERS` | See basic user info related to bookings |
+| `VIEW_PROFILE` | View own profile only |
+
+**All other permissions are denied.** GUIDE has no create, edit, delete, analytics, media, settings, or management permissions. This is the lowest-privilege role that still has dashboard access.
+
+> **Future scoping (F-06):** Currently a GUIDE can see all bookings and trips on the platform. F-06 will introduce `GuideAssignment` records so a GUIDE only sees the trips they are explicitly assigned to and the bookings for those trips only.
+
+---
+
+### 9.3 Operator-Created Team Members
+
+A `TOUR_OPERATOR` account represents a business (e.g., a dive centre or snorkel company). In practice, that business has multiple staff members — a manager, a sales agent, a boat captain — who all need varying levels of access to the operator's dashboard.
+
+> **Current status:** This feature (F-12) is **planned but not yet implemented**. The section below documents the intended design. Until F-12 is built, all operator accounts are single-user only.
+
+**How it works:**  
+The operator who originally registered and was approved by admin is automatically the `OWNER`. They can invite colleagues by email. Each invitation specifies a `teamRole` scoped entirely within that operator's account. Team members **cannot** cross into another operator's data under any circumstances.
+
+---
+
+#### OWNER — Operator Account Owner
+
+**Created by:** Automatically assigned to the user who completed operator registration and was approved by admin.
+
+**Scope:** Full control of their operator account.
+
+**Responsibilities:**
+- All trip management (create, edit, publish, pause, archive)
+- Featured slot economy (lock slots, join waitlist)
+- Manage operator profile, payment configuration, and payout settings
+- Invite and manage team members (grant/revoke team roles)
+- View all operator-level analytics and payment history
+- Accept platform terms and commission rate changes on behalf of the business
+
+**Permissions within the operator account:**
+| Capability | Allowed |
+|---|---|
+| Create / edit / delete own trips | ✓ |
+| Publish / pause / archive own trips | ✓ |
+| Lock slots and join waitlist | ✓ |
+| Manage operator profile | ✓ |
+| Configure payment (Stripe/Mollie) | ✓ |
+| View bookings for own trips | ✓ |
+| View own analytics and revenue | ✓ |
+| Invite / remove team members | ✓ |
+| Change team member roles | ✓ |
+| Accept terms and commission changes | ✓ (OWNER only) |
+
+---
+
+#### MANAGER — Operator Team Manager
+
+**Created by:** `TOUR_OPERATOR` (OWNER role) via `POST /api/v1/operators/team/invite`  
+**Creation method:** Invite by email → invited user registers or signs in → join accepted → receives `MANAGER` team role
+
+**Purpose:** A senior staff member within the operator's business who manages day-to-day trip operations but does not control the account itself (no payment settings, no team management).
+
+**Responsibilities:**
+- Create, edit, and manage trips on behalf of the operator
+- Participate in the featured slot economy (lock slots, publish trips, join waitlist)
+- View bookings for the operator's trips
+- Upload media for trips
+- View analytics and payment history for the operator's account
+
+**Permissions within the operator account:**
+| Capability | Allowed |
+|---|---|
+| Create / edit trips | ✓ |
+| Publish / pause / archive trips | ✓ |
+| Lock slots and join waitlist | ✓ |
+| View bookings for the operator's trips | ✓ |
+| Upload and manage media | ✓ |
+| View analytics | ✓ |
+| Manage operator profile | ✗ (OWNER only) |
+| Configure payment settings | ✗ (OWNER only) |
+| Invite / remove team members | ✗ (OWNER only) |
+| Accept terms and commission changes | ✗ (OWNER only) |
+
+---
+
+#### STAFF (Operator Team) — View-Only Team Member
+
+**Created by:** `TOUR_OPERATOR` (OWNER role) via invite  
+
+**Purpose:** A low-trust team member (e.g., a guide, boat crew, or customer service rep) who needs read-only visibility into upcoming trips and bookings for their own operational preparation.
+
+**Responsibilities:**
+- View the operator's trips and schedules
+- View bookings for the operator's trips (departure manifests)
+- No ability to create, modify, or publish anything
+
+**Permissions within the operator account:**
+| Capability | Allowed |
+|---|---|
+| View operator's trips | ✓ |
+| View bookings for operator's trips | ✓ |
+| Create or edit trips | ✗ |
+| Publish / pause / archive trips | ✗ |
+| Lock slots or join waitlist | ✗ |
+| Upload media | ✗ |
+| View analytics or payments | ✗ |
+
+---
+
+### 9.4 Cross-Cutting Rules for All Created Users
+
+| Rule | Detail |
+|---|---|
+| **Role is always assigned server-side** | No frontend payload ever includes a `role` field. All role assignments go through protected backend endpoints. |
+| **No self-promotion** | A user cannot escalate their own role. An EDITOR cannot make themselves an ADMIN. An operator MANAGER cannot make themselves the OWNER. |
+| **Admin cannot be created via UI** | The only path to `ADMIN` is a direct database operation by an engineer. Even the `PATCH /api/v1/admin/users/:id/role` endpoint explicitly blocks promotion to `ADMIN`. |
+| **Operator team roles are scoped** | An operator MANAGER has no more permission than a `TOUR_OPERATOR` on the platform level — they simply share access to the same operator account. They cannot access another operator's data. |
+| **GUIDE scoping (planned)** | Admin-created GUIDEs currently see all platform trips and bookings. F-06 will scope this to explicitly assigned trips only. |
+| **Deactivation vs deletion** | Admin-created staff accounts (EDITOR, STAFF, GUIDE) are deactivated (soft delete with `accountStatus: SUSPENDED`), not hard deleted, so their audit history is preserved. Hard deletion requires `MANAGE_SYSTEM`. |
+| **Invite-based onboarding** | Neither admin-created platform users nor operator-invited team members set their own passwords on creation. Both flows use an invite link with a time-limited token to let the new user set their password on first access. |
+
+---
+
+## 10. Missing Features — Industry-Best & Business Requirements
 
 > **Status:** These features are **not yet implemented**. Each item is classified by priority tier, the business requirement it satisfies, and what must be built (backend + frontend + schema changes where applicable).
 >
@@ -564,7 +831,7 @@ USER          → My Profile only (no dashboard, uses public-facing site)
 
 ---
 
-### 9.1 Authentication & Session Security
+### 10.1 Authentication & Session Security
 
 ---
 
@@ -647,7 +914,7 @@ USER          → My Profile only (no dashboard, uses public-facing site)
 
 ---
 
-### 9.2 Role & Permission Management
+### 10.2 Role & Permission Management
 
 ---
 
@@ -736,7 +1003,7 @@ Option B enables time-limited elevated access (e.g., temporary MANAGE_SLOTS acce
 
 ---
 
-### 9.3 Operator Lifecycle & Verification
+### 10.3 Operator Lifecycle & Verification
 
 ---
 
@@ -827,7 +1094,7 @@ Operator account states:
 
 ---
 
-### 9.4 Content Moderation & Review Workflow
+### 10.4 Content Moderation & Review Workflow
 
 ---
 
@@ -868,7 +1135,7 @@ Operator account states:
 
 ---
 
-### 9.5 Compliance & Legal
+### 10.5 Compliance & Legal
 
 ---
 
@@ -909,7 +1176,7 @@ Operator account states:
 
 ---
 
-### 9.6 Platform Control & Emergency Operations
+### 10.6 Platform Control & Emergency Operations
 
 ---
 
@@ -951,7 +1218,7 @@ Operator account states:
 
 ---
 
-### 9.7 Notification & Communication
+### 10.7 Notification & Communication
 
 ---
 
@@ -989,7 +1256,7 @@ Operator account states:
 
 ---
 
-### 9.8 Analytics & Observability
+### 10.8 Analytics & Observability
 
 ---
 
@@ -1026,7 +1293,7 @@ Operator account states:
 
 ---
 
-### 9.9 API Access & Integration
+### 10.9 API Access & Integration
 
 ---
 
@@ -1047,7 +1314,7 @@ Operator account states:
 
 ---
 
-### 9.10 Priority Summary
+### 10.10 Priority Summary
 
 | ID | Feature | Priority | Affects |
 |---|---|---|---|
