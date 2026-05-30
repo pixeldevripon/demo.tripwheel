@@ -205,6 +205,17 @@ export function useArchiveTrip() {
   });
 }
 
+export function useRestoreTrip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tripsApi.restore(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
+    },
+  });
+}
+
 export function useRemoveTrip() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -35,7 +35,7 @@ export function TripDeleteDialog({
   function handleConfirm() {
     removeTrip(trip.id, {
       onSuccess: () => {
-        toast.success(`"${trip.name}" deleted successfully.`);
+        toast.success(`"${trip.name}" permanently deleted.`);
         onOpenChange(false);
         onSuccess?.();
       },
@@ -50,10 +50,12 @@ export function TripDeleteDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
+            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
               <Trash2Icon className="size-5 text-destructive" />
             </div>
-            <AlertDialogTitle>{isForce ? 'Force Delete Trip' : 'Delete Trip'}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isForce ? 'Force Delete Trip' : 'Permanently Delete Trip'}
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription asChild>
             <div className="space-y-2">
@@ -64,13 +66,11 @@ export function TripDeleteDialog({
               <p className="text-xs text-muted-foreground">
                 {isForce
                   ? 'Admin force delete — the trip will be permanently removed regardless of its current status. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
-                  : 'This action cannot be undone. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'}
+                  : 'This archived trip will be permanently removed along with all its data (images, highlights, inclusions, age bands, add-ons, schedules). This cannot be undone.'}
               </p>
-              {isForce && (
-                <p className="text-xs font-medium text-destructive">
-                  This action is irreversible and cannot be undone.
-                </p>
-              )}
+              <p className="text-xs font-medium text-destructive">
+                This action is irreversible and cannot be undone.
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -84,7 +84,7 @@ export function TripDeleteDialog({
               handleConfirm();
             }}
           >
-            {isPending ? 'Deleting...' : 'Delete Trip'}
+            {isPending ? 'Deleting...' : isForce ? 'Force Delete' : 'Permanently Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

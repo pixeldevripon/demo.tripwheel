@@ -17,6 +17,7 @@ import { ArchiveIcon } from 'lucide-react';
 interface TripArchiveDialogProps {
   tripId: string;
   tripName: string;
+  tripStatus?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -25,6 +26,7 @@ interface TripArchiveDialogProps {
 export function TripArchiveDialog({
   tripId,
   tripName,
+  tripStatus,
   open,
   onOpenChange,
   onSuccess,
@@ -44,13 +46,15 @@ export function TripArchiveDialog({
     });
   }
 
+  const isDraft = tripStatus === 'DRAFT';
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-              <ArchiveIcon className="size-5 text-muted-foreground" />
+            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
+              <ArchiveIcon className="size-5 text-destructive" />
             </div>
             <AlertDialogTitle>Archive Trip</AlertDialogTitle>
           </div>
@@ -61,8 +65,9 @@ export function TripArchiveDialog({
                 <strong className="text-foreground">{tripName}</strong>?
               </p>
               <p className="text-xs text-muted-foreground">
-                Archived trips are hidden from travelers and cannot be booked. This action
-                cannot be undone from the dashboard — contact support to restore a trip.
+                {isDraft
+                  ? 'The draft will be moved to your archive. You can restore it to draft later or permanently delete it from there.'
+                  : 'Archived trips are hidden from travelers and cannot be booked. You can restore this trip to draft later, or permanently delete it from the archive.'}
               </p>
             </div>
           </AlertDialogDescription>
@@ -70,6 +75,7 @@ export function TripArchiveDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            variant="destructive"
             disabled={isPending}
             onClick={(e) => {
               e.preventDefault();

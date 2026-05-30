@@ -36,6 +36,10 @@ export interface TripListItem {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // Resolved names (from backend join)
+  destinationName?: string | null;
+  categoryName?: string | null;
+  hubName?: string | null;
   // Only in detail
   heroImage?: TripHeroImage | null;
   imageCount?: number;

@@ -112,6 +112,10 @@ export const tripsApi = {
     return apiFetch<TripListItem>(`/trips/${id}/archive`, { method: 'POST' });
   },
 
+  restore(id: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/trips/${id}/restore`, { method: 'POST' });
+  },
+
   remove(id: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/trips/${id}`, { method: 'DELETE' });
   },

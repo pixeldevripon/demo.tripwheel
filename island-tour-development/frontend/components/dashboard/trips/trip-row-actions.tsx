@@ -30,6 +30,7 @@ import {
   usePublishTrip,
   usePauseTrip,
   useUnpauseTrip,
+  useRestoreTrip,
 } from '@/hooks/trips/use-trips';
 import { useRole } from '@/contexts/role-context';
 import type { TripListItem } from '@/types/trip';
@@ -49,8 +50,9 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
   const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
   const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
+  const { mutate: restoreTrip, isPending: isRestoring } = useRestoreTrip();
 
-  const isLifecyclePending = isPublishing || isPausing || isUnpausing;
+  const isLifecyclePending = isPublishing || isPausing || isUnpausing || isRestoring;
 
   function handlePublish() {
     publishTrip(trip.id, {
@@ -73,6 +75,16 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
     });
   }
 
+  function handleRestore() {
+    restoreTrip(trip.id, {
+      onSuccess: () => toast.success(`"${trip.name}" restored to draft.`),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to restore.'),
+    });
+  }
+
+  const isArchived = trip.status === 'ARCHIVED';
+  const isForceDelete = role === 'ADMIN' && !isArchived;
+
   return (
     <>
       <DropdownMenu>
@@ -85,31 +97,35 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-          {/* Navigation */}
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=details`)}>
-            <PencilIcon />
-            Edit Details
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=images`)}>
-            <ImageIcon />
-            Images
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=content`)}>
-            <FileTextIcon />
-            Content
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=pricing`)}>
-            <TagIcon />
-            Pricing
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=schedules`)}>
-            <CalendarIcon />
-            Schedules
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=translations`)}>
-            <LanguagesIcon />
-            Translations
-          </DropdownMenuItem>
+          {/* Navigation — hidden for archived trips */}
+          {!isArchived && (
+            <>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=details`)}>
+                <PencilIcon />
+                Edit Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=images`)}>
+                <ImageIcon />
+                Images
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=content`)}>
+                <FileTextIcon />
+                Content
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=pricing`)}>
+                <TagIcon />
+                Pricing
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=schedules`)}>
+                <CalendarIcon />
+                Schedules
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=translations`)}>
+                <LanguagesIcon />
+                Translations
+              </DropdownMenuItem>
+            </>
+          )}
 
           {/* Lifecycle */}
           {can('MANAGE_TRIPS') && (
@@ -133,7 +149,8 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                   Unpause
                 </DropdownMenuItem>
               )}
-              {(trip.status === 'LIVE' || trip.status === 'PAUSED') && (
+              {/* Archive — available for any non-archived trip */}
+              {!isArchived && (
                 <DropdownMenuItem
                   onClick={() => setArchiveOpen(true)}
                   disabled={isLifecyclePending}
@@ -142,11 +159,18 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                   Archive
                 </DropdownMenuItem>
               )}
+              {/* Restore — only for archived trips */}
+              {isArchived && (
+                <DropdownMenuItem onClick={handleRestore} disabled={isLifecyclePending}>
+                  <RotateCcwIcon />
+                  Restore to Draft
+                </DropdownMenuItem>
+              )}
             </>
           )}
 
-          {/* Destructive */}
-          {can('DELETE_TRIP') && (trip.status === 'DRAFT' || role === 'ADMIN') && (
+          {/* Destructive — permanently delete */}
+          {can('DELETE_TRIP') && (isArchived || role === 'ADMIN') && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -154,7 +178,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 onClick={() => setDeleteOpen(true)}
               >
                 <Trash2Icon />
-                {role === 'ADMIN' && trip.status !== 'DRAFT' ? 'Force Delete' : 'Delete'}
+                {isForceDelete ? 'Force Delete' : 'Permanently Delete'}
               </DropdownMenuItem>
             </>
           )}
@@ -165,12 +189,13 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         trip={trip}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        isForce={role === 'ADMIN' && trip.status !== 'DRAFT'}
+        isForce={isForceDelete}
       />
 
       <TripArchiveDialog
         tripId={trip.id}
         tripName={trip.name}
+        tripStatus={trip.status}
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
       />

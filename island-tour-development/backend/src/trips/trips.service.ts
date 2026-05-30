@@ -153,6 +153,9 @@ export class TripsService {
             select: { id: true, url: true, altText: true },
             take: 1,
           },
+          destination: { select: { name: true } },
+          category: { select: { name: true } },
+          hub: { select: { name: true } },
           operator: {
             select: {
               id: true,
@@ -198,6 +201,9 @@ export class TripsService {
             select: { id: true, url: true, altText: true },
             take: 1,
           },
+          destination: { select: { name: true } },
+          category: { select: { name: true } },
+          hub: { select: { name: true } },
           featuredSlot: {
             select: { slotNumber: true, status: true },
           },
@@ -217,7 +223,7 @@ export class TripsService {
   // ── Single trip ───────────────────────────────────────────────────────────────
 
   private flattenCounts(trip: any) {
-    const { _count, images, featuredSlot, operator, ...rest } = trip;
+    const { _count, images, featuredSlot, operator, destination, category, hub, ...rest } = trip;
     return {
       ...rest,
       heroImage: images?.[0] ?? null,
@@ -227,6 +233,9 @@ export class TripsService {
       inclusionCount: _count?.inclusions ?? 0,
       featuredSlotNumber: featuredSlot?.slotNumber ?? null,
       featuredSlotStatus: featuredSlot?.status ?? null,
+      destinationName: destination?.name ?? null,
+      categoryName: category?.name ?? null,
+      hubName: hub?.name ?? null,
       ...(operator !== undefined && {
         operatorInfo: {
           id: operator.id,
@@ -248,6 +257,9 @@ export class TripsService {
           select: { id: true, url: true, altText: true },
           take: 1,
         },
+        destination: { select: { name: true } },
+        category: { select: { name: true } },
+        hub: { select: { name: true } },
         featuredSlot: {
           select: { slotNumber: true, status: true },
         },
@@ -655,9 +667,6 @@ export class TripsService {
     const trip = await this.findTripOrThrow(id);
     this.assertOwnership(trip, requesterId, requesterRole);
 
-    if (trip.status === TripStatus.DRAFT) {
-      throw new BadRequestException('Cannot archive a draft — delete it instead');
-    }
     if (trip.status === TripStatus.ARCHIVED) {
       throw new BadRequestException('Trip is already archived');
     }
@@ -684,6 +693,34 @@ export class TripsService {
     });
   }
 
+  async restore(id: string, requesterId: string, requesterRole: Role) {
+    const trip = await this.findTripOrThrow(id);
+    this.assertOwnership(trip, requesterId, requesterRole);
+
+    if (trip.status !== TripStatus.ARCHIVED) {
+      throw new BadRequestException('Only ARCHIVED trips can be restored');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.trip.update({
+        where: { id },
+        data: { status: TripStatus.DRAFT, isActive: true },
+        select: this.tripSelect,
+      });
+
+      // Re-activate slug_registry row for destination-only trips
+      if (!trip.hubId) {
+        await tx.slugRegistry.updateMany({
+          where: { entityType: SlugEntityType.TOUR, entityId: id },
+          data: { isActive: true },
+        });
+      }
+
+      this.logger.log(`User ${requesterId} restored trip ${id} to DRAFT`);
+      return updated;
+    });
+  }
+
   async remove(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
     if (userRole !== Role.ADMIN) {
@@ -691,13 +728,12 @@ export class TripsService {
       if (trip.operatorId !== operatorId) {
         throw new ForbiddenException('You do not have permission to delete this trip');
       }
-      if (trip.status !== TripStatus.DRAFT) {
-        throw new BadRequestException('Only DRAFT trips can be deleted');
+      if (trip.status !== TripStatus.ARCHIVED) {
+        throw new BadRequestException('Only ARCHIVED trips can be permanently deleted. Archive the trip first.');
       }
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // Delete slug_registry row for destination-only trips
       if (!trip.hubId) {
         await tx.slugRegistry.deleteMany({
           where: { entityType: SlugEntityType.TOUR, entityId: id },
@@ -707,7 +743,7 @@ export class TripsService {
       await tx.trip.delete({ where: { id } });
     });
 
-    this.logger.log(`User ${userId} deleted trip ${id}`);
-    return { message: 'Trip deleted successfully' };
+    this.logger.log(`User ${userId} permanently deleted trip ${id}`);
+    return { message: 'Trip permanently deleted' };
   }
 }

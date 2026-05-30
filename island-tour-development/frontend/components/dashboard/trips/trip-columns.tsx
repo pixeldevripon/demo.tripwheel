@@ -1,7 +1,7 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, ImageIcon, StarIcon, TrophyIcon, BadgeCheckIcon } from 'lucide-react';
+import { MapPinIcon, TrophyIcon, BadgeCheckIcon, FolderIcon, NavigationIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -199,35 +199,38 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       enableSorting: false,
     },
     {
-      id: 'images',
-      header: 'Images',
+      id: 'category',
+      header: 'Category',
       cell: ({ row }) => {
-        const trip = row.original;
-        const count = trip.imageCount ?? 0;
-        const hasHero = !!trip.heroImage;
+        const name = row.original.categoryName;
+        if (!name) return <span className="text-xs text-muted-foreground">—</span>;
         return (
           <div className="flex items-center gap-1.5">
-            <ImageIcon className="size-3.5 text-muted-foreground" />
-            <span className={`text-xs ${count < 5 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-              {count}
-            </span>
-            {!hasHero && count > 0 && (
-              <StarIcon className="size-3 text-amber-500" />
-            )}
+            <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="text-sm truncate max-w-28">{name}</span>
           </div>
         );
       },
       enableSorting: false,
     },
     {
-      id: 'highlights',
-      header: 'Highlights',
+      id: 'location',
+      header: 'Destination / Hub',
       cell: ({ row }) => {
-        const count = row.original.highlightCount ?? 0;
+        const trip = row.original;
+        const dest = trip.destinationName;
+        const hub = trip.hubName;
+        if (!dest) return <span className="text-xs text-muted-foreground">—</span>;
         return (
-          <span className={`text-xs ${count < 3 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-            {count}
-          </span>
+          <div className="flex items-start gap-1.5">
+            <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-sm truncate max-w-28">{dest}</div>
+              {hub && (
+                <div className="text-xs text-muted-foreground truncate max-w-28">{hub}</div>
+              )}
+            </div>
+          </div>
         );
       },
       enableSorting: false,

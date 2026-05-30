@@ -184,12 +184,28 @@ export function ApiUnpauseTripDocs() {
 export function ApiArchiveTripDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Archive a trip (LIVE/PAUSED → ARCHIVED)',
-      description: 'Terminal state — cannot be reversed. DRAFT trips must be deleted, not archived.',
+      summary: 'Archive a trip (any status → ARCHIVED)',
+      description:
+        'Moves the trip to ARCHIVED status. Works for DRAFT, LIVE, and PAUSED trips. Archived trips can be restored to DRAFT or permanently deleted.',
     }),
     tripIdParam,
     ApiResponse({ status: 200, type: TripResponseDto }),
-    ApiResponse({ status: 400, description: 'Cannot archive a draft or already archived trip', type: BadRequestErrorDto }),
+    ApiResponse({ status: 400, description: 'Trip is already archived', type: BadRequestErrorDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRestoreTripDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Restore an archived trip (ARCHIVED → DRAFT)',
+      description:
+        'Restores an ARCHIVED trip back to DRAFT status. The trip can then be edited and re-published.',
+    }),
+    tripIdParam,
+    ApiResponse({ status: 200, type: TripResponseDto }),
+    ApiResponse({ status: 400, description: 'Trip is not in ARCHIVED status', type: BadRequestErrorDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -198,13 +214,13 @@ export function ApiArchiveTripDocs() {
 export function ApiDeleteTripDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Delete a trip',
+      summary: 'Permanently delete a trip',
       description:
-        'Hard delete. Operators can only delete their own DRAFT trips. Admins can force-delete any trip regardless of status.',
+        'Hard delete. Operators can only permanently delete their own ARCHIVED trips. Admins can force-delete any trip regardless of status.',
     }),
     tripIdParam,
-    ApiResponse({ status: 200, description: 'Trip deleted successfully' }),
-    ApiResponse({ status: 400, description: 'Trip is not in DRAFT status (operator only)', type: BadRequestErrorDto }),
+    ApiResponse({ status: 200, description: 'Trip permanently deleted' }),
+    ApiResponse({ status: 400, description: 'Trip is not ARCHIVED (operator only)', type: BadRequestErrorDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );

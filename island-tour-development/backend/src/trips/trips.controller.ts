@@ -27,6 +27,7 @@ import {
   ApiGetTripBySlugDocs,
   ApiPauseTripDocs,
   ApiPublishTripDocs,
+  ApiRestoreTripDocs,
   ApiUnpauseTripDocs,
   ApiUpdateTripDocs,
 } from './trips.swagger';
@@ -145,6 +146,13 @@ export class TripsController {
   @ApiArchiveTripDocs()
   archive(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.tripsService.archive(id, user.id, user.role);
+  }
+
+  @Post(':id/restore')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiRestoreTripDocs()
+  restore(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tripsService.restore(id, user.id, user.role);
   }
 
   @Delete(':id')

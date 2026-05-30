@@ -249,6 +249,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
         <TripArchiveDialog
           tripId={id}
           tripName={trip.name}
+          tripStatus={trip.status}
           open={archiveOpen}
           onOpenChange={setArchiveOpen}
         />

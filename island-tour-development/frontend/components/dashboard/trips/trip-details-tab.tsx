@@ -170,7 +170,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             <Field>
               <Label className="text-xs font-semibold uppercase">Destination</Label>
               <Input
-                value={trip.destinationId}
+                value={trip.destinationName ?? trip.destinationId}
                 readOnly
                 className="opacity-60 cursor-not-allowed"
               />
