@@ -9,6 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { Role, ScheduleStatus, SlugEntityType, TripStatus } from '@prisma/client';
 import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
 
@@ -48,6 +49,18 @@ export class TripsService {
     updatedAt: true,
   } as const;
 
+  private readonly heroImageSelect = {
+    id: true,
+    url: true,
+    altText: true,
+    isHero: true,
+    focalX: true,
+    focalY: true,
+    width: true,
+    height: true,
+    displayOrder: true,
+  } as const;
+
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   async findTripOrThrow(id: string) {
@@ -79,7 +92,7 @@ export class TripsService {
     throw new BadRequestException('No operator profile found. Please complete your operator registration first.');
   }
 
-  private async assertOwnership(
+  async assertOwnership(
     trip: { operatorId: string },
     userId: string,
     requesterRole: Role,
@@ -96,7 +109,7 @@ export class TripsService {
   async findAll(query: TripQueryDto) {
     const { search, destinationId, categoryId, hubId, pricingModel, minPrice, maxPrice, page = 1, limit = 20 } = query;
 
-    const where: any = { status: TripStatus.LIVE, isActive: true };
+    const where: Prisma.TripWhereInput = { status: TripStatus.LIVE, isActive: true };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categoryId = categoryId;
@@ -118,7 +131,7 @@ export class TripsService {
           ...this.tripSelect,
           images: {
             where: { isHero: true },
-            select: { id: true, url: true, altText: true, focalX: true, focalY: true, width: true, height: true },
+            select: this.heroImageSelect,
             take: 1,
           },
         },
@@ -137,7 +150,7 @@ export class TripsService {
     const { search, status, operatorId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.TripWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
     if (operatorId) where.operatorId = operatorId;
@@ -150,7 +163,7 @@ export class TripsService {
           ...this.tripSelect,
           images: {
             where: { isHero: true },
-            select: { id: true, url: true, altText: true },
+            select: this.heroImageSelect,
             take: 1,
           },
           destination: { select: { name: true } },
@@ -186,7 +199,7 @@ export class TripsService {
     const { search, status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = { operatorId };
+    const where: Prisma.TripWhereInput = { operatorId };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
 
@@ -198,7 +211,7 @@ export class TripsService {
           ...this.tripSelect,
           images: {
             where: { isHero: true },
-            select: { id: true, url: true, altText: true },
+            select: this.heroImageSelect,
             take: 1,
           },
           destination: { select: { name: true } },
@@ -484,17 +497,8 @@ export class TripsService {
     for (let i = 0; i <= 99; i++) {
       const candidate = i === 0 ? suffixedBase : `${suffixedBase}-${i}`;
 
-      // Same operator already owns the candidate → give up with a conflict.
-      const ownCandidate = await this.prisma.trip.findFirst({
-        where: { destinationId, slug: candidate, operatorId },
-        select: { id: true },
-      });
-      if (ownCandidate) {
-        throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
-      }
-
       const [candidateTrip, candidateRegistry] = await Promise.all([
-        this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true } }),
+        this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
         !isHubAnchored
           ? this.prisma.slugRegistry.findUnique({
               where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
@@ -503,6 +507,9 @@ export class TripsService {
           : Promise.resolve(null),
       ]);
 
+      if (candidateTrip?.operatorId === operatorId) {
+        throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
+      }
       if (!candidateTrip && !candidateRegistry) return candidate;
     }
 
@@ -676,12 +683,7 @@ export class TripsService {
       },
     });
     if (!trip) throw new NotFoundException(`Trip ${id} not found`);
-    if (userRole !== Role.ADMIN) {
-      const operatorId = await this.resolveOperatorId(userId);
-      if (trip.operatorId !== operatorId) {
-        throw new ForbiddenException('You do not have permission to publish this trip');
-      }
-    }
+    await this.assertOwnership(trip, userId, userRole);
     if (trip.status !== TripStatus.DRAFT) {
       throw new BadRequestException('Trip must be in DRAFT status to publish');
     }
@@ -709,12 +711,7 @@ export class TripsService {
 
   async pause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (userRole !== Role.ADMIN) {
-      const operatorId = await this.resolveOperatorId(userId);
-      if (trip.operatorId !== operatorId) {
-        throw new ForbiddenException('You do not have permission to pause this trip');
-      }
-    }
+    await this.assertOwnership(trip, userId, userRole);
     if (trip.status !== TripStatus.LIVE) {
       throw new BadRequestException('Trip must be LIVE to pause');
     }
@@ -733,12 +730,7 @@ export class TripsService {
 
   async unpause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (userRole !== Role.ADMIN) {
-      const operatorId = await this.resolveOperatorId(userId);
-      if (trip.operatorId !== operatorId) {
-        throw new ForbiddenException('You do not have permission to unpause this trip');
-      }
-    }
+    await this.assertOwnership(trip, userId, userRole);
     if (trip.status !== TripStatus.PAUSED) {
       throw new BadRequestException('Trip must be PAUSED to unpause');
     }
@@ -813,14 +805,9 @@ export class TripsService {
 
   async remove(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    if (userRole !== Role.ADMIN) {
-      const operatorId = await this.resolveOperatorId(userId);
-      if (trip.operatorId !== operatorId) {
-        throw new ForbiddenException('You do not have permission to delete this trip');
-      }
-      if (trip.status !== TripStatus.ARCHIVED) {
-        throw new BadRequestException('Only ARCHIVED trips can be permanently deleted. Archive the trip first.');
-      }
+    await this.assertOwnership(trip, userId, userRole);
+    if (userRole !== Role.ADMIN && trip.status !== TripStatus.ARCHIVED) {
+      throw new BadRequestException('Only ARCHIVED trips can be permanently deleted. Archive the trip first.');
     }
 
     await this.prisma.$transaction(async (tx) => {

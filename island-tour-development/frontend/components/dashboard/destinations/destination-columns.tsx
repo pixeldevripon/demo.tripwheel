@@ -5,7 +5,7 @@ import { MapPinIcon, LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formateDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { DestinationLocalized } from '@/types/destination';
 import { DestinationRowActions } from './destination-row-actions';
 
@@ -113,7 +113,7 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
     header: 'Created',
     cell: ({ row }) => (
       <span className="text-muted-foreground text-xs">
-        {formateDate(row.original.createdAt)}
+        {formatDate(row.original.createdAt)}
       </span>
     ),
     enableSorting: true,

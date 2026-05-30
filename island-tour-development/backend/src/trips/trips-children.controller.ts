@@ -1,4 +1,4 @@
-import type { TypedAuthUser } from '@/auth/auth.types';
+import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
@@ -11,9 +11,10 @@ import {
   ParseEnumPipe,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Locale, Permission } from '@prisma/client';
+import { Locale, Permission, Role } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
@@ -431,8 +432,10 @@ export class TripChildrenController {
   @Get('schedules')
   @Public()
   @ApiGetSchedulesDocs()
-  getSchedules(@Param('tripId') tripId: string) {
-    return this.tripChildrenService.getSchedules(tripId);
+  getSchedules(@Param('tripId') tripId: string, @Req() req: AuthenticatedRequest) {
+    const requesterId = req.user?.id ?? null;
+    const requesterRole = (req.user?.role ?? null) as Role | null;
+    return this.tripChildrenService.getSchedules(tripId, requesterId, requesterRole);
   }
 
   @Post('schedules')

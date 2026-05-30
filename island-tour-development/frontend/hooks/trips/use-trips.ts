@@ -1,5 +1,3 @@
-'use client';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tripsApi } from '@/lib/api/trips';
 import type {
@@ -145,7 +143,8 @@ export function useCreateTrip() {
   return useMutation({
     mutationFn: (payload: CreateTripPayload) => tripsApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.myTrips({}) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.adminTrips({}) });
     },
   });
 }

@@ -1,5 +1,6 @@
 import { Locale as LocaleEnum } from '@/common/constants/locales';
 import { PrismaService } from '@/prisma/prisma.service';
+import { TripsService } from './trips.service';
 import {
   BadRequestException,
   ConflictException,
@@ -8,7 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale, Role } from '@prisma/client';
+import { Locale, Role, TripStatus } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
@@ -32,26 +33,16 @@ import {
 export class TripChildrenService {
   private readonly logger = new Logger(TripChildrenService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tripsService: TripsService,
+  ) {}
 
   // ── Common helper ─────────────────────────────────────────────────────────────
 
   private async assertTripAccess(tripId: string, requesterId: string, requesterRole: Role) {
-    const trip = await this.prisma.trip.findUnique({
-      where: { id: tripId },
-      select: { id: true, operatorId: true, status: true },
-    });
-    if (!trip) throw new NotFoundException(`Trip ${tripId} not found`);
-    if (requesterRole !== Role.ADMIN) {
-      // requesterId is user.id; trip.operatorId is operators.id — must resolve before comparing
-      const operator = await this.prisma.operator.findUnique({
-        where: { userId: requesterId },
-        select: { id: true },
-      });
-      if (!operator || trip.operatorId !== operator.id) {
-        throw new ForbiddenException('You do not have permission to modify this trip');
-      }
-    }
+    const trip = await this.tripsService.findTripOrThrow(tripId);
+    await this.tripsService.assertOwnership(trip, requesterId, requesterRole);
     return trip;
   }
 
@@ -748,7 +739,7 @@ export class TripChildrenService {
         overview: null,
         description: null,
         isMachineTranslated: false,
-        updatedAt: new Date(),
+        updatedAt: null,
       }
     );
   }
@@ -822,12 +813,25 @@ export class TripChildrenService {
     updatedAt: true,
   } as const;
 
-  async getSchedules(tripId: string) {
+  async getSchedules(tripId: string, requesterId?: string | null, requesterRole?: Role | null) {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
-      select: { id: true },
+      select: { id: true, status: true, operatorId: true },
     });
     if (!trip) throw new NotFoundException(`Trip ${tripId} not found`);
+
+    if (trip.status !== TripStatus.LIVE) {
+      if (!requesterId) throw new NotFoundException(`Trip ${tripId} not found`);
+      if (requesterRole !== Role.ADMIN) {
+        const operator = await this.prisma.operator.findUnique({
+          where: { userId: requesterId },
+          select: { id: true },
+        });
+        if (!operator || trip.operatorId !== operator.id) {
+          throw new NotFoundException(`Trip ${tripId} not found`);
+        }
+      }
+    }
 
     return this.prisma.tourSchedule.findMany({
       where: { tripId },

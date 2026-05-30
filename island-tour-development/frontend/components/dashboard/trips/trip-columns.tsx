@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formateDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripRowActions } from './trip-row-actions';
 
@@ -240,7 +240,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       header: 'Updated',
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs">
-          {formateDate(row.original.updatedAt)}
+          {formatDate(row.original.updatedAt)}
         </span>
       ),
       enableSorting: true,

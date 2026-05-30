@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon, ImageIcon, XIcon } from 'lucide-react';
+import { Trash2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,9 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import MediaSelector from '@/components/dashboard/media/media-selector';
-import type { Resolver } from 'react-hook-form';
-import type { MediaItem } from '@/types/media';
+import { ImageThumb } from './image-thumb';
+import { TranslationRow } from './translation-row';
 import {
   useInclusions,
   useAddInclusion,
@@ -49,87 +48,10 @@ const addInclusionSchema = z.object({
   label: z.string().min(2, 'At least 2 characters').max(100),
   icon: z.string().optional(),
   imageUrl: z.string().optional(),
-  displayOrder: z.coerce.number().int().min(0).optional(),
+  displayOrder: z.string().optional(),
 });
 
-const inclusionTranslationSchema = z.object({
-  label: z.string().min(1, 'Translation is required'),
-});
-
-type AddInclusionFormValues = { label: string; icon: string; imageUrl?: string; displayOrder: string };
-type InclusionTranslationFormValues = z.infer<typeof inclusionTranslationSchema>;
-
-// ── Avatar-size image thumbnail used in the list ──────────────────────────────
-
-interface ImageThumbProps {
-  imageUrl?: string | null;
-  onSelect: (url: string) => void;
-  onRemove: () => void;
-  disabled?: boolean;
-}
-
-function ImageThumb({ imageUrl, onSelect, onRemove, disabled }: ImageThumbProps) {
-  const [open, setOpen] = useState(false);
-
-  function handleSelect(items: MediaItem[]) {
-    if (items[0]) onSelect(items[0].url);
-    setOpen(false);
-  }
-
-  return (
-    <>
-      <div className="group relative size-10 shrink-0 border border-border bg-muted overflow-hidden">
-        {imageUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {/* Remove overlay on hover */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onRemove(); }}
-              disabled={disabled}
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Remove image"
-            >
-              <XIcon className="size-3.5 text-white" />
-            </button>
-            {/* Click to change */}
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              disabled={disabled}
-              className="absolute inset-0"
-              title="Change image"
-              aria-label="Change image"
-            />
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            disabled={disabled}
-            className="w-full h-full flex items-center justify-center hover:bg-muted/80 transition-colors"
-            title="Add image"
-          >
-            <ImageIcon className="size-4 text-muted-foreground/50" />
-          </button>
-        )}
-      </div>
-
-      <MediaSelector
-        open={open}
-        onOpenChange={setOpen}
-        onMediaSelect={handleSelect}
-        multiple={false}
-        currentSelection={imageUrl ? [{ id: '', userId: '', url: imageUrl, publicId: '', resourceType: 'image', uploadedAt: '' }] : []}
-      />
-    </>
-  );
-}
+type AddInclusionFormValues = z.infer<typeof addInclusionSchema>;
 
 // ── Inclusion list item ───────────────────────────────────────────────────────
 
@@ -145,12 +67,6 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertInclusionTranslation();
 
   const enTranslation = inclusion.translations.find((t) => t.locale === 'en');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<InclusionTranslationFormValues>({ resolver: zodResolver(inclusionTranslationSchema) });
 
   function handleImageSelect(url: string) {
     updateInclusion(
@@ -180,18 +96,6 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
       }
     );
-  }
-
-  function onTranslationSubmit(locale: string) {
-    return (values: InclusionTranslationFormValues) => {
-      upsertTranslation(
-        { tripId, inclusionId: inclusion.id, locale, payload: { label: values.label } },
-        {
-          onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
-          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
-        }
-      );
-    };
   }
 
   return (
@@ -245,19 +149,22 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
           {ALL_LOCALES.map((locale) => {
             const existing = inclusion.translations.find((t) => t.locale === locale);
             return (
-              <form key={locale} onSubmit={handleSubmit(onTranslationSubmit(locale))} className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground uppercase w-8 shrink-0">{locale}</span>
-                <Input
-                  {...register('label')}
-                  defaultValue={existing?.label ?? ''}
-                  placeholder={`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} label`}
-                  className="flex-1 h-8 text-sm"
-                />
-                <Button type="submit" size="xs" disabled={isUpserting}>Save</Button>
-              </form>
+              <TranslationRow
+                key={locale}
+                locale={locale}
+                localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
+                defaultValue={existing?.label ?? ''}
+                onSave={(label) => upsertTranslation(
+                  { tripId, inclusionId: inclusion.id, locale, payload: { label } },
+                  {
+                    onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
+                    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
+                  }
+                )}
+                isSaving={isUpserting}
+              />
             );
           })}
-          {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
         </div>
       )}
     </div>
@@ -284,7 +191,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
     setValue,
     formState: { errors },
   } = useForm<AddInclusionFormValues>({
-    resolver: zodResolver(addInclusionSchema) as unknown as Resolver<AddInclusionFormValues>,
+    resolver: zodResolver(addInclusionSchema),
     defaultValues: { label: '', icon: 'check', imageUrl: '', displayOrder: String(count) },
   });
 

@@ -274,7 +274,7 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
       {/* Age Bands */}
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-base">Age Bands</CardTitle>
+          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {isLoadingBands ? (
@@ -359,7 +359,7 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
       {/* Add-Ons */}
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-base">Add-Ons</CardTitle>
+          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Add-Ons</CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {isLoadingAddOns ? (

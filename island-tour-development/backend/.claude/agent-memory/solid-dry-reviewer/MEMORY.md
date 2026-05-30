@@ -1,3 +1,7 @@
+- [Trips module — ownership check inconsistency](trips_ownership_inconsistency.md) — `assertOwnership` used inconsistently; `pause`/`unpause`/`publish`/`remove` inline the pattern instead of calling the helper
+- [TripChildrenService — assertTripAccess duplicates resolveOperatorId](trips_children_access_pattern.md) — children service re-implements operator resolution inline instead of delegating to TripsService helper
+- [trips.service.ts — where: any anti-pattern](trips_where_any.md) — `findAll`, `findAllAdmin`, `findMyTrips` all use `where: any`; should use typed Prisma WhereInput
+- [trips.service.ts — hero image select shape diverges across methods](trips_hero_image_select_divergence.md) — hero image select differs between `findAll` (includes focalX/focalY/width/height) and `findAllAdmin`/`findMyTrips` (omit them)
 - [Auth Module Patterns](auth_module_patterns.md) — guard chain, decorator patterns, and known issues in the auth module
 - [CORS Origins DRY Violation](cors_dry_violation.md) — CORS origin parsing duplicated between main.ts and auth.instance.ts
 - [Any Types in main.ts](any_types_main.md) — `any` casts in Swagger OpenAPI merge block need proper typing

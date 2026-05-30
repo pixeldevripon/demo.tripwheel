@@ -2,7 +2,7 @@
 
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
-import { formateDate, formatFileSize } from '@/lib/utils';
+import { formatDate, formatFileSize } from '@/lib/utils';
 import { Copy01Icon, Delete01Icon, CloudUploadIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Check, ExternalLink, Loader2 } from 'lucide-react';
@@ -149,7 +149,7 @@ const MediaListUi = ({
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>
                                     {item.size ? formatFileSize(item.size) + ' • ' : ''}
-                                    {formateDate(item.uploadedAt, 'medium')}
+                                    {formatDate(item.uploadedAt, 'medium')}
                                 </p>
                             </div>
 

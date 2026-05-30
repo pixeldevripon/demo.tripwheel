@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon, ImageIcon, XIcon } from 'lucide-react';
+import { Trash2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,8 @@ import { Field, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import MediaSelector from '@/components/dashboard/media/media-selector';
-import type { Resolver } from 'react-hook-form';
-import type { MediaItem } from '@/types/media';
+import { ImageThumb } from './image-thumb';
+import { TranslationRow } from './translation-row';
 import {
   useHighlights,
   useAddHighlight,
@@ -30,87 +29,10 @@ import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
 const addHighlightSchema = z.object({
   text: z.string().min(5, 'At least 5 characters').max(100, 'Max 100 characters'),
   imageUrl: z.string().optional(),
-  displayOrder: z.coerce.number().int().min(0).optional(),
+  displayOrder: z.string().optional(),
 });
 
-const translationSchema = z.object({
-  text: z.string().min(1, 'Translation is required'),
-});
-
-type AddHighlightFormValues = { text: string; imageUrl?: string; displayOrder: string };
-type TranslationFormValues = z.infer<typeof translationSchema>;
-
-// ── Avatar-size image thumbnail used in the list ──────────────────────────────
-
-interface ImageThumbProps {
-  imageUrl?: string | null;
-  onSelect: (url: string) => void;
-  onRemove: () => void;
-  disabled?: boolean;
-}
-
-function ImageThumb({ imageUrl, onSelect, onRemove, disabled }: ImageThumbProps) {
-  const [open, setOpen] = useState(false);
-
-  function handleSelect(items: MediaItem[]) {
-    if (items[0]) onSelect(items[0].url);
-    setOpen(false);
-  }
-
-  return (
-    <>
-      <div className="group relative size-10 shrink-0 border border-border bg-muted overflow-hidden">
-        {imageUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {/* Remove overlay on hover */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onRemove(); }}
-              disabled={disabled}
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Remove image"
-            >
-              <XIcon className="size-3.5 text-white" />
-            </button>
-            {/* Click anywhere to change */}
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              disabled={disabled}
-              className="absolute inset-0"
-              title="Change image"
-              aria-label="Change image"
-            />
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            disabled={disabled}
-            className="w-full h-full flex items-center justify-center hover:bg-muted/80 transition-colors"
-            title="Add image"
-          >
-            <ImageIcon className="size-4 text-muted-foreground/50" />
-          </button>
-        )}
-      </div>
-
-      <MediaSelector
-        open={open}
-        onOpenChange={setOpen}
-        onMediaSelect={handleSelect}
-        multiple={false}
-        currentSelection={imageUrl ? [{ id: '', userId: '', url: imageUrl, publicId: '', resourceType: 'image', uploadedAt: '' }] : []}
-      />
-    </>
-  );
-}
+type AddHighlightFormValues = z.infer<typeof addHighlightSchema>;
 
 // ── Highlight list item ───────────────────────────────────────────────────────
 
@@ -126,12 +48,6 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertHighlightTranslation();
 
   const enTranslation = highlight.translations.find((t) => t.locale === 'en');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<TranslationFormValues>({ resolver: zodResolver(translationSchema) });
 
   function handleImageSelect(url: string) {
     updateHighlight(
@@ -161,18 +77,6 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
       }
     );
-  }
-
-  function onTranslationSubmit(locale: string) {
-    return (values: TranslationFormValues) => {
-      upsertTranslation(
-        { tripId, highlightId: highlight.id, locale, payload: { text: values.text } },
-        {
-          onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
-          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
-        }
-      );
-    };
   }
 
   return (
@@ -226,19 +130,22 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
           {ALL_LOCALES.map((locale) => {
             const existing = highlight.translations.find((t) => t.locale === locale);
             return (
-              <form key={locale} onSubmit={handleSubmit(onTranslationSubmit(locale))} className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground uppercase w-8 shrink-0">{locale}</span>
-                <Input
-                  {...register('text')}
-                  defaultValue={existing?.text ?? ''}
-                  placeholder={`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} text`}
-                  className="flex-1 h-8 text-sm"
-                />
-                <Button type="submit" size="xs" disabled={isUpserting}>Save</Button>
-              </form>
+              <TranslationRow
+                key={locale}
+                locale={locale}
+                localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
+                defaultValue={existing?.text ?? ''}
+                onSave={(text) => upsertTranslation(
+                  { tripId, highlightId: highlight.id, locale, payload: { text } },
+                  {
+                    onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
+                    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
+                  }
+                )}
+                isSaving={isUpserting}
+              />
             );
           })}
-          {errors.text && <p className="text-xs text-destructive">{errors.text.message}</p>}
         </div>
       )}
     </div>
@@ -265,7 +172,7 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
     setValue,
     formState: { errors },
   } = useForm<AddHighlightFormValues>({
-    resolver: zodResolver(addHighlightSchema) as unknown as Resolver<AddHighlightFormValues>,
+    resolver: zodResolver(addHighlightSchema),
     defaultValues: { text: '', imageUrl: '', displayOrder: String(count) },
   });
 

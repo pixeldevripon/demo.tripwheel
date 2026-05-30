@@ -5,7 +5,7 @@ import { TagIcon, LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formateDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
@@ -113,7 +113,7 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
     header: 'Created',
     cell: ({ row }) => (
       <span className="text-muted-foreground text-xs">
-        {formateDate(row.original.createdAt)}
+        {formatDate(row.original.createdAt)}
       </span>
     ),
     enableSorting: true,

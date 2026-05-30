@@ -259,7 +259,7 @@ export function TripTranslationsTab({ tripId, tripName }: TripTranslationsTabPro
             </div>
           </TabsContent>
 
-          {(['es', 'nl', 'pt', 'fr', 'de', 'zh'] as Locale[]).map((locale) => (
+          {ALL_LOCALES.filter((l) => l !== 'en').map((locale) => (
             <TabsContent key={locale} value={locale}>
               <LocaleTab tripId={tripId} locale={locale} tripName={tripName} />
             </TabsContent>

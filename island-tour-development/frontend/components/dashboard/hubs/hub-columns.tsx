@@ -5,7 +5,7 @@ import { MapPinIcon, LockIcon, NavigationIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formateDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { HubLocalized } from '@/types/hub';
 import { HubRowActions } from './hub-row-actions';
 
@@ -128,7 +128,7 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
       header: 'Created',
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs">
-          {formateDate(row.original.createdAt)}
+          {formatDate(row.original.createdAt)}
         </span>
       ),
       enableSorting: true,

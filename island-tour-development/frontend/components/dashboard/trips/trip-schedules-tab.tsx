@@ -31,7 +31,7 @@ import {
   useUpdateSchedule,
   useRemoveSchedule,
 } from '@/hooks/trips/use-trips';
-import { formateDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { ScheduleStatus, TourSchedule } from '@/types/trip';
 
 const scheduleStatusVariant: Record<ScheduleStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -156,8 +156,8 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <div className="min-w-0">
           <p className="text-sm font-medium">
-            {formateDate(schedule.startDate)}
-            {schedule.endDate && ` → ${formateDate(schedule.endDate)}`}
+            {formatDate(schedule.startDate)}
+            {schedule.endDate && ` → ${formatDate(schedule.endDate)}`}
           </p>
           <p className="text-xs text-muted-foreground">{schedule.startTime}</p>
         </div>
