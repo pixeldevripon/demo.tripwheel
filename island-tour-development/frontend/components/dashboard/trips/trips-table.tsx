@@ -20,6 +20,7 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   Settings2Icon,
+  PlusIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -47,10 +48,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { tripColumns } from './trip-columns';
+import { makeTripColumns } from './trip-columns';
+import { OperatorFilterPopover } from './operator-filter-popover';
 import { useRemoveTrip } from '@/hooks/trips/use-trips';
 import { useRole } from '@/contexts/role-context';
+import { useSession } from '@/lib/auth-client';
 import type { TripListItem, TripStatus } from '@/types/trip';
+import Link from 'next/link';
 
 interface TripsTableProps {
   data: TripListItem[];
@@ -58,6 +62,9 @@ interface TripsTableProps {
   page: number;
   limit: number;
   isLoading: boolean;
+  searchValue: string;
+  isAdminView?: boolean;
+  onSearchChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   onFilterChange: (key: string, value: string | undefined) => void;
@@ -71,6 +78,9 @@ export function TripsTable({
   page,
   limit,
   isLoading,
+  searchValue,
+  isAdminView = false,
+  onSearchChange,
   onPageChange,
   onLimitChange,
   onFilterChange,
@@ -79,27 +89,31 @@ export function TripsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [operatorFilter, setOperatorFilter] = useState<string | undefined>(undefined);
 
   const { mutate: removeTrip } = useRemoveTrip();
   const { can } = useRole();
+  const { data: session } = useSession();
+
+  const columns = makeTripColumns({
+    showOperator: isAdminView,
+    currentUserEmail: session?.user?.email,
+  });
 
   const table = useReactTable({
     data,
-    columns: tripColumns,
+    columns,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
-      globalFilter,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -118,6 +132,11 @@ export function TripsTable({
     } else {
       onFilterChange('status', value as TripStatus);
     }
+  }
+
+  function handleOperatorFilterChange(value: string | undefined) {
+    setOperatorFilter(value);
+    onFilterChange('operatorId', value);
   }
 
   function handleBulkDelete() {
@@ -146,156 +165,219 @@ export function TripsTable({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 flex-1">
-          <div className="relative flex-1 max-w-sm">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search trips..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="DRAFT">Draft</SelectItem>
-              <SelectItem value="LIVE">Live</SelectItem>
-              <SelectItem value="PAUSED">Paused</SelectItem>
-              <SelectItem value="ARCHIVED">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings2Icon />
-                Columns
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-              {table
-                .getAllColumns()
-                .filter((col) => col.getCanHide())
-                .map((col) => (
-                  <DropdownMenuCheckboxItem
-                    key={col.id}
-                    className="capitalize"
-                    checked={col.getIsVisible()}
-                    onCheckedChange={(value) => col.toggleVisibility(!!value)}
-                  >
-                    {col.id}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      <div className='space-y-4'>
+          {/* Single toolbar row — on ≥400px everything fits in one line;
+              on <400px the actions group wraps to its own right-aligned row */}
+          <div className='flex flex-wrap items-center gap-2'>
+              {/* search grows to fill available space */}
+              <div className='relative flex-1 min-w-36'>
+                  <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground' />
+                  <Input
+                      placeholder='Search trips...'
+                      value={searchValue}
+                      onChange={e => onSearchChange(e.target.value)}
+                      className='pl-9'
+                  />
+              </div>
 
-      {selectedCount > 0 && (
-        <div className="flex items-center gap-3 rounded-none bg-muted px-4 py-2 text-sm">
-          <span className="font-medium text-xs uppercase tracking-wider">
-            {selectedCount} selected
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            {can('DELETE_TRIP') && (
-              <Button size="xs" variant="destructive" onClick={handleBulkDelete}>
-                Delete
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+              <Select
+                  value={statusFilter}
+                  onValueChange={handleStatusFilterChange}>
+                  <SelectTrigger className='w-32 shrink-0'>
+                      <SelectValue placeholder='Status' />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value='all'>All Status</SelectItem>
+                      <SelectItem value='DRAFT'>Draft</SelectItem>
+                      <SelectItem value='LIVE'>Live</SelectItem>
+                      <SelectItem value='PAUSED'>Paused</SelectItem>
+                      <SelectItem value='ARCHIVED'>Archived</SelectItem>
+                  </SelectContent>
+              </Select>
 
-      <div className="rounded-none ring-1 ring-foreground/5 overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                    className="text-xs font-semibold uppercase tracking-wider"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={tripColumns.length} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <MapPinIcon className="size-8 opacity-40" />
-                    <p className="text-sm">No trips found.</p>
-                    <p className="text-xs">Create your first trip to get started.</p>
+              {isAdminView && (
+                  <OperatorFilterPopover
+                      value={operatorFilter}
+                      onChange={handleOperatorFilterChange}
+                  />
+              )}
+
+              {/* actions — on <400px: own full-width row, right-aligned */}
+              <div className='flex items-center gap-2 ml-auto max-[400px]:w-full max-[400px]:ml-0 max-[400px]:justify-end'>
+                  <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <Button variant='outline' size='sm'>
+                              <Settings2Icon />
+                              Columns
+                          </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='end' className='w-40'>
+                          <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                          {table
+                              .getAllColumns()
+                              .filter(col => col.getCanHide())
+                              .map(col => (
+                                  <DropdownMenuCheckboxItem
+                                      key={col.id}
+                                      className='capitalize'
+                                      checked={col.getIsVisible()}
+                                      onCheckedChange={value =>
+                                          col.toggleVisibility(!!value)
+                                      }>
+                                      {col.id}
+                                  </DropdownMenuCheckboxItem>
+                              ))}
+                      </DropdownMenuContent>
+                  </DropdownMenu>
+                  {can('CREATE_TRIP') && (
+                      <Button asChild size='sm'>
+                          <Link href='/dashboard/trips/new'>
+                              <PlusIcon />
+                              New Trip
+                          </Link>
+                      </Button>
+                  )}
+              </div>
+          </div>
+
+          {selectedCount > 0 && (
+              <div className='flex items-center gap-3 rounded-none bg-muted px-4 py-2 text-sm'>
+                  <span className='font-medium text-xs uppercase tracking-wider'>
+                      {selectedCount} selected
+                  </span>
+                  <div className='flex items-center gap-2 ml-auto'>
+                      {can('DELETE_TRIP') && (
+                          <Button
+                              size='xs'
+                              variant='destructive'
+                              onClick={handleBulkDelete}>
+                              Delete
+                          </Button>
+                      )}
                   </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() ? 'selected' : undefined}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </div>
+          )}
 
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Rows per page</span>
-          <Select value={String(limit)} onValueChange={(val) => onLimitChange(Number(val))}>
-            <SelectTrigger className="w-20 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground mr-2">
-            Page {page} of {totalPages || 1}
-          </span>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(1)} disabled={page <= 1}>
-            <ChevronsLeftIcon />
-          </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
-            <ChevronLeftIcon />
-          </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
-            <ChevronRightIcon />
-          </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
-            <ChevronsRightIcon />
-          </Button>
-        </div>
+          <div className='rounded-none ring-1 ring-foreground/5 overflow-hidden'>
+              <Table>
+                  <TableHeader>
+                      {table.getHeaderGroups().map(headerGroup => (
+                          <TableRow key={headerGroup.id}>
+                              {headerGroup.headers.map(header => (
+                                  <TableHead
+                                      key={header.id}
+                                      style={{
+                                          width:
+                                              header.getSize() !== 150
+                                                  ? header.getSize()
+                                                  : undefined,
+                                      }}
+                                      className='text-xs font-semibold uppercase tracking-wider'>
+                                      {header.isPlaceholder
+                                          ? null
+                                          : flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                            )}
+                                  </TableHead>
+                              ))}
+                          </TableRow>
+                      ))}
+                  </TableHeader>
+                  <TableBody>
+                      {table.getRowModel().rows.length === 0 ? (
+                          <TableRow>
+                              <TableCell
+                                  colSpan={columns.length}
+                                  className='h-32 text-center'>
+                                  <div className='flex flex-col items-center gap-2 text-muted-foreground'>
+                                      <MapPinIcon className='size-8 opacity-40' />
+                                      <p className='text-sm'>No trips found.</p>
+                                      <p className='text-xs'>
+                                          {isAdminView
+                                              ? 'No trips match the current filters.'
+                                              : 'Create your first trip to get started.'}
+                                      </p>
+                                  </div>
+                              </TableCell>
+                          </TableRow>
+                      ) : (
+                          table.getRowModel().rows.map(row => (
+                              <TableRow
+                                  key={row.id}
+                                  data-state={
+                                      row.getIsSelected()
+                                          ? 'selected'
+                                          : undefined
+                                  }>
+                                  {row.getVisibleCells().map(cell => (
+                                      <TableCell key={cell.id}>
+                                          {flexRender(
+                                              cell.column.columnDef.cell,
+                                              cell.getContext()
+                                          )}
+                                      </TableCell>
+                                  ))}
+                              </TableRow>
+                          ))
+                      )}
+                  </TableBody>
+              </Table>
+          </div>
+
+          <div className='flex items-center justify-between px-2'>
+              <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                  <span>Rows per page</span>
+                  <Select
+                      value={String(limit)}
+                      onValueChange={val => onLimitChange(Number(val))}>
+                      <SelectTrigger className='w-20 h-8'>
+                          <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {PAGE_SIZE_OPTIONS.map(size => (
+                              <SelectItem key={size} value={String(size)}>
+                                  {size}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
+              <div className='flex items-center gap-1'>
+                  <span className='text-xs text-muted-foreground mr-2'>
+                      Page {page} of {totalPages || 1}
+                  </span>
+                  <Button
+                      variant='outline'
+                      size='icon-xs'
+                      onClick={() => onPageChange(1)}
+                      disabled={page <= 1}>
+                      <ChevronsLeftIcon />
+                  </Button>
+                  <Button
+                      variant='outline'
+                      size='icon-xs'
+                      onClick={() => onPageChange(page - 1)}
+                      disabled={page <= 1}>
+                      <ChevronLeftIcon />
+                  </Button>
+                  <Button
+                      variant='outline'
+                      size='icon-xs'
+                      onClick={() => onPageChange(page + 1)}
+                      disabled={page >= totalPages}>
+                      <ChevronRightIcon />
+                  </Button>
+                  <Button
+                      variant='outline'
+                      size='icon-xs'
+                      onClick={() => onPageChange(totalPages)}
+                      disabled={page >= totalPages}>
+                      <ChevronsRightIcon />
+                  </Button>
+              </div>
+          </div>
       </div>
-    </div>
   );
 }
+

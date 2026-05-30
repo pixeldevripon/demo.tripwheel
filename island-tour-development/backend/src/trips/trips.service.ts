@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Role, ScheduleStatus, SlugEntityType, TripStatus } from '@prisma/client';
-import { CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
+import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
 
 @Injectable()
 export class TripsService {
@@ -94,9 +94,10 @@ export class TripsService {
   // ── Public list ───────────────────────────────────────────────────────────────
 
   async findAll(query: TripQueryDto) {
-    const { destinationId, categoryId, hubId, pricingModel, minPrice, maxPrice, page = 1, limit = 20 } = query;
+    const { search, destinationId, categoryId, hubId, pricingModel, minPrice, maxPrice, page = 1, limit = 20 } = query;
 
     const where: any = { status: TripStatus.LIVE, isActive: true };
+    if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categoryId = categoryId;
     if (hubId) where.hubId = hubId;
@@ -130,14 +131,60 @@ export class TripsService {
     return { total, page, limit, data };
   }
 
+  // ── Admin all trips ───────────────────────────────────────────────────────────
+
+  async findAllAdmin(query: AdminTripsQueryDto) {
+    const { search, status, operatorId, page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (search) where.name = { contains: search, mode: 'insensitive' };
+    if (status) where.status = status;
+    if (operatorId) where.operatorId = operatorId;
+
+    const [total, data] = await Promise.all([
+      this.prisma.trip.count({ where }),
+      this.prisma.trip.findMany({
+        where,
+        select: {
+          ...this.tripSelect,
+          images: {
+            where: { isHero: true },
+            select: { id: true, url: true, altText: true },
+            take: 1,
+          },
+          operator: {
+            select: {
+              id: true,
+              companyInfo: { select: { companyName: true } },
+              user: { select: { name: true, email: true } },
+            },
+          },
+          featuredSlot: {
+            select: { slotNumber: true, status: true },
+          },
+          _count: {
+            select: { images: true, schedules: true, highlights: true, inclusions: true },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return { total, page, limit, data: data.map((t) => this.flattenCounts(t)) };
+  }
+
   // ── Operator "my trips" ───────────────────────────────────────────────────────
 
   async findMyTrips(userId: string, userRole: Role, query: MyTripsQueryDto) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
-    const { status, page = 1, limit = 20 } = query;
+    const { search, status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where: any = { operatorId };
+    if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
 
     const [total, data] = await Promise.all([
@@ -150,6 +197,9 @@ export class TripsService {
             where: { isHero: true },
             select: { id: true, url: true, altText: true },
             take: 1,
+          },
+          featuredSlot: {
+            select: { slotNumber: true, status: true },
           },
           _count: {
             select: { images: true, schedules: true, highlights: true, inclusions: true },
@@ -167,7 +217,7 @@ export class TripsService {
   // ── Single trip ───────────────────────────────────────────────────────────────
 
   private flattenCounts(trip: any) {
-    const { _count, images, ...rest } = trip;
+    const { _count, images, featuredSlot, operator, ...rest } = trip;
     return {
       ...rest,
       heroImage: images?.[0] ?? null,
@@ -175,6 +225,16 @@ export class TripsService {
       scheduleCount: _count?.schedules ?? 0,
       highlightCount: _count?.highlights ?? 0,
       inclusionCount: _count?.inclusions ?? 0,
+      featuredSlotNumber: featuredSlot?.slotNumber ?? null,
+      featuredSlotStatus: featuredSlot?.status ?? null,
+      ...(operator !== undefined && {
+        operatorInfo: {
+          id: operator.id,
+          companyName: operator.companyInfo?.companyName ?? null,
+          userName: operator.user.name,
+          userEmail: operator.user.email,
+        },
+      }),
     };
   }
 
@@ -188,6 +248,9 @@ export class TripsService {
           select: { id: true, url: true, altText: true },
           take: 1,
         },
+        featuredSlot: {
+          select: { slotNumber: true, status: true },
+        },
         _count: {
           select: { images: true, schedules: true, highlights: true, inclusions: true },
         },
@@ -198,8 +261,12 @@ export class TripsService {
 
     if (trip.status !== TripStatus.LIVE) {
       if (!requesterId) throw new NotFoundException(`Trip ${id} not found`);
-      if (requesterRole !== Role.ADMIN && trip.operatorId !== requesterId) {
-        throw new ForbiddenException('You do not have permission to view this trip');
+      if (requesterRole !== Role.ADMIN) {
+        // trip.operatorId is from the operators table; requesterId is user.id — must resolve
+        const operatorId = await this.resolveOperatorId(requesterId);
+        if (trip.operatorId !== operatorId) {
+          throw new ForbiddenException('You do not have permission to view this trip');
+        }
       }
     }
 
@@ -624,9 +691,9 @@ export class TripsService {
       if (trip.operatorId !== operatorId) {
         throw new ForbiddenException('You do not have permission to delete this trip');
       }
-    }
-    if (trip.status !== TripStatus.DRAFT) {
-      throw new BadRequestException('Only DRAFT trips can be deleted');
+      if (trip.status !== TripStatus.DRAFT) {
+        throw new BadRequestException('Only DRAFT trips can be deleted');
+      }
     }
 
     await this.prisma.$transaction(async (tx) => {

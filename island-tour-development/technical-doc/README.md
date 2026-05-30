@@ -1,0 +1,71 @@
+# Island Tours — Technical Documentation
+
+> Navigation index for all technical docs. Start here.
+
+---
+
+## Folders
+
+```
+technical-doc/
+├── 01-project-scope/         Business requirements and feature scope
+├── 02-architecture/          System design, schema decisions, technical strategy
+├── 03-implementation/        Build guides and module-level implementation docs
+├── 04-multilingual/          Translation architecture and per-entity content flows
+├── 05-access-management/     Roles, permissions, dashboard access, missing features
+└── specs/                    PDF design specifications from the client
+```
+
+---
+
+## Document Index
+
+### Master Checklist
+
+| File | Purpose |
+|---|---|
+| [MASTER-CHECKLIST.md](./MASTER-CHECKLIST.md) | Every task across all 18 phases — ✅ implemented, ⚠️ partial, ⬜ remaining — plus 23 missing features. Source of truth for "what's next". |
+
+### 01 — Project Scope
+
+| File | Purpose |
+|---|---|
+| [PROJECT-SCOPE.md](./01-project-scope/PROJECT-SCOPE.md) | Business requirements: roles, trip lifecycle, slot economy, payment system, notifications |
+
+### 02 — Architecture
+
+| File | Purpose |
+|---|---|
+| [ARCHITECTURE-OVERVIEW.md](./02-architecture/ARCHITECTURE-OVERVIEW.md) | Full system design: layers, SSE strategy, Prisma schema reasoning, slot economy flows, module map, edge cases |
+| [DEEP-DIVE-QA.md](./02-architecture/DEEP-DIVE-QA.md) | Technical decision Q&A: TanStack Query vs Server Actions, SSE vs WebSockets, rendering zones |
+| [SOFT-DELETE-STRATEGY.md](./02-architecture/SOFT-DELETE-STRATEGY.md) | Why all deletions are deactivations: slug registry, FK chains, financial record requirements |
+
+### 03 — Implementation
+
+| File | Purpose |
+|---|---|
+| [IMPLEMENTATION-GUIDE.md](./03-implementation/IMPLEMENTATION-GUIDE.md) | Phase-by-phase build steps covering Phases 0–18 (env setup through admin panel and notifications) |
+| [TRIP-MODULE.md](./03-implementation/TRIP-MODULE.md) | Trip module: lifecycle, data model, backend service/controller spec, full API reference, frontend integration |
+
+### 04 — Multilingual Content
+
+| File | Purpose |
+|---|---|
+| [MULTILINGUAL-CONTENT.md](./04-multilingual/MULTILINGUAL-CONTENT.md) | Translation architecture, per-entity typed tables, category/destination/hub translation flows, AI translation jobs, ISR revalidation |
+
+### 05 — Access Management
+
+| File | Purpose |
+|---|---|
+| [ROLES-AND-ACCESS-MANAGEMENT.md](./05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md) | All 6 roles defined, full permission matrix, dashboard nav access per role, API endpoint access, business rules, and 23 missing features with build specs |
+
+### specs — Design PDFs
+
+| File | Purpose |
+|---|---|
+| `Island Tours — Tour Detail Page Specification.pdf` | Full tour detail page wireframe and content spec |
+| `Island Tours — Tour Detail Page Specification-1-8.pdf` | Pages 1–8 of the spec |
+| `Island Tours — Tour Detail Page Specification-9-15.pdf` | Pages 9–15 |
+| `Island Tours — Tour Detail Page Specification-16-20.pdf` | Pages 16–20 |
+| `Island Tours — Tour Detail Page Specification-21-28.pdf` | Pages 21–28 |
+| `Platform Architecture — Changelog.pdf` | Architecture changelog from client |

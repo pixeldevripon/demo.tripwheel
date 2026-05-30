@@ -20,6 +20,7 @@ interface TripDeleteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  isForce?: boolean;
 }
 
 export function TripDeleteDialog({
@@ -27,6 +28,7 @@ export function TripDeleteDialog({
   open,
   onOpenChange,
   onSuccess,
+  isForce = false,
 }: TripDeleteDialogProps) {
   const { mutate: removeTrip, isPending } = useRemoveTrip();
 
@@ -51,7 +53,7 @@ export function TripDeleteDialog({
             <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
               <Trash2Icon className="size-5 text-destructive" />
             </div>
-            <AlertDialogTitle>Delete Trip</AlertDialogTitle>
+            <AlertDialogTitle>{isForce ? 'Force Delete Trip' : 'Delete Trip'}</AlertDialogTitle>
           </div>
           <AlertDialogDescription asChild>
             <div className="space-y-2">
@@ -60,10 +62,15 @@ export function TripDeleteDialog({
                 <strong className="text-foreground">{trip.name}</strong>?
               </p>
               <p className="text-xs text-muted-foreground">
-                This action cannot be undone. Only DRAFT trips can be deleted. All associated
-                data (images, highlights, inclusions, age bands, add-ons, schedules) will also
-                be permanently removed.
+                {isForce
+                  ? 'Admin force delete — the trip will be permanently removed regardless of its current status. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
+                  : 'This action cannot be undone. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'}
               </p>
+              {isForce && (
+                <p className="text-xs font-medium text-destructive">
+                  This action is irreversible and cannot be undone.
+                </p>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

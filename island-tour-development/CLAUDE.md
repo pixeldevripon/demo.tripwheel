@@ -1,7 +1,25 @@
 # Island Tours — CLAUDE.md
 
-> Full specs: `PROJECT_SCOPE.md` · `ARCHITECTURE_OVERVIEW.md` · `IMPLEMENTATION_GUIDE.md`
+> Full specs: `technical-doc/01-project-scope/PROJECT-SCOPE.md` · `technical-doc/02-architecture/ARCHITECTURE-OVERVIEW.md` · `technical-doc/03-implementation/IMPLEMENTATION-GUIDE.md`
+> Trip module: `technical-doc/03-implementation/TRIP-MODULE.md`
+> Multilingual: `technical-doc/04-multilingual/MULTILINGUAL-CONTENT.md`
+> Access management: `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
 > Frontend/slot/booking reference: `CLAUDE-reference.md`
+> **Master task checklist: `technical-doc/MASTER-CHECKLIST.md`**
+
+---
+
+## Master Checklist — Keep It Current
+
+`technical-doc/MASTER-CHECKLIST.md` is the single source of truth for what is built, in progress, and remaining across all 18 implementation phases plus the 23 missing-feature items.
+
+**You must update this file whenever you:**
+- Complete a task — change `⬜` to `✅`
+- Partially implement something — change `⬜` to `⚠️` (or `⚠️` to `✅`)
+- Discover a task was already done that was marked ⬜ — correct it immediately
+- Add a new task that doesn't appear in the list — append it to the relevant phase section
+
+Update the checklist in the same commit/response as the implementation work. Never leave the checklist stale. The Summary Stats table at the bottom of the checklist should be updated to match the new counts whenever the counts change materially.
 
 ---
 

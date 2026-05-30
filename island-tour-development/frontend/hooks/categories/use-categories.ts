@@ -112,6 +112,16 @@ export function useDeleteCategory() {
   });
 }
 
+export function useForceDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => categoriesApi.forceDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    },
+  });
+}
+
 export function useUpsertCategoryTranslation() {
   const queryClient = useQueryClient();
   return useMutation({

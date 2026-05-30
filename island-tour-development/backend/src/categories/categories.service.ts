@@ -242,6 +242,40 @@ export class CategoryService {
     return { message: 'Category deactivated successfully' };
   }
 
+  async forceDelete(id: string, adminId: string) {
+    const category = await this.findCategoryOrThrow(id);
+
+    if (category.isSeeded) {
+      throw new ForbiddenException('Seeded categories cannot be permanently deleted');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Resolve featured slot IDs for this category
+      const slots = await tx.featuredSlot.findMany({
+        where: { categoryId: id },
+        select: { id: true },
+      });
+      const slotIds = slots.map((s) => s.id);
+
+      if (slotIds.length > 0) {
+        // Delete slot children first (no cascade defined in schema)
+        await tx.slotLock.deleteMany({ where: { slotId: { in: slotIds } } });
+        await tx.slotHistory.deleteMany({ where: { slotId: { in: slotIds } } });
+        await tx.waitlistEntry.deleteMany({ where: { slotId: { in: slotIds } } });
+        await tx.featuredSlot.deleteMany({ where: { categoryId: id } });
+      }
+
+      await tx.slugRegistry.deleteMany({
+        where: { entityType: SlugEntityType.CATEGORY, entityId: id },
+      });
+      // Cascade via Prisma schema handles: translations, FAQs, page content
+      await tx.category.delete({ where: { id } });
+    });
+
+    this.logger.log(`Admin ${adminId} permanently deleted category ${id}`);
+    return { message: 'Category permanently deleted' };
+  }
+
   // ── Translations ──────────────────────────────────────────────────────────────
 
   async getAllTranslations(id: string) {

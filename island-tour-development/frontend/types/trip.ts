@@ -42,6 +42,15 @@ export interface TripListItem {
   scheduleCount?: number;
   highlightCount?: number;
   inclusionCount?: number;
+  featuredSlotNumber?: number | null;
+  featuredSlotStatus?: string | null;
+  // Only in admin list
+  operatorInfo?: {
+    id: string;
+    companyName: string | null;
+    userName: string;
+    userEmail: string;
+  } | null;
 }
 
 export interface TripHeroImage {
@@ -158,7 +167,16 @@ export interface TourSchedule {
 
 // Query params
 export interface MyTripsQueryParams {
+  search?: string;
   status?: TripStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminTripsQueryParams {
+  search?: string;
+  status?: TripStatus;
+  operatorId?: string;
   page?: number;
   limit?: number;
 }

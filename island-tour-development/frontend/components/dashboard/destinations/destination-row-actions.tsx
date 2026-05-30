@@ -14,7 +14,6 @@ import {
   Trash2Icon,
   MoreHorizontalIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +23,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useUpdateDestination } from '@/hooks/destinations/use-destinations';
+import { toast } from 'sonner';
+import { useUpdateDestination, useForceDeleteDestination } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import type { DestinationLocalized } from '@/types/destination';
 import { DestinationQuickEditDialog } from './destination-quick-edit-dialog';
 import { DestinationDeleteDialog } from './destination-delete-dialog';
+import { ForceDeleteDialog } from '@/components/dashboard/common/force-delete-dialog';
 
 interface DestinationRowActionsProps {
   destination: DestinationLocalized;
@@ -38,8 +39,20 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
   const router = useRouter();
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [forceDeleteOpen, setForceDeleteOpen] = useState(false);
   const { mutate: updateDestination, isPending } = useUpdateDestination();
-  const { can } = useRole();
+  const { mutate: forceDeleteDestination, isPending: isForceDeleting } = useForceDeleteDestination();
+  const { can, role } = useRole();
+
+  function handleForceDelete() {
+    forceDeleteDestination(destination.id, {
+      onSuccess: () => {
+        toast.success(`"${destination.name}" permanently deleted.`);
+        setForceDeleteOpen(false);
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete destination.'),
+    });
+  }
 
   function handleToggleActive() {
     updateDestination(
@@ -115,7 +128,19 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
                 onClick={() => setDeleteOpen(true)}
               >
                 <Trash2Icon />
-                Delete
+                Deactivate
+              </DropdownMenuItem>
+            </>
+          )}
+          {role === 'ADMIN' && !destination.isSeeded && !destination.isActive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => setForceDeleteOpen(true)}
+              >
+                <Trash2Icon />
+                Force Delete
               </DropdownMenuItem>
             </>
           )}
@@ -132,6 +157,17 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         destination={destination}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+      />
+
+      <ForceDeleteDialog
+        open={forceDeleteOpen}
+        onOpenChange={setForceDeleteOpen}
+        title="Force Delete Destination"
+        entityName={destination.name}
+        consequenceNote="All hubs, translations, FAQs, page content, and slug registry entries for this destination (including all category and tour slugs under it) will be permanently removed."
+        onConfirm={handleForceDelete}
+        isPending={isForceDeleting}
+        confirmLabel="Force Delete Destination"
       />
     </>
   );

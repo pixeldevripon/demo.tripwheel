@@ -119,6 +119,21 @@ export function ApiUpdateCategoryDocs() {
   );
 }
 
+export function ApiForceDeleteCategoryDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Permanently delete a category (Admin only)',
+      description:
+        'Hard delete. Removes the category and all related data (translations, FAQs, page content, featured slots, slug registry rows). Seeded categories are protected. This action is irreversible.',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiResponse({ status: 200, description: 'Category permanently deleted' }),
+    ApiResponse({ status: 403, description: 'Seeded category', type: ForbiddenErrorDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
 export function ApiDeleteCategoryDocs() {
   return applyDecorators(
     ApiOperation({

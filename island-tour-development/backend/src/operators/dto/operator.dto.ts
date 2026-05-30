@@ -110,6 +110,11 @@ export class PaginatedOperatorsResponseDto {
 // ── Query & Input DTOs ────────────────────────────────────────────────────────
 
 export class OperatorQueryDto {
+  @ApiPropertyOptional({ example: 'island', description: 'Search by company name or user name/email' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ description: 'Filter by active status' })
   @IsOptional()
   @IsBoolean()

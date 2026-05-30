@@ -10,6 +10,11 @@ import {
   PauseIcon,
   ArchiveIcon,
   RotateCcwIcon,
+  LanguagesIcon,
+  ImageIcon,
+  CalendarIcon,
+  FileTextIcon,
+  TagIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,11 +30,11 @@ import {
   usePublishTrip,
   usePauseTrip,
   useUnpauseTrip,
-  useArchiveTrip,
 } from '@/hooks/trips/use-trips';
 import { useRole } from '@/contexts/role-context';
 import type { TripListItem } from '@/types/trip';
 import { TripDeleteDialog } from './trip-delete-dialog';
+import { TripArchiveDialog } from './trip-archive-dialog';
 
 interface TripRowActionsProps {
   trip: TripListItem;
@@ -38,13 +43,14 @@ interface TripRowActionsProps {
 export function TripRowActions({ trip }: TripRowActionsProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { can } = useRole();
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const { can, role } = useRole();
+
   const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
   const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
   const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
-  const { mutate: archiveTrip, isPending: isArchiving } = useArchiveTrip();
 
-  const isLifecyclePending = isPublishing || isPausing || isUnpausing || isArchiving;
+  const isLifecyclePending = isPublishing || isPausing || isUnpausing;
 
   function handlePublish() {
     publishTrip(trip.id, {
@@ -67,13 +73,6 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
     });
   }
 
-  function handleArchive() {
-    archiveTrip(trip.id, {
-      onSuccess: () => toast.success(`"${trip.name}" archived.`),
-      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to archive.'),
-    });
-  }
-
   return (
     <>
       <DropdownMenu>
@@ -85,11 +84,34 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit`)}>
+
+          {/* Navigation */}
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=details`)}>
             <PencilIcon />
-            Edit
+            Edit Details
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=images`)}>
+            <ImageIcon />
+            Images
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=content`)}>
+            <FileTextIcon />
+            Content
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=pricing`)}>
+            <TagIcon />
+            Pricing
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=schedules`)}>
+            <CalendarIcon />
+            Schedules
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=translations`)}>
+            <LanguagesIcon />
+            Translations
           </DropdownMenuItem>
 
+          {/* Lifecycle */}
           {can('MANAGE_TRIPS') && (
             <>
               <DropdownMenuSeparator />
@@ -112,7 +134,10 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 </DropdownMenuItem>
               )}
               {(trip.status === 'LIVE' || trip.status === 'PAUSED') && (
-                <DropdownMenuItem onClick={handleArchive} disabled={isLifecyclePending}>
+                <DropdownMenuItem
+                  onClick={() => setArchiveOpen(true)}
+                  disabled={isLifecyclePending}
+                >
                   <ArchiveIcon />
                   Archive
                 </DropdownMenuItem>
@@ -120,7 +145,8 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
             </>
           )}
 
-          {can('DELETE_TRIP') && trip.status === 'DRAFT' && (
+          {/* Destructive */}
+          {can('DELETE_TRIP') && (trip.status === 'DRAFT' || role === 'ADMIN') && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -128,7 +154,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 onClick={() => setDeleteOpen(true)}
               >
                 <Trash2Icon />
-                Delete
+                {role === 'ADMIN' && trip.status !== 'DRAFT' ? 'Force Delete' : 'Delete'}
               </DropdownMenuItem>
             </>
           )}
@@ -139,6 +165,14 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         trip={trip}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+        isForce={role === 'ADMIN' && trip.status !== 'DRAFT'}
+      />
+
+      <TripArchiveDialog
+        tripId={trip.id}
+        tripName={trip.name}
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
       />
     </>
   );

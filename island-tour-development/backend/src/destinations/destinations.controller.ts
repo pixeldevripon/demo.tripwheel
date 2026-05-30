@@ -20,6 +20,7 @@ import {
   ApiCreateDestinationDocs,
   ApiCreateFaqDocs,
   ApiDeleteDestinationDocs,
+  ApiForceDeleteDestinationDocs,
   ApiDeleteFaqDocs,
   ApiDeleteTranslationsDocs,
   ApiGetActiveDestinationsDocs,
@@ -116,6 +117,13 @@ export class DestinationController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.destinationService.update(id, dto, user.id);
+  }
+
+  @Delete(':id/force')
+  @RequirePermissions(Permission.MANAGE_SYSTEM)
+  @ApiForceDeleteDestinationDocs()
+  forceDelete(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.destinationService.forceDelete(id, user.id);
   }
 
   @Delete(':id')

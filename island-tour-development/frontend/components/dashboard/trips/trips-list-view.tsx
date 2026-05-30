@@ -1,58 +1,76 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { PlusIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TripsTable } from './trips-table';
-import { useMyTrips } from '@/hooks/trips/use-trips';
-import { useRole } from '@/contexts/role-context';
+import { useMyTrips, useAdminTrips } from '@/hooks/trips/use-trips';
 import type { TripStatus } from '@/types/trip';
+import { useEffect, useState } from 'react';
+import { useRole } from '@/contexts/role-context';
+import { TripsTable } from './trips-table';
 
 export function TripsListView() {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [filters, setFilters] = useState<Record<string, string | undefined>>({});
-  const { can } = useRole();
+    const { role } = useRole();
+    const isAdmin = role === 'ADMIN';
 
-  const { data, isLoading } = useMyTrips({
-    page,
-    limit,
-    ...(filters.status ? { status: filters.status as TripStatus } : {}),
-  });
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
+    const [filters, setFilters] = useState<Record<string, string | undefined>>({});
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  function handleFilterChange(key: string, value: string | undefined) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
-  }
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 350);
+        return () => clearTimeout(timer);
+    }, [search]);
 
-  function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1);
-  }
+    const operatorQueryParams = {
+        page,
+        limit,
+        ...(filters.status ? { status: filters.status as TripStatus } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    };
 
-  return (
-    <div className="space-y-4">
-      {can('CREATE_TRIP') && (
-        <div className="flex justify-end">
-          <Button asChild size="sm">
-            <Link href="/dashboard/trips/new">
-              <PlusIcon />
-              New Trip
-            </Link>
-          </Button>
+    const adminQueryParams = {
+        page,
+        limit,
+        ...(filters.status ? { status: filters.status as TripStatus } : {}),
+        ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    };
+
+    const operatorQuery = useMyTrips(operatorQueryParams, !isAdmin);
+    const adminQuery = useAdminTrips(adminQueryParams, isAdmin);
+
+    const { data, isLoading } = isAdmin ? adminQuery : operatorQuery;
+
+    function handleFilterChange(key: string, value: string | undefined) {
+        setFilters(prev => ({ ...prev, [key]: value }));
+        setPage(1);
+    }
+
+    function handleLimitChange(newLimit: number) {
+        setLimit(newLimit);
+        setPage(1);
+    }
+
+    function handleSearchChange(value: string) {
+        setSearch(value);
+        setPage(1);
+    }
+
+    return (
+        <div className='space-y-4'>
+            <TripsTable
+                data={data?.data ?? []}
+                total={data?.total ?? 0}
+                page={page}
+                limit={limit}
+                isLoading={isLoading}
+                searchValue={search}
+                isAdminView={isAdmin}
+                onSearchChange={handleSearchChange}
+                onPageChange={setPage}
+                onLimitChange={handleLimitChange}
+                onFilterChange={handleFilterChange}
+            />
         </div>
-      )}
-      <TripsTable
-        data={data?.data ?? []}
-        total={data?.total ?? 0}
-        page={page}
-        limit={limit}
-        isLoading={isLoading}
-        onPageChange={setPage}
-        onLimitChange={handleLimitChange}
-        onFilterChange={handleFilterChange}
-      />
-    </div>
-  );
+    );
 }

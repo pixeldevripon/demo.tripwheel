@@ -148,4 +148,10 @@ export const categoriesApi = {
       method: 'DELETE',
     });
   },
+
+  forceDelete(id: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/categories/${id}/force`, {
+      method: 'DELETE',
+    });
+  },
 };

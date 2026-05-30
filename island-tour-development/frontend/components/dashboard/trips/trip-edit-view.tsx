@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { TripArchiveDialog } from './trip-archive-dialog';
 import { toast } from 'sonner';
 import { PlayIcon, PauseIcon, ArchiveIcon, RotateCcwIcon, CheckIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { TripPricingTab } from './trip-pricing-tab';
 import { TripSchedulesTab } from './trip-schedules-tab';
 import { TripLanguagesTab } from './trip-languages-tab';
 import { TripTranslationsTab } from './trip-translations-tab';
-import { useTrip, usePublishTrip, usePauseTrip, useUnpauseTrip, useArchiveTrip } from '@/hooks/trips/use-trips';
+import { useTrip, usePublishTrip, usePauseTrip, useUnpauseTrip, useTripTranslationByLocale } from '@/hooks/trips/use-trips';
 import { useRole } from '@/contexts/role-context';
 import type { TripStatus } from '@/types/trip';
 
@@ -45,21 +46,26 @@ function ReadinessItem({ label, passed }: ReadinessItemProps) {
   );
 }
 
+const VALID_TABS = ['details', 'images', 'content', 'pricing', 'schedules', 'languages', 'translations'] as const;
+
 interface TripEditViewProps {
   id: string;
+  initialTab?: string;
 }
 
-export function TripEditView({ id }: TripEditViewProps) {
+export function TripEditView({ id, initialTab }: TripEditViewProps) {
+  const activeTab = initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
   const { data: trip, isLoading } = useTrip(id);
+  const { data: enTranslation } = useTripTranslationByLocale(id, 'en');
   const { can } = useRole();
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
   const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
   const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
-  const { mutate: archiveTrip, isPending: isArchiving } = useArchiveTrip();
 
-  const isLifecyclePending = isPublishing || isPausing || isUnpausing || isArchiving;
+  const isLifecyclePending = isPublishing || isPausing || isUnpausing;
 
   function handlePublish() {
     publishTrip(id, {
@@ -82,18 +88,10 @@ export function TripEditView({ id }: TripEditViewProps) {
     });
   }
 
-  function handleArchive() {
-    archiveTrip(id, {
-      onSuccess: () => toast.success('Trip archived.'),
-      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to archive.'),
-    });
-  }
-
   const imageCount = trip?.imageCount ?? 0;
   const highlightCount = trip?.highlightCount ?? 0;
   const hasHero = !!trip?.heroImage;
-  // We approximate EN overview check — backend will block publish if missing
-  const hasEnOverview = true; // Cannot check without fetching translations here
+  const hasEnOverview = !!(enTranslation?.overview?.trim());
 
   const readinessChecks = [
     { label: 'At least 5 images uploaded', passed: imageCount >= 5 },
@@ -146,7 +144,7 @@ export function TripEditView({ id }: TripEditViewProps) {
                   <PauseIcon className="size-3.5" />
                   Pause
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleArchive} disabled={isLifecyclePending}>
+                <Button size="sm" variant="outline" onClick={() => setArchiveOpen(true)} disabled={isLifecyclePending}>
                   <ArchiveIcon className="size-3.5" />
                   Archive
                 </Button>
@@ -158,7 +156,7 @@ export function TripEditView({ id }: TripEditViewProps) {
                   <RotateCcwIcon className="size-3.5" />
                   Unpause
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleArchive} disabled={isLifecyclePending}>
+                <Button size="sm" variant="outline" onClick={() => setArchiveOpen(true)} disabled={isLifecyclePending}>
                   <ArchiveIcon className="size-3.5" />
                   Archive
                 </Button>
@@ -195,7 +193,7 @@ export function TripEditView({ id }: TripEditViewProps) {
       )}
 
       {/* Tabbed interface */}
-      <Tabs defaultValue="details">
+      <Tabs defaultValue={activeTab}>
         <div className="overflow-x-auto pb-2 mb-6">
           <TabsList variant="line" className="w-max">
             <TabsTrigger value="details">Details</TabsTrigger>
@@ -246,6 +244,15 @@ export function TripEditView({ id }: TripEditViewProps) {
           <TripTranslationsTab tripId={id} tripName={trip.name} />
         </TabsContent>
       </Tabs>
+
+      {trip && (
+        <TripArchiveDialog
+          tripId={id}
+          tripName={trip.name}
+          open={archiveOpen}
+          onOpenChange={setArchiveOpen}
+        />
+      )}
     </TripDetailShell>
   );
 }

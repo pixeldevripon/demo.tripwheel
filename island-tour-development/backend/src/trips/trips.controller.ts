@@ -15,8 +15,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
-import { CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
+import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
 import {
+  ApiAdminListTripsDocs,
   ApiArchiveTripDocs,
   ApiCreateTripDocs,
   ApiDeleteTripDocs,
@@ -72,6 +73,15 @@ export class TripsController {
   @ApiGetMyTripsDocs()
   findMyTrips(@Query() query: MyTripsQueryDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.tripsService.findMyTrips(user.id, user.role, query);
+  }
+
+  // ── Admin all trips — static route before :id ─────────────────────────────────
+
+  @Get('admin/all')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiAdminListTripsDocs()
+  findAllAdmin(@Query() query: AdminTripsQueryDto) {
+    return this.tripsService.findAllAdmin(query);
   }
 
   // ── Create ────────────────────────────────────────────────────────────────────

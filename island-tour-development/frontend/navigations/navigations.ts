@@ -227,7 +227,7 @@ const dashboardNav: NavItem[] = [
         title: 'Categories',
         url: 'categories',
         icon: Tag,
-        permissions: [Permission.VIEW_CATEGORIES],
+        permissions: [Permission.CREATE_CATEGORY],
     },
 
     // ─── Media ─────────────────────────────────────────────────────────────────

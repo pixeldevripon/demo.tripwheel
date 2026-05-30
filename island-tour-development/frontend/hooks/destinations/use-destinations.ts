@@ -112,6 +112,16 @@ export function useDeleteDestination() {
   });
 }
 
+export function useForceDeleteDestination() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => destinationsApi.forceDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: destinationKeys.all });
+    },
+  });
+}
+
 export function useUpsertTranslation() {
   const queryClient = useQueryClient();
   return useMutation({

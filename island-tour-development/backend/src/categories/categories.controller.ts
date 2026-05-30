@@ -20,6 +20,7 @@ import {
   ApiCreateCategoryDocs,
   ApiCreateFaqDocs,
   ApiDeleteCategoryDocs,
+  ApiForceDeleteCategoryDocs,
   ApiDeleteFaqDocs,
   ApiDeleteTranslationsDocs,
   ApiGetActiveCategoriesDocs,
@@ -117,6 +118,13 @@ export class CategoryController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.categoryService.update(id, dto, user.id);
+  }
+
+  @Delete(':id/force')
+  @RequirePermissions(Permission.MANAGE_SYSTEM)
+  @ApiForceDeleteCategoryDocs()
+  forceDelete(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.categoryService.forceDelete(id, user.id);
   }
 
   @Delete(':id')

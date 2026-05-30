@@ -198,13 +198,29 @@ export function ApiArchiveTripDocs() {
 export function ApiDeleteTripDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Delete a trip (DRAFT only)',
-      description: 'Hard delete. Only DRAFT trips can be deleted. Cascades all child models.',
+      summary: 'Delete a trip',
+      description:
+        'Hard delete. Operators can only delete their own DRAFT trips. Admins can force-delete any trip regardless of status.',
     }),
     tripIdParam,
     ApiResponse({ status: 200, description: 'Trip deleted successfully' }),
-    ApiResponse({ status: 400, description: 'Trip is not in DRAFT status', type: BadRequestErrorDto }),
+    ApiResponse({ status: 400, description: 'Trip is not in DRAFT status (operator only)', type: BadRequestErrorDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Admin list ────────────────────────────────────────────────────────────────
+
+export function ApiAdminListTripsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List all trips across all operators (admin only)' }),
+    ApiQuery({ name: 'search', required: false, type: String }),
+    ApiQuery({ name: 'status', required: false, enum: TripStatus }),
+    ApiQuery({ name: 'operatorId', required: false, type: String }),
+    ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
+    ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
+    ApiResponse({ status: 200, type: PaginatedTripsResponseDto }),
     ...operatorErrors,
   );
 }

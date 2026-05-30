@@ -5,6 +5,7 @@ import { tripsApi } from '@/lib/api/trips';
 import type {
   AddTourImagePayload,
   AddTourLanguagePayload,
+  AdminTripsQueryParams,
   CreateTourAddOnPayload,
   CreateTourAgeBandPayload,
   CreateTourHighlightPayload,
@@ -26,6 +27,7 @@ import type {
 export const tripKeys = {
   all: ['trips'] as const,
   myTrips: (params: MyTripsQueryParams) => [...tripKeys.all, 'my-trips', params] as const,
+  adminTrips: (params: AdminTripsQueryParams) => [...tripKeys.all, 'admin-all', params] as const,
   details: () => [...tripKeys.all, 'detail'] as const,
   detail: (id: string) => [...tripKeys.details(), id] as const,
   images: (tripId: string) => [...tripKeys.all, 'images', tripId] as const,
@@ -40,10 +42,19 @@ export const tripKeys = {
 };
 
 // Queries
-export function useMyTrips(params: MyTripsQueryParams = {}) {
+export function useMyTrips(params: MyTripsQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: tripKeys.myTrips(params),
     queryFn: () => tripsApi.getMyTrips(params),
+    enabled,
+  });
+}
+
+export function useAdminTrips(params: AdminTripsQueryParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: tripKeys.adminTrips(params),
+    queryFn: () => tripsApi.getAdminTrips(params),
+    enabled,
   });
 }
 

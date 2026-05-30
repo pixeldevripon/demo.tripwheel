@@ -158,6 +158,12 @@ export class TripPublicDetailResponseDto extends TripResponseDto {
 // ── Query DTOs ────────────────────────────────────────────────────────────────
 
 export class TripQueryDto {
+  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()
   @IsUUID()
@@ -230,10 +236,49 @@ export class TripBySlugQueryDto {
 }
 
 export class MyTripsQueryDto {
+  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
   @ApiPropertyOptional({ enum: TripStatus })
   @IsOptional()
   @IsEnum(TripStatus)
   status?: TripStatus;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+}
+
+export class AdminTripsQueryDto {
+  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  @ApiPropertyOptional({ enum: TripStatus })
+  @IsOptional()
+  @IsEnum(TripStatus)
+  status?: TripStatus;
+
+  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Filter by operator ID' })
+  @IsOptional()
+  @IsUUID()
+  operatorId?: string;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

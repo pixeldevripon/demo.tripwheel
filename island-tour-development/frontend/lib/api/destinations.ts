@@ -148,4 +148,10 @@ export const destinationsApi = {
       method: 'DELETE',
     });
   },
+
+  forceDelete(id: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/destinations/${id}/force`, {
+      method: 'DELETE',
+    });
+  },
 };

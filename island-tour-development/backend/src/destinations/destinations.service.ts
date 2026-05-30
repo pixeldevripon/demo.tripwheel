@@ -254,6 +254,28 @@ export class DestinationService {
     return { message: 'Destination deactivated successfully' };
   }
 
+  async forceDelete(id: string, adminId: string) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { id },
+      select: { id: true, slug: true, isSeeded: true },
+    });
+    if (!destination) throw new NotFoundException(`Destination ${id} not found`);
+
+    if (destination.isSeeded) {
+      throw new ForbiddenException('Seeded destinations cannot be permanently deleted');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Delete all slug registry rows for this destination (categories, hubs, tours, reserved)
+      await tx.slugRegistry.deleteMany({ where: { destinationSlug: destination.slug } });
+      // Cascade via Prisma schema handles: hubs, translations, FAQs, page content, featured experiences
+      await tx.destination.delete({ where: { id } });
+    });
+
+    this.logger.log(`Admin ${adminId} permanently deleted destination ${id}`);
+    return { message: 'Destination permanently deleted' };
+  }
+
   // ── Translations ──────────────────────────────────────────────────────────────
 
   async getAllTranslations(id: string) {

@@ -97,12 +97,32 @@ export class OperatorsService {
 
 
   async findAll(query: OperatorQueryDto) {
-    const { page = 1, limit = 20 } = query;
+    const { search, isActive, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
+    const where: any = {};
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { companyInfo: { companyName: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
     const [total, data] = await Promise.all([
-      this.prisma.operator.count(),
+      this.prisma.operator.count({ where }),
       this.prisma.operator.findMany({
+        where,
+        select: {
+          id: true,
+          isActive: true,
+          verificationStatus: true,
+          createdAt: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, email: true } },
+          companyInfo: { select: { companyName: true } },
+        },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },

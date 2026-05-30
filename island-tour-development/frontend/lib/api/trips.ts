@@ -1,6 +1,7 @@
 import type {
   AddTourImagePayload,
   AddTourLanguagePayload,
+  AdminTripsQueryParams,
   CreateTourAddOnPayload,
   CreateTourAgeBandPayload,
   CreateTourHighlightPayload,
@@ -30,7 +31,7 @@ import type {
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
-const BASE_URL = 'http://localhost:5050/api/v1';
+const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -70,6 +71,11 @@ export const tripsApi = {
   getMyTrips(params: MyTripsQueryParams = {}): Promise<PaginatedTrips> {
     const query = buildQuery(params as Record<string, string | number | boolean | undefined | null>);
     return apiFetch<PaginatedTrips>(`/trips/my-trips${query}`);
+  },
+
+  getAdminTrips(params: AdminTripsQueryParams = {}): Promise<PaginatedTrips> {
+    const query = buildQuery(params as Record<string, string | number | boolean | undefined | null>);
+    return apiFetch<PaginatedTrips>(`/trips/admin/all${query}`);
   },
 
   getById(id: string): Promise<TripListItem> {

@@ -120,6 +120,21 @@ export function ApiUpdateDestinationDocs() {
   );
 }
 
+export function ApiForceDeleteDestinationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Permanently delete a destination (Admin only)',
+      description:
+        'Hard delete. Removes the destination and all related data (hubs, translations, FAQs, page content, slug registry rows). Seeded destinations are protected. This action is irreversible.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 200, description: 'Destination permanently deleted' }),
+    ApiResponse({ status: 403, description: 'Seeded destination', type: ForbiddenErrorDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
 export function ApiDeleteDestinationDocs() {
   return applyDecorators(
     ApiOperation({

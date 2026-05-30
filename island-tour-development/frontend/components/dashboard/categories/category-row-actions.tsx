@@ -24,11 +24,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useUpdateCategory } from '@/hooks/categories/use-categories';
+import { useUpdateCategory, useForceDeleteCategory } from '@/hooks/categories/use-categories';
 import { useRole } from '@/contexts/role-context';
 import type { CategoryLocalized } from '@/types/category';
 import { CategoryQuickEditDialog } from './category-quick-edit-dialog';
 import { CategoryDeleteDialog } from './category-delete-dialog';
+import { ForceDeleteDialog } from '@/components/dashboard/common/force-delete-dialog';
 
 interface CategoryRowActionsProps {
   category: CategoryLocalized;
@@ -38,8 +39,20 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
   const router = useRouter();
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [forceDeleteOpen, setForceDeleteOpen] = useState(false);
   const { mutate: updateCategory, isPending } = useUpdateCategory();
-  const { can } = useRole();
+  const { mutate: forceDeleteCategory, isPending: isForceDeleting } = useForceDeleteCategory();
+  const { can, role } = useRole();
+
+  function handleForceDelete() {
+    forceDeleteCategory(category.id, {
+      onSuccess: () => {
+        toast.success(`"${category.name}" permanently deleted.`);
+        setForceDeleteOpen(false);
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete category.'),
+    });
+  }
 
   function handleToggleActive() {
     updateCategory(
@@ -115,7 +128,19 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
                 onClick={() => setDeleteOpen(true)}
               >
                 <Trash2Icon />
-                Delete
+                Deactivate
+              </DropdownMenuItem>
+            </>
+          )}
+          {role === 'ADMIN' && !category.isSeeded && !category.isActive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => setForceDeleteOpen(true)}
+              >
+                <Trash2Icon />
+                Force Delete
               </DropdownMenuItem>
             </>
           )}
@@ -132,6 +157,17 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
         category={category}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+      />
+
+      <ForceDeleteDialog
+        open={forceDeleteOpen}
+        onOpenChange={setForceDeleteOpen}
+        title="Force Delete Category"
+        entityName={category.name}
+        consequenceNote="All translations, FAQs, page content, featured slot data, and slug registry entries for this category will be permanently removed across all destinations."
+        onConfirm={handleForceDelete}
+        isPending={isForceDeleting}
+        confirmLabel="Force Delete Category"
       />
     </>
   );
