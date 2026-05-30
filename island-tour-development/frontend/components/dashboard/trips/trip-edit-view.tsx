@@ -12,10 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TripDetailShell } from './trip-detail-shell';
 import { TripDetailsTab } from './trip-details-tab';
 import { TripImagesTab } from './trip-images-tab';
-import { TripContentTab } from './trip-content-tab';
+import { TripHighlightsTab } from './trip-highlights-tab';
+import { TripInclusionsTab } from './trip-inclusions-tab';
 import { TripPricingTab } from './trip-pricing-tab';
 import { TripSchedulesTab } from './trip-schedules-tab';
-import { TripLanguagesTab } from './trip-languages-tab';
 import { TripTranslationsTab } from './trip-translations-tab';
 import { useTrip, usePublishTrip, usePauseTrip, useUnpauseTrip, useTripTranslationByLocale } from '@/hooks/trips/use-trips';
 import { useRole } from '@/contexts/role-context';
@@ -46,7 +46,7 @@ function ReadinessItem({ label, passed }: ReadinessItemProps) {
   );
 }
 
-const VALID_TABS = ['details', 'images', 'content', 'pricing', 'schedules', 'languages', 'translations'] as const;
+const VALID_TABS = ['details', 'images', 'highlights', 'inclusions', 'pricing', 'schedules', 'translations'] as const;
 
 interface TripEditViewProps {
   id: string;
@@ -203,15 +203,15 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 <span className="ml-1.5 size-1.5 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="content">
-              Content
+            <TabsTrigger value="highlights">
+              Highlights
               {highlightCount < 3 && (
                 <span className="ml-1.5 size-1.5 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
+            <TabsTrigger value="inclusions">Inclusions</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="schedules">Schedules</TabsTrigger>
-            <TabsTrigger value="languages">Languages</TabsTrigger>
             <TabsTrigger value="translations">Translations</TabsTrigger>
           </TabsList>
         </div>
@@ -224,8 +224,12 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
           <TripImagesTab trip={trip} />
         </TabsContent>
 
-        <TabsContent value="content">
-          <TripContentTab tripId={id} />
+        <TabsContent value="highlights">
+          <TripHighlightsTab tripId={id} />
+        </TabsContent>
+
+        <TabsContent value="inclusions">
+          <TripInclusionsTab tripId={id} />
         </TabsContent>
 
         <TabsContent value="pricing">
@@ -234,10 +238,6 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
         <TabsContent value="schedules">
           <TripSchedulesTab tripId={id} />
-        </TabsContent>
-
-        <TabsContent value="languages">
-          <TripLanguagesTab tripId={id} />
         </TabsContent>
 
         <TabsContent value="translations">

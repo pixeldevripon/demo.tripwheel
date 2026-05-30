@@ -333,6 +333,7 @@ export class TourHighlightResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tripId!: string;
   @ApiProperty() displayOrder!: number;
+  @ApiPropertyOptional() imageUrl?: string | null;
   @ApiProperty({ type: [TourHighlightTranslationDto] }) translations!: TourHighlightTranslationDto[];
 }
 
@@ -348,6 +349,11 @@ export class CreateTourHighlightDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string;
 }
 
 export class UpdateTourHighlightDto {
@@ -356,6 +362,11 @@ export class UpdateTourHighlightDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string | null;
 }
 
 export class UpsertHighlightTranslationDto {
@@ -384,6 +395,7 @@ export class TourInclusionResponseDto {
   @ApiProperty() tripId!: string;
   @ApiProperty() icon!: string;
   @ApiProperty() displayOrder!: number;
+  @ApiPropertyOptional() imageUrl?: string | null;
   @ApiProperty({ type: [TourInclusionTranslationDto] }) translations!: TourInclusionTranslationDto[];
 }
 
@@ -405,6 +417,11 @@ export class CreateTourInclusionDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string;
 }
 
 export class UpdateTourInclusionDto {
@@ -419,6 +436,11 @@ export class UpdateTourInclusionDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string | null;
 }
 
 export class UpsertInclusionTranslationDto {

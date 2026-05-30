@@ -130,6 +130,7 @@ export interface TourHighlight {
   id: string;
   tripId: string;
   displayOrder: number;
+  imageUrl?: string | null;
   translations: TourHighlightTranslation[];
 }
 
@@ -144,6 +145,7 @@ export interface TourInclusion {
   tripId: string;
   icon: string;
   displayOrder: number;
+  imageUrl?: string | null;
   translations: TourInclusionTranslation[];
 }
 
@@ -284,6 +286,12 @@ export interface UpdateTourAddOnPayload {
 export interface CreateTourHighlightPayload {
   text: string;
   displayOrder?: number;
+  imageUrl?: string;
+}
+
+export interface UpdateTourHighlightPayload {
+  displayOrder?: number;
+  imageUrl?: string | null;
 }
 
 export interface UpsertHighlightTranslationPayload {
@@ -295,11 +303,13 @@ export interface CreateTourInclusionPayload {
   label: string;
   icon?: string;
   displayOrder?: number;
+  imageUrl?: string;
 }
 
 export interface UpdateTourInclusionPayload {
   icon?: string;
   displayOrder?: number;
+  imageUrl?: string | null;
 }
 
 export interface UpsertInclusionTranslationPayload {

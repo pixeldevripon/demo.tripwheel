@@ -32,10 +32,11 @@ type TripTranslationFormValues = z.infer<typeof tripTranslationSchema>;
 interface LocaleTabProps {
   tripId: string;
   locale: Locale;
+  tripName: string;
   isEnglish?: boolean;
 }
 
-function LocaleTab({ tripId, locale, isEnglish = false }: LocaleTabProps) {
+function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabProps) {
   const { data: translation, isLoading } = useTripTranslationByLocale(tripId, locale);
   const { mutate: upsert, isPending: isUpserting } = useUpsertTripTranslation();
   const { mutate: deleteTranslation, isPending: isDeleting } = useDeleteTripTranslation();
@@ -48,18 +49,16 @@ function LocaleTab({ tripId, locale, isEnglish = false }: LocaleTabProps) {
     formState: { errors },
   } = useForm<TripTranslationFormValues>({
     resolver: zodResolver(tripTranslationSchema),
-    defaultValues: { title: '', overview: '', description: '' },
+    defaultValues: { title: isEnglish ? tripName : '', overview: '', description: '' },
   });
 
   useEffect(() => {
-    if (translation) {
-      reset({
-        title: translation.title ?? '',
-        overview: translation.overview ?? '',
-        description: translation.description ?? '',
-      });
-    }
-  }, [translation, reset]);
+    reset({
+      title: translation?.title ?? (isEnglish ? tripName : ''),
+      overview: translation?.overview ?? '',
+      description: translation?.description ?? '',
+    });
+  }, [translation, reset, isEnglish, tripName]);
 
   function onSubmit(values: TripTranslationFormValues) {
     upsert(
@@ -135,14 +134,15 @@ function LocaleTab({ tripId, locale, isEnglish = false }: LocaleTabProps) {
       )}
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Title (H1 Override)</Label>
+        <Label className="text-xs font-semibold uppercase">Display Title</Label>
         <Input
           {...register('title')}
-          placeholder={`Custom H1 title in ${LOCALE_LABELS[locale]}`}
+          placeholder={`${LOCALE_LABELS[locale]} name for this trip`}
           aria-invalid={!!errors.title}
         />
         <FieldDescription>
-          Optional SEO H1 override. Editable for all locales.
+          The trip name shown to travelers in {LOCALE_LABELS[locale]}. When set, replaces
+          &ldquo;{tripName}&rdquo; on the page title and H1. Leave blank to keep the English name.
         </FieldDescription>
         <FieldError>{errors.title?.message}</FieldError>
       </Field>
@@ -236,7 +236,7 @@ export function TripTranslationsTab({ tripId, tripName }: TripTranslationsTabPro
       <CardHeader className="border-b pb-8">
         <CardTitle>Translations — {tripName}</CardTitle>
       </CardHeader>
-      <CardContent className="pt-8">
+      <CardContent className="pt-4">
         <Tabs defaultValue="en">
           <div className="overflow-x-auto pb-2 mb-6">
             <TabsList variant="line" className="w-max">
@@ -251,16 +251,17 @@ export function TripTranslationsTab({ tripId, tripName }: TripTranslationsTabPro
 
           <TabsContent value="en">
             <div className="space-y-4">
-              <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                English is the base locale. All fields are editable here.
+              <div className="text-xs text-muted-foreground bg-muted px-3 py-2 space-y-0.5">
+                <p><span className="font-semibold text-foreground">English is the base locale.</span> Overview is required to publish.</p>
+                <p>The canonical trip name (&ldquo;{tripName}&rdquo;) is set in the Details tab and is not edited here.</p>
               </div>
-              <LocaleTab tripId={tripId} locale="en" isEnglish />
+              <LocaleTab tripId={tripId} locale="en" tripName={tripName} isEnglish />
             </div>
           </TabsContent>
 
           {(['es', 'nl', 'pt', 'fr', 'de', 'zh'] as Locale[]).map((locale) => (
             <TabsContent key={locale} value={locale}>
-              <LocaleTab tripId={tripId} locale={locale} />
+              <LocaleTab tripId={tripId} locale={locale} tripName={tripName} />
             </TabsContent>
           ))}
         </Tabs>

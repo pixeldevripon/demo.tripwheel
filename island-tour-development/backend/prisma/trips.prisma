@@ -154,9 +154,10 @@ model TourLanguage {
 // ── Highlights ────────────────────────────────────────────────────────────────
 // 3–6 bullet points per tour, 5–15 words each. Per-locale translations.
 model TourHighlight {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   tripId       String
-  displayOrder Int    @default(0)
+  displayOrder Int     @default(0)
+  imageUrl     String?
 
   trip         Trip                       @relation(fields: [tripId], references: [id], onDelete: Cascade)
   translations TourHighlightTranslation[]
@@ -181,10 +182,11 @@ model TourHighlightTranslation {
 // ── Inclusions ────────────────────────────────────────────────────────────────
 // What's included in the tour (e.g. 'Open bar', 'Snorkel equipment').
 model TourInclusion {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   tripId       String
-  icon         String @default("check") // icon slug for UI
-  displayOrder Int    @default(0)
+  icon         String  @default("check") // icon slug for UI
+  displayOrder Int     @default(0)
+  imageUrl     String?
 
   trip         Trip                        @relation(fields: [tripId], references: [id], onDelete: Cascade)
   translations TourInclusionTranslation[]

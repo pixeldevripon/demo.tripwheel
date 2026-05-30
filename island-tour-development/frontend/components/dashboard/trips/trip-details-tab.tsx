@@ -1,15 +1,18 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -19,9 +22,154 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Resolver } from 'react-hook-form';
-import { useUpdateTrip } from '@/hooks/trips/use-trips';
+import { useUpdateTrip, useLanguages, useAddLanguage, useRemoveLanguage } from '@/hooks/trips/use-trips';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import type { TripListItem } from '@/types/trip';
+
+const COMMON_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'de', label: 'German' },
+  { code: 'fr', label: 'French' },
+];
+
+// ── Guide Languages card ──────────────────────────────────────────────────────
+
+function LanguagesCard({ tripId }: { tripId: string }) {
+  const { data: languages, isLoading } = useLanguages(tripId);
+  const { mutate: addLanguage, isPending: isAdding } = useAddLanguage();
+  const { mutate: removeLanguage } = useRemoveLanguage();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState('');
+  const [customCode, setCustomCode] = useState('');
+  const [showCustom, setShowCustom] = useState(false);
+
+  function handleAdd() {
+    const code = (showCustom ? customCode : selected).toLowerCase().trim();
+    if (!code) return;
+    const existing = (languages ?? []).map((l) => l.language.toLowerCase());
+    if (existing.includes(code)) { toast.error('Already added.'); return; }
+
+    addLanguage(
+      { tripId, payload: { language: code } },
+      {
+        onSuccess: () => {
+          toast.success(`${code.toUpperCase()} added.`);
+          setSelected('');
+          setCustomCode('');
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add.'),
+      }
+    );
+  }
+
+  function handleDelete(languageId: string, code: string) {
+    setDeletingId(languageId);
+    removeLanguage(
+      { tripId, languageId },
+      {
+        onSuccess: () => { toast.success(`${code.toUpperCase()} removed.`); setDeletingId(null); },
+        onError: (err) => { toast.error(err instanceof Error ? err.message : 'Failed to remove.'); setDeletingId(null); },
+      }
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          Guide Languages
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-4">
+        {/* Insight panel */}
+        <div className="border border-border bg-muted/40 px-4 py-3 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider">What this does</p>
+          <ul className="space-y-1.5 text-xs text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
+              <span>Lists the spoken languages your guide conducts the tour in — not the website's UI language.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
+              <span>Appears as a badge strip (e.g. <strong className="text-foreground">EN · NL · ES</strong>) on your trip's booking page so travelers know before they book.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
+              <span>Not required to publish, but helps Caribbean travelers — many speak Dutch, Spanish, or Papiamentu — choose the right tour.</span>
+            </li>
+          </ul>
+        </div>
+
+        {isLoading ? (
+          <Skeleton className="h-8 w-48 rounded-none" />
+        ) : (languages?.length ?? 0) > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {languages!.map((lang) => (
+              <Badge key={lang.id} variant="secondary" className="gap-1.5 pr-1">
+                <span className="uppercase">{lang.language}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(lang.id, lang.language)}
+                  disabled={deletingId === lang.id}
+                  className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
+                  aria-label={`Remove ${lang.language}`}
+                >
+                  <XIcon className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No languages specified yet.</p>
+        )}
+
+        <div className="flex items-end gap-2 pt-2 border-t">
+          {showCustom ? (
+            <Field className="flex-1">
+              <Label className="text-xs font-semibold uppercase">ISO 639-1 Code</Label>
+              <Input
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value)}
+                placeholder="e.g. ja, ko, ru"
+                className="h-9"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAdd())}
+              />
+            </Field>
+          ) : (
+            <Field className="flex-1">
+              <Label className="text-xs font-semibold uppercase">Language</Label>
+              <Select value={selected} onValueChange={setSelected}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select language..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMMON_LANGUAGES.map((l) => (
+                    <SelectItem key={l.code} value={l.code}>
+                      {l.label} ({l.code.toUpperCase()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          <Button type="button" size="sm" onClick={handleAdd} disabled={isAdding || (!showCustom && !selected) || (showCustom && !customCode.trim())} className="h-9">
+            Add
+          </Button>
+          <button
+            type="button"
+            onClick={() => { setShowCustom((v) => !v); setSelected(''); setCustomCode(''); }}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 whitespace-nowrap pb-0.5"
+          >
+            {showCustom ? 'Common' : 'Custom code'}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const detailsSchema = z.object({
   name: z.string().min(3).max(120),
@@ -150,9 +298,10 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   }
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle>Core Details</CardTitle>
+        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Core Details</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -303,9 +452,11 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           </div>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">H1 Override</Label>
-            <Input {...register('h1Override')} placeholder="Custom H1 heading" />
-            <FieldDescription>Overrides the default H1 heading on the trip page.</FieldDescription>
+            <Label className="text-xs font-semibold uppercase">H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
+            <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
+            <FieldDescription>
+              English-only SEO tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages — those use the Display Title from the Translations tab.
+            </FieldDescription>
           </Field>
 
           <Field>
@@ -336,5 +487,8 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
         </form>
       </CardContent>
     </Card>
+
+    <LanguagesCard tripId={trip.id} />
+    </div>
   );
 }

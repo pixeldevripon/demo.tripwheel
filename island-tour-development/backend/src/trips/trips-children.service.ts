@@ -42,8 +42,15 @@ export class TripChildrenService {
       select: { id: true, operatorId: true, status: true },
     });
     if (!trip) throw new NotFoundException(`Trip ${tripId} not found`);
-    if (requesterRole !== Role.ADMIN && trip.operatorId !== requesterId) {
-      throw new ForbiddenException('You do not have permission to modify this trip');
+    if (requesterRole !== Role.ADMIN) {
+      // requesterId is user.id; trip.operatorId is operators.id — must resolve before comparing
+      const operator = await this.prisma.operator.findUnique({
+        where: { userId: requesterId },
+        select: { id: true },
+      });
+      if (!operator || trip.operatorId !== operator.id) {
+        throw new ForbiddenException('You do not have permission to modify this trip');
+      }
     }
     return trip;
   }
@@ -413,6 +420,7 @@ export class TripChildrenService {
     id: true,
     tripId: true,
     displayOrder: true,
+    imageUrl: true,
     translations: { select: { locale: true, text: true, isMachineTranslated: true } },
   } as const;
 
@@ -435,8 +443,8 @@ export class TripChildrenService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       const highlight = await tx.tourHighlight.create({
-        data: { tripId, displayOrder: dto.displayOrder ?? 0 },
-        select: { id: true, tripId: true, displayOrder: true },
+        data: { tripId, displayOrder: dto.displayOrder ?? 0, imageUrl: dto.imageUrl ?? null },
+        select: { id: true, tripId: true, displayOrder: true, imageUrl: true },
       });
       await tx.tourHighlightTranslation.create({
         data: { highlightId: highlight.id, locale: LocaleEnum.en, text: dto.text },
@@ -468,7 +476,10 @@ export class TripChildrenService {
 
     const updated = await this.prisma.tourHighlight.update({
       where: { id: highlightId },
-      data: { ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }) },
+      data: {
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...('imageUrl' in dto && { imageUrl: dto.imageUrl ?? null }),
+      },
       select: this.highlightSelect,
     });
 
@@ -556,6 +567,7 @@ export class TripChildrenService {
     tripId: true,
     icon: true,
     displayOrder: true,
+    imageUrl: true,
     translations: { select: { locale: true, label: true, isMachineTranslated: true } },
   } as const;
 
@@ -582,6 +594,7 @@ export class TripChildrenService {
           tripId,
           icon: dto.icon ?? 'check',
           displayOrder: dto.displayOrder ?? 0,
+          imageUrl: dto.imageUrl ?? null,
         },
         select: { id: true },
       });
@@ -618,6 +631,7 @@ export class TripChildrenService {
       data: {
         ...(dto.icon !== undefined && { icon: dto.icon }),
         ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...('imageUrl' in dto && { imageUrl: dto.imageUrl ?? null }),
       },
       select: this.inclusionSelect,
     });

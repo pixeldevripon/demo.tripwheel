@@ -22,6 +22,7 @@ import type {
   TripUpdateResponse,
   UpdateTourAddOnPayload,
   UpdateTourAgeBandPayload,
+  UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourSchedulePayload,
@@ -217,7 +218,7 @@ export const tripsApi = {
     });
   },
 
-  updateHighlight(tripId: string, highlightId: string, payload: CreateTourHighlightPayload): Promise<TourHighlight> {
+  updateHighlight(tripId: string, highlightId: string, payload: UpdateTourHighlightPayload): Promise<TourHighlight> {
     return apiFetch<TourHighlight>(`/trips/${tripId}/highlights/${highlightId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),

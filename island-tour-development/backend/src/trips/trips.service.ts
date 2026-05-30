@@ -429,12 +429,92 @@ export class TripsService {
     };
   }
 
+  // ── Slug uniqueness resolution ────────────────────────────────────────────────
+
+  /**
+   * Returns a slug that is unique for (destinationId, destinationSlug).
+   *
+   * - Same operator already owns the slug → ConflictException (duplicate trip).
+   * - Different operator or slug_registry occupies it → append the operator's
+   *   company/user name as a suffix, then try -2, -3 … until a free slot is found.
+   */
+  private async resolveUniqueSlug(
+    baseSlug: string,
+    destinationId: string,
+    destinationSlug: string,
+    operatorId: string,
+    isHubAnchored: boolean,
+  ): Promise<string> {
+    // If this operator already has this exact slug → hard conflict, no auto-fix.
+    const ownConflict = await this.prisma.trip.findFirst({
+      where: { destinationId, slug: baseSlug, operatorId },
+      select: { id: true },
+    });
+    if (ownConflict) {
+      throw new ConflictException(`You already have a trip with slug "${baseSlug}" at this destination`);
+    }
+
+    const [tripConflict, registryConflict] = await Promise.all([
+      this.prisma.trip.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
+      !isHubAnchored
+        ? this.prisma.slugRegistry.findUnique({
+            where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!tripConflict && !registryConflict) return baseSlug;
+
+    // Slug is occupied by another entity — build an operator-name suffix.
+    const operator = await this.prisma.operator.findUnique({
+      where: { id: operatorId },
+      select: {
+        companyInfo: { select: { companyName: true } },
+        user: { select: { name: true } },
+      },
+    });
+    const rawName =
+      operator?.companyInfo?.companyName ??
+      operator?.user?.name ??
+      operatorId.slice(0, 8);
+    const suffix = generateSlug(rawName);
+    const suffixedBase = `${baseSlug}-${suffix}`;
+
+    for (let i = 0; i <= 99; i++) {
+      const candidate = i === 0 ? suffixedBase : `${suffixedBase}-${i}`;
+
+      // Same operator already owns the candidate → give up with a conflict.
+      const ownCandidate = await this.prisma.trip.findFirst({
+        where: { destinationId, slug: candidate, operatorId },
+        select: { id: true },
+      });
+      if (ownCandidate) {
+        throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
+      }
+
+      const [candidateTrip, candidateRegistry] = await Promise.all([
+        this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true } }),
+        !isHubAnchored
+          ? this.prisma.slugRegistry.findUnique({
+              where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (!candidateTrip && !candidateRegistry) return candidate;
+    }
+
+    throw new ConflictException(`Unable to find a unique slug for "${baseSlug}" at this destination`);
+  }
+
   // ── Create ────────────────────────────────────────────────────────────────────
 
   async create(dto: CreateTripDto, userId: string, userRole: Role) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
 
-    const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
+    const baseSlug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     // Validate destination
     const destination = await this.prisma.destination.findUnique({
@@ -453,6 +533,15 @@ export class TripsService {
     if (!category || !category.isActive) {
       throw new BadRequestException('Category not found or is not active');
     }
+
+    // Resolve a unique slug — auto-suffixes with operator name if taken by another entity.
+    const slug = await this.resolveUniqueSlug(
+      baseSlug,
+      dto.destinationId,
+      destination.slug,
+      operatorId,
+      !!dto.hubId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       // Hub validation inside transaction to prevent TOCTOU race conditions
@@ -500,7 +589,8 @@ export class TripsService {
         })
         .catch((err: any) => {
           if (err?.code === 'P2002') {
-            throw new ConflictException(`A trip with slug "${slug}" already exists in this destination`);
+            // Race-condition fallback: slug was taken between our pre-check and the write.
+            throw new ConflictException(`Slug "${slug}" was taken concurrently. Please retry.`);
           }
           throw err;
         });
@@ -534,7 +624,7 @@ export class TripsService {
 
   async update(id: string, dto: UpdateTripDto, requesterId: string, requesterRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    this.assertOwnership(trip, requesterId, requesterRole);
+    await this.assertOwnership(trip, requesterId, requesterRole);
 
     if (trip.status === TripStatus.ARCHIVED) {
       throw new BadRequestException('Cannot update an archived trip');
@@ -665,7 +755,7 @@ export class TripsService {
 
   async archive(id: string, requesterId: string, requesterRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    this.assertOwnership(trip, requesterId, requesterRole);
+    await this.assertOwnership(trip, requesterId, requesterRole);
 
     if (trip.status === TripStatus.ARCHIVED) {
       throw new BadRequestException('Trip is already archived');
@@ -695,7 +785,7 @@ export class TripsService {
 
   async restore(id: string, requesterId: string, requesterRole: Role) {
     const trip = await this.findTripOrThrow(id);
-    this.assertOwnership(trip, requesterId, requesterRole);
+    await this.assertOwnership(trip, requesterId, requesterRole);
 
     if (trip.status !== TripStatus.ARCHIVED) {
       throw new BadRequestException('Only ARCHIVED trips can be restored');

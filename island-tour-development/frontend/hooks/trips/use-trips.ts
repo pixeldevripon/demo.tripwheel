@@ -15,6 +15,7 @@ import type {
   MyTripsQueryParams,
   UpdateTourAddOnPayload,
   UpdateTourAgeBandPayload,
+  UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourSchedulePayload,
@@ -367,6 +368,17 @@ export function useAddHighlight() {
   });
 }
 
+export function useUpdateHighlight() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, highlightId, payload }: { tripId: string; highlightId: string; payload: UpdateTourHighlightPayload }) =>
+      tripsApi.updateHighlight(tripId, highlightId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
+    },
+  });
+}
+
 export function useRemoveHighlight() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -419,6 +431,17 @@ export function useAddInclusion() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateInclusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, inclusionId, payload }: { tripId: string; inclusionId: string; payload: UpdateTourInclusionPayload }) =>
+      tripsApi.updateInclusion(tripId, inclusionId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
     },
   });
 }

@@ -1,10 +1,12 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon } from 'lucide-react';
+import { Trash2Icon, CalendarIcon, XIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -19,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { Resolver } from 'react-hook-form';
 import {
   useSchedules,
@@ -49,6 +54,73 @@ type AddScheduleFormValues = {
   startTime: string;
   totalSpots: string;
 };
+
+// ── Reusable Calendar date-picker field ───────────────────────────────────────
+
+interface DatePickerFieldProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabledDate?: (date: Date) => boolean;
+  clearable?: boolean;
+  hasError?: boolean;
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  placeholder = 'Pick a date',
+  disabledDate,
+  clearable = false,
+  hasError = false,
+}: DatePickerFieldProps) {
+  const [open, setOpen] = useState(false);
+
+  // Parse "yyyy-MM-dd" string to local-time Date to avoid UTC offset issues
+  const selectedDate = value ? new Date(value + 'T00:00:00') : undefined;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'flex h-9 w-full items-center gap-2 border border-input bg-transparent px-3 text-sm text-left',
+            'hover:bg-muted/50 transition-colors',
+            !selectedDate && 'text-muted-foreground',
+            hasError && 'border-destructive',
+          )}
+        >
+          <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate">
+            {selectedDate ? format(selectedDate, 'dd MMM yyyy') : placeholder}
+          </span>
+          {clearable && selectedDate && (
+            <XIcon
+              className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date) => {
+            onChange(date ? format(date, 'yyyy-MM-dd') : '');
+            setOpen(false);
+          }}
+          disabled={disabledDate}
+          captionLayout="dropdown"
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Schedule list row ─────────────────────────────────────────────────────────
 
 interface ScheduleRowProps {
   schedule: TourSchedule;
@@ -131,6 +203,8 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   );
 }
 
+// ── Tab ───────────────────────────────────────────────────────────────────────
+
 interface TripSchedulesTabProps {
   tripId: string;
 }
@@ -143,16 +217,21 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
     (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
   );
 
+  const today = new Date(new Date().setHours(0, 0, 0, 0));
+
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     control,
     formState: { errors },
   } = useForm<AddScheduleFormValues>({
     resolver: zodResolver(addScheduleSchema) as unknown as Resolver<AddScheduleFormValues>,
     defaultValues: { startDate: '', endDate: '', startTime: '09:00', totalSpots: '20' },
   });
+
+  const startDateValue = watch('startDate');
 
   function onSubmit(values: AddScheduleFormValues) {
     createSchedule(
@@ -179,7 +258,9 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-base">Departure Schedules</CardTitle>
+          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+            Departure Schedules
+          </CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {isLoading ? (
@@ -200,22 +281,47 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4 border-t">
             <p className="text-xs font-semibold uppercase text-muted-foreground">Add Schedule</p>
+
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <Label className="text-xs font-semibold uppercase">
                   Start Date <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  {...register('startDate')}
-                  type="date"
-                  aria-invalid={!!errors.startDate}
+                <Controller
+                  control={control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select start date"
+                      disabledDate={(date) => date < today}
+                      hasError={!!errors.startDate}
+                    />
+                  )}
                 />
                 <FieldError>{errors.startDate?.message}</FieldError>
               </Field>
 
               <Field>
                 <Label className="text-xs font-semibold uppercase">End Date (optional)</Label>
-                <Input {...register('endDate')} type="date" />
+                <Controller
+                  control={control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select end date"
+                      disabledDate={(date) =>
+                        startDateValue
+                          ? date < new Date(startDateValue + 'T00:00:00')
+                          : date < today
+                      }
+                      clearable
+                    />
+                  )}
+                />
               </Field>
             </div>
 
