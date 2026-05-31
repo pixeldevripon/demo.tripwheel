@@ -612,3 +612,17 @@ The `--it-*` CSS vars are registered in `@theme inline` inside `frontend-tokens.
 ### Container & layout
 - Always wrap page content in `<div className="it-container">` for correct horizontal padding (16px mobile → 32px tablet → 120px desktop)
 - Use `it-section` for consistent vertical section padding
+
+### What to tokenize vs. inline
+Tokenize **colors only** — add them to `frontend-tokens.css` (`:root` + `@theme inline`) and use the utility (`bg-it-*`, `text-it-*`, `border-it-*`). Do **not** create CSS variables for typography metrics — font size, letter-spacing, and line-height go inline as plain Tailwind values:
+
+```tsx
+// ✅ correct — color from token, metrics inline
+<h1 className="text-it-hero-heading text-[40px] leading-[1.2] tracking-[-0.012em]">
+
+// ❌ wrong — over-tokenized metrics
+<h1 className="text-it-hero-heading text-(length:--it-hero-h1-size) leading-(--it-leading-tight) tracking-(--it-tracking-hero)">
+```
+
+### Use px, not rem, in arbitrary values
+When a Tailwind arbitrary value is needed, use `px` (matches Figma measurements directly): `text-[40px]` not `text-[2.5rem]`, `h-[600px]` not `h-[37.5rem]`. (em-based and unitless values like `tracking-[-0.012em]` / `leading-[1.2]` stay as-is.)

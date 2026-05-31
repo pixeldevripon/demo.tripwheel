@@ -102,24 +102,27 @@ export function Footer() {
                         </div>
                     </div>
 
-                    {/* Link columns */}
-                    {linkColumns.map((col) => (
-                        <div key={col.title} className='flex flex-col gap-8'>
-                            <h3 className='m-0 text-xl font-medium text-it-white'>{col.title}</h3>
-                            <ul className='list-none m-0 p-0 flex flex-col gap-3'>
-                                {col.links.map((link) => (
-                                    <li key={link.label}>
-                                        <Link
-                                            href={link.href}
-                                            className='text-base text-it-white/55 hover:text-it-white no-underline transition-colors'
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+                    {/* Link columns — 2-col grid on mobile (Explore+Legal, then Support),
+                        dissolves into the flex row on desktop via lg:contents */}
+                    <div className='grid grid-cols-2 gap-x-8 gap-y-12 lg:contents'>
+                        {linkColumns.map((col) => (
+                            <div key={col.title} className='flex flex-col gap-8'>
+                                <h3 className='m-0 text-xl font-medium text-it-white'>{col.title}</h3>
+                                <ul className='list-none m-0 p-0 flex flex-col gap-3'>
+                                    {col.links.map((link) => (
+                                        <li key={link.label}>
+                                            <Link
+                                                href={link.href}
+                                                className='text-base text-it-white/55 hover:text-it-white no-underline transition-colors'
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
 
                     {/* Right column: selectors + payments */}
                     <div className='flex flex-col gap-8 w-full max-w-73.5'>
