@@ -21,7 +21,6 @@ export default defineConfig({
     storageState: authFile,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    reducedMotion: 'reduce',
   },
 
   projects: [
