@@ -6,9 +6,6 @@ import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
 import {
     DM_Sans,
-    Geist,
-    Geist_Mono,
-    Inter,
     JetBrains_Mono,
     Noto_Sans,
     Playfair_Display,
@@ -16,28 +13,10 @@ import {
 import localFont from 'next/font/local';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-
 const dmSans = DM_Sans({
     variable: '--font-dm-sans',
     subsets: ['latin'],
     weight: ['400', '500', '600', '700'],
-});
-
-const nyghtSerif = localFont({
-    variable: '--font-nyght-serif',
-    src: [
-        {
-            path: './fonts/NyghtSerif-Regular.woff2',
-            weight: '400',
-            style: 'normal',
-        },
-        {
-            path: './fonts/NyghtSerif-RegularItalic.woff2',
-            weight: '400',
-            style: 'italic',
-        },
-    ],
 });
 
 const generalSans = localFont({
@@ -61,16 +40,6 @@ const playfairDisplayHeading = Playfair_Display({
 
 const notoSans = Noto_Sans({ subsets: ['latin'], variable: '--font-sans' });
 
-const geistSans = Geist({
-    variable: '--font-geist-sans',
-    subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-    variable: '--font-geist-mono',
-    subsets: ['latin'],
-});
-
 const jetbrainsMono = JetBrains_Mono({
     variable: '--font-jetbrains-mono',
     subsets: ['latin'],
@@ -93,12 +62,8 @@ export default function RootLayout({
             suppressHydrationWarning
             className={cn(
                 'h-full antialiased',
-                geistSans.variable,
-                geistMono.variable,
                 jetbrainsMono.variable,
-                inter.variable,
                 dmSans.variable,
-                nyghtSerif.variable,
                 generalSans.variable,
                 'font-sans',
                 notoSans.variable,

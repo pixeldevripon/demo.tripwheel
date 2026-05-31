@@ -1,0 +1,371 @@
+/* Island Tours — Frontend Design Tokens
+ * Source: Figma "island-tours-ui" · Scope: (frontend) routes only
+ * Import in (frontend)/layout.tsx — never in (dashboard) routes
+ */
+
+/* ── Colors ─────────────────────────────────────────────────────────────── */
+:root {
+    /* Primary — coral orange */
+    --it-primary:          #e8611a;
+    --it-primary-hover:    color-mix(in oklch, #e8611a, black 12%);
+    --it-primary-active:   color-mix(in oklch, #e8611a, black 22%);
+    --it-primary-subtle:   color-mix(in oklch, #e8611a, white 88%);
+    --it-primary-fg:       #ffffff;
+
+    /* Green — availability / success */
+    --it-green:            #00c950;
+    --it-green-hover:      color-mix(in oklch, #00c950, black 10%);
+    --it-green-subtle:     color-mix(in oklch, #00c950, white 88%);
+    --it-green-fg:         #ffffff;
+
+    /* Ink — text & strokes */
+    --it-ink:              #1a1a1a;
+    --it-ink-secondary:    #444444;
+    --it-ink-muted:        #a0a3a9;
+    --it-ink-placeholder:  #a6a6a6;
+
+    /* Surfaces */
+    --it-white:            #ffffff;
+    --it-bg:               #f9fafb;
+    --it-surface:          #f8f8f8;
+    --it-border:           #ededed;
+    --it-border-dark:      #1a1a1a;
+    --it-border-white:     #ffffff;
+
+    /* Overlays */
+    --it-scrim-light:      rgba(166, 166, 166, 0.20);
+    --it-scrim-dark:       rgba(0, 0, 0, 0.40);
+
+
+    /* ── Typography ─────────────────────────────────────────────────────── */
+
+    /* SF Pro system font — resolves to SF Pro on Apple, Helvetica Neue elsewhere */
+    --it-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text',    'Helvetica Neue', Arial, sans-serif;
+
+    /* Scale */
+    --it-text-xs:      0.75rem;
+    --it-text-sm:      0.875rem;
+    --it-text-base:    1rem;
+    --it-text-lg:      1.125rem;
+    --it-text-xl:      1.25rem;
+    --it-text-2xl:     1.5rem;
+    --it-text-3xl:     1.875rem;
+    --it-text-4xl:     2.5rem;
+    --it-text-5xl:     3rem;
+    --it-text-display: 3.75rem;
+
+    /* Weight */
+    --it-weight-regular:  400;
+    --it-weight-medium:   500;
+    --it-weight-semibold: 600;
+    --it-weight-bold:     700;
+
+    /* Line height */
+    --it-leading-none:   1;
+    --it-leading-tight:  1.2;
+    --it-leading-snug:   1.4;
+    --it-leading-normal: 1.6;
+
+    /* Letter spacing — negative values from Figma headline measurements */
+    --it-tracking-tightest: -0.03em;
+    --it-tracking-tighter:  -0.022em;
+    --it-tracking-tight:    -0.019em;
+    --it-tracking-normal:    0em;
+    --it-tracking-wide:      0.04em;
+    --it-tracking-widest:    0.08em;
+
+
+    /* ── Spacing ────────────────────────────────────────────────────────── */
+    --it-space-1:  0.125rem;
+    --it-space-2:  0.25rem;
+    --it-space-3:  0.375rem;
+    --it-space-4:  0.5rem;
+    --it-space-5:  0.625rem;
+    --it-space-6:  0.75rem;
+    --it-space-8:  1rem;
+    --it-space-10: 1.5rem;
+    --it-space-12: 2rem;
+    --it-space-14: 2.5rem;
+    --it-space-16: 3rem;
+    --it-space-18: 3.5rem;
+
+
+    /* ── Border Radius ──────────────────────────────────────────────────── */
+    --it-radius-xs:   0.125rem;
+    --it-radius-sm:   0.25rem;
+    --it-radius-md:   0.5rem;
+    --it-radius-lg:   1rem;
+    --it-radius-xl:   1.875rem;
+    --it-radius-2xl:  2.5rem;
+    --it-radius-full: 3.125rem;  /* pill */
+
+
+    /* ── Shadows ────────────────────────────────────────────────────────── */
+    --it-shadow-sm:    0 2px 8px 0 rgba(0, 0, 0, 0.06);
+    --it-shadow-md:    0 11px 14px -9px rgba(0, 0, 0, 0.10);  /* tour cards */
+    --it-shadow-lg:    0 29px 36px -7px rgba(0, 0, 0, 0.10);  /* modals, drawers */
+    --it-shadow-glass: 0 4px 24px 0 rgba(0, 0, 0, 0.08);
+    --it-shadow-navbar: 0 1px 0 0 var(--it-border);
+
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    --it-container-max:   90rem;   /* 1440px */
+    --it-container-px:    7.5rem;  /* 120px desktop */
+    --it-container-px-md: 2rem;    /* 32px  tablet */
+    --it-container-px-sm: 1rem;    /* 16px  mobile */
+    --it-navbar-height:   4rem;
+    --it-section-py:      5rem;
+    --it-section-py-sm:   3rem;
+
+
+    /* ── Z-index ────────────────────────────────────────────────────────── */
+    --it-z-base:     0;
+    --it-z-raised:   10;
+    --it-z-dropdown: 50;
+    --it-z-sticky:   100;
+    --it-z-navbar:   100;
+    --it-z-drawer:   150;
+    --it-z-modal:    200;
+    --it-z-toast:    300;
+
+
+    /* ── Transitions ────────────────────────────────────────────────────── */
+    --it-ease:        cubic-bezier(0.4, 0, 0.2, 1);
+    --it-ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
+    --it-ease-in:     cubic-bezier(0.4, 0, 1, 1);
+    --it-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --it-duration-xs: 100ms;
+    --it-duration-sm: 150ms;
+    --it-duration-md: 250ms;
+    --it-duration-lg: 400ms;
+
+
+    /* ── Component Tokens ───────────────────────────────────────────────── */
+
+    /* Navbar */
+    --it-navbar-bg:          rgba(255, 255, 255, 0.92);
+    --it-navbar-bg-scrolled: rgba(255, 255, 255, 1);
+    --it-navbar-border:      var(--it-border);
+    --it-navbar-text:        var(--it-ink);
+
+    /* Search widget */
+    --it-search-bg:     var(--it-white);
+    --it-search-border: var(--it-border);
+    --it-search-radius: var(--it-radius-full);
+    --it-search-shadow: var(--it-shadow-lg);
+
+    /* CTA button */
+    --it-btn-primary-bg:       var(--it-primary);
+    --it-btn-primary-bg-hover: var(--it-primary-hover);
+    --it-btn-primary-text:     var(--it-primary-fg);
+    --it-btn-primary-radius:   var(--it-radius-full);
+
+    /* Ghost button */
+    --it-btn-secondary-bg:     transparent;
+    --it-btn-secondary-border: var(--it-ink);
+    --it-btn-secondary-text:   var(--it-ink);
+    --it-btn-secondary-radius: var(--it-radius-full);
+
+    /* Tour card */
+    --it-card-bg:         var(--it-white);
+    --it-card-radius:     var(--it-radius-lg);
+    --it-card-shadow:     var(--it-shadow-md);
+    --it-card-border:     var(--it-border);
+    --it-card-img-radius: var(--it-radius-lg) var(--it-radius-lg) 0 0;
+
+    /* Availability badge */
+    --it-badge-available-bg:     var(--it-green);
+    --it-badge-available-text:   var(--it-green-fg);
+    --it-badge-available-radius: var(--it-radius-xs);
+
+    /* Category chip */
+    --it-chip-bg:          var(--it-surface);
+    --it-chip-bg-active:   var(--it-primary-subtle);
+    --it-chip-text:        var(--it-ink-secondary);
+    --it-chip-text-active: var(--it-primary);
+    --it-chip-border:      var(--it-border);
+    --it-chip-radius:      var(--it-radius-full);
+
+    /* Star rating */
+    --it-star-filled: #f5a623;
+    --it-star-empty:  var(--it-border);
+
+    /* Input */
+    --it-input-bg:           var(--it-white);
+    --it-input-border:       var(--it-border);
+    --it-input-border-focus: var(--it-primary);
+    --it-input-placeholder:  var(--it-ink-placeholder);
+    --it-input-text:         var(--it-ink);
+    --it-input-radius:       var(--it-radius-xl);
+
+    /* Section backgrounds */
+    --it-section-bg-1: var(--it-white);
+    --it-section-bg-2: var(--it-bg);
+    --it-section-bg-3: var(--it-surface);
+
+    --it-divider: var(--it-border);
+}
+
+
+/* ── Tailwind v4 Theme Extension ────────────────────────────────────────── */
+@theme inline {
+    --color-it-primary:         var(--it-primary);
+    --color-it-primary-hover:   var(--it-primary-hover);
+    --color-it-primary-subtle:  var(--it-primary-subtle);
+    --color-it-primary-fg:      var(--it-primary-fg);
+    --color-it-green:           var(--it-green);
+    --color-it-green-subtle:    var(--it-green-subtle);
+    --color-it-green-fg:        var(--it-green-fg);
+    --color-it-ink:             var(--it-ink);
+    --color-it-ink-secondary:   var(--it-ink-secondary);
+    --color-it-ink-muted:       var(--it-ink-muted);
+    --color-it-ink-placeholder: var(--it-ink-placeholder);
+    --color-it-white:           var(--it-white);
+    --color-it-bg:              var(--it-bg);
+    --color-it-surface:         var(--it-surface);
+    --color-it-border:          var(--it-border);
+    --color-it-star:            var(--it-star-filled);
+
+    --radius-it-xs:   var(--it-radius-xs);
+    --radius-it-sm:   var(--it-radius-sm);
+    --radius-it-md:   var(--it-radius-md);
+    --radius-it-lg:   var(--it-radius-lg);
+    --radius-it-xl:   var(--it-radius-xl);
+    --radius-it-2xl:  var(--it-radius-2xl);
+    --radius-it-full: var(--it-radius-full);
+
+    --shadow-it-sm:    var(--it-shadow-sm);
+    --shadow-it-md:    var(--it-shadow-md);
+    --shadow-it-lg:    var(--it-shadow-lg);
+    --shadow-it-glass: var(--it-shadow-glass);
+
+    --font-it-display: var(--it-font-display);
+    --font-it-body:    var(--it-font-body);
+
+    --text-it-xs:      var(--it-text-xs);
+    --text-it-sm:      var(--it-text-sm);
+    --text-it-base:    var(--it-text-base);
+    --text-it-lg:      var(--it-text-lg);
+    --text-it-xl:      var(--it-text-xl);
+    --text-it-2xl:     var(--it-text-2xl);
+    --text-it-3xl:     var(--it-text-3xl);
+    --text-it-4xl:     var(--it-text-4xl);
+    --text-it-display: var(--it-text-display);
+}
+
+
+/* ── Base styles (applied when .frontend-root is present) ───────────────── */
+@layer base {
+    .frontend-root {
+        font-family: var(--it-font-body);
+        color: var(--it-ink);
+        background-color: var(--it-bg);
+        letter-spacing: var(--it-tracking-tight);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .frontend-root h1,
+    .frontend-root h2,
+    .frontend-root h3,
+    .frontend-root h4,
+    .frontend-root h5,
+    .frontend-root h6 {
+        font-family: var(--it-font-display);
+        font-weight: var(--it-weight-semibold);
+        line-height: var(--it-leading-tight);
+        letter-spacing: var(--it-tracking-tightest);
+        color: var(--it-ink);
+    }
+}
+
+
+/* ── Utility classes ────────────────────────────────────────────────────── */
+@layer utilities {
+    .it-container {
+        width: 100%;
+        max-width: var(--it-container-max);
+        margin-inline: auto;
+        padding-inline: var(--it-container-px-sm);
+    }
+
+    @media (min-width: 768px) {
+        .it-container { padding-inline: var(--it-container-px-md); }
+    }
+
+    @media (min-width: 1280px) {
+        .it-container { padding-inline: var(--it-container-px); }
+    }
+
+    .it-section {
+        padding-block: var(--it-section-py-sm);
+    }
+
+    @media (min-width: 768px) {
+        .it-section { padding-block: var(--it-section-py); }
+    }
+
+    .it-heading {
+        font-family: var(--it-font-display);
+        font-weight: var(--it-weight-semibold);
+        line-height: var(--it-leading-tight);
+        letter-spacing: var(--it-tracking-tightest);
+    }
+
+    .it-body {
+        font-family: var(--it-font-body);
+        font-weight: var(--it-weight-regular);
+        line-height: var(--it-leading-normal);
+        letter-spacing: var(--it-tracking-tight);
+    }
+
+    .it-glass {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: var(--it-shadow-glass);
+    }
+
+    .it-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--it-btn-primary-bg);
+        color: var(--it-btn-primary-text);
+        border-radius: var(--it-btn-primary-radius);
+        font-family: var(--it-font-body);
+        font-weight: var(--it-weight-medium);
+        font-size: var(--it-text-base);
+        letter-spacing: var(--it-tracking-tight);
+        border: none;
+        cursor: pointer;
+        transition: background-color var(--it-duration-sm) var(--it-ease);
+    }
+
+    .it-btn-primary:hover {
+        background-color: var(--it-btn-primary-bg-hover);
+    }
+
+    .it-card {
+        background: var(--it-card-bg);
+        border-radius: var(--it-card-radius);
+        box-shadow: var(--it-card-shadow);
+        border: 1px solid var(--it-card-border);
+        overflow: hidden;
+    }
+
+    .it-badge-available {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        background-color: var(--it-badge-available-bg);
+        color: var(--it-badge-available-text);
+        border-radius: var(--it-badge-available-radius);
+        font-size: var(--it-text-xs);
+        font-weight: var(--it-weight-medium);
+    }
+}
