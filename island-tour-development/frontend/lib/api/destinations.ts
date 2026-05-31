@@ -15,7 +15,7 @@ import type {
   UpsertTranslationPayload,
 } from '@/types/destination';
 
-const BASE_URL = 'http://localhost:5050/api/v1';
+const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {

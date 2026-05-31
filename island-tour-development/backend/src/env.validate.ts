@@ -21,6 +21,11 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
   CLOUDINARY_CLOUD_NAME: () => null,
   CLOUDINARY_API_KEY: () => null,
   CLOUDINARY_API_SECRET: () => null,
+  // Encryption (settings & operator OAuth tokens)
+  ENCRYPTION_KEY: (v) => {
+    if (v.length < 32) return 'must be at least 32 hex characters';
+    return null;
+  },
 };
 
 
