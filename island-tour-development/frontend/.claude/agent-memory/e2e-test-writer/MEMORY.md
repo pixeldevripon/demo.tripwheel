@@ -2,3 +2,4 @@
 - [Playwright config](playwright-config.md) — config file location, project setup/chromium dependency, baseURL, webServer config
 - [API mock patterns](api-mock-patterns.md) — page.route() patterns for list GET, PATCH toggle, DELETE, active-destinations for HubForm
 - [Dashboard component selectors](dashboard-selectors.md) — Reliable selectors for row-actions button, dialog roles, form inputs, toast assertions
+- [Trips test patterns](trips-test-patterns.md) — Select selectors (no htmlFor), formatDate output, toast messages, tab routing, lifecycle API endpoints
