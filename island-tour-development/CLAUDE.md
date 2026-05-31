@@ -566,3 +566,49 @@ When adding a new module, always:
 1. Check `lib/config/rbac.ts` for the correct `Permission` key(s)
 2. Import `useRole` in the table, row-actions, and form components
 3. Gate: `Add X` button, bulk Delete button, Delete row-action item, Danger Zone card
+
+---
+
+## Frontend (Public Site) — Coding Patterns
+
+### File locations
+```
+app/(frontend)/                  ← public site route group
+  layout.tsx                     ← imports frontend-tokens.css; wraps with .frontend-root
+  page.tsx                       ← homepage
+  frontend-tokens.css            ← all --it-* design tokens (scope: frontend only)
+components/frontend/             ← all public-facing components (never in components/dashboard/)
+```
+
+### Always use Tailwind classes — never inline style objects
+The `--it-*` CSS vars are registered in `@theme inline` inside `frontend-tokens.css`, so they map directly to Tailwind utilities:
+
+```tsx
+// ✅ correct
+<div className="bg-it-primary text-it-white rounded-it-full shadow-it-md">
+
+// ❌ wrong — no inline style objects
+<div style={{ background: 'var(--it-primary)', color: '#fff' }}>
+```
+
+| Token type | Tailwind prefix | Example |
+|---|---|---|
+| Color | `bg-it-*`, `text-it-*`, `border-it-*` | `bg-it-primary`, `text-it-ink` |
+| Border radius | `rounded-it-*` | `rounded-it-full`, `rounded-it-lg` |
+| Shadow | `shadow-it-*` | `shadow-it-md`, `shadow-it-lg` |
+| Font family | `font-it-*` | `font-it-display`, `font-it-body` |
+
+### Fonts
+- SF Pro system stack — **no next/font loading needed**
+- `font-it-display` → display/headings (SF Pro Display)
+- `font-it-body` → body text (SF Pro Text)
+
+### Tailwind v4 canonical classes
+- Use `bg-linear-to-br` not `bg-gradient-to-br`
+- Use `text-(--it-star-filled)` not `text-[var(--it-star-filled)]`
+- Use `z-100` not `z-[100]`
+- Use `min-w-45` not `min-w-[180px]` (when the value maps to a scale token)
+
+### Container & layout
+- Always wrap page content in `<div className="it-container">` for correct horizontal padding (16px mobile → 32px tablet → 120px desktop)
+- Use `it-section` for consistent vertical section padding

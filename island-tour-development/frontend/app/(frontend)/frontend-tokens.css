@@ -225,6 +225,8 @@
     --color-it-bg:              var(--it-bg);
     --color-it-surface:         var(--it-surface);
     --color-it-border:          var(--it-border);
+    --color-it-border-dark:     var(--it-border-dark);
+    --color-it-border-white:    var(--it-border-white);
     --color-it-star:            var(--it-star-filled);
 
     --radius-it-xs:   var(--it-radius-xs);
@@ -277,6 +279,34 @@
         line-height: var(--it-leading-tight);
         letter-spacing: var(--it-tracking-tightest);
         color: var(--it-ink);
+    }
+}
+/* ── Scrollbar (frontend pages only) ────────────────────────────────────────
+ * Scoped via html:has(.frontend-root) so the dashboard keeps its own scrollbar.
+ * Higher specificity than globals.css's bare ::-webkit-scrollbar-thumb. */
+@layer base {
+    html:has(.frontend-root)::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    html:has(.frontend-root)::-webkit-scrollbar-track {
+        background: var(--it-surface);
+    }
+
+    html:has(.frontend-root)::-webkit-scrollbar-thumb {
+        background: var(--it-ink-muted);
+        border-radius: var(--it-radius-full);
+        border: 2px solid var(--it-surface);
+    }
+
+    html:has(.frontend-root)::-webkit-scrollbar-thumb:hover {
+        background: var(--it-primary);
+    }
+
+    /* Firefox */
+    html:has(.frontend-root) {
+        scrollbar-width: thin;
+        scrollbar-color: var(--it-ink-muted) var(--it-surface);
     }
 }
 

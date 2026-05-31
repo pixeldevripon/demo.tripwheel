@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
     },
     images: {
         qualities: [100, 75],
+        dangerouslyAllowSVG: true,
+        contentDispositionType: 'attachment',
+        contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
         remotePatterns: [
             {
                 protocol: 'https',
