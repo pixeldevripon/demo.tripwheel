@@ -609,9 +609,21 @@ The `--it-*` CSS vars are registered in `@theme inline` inside `frontend-tokens.
 - Use `z-100` not `z-[100]`
 - Use `min-w-45` not `min-w-[180px]` (when the value maps to a scale token)
 
-### Container & layout
-- Always wrap page content in `<div className="it-container">` for correct horizontal padding (16px mobile → 32px tablet → 120px desktop)
-- Use `it-section` for consistent vertical section padding
+### Container & layout — reuse the section utilities (do NOT hardcode padding)
+Every public-site section uses the two reusable utilities defined in `frontend-tokens.css`. Never hardcode section padding (`py-32.5`, `px-30`, etc.) — change the token if the value is wrong, don't inline it.
+
+```tsx
+<section className="it-section bg-it-white">   {/* vertical padding: 130px desktop / 64px mobile */}
+  <div className="it-container">               {/* max-width 1440 + horizontal 120px desktop / 32 / 16 */}
+    {/* section content */}
+  </div>
+</section>
+```
+
+- `it-section` → vertical padding (`--it-section-py` = 130px desktop, `--it-section-py-sm` = 64px mobile). Matches Figma's 130px section padding.
+- `it-container` → max-width (1440px) + horizontal padding (120px desktop → 32px tablet → 16px mobile). Matches Figma's 120px side padding.
+- If a section needs a different spacing, **update the token** (or add a new reusable utility/token) — keep reusable styling in `frontend-tokens.css`, not scattered across components.
+- When you spot a repeated pattern (card, badge, pill, glass panel…), promote it to a `--it-*` token or an `it-*` utility class in `frontend-tokens.css` rather than copy-pasting values.
 
 ### What to tokenize vs. inline
 Tokenize **colors only** — add them to `frontend-tokens.css` (`:root` + `@theme inline`) and use the utility (`bg-it-*`, `text-it-*`, `border-it-*`). Do **not** create CSS variables for typography metrics — font size, letter-spacing, and line-height go inline as plain Tailwind values:

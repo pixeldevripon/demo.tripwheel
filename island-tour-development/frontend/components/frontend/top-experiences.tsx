@@ -1,97 +1,198 @@
 'use client';
 
-import { Sunset, Sailboat, Car, Waves, Fish, Camera, Anchor, Mountain } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
+import { Play } from 'lucide-react';
 
-const categories = [
-    { label: 'Sunset Cruise',       icon: Sunset   },
-    { label: 'Catamaran Trip',      icon: Sailboat  },
-    { label: 'Buggy Tour',          icon: Car       },
-    { label: 'Snorkeling',          icon: Waves     },
-    { label: 'Dolphin Encounters',  icon: Fish      },
-    { label: 'Photography',         icon: Camera    },
-    { label: 'Sailing',             icon: Anchor    },
-    { label: 'Hiking',              icon: Mountain  },
+type Card = {
+    title: string;
+    image: string | null;
+    video: string | null;
+};
+
+const cards: Card[] = [
+    {
+        title: 'Sunset Cruise',
+        image: '/images/home-page/experiences/sunset-cruise.jpg',
+        video: '/videos/experiences/sunset-cruise.mp4',
+    },
+    {
+        title: 'Catamaran Trip',
+        image: '/images/home-page/experiences/catamaran-trip.jpg',
+        video: '/videos/experiences/catamaran-trip.mp4',
+    },
+    {
+        title: 'Buggy Tour',
+        image: '/images/home-page/experiences/buggy-tour.jpg',
+        video: '/videos/experiences/buggy-tour.mp4',
+    },
+    { title: 'Snorkeling', image: null, video: null },
+    { title: 'Dolphin Encounters', image: null, video: null },
 ];
 
-const tours = [
-    { title: 'Sunset Catamaran Cruise',   island: 'Curaçao', price: 65, rating: 4.9, reviews: 312, duration: '3h', badge: 'Bestseller' },
-    { title: 'Klein Curaçao Day Trip',    island: 'Curaçao', price: 89, rating: 4.8, reviews: 187, duration: '8h', badge: 'Top Rated'  },
-    { title: 'Off-Road Buggy Adventure',  island: 'Aruba',   price: 75, rating: 4.7, reviews: 243, duration: '4h', badge: null        },
-    { title: 'Snorkeling at Tugboat',     island: 'Curaçao', price: 45, rating: 4.9, reviews: 421, duration: '2h', badge: 'Top Rated'  },
-];
+const REAL = cards.length;
+// Repeat the set so the track overflows the viewport — required for a seamless infinite loop
+const SLIDES = [...cards, ...cards, ...cards];
+const START = REAL + 2; // centre the middle card (Buggy) of the middle set
 
-function TourCard({ tour }: { tour: typeof tours[0] }) {
-    return (
-        <div className='it-card group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-it-lg'>
-            {/* Image */}
-            <div className='h-48 bg-linear-to-br from-[#0a7b8c] via-[#1a9e8f] to-[#0d5c4a] relative'>
-                {tour.badge && (
-                    <span className='absolute top-3 left-3 px-2.5 py-1 bg-it-primary text-white rounded-it-full text-xs font-semibold tracking-wide'>
-                        {tour.badge}
-                    </span>
-                )}
-            </div>
-
-            {/* Body */}
-            <div className='p-4'>
-                <h3 className='m-0 text-base font-semibold text-it-ink tracking-tight leading-snug'>
-                    {tour.title}
-                </h3>
-                <p className='mt-1 mb-3 text-sm text-it-ink-muted'>
-                    {tour.island} · {tour.duration}
-                </p>
-                <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-1.5'>
-                        <span className='text-(--it-star-filled) text-sm'>★</span>
-                        <span className='text-sm font-semibold text-it-ink'>{tour.rating}</span>
-                        <span className='text-sm text-it-ink-muted'>({tour.reviews})</span>
-                    </div>
-                    <div>
-                        <span className='text-xs text-it-ink-muted'>from </span>
-                        <span className='text-lg font-bold text-it-ink'>${tour.price}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Figma arc — tallest card in the centre, shrinking toward the edges
+const SLIDE_W = 220;
+const GAP = 24;
+const H_MAX = 403;
+const H_MIN = 333;
 
 export function TopExperiences() {
+    const autoplay = useRef(
+        Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
+    );
+    const [emblaRef, emblaApi] = useEmblaCarousel(
+        { loop: true, align: 'center', containScroll: false, startIndex: START },
+        [autoplay.current]
+    );
+
+    const [selected, setSelected] = useState(START);
+    const [playing, setPlaying] = useState<number | null>(null);
+
+    // Height varies by each slide's live distance from the carousel centre
+    const applyHeights = useCallback(() => {
+        if (!emblaApi) return;
+        const rect = emblaApi.rootNode().getBoundingClientRect();
+        const center = rect.left + rect.width / 2;
+        emblaApi.slideNodes().forEach((slide) => {
+            const card = slide.firstElementChild as HTMLElement | null;
+            if (!card) return;
+            const r = slide.getBoundingClientRect();
+            const slideCenter = r.left + r.width / 2;
+            const step = Math.abs(slideCenter - center) / (SLIDE_W + GAP);
+            const h = Math.round(H_MAX - (H_MAX - H_MIN) * Math.min(step / 2, 1));
+            card.style.height = `${h}px`;
+        });
+    }, [emblaApi]);
+
+    useEffect(() => {
+        if (!emblaApi) return;
+        const onSelect = () => setSelected(emblaApi.selectedScrollSnap());
+        onSelect();
+        applyHeights();
+        emblaApi.on('select', onSelect);
+        emblaApi.on('scroll', applyHeights);
+        emblaApi.on('reInit', applyHeights);
+        return () => {
+            emblaApi.off('select', onSelect);
+            emblaApi.off('scroll', applyHeights);
+            emblaApi.off('reInit', applyHeights);
+        };
+    }, [emblaApi, applyHeights]);
+
+    const handlePlay = (index: number) => {
+        setPlaying(index);
+        autoplay.current.stop();
+    };
+
+    // 3 dots — left / centre / right
+    const realIndex = ((selected % REAL) + REAL) % REAL;
+    const activeDot = realIndex <= 1 ? 0 : realIndex === 2 ? 1 : 2;
+    const goToDot = (dot: number) => {
+        if (!emblaApi) return;
+        const targetReal = dot === 0 ? 0 : dot === 1 ? 2 : 4;
+        const base = selected - realIndex;
+        emblaApi.scrollTo(base + targetReal);
+    };
+
     return (
-        <section className='it-section bg-it-bg'>
+        <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <h2 className='m-0 mb-8 text-[clamp(1.75rem,3vw,2.5rem)] font-semibold text-it-ink tracking-[-0.03em]'>
-                    Top island experiences
-                </h2>
+                <div className='flex flex-col items-center gap-10'>
+                    <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center'>
+                        Top island experiences
+                    </h2>
 
-                {/* Category filter pills */}
-                <div className='flex gap-2.5 flex-wrap mb-10'>
-                    {categories.map((cat) => {
-                        const Icon = cat.icon;
-                        return (
+                    {/* Carousel */}
+                    <div className='w-full overflow-hidden' ref={emblaRef}>
+                        <div className='flex items-center gap-6' style={{ height: H_MAX }}>
+                            {SLIDES.map((card, i) => {
+                                const hasMedia = Boolean(card.image);
+                                const isPlaying = playing === i && Boolean(card.video);
+                                return (
+                                    <div key={`${card.title}-${i}`} className='shrink-0 w-55'>
+                                        <div
+                                            className='relative w-full overflow-hidden rounded-it-lg'
+                                            style={{ height: H_MIN }}
+                                        >
+                                            {isPlaying ? (
+                                                <video
+                                                    src={card.video as string}
+                                                    poster={card.image ?? undefined}
+                                                    autoPlay
+                                                    controls
+                                                    loop
+                                                    muted={false}
+                                                    playsInline
+                                                    className='absolute inset-0 size-full object-cover'
+                                                />
+                                            ) : (
+                                                <>
+                                                    {hasMedia ? (
+                                                        <Image
+                                                            src={card.image as string}
+                                                            alt={card.title}
+                                                            fill
+                                                            sizes='220px'
+                                                            className='object-cover'
+                                                        />
+                                                    ) : (
+                                                        <div className='absolute inset-0 bg-it-border' />
+                                                    )}
+
+                                                    {card.video ? (
+                                                        <button
+                                                            type='button'
+                                                            aria-label={`Play ${card.title} video`}
+                                                            onClick={() => handlePlay(i)}
+                                                            className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'
+                                                        >
+                                                            <Play className='size-3.5 fill-it-white text-it-white' />
+                                                        </button>
+                                                    ) : (
+                                                        <span className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/40'>
+                                                            <Play className='size-3.5 fill-it-ink-muted text-it-ink-muted' />
+                                                        </span>
+                                                    )}
+
+                                                    <p
+                                                        className={[
+                                                            'absolute bottom-4 inset-x-8 m-0 text-center font-medium text-[20px] leading-[1.6] tracking-[-0.012em]',
+                                                            hasMedia ? 'text-it-white' : 'text-it-heading',
+                                                        ].join(' ')}
+                                                    >
+                                                        {card.title}
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Pagination — 3 dots: left / centre / right */}
+                    <div className='flex items-center gap-2'>
+                        {[0, 1, 2].map((dot) => (
                             <button
-                                key={cat.label}
-                                className='flex items-center gap-2 px-4 py-2 rounded-it-full border border-it-border bg-it-white text-it-ink text-sm font-medium cursor-pointer transition-all hover:bg-it-primary-subtle hover:border-it-primary hover:text-it-primary whitespace-nowrap'
-                            >
-                                <Icon size={15} />
-                                {cat.label}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Tour grid */}
-                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'>
-                    {tours.map((tour) => (
-                        <TourCard key={tour.title} tour={tour} />
-                    ))}
-                </div>
-
-                {/* View all */}
-                <div className='mt-10 flex justify-center'>
-                    <button className='px-8 py-3 rounded-it-full border-[1.5px] border-it-ink bg-transparent text-it-ink text-base font-medium cursor-pointer tracking-tight transition-all hover:bg-it-ink hover:text-it-white'>
-                        View all experiences
-                    </button>
+                                key={dot}
+                                type='button'
+                                aria-label={`Go to ${['left', 'centre', 'right'][dot]} slides`}
+                                onClick={() => goToDot(dot)}
+                                className={[
+                                    'h-1.5 w-12 rounded-full transition-colors cursor-pointer border-none',
+                                    dot === activeDot ? 'bg-it-ink-muted' : 'bg-it-border',
+                                ].join(' ')}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>
