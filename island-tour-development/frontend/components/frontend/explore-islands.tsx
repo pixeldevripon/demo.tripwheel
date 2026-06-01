@@ -1,50 +1,57 @@
-import { ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
-const islands = [
-    { name: 'Curaçao',      tours: 42, gradient: 'from-[#0a7b8c] to-[#1a9e8f]' },
-    { name: 'Aruba',        tours: 38, gradient: 'from-[#e8611a] to-[#f5a623]' },
-    { name: 'Sint Maarten', tours: 29, gradient: 'from-[#1565c0] to-[#0a7b8c]' },
-    { name: 'Saint Lucia',  tours: 24, gradient: 'from-[#2e7d32] to-[#1a9e8f]' },
+type Island = {
+    name: string;
+    tours: number;
+    image: string;
+};
+
+const islands: Island[] = [
+    { name: 'Curaçao', tours: 42, image: '/images/home-page/islands/curacao.jpg' },
+    { name: 'Aruba', tours: 42, image: '/images/home-page/islands/aruba.jpg' },
+    { name: 'Sint Maarten', tours: 42, image: '/images/home-page/islands/sint-maarten.jpg' },
+    { name: 'Saint Lucia', tours: 42, image: '/images/home-page/islands/saint-lucia.jpg' },
 ];
 
 export function ExploreIslands() {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10'>
-                    <h2 className='m-0 text-[clamp(1.75rem,3vw,2.5rem)] font-semibold text-it-ink tracking-[-0.03em]'>
+                <div className='flex flex-col gap-12'>
+                    <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         Explore our islands
                     </h2>
-                    <button className='shrink-0 flex items-center gap-2 text-sm font-medium text-it-primary hover:gap-3 transition-all'>
-                        View all islands <ArrowRight size={15} />
-                    </button>
-                </div>
 
-                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5'>
-                    {islands.map((island) => (
-                        <div
-                            key={island.name}
-                            className='group relative rounded-it-lg overflow-hidden cursor-pointer h-72'
-                        >
-                            {/* Background */}
-                            <div className={`absolute inset-0 bg-gradient-to-br ${island.gradient} transition-transform duration-500 group-hover:scale-105`} />
-                            {/* Dark overlay */}
-                            <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent' />
+                    {/* Peek scroller — bleeds to the right container edge */}
+                    <div className='it-scroll-x gap-6 pb-1 -mr-4 md:-mr-8 xl:-mr-30'>
+                        {islands.map((island) => (
+                            <a
+                                key={island.name}
+                                href='#'
+                                className='group relative block h-90.25 w-96 shrink-0 overflow-hidden rounded-it-lg bg-it-border'
+                            >
+                                <Image
+                                    src={island.image}
+                                    alt={island.name}
+                                    fill
+                                    sizes='384px'
+                                    className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                                />
 
-                            {/* Content */}
-                            <div className='absolute bottom-0 left-0 right-0 p-5'>
-                                <h3 className='m-0 text-2xl font-semibold text-white tracking-tight'>
-                                    {island.name}
-                                </h3>
-                                <p className='m-0 mt-1 text-sm text-white/70'>{island.tours} tours</p>
-                            </div>
+                                {/* Bottom gradient scrim — transparent → #1a1a1a */}
+                                <div className='pointer-events-none absolute inset-x-0 bottom-0 h-61.75 bg-linear-to-b from-transparent to-it-ink' />
 
-                            {/* Arrow on hover */}
-                            <div className='absolute top-4 right-4 size-9 rounded-it-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
-                                <ArrowRight size={16} className='text-white' />
-                            </div>
-                        </div>
-                    ))}
+                                <div className='absolute bottom-6 left-6 flex flex-col gap-2'>
+                                    <span className='font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-white'>
+                                        {island.name}
+                                    </span>
+                                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
+                                        {island.tours} tours
+                                    </span>
+                                </div>
+                            </a>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

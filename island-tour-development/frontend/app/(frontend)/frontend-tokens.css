@@ -409,6 +409,23 @@
         overflow: hidden;
     }
 
+    /* Horizontal scroller with snap + hidden scrollbar (peek carousels) */
+    .it-scroll-x {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;            /* Firefox */
+        -ms-overflow-style: none;         /* IE/Edge */
+    }
+
+    .it-scroll-x::-webkit-scrollbar {
+        display: none;                    /* Chrome/Safari */
+    }
+
+    .it-scroll-x > * {
+        scroll-snap-align: start;
+    }
+
     .it-badge-available {
         display: inline-flex;
         align-items: center;
