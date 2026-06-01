@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "selectIsland": "Escolha a sua ilha",
+    "wishlist": "Lista de desejos",
+    "account": "Conta",
+    "menu": "Menu",
+    "close": "Fechar",
+    "language": "Idioma"
+  },
+  "footer": {
+    "tagline": "Island Tours. Feito por ilhéus. Copyright ©2026",
+    "explore": "Explorar",
+    "legal": "Jurídico",
+    "support": "Suporte",
+    "language": "Idioma",
+    "currency": "Moeda",
+    "links": {
+      "privacy": "Política de Privacidade",
+      "terms": "Termos de Serviço",
+      "cookies": "Política de Cookies",
+      "help": "Central de Ajuda",
+      "contact": "Contato"
+    },
+    "trust": {
+      "secure": "Reserva segura",
+      "cancellation": "Cancelamento gratuito na maioria dos tours",
+      "experts": "Especialistas locais"
+    }
+  },
+  "common": {
+    "popular": "Popular",
+    "search": "Pesquisar",
+    "viewAll": "Ver tudo",
+    "readMore": "Ler mais"
+  },
+  "home": {
+    "hero": {
+      "title": "Não descobrimos as Caraíbas. Crescemos nelas.",
+      "subtitle": "Escolhido por locais. Feito para viajantes.",
+      "searchPlaceholder": "Qual ilha?",
+      "popular": "Popular"
+    },
+    "trust": [
+      { "title": "Pague apenas 20% hoje", "body": "Garanta o seu lugar agora, pague o resto depois" },
+      { "title": "Os planos mudam. Sem problema", "body": "A maioria dos tours é totalmente reembolsável — cancele até 24h antes" },
+      { "title": "Ajuda quando precisar", "body": "Chat 24/7 · WhatsApp a qualquer momento" }
+    ],
+    "experiences": {
+      "title": "Melhores experiências da ilha",
+      "cards": {
+        "sunsetCruise": "Cruzeiro ao pôr do sol",
+        "catamaranTrip": "Passeio de catamarã",
+        "buggyTour": "Tour de buggy",
+        "snorkeling": "Mergulho com snorkel",
+        "dolphin": "Encontros com golfinhos"
+      }
+    },
+    "explore": {
+      "title": "Explore as nossas ilhas",
+      "tours": "tours"
+    },
+    "editorial": {
+      "titleLine1": "Uma ilha",
+      "titleLine2": "Aventuras sem fim",
+      "body": "Crescemos nesta ilha. Estes são os tours que reservaríamos para os nossos próprios amigos.",
+      "cta": "Explorar Curaçao",
+      "categories": {
+        "buggy": "Tours de buggy",
+        "snorkel": "Passeios de snorkel",
+        "catamaran": "Passeios de catamarã"
+      }
+    },
+    "faq": {
+      "title": "Precisa de ajuda antes de reservar?",
+      "subtitle": "Somos locais. Crescemos aqui, conhecemos estes tours e queremos que tenha a melhor experiência nestas ilhas.",
+      "whatsapp": "Conversar no WhatsApp",
+      "guarantees": [
+        "Cancelamento gratuito — sem perguntas",
+        "Reserve a partir de 20% · pague o resto depois",
+        "Confirmado em segundos",
+        "Pagamento seguro e protegido"
+      ],
+      "items": [
+        { "q": "Posso cancelar se os meus planos mudarem?", "a": "A maioria dos tours pode ser cancelada até 24h antes com reembolso total. Sem formulários, basta enviar-nos uma mensagem." },
+        { "q": "Tenho de pagar tudo agora?", "a": "Não — pode garantir o seu lugar com apenas 20% adiantado e pagar o restante mais perto da data do tour." },
+        { "q": "Quem está por trás da Island Tours?", "a": "Somos uma equipa de ilhéus que cresceu em Curaçao, Aruba e Sint Maarten. Cada tour é verificado pessoalmente por nós." },
+        { "q": "E se o meu tour for cancelado?", "a": "Se um tour for cancelado pelo operador, recebe um reembolso total em 24 horas — sem perguntas." },
+        { "q": "Não sabe qual tour escolher? Nós ajudamos.", "a": "Converse connosco no WhatsApp a qualquer momento. Diga-nos o que procura e daremos recomendações locais honestas." }
+      ]
+    }
+  }
+}

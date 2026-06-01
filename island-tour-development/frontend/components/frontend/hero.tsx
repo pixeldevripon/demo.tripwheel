@@ -3,7 +3,14 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 
-export function Hero() {
+type HeroDict = {
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    popular: string;
+};
+
+export function Hero({ dict }: { dict: HeroDict }) {
     return (
         <section className='relative h-150 flex items-center justify-center overflow-hidden bg-it-hero-bg [background-image:var(--it-hero-gradient)]'>
             {/* Centered content — 841px max */}
@@ -13,10 +20,10 @@ export function Hero() {
                     {/* Heading + subtitle */}
                     <div className='flex flex-col items-center gap-1 text-center'>
                         <h1 className='m-0 font-it-body font-medium text-[28px] sm:text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
-                            We didn&apos;t discover the Caribbean. We grew up in it.
+                            {dict.title}
                         </h1>
                         <p className='m-0 text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
-                            Chosen by locals. Made for travelers.
+                            {dict.subtitle}
                         </p>
                     </div>
 
@@ -34,7 +41,7 @@ export function Hero() {
                                 />
                                 <input
                                     type='text'
-                                    placeholder='Which Island?'
+                                    placeholder={dict.searchPlaceholder}
                                     className='flex-1 border-none outline-none bg-transparent text-base tracking-[-0.012em] text-it-ink placeholder:text-it-hero-text'
                                 />
                             </div>
@@ -66,7 +73,7 @@ export function Hero() {
 
                         {/* Popular */}
                         <p className='m-0 text-base tracking-[-0.012em]'>
-                            <span className='text-it-hero-text'>Popular: </span>
+                            <span className='text-it-hero-text'>{dict.popular}: </span>
                             <span className='text-it-hero-heading'>Curaçao · Aruba · Sint Maarten</span>
                         </p>
                     </div>

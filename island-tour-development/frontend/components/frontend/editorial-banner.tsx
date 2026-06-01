@@ -6,35 +6,45 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Reveal } from './reveal';
 
+type CategoryKey = 'buggy' | 'snorkel' | 'catamaran';
+
 type CategoryCard = {
-    title: string;
+    key: CategoryKey;
     image: string;
     position: string; // fan offset + rotation (mobile base, lg override)
     z: number;
 };
 
+type EditorialDict = {
+    titleLine1: string;
+    titleLine2: string;
+    body: string;
+    cta: string;
+    categories: Record<CategoryKey, string>;
+};
+
 const categories: CategoryCard[] = [
     {
-        title: 'Buggy Tours',
+        key: 'buggy',
         image: '/images/home-page/categories/buggy-tours.jpg',
         position: 'left-0 top-2 -rotate-[8deg]',
         z: 10,
     },
     {
-        title: 'Snorkel Trips',
+        key: 'snorkel',
         image: '/images/home-page/categories/snorkel-trips.jpg',
         position: 'left-20 top-0 lg:left-35',
         z: 20,
     },
     {
-        title: 'Catamaran Trips',
+        key: 'catamaran',
         image: '/images/home-page/categories/catamaran-trips.jpg',
         position: 'left-32 top-2 rotate-[8deg] lg:left-56.5',
         z: 10,
     },
 ];
 
-export function EditorialBanner() {
+export function EditorialBanner({ dict }: { dict: EditorialDict }) {
     // Index of the card lifted to the front — defaults to the middle card
     const [topIndex, setTopIndex] = useState(1);
 
@@ -51,12 +61,11 @@ export function EditorialBanner() {
                         <div className='flex flex-col gap-6 sm:gap-8 lg:absolute lg:inset-y-16 lg:left-16 lg:w-115 lg:justify-between lg:gap-0'>
                             <div className='flex flex-col gap-4'>
                                 <h2 className='m-0 flex flex-col gap-2 font-medium text-[32px] leading-[1.2] tracking-[-0.012em] text-it-white sm:text-[40px]'>
-                                    <span>One island</span>
-                                    <span>Endless adventures</span>
+                                    <span>{dict.titleLine1}</span>
+                                    <span>{dict.titleLine2}</span>
                                 </h2>
                                 <p className='m-0 max-w-[441px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white/80'>
-                                    We grew up on this island. These are the tours we&rsquo;d book for
-                                    our own friends.
+                                    {dict.body}
                                 </p>
                             </div>
 
@@ -71,7 +80,7 @@ export function EditorialBanner() {
                                 transition={{ type: 'spring', stiffness: 400, damping: 18 }}
                             >
                                 <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
-                                    Explore Curaçao
+                                    {dict.cta}
                                 </span>
                                 <motion.span
                                     className='inline-flex'
@@ -87,11 +96,12 @@ export function EditorialBanner() {
                         <div className='relative mx-auto h-64 w-72 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-100 lg:w-130 lg:-translate-y-1/2'>
                             {categories.map((card, i) => {
                                 const isTop = i === topIndex;
+                                const title = dict.categories[card.key];
                                 return (
                                     <motion.button
-                                        key={card.title}
+                                        key={card.key}
                                         type='button'
-                                        aria-label={`View ${card.title}`}
+                                        aria-label={`View ${title}`}
                                         aria-pressed={isTop}
                                         onClick={() => setTopIndex(i)}
                                         style={{ zIndex: isTop ? 30 : card.z }}
@@ -103,13 +113,13 @@ export function EditorialBanner() {
                                     >
                                         <Image
                                             src={card.image}
-                                            alt={card.title}
+                                            alt={title}
                                             fill
                                             sizes='(max-width: 1024px) 160px, 285px'
                                             className='object-cover'
                                         />
                                         <span className='absolute inset-x-0 bottom-0 flex items-center justify-center bg-it-heading/30 py-4 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white lg:py-5 lg:text-[20px]'>
-                                            {card.title}
+                                            {title}
                                         </span>
                                     </motion.button>
                                 );

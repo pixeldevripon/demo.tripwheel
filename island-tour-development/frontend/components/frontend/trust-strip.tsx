@@ -1,25 +1,18 @@
 import Image from 'next/image';
 import { Reveal } from './reveal';
 
-const items = [
-    {
-        icon: '/icons/trust-wallet.svg',
-        title: 'Pay as little as 20% today',
-        body: 'Secure your spot now, pay the rest later',
-    },
-    {
-        icon: '/icons/trust-clock.svg',
-        title: 'Plans change. No problem',
-        body: 'Most tours fully refundable — cancel up to 24h before',
-    },
-    {
-        icon: '/icons/trust-chat.svg',
-        title: 'Help when you need it',
-        body: 'Chat 24/7 · WhatsApp anytime',
-    },
+// Icons stay in the component; the copy comes from the dictionary (same order).
+const icons = [
+    '/icons/trust-wallet.svg',
+    '/icons/trust-clock.svg',
+    '/icons/trust-chat.svg',
 ];
 
-export function TrustStrip() {
+export function TrustStrip({
+    items,
+}: {
+    items: { title: string; body: string }[];
+}) {
     return (
         <section className='bg-it-white pt-32.5'>
             <div className='it-container'>
@@ -31,7 +24,7 @@ export function TrustStrip() {
                             className='flex-1 flex flex-col items-center gap-6 text-center'
                         >
                             <Image
-                                src={item.icon}
+                                src={icons[i]}
                                 alt=''
                                 width={40}
                                 height={40}

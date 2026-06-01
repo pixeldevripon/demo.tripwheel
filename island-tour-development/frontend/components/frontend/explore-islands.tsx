@@ -29,13 +29,17 @@ const islands: Island[] = [
     },
 ];
 
-export function ExploreIslands() {
+export function ExploreIslands({
+    dict,
+}: {
+    dict: { title: string; tours: string };
+}) {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-12'>
                     <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                        Explore our islands
+                        {dict.title}
                     </h2>
 
                     {/* Peek scroller — bleeds to the right container edge */}
@@ -66,7 +70,7 @@ export function ExploreIslands() {
                                         {island.name}
                                     </span>
                                     <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
-                                        {island.tours} tours
+                                        {island.tours} {dict.tours}
                                     </span>
                                 </div>
                             </motion.a>

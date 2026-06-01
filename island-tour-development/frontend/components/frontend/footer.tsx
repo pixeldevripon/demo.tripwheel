@@ -4,34 +4,26 @@ import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 const springFast = { type: 'spring', stiffness: 400, damping: 17 } as const;
 
-const linkColumns = [
-    {
-        title: 'Explore',
-        links: [
-            { label: 'Curaçao', href: '/curacao' },
-            { label: 'Aruba', href: '/aruba' },
-            { label: 'Sint Maarten', href: '/sint-maarten' },
-        ],
-    },
-    {
-        title: 'Legal',
-        links: [
-            { label: 'Privacy Policy', href: '/privacy' },
-            { label: 'Terms of Service', href: '/terms' },
-            { label: 'Cookie Policy', href: '/cookies' },
-        ],
-    },
-    {
-        title: 'Support',
-        links: [
-            { label: 'Help Center', href: '/help' },
-            { label: 'Contact', href: '/contact' },
-        ],
-    },
-];
+type FooterDict = {
+    tagline: string;
+    explore: string;
+    legal: string;
+    support: string;
+    language: string;
+    currency: string;
+    links: {
+        privacy: string;
+        terms: string;
+        cookies: string;
+        help: string;
+        contact: string;
+    };
+    trust: { secure: string; cancellation: string; experts: string };
+};
 
 const socials = [
     { src: '/footer/social/social-1.svg', alt: 'Instagram', href: '#' },
@@ -54,12 +46,6 @@ const paymentsRow2 = [
     { src: '/footer/payment/pay-8.svg', alt: 'American Express' },
 ];
 
-const trustItems = [
-    'Secure booking',
-    'Free cancellation on most tours',
-    'Local experts',
-];
-
 function Selector({
     label,
     value,
@@ -72,24 +58,51 @@ function Selector({
     return (
         <div className='flex flex-col gap-1.5'>
             <span className='text-xl font-medium text-it-white'>{label}</span>
-            <button className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
+            <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={springFast}
+                className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
                 <span className='flex items-center gap-2'>
                     {icon}
                     <span className='text-base text-it-ink'>{value}</span>
                 </span>
-                <span className='inline-flex'>
-                    <ChevronDown
-                        size={20}
-                        strokeWidth={1.5}
-                        className='text-it-ink'
-                    />
-                </span>
-            </button>
+                <ChevronDown size={20} strokeWidth={1.5} className='text-it-ink' />
+            </motion.button>
         </div>
     );
 }
 
-export function Footer() {
+export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
+    const linkColumns = [
+        {
+            title: dict.explore,
+            // Destination names are proper nouns — not translated, only the URL is localized.
+            links: [
+                { label: 'Curaçao', href: '/curacao' },
+                { label: 'Aruba', href: '/aruba' },
+                { label: 'Sint Maarten', href: '/sint-maarten' },
+            ],
+        },
+        {
+            title: dict.legal,
+            links: [
+                { label: dict.links.privacy, href: '/privacy' },
+                { label: dict.links.terms, href: '/terms' },
+                { label: dict.links.cookies, href: '/cookies' },
+            ],
+        },
+        {
+            title: dict.support,
+            links: [
+                { label: dict.links.help, href: '/help' },
+                { label: dict.links.contact, href: '/contact' },
+            ],
+        },
+    ];
+
+    const trustItems = [dict.trust.secure, dict.trust.cancellation, dict.trust.experts];
+
     return (
         <footer className='bg-it-ink text-it-white'>
             <div className='it-container py-20'>
@@ -97,18 +110,20 @@ export function Footer() {
                 <div className='flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-8'>
                     {/* Brand column */}
                     <div className='flex flex-col gap-6 max-w-52.5'>
-                        <Image
-                            src='/logo/footer-logo.png'
-                            alt='Island Tours'
-                            width={198}
-                            height={147}
-                            className='object-contain w-40 h-auto'
-                        />
+                        <Link href={localizeHref(locale, '/')} className='inline-flex'>
+                            <Image
+                                src='/logo/footer-logo.png'
+                                alt='Island Tours'
+                                width={198}
+                                height={147}
+                                className='object-contain w-40 h-auto'
+                            />
+                        </Link>
                         <p className='m-0 text-base text-it-white/55 leading-snug'>
-                            Island Tours. Built by Islanders. Copyright ©2026
+                            {dict.tagline}
                         </p>
                         <div className='flex items-center gap-3'>
-                            {socials.map(s => (
+                            {socials.map((s) => (
                                 <Link
                                     key={s.alt}
                                     href={s.href}
@@ -135,18 +150,16 @@ export function Footer() {
                     {/* Link columns — 2-col grid on mobile (Explore+Legal, then Support),
                         dissolves into the flex row on desktop via lg:contents */}
                     <div className='grid grid-cols-2 gap-x-8 gap-y-12 lg:contents'>
-                        {linkColumns.map(col => (
-                            <div
-                                key={col.title}
-                                className='flex flex-col gap-8'>
+                        {linkColumns.map((col) => (
+                            <div key={col.title} className='flex flex-col gap-8'>
                                 <h3 className='m-0 text-xl font-medium text-it-white'>
                                     {col.title}
                                 </h3>
                                 <ul className='list-none m-0 p-0 flex flex-col gap-3'>
-                                    {col.links.map(link => (
+                                    {col.links.map((link) => (
                                         <li key={link.label}>
                                             <Link
-                                                href={link.href}
+                                                href={localizeHref(locale, link.href)}
                                                 className='inline-block text-base text-it-white/55 hover:text-it-white no-underline transition-colors'>
                                                 <motion.span
                                                     className='inline-block'
@@ -165,7 +178,7 @@ export function Footer() {
                     {/* Right column: selectors + payments */}
                     <div className='flex flex-col gap-8 w-full max-w-73.5'>
                         <Selector
-                            label='Language'
+                            label={dict.language}
                             value='English (EN)'
                             icon={
                                 <Image
@@ -178,7 +191,7 @@ export function Footer() {
                             }
                         />
                         <Selector
-                            label='Currency'
+                            label={dict.currency}
                             value='USD ($)'
                             icon={
                                 <Image
@@ -197,7 +210,7 @@ export function Footer() {
                                 <div
                                     key={i}
                                     className='flex items-center justify-between'>
-                                    {row.map(p => (
+                                    {row.map((p) => (
                                         <motion.span
                                             key={p.alt}
                                             className='inline-flex'
@@ -238,4 +251,3 @@ export function Footer() {
         </footer>
     );
 }
-

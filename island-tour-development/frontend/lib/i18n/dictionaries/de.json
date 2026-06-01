@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "selectIsland": "Insel auswählen",
+    "wishlist": "Merkliste",
+    "account": "Konto",
+    "menu": "Menü",
+    "close": "Schließen",
+    "language": "Sprache"
+  },
+  "footer": {
+    "tagline": "Island Tours. Von Inselbewohnern gemacht. Copyright ©2026",
+    "explore": "Entdecken",
+    "legal": "Rechtliches",
+    "support": "Support",
+    "language": "Sprache",
+    "currency": "Währung",
+    "links": {
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen",
+      "cookies": "Cookie-Richtlinie",
+      "help": "Hilfecenter",
+      "contact": "Kontakt"
+    },
+    "trust": {
+      "secure": "Sichere Buchung",
+      "cancellation": "Kostenlose Stornierung bei den meisten Touren",
+      "experts": "Lokale Experten"
+    }
+  },
+  "common": {
+    "popular": "Beliebt",
+    "search": "Suchen",
+    "viewAll": "Alle ansehen",
+    "readMore": "Mehr lesen"
+  },
+  "home": {
+    "hero": {
+      "title": "Wir haben die Karibik nicht entdeckt. Wir sind in ihr aufgewachsen.",
+      "subtitle": "Von Einheimischen ausgewählt. Für Reisende gemacht.",
+      "searchPlaceholder": "Welche Insel?",
+      "popular": "Beliebt"
+    },
+    "trust": [
+      { "title": "Zahle heute schon ab 20%", "body": "Sichere dir jetzt deinen Platz, zahle den Rest später" },
+      { "title": "Pläne ändern sich. Kein Problem", "body": "Die meisten Touren sind voll erstattbar — Stornierung bis 24 Std. vorher" },
+      { "title": "Hilfe, wenn du sie brauchst", "body": "24/7 Chat · WhatsApp jederzeit" }
+    ],
+    "experiences": {
+      "title": "Top-Erlebnisse auf der Insel",
+      "cards": {
+        "sunsetCruise": "Sonnenuntergangs-Cruise",
+        "catamaranTrip": "Katamaran-Tour",
+        "buggyTour": "Buggy-Tour",
+        "snorkeling": "Schnorcheln",
+        "dolphin": "Delfin-Begegnungen"
+      }
+    },
+    "explore": {
+      "title": "Entdecke unsere Inseln",
+      "tours": "Touren"
+    },
+    "editorial": {
+      "titleLine1": "Eine Insel",
+      "titleLine2": "Endlose Abenteuer",
+      "body": "Wir sind auf dieser Insel aufgewachsen. Das sind die Touren, die wir für unsere eigenen Freunde buchen würden.",
+      "cta": "Curaçao entdecken",
+      "categories": {
+        "buggy": "Buggy-Touren",
+        "snorkel": "Schnorcheltouren",
+        "catamaran": "Katamaran-Touren"
+      }
+    },
+    "faq": {
+      "title": "Brauchst du Hilfe vor der Buchung?",
+      "subtitle": "Wir sind Einheimische. Wir sind hier aufgewachsen, wir kennen diese Touren und möchten, dass du die beste Zeit auf diesen Inseln hast.",
+      "whatsapp": "Auf WhatsApp chatten",
+      "guarantees": [
+        "Kostenlose Stornierung — ohne Wenn und Aber",
+        "Ab 20% reservieren · den Rest später zahlen",
+        "In Sekunden bestätigt",
+        "Sicherer Checkout"
+      ],
+      "items": [
+        { "q": "Kann ich stornieren, wenn sich meine Pläne ändern?", "a": "Die meisten Touren können bis 24 Std. vorher für eine volle Rückerstattung storniert werden. Keine Formulare, schreib uns einfach." },
+        { "q": "Muss ich jetzt den vollen Betrag zahlen?", "a": "Nein — du kannst deinen Platz mit nur 20% Anzahlung sichern und den Restbetrag näher am Tourdatum zahlen." },
+        { "q": "Wer steckt hinter Island Tours?", "a": "Wir sind ein Team von Inselbewohnern, die auf Curaçao, Aruba und Sint Maarten aufgewachsen sind. Jede Tour haben wir persönlich geprüft." },
+        { "q": "Was, wenn meine Tour abgesagt wird?", "a": "Wenn eine Tour vom Anbieter abgesagt wird, erhältst du innerhalb von 24 Stunden eine volle Rückerstattung — ohne Wenn und Aber." },
+        { "q": "Unsicher, welche Tour? Wir helfen.", "a": "Chatte jederzeit mit uns auf WhatsApp. Sag uns, wonach du suchst, und wir geben dir ehrliche, lokale Empfehlungen." }
+      ]
+    }
+  }
+}

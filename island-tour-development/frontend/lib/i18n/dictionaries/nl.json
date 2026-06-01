@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "selectIsland": "Kies je eiland",
+    "wishlist": "Verlanglijst",
+    "account": "Account",
+    "menu": "Menu",
+    "close": "Sluiten",
+    "language": "Taal"
+  },
+  "footer": {
+    "tagline": "Island Tours. Gemaakt door eilandbewoners. Copyright ©2026",
+    "explore": "Ontdek",
+    "legal": "Juridisch",
+    "support": "Ondersteuning",
+    "language": "Taal",
+    "currency": "Valuta",
+    "links": {
+      "privacy": "Privacybeleid",
+      "terms": "Servicevoorwaarden",
+      "cookies": "Cookiebeleid",
+      "help": "Helpcentrum",
+      "contact": "Contact"
+    },
+    "trust": {
+      "secure": "Veilig boeken",
+      "cancellation": "Gratis annulering op de meeste tours",
+      "experts": "Lokale experts"
+    }
+  },
+  "common": {
+    "popular": "Populair",
+    "search": "Zoeken",
+    "viewAll": "Bekijk alles",
+    "readMore": "Lees meer"
+  },
+  "home": {
+    "hero": {
+      "title": "Wij hebben de Caraïben niet ontdekt. Wij zijn er opgegroeid.",
+      "subtitle": "Gekozen door locals. Gemaakt voor reizigers.",
+      "searchPlaceholder": "Welk eiland?",
+      "popular": "Populair"
+    },
+    "trust": [
+      { "title": "Betaal vandaag al vanaf 20%", "body": "Reserveer nu je plek, betaal de rest later" },
+      { "title": "Plannen veranderen. Geen probleem", "body": "De meeste tours zijn volledig terugbetaalbaar — annuleer tot 24u van tevoren" },
+      { "title": "Hulp wanneer je het nodig hebt", "body": "24/7 chat · WhatsApp altijd bereikbaar" }
+    ],
+    "experiences": {
+      "title": "Topervaringen op het eiland",
+      "cards": {
+        "sunsetCruise": "Zonsondergangcruise",
+        "catamaranTrip": "Catamarantocht",
+        "buggyTour": "Buggytour",
+        "snorkeling": "Snorkelen",
+        "dolphin": "Dolfijnenontmoetingen"
+      }
+    },
+    "explore": {
+      "title": "Ontdek onze eilanden",
+      "tours": "tours"
+    },
+    "editorial": {
+      "titleLine1": "Eén eiland",
+      "titleLine2": "Eindeloze avonturen",
+      "body": "Wij zijn op dit eiland opgegroeid. Dit zijn de tours die we voor onze eigen vrienden zouden boeken.",
+      "cta": "Ontdek Curaçao",
+      "categories": {
+        "buggy": "Buggytours",
+        "snorkel": "Snorkeltochten",
+        "catamaran": "Catamarantochten"
+      }
+    },
+    "faq": {
+      "title": "Hulp nodig voordat je boekt?",
+      "subtitle": "Wij zijn locals. We zijn hier opgegroeid, we kennen deze tours en we willen dat je de beste tijd hebt op deze eilanden.",
+      "whatsapp": "Chat op WhatsApp",
+      "guarantees": [
+        "Gratis annulering — geen vragen gesteld",
+        "Reserveer vanaf 20% · betaal de rest later",
+        "Binnen enkele seconden bevestigd",
+        "Veilig en beveiligd afrekenen"
+      ],
+      "items": [
+        { "q": "Kan ik annuleren als mijn plannen veranderen?", "a": "De meeste tours kunnen tot 24u van tevoren worden geannuleerd voor een volledige terugbetaling. Geen formulieren, stuur ons gewoon een bericht." },
+        { "q": "Moet ik nu het volledige bedrag betalen?", "a": "Nee — je kunt je plek vastleggen met slechts 20% vooraf en het resterende bedrag dichter bij je tourdatum betalen." },
+        { "q": "Wie zit er achter Island Tours?", "a": "We zijn een team van eilandbewoners die zijn opgegroeid op Curaçao, Aruba en Sint Maarten. Elke tour is er een die we persoonlijk hebben gecontroleerd." },
+        { "q": "Wat als mijn tour wordt geannuleerd?", "a": "Als een tour door de aanbieder wordt geannuleerd, krijg je binnen 24 uur een volledige terugbetaling — geen vragen gesteld." },
+        { "q": "Niet zeker welke tour? Wij helpen.", "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen." }
+      ]
+    }
+  }
+}

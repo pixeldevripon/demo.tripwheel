@@ -26,35 +26,13 @@ function Caret({ className }: { className?: string }) {
     );
 }
 
-const faqs = [
-    {
-        q: 'Can I cancel if my plans change?',
-        a: 'Most tours can be cancelled up to 24h before for a full refund. No forms, just message us.',
-    },
-    {
-        q: 'Do I have to pay in full now?',
-        a: 'No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date.',
-    },
-    {
-        q: 'Who is behind Island Tours?',
-        a: "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted.",
-    },
-    {
-        q: 'What if my tour gets cancelled?',
-        a: 'If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked.',
-    },
-    {
-        q: "Not sure which tour? We'll help.",
-        a: "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations.",
-    },
-];
-
-const guarantees = [
-    'Free cancellation — no questions asked',
-    'Reserve from 20% · pay the rest later',
-    'Confirmed in seconds',
-    'Safe & secure checkout',
-];
+type FaqDict = {
+    title: string;
+    subtitle: string;
+    whatsapp: string;
+    guarantees: string[];
+    items: { q: string; a: string }[];
+};
 
 const payments = [
     { src: '/icons/payments/pay-1.svg', alt: 'Visa' },
@@ -67,7 +45,7 @@ const payments = [
     { src: '/icons/payments/pay-8.svg', alt: 'American Express' },
 ];
 
-export function FaqSection() {
+export function FaqSection({ dict }: { dict: FaqDict }) {
     const [openIndex, setOpenIndex] = useState(0);
 
     return (
@@ -80,11 +58,10 @@ export function FaqSection() {
                             {/* Heading */}
                             <div className='flex flex-col gap-6'>
                                 <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
-                                    Need help before booking?
+                                    {dict.title}
                                 </h2>
                                 <p className='m-0 max-w-[452px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    We&rsquo;re locals. We grew up here, we know these tours, and we want
-                                    you to have the best time on these islands.
+                                    {dict.subtitle}
                                 </p>
                             </div>
 
@@ -113,13 +90,13 @@ export function FaqSection() {
                                             className='size-6'
                                         />
                                         <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                            Chat on WhatsApp
+                                            {dict.whatsapp}
                                         </span>
                                     </motion.a>
                                 </div>
 
                                 <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                    {guarantees.map((g) => (
+                                    {dict.guarantees.map((g) => (
                                         <li key={g} className='flex items-center gap-2'>
                                             <Image
                                                 src='/icons/check-green.svg'
@@ -155,7 +132,7 @@ export function FaqSection() {
 
                     {/* Right — accordion */}
                     <div className='flex flex-1 flex-col gap-4'>
-                        {faqs.map((faq, i) => {
+                        {dict.items.map((faq, i) => {
                             const open = i === openIndex;
                             return (
                                 <div

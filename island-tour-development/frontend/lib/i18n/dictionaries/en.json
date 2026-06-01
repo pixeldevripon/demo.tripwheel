@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "selectIsland": "Select your Island",
+    "wishlist": "Wishlist",
+    "account": "Account",
+    "menu": "Menu",
+    "close": "Close",
+    "language": "Language"
+  },
+  "footer": {
+    "tagline": "Island Tours. Built by Islanders. Copyright ©2026",
+    "explore": "Explore",
+    "legal": "Legal",
+    "support": "Support",
+    "language": "Language",
+    "currency": "Currency",
+    "links": {
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "cookies": "Cookie Policy",
+      "help": "Help Center",
+      "contact": "Contact"
+    },
+    "trust": {
+      "secure": "Secure booking",
+      "cancellation": "Free cancellation on most tours",
+      "experts": "Local experts"
+    }
+  },
+  "common": {
+    "popular": "Popular",
+    "search": "Search",
+    "viewAll": "View all",
+    "readMore": "Read more"
+  },
+  "home": {
+    "hero": {
+      "title": "We didn't discover the Caribbean. We grew up in it.",
+      "subtitle": "Chosen by locals. Made for travelers.",
+      "searchPlaceholder": "Which Island?",
+      "popular": "Popular"
+    },
+    "trust": [
+      { "title": "Pay as little as 20% today", "body": "Secure your spot now, pay the rest later" },
+      { "title": "Plans change. No problem", "body": "Most tours fully refundable — cancel up to 24h before" },
+      { "title": "Help when you need it", "body": "Chat 24/7 · WhatsApp anytime" }
+    ],
+    "experiences": {
+      "title": "Top island experiences",
+      "cards": {
+        "sunsetCruise": "Sunset Cruise",
+        "catamaranTrip": "Catamaran Trip",
+        "buggyTour": "Buggy Tour",
+        "snorkeling": "Snorkeling",
+        "dolphin": "Dolphin Encounters"
+      }
+    },
+    "explore": {
+      "title": "Explore our islands",
+      "tours": "tours"
+    },
+    "editorial": {
+      "titleLine1": "One island",
+      "titleLine2": "Endless adventures",
+      "body": "We grew up on this island. These are the tours we'd book for our own friends.",
+      "cta": "Explore Curaçao",
+      "categories": {
+        "buggy": "Buggy Tours",
+        "snorkel": "Snorkel Trips",
+        "catamaran": "Catamaran Trips"
+      }
+    },
+    "faq": {
+      "title": "Need help before booking?",
+      "subtitle": "We're locals. We grew up here, we know these tours, and we want you to have the best time on these islands.",
+      "whatsapp": "Chat on WhatsApp",
+      "guarantees": [
+        "Free cancellation — no questions asked",
+        "Reserve from 20% · pay the rest later",
+        "Confirmed in seconds",
+        "Safe & secure checkout"
+      ],
+      "items": [
+        { "q": "Can I cancel if my plans change?", "a": "Most tours can be cancelled up to 24h before for a full refund. No forms, just message us." },
+        { "q": "Do I have to pay in full now?", "a": "No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date." },
+        { "q": "Who is behind Island Tours?", "a": "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted." },
+        { "q": "What if my tour gets cancelled?", "a": "If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked." },
+        { "q": "Not sure which tour? We'll help.", "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations." }
+      ]
+    }
+  }
+}

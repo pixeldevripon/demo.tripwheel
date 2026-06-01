@@ -7,30 +7,42 @@ import Autoplay from 'embla-carousel-autoplay';
 import { Play } from 'lucide-react';
 import { Reveal } from './reveal';
 
+type CardKey =
+    | 'sunsetCruise'
+    | 'catamaranTrip'
+    | 'buggyTour'
+    | 'snorkeling'
+    | 'dolphin';
+
 type Card = {
-    title: string;
+    key: CardKey;
     image: string | null;
     video: string | null;
 };
 
+type ExperiencesDict = {
+    title: string;
+    cards: Record<CardKey, string>;
+};
+
 const cards: Card[] = [
     {
-        title: 'Sunset Cruise',
+        key: 'sunsetCruise',
         image: '/images/home-page/experiences/sunset-cruise.jpg',
         video: '/videos/experiences/sunset-cruise.mp4',
     },
     {
-        title: 'Catamaran Trip',
+        key: 'catamaranTrip',
         image: '/images/home-page/experiences/catamaran-trip.jpg',
         video: '/videos/experiences/catamaran-trip.mp4',
     },
     {
-        title: 'Buggy Tour',
+        key: 'buggyTour',
         image: '/images/home-page/experiences/buggy-tour.jpg',
         video: '/videos/experiences/buggy-tour.mp4',
     },
-    { title: 'Snorkeling', image: null, video: null },
-    { title: 'Dolphin Encounters', image: null, video: null },
+    { key: 'snorkeling', image: null, video: null },
+    { key: 'dolphin', image: null, video: null },
 ];
 
 const REAL = cards.length;
@@ -44,7 +56,7 @@ const GAP = 24;
 const H_MAX = 403;
 const H_MIN = 333;
 
-export function TopExperiences() {
+export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
     const autoplay = useRef(
         Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
     );
@@ -107,7 +119,7 @@ export function TopExperiences() {
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-10'>
                     <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center'>
-                        Top island experiences
+                        {dict.title}
                     </h2>
 
                     {/* Carousel */}
@@ -116,8 +128,9 @@ export function TopExperiences() {
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
                                 const isPlaying = playing === i && Boolean(card.video);
+                                const title = dict.cards[card.key];
                                 return (
-                                    <div key={`${card.title}-${i}`} className='shrink-0 w-55'>
+                                    <div key={`${card.key}-${i}`} className='shrink-0 w-55'>
                                         <div
                                             className='relative w-full overflow-hidden rounded-it-lg'
                                             style={{ height: H_MIN }}
@@ -138,7 +151,7 @@ export function TopExperiences() {
                                                     {hasMedia ? (
                                                         <Image
                                                             src={card.image as string}
-                                                            alt={card.title}
+                                                            alt={title}
                                                             fill
                                                             sizes='220px'
                                                             className='object-cover'
@@ -150,7 +163,7 @@ export function TopExperiences() {
                                                     {card.video ? (
                                                         <button
                                                             type='button'
-                                                            aria-label={`Play ${card.title} video`}
+                                                            aria-label={`Play ${title} video`}
                                                             onClick={() => handlePlay(i)}
                                                             className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'
                                                         >
@@ -168,7 +181,7 @@ export function TopExperiences() {
                                                             hasMedia ? 'text-it-white' : 'text-it-heading',
                                                         ].join(' ')}
                                                     >
-                                                        {card.title}
+                                                        {title}
                                                     </p>
                                                 </>
                                             )}
