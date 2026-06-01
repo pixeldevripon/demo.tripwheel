@@ -67,7 +67,7 @@ export function EditorialBanner() {
                                 animate='rest'
                                 whileHover='hover'
                                 whileTap='tap'
-                                variants={{ rest: { scale: 1 }, hover: { scale: 1.03 }, tap: { scale: 0.97 } }}
+                                variants={{ rest: { scale: 1 }, tap: { scale: 0.97 } }}
                                 transition={{ type: 'spring', stiffness: 400, damping: 18 }}
                             >
                                 <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>

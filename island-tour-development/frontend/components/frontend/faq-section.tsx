@@ -101,7 +101,7 @@ export function FaqSection() {
                                     <motion.a
                                         href='#'
                                         className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-[19px] no-underline'
-                                        whileHover={{ scale: 1.03 }}
+                                        whileHover={{ scale: 1.01 }}
                                         whileTap={{ scale: 0.97 }}
                                         transition={{ type: 'spring', stiffness: 400, damping: 18 }}
                                     >

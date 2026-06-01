@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { Reveal } from './reveal';
 
 type Island = {
@@ -11,10 +11,22 @@ type Island = {
 };
 
 const islands: Island[] = [
-    { name: 'Curaçao', tours: 42, image: '/images/home-page/islands/curacao.jpg' },
+    {
+        name: 'Curaçao',
+        tours: 42,
+        image: '/images/home-page/islands/curacao.jpg',
+    },
     { name: 'Aruba', tours: 42, image: '/images/home-page/islands/aruba.jpg' },
-    { name: 'Sint Maarten', tours: 42, image: '/images/home-page/islands/sint-maarten.jpg' },
-    { name: 'Saint Lucia', tours: 42, image: '/images/home-page/islands/saint-lucia.jpg' },
+    {
+        name: 'Sint Maarten',
+        tours: 42,
+        image: '/images/home-page/islands/sint-maarten.jpg',
+    },
+    {
+        name: 'Saint Lucia',
+        tours: 42,
+        image: '/images/home-page/islands/saint-lucia.jpg',
+    },
 ];
 
 export function ExploreIslands() {
@@ -28,15 +40,16 @@ export function ExploreIslands() {
 
                     {/* Peek scroller — bleeds to the right container edge */}
                     <div className='it-scroll-x gap-6 pb-1 -mr-4 md:-mr-8 xl:-mr-30'>
-                        {islands.map((island) => (
+                        {islands.map(island => (
                             <motion.a
                                 key={island.name}
                                 href='#'
-                                whileHover={{ y: -6 }}
-                                whileTap={{ scale: 0.98 }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                                className='group relative block h-90.25 w-96 shrink-0 overflow-hidden rounded-it-lg bg-it-border'
-                            >
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 300,
+                                    damping: 20,
+                                }}
+                                className='group relative block h-90.25 w-96 shrink-0 overflow-hidden rounded-it-lg bg-it-border'>
                                 <Image
                                     src={island.image}
                                     alt={island.name}
@@ -64,3 +77,4 @@ export function ExploreIslands() {
         </section>
     );
 }
+
