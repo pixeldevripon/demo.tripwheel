@@ -1,4 +1,8 @@
+'use client';
+
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { Reveal } from './reveal';
 
 type Island = {
     name: string;
@@ -17,7 +21,7 @@ export function ExploreIslands() {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <div className='flex flex-col gap-12'>
+                <Reveal className='flex flex-col gap-12'>
                     <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         Explore our islands
                     </h2>
@@ -25,9 +29,12 @@ export function ExploreIslands() {
                     {/* Peek scroller — bleeds to the right container edge */}
                     <div className='it-scroll-x gap-6 pb-1 -mr-4 md:-mr-8 xl:-mr-30'>
                         {islands.map((island) => (
-                            <a
+                            <motion.a
                                 key={island.name}
                                 href='#'
+                                whileHover={{ y: -6 }}
+                                whileTap={{ scale: 0.98 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                                 className='group relative block h-90.25 w-96 shrink-0 overflow-hidden rounded-it-lg bg-it-border'
                             >
                                 <Image
@@ -49,10 +56,10 @@ export function ExploreIslands() {
                                         {island.tours} tours
                                     </span>
                                 </div>
-                            </a>
+                            </motion.a>
                         ))}
                     </div>
-                </div>
+                </Reveal>
             </div>
         </section>
     );

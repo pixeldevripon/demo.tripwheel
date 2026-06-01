@@ -1,64 +1,122 @@
-import { ArrowRight } from 'lucide-react';
+'use client';
 
-const featuredTours = [
-    { title: 'Sunset Cruise',  duration: '3h', price: 65 },
-    { title: 'Klein Curaçao', duration: '8h', price: 89 },
-    { title: 'Buggy Tour',     duration: '4h', price: 75 },
+import { useState } from 'react';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
+import { Reveal } from './reveal';
+
+type CategoryCard = {
+    title: string;
+    image: string;
+    position: string; // fan offset + rotation (mobile base, lg override)
+    z: number;
+};
+
+const categories: CategoryCard[] = [
+    {
+        title: 'Buggy Tours',
+        image: '/images/home-page/categories/buggy-tours.jpg',
+        position: 'left-0 top-2 -rotate-[8deg]',
+        z: 10,
+    },
+    {
+        title: 'Snorkel Trips',
+        image: '/images/home-page/categories/snorkel-trips.jpg',
+        position: 'left-20 top-0 lg:left-35',
+        z: 20,
+    },
+    {
+        title: 'Catamaran Trips',
+        image: '/images/home-page/categories/catamaran-trips.jpg',
+        position: 'left-32 top-2 rotate-[8deg] lg:left-56.5',
+        z: 10,
+    },
 ];
 
 export function EditorialBanner() {
+    // Index of the card lifted to the front — defaults to the middle card
+    const [topIndex, setTopIndex] = useState(1);
+
     return (
-        <section className='it-section bg-it-bg'>
+        <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <div className='rounded-it-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[480px]'>
-                    {/* Left — editorial copy */}
-                    <div className='bg-it-ink flex flex-col justify-between p-10 lg:p-14'>
-                        <div>
-                            <h2 className='m-0 text-[clamp(2rem,4vw,2.75rem)] font-semibold text-white tracking-[-0.03em] leading-tight'>
-                                One island.
-                                <br />
-                                Endless adventures.
-                            </h2>
-                            <p className='mt-5 text-base text-white/65 leading-relaxed max-w-sm'>
-                                We grew up on these islands. These are the tours we&apos;d book for our own friends.
-                            </p>
+                <Reveal className='relative lg:h-[452px]'>
+                    {/* Backdrop — solid orange on mobile, orange→white fade on desktop. Clipped so cards overflow it. */}
+                    <div className='absolute inset-0 overflow-hidden rounded-3xl bg-it-white [background-image:var(--it-editorial-orange)] lg:[background-image:var(--it-editorial-gradient)]' />
+
+                    {/* Mobile/tablet: stacked column · Desktop: full-height positioning context for the absolute copy + fan */}
+                    <div className='relative flex flex-col gap-12 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:h-full lg:p-0'>
+                        {/* Editorial copy */}
+                        <div className='flex flex-col gap-6 sm:gap-8 lg:absolute lg:inset-y-16 lg:left-16 lg:w-115 lg:justify-between lg:gap-0'>
+                            <div className='flex flex-col gap-4'>
+                                <h2 className='m-0 flex flex-col gap-2 font-medium text-[32px] leading-[1.2] tracking-[-0.012em] text-it-white sm:text-[40px]'>
+                                    <span>One island</span>
+                                    <span>Endless adventures</span>
+                                </h2>
+                                <p className='m-0 max-w-[441px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white/80'>
+                                    We grew up on this island. These are the tours we&rsquo;d book for
+                                    our own friends.
+                                </p>
+                            </div>
+
+                            <motion.button
+                                type='button'
+                                className='flex w-full items-center justify-center gap-2.5 rounded-it-full bg-it-white px-12 py-[19px] cursor-pointer border-none sm:w-auto lg:w-full'
+                                initial='rest'
+                                animate='rest'
+                                whileHover='hover'
+                                whileTap='tap'
+                                variants={{ rest: { scale: 1 }, hover: { scale: 1.03 }, tap: { scale: 0.97 } }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                            >
+                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                                    Explore Curaçao
+                                </span>
+                                <motion.span
+                                    className='inline-flex'
+                                    variants={{ rest: { x: 0 }, hover: { x: 4 }, tap: { x: 8 } }}
+                                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                                >
+                                    <ArrowRight className='size-6 text-it-primary' strokeWidth={1.5} />
+                                </motion.span>
+                            </motion.button>
                         </div>
 
-                        <button className='mt-8 self-start flex items-center gap-2 px-6 py-3 rounded-it-full bg-it-primary hover:bg-it-primary-hover text-white text-sm font-medium transition-colors border-none cursor-pointer'>
-                            Explore Curaçao
-                            <ArrowRight size={15} />
-                        </button>
+                        {/* Category cards — fanned deck (2nd row on mobile, right side on desktop). Click brings a card to the front. */}
+                        <div className='relative mx-auto h-64 w-72 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-100 lg:w-130 lg:-translate-y-1/2'>
+                            {categories.map((card, i) => {
+                                const isTop = i === topIndex;
+                                return (
+                                    <motion.button
+                                        key={card.title}
+                                        type='button'
+                                        aria-label={`View ${card.title}`}
+                                        aria-pressed={isTop}
+                                        onClick={() => setTopIndex(i)}
+                                        style={{ zIndex: isTop ? 30 : card.z }}
+                                        animate={{ scale: isTop ? 1.04 : 1 }}
+                                        whileHover={{ scale: isTop ? 1.06 : 1.03 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                                        className={`absolute h-56 w-40 overflow-hidden rounded-[15px] border-none bg-it-border p-0 shadow-it-md cursor-pointer lg:h-100 lg:w-71.25 ${card.position}`}
+                                    >
+                                        <Image
+                                            src={card.image}
+                                            alt={card.title}
+                                            fill
+                                            sizes='(max-width: 1024px) 160px, 285px'
+                                            className='object-cover'
+                                        />
+                                        <span className='absolute inset-x-0 bottom-0 flex items-center justify-center bg-it-heading/30 py-4 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white lg:py-5 lg:text-[20px]'>
+                                            {card.title}
+                                        </span>
+                                    </motion.button>
+                                );
+                            })}
+                        </div>
                     </div>
-
-                    {/* Right — tour list */}
-                    <div className='bg-it-white flex flex-col justify-center p-10 lg:p-12 gap-4'>
-                        <p className='m-0 mb-2 text-xs font-semibold text-it-ink-muted tracking-widest uppercase'>
-                            Our picks
-                        </p>
-                        {featuredTours.map((tour, i) => (
-                            <div
-                                key={tour.title}
-                                className={[
-                                    'flex items-center justify-between py-4 cursor-pointer group',
-                                    i < featuredTours.length - 1 ? 'border-b border-it-border' : '',
-                                ].join(' ')}
-                            >
-                                <div>
-                                    <p className='m-0 text-lg font-semibold text-it-ink tracking-tight group-hover:text-it-primary transition-colors'>
-                                        {tour.title}
-                                    </p>
-                                    <p className='m-0 mt-0.5 text-sm text-it-ink-muted'>{tour.duration}</p>
-                                </div>
-                                <div className='flex items-center gap-3'>
-                                    <span className='text-base font-bold text-it-ink'>${tour.price}</span>
-                                    <div className='size-8 rounded-it-full border border-it-border flex items-center justify-center group-hover:bg-it-primary group-hover:border-it-primary transition-colors'>
-                                        <ArrowRight size={14} className='text-it-ink-muted group-hover:text-white transition-colors' />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                </Reveal>
             </div>
         </section>
     );

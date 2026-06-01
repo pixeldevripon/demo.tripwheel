@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { Reveal } from './reveal';
 
 const items = [
     {
@@ -23,9 +24,10 @@ export function TrustStrip() {
         <section className='bg-it-white pt-32.5'>
             <div className='it-container'>
                 <div className='flex flex-col md:flex-row md:items-start gap-12 md:gap-6'>
-                    {items.map((item) => (
-                        <div
+                    {items.map((item, i) => (
+                        <Reveal
                             key={item.title}
+                            delay={i * 0.12}
                             className='flex-1 flex flex-col items-center gap-6 text-center'
                         >
                             <Image
@@ -43,7 +45,7 @@ export function TrustStrip() {
                                     {item.body}
                                 </p>
                             </div>
-                        </div>
+                        </Reveal>
                     ))}
                 </div>
             </div>

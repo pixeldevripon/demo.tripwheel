@@ -1,3 +1,8 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import { Reveal } from './reveal';
+
 type Review = {
     quote: string;
     name: string;
@@ -49,7 +54,7 @@ export function Testimonials() {
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
-                <div className='flex flex-col items-center gap-12'>
+                <Reveal className='flex flex-col items-center gap-12'>
                     {/* Trustpilot summary */}
                     <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-2'>
                         <Stars className='text-it-green' />
@@ -66,9 +71,11 @@ export function Testimonials() {
                     {/* Review cards */}
                     <div className='grid w-full grid-cols-1 gap-6 md:grid-cols-3'>
                         {reviews.map((r, i) => (
-                            <article
+                            <motion.article
                                 key={i}
-                                className='flex flex-col justify-between gap-10 rounded-it-lg bg-it-white p-6 md:h-[337px] md:gap-0'
+                                whileHover={{ y: -6 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                className='flex flex-col justify-between gap-10 rounded-it-lg bg-it-white p-6 md:h-84.25 md:gap-0'
                             >
                                 <div className='flex flex-col gap-6'>
                                     <Stars className='text-it-primary' />
@@ -82,7 +89,7 @@ export function Testimonials() {
                                         <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {r.name}
                                         </span>
-                                        <span className='size-[5px] rounded-full bg-it-heading' />
+                                        <span className='size-1.25 rounded-full bg-it-heading' />
                                         <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {r.country}
                                         </span>
@@ -91,10 +98,10 @@ export function Testimonials() {
                                         {r.trip}
                                     </span>
                                 </div>
-                            </article>
+                            </motion.article>
                         ))}
                     </div>
-                </div>
+                </Reveal>
             </div>
         </section>
     );

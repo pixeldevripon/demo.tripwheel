@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 export function Hero() {
     return (
@@ -37,18 +38,30 @@ export function Hero() {
                                     className='flex-1 border-none outline-none bg-transparent text-base tracking-[-0.012em] text-it-ink placeholder:text-it-hero-text'
                                 />
                             </div>
-                            <button
+                            <motion.button
                                 aria-label='Search'
                                 className='shrink-0 flex items-center justify-center size-10 md:size-12.5 rounded-it-full bg-it-primary hover:bg-it-primary-hover transition-colors border-none cursor-pointer'
+                                initial='rest'
+                                whileHover='hover'
+                                whileTap='tap'
+                                animate='rest'
+                                variants={{ rest: { scale: 1 }, hover: { scale: 1.06 }, tap: { scale: 0.92 } }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                             >
-                                <Image
-                                    src='/icons/hero-arrow-right.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-5 md:size-6'
-                                />
-                            </button>
+                                <motion.span
+                                    className='inline-flex'
+                                    variants={{ rest: { x: 0 }, hover: { x: 3 }, tap: { x: 7 } }}
+                                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                                >
+                                    <Image
+                                        src='/icons/hero-arrow-right.svg'
+                                        alt=''
+                                        width={24}
+                                        height={24}
+                                        className='size-5 md:size-6'
+                                    />
+                                </motion.span>
+                            </motion.button>
                         </div>
 
                         {/* Popular */}

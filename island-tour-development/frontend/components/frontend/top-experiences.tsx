@@ -5,6 +5,7 @@ import Image from 'next/image';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { Play } from 'lucide-react';
+import { Reveal } from './reveal';
 
 type Card = {
     title: string;
@@ -104,7 +105,7 @@ export function TopExperiences() {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <div className='flex flex-col items-center gap-10'>
+                <Reveal className='flex flex-col items-center gap-10'>
                     <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center'>
                         Top island experiences
                     </h2>
@@ -193,7 +194,7 @@ export function TopExperiences() {
                             />
                         ))}
                     </div>
-                </div>
+                </Reveal>
             </div>
         </section>
     );
