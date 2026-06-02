@@ -5,7 +5,9 @@
     "account": "Account",
     "menu": "Menu",
     "close": "Sluiten",
-    "language": "Taal"
+    "language": "Taal",
+    "categories": "Categorieën",
+    "search": "Zoeken naar"
   },
   "footer": {
     "tagline": "Island Tours. Gemaakt door eilandbewoners. Copyright ©2026",

@@ -5,7 +5,9 @@
     "account": "Compte",
     "menu": "Menu",
     "close": "Fermer",
-    "language": "Langue"
+    "language": "Langue",
+    "categories": "Catégories",
+    "search": "Rechercher"
   },
   "footer": {
     "tagline": "Island Tours. Créé par des insulaires. Copyright ©2026",

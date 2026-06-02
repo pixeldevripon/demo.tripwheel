@@ -5,7 +5,9 @@
     "account": "账户",
     "menu": "菜单",
     "close": "关闭",
-    "language": "语言"
+    "language": "语言",
+    "categories": "分类",
+    "search": "搜索"
   },
   "footer": {
     "tagline": "Island Tours。由岛民打造。版权所有 ©2026",

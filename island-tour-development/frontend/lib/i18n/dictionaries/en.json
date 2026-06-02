@@ -5,7 +5,9 @@
     "account": "Account",
     "menu": "Menu",
     "close": "Close",
-    "language": "Language"
+    "language": "Language",
+    "categories": "Categories",
+    "search": "Search for"
   },
   "footer": {
     "tagline": "Island Tours. Built by Islanders. Copyright ©2026",
