@@ -41,9 +41,18 @@
       "popular": "Beliebt"
     },
     "trust": [
-      { "title": "Zahle heute schon ab 20%", "body": "Sichere dir jetzt deinen Platz, zahle den Rest später" },
-      { "title": "Pläne ändern sich. Kein Problem", "body": "Die meisten Touren sind voll erstattbar — Stornierung bis 24 Std. vorher" },
-      { "title": "Hilfe, wenn du sie brauchst", "body": "24/7 Chat · WhatsApp jederzeit" }
+      {
+        "title": "Zahle heute schon ab 20%",
+        "body": "Sichere dir jetzt deinen Platz, zahle den Rest später"
+      },
+      {
+        "title": "Pläne ändern sich. Kein Problem",
+        "body": "Die meisten Touren sind voll erstattbar — Stornierung bis 24 Std. vorher"
+      },
+      {
+        "title": "Hilfe, wenn du sie brauchst",
+        "body": "24/7 Chat · WhatsApp jederzeit"
+      }
     ],
     "experiences": {
       "title": "Top-Erlebnisse auf der Insel",
@@ -57,7 +66,8 @@
     },
     "explore": {
       "title": "Entdecke unsere Inseln",
-      "tours": "Touren"
+      "tours": "Touren",
+      "seeMore": "Mehr Inseln ansehen"
     },
     "editorial": {
       "titleLine1": "Eine Insel",
@@ -81,11 +91,26 @@
         "Sicherer Checkout"
       ],
       "items": [
-        { "q": "Kann ich stornieren, wenn sich meine Pläne ändern?", "a": "Die meisten Touren können bis 24 Std. vorher für eine volle Rückerstattung storniert werden. Keine Formulare, schreib uns einfach." },
-        { "q": "Muss ich jetzt den vollen Betrag zahlen?", "a": "Nein — du kannst deinen Platz mit nur 20% Anzahlung sichern und den Restbetrag näher am Tourdatum zahlen." },
-        { "q": "Wer steckt hinter Island Tours?", "a": "Wir sind ein Team von Inselbewohnern, die auf Curaçao, Aruba und Sint Maarten aufgewachsen sind. Jede Tour haben wir persönlich geprüft." },
-        { "q": "Was, wenn meine Tour abgesagt wird?", "a": "Wenn eine Tour vom Anbieter abgesagt wird, erhältst du innerhalb von 24 Stunden eine volle Rückerstattung — ohne Wenn und Aber." },
-        { "q": "Unsicher, welche Tour? Wir helfen.", "a": "Chatte jederzeit mit uns auf WhatsApp. Sag uns, wonach du suchst, und wir geben dir ehrliche, lokale Empfehlungen." }
+        {
+          "q": "Kann ich stornieren, wenn sich meine Pläne ändern?",
+          "a": "Die meisten Touren können bis 24 Std. vorher für eine volle Rückerstattung storniert werden. Keine Formulare, schreib uns einfach."
+        },
+        {
+          "q": "Muss ich jetzt den vollen Betrag zahlen?",
+          "a": "Nein — du kannst deinen Platz mit nur 20% Anzahlung sichern und den Restbetrag näher am Tourdatum zahlen."
+        },
+        {
+          "q": "Wer steckt hinter Island Tours?",
+          "a": "Wir sind ein Team von Inselbewohnern, die auf Curaçao, Aruba und Sint Maarten aufgewachsen sind. Jede Tour haben wir persönlich geprüft."
+        },
+        {
+          "q": "Was, wenn meine Tour abgesagt wird?",
+          "a": "Wenn eine Tour vom Anbieter abgesagt wird, erhältst du innerhalb von 24 Stunden eine volle Rückerstattung — ohne Wenn und Aber."
+        },
+        {
+          "q": "Unsicher, welche Tour? Wir helfen.",
+          "a": "Chatte jederzeit mit uns auf WhatsApp. Sag uns, wonach du suchst, und wir geben dir ehrliche, lokale Empfehlungen."
+        }
       ]
     }
   }

@@ -51,16 +51,16 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-14 lg:flex-row lg:gap-[118px]'>
+                <Reveal className='flex flex-col-reverse gap-12 lg:flex-row lg:gap-[118px]'>
                     {/* Left — help, WhatsApp, guarantees, payments */}
-                    <div className='flex flex-col gap-14 lg:w-115'>
-                        <div className='flex flex-col gap-14'>
+                    <div className='flex flex-col gap-8 lg:w-115 lg:gap-14'>
+                        <div className='flex flex-col gap-8 lg:gap-14'>
                             {/* Heading */}
                             <div className='flex flex-col gap-6'>
-                                <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                                <h2 className='m-0 font-medium text-[32px] lg:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                                     {dict.title}
                                 </h2>
-                                <p className='m-0 max-w-[452px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                <p className='m-0 max-w-[452px] text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                     {dict.subtitle}
                                 </p>
                             </div>
@@ -73,11 +73,11 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                                         alt='Your local host'
                                         width={64}
                                         height={64}
-                                        className='size-16 shrink-0'
+                                        className='size-12.5 shrink-0 lg:size-16'
                                     />
                                     <motion.a
                                         href='#'
-                                        className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-[19px] no-underline'
+                                        className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px]'
                                         whileHover={{ scale: 1.01 }}
                                         whileTap={{ scale: 0.97 }}
                                         transition={{ type: 'spring', stiffness: 400, damping: 18 }}
@@ -105,7 +105,7 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                                                 height={24}
                                                 className='size-6 shrink-0'
                                             />
-                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            <span className='font-medium text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                 {g}
                                             </span>
                                         </li>
@@ -114,16 +114,16 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                             </div>
                         </div>
 
-                        {/* Payment badges */}
-                        <div className='grid w-[294px] grid-cols-4 gap-y-1'>
+                        {/* Payment badges — uniform 64×36 (mobile) / 73×40 (desktop) boxes, packed */}
+                        <div className='grid w-64 grid-cols-4 gap-y-2 lg:w-73'>
                             {payments.map((p) => (
-                                <span key={p.alt} className='flex h-10 items-center justify-center'>
+                                <span key={p.alt} className='flex items-center justify-center'>
                                     <Image
                                         src={p.src}
                                         alt={p.alt}
                                         width={73}
                                         height={40}
-                                        className='h-7 w-auto object-contain'
+                                        className='w-16 h-auto object-contain lg:w-18.25'
                                     />
                                 </span>
                             ))}
@@ -131,7 +131,7 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                     </div>
 
                     {/* Right — accordion */}
-                    <div className='flex flex-1 flex-col gap-4'>
+                    <div className='flex flex-1 flex-col gap-3 lg:gap-4'>
                         {dict.items.map((faq, i) => {
                             const open = i === openIndex;
                             return (
@@ -143,9 +143,9 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                                         type='button'
                                         aria-expanded={open}
                                         onClick={() => setOpenIndex(open ? -1 : i)}
-                                        className='flex w-full items-center justify-between gap-6 border-none bg-transparent px-6 py-5 text-left cursor-pointer'
+                                        className='flex w-full items-center justify-between gap-4 border-none bg-transparent p-2.5 text-left cursor-pointer lg:gap-6 lg:px-6 lg:py-5'
                                     >
-                                        <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        <span className='font-medium text-[16px] lg:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {faq.q}
                                         </span>
                                         <motion.span
@@ -167,9 +167,9 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                                                 transition={{ duration: 0.35, ease: [0.04, 0.62, 0.23, 0.98] }}
                                                 className='overflow-hidden'
                                             >
-                                                <div className='px-6 pb-5'>
-                                                    <div className='mb-4 h-px w-full bg-it-heading/10' />
-                                                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                <div className='px-2.5 pb-2.5 lg:px-6 lg:pb-5'>
+                                                    <div className='mb-3 h-px w-full bg-it-heading/10 lg:mb-4' />
+                                                    <p className='m-0 text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                                         {faq.a}
                                                     </p>
                                                 </div>

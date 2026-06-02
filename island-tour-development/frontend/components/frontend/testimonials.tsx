@@ -45,9 +45,10 @@ function Star({ className }: { className?: string }) {
 
 function Stars({ className }: { className?: string }) {
     return (
-        <div className={`flex items-center gap-1.5 ${className ?? ''}`}>
+        <div
+            className={`flex items-center gap-1 md:gap-1.5 ${className ?? ''}`}>
             {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className='size-5' />
+                <Star key={i} className='size-4 md:size-5' />
             ))}
         </div>
     );
@@ -57,47 +58,47 @@ export function Testimonials() {
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
-                <Reveal className='flex flex-col items-center gap-12'>
+                <Reveal className='flex flex-col items-center gap-8 md:gap-12'>
                     {/* Trustpilot summary */}
-                    <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-2'>
+                    <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2 md:gap-x-4'>
                         <Stars className='text-it-green' />
                         <p className='m-0 flex flex-wrap items-baseline gap-x-1.5'>
-                            <span className='text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                            <span className='text-[15px] md:text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                 4.8 on{' '}
                                 <span className='font-medium text-it-green'>
                                     Trustpilot
                                 </span>
                             </span>
-                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 247 reviews
                             </span>
                         </p>
                     </div>
 
-                    {/* Review cards */}
-                    <div className='grid w-full grid-cols-1 gap-6 md:grid-cols-3'>
+                    {/* Review cards — peek scroll on mobile, 3-col grid on desktop */}
+                    <div className='flex w-full snap-x gap-4 overflow-x-auto pb-1 -mr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mr-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0'>
                         {reviews.map((r, i) => (
                             <article
                                 key={i}
-                                className='flex flex-col justify-between gap-10 rounded-it-lg bg-it-white p-6 md:h-84.25 md:gap-0'>
-                                <div className='flex flex-col gap-6'>
+                                className='flex h-64.25 w-60 shrink-0 snap-start flex-col justify-between gap-10 rounded-it-lg bg-it-white p-4 md:h-84.25 md:w-auto md:gap-0 md:p-6'>
+                                <div className='flex flex-col gap-4 md:gap-6'>
                                     <Stars className='text-it-primary' />
-                                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                         {r.quote}
                                     </p>
                                 </div>
 
                                 <div className='flex flex-col gap-0.5'>
-                                    <div className='flex items-center gap-2.5'>
-                                        <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    <div className='flex items-center gap-2 md:gap-2.5'>
+                                        <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {r.name}
                                         </span>
-                                        <span className='size-1.25 rounded-full bg-it-heading' />
-                                        <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        <span className='size-1 md:size-1.25 rounded-full bg-it-heading' />
+                                        <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {r.country}
                                         </span>
                                     </div>
-                                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/40'>
+                                    <span className='text-[12px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/40'>
                                         {r.trip}
                                     </span>
                                 </div>

@@ -41,9 +41,18 @@
       "popular": "Popular"
     },
     "trust": [
-      { "title": "Pay as little as 20% today", "body": "Secure your spot now, pay the rest later" },
-      { "title": "Plans change. No problem", "body": "Most tours fully refundable — cancel up to 24h before" },
-      { "title": "Help when you need it", "body": "Chat 24/7 · WhatsApp anytime" }
+      {
+        "title": "Pay as little as 20% today",
+        "body": "Secure your spot now, pay the rest later"
+      },
+      {
+        "title": "Plans change. No problem",
+        "body": "Most tours fully refundable — cancel up to 24h before"
+      },
+      {
+        "title": "Help when you need it",
+        "body": "Chat 24/7 · WhatsApp anytime"
+      }
     ],
     "experiences": {
       "title": "Top island experiences",
@@ -57,7 +66,8 @@
     },
     "explore": {
       "title": "Explore our islands",
-      "tours": "tours"
+      "tours": "tours",
+      "seeMore": "See more islands"
     },
     "editorial": {
       "titleLine1": "One island",
@@ -81,11 +91,26 @@
         "Safe & secure checkout"
       ],
       "items": [
-        { "q": "Can I cancel if my plans change?", "a": "Most tours can be cancelled up to 24h before for a full refund. No forms, just message us." },
-        { "q": "Do I have to pay in full now?", "a": "No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date." },
-        { "q": "Who is behind Island Tours?", "a": "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted." },
-        { "q": "What if my tour gets cancelled?", "a": "If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked." },
-        { "q": "Not sure which tour? We'll help.", "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations." }
+        {
+          "q": "Can I cancel if my plans change?",
+          "a": "Most tours can be cancelled up to 24h before for a full refund. No forms, just message us."
+        },
+        {
+          "q": "Do I have to pay in full now?",
+          "a": "No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date."
+        },
+        {
+          "q": "Who is behind Island Tours?",
+          "a": "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted."
+        },
+        {
+          "q": "What if my tour gets cancelled?",
+          "a": "If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked."
+        },
+        {
+          "q": "Not sure which tour? We'll help.",
+          "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations."
+        }
       ]
     }
   }

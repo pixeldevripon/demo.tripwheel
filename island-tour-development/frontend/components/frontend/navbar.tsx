@@ -35,6 +35,29 @@ type NavDict = {
 
 const springFast = { type: 'spring', stiffness: 400, damping: 17 } as const;
 
+const dropdownMotion = {
+    initial: { opacity: 0, y: -8, scale: 0.97 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -8, scale: 0.97 },
+    transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+} as const;
+
+/** Circular flag badge — uniform across locales regardless of flag aspect ratio. */
+function Flag({ code, className = 'size-6' }: { code: Locale; className?: string }) {
+    return (
+        <span
+            className={`relative inline-block overflow-hidden rounded-full ring-1 ring-black/10 shrink-0 ${className}`}>
+            <Image
+                src={localeFlag(code)}
+                alt=''
+                fill
+                sizes='28px'
+                className='object-cover'
+            />
+        </span>
+    );
+}
+
 export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -45,6 +68,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
 
     const islandRef = useRef<HTMLDivElement>(null);
     const langRef = useRef<HTMLDivElement>(null);
+    const mobileLangRef = useRef<HTMLDivElement>(null);
 
     // Close any open dropdown when clicking outside of it.
     useEffect(() => {
@@ -53,9 +77,10 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
             if (islandRef.current && !islandRef.current.contains(target)) {
                 setIslandOpen(false);
             }
-            if (langRef.current && !langRef.current.contains(target)) {
-                setLangOpen(false);
-            }
+            const insideLang =
+                langRef.current?.contains(target) ||
+                mobileLangRef.current?.contains(target);
+            if (!insideLang) setLangOpen(false);
         }
         document.addEventListener('pointerdown', onPointerDown);
         return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -75,8 +100,29 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
         router.push(nextPath);
     }
 
+    const localeOptions = (
+        <>
+            {ALL_LOCALES.map((code) => (
+                <li key={code}>
+                    <button
+                        onClick={() => switchLocale(code)}
+                        aria-current={code === locale}
+                        className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                        <span className='flex items-center gap-2.5'>
+                            <Flag code={code} className='size-5' />
+                            <span>{LOCALE_NATIVE_LABELS[code]}</span>
+                        </span>
+                        <span className='uppercase text-xs text-it-ink-muted'>
+                            {code}
+                        </span>
+                    </button>
+                </li>
+            ))}
+        </>
+    );
+
     return (
-        <header className='fixed top-0 left-0 right-0 z-100 h-20 bg-it-white border-b border-it-border'>
+        <header className='fixed top-0 left-0 right-0 z-100 h-18 md:h-20 bg-it-white border-b border-it-border'>
             <div className='it-container h-full flex items-center justify-between'>
                 {/* ── Left: Logo + Island selector ── */}
                 <div className='flex items-center gap-12'>
@@ -87,11 +133,11 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             width={68}
                             height={50}
                             priority
-                            className='object-contain'
+                            className='h-9 w-auto object-contain md:h-12.5'
                         />
                     </Link>
 
-                    {/* Island selector */}
+                    {/* Island selector — desktop only */}
                     <div ref={islandRef} className='relative hidden md:block'>
                         <button
                             onClick={() => {
@@ -115,13 +161,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         <AnimatePresence>
                             {islandOpen && (
                                 <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                                    transition={{
-                                        duration: 0.2,
-                                        ease: [0.22, 1, 0.36, 1],
-                                    }}
+                                    {...dropdownMotion}
                                     className='absolute top-[calc(100%+12px)] left-0 min-w-45 origin-top-left bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
                                     {islands.map((island) => (
                                         <Link
@@ -138,7 +178,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                     </div>
                 </div>
 
-                {/* ── Right: Language + Wishlist + Account ── */}
+                {/* ── Desktop right: Language + Wishlist + Account ── */}
                 <div className='hidden md:flex items-center gap-6'>
                     {/* Language switcher */}
                     <div ref={langRef} className='relative'>
@@ -150,13 +190,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             aria-label={dict.language}
                             aria-expanded={langOpen}
                             className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0'>
-                            <Image
-                                src={localeFlag(locale)}
-                                alt=''
-                                width={20}
-                                height={15}
-                                className='rounded-[2px] object-cover border border-it-border shrink-0'
-                            />
+                            <Flag code={locale} />
                             <span className='text-base font-medium text-it-ink uppercase'>
                                 {locale}
                             </span>
@@ -165,36 +199,9 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         <AnimatePresence>
                             {langOpen && (
                                 <motion.ul
-                                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                                    transition={{
-                                        duration: 0.2,
-                                        ease: [0.22, 1, 0.36, 1],
-                                    }}
+                                    {...dropdownMotion}
                                     className='absolute top-[calc(100%+12px)] right-0 m-0 p-0 list-none min-w-45 origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
-                                    {ALL_LOCALES.map((code) => (
-                                        <li key={code}>
-                                            <button
-                                                onClick={() => switchLocale(code)}
-                                                aria-current={code === locale}
-                                                className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
-                                                <div className='flex items-center gap-2.5'>
-                                                    <Image
-                                                        src={localeFlag(code)}
-                                                        alt=''
-                                                        width={20}
-                                                        height={15}
-                                                        className='rounded-[2px] object-cover border border-it-border shrink-0'
-                                                    />
-                                                    <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                                                </div>
-                                                <span className='uppercase text-xs text-it-ink-muted'>
-                                                    {code}
-                                                </span>
-                                            </button>
-                                        </li>
-                                    ))}
+                                    {localeOptions}
                                 </motion.ul>
                             )}
                         </AnimatePresence>
@@ -220,44 +227,83 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         href='/login'
                         aria-label={dict.account}
                         className='flex items-center no-underline'>
-                        <span className='inline-flex'>
-                            <Image
-                                src='/icons/nav-profile.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6'
-                            />
-                        </span>
+                        <Image
+                            src='/icons/nav-profile.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
                     </Link>
                 </div>
 
-                {/* ── Mobile toggle ── */}
-                <motion.button
-                    className='md:hidden bg-transparent border-none cursor-pointer p-1 text-it-ink'
-                    whileTap={{ scale: 0.85 }}
-                    transition={springFast}
-                    aria-label={mobileOpen ? dict.close : dict.menu}
-                    onClick={() => setMobileOpen((v) => !v)}>
-                    <AnimatePresence mode='wait' initial={false}>
-                        <motion.span
-                            key={mobileOpen ? 'close' : 'open'}
-                            className='inline-flex'
-                            initial={{ rotate: -90, opacity: 0 }}
-                            animate={{ rotate: 0, opacity: 1 }}
-                            exit={{ rotate: 90, opacity: 0 }}
-                            transition={{ duration: 0.18 }}>
-                            {mobileOpen ? (
-                                <X size={22} strokeWidth={1.5} />
-                            ) : (
-                                <Menu size={22} strokeWidth={1.5} />
+                {/* ── Mobile right: Language + Account + Menu ── */}
+                <div className='flex md:hidden items-center gap-5'>
+                    {/* Language */}
+                    <div ref={mobileLangRef} className='relative'>
+                        <button
+                            onClick={() => setLangOpen((v) => !v)}
+                            aria-label={dict.language}
+                            aria-expanded={langOpen}
+                            className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'>
+                            <Flag code={locale} />
+                        </button>
+
+                        <AnimatePresence>
+                            {langOpen && (
+                                <motion.ul
+                                    {...dropdownMotion}
+                                    className='absolute top-[calc(100%+18px)] right-0 m-0 p-0 list-none min-w-48 origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
+                                    {localeOptions}
+                                </motion.ul>
                             )}
-                        </motion.span>
-                    </AnimatePresence>
-                </motion.button>
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Account */}
+                    <Link
+                        href='/login'
+                        aria-label={dict.account}
+                        className='flex items-center no-underline'>
+                        <Image
+                            src='/icons/nav-profile.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
+                    </Link>
+
+                    {/* Menu toggle */}
+                    <motion.button
+                        className='bg-transparent border-none cursor-pointer p-0 text-it-ink'
+                        whileTap={{ scale: 0.85 }}
+                        transition={springFast}
+                        aria-label={mobileOpen ? dict.close : dict.menu}
+                        onClick={() => {
+                            setLangOpen(false);
+                            setMobileOpen((v) => !v);
+                        }}>
+                        <AnimatePresence mode='wait' initial={false}>
+                            <motion.span
+                                key={mobileOpen ? 'close' : 'open'}
+                                className='inline-flex'
+                                initial={{ rotate: -90, opacity: 0 }}
+                                animate={{ rotate: 0, opacity: 1 }}
+                                exit={{ rotate: 90, opacity: 0 }}
+                                transition={{ duration: 0.18 }}>
+                                {mobileOpen ? (
+                                    <X size={24} strokeWidth={1.5} />
+                                ) : (
+                                    <Menu size={24} strokeWidth={1.5} />
+                                )}
+                            </motion.span>
+                        </AnimatePresence>
+                    </motion.button>
+                </div>
             </div>
 
-            {/* ── Mobile menu ── */}
+            {/* ── Mobile menu (islands + wishlist) ── */}
             <AnimatePresence>
                 {mobileOpen && (
                     <motion.div
@@ -268,8 +314,11 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             duration: 0.28,
                             ease: [0.04, 0.62, 0.23, 0.98],
                         }}
-                        className='absolute top-20 left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50'>
-                        <div className='border-t border-it-border px-6 py-6 flex flex-col gap-4'>
+                        className='absolute top-18 left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50 md:hidden'>
+                        <div className='border-t border-it-border px-4 py-6 flex flex-col gap-1'>
+                            <span className='px-1 pb-1 text-xs font-medium uppercase tracking-wide text-it-ink-muted'>
+                                {dict.selectIsland}
+                            </span>
                             {islands.map((island, i) => (
                                 <motion.div
                                     key={island.slug}
@@ -282,62 +331,26 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                                     <Link
                                         href={localizeHref(locale, `/${island.slug}`)}
                                         onClick={() => setMobileOpen(false)}
-                                        className='text-it-ink text-base no-underline py-1'>
+                                        className='block text-it-ink text-base no-underline py-2'>
                                         {island.name}
                                     </Link>
                                 </motion.div>
                             ))}
 
-                            <div className='h-px bg-it-border' />
+                            <div className='my-3 h-px bg-it-border' />
 
-                            {/* Language chooser */}
-                            <div className='flex flex-wrap gap-2'>
-                                {ALL_LOCALES.map((code) => (
-                                    <button
-                                        key={code}
-                                        onClick={() => switchLocale(code)}
-                                        aria-current={code === locale}
-                                        className={`flex items-center gap-2 rounded-it-full border px-3 py-1.5 text-sm cursor-pointer transition-colors ${code === locale ? 'border-it-primary text-it-primary font-medium bg-it-primary/5' : 'border-it-border text-it-ink bg-transparent'}`}>
-                                        <Image
-                                            src={localeFlag(code)}
-                                            alt=''
-                                            width={16}
-                                            height={12}
-                                            className='w-4 h-3 rounded-[2px] object-cover border border-it-border shrink-0'
-                                        />
-                                        {LOCALE_NATIVE_LABELS[code]}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className='h-px bg-it-border' />
-
-                            <div className='flex items-center gap-6'>
-                                <button
-                                    aria-label={dict.wishlist}
-                                    className='flex items-center bg-transparent border-none cursor-pointer p-0'>
-                                    <Image
-                                        src='/icons/nav-heart.svg'
-                                        alt=''
-                                        width={20}
-                                        height={20}
-                                        className='size-5'
-                                    />
-                                </button>
-                                <Link
-                                    href='/login'
-                                    aria-label={dict.account}
-                                    onClick={() => setMobileOpen(false)}
-                                    className='flex items-center no-underline'>
-                                    <Image
-                                        src='/icons/nav-profile.svg'
-                                        alt=''
-                                        width={20}
-                                        height={20}
-                                        className='size-5'
-                                    />
-                                </Link>
-                            </div>
+                            <button
+                                aria-label={dict.wishlist}
+                                className='flex items-center gap-2.5 bg-transparent border-none cursor-pointer p-0 py-2 text-it-ink'>
+                                <Image
+                                    src='/icons/nav-heart.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className='size-6'
+                                />
+                                <span className='text-base'>{dict.wishlist}</span>
+                            </button>
                         </div>
                     </motion.div>
                 )}

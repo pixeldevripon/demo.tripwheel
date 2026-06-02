@@ -41,9 +41,18 @@
       "popular": "Populair"
     },
     "trust": [
-      { "title": "Betaal vandaag al vanaf 20%", "body": "Reserveer nu je plek, betaal de rest later" },
-      { "title": "Plannen veranderen. Geen probleem", "body": "De meeste tours zijn volledig terugbetaalbaar — annuleer tot 24u van tevoren" },
-      { "title": "Hulp wanneer je het nodig hebt", "body": "24/7 chat · WhatsApp altijd bereikbaar" }
+      {
+        "title": "Betaal vandaag al vanaf 20%",
+        "body": "Reserveer nu je plek, betaal de rest later"
+      },
+      {
+        "title": "Plannen veranderen. Geen probleem",
+        "body": "De meeste tours zijn volledig terugbetaalbaar — annuleer tot 24u van tevoren"
+      },
+      {
+        "title": "Hulp wanneer je het nodig hebt",
+        "body": "24/7 chat · WhatsApp altijd bereikbaar"
+      }
     ],
     "experiences": {
       "title": "Topervaringen op het eiland",
@@ -57,7 +66,8 @@
     },
     "explore": {
       "title": "Ontdek onze eilanden",
-      "tours": "tours"
+      "tours": "tours",
+      "seeMore": "Bekijk meer eilanden"
     },
     "editorial": {
       "titleLine1": "Eén eiland",
@@ -81,11 +91,26 @@
         "Veilig en beveiligd afrekenen"
       ],
       "items": [
-        { "q": "Kan ik annuleren als mijn plannen veranderen?", "a": "De meeste tours kunnen tot 24u van tevoren worden geannuleerd voor een volledige terugbetaling. Geen formulieren, stuur ons gewoon een bericht." },
-        { "q": "Moet ik nu het volledige bedrag betalen?", "a": "Nee — je kunt je plek vastleggen met slechts 20% vooraf en het resterende bedrag dichter bij je tourdatum betalen." },
-        { "q": "Wie zit er achter Island Tours?", "a": "We zijn een team van eilandbewoners die zijn opgegroeid op Curaçao, Aruba en Sint Maarten. Elke tour is er een die we persoonlijk hebben gecontroleerd." },
-        { "q": "Wat als mijn tour wordt geannuleerd?", "a": "Als een tour door de aanbieder wordt geannuleerd, krijg je binnen 24 uur een volledige terugbetaling — geen vragen gesteld." },
-        { "q": "Niet zeker welke tour? Wij helpen.", "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen." }
+        {
+          "q": "Kan ik annuleren als mijn plannen veranderen?",
+          "a": "De meeste tours kunnen tot 24u van tevoren worden geannuleerd voor een volledige terugbetaling. Geen formulieren, stuur ons gewoon een bericht."
+        },
+        {
+          "q": "Moet ik nu het volledige bedrag betalen?",
+          "a": "Nee — je kunt je plek vastleggen met slechts 20% vooraf en het resterende bedrag dichter bij je tourdatum betalen."
+        },
+        {
+          "q": "Wie zit er achter Island Tours?",
+          "a": "We zijn een team van eilandbewoners die zijn opgegroeid op Curaçao, Aruba en Sint Maarten. Elke tour is er een die we persoonlijk hebben gecontroleerd."
+        },
+        {
+          "q": "Wat als mijn tour wordt geannuleerd?",
+          "a": "Als een tour door de aanbieder wordt geannuleerd, krijg je binnen 24 uur een volledige terugbetaling — geen vragen gesteld."
+        },
+        {
+          "q": "Niet zeker welke tour? Wij helpen.",
+          "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen."
+        }
       ]
     }
   }

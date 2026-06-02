@@ -1,10 +1,19 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import {
+    ALL_LOCALES,
+    LOCALE_COOKIE,
+    LOCALE_NATIVE_LABELS,
+    localeFlag,
+    localizeHref,
+    type Locale,
+} from '@/lib/constants/locales';
 
 const springFast = { type: 'spring', stiffness: 400, damping: 17 } as const;
 
@@ -57,18 +66,112 @@ function Selector({
 }) {
     return (
         <div className='flex flex-col gap-1.5'>
-            <span className='text-xl font-medium text-it-white'>{label}</span>
-            <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={springFast}
+            <span className='text-lg font-medium text-it-white lg:text-xl'>{label}</span>
+            <button
+                type='button'
                 className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
                 <span className='flex items-center gap-2'>
                     {icon}
-                    <span className='text-base text-it-ink'>{value}</span>
+                    <span className='text-sm text-it-ink lg:text-base'>{value}</span>
                 </span>
                 <ChevronDown size={20} strokeWidth={1.5} className='text-it-ink' />
-            </motion.button>
+            </button>
+        </div>
+    );
+}
+
+/** Interactive language selector — opens upward, switches locale (same behaviour as the navbar). */
+function LanguageSelector({ locale, label }: { locale: Locale; label: string }) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function onPointerDown(event: PointerEvent) {
+            if (ref.current && !ref.current.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        }
+        document.addEventListener('pointerdown', onPointerDown);
+        return () => document.removeEventListener('pointerdown', onPointerDown);
+    }, []);
+
+    function switchLocale(next: Locale) {
+        setOpen(false);
+        if (next === locale) return;
+        const segments = pathname.split('/');
+        segments[1] = next;
+        document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        router.push(segments.join('/') || `/${next}`);
+    }
+
+    return (
+        <div className='flex flex-col gap-1.5'>
+            <span className='text-lg font-medium text-it-white lg:text-xl'>{label}</span>
+            <div ref={ref} className='relative'>
+                <button
+                    type='button'
+                    aria-expanded={open}
+                    onClick={() => setOpen((v) => !v)}
+                    className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
+                    <span className='flex items-center gap-2'>
+                        <Image
+                            src='/icons/nav-globe.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
+                        <span className='text-sm text-it-ink lg:text-base'>
+                            {LOCALE_NATIVE_LABELS[locale]} ({locale.toUpperCase()})
+                        </span>
+                    </span>
+                    <motion.span
+                        className='inline-flex'
+                        animate={{ rotate: open ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}>
+                        <ChevronDown size={20} strokeWidth={1.5} className='text-it-ink' />
+                    </motion.span>
+                </button>
+
+                <AnimatePresence>
+                    {open && (
+                        <motion.ul
+                            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                            className='absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 m-0 list-none origin-bottom overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg'>
+                            {ALL_LOCALES.map((code) => (
+                                <li key={code}>
+                                    <button
+                                        type='button'
+                                        onClick={() => switchLocale(code)}
+                                        aria-current={code === locale}
+                                        className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                        <span className='flex items-center gap-2.5'>
+                                            <span className='relative inline-block size-5 overflow-hidden rounded-full ring-1 ring-black/10 shrink-0'>
+                                                <Image
+                                                    src={localeFlag(code)}
+                                                    alt=''
+                                                    fill
+                                                    sizes='20px'
+                                                    className='object-cover'
+                                                />
+                                            </span>
+                                            {LOCALE_NATIVE_LABELS[code]}
+                                        </span>
+                                        <span className='uppercase text-xs text-it-ink-muted'>
+                                            {code}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </motion.ul>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }
@@ -105,24 +208,24 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
 
     return (
         <footer className='bg-it-ink text-it-white'>
-            <div className='it-container py-20'>
-                {/* ── Top section: 5 columns ── */}
-                <div className='flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-8'>
+            <div className='it-container py-12 lg:py-20'>
+                {/* ── Top section: grid on mobile (Brand|Explore, Legal|Support), flex row on desktop ── */}
+                <div className='grid grid-cols-2 gap-x-8 gap-y-16 lg:flex lg:flex-row lg:justify-between lg:gap-8'>
                     {/* Brand column */}
-                    <div className='flex flex-col gap-6 max-w-52.5'>
+                    <div className='flex flex-col gap-4 max-w-52.5 lg:gap-6'>
                         <Link href={localizeHref(locale, '/')} className='inline-flex'>
                             <Image
                                 src='/logo/footer-logo.png'
                                 alt='Island Tours'
                                 width={198}
                                 height={147}
-                                className='object-contain w-40 h-auto'
+                                className='object-contain w-34 h-auto lg:w-40'
                             />
                         </Link>
-                        <p className='m-0 text-base text-it-white/55 leading-snug'>
+                        <p className='m-0 text-sm text-it-white/55 leading-snug lg:text-base'>
                             {dict.tagline}
                         </p>
-                        <div className='flex items-center gap-3'>
+                        <div className='flex items-center gap-2 lg:gap-3'>
                             {socials.map((s) => (
                                 <Link
                                     key={s.alt}
@@ -139,7 +242,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                             alt={s.alt}
                                             width={24}
                                             height={24}
-                                            className='size-6'
+                                            className='size-5 lg:size-6'
                                         />
                                     </motion.span>
                                 </Link>
@@ -147,49 +250,34 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         </div>
                     </div>
 
-                    {/* Link columns — 2-col grid on mobile (Explore+Legal, then Support),
-                        dissolves into the flex row on desktop via lg:contents */}
-                    <div className='grid grid-cols-2 gap-x-8 gap-y-12 lg:contents'>
-                        {linkColumns.map((col) => (
-                            <div key={col.title} className='flex flex-col gap-8'>
-                                <h3 className='m-0 text-xl font-medium text-it-white'>
-                                    {col.title}
-                                </h3>
-                                <ul className='list-none m-0 p-0 flex flex-col gap-3'>
-                                    {col.links.map((link) => (
-                                        <li key={link.label}>
-                                            <Link
-                                                href={localizeHref(locale, link.href)}
-                                                className='inline-block text-base text-it-white/55 hover:text-it-white no-underline transition-colors'>
-                                                <motion.span
-                                                    className='inline-block'
-                                                    whileHover={{ x: 4 }}
-                                                    transition={springFast}>
-                                                    {link.label}
-                                                </motion.span>
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
+                    {/* Link columns — grid cells on mobile, flex items on desktop */}
+                    {linkColumns.map((col) => (
+                        <div key={col.title} className='flex flex-col gap-5 lg:gap-8'>
+                            <h3 className='m-0 text-lg font-medium text-it-white lg:text-xl'>
+                                {col.title}
+                            </h3>
+                            <ul className='list-none m-0 p-0 flex flex-col gap-2 lg:gap-3'>
+                                {col.links.map((link) => (
+                                    <li key={link.label}>
+                                        <Link
+                                            href={localizeHref(locale, link.href)}
+                                            className='inline-block text-sm text-it-white/55 hover:text-it-white no-underline transition-colors lg:text-base'>
+                                            <motion.span
+                                                className='inline-block'
+                                                whileHover={{ x: 4 }}
+                                                transition={springFast}>
+                                                {link.label}
+                                            </motion.span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
 
-                    {/* Right column: selectors + payments */}
-                    <div className='flex flex-col gap-8 w-full max-w-73.5'>
-                        <Selector
-                            label={dict.language}
-                            value='English (EN)'
-                            icon={
-                                <Image
-                                    src='/icons/nav-globe.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-6'
-                                />
-                            }
-                        />
+                    {/* Right column: selectors + payments — full-width row on mobile (capped on tablet) */}
+                    <div className='col-span-2 flex flex-col gap-8 w-full max-w-md lg:max-w-73.5'>
+                        <LanguageSelector locale={locale} label={dict.language} />
                         <Selector
                             label={dict.currency}
                             value='USD ($)'
@@ -204,45 +292,39 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                             }
                         />
 
-                        {/* Payment badges — uniform 74×41 containers, Figma scale preserved */}
-                        <div className='flex flex-col gap-4'>
-                            {[paymentsRow1, paymentsRow2].map((row, i) => (
-                                <div
-                                    key={i}
-                                    className='flex items-center justify-between'>
-                                    {row.map((p) => (
-                                        <motion.span
-                                            key={p.alt}
-                                            className='inline-flex'
-                                            whileHover={{ scale: 1.1 }}
-                                            transition={springFast}>
-                                            <Image
-                                                src={p.src}
-                                                alt={p.alt}
-                                                width={74}
-                                                height={41}
-                                                className='h-10 w-auto'
-                                            />
-                                        </motion.span>
-                                    ))}
-                                </div>
+                        {/* Payment badges — uniform 64×36 (mobile) / 73×40 (desktop) boxes, packed */}
+                        <div className='grid w-64 grid-cols-4 gap-y-2 lg:w-73'>
+                            {[...paymentsRow1, ...paymentsRow2].map((p) => (
+                                <motion.span
+                                    key={p.alt}
+                                    className='flex items-center justify-center'
+                                    whileHover={{ scale: 1.1 }}
+                                    transition={springFast}>
+                                    <Image
+                                        src={p.src}
+                                        alt={p.alt}
+                                        width={74}
+                                        height={41}
+                                        className='w-16 h-auto object-contain lg:w-18.25'
+                                    />
+                                </motion.span>
                             ))}
                         </div>
                     </div>
                 </div>
 
                 {/* ── Bottom bar ── */}
-                <div className='mt-20 lg:mt-27.5'>
+                <div className='mt-14 lg:mt-27.5'>
                     <div className='h-px bg-it-white/15' />
-                    <div className='pt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2'>
+                    <div className='pt-6 flex flex-wrap items-center justify-start gap-x-6 gap-y-2 lg:justify-center'>
                         {trustItems.map((item, i) => (
                             <div key={item} className='flex items-center gap-6'>
-                                <span className='text-base text-it-white/55'>
+                                {i > 0 && (
+                                    <span className='size-1.25 shrink-0 rounded-full bg-it-ink-muted' />
+                                )}
+                                <span className='text-sm text-it-white/55 lg:text-base'>
                                     {item}
                                 </span>
-                                {i < trustItems.length - 1 && (
-                                    <span className='size-1.25 rounded-full bg-it-ink-muted' />
-                                )}
                             </div>
                         ))}
                     </div>

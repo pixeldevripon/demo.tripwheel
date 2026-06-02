@@ -41,9 +41,18 @@
       "popular": "Popular"
     },
     "trust": [
-      { "title": "Paga solo el 20% hoy", "body": "Asegura tu lugar ahora, paga el resto después" },
-      { "title": "Los planes cambian. No hay problema", "body": "La mayoría de los tours son totalmente reembolsables — cancela hasta 24h antes" },
-      { "title": "Ayuda cuando la necesites", "body": "Chat 24/7 · WhatsApp en cualquier momento" }
+      {
+        "title": "Paga solo el 20% hoy",
+        "body": "Asegura tu lugar ahora, paga el resto después"
+      },
+      {
+        "title": "Los planes cambian. No hay problema",
+        "body": "La mayoría de los tours son totalmente reembolsables — cancela hasta 24h antes"
+      },
+      {
+        "title": "Ayuda cuando la necesites",
+        "body": "Chat 24/7 · WhatsApp en cualquier momento"
+      }
     ],
     "experiences": {
       "title": "Mejores experiencias de la isla",
@@ -57,7 +66,8 @@
     },
     "explore": {
       "title": "Explora nuestras islas",
-      "tours": "tours"
+      "tours": "tours",
+      "seeMore": "Ver más islas"
     },
     "editorial": {
       "titleLine1": "Una isla",
@@ -81,11 +91,26 @@
         "Pago seguro y protegido"
       ],
       "items": [
-        { "q": "¿Puedo cancelar si cambian mis planes?", "a": "La mayoría de los tours se pueden cancelar hasta 24h antes con reembolso completo. Sin formularios, solo escríbenos." },
-        { "q": "¿Tengo que pagar todo ahora?", "a": "No — puedes asegurar tu lugar con solo el 20% por adelantado y pagar el resto más cerca de la fecha del tour." },
-        { "q": "¿Quién está detrás de Island Tours?", "a": "Somos un equipo de isleños que crecimos en Curaçao, Aruba y Sint Maarten. Cada tour ha sido revisado personalmente por nosotros." },
-        { "q": "¿Y si cancelan mi tour?", "a": "Si el operador cancela un tour, recibes un reembolso completo en 24 horas — sin preguntas." },
-        { "q": "¿No sabes qué tour elegir? Te ayudamos.", "a": "Chatea con nosotros por WhatsApp cuando quieras. Dinos qué buscas y te daremos recomendaciones locales honestas." }
+        {
+          "q": "¿Puedo cancelar si cambian mis planes?",
+          "a": "La mayoría de los tours se pueden cancelar hasta 24h antes con reembolso completo. Sin formularios, solo escríbenos."
+        },
+        {
+          "q": "¿Tengo que pagar todo ahora?",
+          "a": "No — puedes asegurar tu lugar con solo el 20% por adelantado y pagar el resto más cerca de la fecha del tour."
+        },
+        {
+          "q": "¿Quién está detrás de Island Tours?",
+          "a": "Somos un equipo de isleños que crecimos en Curaçao, Aruba y Sint Maarten. Cada tour ha sido revisado personalmente por nosotros."
+        },
+        {
+          "q": "¿Y si cancelan mi tour?",
+          "a": "Si el operador cancela un tour, recibes un reembolso completo en 24 horas — sin preguntas."
+        },
+        {
+          "q": "¿No sabes qué tour elegir? Te ayudamos.",
+          "a": "Chatea con nosotros por WhatsApp cuando quieras. Dinos qué buscas y te daremos recomendaciones locales honestas."
+        }
       ]
     }
   }

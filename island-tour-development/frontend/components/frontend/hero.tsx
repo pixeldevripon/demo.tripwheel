@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 type HeroDict = {
     title: string;
@@ -10,19 +12,26 @@ type HeroDict = {
     popular: string;
 };
 
-export function Hero({ dict }: { dict: HeroDict }) {
+// Popular destinations — island names are proper nouns; only the URL is localized.
+const popularIslands = [
+    { name: 'Curaçao', slug: 'curacao' },
+    { name: 'Aruba', slug: 'aruba' },
+    { name: 'Sint Maarten', slug: 'sint-maarten' },
+];
+
+export function Hero({ dict, locale }: { dict: HeroDict; locale: Locale }) {
     return (
-        <section className='relative h-150 flex items-center justify-center overflow-hidden bg-it-hero-bg [background-image:var(--it-hero-gradient)]'>
+        <section className='relative h-136.75 md:h-150 flex items-end justify-center overflow-hidden bg-it-hero-bg [background-image:var(--it-hero-gradient)] pb-12 md:items-center md:pb-0'>
             {/* Centered content — 841px max */}
             <div className='it-container w-full flex justify-center'>
                 <div className='flex flex-col items-center gap-10 w-full max-w-220.25'>
 
                     {/* Heading + subtitle */}
                     <div className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[28px] sm:text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
+                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
+                        <p className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
                             {dict.subtitle}
                         </p>
                     </div>
@@ -30,7 +39,7 @@ export function Hero({ dict }: { dict: HeroDict }) {
                     {/* Search block */}
                     <div className='flex flex-col items-center gap-4 w-full max-w-171.25'>
                         {/* Search bar */}
-                        <div className='flex items-center justify-between gap-2 w-full bg-it-white  rounded-it-full h-14 xs:h-16 md:h-20 pl-9 pr-3'>
+                        <div className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full h-15 md:h-20 pl-5 md:pl-9 pr-2.5 md:pr-3'>
                             <div className='flex items-center gap-2 flex-1'>
                                 <Image
                                     src='/icons/hero-location.svg'
@@ -71,10 +80,21 @@ export function Hero({ dict }: { dict: HeroDict }) {
                             </motion.button>
                         </div>
 
-                        {/* Popular */}
-                        <p className='m-0 text-base tracking-[-0.012em]'>
+                        {/* Popular — clickable destinations */}
+                        <p className='m-0 text-sm md:text-base tracking-[-0.012em] text-center'>
                             <span className='text-it-hero-text'>{dict.popular}: </span>
-                            <span className='text-it-hero-heading'>Curaçao · Aruba · Sint Maarten</span>
+                            {popularIslands.map((island, i) => (
+                                <span key={island.slug}>
+                                    <Link
+                                        href={localizeHref(locale, `/${island.slug}`)}
+                                        className='text-it-hero-heading no-underline transition-colors hover:text-it-primary'>
+                                        {island.name}
+                                    </Link>
+                                    {i < popularIslands.length - 1 && (
+                                        <span className='text-it-hero-heading'> · </span>
+                                    )}
+                                </span>
+                            ))}
                         </p>
                     </div>
                 </div>

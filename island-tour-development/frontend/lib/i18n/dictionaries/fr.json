@@ -41,9 +41,18 @@
       "popular": "Populaire"
     },
     "trust": [
-      { "title": "Payez seulement 20% aujourd'hui", "body": "Réservez votre place maintenant, payez le reste plus tard" },
-      { "title": "Les plans changent. Pas de problème", "body": "La plupart des tours sont entièrement remboursables — annulez jusqu'à 24h avant" },
-      { "title": "De l'aide quand vous en avez besoin", "body": "Chat 24h/24 · WhatsApp à tout moment" }
+      {
+        "title": "Payez seulement 20% aujourd'hui",
+        "body": "Réservez votre place maintenant, payez le reste plus tard"
+      },
+      {
+        "title": "Les plans changent. Pas de problème",
+        "body": "La plupart des tours sont entièrement remboursables — annulez jusqu'à 24h avant"
+      },
+      {
+        "title": "De l'aide quand vous en avez besoin",
+        "body": "Chat 24h/24 · WhatsApp à tout moment"
+      }
     ],
     "experiences": {
       "title": "Meilleures expériences de l'île",
@@ -57,7 +66,8 @@
     },
     "explore": {
       "title": "Explorez nos îles",
-      "tours": "tours"
+      "tours": "tours",
+      "seeMore": "Voir plus d'îles"
     },
     "editorial": {
       "titleLine1": "Une île",
@@ -81,11 +91,26 @@
         "Paiement sûr et sécurisé"
       ],
       "items": [
-        { "q": "Puis-je annuler si mes plans changent ?", "a": "La plupart des tours peuvent être annulés jusqu'à 24h avant pour un remboursement intégral. Pas de formulaires, écrivez-nous simplement." },
-        { "q": "Dois-je tout payer maintenant ?", "a": "Non — vous pouvez réserver votre place avec seulement 20% d'acompte et payer le solde plus près de la date du tour." },
-        { "q": "Qui se cache derrière Island Tours ?", "a": "Nous sommes une équipe d'insulaires qui ont grandi à Curaçao, Aruba et Sint Maarten. Chaque tour est vérifié personnellement par nos soins." },
-        { "q": "Et si mon tour est annulé ?", "a": "Si un tour est annulé par l'opérateur, vous êtes intégralement remboursé sous 24 heures — sans condition." },
-        { "q": "Vous hésitez sur le tour ? Nous aidons.", "a": "Discutez avec nous sur WhatsApp à tout moment. Dites-nous ce que vous cherchez et nous vous donnerons des recommandations locales honnêtes." }
+        {
+          "q": "Puis-je annuler si mes plans changent ?",
+          "a": "La plupart des tours peuvent être annulés jusqu'à 24h avant pour un remboursement intégral. Pas de formulaires, écrivez-nous simplement."
+        },
+        {
+          "q": "Dois-je tout payer maintenant ?",
+          "a": "Non — vous pouvez réserver votre place avec seulement 20% d'acompte et payer le solde plus près de la date du tour."
+        },
+        {
+          "q": "Qui se cache derrière Island Tours ?",
+          "a": "Nous sommes une équipe d'insulaires qui ont grandi à Curaçao, Aruba et Sint Maarten. Chaque tour est vérifié personnellement par nos soins."
+        },
+        {
+          "q": "Et si mon tour est annulé ?",
+          "a": "Si un tour est annulé par l'opérateur, vous êtes intégralement remboursé sous 24 heures — sans condition."
+        },
+        {
+          "q": "Vous hésitez sur le tour ? Nous aidons.",
+          "a": "Discutez avec nous sur WhatsApp à tout moment. Dites-nous ce que vous cherchez et nous vous donnerons des recommandations locales honnêtes."
+        }
       ]
     }
   }

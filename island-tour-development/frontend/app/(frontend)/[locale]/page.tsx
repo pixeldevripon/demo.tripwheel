@@ -1,3 +1,4 @@
+
 import { Hero } from '@/components/frontend/hero';
 import { TrustStrip } from '@/components/frontend/trust-strip';
 import { TopExperiences } from '@/components/frontend/top-experiences';
@@ -18,12 +19,12 @@ export default async function HomePage({
 
     return (
         <>
-            <Hero dict={home.hero} />
+            <Hero dict={home.hero} locale={locale as Locale} />
             <TrustStrip items={home.trust} />
             <TopExperiences dict={home.experiences} />
             {/* Testimonials are database-driven — not translated via the i18n dictionary */}
             <Testimonials />
-            <ExploreIslands dict={home.explore} />
+            <ExploreIslands dict={home.explore} locale={locale as Locale} />
             <EditorialBanner dict={home.editorial} />
             <FaqSection dict={home.faq} />
         </>
