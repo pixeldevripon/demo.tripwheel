@@ -1,13 +1,14 @@
-import { notFound } from 'next/navigation';
-import { DestinationHero } from '@/components/frontend/destination-hero';
+import { DestinationAbout } from '@/components/frontend/destination-about';
 import {
     DestinationExploreTypes,
     type ExploreType,
 } from '@/components/frontend/destination-explore-types';
-import { DestinationAbout } from '@/components/frontend/destination-about';
+import { DestinationHero } from '@/components/frontend/destination-hero';
+import { DestinationInstagram } from '@/components/frontend/destination-instagram';
+import { FaqSection } from '@/components/frontend/faq-section';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { FaqSection } from '@/components/frontend/faq-section';
+import { notFound } from 'next/navigation';
 
 // Destination display names (proper nouns — not translated, only resolved from the slug).
 const DESTINATION_NAMES: Record<string, string> = {
@@ -75,7 +76,7 @@ const EXPLORE_TYPES: ExploreType[] = [
 
 /** Prerender the known destinations so `params` is static (no request-time dynamic hole). */
 export function generateStaticParams() {
-    return Object.keys(DESTINATION_NAMES).map((destination) => ({ destination }));
+    return Object.keys(DESTINATION_NAMES).map(destination => ({ destination }));
 }
 
 /**
@@ -93,7 +94,7 @@ export default async function DestinationPage({
     const dict = await getDictionary(locale);
     const destinationName =
         DESTINATION_NAMES[destination] ??
-        destination.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     return (
         <>
@@ -109,6 +110,7 @@ export default async function DestinationPage({
                 destinationSlug={destination}
                 categories={EXPLORE_TYPES}
             />
+            <DestinationInstagram dict={dict.destination.instagram} />
 
             <FaqSection dict={dict.home.faq} />
             <DestinationAbout
