@@ -1,3 +1,4 @@
+import { cacheLife } from 'next/cache';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 
@@ -22,5 +23,11 @@ const dictionaries = {
 /** Shape of a dictionary — inferred from the English (canonical) file. */
 export type Dictionary = Awaited<ReturnType<(typeof dictionaries)['en']>>;
 
-export const getDictionary = async (locale: Locale): Promise<Dictionary> =>
-    (dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE])();
+export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
+    'use cache';
+    // Translation JSON is static per locale — cache indefinitely (locale is the key).
+    // Keeps the dictionary out of the request-time "uncached data" path so the
+    // layout/footer prerender without a Suspense boundary (Cache Components).
+    cacheLife('max');
+    return (dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE])();
+};

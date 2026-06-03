@@ -87,15 +87,13 @@
       "subtitle": "We're locals. We grew up here, we know these tours, and we want you to have the best time on these islands.",
       "whatsapp": "Chat on WhatsApp",
       "guarantees": [
-        "Free cancellation — no questions asked",
-        "Reserve from 20% · pay the rest later",
-        "Confirmed in seconds",
-        "Safe & secure checkout"
+        "Free cancellation on most tours, no forms",
+        "Pay only 20% today, the rest later"
       ],
       "items": [
         {
           "q": "Can I cancel if my plans change?",
-          "a": "Most tours can be cancelled up to 24h before for a full refund. No forms, just message us."
+          "a": "Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email."
         },
         {
           "q": "Do I have to pay in full now?",
@@ -114,6 +112,19 @@
           "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "tours & activities",
+      "subtitle": "Tours picked by locals who know every reef, route, and sunset spot",
+      "searchPlaceholder": "Search tours or activities",
+      "selectDate": "Select date",
+      "popularLabel": "Popular"
+    },
+    "exploreTypes": {
+      "title": "Explore by type",
+      "tours": "tours"
     }
   }
 }

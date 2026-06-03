@@ -87,15 +87,13 @@
       "subtitle": "Somos locales. Crecimos aquí, conocemos estos tours y queremos que disfrutes al máximo de estas islas.",
       "whatsapp": "Chatea por WhatsApp",
       "guarantees": [
-        "Cancelación gratuita — sin preguntas",
-        "Reserva desde el 20% · paga el resto después",
-        "Confirmado en segundos",
-        "Pago seguro y protegido"
+        "Cancelación gratuita en la mayoría de los tours, sin formularios",
+        "Paga solo el 20% hoy, el resto después"
       ],
       "items": [
         {
           "q": "¿Puedo cancelar si cambian mis planes?",
-          "a": "La mayoría de los tours se pueden cancelar hasta 24h antes con reembolso completo. Sin formularios, solo escríbenos."
+          "a": "La mayoría de los tours se pueden cancelar hasta 24 h antes del inicio con reembolso completo. Sin formularios ni preguntas. Cancela directamente desde tu correo de confirmación."
         },
         {
           "q": "¿Tengo que pagar todo ahora?",
@@ -114,6 +112,19 @@
           "a": "Chatea con nosotros por WhatsApp cuando quieras. Dinos qué buscas y te daremos recomendaciones locales honestas."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "tours y actividades",
+      "subtitle": "Tours elegidos por locales que conocen cada arrecife, ruta y rincón al atardecer",
+      "searchPlaceholder": "Buscar tours o actividades",
+      "selectDate": "Seleccionar fecha",
+      "popularLabel": "Popular"
+    },
+    "exploreTypes": {
+      "title": "Explora por tipo",
+      "tours": "tours"
     }
   }
 }

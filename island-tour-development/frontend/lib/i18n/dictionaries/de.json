@@ -87,15 +87,13 @@
       "subtitle": "Wir sind Einheimische. Wir sind hier aufgewachsen, wir kennen diese Touren und möchten, dass du die beste Zeit auf diesen Inseln hast.",
       "whatsapp": "Auf WhatsApp chatten",
       "guarantees": [
-        "Kostenlose Stornierung — ohne Wenn und Aber",
-        "Ab 20% reservieren · den Rest später zahlen",
-        "In Sekunden bestätigt",
-        "Sicherer Checkout"
+        "Kostenlose Stornierung bei den meisten Touren, ohne Formulare",
+        "Zahle heute nur 20%, den Rest später"
       ],
       "items": [
         {
           "q": "Kann ich stornieren, wenn sich meine Pläne ändern?",
-          "a": "Die meisten Touren können bis 24 Std. vorher für eine volle Rückerstattung storniert werden. Keine Formulare, schreib uns einfach."
+          "a": "Die meisten Touren können bis 24 Stunden vor Beginn kostenlos storniert werden – mit voller Rückerstattung. Keine Formulare, keine Rückfragen. Storniere direkt aus deiner Bestätigungs-E-Mail."
         },
         {
           "q": "Muss ich jetzt den vollen Betrag zahlen?",
@@ -114,6 +112,19 @@
           "a": "Chatte jederzeit mit uns auf WhatsApp. Sag uns, wonach du suchst, und wir geben dir ehrliche, lokale Empfehlungen."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "Touren & Aktivitäten",
+      "subtitle": "Touren ausgewählt von Einheimischen, die jedes Riff, jede Route und jeden Sonnenuntergang kennen",
+      "searchPlaceholder": "Touren oder Aktivitäten suchen",
+      "selectDate": "Datum wählen",
+      "popularLabel": "Beliebt"
+    },
+    "exploreTypes": {
+      "title": "Nach Typ entdecken",
+      "tours": "Touren"
     }
   }
 }

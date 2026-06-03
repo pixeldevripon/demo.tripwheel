@@ -87,15 +87,13 @@
       "subtitle": "Wij zijn locals. We zijn hier opgegroeid, we kennen deze tours en we willen dat je de beste tijd hebt op deze eilanden.",
       "whatsapp": "Chat op WhatsApp",
       "guarantees": [
-        "Gratis annulering — geen vragen gesteld",
-        "Reserveer vanaf 20% · betaal de rest later",
-        "Binnen enkele seconden bevestigd",
-        "Veilig en beveiligd afrekenen"
+        "Gratis annuleren bij de meeste tours, geen formulieren",
+        "Betaal vandaag slechts 20%, de rest later"
       ],
       "items": [
         {
           "q": "Kan ik annuleren als mijn plannen veranderen?",
-          "a": "De meeste tours kunnen tot 24u van tevoren worden geannuleerd voor een volledige terugbetaling. Geen formulieren, stuur ons gewoon een bericht."
+          "a": "De meeste tours kunnen tot 24 uur voor aanvang kosteloos worden geannuleerd, met volledige terugbetaling. Geen formulieren, geen gedoe. Annuleer direct vanuit je bevestigingsmail."
         },
         {
           "q": "Moet ik nu het volledige bedrag betalen?",
@@ -114,6 +112,19 @@
           "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "tours & activiteiten",
+      "subtitle": "Tours geselecteerd door locals die elk rif, elke route en elke zonsondergangsplek kennen",
+      "searchPlaceholder": "Zoek tours of activiteiten",
+      "selectDate": "Selecteer datum",
+      "popularLabel": "Populair"
+    },
+    "exploreTypes": {
+      "title": "Verken op type",
+      "tours": "tours"
     }
   }
 }

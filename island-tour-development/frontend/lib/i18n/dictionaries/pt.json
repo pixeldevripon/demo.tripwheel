@@ -87,15 +87,13 @@
       "subtitle": "Somos locais. Crescemos aqui, conhecemos estes tours e queremos que tenha a melhor experiência nestas ilhas.",
       "whatsapp": "Conversar no WhatsApp",
       "guarantees": [
-        "Cancelamento gratuito — sem perguntas",
-        "Reserve a partir de 20% · pague o resto depois",
-        "Confirmado em segundos",
-        "Pagamento seguro e protegido"
+        "Cancelamento gratuito na maioria dos tours, sem formulários",
+        "Pague apenas 20% hoje, o resto depois"
       ],
       "items": [
         {
           "q": "Posso cancelar se os meus planos mudarem?",
-          "a": "A maioria dos tours pode ser cancelada até 24h antes com reembolso total. Sem formulários, basta enviar-nos uma mensagem."
+          "a": "A maioria dos tours pode ser cancelada até 24h antes do início, com reembolso total. Sem formulários, sem perguntas. Cancele direto pelo seu e-mail de confirmação."
         },
         {
           "q": "Tenho de pagar tudo agora?",
@@ -114,6 +112,19 @@
           "a": "Converse connosco no WhatsApp a qualquer momento. Diga-nos o que procura e daremos recomendações locais honestas."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "tours e atividades",
+      "subtitle": "Tours escolhidos por locais que conhecem cada recife, rota e pôr do sol",
+      "searchPlaceholder": "Pesquisar tours ou atividades",
+      "selectDate": "Selecionar data",
+      "popularLabel": "Popular"
+    },
+    "exploreTypes": {
+      "title": "Explore por tipo",
+      "tours": "tours"
     }
   }
 }

@@ -580,6 +580,26 @@ app/(frontend)/                  ← public site route group
 components/frontend/             ← all public-facing components (never in components/dashboard/)
 ```
 
+### Icons — SVG files in `public/icons/`, rendered via `next/image`
+Icons are **SVG files committed to `public/icons/`**, not inline `<svg>` JSX. Pull the exact SVG from Figma, save it as a file, and render it with `next/image`. Never hand-draw an approximation or inline a one-off `<svg>` component in a `.tsx` file.
+
+```tsx
+// ✅ correct — file + next/image, width/height match the Figma export
+<Image src='/icons/nav-search.svg' alt='' width={18} height={18} className='size-4.5 shrink-0' />
+
+// ❌ wrong — inline <svg> component / lucide stand-in for a Figma icon
+function SearchIcon() { return <svg>…</svg> }
+<SearchIcon />
+```
+
+**Naming & layout**
+- Section-prefix the filename by where it's used: `nav-*` (navbar), `hero-*`, `trust-*`, `footer/*`. Generic shared icons need no prefix (`check-green.svg`, `whatsapp.svg`, `star-filled.svg`).
+- Group related sets in subfolders: `icons/flags/<locale>.svg`, `icons/payments/pay-N.svg`, `footer/social/*`, `footer/payment/*`.
+- Keep the Figma colour baked into the SVG (e.g. search icon ships `#767676`, category ships `#2c2c2c`). These are file assets — `currentColor`/Tailwind text utilities do **not** recolour a `next/image` SVG.
+- Set `width`/`height` on `<Image>` to the Figma export's intrinsic size; size on screen with a Tailwind `size-*` class. Use `alt=''` for decorative icons.
+
+**`lucide-react` is allowed only for generic UI affordances** that aren't in the Figma design — menu/close (hamburger), chevrons, the mobile-search back arrow. Anything that appears in a Figma frame must be the exported Figma SVG file.
+
 ### Always use Tailwind classes — never inline style objects
 The `--it-*` CSS vars are registered in `@theme inline` inside `frontend-tokens.css`, so they map directly to Tailwind utilities:
 

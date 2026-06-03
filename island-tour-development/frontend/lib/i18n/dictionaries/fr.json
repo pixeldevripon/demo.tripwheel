@@ -87,15 +87,13 @@
       "subtitle": "Nous sommes des locaux. Nous avons grandi ici, nous connaissons ces tours et nous voulons que vous passiez le meilleur moment sur ces îles.",
       "whatsapp": "Discuter sur WhatsApp",
       "guarantees": [
-        "Annulation gratuite — sans condition",
-        "Réservez à partir de 20% · payez le reste plus tard",
-        "Confirmé en quelques secondes",
-        "Paiement sûr et sécurisé"
+        "Annulation gratuite sur la plupart des circuits, sans formulaire",
+        "Payez seulement 20% aujourd'hui, le reste plus tard"
       ],
       "items": [
         {
           "q": "Puis-je annuler si mes plans changent ?",
-          "a": "La plupart des tours peuvent être annulés jusqu'à 24h avant pour un remboursement intégral. Pas de formulaires, écrivez-nous simplement."
+          "a": "La plupart des circuits peuvent être annulés jusqu'à 24 h avant le départ, avec remboursement intégral. Sans formulaire, sans question. Annulez directement depuis votre e-mail de confirmation."
         },
         {
           "q": "Dois-je tout payer maintenant ?",
@@ -114,6 +112,19 @@
           "a": "Discutez avec nous sur WhatsApp à tout moment. Dites-nous ce que vous cherchez et nous vous donnerons des recommandations locales honnêtes."
         }
       ]
+    }
+  },
+  "destination": {
+    "hero": {
+      "toursActivities": "circuits et activités",
+      "subtitle": "Des circuits choisis par des locaux qui connaissent chaque récif, route et coucher de soleil",
+      "searchPlaceholder": "Rechercher des circuits ou activités",
+      "selectDate": "Sélectionner une date",
+      "popularLabel": "Populaire"
+    },
+    "exploreTypes": {
+      "title": "Explorer par type",
+      "tours": "circuits"
     }
   }
 }

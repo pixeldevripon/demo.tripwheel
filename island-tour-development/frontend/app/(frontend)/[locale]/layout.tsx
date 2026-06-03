@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { Navbar } from '@/components/frontend/navbar';
 import { Footer } from '@/components/frontend/footer';
 import { ALL_LOCALES, isLocale } from '@/lib/constants/locales';
@@ -24,7 +25,11 @@ export default async function LocaleLayout({
     return (
         <>
             <Navbar locale={locale} dict={dict.nav} />
-            <main className='pt-18 md:pt-20'>{children}</main>
+            {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
+                as a dynamic hole so request-time routes don't block the shell. */}
+            <main className='pt-18 md:pt-20'>
+                <Suspense>{children}</Suspense>
+            </main>
             <Footer locale={locale} dict={dict.footer} />
         </>
     );
