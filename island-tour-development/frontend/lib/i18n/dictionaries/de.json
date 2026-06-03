@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "Mehr auf Instagram anzeigen"
+    },
+    "listings": {
+      "title": "Favoriten der Einheimischen",
+      "browseAll": "Alle Touren in {destination} durchsuchen",
+      "new": "Neu",
+      "likelyToSellOut": "Wahrscheinlich ausverkauft",
+      "mostPopular": "Am beliebtesten",
+      "pickupAvailable": "Abholung verfügbar",
+      "freeCancellation": "Kostenlose Stornierung",
+      "priceVaries": "Preis variiert je nach Gruppengröße",
+      "from": "ab",
+      "per": "/pro",
+      "perGroup": "/pro Gruppe"
     }
   }
 }

@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "Voir plus sur Instagram"
+    },
+    "listings": {
+      "title": "Coups de cœur des locaux",
+      "browseAll": "Parcourir tous les circuits à {destination}",
+      "new": "Nouveau",
+      "likelyToSellOut": "Risque d'être complet",
+      "mostPopular": "Le plus populaire",
+      "pickupAvailable": "Prise en charge disponible",
+      "freeCancellation": "Annulation gratuite",
+      "priceVaries": "Le prix varie selon la taille du groupe",
+      "from": "à partir de",
+      "per": "/par",
+      "perGroup": "/par groupe"
     }
   }
 }

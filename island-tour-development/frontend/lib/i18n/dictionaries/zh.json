@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "在Instagram上查看更多"
+    },
+    "listings": {
+      "title": "当地人最爱",
+      "browseAll": "浏览{destination}的所有旅游",
+      "new": "新品",
+      "likelyToSellOut": "即将售罄",
+      "mostPopular": "最受欢迎",
+      "pickupAvailable": "提供接送",
+      "freeCancellation": "免费取消",
+      "priceVaries": "价格因团体人数而异",
+      "from": "起",
+      "per": "/人",
+      "perGroup": "/每组"
     }
   }
 }

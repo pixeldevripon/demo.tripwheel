@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "View more on Instagram"
+    },
+    "listings": {
+      "title": "Locals' favorites",
+      "browseAll": "Browse all tours in {destination}",
+      "new": "New",
+      "likelyToSellOut": "Likely to sell out",
+      "mostPopular": "Most popular",
+      "pickupAvailable": "Pickup available",
+      "freeCancellation": "Free cancellation",
+      "priceVaries": "Price varies by group size",
+      "from": "from",
+      "per": "/per",
+      "perGroup": "/per group"
     }
   }
 }

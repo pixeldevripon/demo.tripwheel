@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "Meer bekijken op Instagram"
+    },
+    "listings": {
+      "title": "Favorieten van locals",
+      "browseAll": "Bekijk alle tours in {destination}",
+      "new": "Nieuw",
+      "likelyToSellOut": "Snel uitverkocht",
+      "mostPopular": "Meest populair",
+      "pickupAvailable": "Ophaalservice beschikbaar",
+      "freeCancellation": "Gratis annulering",
+      "priceVaries": "Prijs varieert per groepsgrootte",
+      "from": "vanaf",
+      "per": "/per",
+      "perGroup": "/per groep"
     }
   }
 }

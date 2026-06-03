@@ -136,6 +136,19 @@
     },
     "instagram": {
       "viewMore": "Ver mais no Instagram"
+    },
+    "listings": {
+      "title": "Favoritos locais",
+      "browseAll": "Ver todos os passeios em {destination}",
+      "new": "Novo",
+      "likelyToSellOut": "Provável esgotar",
+      "mostPopular": "Mais popular",
+      "pickupAvailable": "Recolha disponível",
+      "freeCancellation": "Cancelamento gratuito",
+      "priceVaries": "O preço varia de acordo com o tamanho do grupo",
+      "from": "a partir de",
+      "per": "/por",
+      "perGroup": "/por grupo"
     }
   }
 }

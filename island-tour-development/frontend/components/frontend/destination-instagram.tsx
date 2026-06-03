@@ -41,7 +41,7 @@ const POSTS = [
 
 export function DestinationInstagram({ dict }: { dict: InstagramDict }) {
     return (
-        <section className='it-section bg-it-white'>
+        <section className='it-section pt-[32px]! bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-8 md:gap-10'>
                     {/* Header row — @islandtours  |  View more on Instagram */}
