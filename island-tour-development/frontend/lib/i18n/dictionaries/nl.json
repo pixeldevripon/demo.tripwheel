@@ -88,7 +88,7 @@
       "whatsapp": "Chat op WhatsApp",
       "guarantees": [
         "Gratis annuleren bij de meeste tours, geen formulieren",
-        "Betaal vandaag slechts 20%, de rest later"
+        "Betaal vandaag al vanaf 20%, de rest later"
       ],
       "items": [
         {
@@ -115,6 +115,60 @@
     }
   },
   "destination": {
+    "allTours": {
+      "breadcrumb": {
+        "home": "Home",
+        "current": "Alle tours"
+      },
+      "heading": {
+        "title": "Alle {destination} tours & activiteiten in {year}",
+        "subtitle": "Van dagtrips naar Klein Curaçao tot buggy-avonturen. Elke tour die we op het eiland aanbieden.",
+        "availableCount": "{count} tours",
+        "availableLabel": "beschikbaar"
+      },
+      "toolbar": {
+        "filters": "Filters",
+        "selectDate": "Datum kiezen",
+        "guestTypes": {
+          "adults": { "label": "Volwassenen", "hint": "13+ jaar", "word": "volwassenen" },
+          "children": { "label": "Kinderen", "hint": "2–12 jaar", "word": "kinderen" },
+          "infants": { "label": "Baby's", "hint": "Onder 2", "word": "baby's" }
+        },
+        "resultsCount": "{shown} van {total}",
+        "toursWord": "tours",
+        "clearAll": "Alles wissen",
+        "sortBy": "Sorteren op:"
+      },
+      "sort": {
+        "localsFavorites": "Favorieten van locals",
+        "priceLowHigh": "Prijs (laag naar hoog)",
+        "priceHighLow": "Prijs (hoog naar laag)",
+        "defaultSuffix": "(Standaard)"
+      },
+      "trust": {
+        "builtByLocals": { "title": "Gebouwd door locals", "subtitle": "Die hier zijn opgegroeid" },
+        "freeCancellation": { "title": "Gratis annuleren", "subtitle": "Bij de meeste tours" },
+        "message": { "title": "Wij zijn locals", "subtitle": "Stuur ons een bericht op WhatsApp" },
+        "pay": { "title": "Betaal vanaf 20%", "subtitle": "Vandaag, de rest later" }
+      },
+      "filterModal": {
+        "title": "Filter",
+        "price": "Prijs",
+        "duration": "Duur",
+        "durations": { "upTo2": "Tot 2 uur", "2to4": "2 tot 4 uur", "4to6": "4 tot 6 uur", "fullDay": "Hele dag (6+ uur)" },
+        "timeOfDay": "Tijdstip",
+        "times": { "morning": "Ochtend", "afternoon": "Middag", "evening": "Avond" },
+        "freeCancellation": "Gratis annuleren",
+        "freeCancellationNote": "Alle tours zijn gratis te annuleren.",
+        "cancellationLabel": "Filter op hoe laat je kunt annuleren:",
+        "cancellation": { "24h": "Tot 24u van tevoren", "48h": "48u van tevoren", "72h": "72u van tevoren" },
+        "pickupAvailable": "Ophalen beschikbaar",
+        "ratings": "Beoordelingen",
+        "ratingsNote": "(verborgen tot er reviews zijn)",
+        "clearAll": "Alles wissen",
+        "applyFilters": "Filters toepassen"
+      }
+    },
     "hero": {
       "toursActivities": "tours & activiteiten",
       "subtitle": "Tours geselecteerd door locals die elk rif, elke route en elke zonsondergangsplek kennen",

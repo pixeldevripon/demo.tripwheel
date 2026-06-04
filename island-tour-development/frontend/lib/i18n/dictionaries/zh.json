@@ -88,7 +88,7 @@
       "whatsapp": "通过 WhatsApp 聊天",
       "guarantees": [
         "大多数旅游免费取消，无需填表",
-        "今天只需支付20%，余款稍后支付"
+        "今天最低只需支付 20%，余款稍后支付"
       ],
       "items": [
         {
@@ -115,6 +115,60 @@
     }
   },
   "destination": {
+    "allTours": {
+      "breadcrumb": {
+        "home": "首页",
+        "current": "所有行程"
+      },
+      "heading": {
+        "title": "{year}年{destination}的所有行程与活动",
+        "subtitle": "从克莱因库拉索的一日游到沙滩车冒险，我们在岛上提供的每一个行程。",
+        "availableCount": "{count} 个行程",
+        "availableLabel": "可预订"
+      },
+      "toolbar": {
+        "filters": "筛选",
+        "selectDate": "选择日期",
+        "guestTypes": {
+          "adults": { "label": "成人", "hint": "13 岁以上", "word": "成人" },
+          "children": { "label": "儿童", "hint": "2–12 岁", "word": "儿童" },
+          "infants": { "label": "婴儿", "hint": "2 岁以下", "word": "婴儿" }
+        },
+        "resultsCount": "{shown} / {total}",
+        "toursWord": "个行程",
+        "clearAll": "清除全部",
+        "sortBy": "排序方式："
+      },
+      "sort": {
+        "localsFavorites": "当地人最爱",
+        "priceLowHigh": "价格（从低到高）",
+        "priceHighLow": "价格（从高到低）",
+        "defaultSuffix": "（默认）"
+      },
+      "trust": {
+        "builtByLocals": { "title": "由当地人打造", "subtitle": "在这里长大" },
+        "freeCancellation": { "title": "免费取消", "subtitle": "适用于大多数行程" },
+        "message": { "title": "我们是当地人", "subtitle": "通过 WhatsApp 联系我们" },
+        "pay": { "title": "最低支付 20%", "subtitle": "今天，余款稍后再付" }
+      },
+      "filterModal": {
+        "title": "筛选",
+        "price": "价格",
+        "duration": "时长",
+        "durations": { "upTo2": "最多 2 小时", "2to4": "2 至 4 小时", "4to6": "4 至 6 小时", "fullDay": "全天 (6+ 小时)" },
+        "timeOfDay": "时段",
+        "times": { "morning": "上午", "afternoon": "下午", "evening": "晚上" },
+        "freeCancellation": "免费取消",
+        "freeCancellationNote": "所有行程均含免费取消。",
+        "cancellationLabel": "按可取消时限筛选：",
+        "cancellation": { "24h": "出发前 24 小时内", "48h": "出发前 48 小时", "72h": "出发前 72 小时" },
+        "pickupAvailable": "提供接送",
+        "ratings": "评分",
+        "ratingsNote": "（有评价后显示）",
+        "clearAll": "清除全部",
+        "applyFilters": "应用筛选"
+      }
+    },
     "hero": {
       "toursActivities": "旅游与活动",
       "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",

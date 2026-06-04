@@ -8,6 +8,8 @@
  *   import { DestinationListings } from '@/components/frontend/destination-listings';
  */
 
+import Link from 'next/link';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Reveal } from './reveal';
 import type { TourCardDict, TourListing } from './tour-card';
 import { TourCard } from './tour-card';
@@ -29,17 +31,23 @@ interface DestinationListingsProps {
     dict: DestinationListingsDict;
     tours: TourListing[];
     destinationName: string;
+    locale: Locale;
+    /** Destination slug — used to build the "All Tours" page href. */
+    destinationSlug: string;
 }
 
 export function DestinationListings({
     dict,
     tours,
     destinationName,
+    locale,
+    destinationSlug,
 }: DestinationListingsProps) {
     // Derive the subset of dict that TourCard needs (all keys except title/browseAll).
     const { title, browseAll, ...cardDict } = dict;
 
     const browseLabel = browseAll.replace('{destination}', destinationName);
+    const browseHref = localizeHref(locale, `/${destinationSlug}/tours`);
 
     return (
         <section className='it-section bg-it-white'>
@@ -70,11 +78,11 @@ export function DestinationListings({
                         />
 
                         {/* CTA floats above the line on a white pill */}
-                        <a
-                            href='#'
+                        <Link
+                            href={browseHref}
                             className='relative z-10 inline-flex items-center gap-2 bg-it-white px-5 py-2.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-150 hover:text-it-primary-hover hover:border-it-primary'>
                             {browseLabel}
-                        </a>
+                        </Link>
                     </div>
                 </Reveal>
             </div>

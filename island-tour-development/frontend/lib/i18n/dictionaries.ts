@@ -28,6 +28,10 @@ export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
     // Translation JSON is static per locale — cache indefinitely (locale is the key).
     // Keeps the dictionary out of the request-time "uncached data" path so the
     // layout/footer prerender without a Suspense boundary (Cache Components).
+    //
+    // Note: the dynamic import() target is not tracked as a cache dependency, so
+    // editing a dictionary JSON file does NOT bust this entry in dev — restart the
+    // dev server (or edit this file) to pick up new keys.
     cacheLife('max');
     return (dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE])();
 };

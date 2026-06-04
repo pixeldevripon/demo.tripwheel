@@ -88,7 +88,7 @@
       "whatsapp": "Chatea por WhatsApp",
       "guarantees": [
         "Cancelación gratuita en la mayoría de los tours, sin formularios",
-        "Paga solo el 20% hoy, el resto después"
+        "Paga desde el 20% hoy, el resto después"
       ],
       "items": [
         {
@@ -115,6 +115,60 @@
     }
   },
   "destination": {
+    "allTours": {
+      "breadcrumb": {
+        "home": "Inicio",
+        "current": "Todos los tours"
+      },
+      "heading": {
+        "title": "Todos los tours y actividades en {destination} en {year}",
+        "subtitle": "Desde excursiones de un día a Klein Curaçao hasta aventuras en buggy. Cada tour que ofrecemos en la isla.",
+        "availableCount": "{count} tours",
+        "availableLabel": "disponibles"
+      },
+      "toolbar": {
+        "filters": "Filtros",
+        "selectDate": "Seleccionar fecha",
+        "guestTypes": {
+          "adults": { "label": "Adultos", "hint": "13+ años", "word": "adultos" },
+          "children": { "label": "Niños", "hint": "2–12 años", "word": "niños" },
+          "infants": { "label": "Bebés", "hint": "Menores de 2", "word": "bebés" }
+        },
+        "resultsCount": "{shown} de {total}",
+        "toursWord": "tours",
+        "clearAll": "Borrar todo",
+        "sortBy": "Ordenar por:"
+      },
+      "sort": {
+        "localsFavorites": "Favoritos de locales",
+        "priceLowHigh": "Precio (de menor a mayor)",
+        "priceHighLow": "Precio (de mayor a menor)",
+        "defaultSuffix": "(Predeterminado)"
+      },
+      "trust": {
+        "builtByLocals": { "title": "Hecho por locales", "subtitle": "Que crecieron aquí" },
+        "freeCancellation": { "title": "Cancelación gratuita", "subtitle": "En la mayoría de tours" },
+        "message": { "title": "Somos locales", "subtitle": "Escríbenos por WhatsApp" },
+        "pay": { "title": "Paga desde el 20%", "subtitle": "Hoy, el resto después" }
+      },
+      "filterModal": {
+        "title": "Filtrar",
+        "price": "Precio",
+        "duration": "Duración",
+        "durations": { "upTo2": "Hasta 2 horas", "2to4": "2 a 4 horas", "4to6": "4 a 6 horas", "fullDay": "Día completo (6+ horas)" },
+        "timeOfDay": "Hora del día",
+        "times": { "morning": "Mañana", "afternoon": "Tarde", "evening": "Noche" },
+        "freeCancellation": "Cancelación gratuita",
+        "freeCancellationNote": "Todos los tours incluyen cancelación gratuita.",
+        "cancellationLabel": "Filtra por hasta cuándo puedes cancelar:",
+        "cancellation": { "24h": "Hasta 24h antes", "48h": "48h antes", "72h": "72h antes" },
+        "pickupAvailable": "Recogida disponible",
+        "ratings": "Valoraciones",
+        "ratingsNote": "(oculto hasta que haya reseñas)",
+        "clearAll": "Borrar todo",
+        "applyFilters": "Aplicar filtros"
+      }
+    },
     "hero": {
       "toursActivities": "tours y actividades",
       "subtitle": "Tours elegidos por locales que conocen cada arrecife, ruta y rincón al atardecer",

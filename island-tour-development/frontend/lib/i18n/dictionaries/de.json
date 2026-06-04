@@ -88,7 +88,7 @@
       "whatsapp": "Auf WhatsApp chatten",
       "guarantees": [
         "Kostenlose Stornierung bei den meisten Touren, ohne Formulare",
-        "Zahle heute nur 20%, den Rest später"
+        "Zahle heute schon ab 20%, den Rest später"
       ],
       "items": [
         {
@@ -115,6 +115,60 @@
     }
   },
   "destination": {
+    "allTours": {
+      "breadcrumb": {
+        "home": "Startseite",
+        "current": "Alle Touren"
+      },
+      "heading": {
+        "title": "Alle {destination} Touren & Aktivitäten in {year}",
+        "subtitle": "Von Tagesausflügen nach Klein Curaçao bis zu Buggy-Abenteuern. Jede Tour, die wir auf der Insel anbieten.",
+        "availableCount": "{count} Touren",
+        "availableLabel": "verfügbar"
+      },
+      "toolbar": {
+        "filters": "Filter",
+        "selectDate": "Datum wählen",
+        "guestTypes": {
+          "adults": { "label": "Erwachsene", "hint": "Ab 13 J.", "word": "Erwachsene" },
+          "children": { "label": "Kinder", "hint": "2–12 J.", "word": "Kinder" },
+          "infants": { "label": "Kleinkinder", "hint": "Unter 2", "word": "Kleinkinder" }
+        },
+        "resultsCount": "{shown} von {total}",
+        "toursWord": "Touren",
+        "clearAll": "Alle löschen",
+        "sortBy": "Sortieren nach:"
+      },
+      "sort": {
+        "localsFavorites": "Favoriten der Locals",
+        "priceLowHigh": "Preis (aufsteigend)",
+        "priceHighLow": "Preis (absteigend)",
+        "defaultSuffix": "(Standard)"
+      },
+      "trust": {
+        "builtByLocals": { "title": "Von Locals gemacht", "subtitle": "Die hier aufgewachsen sind" },
+        "freeCancellation": { "title": "Kostenlose Stornierung", "subtitle": "Bei den meisten Touren" },
+        "message": { "title": "Wir sind Locals", "subtitle": "Schreib uns auf WhatsApp" },
+        "pay": { "title": "Zahle ab 20%", "subtitle": "Heute, den Rest später" }
+      },
+      "filterModal": {
+        "title": "Filter",
+        "price": "Preis",
+        "duration": "Dauer",
+        "durations": { "upTo2": "Bis zu 2 Stunden", "2to4": "2 bis 4 Stunden", "4to6": "4 bis 6 Stunden", "fullDay": "Ganzer Tag (6+ Stunden)" },
+        "timeOfDay": "Tageszeit",
+        "times": { "morning": "Morgens", "afternoon": "Nachmittags", "evening": "Abends" },
+        "freeCancellation": "Kostenlose Stornierung",
+        "freeCancellationNote": "Alle Touren sind kostenlos stornierbar.",
+        "cancellationLabel": "Filtern nach Stornierungsfrist:",
+        "cancellation": { "24h": "Bis 24 Std. vorher", "48h": "48 Std. vorher", "72h": "72 Std. vorher" },
+        "pickupAvailable": "Abholung verfügbar",
+        "ratings": "Bewertungen",
+        "ratingsNote": "(ausgeblendet bis Bewertungen vorliegen)",
+        "clearAll": "Alle löschen",
+        "applyFilters": "Filter anwenden"
+      }
+    },
     "hero": {
       "toursActivities": "Touren & Aktivitäten",
       "subtitle": "Touren ausgewählt von Einheimischen, die jedes Riff, jede Route und jeden Sonnenuntergang kennen",

@@ -1,15 +1,14 @@
-import { DestinationAbout } from '@/components/frontend/destination-about';
+import { ToursBreadcrumb } from '@/components/frontend/tours-breadcrumb';
 import {
-    DestinationExploreTypes,
-    type ExploreType,
-} from '@/components/frontend/destination-explore-types';
-import { DestinationHero } from '@/components/frontend/destination-hero';
-import { DestinationInstagram } from '@/components/frontend/destination-instagram';
+    type FilterCategory,
+    ToursFilterBar,
+} from '@/components/frontend/tours-filter-bar';
+import { ToursHeader } from '@/components/frontend/tours-header';
 import {
-    DestinationListings,
-} from '@/components/frontend/destination-listings';
-import type { TourListing } from '@/components/frontend/tour-card';
-import { FaqSection } from '@/components/frontend/faq-section';
+    type TourListing,
+    ToursListing,
+} from '@/components/frontend/tours-listing';
+import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
@@ -23,64 +22,18 @@ const DESTINATION_NAMES: Record<string, string> = {
     bonaire: 'Bonaire',
 };
 
-// Popular searches per destination (placeholder — comes from the API later).
-const POPULAR: Record<string, { label: string; slug: string }[]> = {
-    curacao: [
-        { label: 'Klein Curaçao', slug: 'klein-curacao' },
-        { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-        { label: 'Buggy Tours', slug: 'buggy-tours' },
-    ],
-};
-
-const DEFAULT_POPULAR = [
+// Category quick-filter pills (placeholder — comes from the API later).
+const FILTER_CATEGORIES: FilterCategory[] = [
+    { label: 'Klein Curaçao', slug: 'klein-curacao' },
     { label: 'Boat Tours', slug: 'boat-tours' },
     { label: 'Snorkeling', slug: 'snorkeling' },
-    { label: 'Island Hopping', slug: 'island-hopping' },
+    { label: 'Sunset Cruises', slug: 'sunset-cruises' },
+    { label: 'Buggy Tours', slug: 'buggy-tours' },
+    { label: 'Under €100 (21)', slug: 'under-100' },
 ];
 
-// "Explore by type" cards (placeholder — comes from the API later).
-const EXPLORE_TYPES: ExploreType[] = [
-    {
-        name: 'Klein Curaçao',
-        slug: 'klein-curacao',
-        tours: 42,
-        image: '/images/home-page/islands/curacao.jpg',
-    },
-    {
-        name: 'Boat Tours',
-        slug: 'boat-tours',
-        tours: 42,
-        image: '/images/home-page/categories/catamaran-trips.jpg',
-    },
-    {
-        name: 'Sunset Cruises',
-        slug: 'sunset-cruises',
-        tours: 42,
-        image: '/images/home-page/islands/aruba.jpg',
-    },
-    {
-        name: 'Buggy Tours',
-        slug: 'buggy-tours',
-        tours: 42,
-        image: '/images/home-page/categories/buggy-tours.jpg',
-    },
-    {
-        name: 'Snorkeling Trips',
-        slug: 'snorkeling-trips',
-        tours: 42,
-        image: '/images/home-page/categories/snorkel-trips.jpg',
-    },
-    {
-        name: 'Private Charters',
-        slug: 'private-charters',
-        tours: 42,
-        image: '/images/home-page/islands/saint-lucia.jpg',
-    },
-];
-
-// ── Locals' Favorites mock data (6 cards — replace with API data later) ─────
-// Matches Figma node 47361:19645 exactly.
-const TOURS: TourListing[] = [
+// Tour grid mock — 6 base cards (replace with paginated API data later).
+const BASE_TOURS: TourListing[] = [
     {
         id: 'tour-1',
         images: [
@@ -98,10 +51,7 @@ const TOURS: TourListing[] = [
     },
     {
         id: 'tour-2',
-        images: [
-            '/images/tours/tour-2-1.jpg',
-            '/images/tours/tour-2-3.jpg',
-        ],
+        images: ['/images/tours/tour-2-1.jpg', '/images/tours/tour-2-3.jpg'],
         badge: 'likelyToSellOut',
         rating: 4.8,
         reviewCount: 1738,
@@ -183,16 +133,21 @@ const TOURS: TourListing[] = [
     },
 ];
 
-/** Prerender the known destinations so `params` is static (no request-time dynamic hole). */
+// 18 cards (6 rows × 3) for the grid — cycle the base set with unique ids.
+const ALL_TOURS: TourListing[] = [0, 1, 2].flatMap(group =>
+    BASE_TOURS.map(tour => ({ ...tour, id: `${tour.id}-${group}` }))
+);
+
+/** Prerender the known destinations so `params` is static. */
 export function generateStaticParams() {
     return Object.keys(DESTINATION_NAMES).map(destination => ({ destination }));
 }
 
 /**
- * Destination page — `/[locale]/[destination]` (e.g. /en/curacao).
- * Hero is built; the rest of the page follows section by section.
+ * All Tours page — `/[locale]/[destination]/tours` (the RESERVED `tours` slug).
+ * Built section by section; the breadcrumb is first.
  */
-export default async function DestinationPage({
+export default async function AllToursPage({
     params,
 }: {
     params: Promise<{ locale: string; destination: string }>;
@@ -207,32 +162,60 @@ export default async function DestinationPage({
 
     return (
         <>
-            <DestinationHero
+            <ToursBreadcrumb
+                locale={locale as Locale}
                 destinationName={destinationName}
-                dict={dict.destination.hero}
-                locale={locale as Locale}
-                popular={POPULAR[destination] ?? DEFAULT_POPULAR}
-            />
-            <DestinationExploreTypes
-                dict={dict.destination.exploreTypes}
-                locale={locale as Locale}
                 destinationSlug={destination}
-                categories={EXPLORE_TYPES}
+                dict={dict.destination.allTours.breadcrumb}
             />
-            <DestinationListings
-                dict={dict.destination.listings}
-                tours={TOURS}
-                destinationName={destinationName}
-                locale={locale as Locale}
-                destinationSlug={destination}
-            />
-            <DestinationInstagram dict={dict.destination.instagram} />
+            <section className='bg-it-white pb-32.5'>
+                <div className='it-container'>
+                    {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
+                    <div className='flex flex-col gap-10 pt-15'>
+                        <ToursHeader
+                            dict={dict.destination.allTours.heading}
+                            destinationName={destinationName}
+                            total={32}
+                        />
 
-            <FaqSection dict={dict.home.faq} />
-            <DestinationAbout
-                destinationName={destinationName}
-                dict={dict.destination.about}
-            />
+                        <div
+                            className='h-px w-full bg-it-heading/10'
+                            aria-hidden='true'
+                        />
+
+                        {/* Toolbar + grid frame — 32px between toolbar and grid. */}
+                        <div className='flex flex-col gap-8'>
+                            <ToursFilterBar
+                                dict={dict.destination.allTours.toolbar}
+                                sortDict={dict.destination.allTours.sort}
+                                filterDict={
+                                    dict.destination.allTours.filterModal
+                                }
+                                hasReviews
+                                categories={FILTER_CATEGORIES}
+                                guestCount={2}
+                                shown={28}
+                                total={32}
+                                initialSelected={['klein-curacao']}
+                                initialChips={[
+                                    {
+                                        label: 'Klein Curaçao',
+                                        slug: 'klein-curacao',
+                                    },
+                                ]}
+                            />
+
+                            <ToursListing
+                                tours={ALL_TOURS}
+                                dict={dict.destination.listings}
+                                pageCount={6}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <ToursTrustStrip dict={dict.destination.allTours.trust} />
         </>
     );
 }
