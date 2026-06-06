@@ -25,7 +25,7 @@
 | 5 — Flat tour URLs | ✅ done (with 4) | 🔵 TODO | Remove hub-nested route; all tour links → `/{dest}/{tour-slug}/`; drop `hubSlug` param |
 | 6a — Attributes (dictionary + assignment) | ✅ done | 🔵 TODO | Admin: dictionary mgmt screens + per-tour attribute editor (dictionary-driven) |
 | 6b — Filters / sort (listing) | ✅ done | 🔵 TODO | Public: filter sidebar/bottom-sheet + sort dropdown consuming `/filters` + `/trips` params |
-| 7 — Collections | ⚪ upcoming | ⚪ | Collection admin CRUD + public collection page |
+| 7 — Collections | ✅ done | 🔵 TODO | Admin CRUD (manual/dynamic) + public collection page at `/{dest}/{slug}/` |
 | 8 — Search / SEO | ⚪ upcoming | ⚪ | Search page, JSON-LD, sitemaps, breadcrumbs, CRO badges |
 
 ---
