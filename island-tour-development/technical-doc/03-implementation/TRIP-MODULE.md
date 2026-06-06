@@ -102,18 +102,24 @@ The trips module manages the full lifecycle of a tour listing: from creation as 
 
 ```
 DRAFT ──publish──► LIVE ◄──unpause── PAUSED
-                     │                   ▲
-                     └──pause────────────┘
+  ▲                  │                   ▲
+  │                  └──pause────────────┘
+  │                  │
+  │            (DRAFT/LIVE/PAUSED)
+  │                  │
+  └──restore── ARCHIVED ◄──archive──┘
                      │
-                     └──archive──► ARCHIVED (terminal, no going back)
+                     └──DELETE──► (hard delete, ARCHIVED-first)
 ```
 
-| Status | Visible to Travelers | Operator Can Edit | Can Delete | Notes |
-|--------|---------------------|-------------------|------------|-------|
-| DRAFT | No | Yes, freely | Yes | Newly created; no publish blocks enforced yet |
+> **Reflects current code (`trips.service.ts`).** Earlier drafts of this doc said "delete DRAFT only" and "ARCHIVED is terminal" — both are wrong. The service requires a trip to be **ARCHIVED before permanent delete** (admins may delete any), and `restore` moves **ARCHIVED → DRAFT**, so ARCHIVED is reversible.
+
+| Status | Visible to Travelers | Operator Can Edit | Can Hard-Delete | Notes |
+|--------|---------------------|-------------------|-----------------|-------|
+| DRAFT | No | Yes, freely | No (archive first) | Newly created; publish blocks enforced at publish |
 | LIVE | Yes | Yes (content only) | No | Category change blocked while holding a slot (Phase 5) |
 | PAUSED | No | Yes | No | Slot auto-released in Phase 5; not here |
-| ARCHIVED | No | No | No | Permanent; soft-delete via `isActive = false` |
+| ARCHIVED | No | No | Yes (own, ARCHIVED) / Admin any | Soft `isActive=false`; **restorable to DRAFT** |
 
 ### Transition Rules
 
@@ -122,8 +128,9 @@ DRAFT ──publish──► LIVE ◄──unpause── PAUSED
 | DRAFT → LIVE | `POST /trips/:id/publish` | Operator (own trip) | ≥5 images, hero image set, EN overview present, ≥3 highlights |
 | LIVE → PAUSED | `POST /trips/:id/pause` | Operator (own trip) | Must be LIVE |
 | PAUSED → LIVE | `POST /trips/:id/unpause` | Operator (own trip) | Must be PAUSED |
-| LIVE/PAUSED → ARCHIVED | `POST /trips/:id/archive` | Operator (own) or Admin | Must not be ARCHIVED |
-| Any → deleted | `DELETE /trips/:id` | Operator (own trip) | Status must be DRAFT only |
+| DRAFT/LIVE/PAUSED → ARCHIVED | `POST /trips/:id/archive` | Operator (own) or Admin | Must not already be ARCHIVED; sets `isActive=false` + deactivates TOUR slug_registry row |
+| ARCHIVED → DRAFT | `POST /trips/:id/restore` | Operator (own) or Admin | Must be ARCHIVED; reactivates TOUR slug_registry row |
+| ARCHIVED → deleted | `DELETE /trips/:id` | Operator (own, ARCHIVED only) or Admin (any) | Hard delete; cascades children + removes slug_registry row |
 
 **Phase 5 addition (not now):** When pausing or archiving a trip that holds a featured slot, the service will call `SlotsService.releaseSlot()` before the status transition.
 

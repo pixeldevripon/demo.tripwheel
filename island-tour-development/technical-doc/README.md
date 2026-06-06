@@ -34,6 +34,15 @@ technical-doc/
 | [V2-DEVELOPMENT-ALIGNMENT-PLAN.md](./V2-DEVELOPMENT-ALIGNMENT-PLAN.md) | Phased, checkboxed migration plan to bring schema/backend/frontend in line with V2 (workstreams A–H). |
 | [ARCHITECTURE-V2-GAP-ANALYSIS.md](./ARCHITECTURE-V2-GAP-ANALYSIS.md) | Why each delta exists — conflicts, missing systems, field gaps between V2 and our docs/schema. |
 
+### 06 — V2 Backend Migration (grounded in actual code)
+
+| File | Purpose |
+|---|---|
+| [06-v2-backend-migration/01-BACKEND-IMPLEMENTATION-ANALYSIS.md](./06-v2-backend-migration/01-BACKEND-IMPLEMENTATION-ANALYSIS.md) | What the backend does **today**, read from `backend/src` + `prisma` (the "before" baseline). |
+| [06-v2-backend-migration/02-BACKEND-CHANGE-LIST.md](./06-v2-backend-migration/02-BACKEND-CHANGE-LIST.md) | Itemized backend + core-logic changes per V2, mapped to exact files/models (9 groups). |
+| [06-v2-backend-migration/03-BACKEND-MIGRATION-STEPS.md](./06-v2-backend-migration/03-BACKEND-MIGRATION-STEPS.md) | Ordered, reversible runbook (8 stages) with migrations, backfills, and verification checks. |
+| [06-v2-backend-migration/04-BEFORE-AFTER-AND-LOGIC.md](./06-v2-backend-migration/04-BEFORE-AFTER-AND-LOGIC.md) | Per-change before → after + the reasoning/logic. Read to understand the migration without reading code. |
+
 ### 01 — Project Scope
 
 | File | Purpose |

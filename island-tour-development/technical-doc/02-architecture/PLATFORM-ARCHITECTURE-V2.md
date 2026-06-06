@@ -606,7 +606,7 @@ Unique constraint: `(destination_slug, slug)` — one slug per destination.
 1. **Uniqueness** — before saving any entity, check the slug isn't taken in that destination; if taken, block save with an error.
 2. **Normalization** — lowercase, ASCII-only, hyphen separators, no special chars, no double hyphens.
 3. **Reserved slug protection** — the **19 global category slugs** + `tours` are reserved when a destination is created.
-4. **Redirect on slug change** — when a slug changes, create a **301 redirect** (old → new). *(Target per V2; our current build treats slugs as immutable — see alignment plan §Slug-Redirects for the decision.)*
+4. **Redirect on slug change** — V2 expects a **301 redirect** (old → new) on slug change. **Our decision (2026-06-07): slugs are IMMUTABLE** — they never change after creation, so no `slug_redirects` table and no 301 layer are built. Deliberate, documented divergence from V2 (safer for a booking platform: slugs tied to indexed URLs and bookings never move).
 5. **Soft-delete cooldown** — V2 keeps a deleted slug reserved 90 days. *(Our build keeps it reserved indefinitely via soft-delete — a deliberate, safer divergence; see `SOFT-DELETE-STRATEGY.md`.)*
 
 ### Pre-Seeding (on destination create)

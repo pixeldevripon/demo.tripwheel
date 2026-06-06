@@ -1,7 +1,8 @@
 # V2 Development Alignment Plan
 
 > **Goal:** bring the codebase (schema, backend, frontend) in line with `02-architecture/PLATFORM-ARCHITECTURE-V2.md`.
-> **Companion docs:** target spec = `PLATFORM-ARCHITECTURE-V2.md` · rationale/deltas = `ARCHITECTURE-V2-GAP-ANALYSIS.md`.
+> **Companion docs:** target spec = `02-architecture/PLATFORM-ARCHITECTURE-V2.md` · rationale/deltas = `ARCHITECTURE-V2-GAP-ANALYSIS.md`.
+> **Backend-grounded detail** (read these to execute): `06-v2-backend-migration/01-BACKEND-IMPLEMENTATION-ANALYSIS.md` (current state) · `02-BACKEND-CHANGE-LIST.md` (file-level changes) · `03-BACKEND-MIGRATION-STEPS.md` (ordered runbook) · `04-BEFORE-AFTER-AND-LOGIC.md` (reasoning). This plan's workstreams A–H map to those docs' Groups/Stages.
 > **Constraint:** the **featured-slot economy is retained as-is** (V2 omits it; it coexists). Do not remove slot/waitlist/booking machinery.
 >
 > Status legend: ⬜ not started · ⚠️ partial · ✅ done. Update inline as work lands, and mirror into `MASTER-CHECKLIST.md`.
@@ -133,13 +134,13 @@ Author `technical-doc/06-discovery/SEO-STRUCTURED-DATA.md` from `PLATFORM-ARCHIT
 
 ---
 
-## Decisions required before B/E/H start
-1. **Multi-category & multi-hub tours (B):** adopt V2 many-to-many (recommended for V2 fidelity) — yes/no?
-2. **Flat tour URLs (B):** drop hub-nested tour URLs — yes/no? (recommended yes)
-3. **Collections (E):** build now or defer? (enum stub already exists)
-4. **Slug redirects (H):** keep immutable or add 301 table?
+## Decisions — LOCKED (2026-06-07)
+1. **Multi-category & multi-hub tours (B):** ✅ **ADOPT** V2 many-to-many (`TourCategory` + `TourHub`).
+2. **Flat tour URLs (B):** ✅ **YES** — drop hub-nested tour URLs; every tour is flat `/{dest}/{tour-slug}/` and always writes a TOUR slug_registry row.
+3. **Collections (E):** ✅ **BUILD NOW** — full Collection module this cycle.
+4. **Slug redirects (H):** ✅ **KEEP IMMUTABLE** — no `slug_redirects` table; slugs remain immutable after creation (safer for bookings/indexed URLs). Workstream H reduces to documenting the deliberate divergence; no editable-slug UI. The flat-URL backfill (B) still records old→new slug pairs as a one-off log, but no live 301 layer is built.
 
-> A/C/D/F/G can proceed regardless of these decisions. B/E/H are gated.
+> All workstreams are now unblocked. Recommended order unchanged: A → C → (G basics) → D → B → E → F.
 
 ---
 

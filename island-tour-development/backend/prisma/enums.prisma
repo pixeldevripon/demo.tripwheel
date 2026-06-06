@@ -199,6 +199,22 @@ enum ScheduleStatus {
 
 // ── Destinations & Hubs ───────────────────────────────────────────────────────
 
+// Geographic grouping of destinations (V2 §2). Data attribute only — no URL layer.
+enum Region {
+  CARIBBEAN
+  ATLANTIC
+  MEDITERRANEAN
+  ASIA
+  AFRICA
+}
+
+// Activity-hub classification (V2 §5).
+enum HubType {
+  LOCATION
+  HIGHLIGHT
+  AREA
+}
+
 enum SlugEntityType {
   TOUR
   CATEGORY
