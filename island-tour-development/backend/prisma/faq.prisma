@@ -5,8 +5,8 @@
 // The service layer enforces that entityId belongs to the correct pageType.
 model Faq {
   id           String  @id @default(uuid())
-  pageType     String  // 'category' | 'hub' | 'destination' | 'tour'
-  entityId     String  // UUID of the owning entity
+  pageType     String // 'category' | 'hub' | 'destination' | 'tour'
+  entityId     String // UUID of the owning entity
   locale       Locale
   question     String
   answer       String

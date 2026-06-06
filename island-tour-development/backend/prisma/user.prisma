@@ -3,21 +3,21 @@
 // Do NOT rename: "user", "session", "account", "verification"
 
 model User {
-  id             String      @id @default(uuid())
-  name           String
-  email          String      @unique
-  emailVerified  Boolean     @default(false)
-  image          String?
-  timezone       String      @default("UTC+06:00")
-  phone          String?
-  location       String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  timezone      String   @default("UTC+06:00")
+  phone         String?
+  location      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Platform-specific fields
-  role           Role        @default(TOUR_OPERATOR)
-  status         UserStatus  @default(ACTIVE)
-  hasPassword    Boolean     @default(false)
+  role              Role       @default(TOUR_OPERATOR)
+  status            UserStatus @default(ACTIVE)
+  hasPassword       Boolean    @default(false)
   passwordChangedAt DateTime?
 
   // Relations
@@ -28,9 +28,9 @@ model User {
   bookings            Booking[]
   reviews             Review[]
   wishlists           Wishlist[]
-  destinationsCreated Destination[] @relation("DestinationCreator")
-  hubsCreated         Hub[]         @relation("HubCreator")
-  categoriesCreated   Category[]    @relation("CategoryCreator")
+  destinationsCreated Destination[]  @relation("DestinationCreator")
+  hubsCreated         Hub[]          @relation("HubCreator")
+  categoriesCreated   Category[]     @relation("CategoryCreator")
 
   @@index([id, email])
   @@index([role])
@@ -47,7 +47,7 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -69,7 +69,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }

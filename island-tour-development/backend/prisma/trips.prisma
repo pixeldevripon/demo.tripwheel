@@ -3,41 +3,41 @@
 // Publish blocks: <5 images, no hero, overview empty, highlights <3.
 
 model Trip {
-  id            String    @id @default(uuid())
+  id            String  @id @default(uuid())
   operatorId    String
   destinationId String
   categoryId    String
-  hubId         String?   // null = destination-only tour; set = hub-anchored
+  hubId         String? // null = destination-only tour; set = hub-anchored
 
-  name          String
-  slug          String    // English only, unique per destination
-  status        TripStatus @default(DRAFT)
+  name   String
+  slug   String // English only, unique per destination
+  status TripStatus @default(DRAFT)
 
   // Pricing
-  pricingModel          PricingModel @default(PER_PERSON)
-  unitType              UnitType?    // required when pricingModel = UNIT
-  basePrice             Decimal?     @db.Decimal(10, 2)
-  priceFrom             Decimal?     @db.Decimal(10, 2)  // cached min price for display
+  pricingModel PricingModel @default(PER_PERSON)
+  unitType     UnitType? // required when pricingModel = UNIT
+  basePrice    Decimal?     @db.Decimal(10, 2)
+  priceFrom    Decimal?     @db.Decimal(10, 2) // cached min price for display
 
   // Tour properties
-  durationMinutes       Int?
-  pickupModel           PickupModel @default(NONE)
-  maxPartySize          Int?
-  minPartySize          Int         @default(1)
-  bookingCutoffMinutes  Int         @default(120)  // 0–10080 minutes
-  cancellationHours     Int         @default(24)
+  durationMinutes      Int?
+  pickupModel          PickupModel @default(NONE)
+  maxPartySize         Int?
+  minPartySize         Int         @default(1)
+  bookingCutoffMinutes Int         @default(120) // 0–10080 minutes
+  cancellationHours    Int         @default(24)
 
   // SEO / Content overrides
-  h1Override       String?  // when template-generated H1 is awkward
-  breadcrumbLabel  String?  // short-form when H1 > 35 chars
+  h1Override      String? // when template-generated H1 is awkward
+  breadcrumbLabel String? // short-form when H1 > 35 chars
 
   // Cached operator aggregates (updated on review approve)
-  aggregateRating       Float?
-  aggregateReviewCount  Int      @default(0)
-  aggregatesUpdatedAt   DateTime?
+  aggregateRating      Float?
+  aggregateReviewCount Int       @default(0)
+  aggregatesUpdatedAt  DateTime?
 
   // Flags
-  isSponsored Boolean @default(false)  // admin toggles for promoted tours
+  isSponsored Boolean @default(false) // admin toggles for promoted tours
   isActive    Boolean @default(true)
 
   publishedAt DateTime?
@@ -81,12 +81,12 @@ model Trip {
 model TourImage {
   id           String  @id @default(uuid())
   tripId       String
-  url          String  // JPEG/WebP URL (primary)
+  url          String // JPEG/WebP URL (primary)
   urlAvif      String? // AVIF variant
   urlWebp      String? // WebP variant
   isHero       Boolean @default(false)
-  focalX       Float   @default(0.5)  // 0.0 left → 1.0 right
-  focalY       Float   @default(0.5)  // 0.0 top → 1.0 bottom
+  focalX       Float   @default(0.5) // 0.0 left → 1.0 right
+  focalY       Float   @default(0.5) // 0.0 top → 1.0 bottom
   altText      String?
   displayOrder Int     @default(0)
   width        Int
@@ -104,7 +104,7 @@ model TourAgeBand {
   id           String      @id @default(uuid())
   tripId       String
   bandType     AgeBandType // ADULT | CHILD | INFANT
-  label        String      // 'Adults (13+)', 'Children (3-12)'
+  label        String // 'Adults (13+)', 'Children (3-12)'
   minAge       Int?
   maxAge       Int?
   price        Decimal     @db.Decimal(10, 2)
@@ -124,7 +124,7 @@ model TourAgeBand {
 model TourAddOn {
   id           String    @id @default(uuid())
   tripId       String
-  name         String    // 'Hotel pickup', 'Snorkel mask rental'
+  name         String // 'Hotel pickup', 'Snorkel mask rental'
   description  String?
   price        Decimal   @db.Decimal(10, 2)
   unit         AddOnUnit @default(PER_PERSON)
@@ -170,7 +170,7 @@ model TourHighlightTranslation {
   id                  String  @id @default(uuid())
   highlightId         String
   locale              Locale
-  text                String  // 5–15 words
+  text                String // 5–15 words
   isMachineTranslated Boolean @default(false)
 
   highlight TourHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
@@ -188,7 +188,7 @@ model TourInclusion {
   displayOrder Int     @default(0)
   imageUrl     String?
 
-  trip         Trip                        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip         Trip                       @relation(fields: [tripId], references: [id], onDelete: Cascade)
   translations TourInclusionTranslation[]
 
   @@index([tripId])
@@ -199,7 +199,7 @@ model TourInclusionTranslation {
   id                  String  @id @default(uuid())
   inclusionId         String
   locale              Locale
-  label               String  // 'Open bar', 'Snorkel equipment'
+  label               String // 'Open bar', 'Snorkel equipment'
   isMachineTranslated Boolean @default(false)
 
   inclusion TourInclusion @relation(fields: [inclusionId], references: [id], onDelete: Cascade)
@@ -214,9 +214,9 @@ model TourInclusionTranslation {
 model TripTranslation {
   id                  String   @id @default(uuid())
   tripId              String
-  locale              Locale   // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
+  locale              Locale // 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh'
   title               String?
-  overview            String?  // 80–200 words, paragraph breaks only
+  overview            String? // 80–200 words, paragraph breaks only
   description         String?
   isMachineTranslated Boolean  @default(false)
   updatedAt           DateTime @updatedAt
@@ -234,8 +234,8 @@ model TourSchedule {
   id             String         @id @default(uuid())
   tripId         String
   startDate      DateTime       @db.Date
-  endDate        DateTime?      @db.Date  // for multi-day tours
-  startTime      String         // '09:00' — store as HH:MM string
+  endDate        DateTime?      @db.Date // for multi-day tours
+  startTime      String // '09:00' — store as HH:MM string
   totalSpots     Int
   availableSpots Int
   status         ScheduleStatus @default(AVAILABLE)

@@ -4,11 +4,11 @@
 // 'tours' slug is pre-seeded as RESERVED for every destination.
 model SlugRegistry {
   id              String         @id @default(uuid())
-  destinationSlug String         // 'curacao' — matches Destination.slug
-  slug            String         // 'boat-tours', 'klein-curacao', 'miss-ann'
+  destinationSlug String // 'curacao' — matches Destination.slug
+  slug            String // 'boat-tours', 'klein-curacao', 'miss-ann'
   entityType      SlugEntityType // TOUR | CATEGORY | HUB | COLLECTION | RESERVED
-  entityId        String?        // null only when entityType = RESERVED
-  isActive        Boolean        @default(true)  // false = 404 but slug stays protected
+  entityId        String? // null only when entityType = RESERVED
+  isActive        Boolean        @default(true) // false = 404 but slug stays protected
   createdAt       DateTime       @default(now())
 
   @@unique([destinationSlug, slug])

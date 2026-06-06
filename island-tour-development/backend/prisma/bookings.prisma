@@ -1,15 +1,15 @@
 // Bookings domain
 
 model Booking {
-  id               String        @id @default(uuid())
-  tripId           String
-  userId           String
-  operatorId       String
-  scheduleId       String?       // references a specific TourSchedule
+  id         String  @id @default(uuid())
+  tripId     String
+  userId     String
+  operatorId String
+  scheduleId String? // references a specific TourSchedule
 
   // Booking details
   date             DateTime      @db.Date
-  time             String?       // 'HH:MM' — null for single-departure tours
+  time             String? // 'HH:MM' — null for single-departure tours
   partySize        Int
   totalAmount      Decimal       @db.Decimal(10, 2)
   depositAmount    Decimal       @db.Decimal(10, 2)
@@ -17,8 +17,8 @@ model Booking {
   confirmationCode String        @unique @default(uuid())
 
   // Selected add-ons stored as JSON: [{ addOnId, qty, price }]
-  selectedAddOns   Json?         @default("[]")
-  notes            String?       // guest notes to operator
+  selectedAddOns Json?   @default("[]")
+  notes          String? // guest notes to operator
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

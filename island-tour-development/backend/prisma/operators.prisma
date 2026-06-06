@@ -1,25 +1,25 @@
 model Operator {
-  id                   String                     @id @default(uuid())
-  userId               String                     @unique  // linked to auth User
-  isActive             Boolean                    @default(true)
-  verificationStatus   OperatorVerificationStatus @default(UNVERIFIED)
+  id                 String                     @id @default(uuid())
+  userId             String                     @unique // linked to auth User
+  isActive           Boolean                    @default(true)
+  verificationStatus OperatorVerificationStatus @default(UNVERIFIED)
 
   // Cached review aggregates (updated on review approve — see LD11 in CLAUDE.md)
   aggregateRating      Float?
-  aggregateReviewCount Int                        @default(0)
+  aggregateReviewCount Int       @default(0)
   aggregatesUpdatedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations — auth
-  user            User                  @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   // Relations — business
-  companyInfo     OperatorCompanyInfo?
-  socialMedia     OperatorSocialMedia?
-  stripeConfig    OperatorStripeConfig?
-  mollieConfig    OperatorMollieConfig?
+  companyInfo  OperatorCompanyInfo?
+  socialMedia  OperatorSocialMedia?
+  stripeConfig OperatorStripeConfig?
+  mollieConfig OperatorMollieConfig?
 
   // Relations — platform
   trips           Trip[]
@@ -38,10 +38,10 @@ model OperatorCompanyInfo {
   operatorId String @unique
 
   // Business identity
-  companyName String?
-  companyCountry     String?
-  companyCity        String?
-  companyPhone       String?
+  companyName    String?
+  companyCountry String?
+  companyCity    String?
+  companyPhone   String?
 
   // Business intent
   plannedTripCount  Int?
@@ -55,8 +55,8 @@ model OperatorCompanyInfo {
 }
 
 model OperatorSocialMedia {
-  id         String  @id @default(cuid())
-  operatorId String  @unique
+  id           String  @id @default(cuid())
+  operatorId   String  @unique
   facebookUrl  String? @default("")
   instagramUrl String? @default("")
   twitterUrl   String? @default("")
@@ -69,11 +69,11 @@ model OperatorSocialMedia {
 }
 
 model OperatorStripeConfig {
-  id         String   @id @default(cuid())
-  operatorId String   @unique
-  publishableKey String @default("")
-  secretKey      String @default("")
-  webhookSecret  String @default("")
+  id             String   @id @default(cuid())
+  operatorId     String   @unique
+  publishableKey String   @default("")
+  secretKey      String   @default("")
+  webhookSecret  String   @default("")
   paymentMethods String[] @default([])
   isActive       Boolean  @default(false)
 
@@ -84,11 +84,11 @@ model OperatorStripeConfig {
 }
 
 model OperatorMollieConfig {
-  id         String   @id @default(cuid())
-  operatorId String   @unique
-  apiKey         String @default("")
+  id             String   @id @default(cuid())
+  operatorId     String   @unique
+  apiKey         String   @default("")
   paymentMethods String[] @default([])
-  isActive       Boolean @default(false)
+  isActive       Boolean  @default(false)
 
   operator  Operator @relation(fields: [operatorId], references: [id])
   updatedAt DateTime @updatedAt

@@ -642,12 +642,13 @@
 > Brings the codebase in line with `02-architecture/PLATFORM-ARCHITECTURE-V2.md`. Full detail + acceptance checks in `V2-DEVELOPMENT-ALIGNMENT-PLAN.md`. Slot economy retained as-is.
 
 ### Workstream A — Additive data-model fields
-- ⬜ Add `region` enum + `Destination.region` (required); backfill 5 launch destinations = CARIBBEAN
-- ⬜ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, parentDestinationId
-- ⬜ Add category fields: icon, sortOrder, parentCategoryId, metaTitleTemplate, metaDescriptionTemplate
-- ⬜ Add hub fields: hubType enum (LOCATION/HIGHLIGHT/AREA), latitude, longitude
-- ⬜ Verify seed.ts has exactly the 19 canonical categories + 5 launch destinations
-- ⬜ Expose new fields in DTOs/Swagger + admin forms
+- ⚠️ Add `Region` enum + `Destination.region` (nullable in Stage 1 → required after backfill) — *schema written + validated; migration not yet applied*
+- ⚠️ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, ogImage, parentDestinationId (+ self-relation) — *schema written + validated*
+- ⚠️ Add category fields: description, icon, sortOrder, parentCategoryId (+ self-relation), metaTitleTemplate, metaDescriptionTemplate — *schema written + validated*
+- ⚠️ Add `HubType` enum (LOCATION/HIGHLIGHT/AREA) + Hub fields: hubType, latitude, longitude — *schema written + validated*
+- ⬜ Apply migration (`prisma migrate dev -n add_v2_fields`) + `prisma generate`
+- ⬜ Verify seed.ts has exactly the 19 canonical categories + 5 launch destinations *(Stage 2)*
+- ⬜ Expose new fields in DTOs/Swagger + admin forms + service `*Select` consts
 
 ### Workstream B — Tour cardinality & flat URL (breaking)
 - ⬜ `TourCategory` join (many-to-many, isPrimary); migrate existing single categoryId

@@ -9,7 +9,7 @@ model Review {
   tripId     String
   operatorId String
   userId     String
-  rating     Int     // 1–5
+  rating     Int // 1–5
   comment    String?
   isApproved Boolean @default(false)
 

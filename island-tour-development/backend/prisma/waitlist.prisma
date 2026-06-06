@@ -4,17 +4,17 @@
 // Critical Rule #10: Store offerJobId to cancel BullMQ job when offer is claimed or passed.
 
 model WaitlistEntry {
-  id             String        @id @default(uuid())
-  slotId         String
-  operatorId     String
-  tripId         String?       // the trip the operator wants to publish
-  status         WaitlistStatus @default(WAITING)
+  id         String         @id @default(uuid())
+  slotId     String
+  operatorId String
+  tripId     String? // the trip the operator wants to publish
+  status     WaitlistStatus @default(WAITING)
 
-  joinedAt       DateTime      @default(now())
+  joinedAt       DateTime  @default(now())
   offeredAt      DateTime?
   offerExpiresAt DateTime?
   claimedAt      DateTime?
-  offerJobId     String?       // BullMQ job ID — cancel when offer claimed/passed
+  offerJobId     String? // BullMQ job ID — cancel when offer claimed/passed
 
   slot     FeaturedSlot @relation(fields: [slotId], references: [id])
   operator Operator     @relation(fields: [operatorId], references: [id])

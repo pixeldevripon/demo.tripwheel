@@ -9,24 +9,24 @@
 // Slot tiers: slot 1 = 22% commission, slot 2 = 25%, slot 3 = 30%.
 
 model FeaturedSlot {
-  id             String     @id @default(uuid())
-  categoryId     String
-  slotNumber     Int        // 1 | 2 | 3
-  status         SlotStatus @default(AVAILABLE)
+  id         String     @id @default(uuid())
+  categoryId String
+  slotNumber Int // 1 | 2 | 3
+  status     SlotStatus @default(AVAILABLE)
 
   // Set when SOFT_LOCKED or HARD_RESERVED
-  tripId         String?    @unique
+  tripId         String?   @unique
   operatorId     String?
   acquiredAt     DateTime?
-  expiresAt      DateTime?  // 90-day cap end date when HARD_RESERVED
-  commissionRate Float?     // 0.22 | 0.25 | 0.30 — set at lock time
+  expiresAt      DateTime? // 90-day cap end date when HARD_RESERVED
+  commissionRate Float? // 0.22 | 0.25 | 0.30 — set at lock time
 
-  category    Category       @relation(fields: [categoryId], references: [id])
-  trip        Trip?          @relation(fields: [tripId], references: [id])
-  operator    Operator?      @relation(fields: [operatorId], references: [id])
-  slotLocks   SlotLock[]
-  history     SlotHistory[]
-  waitlist    WaitlistEntry[]
+  category  Category        @relation(fields: [categoryId], references: [id])
+  trip      Trip?           @relation(fields: [tripId], references: [id])
+  operator  Operator?       @relation(fields: [operatorId], references: [id])
+  slotLocks SlotLock[]
+  history   SlotHistory[]
+  waitlist  WaitlistEntry[]
 
   @@unique([categoryId, slotNumber])
   @@index([categoryId, status])
@@ -42,9 +42,9 @@ model SlotLock {
   operatorId String
   tripId     String   @unique
   expiresAt  DateTime
-  bullJobId  String   // BullMQ job ID — cancel this when publishing
+  bullJobId  String // BullMQ job ID — cancel this when publishing
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   slot     FeaturedSlot @relation(fields: [slotId], references: [id])
   operator Operator     @relation(fields: [operatorId], references: [id])
@@ -65,7 +65,7 @@ model SlotHistory {
   tripId     String?
   note       String?
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   slot FeaturedSlot @relation(fields: [slotId], references: [id])
 

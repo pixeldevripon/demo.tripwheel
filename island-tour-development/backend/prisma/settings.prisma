@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Core site information (singleton)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6,24 +5,23 @@
 model SiteInfo {
   id String @id @default("default")
 
-  siteName        String?  @default("")
-  siteTagline     String?  @default("")
-  siteDescription String?  @default("")
-  bookingFormStyle     String?  @default("v2")
+  siteName         String? @default("")
+  siteTagline      String? @default("")
+  siteDescription  String? @default("")
+  bookingFormStyle String? @default("v2")
 
-  logo     String?  @default("")
-  favicon   String? @default("")
+  logo    String? @default("")
+  favicon String? @default("")
 
   enableWhatsappChat Boolean? @default(false)
   whatsappNumber     String?  @default("")
   instagramWidgetId  String?  @default("")
   enableInstagram    Boolean? @default(false)
 
-  faqs     Json?    @default("[]")
+  faqs Json? @default("[]")
 
   @@map("site_info")
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEO meta tags (singleton)
@@ -38,13 +36,13 @@ model SiteSEO {
   canonicalUrl    String? @default("")
   robotsMeta      String? @default("")
 
-  ogTitle       String?      @default("")
-  ogDescription String?      @default("")
-  ogImage       String?      @default("")
+  ogTitle       String? @default("")
+  ogDescription String? @default("")
+  ogImage       String? @default("")
 
-  twitterTitle       String?           @default("")
-  twitterDescription String?           @default("")
-  twitterImage       String?           @default("")
+  twitterTitle       String? @default("")
+  twitterDescription String? @default("")
+  twitterImage       String? @default("")
 
   googleAnalyticsId   String? @default("")
   googleTagManagerId  String? @default("")
@@ -128,8 +126,6 @@ model CompanyInformations {
   @@map("company_informations")
 }
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Stripe configuration (singleton)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,5 +160,3 @@ model mollieConfiguration {
   @@index([id])
   @@map("mollie_configuration")
 }
-
-

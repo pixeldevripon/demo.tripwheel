@@ -5,16 +5,32 @@
 model Destination {
   id        String  @id @default(uuid())
   name      String
-  slug      String  @unique   // 'curacao', 'aruba' — always English
+  slug      String  @unique // 'curacao', 'aruba' — always English
   heroImage String?
-  isSeeded  Boolean @default(false)  // true = seeded at launch; guard delete in service
+  isSeeded  Boolean @default(false) // true = seeded at launch; guard delete in service
   isActive  Boolean @default(true)
-  createdBy String?            // null = seeded; userId = admin who created
+  createdBy String? // null = seeded; userId = admin who created
+
+  // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
+  // `region` is nullable in Stage 1; backfilled in Stage 2, then made required.
+  region              Region? // geographic grouping (no URL layer) — V2 §2
+  country             String?
+  latitude            Float?
+  longitude           Float?
+  timezone            String? // IANA timezone, e.g. 'America/Curacao'
+  currency            String? // default currency code, e.g. 'USD' | 'EUR'
+  language            String? // primary language code
+  galleryImages       String[]      @default([])
+  ogImage             String? // Open Graph image
+  // Future sub-destinations (V2 §2) — nullable, unused at launch.
+  parentDestinationId String?
+  parentDestination   Destination?  @relation("DestinationParent", fields: [parentDestinationId], references: [id])
+  subDestinations     Destination[] @relation("DestinationParent")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator      User?   @relation("DestinationCreator", fields: [createdBy], references: [id])
+  creator      User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
   hubs         Hub[]
   trips        Trip[]
   translations DestinationTranslation[]
@@ -22,6 +38,8 @@ model Destination {
 
   @@index([slug])
   @@index([isActive])
+  @@index([region])
+  @@index([parentDestinationId])
   @@map("destinations")
 }
 
@@ -33,7 +51,7 @@ model DestinationTranslation {
   destinationId       String
   destination         Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   locale              Locale
-  name                String?     // localized display name; null falls back to Destination.name
+  name                String? // localized display name; null falls back to Destination.name
   overview            String?
   h1Override          String?
   breadcrumbLabel     String?
@@ -63,26 +81,31 @@ model DestinationPageContent {
 // Activity Hubs — destination-specific special locations (e.g. Klein Curaçao)
 // Admin-only create. Destination is mandatory.
 model Hub {
-  id            String  @id @default(uuid())
+  id            String   @id @default(uuid())
   destinationId String
   name          String
-  slug          String   // locale-independent English slug; unique per destination
+  slug          String // locale-independent English slug; unique per destination
   description   String?
-  isSeeded      Boolean @default(false)  // true = seeded at launch; guard delete in service
-  isActive      Boolean @default(true)
+  // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
+  // `hubType` nullable in Stage 1; backfilled in Stage 2.
+  hubType       HubType? // location | highlight | area — V2 §5
+  latitude      Float? // for location-type hubs
+  longitude     Float?
+  isSeeded      Boolean  @default(false) // true = seeded at launch; guard delete in service
+  isActive      Boolean  @default(true)
   createdBy     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  destination        Destination          @relation(fields: [destinationId], references: [id])
-  creator            User?                @relation("HubCreator", fields: [createdBy], references: [id])
-  allowedCategories  HubAllowedCategory[]
-  ourPicks           HubOurPick[]
-  comparisonGroups   HubComparisonGroup[]
-  translations       HubTranslation[]
-  pageContents       HubPageContent[]
-  trips              Trip[]
+  destination       Destination          @relation(fields: [destinationId], references: [id])
+  creator           User?                @relation("HubCreator", fields: [createdBy], references: [id])
+  allowedCategories HubAllowedCategory[]
+  ourPicks          HubOurPick[]
+  comparisonGroups  HubComparisonGroup[]
+  translations      HubTranslation[]
+  pageContents      HubPageContent[]
+  trips             Trip[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])
@@ -96,7 +119,7 @@ model HubTranslation {
   hubId               String
   hub                 Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
   locale              Locale
-  name                String?  // null falls back to Hub.name
+  name                String? // null falls back to Hub.name
   overview            String?
   h1Override          String?
   breadcrumbLabel     String?
@@ -110,9 +133,9 @@ model HubTranslation {
 
 // Per-locale editorial page content for a hub (about text, SEO metadata).
 model HubPageContent {
-  id              String   @id @default(uuid())
+  id              String  @id @default(uuid())
   hubId           String
-  hub             Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  hub             Hub     @relation(fields: [hubId], references: [id], onDelete: Cascade)
   locale          Locale
   aboutText       String?
   metaTitle       String?
@@ -143,7 +166,7 @@ model HubOurPick {
   hubId        String
   tourId       String
   pickType     HubPickType
-  description  String      // admin-written editorial text
+  description  String // admin-written editorial text
   displayOrder Int         @default(0)
 
   hub  Hub  @relation(fields: [hubId], references: [id], onDelete: Cascade)
@@ -160,8 +183,8 @@ model HubComparisonGroup {
   groupName    String
   displayOrder Int    @default(0)
 
-  hub              Hub                  @relation(fields: [hubId], references: [id], onDelete: Cascade)
-  comparisonTours  HubComparisonTour[]
+  hub             Hub                 @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  comparisonTours HubComparisonTour[]
 
   @@map("hub_comparison_groups")
 }
@@ -182,13 +205,13 @@ model HubComparisonTour {
 // "Top Island Experiences" section — categories and hubs only, never individual tours.
 // Admin manually curates + attaches video clips.
 model FeaturedExperience {
-  id           String             @id @default(uuid())
-  entityType   FeaturedEntityType // CATEGORY | HUB only
-  entityId     String             // id of the Category or Hub
-  destinationId String?           // null = show everywhere; set = show for that destination only
-  videoUrl     String?
-  displayOrder Int                @default(0)
-  isActive     Boolean            @default(true)
+  id            String             @id @default(uuid())
+  entityType    FeaturedEntityType // CATEGORY | HUB only
+  entityId      String // id of the Category or Hub
+  destinationId String? // null = show everywhere; set = show for that destination only
+  videoUrl      String?
+  displayOrder  Int                @default(0)
+  isActive      Boolean            @default(true)
 
   @@index([entityType, entityId])
   @@index([destinationId])

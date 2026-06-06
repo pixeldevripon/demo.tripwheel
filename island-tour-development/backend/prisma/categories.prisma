@@ -6,23 +6,35 @@
 model Category {
   id        String  @id @default(uuid())
   name      String
-  slug      String  @unique  // 'boat-tours' — always English, globally unique
-  heroImage String?          // optional banner/thumbnail image URL
+  slug      String  @unique // 'boat-tours' — always English, globally unique
+  heroImage String? // optional banner/thumbnail image URL
   isSeeded  Boolean @default(false)
   isActive  Boolean @default(true)
-  createdBy String?           // null = seeded; userId = admin who created
+  createdBy String? // null = seeded; userId = admin who created
+
+  // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
+  description             String? // canonical English description (translations carry localized overview)
+  icon                    String? // icon identifier for UI — V2 §3
+  sortOrder               Int        @default(0) // display order in nav/filter
+  metaTitleTemplate       String? // e.g. "{category} in {destination}"
+  metaDescriptionTemplate String? // SEO template per destination
+  // Future sub-categories (V2 §3) — nullable, unused at launch, no URL impact.
+  parentCategoryId        String?
+  parentCategory          Category?  @relation("CategoryParent", fields: [parentCategoryId], references: [id])
+  subCategories           Category[] @relation("CategoryParent")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator           User?                  @relation("CategoryCreator", fields: [createdBy], references: [id])
-  allowedInHubs     HubAllowedCategory[]
-  featuredSlots     FeaturedSlot[]
-  trips             Trip[]
-  translations      CategoryTranslation[]
-  pageContents      CategoryPageContent[]
+  creator       User?                 @relation("CategoryCreator", fields: [createdBy], references: [id])
+  allowedInHubs HubAllowedCategory[]
+  featuredSlots FeaturedSlot[]
+  trips         Trip[]
+  translations  CategoryTranslation[]
+  pageContents  CategoryPageContent[]
 
   @@index([slug])
+  @@index([parentCategoryId])
   @@map("categories")
 }
 
@@ -49,7 +61,7 @@ model CategoryTranslation {
   categoryId          String
   category            Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   locale              Locale
-  name                String?  // localized name; null falls back to Category.name
+  name                String? // localized name; null falls back to Category.name
   overview            String?
   h1Override          String?
   breadcrumbLabel     String?
