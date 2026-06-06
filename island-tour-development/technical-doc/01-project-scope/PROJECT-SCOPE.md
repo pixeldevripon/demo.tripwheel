@@ -4,6 +4,23 @@ Island Tours is a complete tour and travel management marketplace application. T
 
 ---
 
+## Discovery & SEO Architecture (V2)
+
+The public-facing discovery, URL, attribute, filter, search, and SEO architecture is specified canonically in **`technical-doc/02-architecture/PLATFORM-ARCHITECTURE-V2.md`** (reflects the V2 Notion PDF). Summary of scope it adds to this project:
+
+- **Core hierarchy:** Destination → Category → Tour → Attributes, with **Activity Hubs** and **Collections** as two parallel discovery layers. A tour belongs to 1 destination, **1+ categories**, **0–n activity hubs**, one canonical flat URL.
+- **Region layer:** destinations grouped by region (Caribbean/Atlantic/Mediterranean/Asia/Africa) — a data attribute, no URL.
+- **19 global categories** with fixed slugs; category pages render only when there is ≥1 published tour.
+- **Attributes / Filters system:** central `attribute_definitions` dictionary + `tour_attributes`; global + category-specific filters; faceted filtering, sorting (incl. weighted "Recommended"). *(New build.)*
+- **Collections:** manual or dynamic curated tour lists. *(New module.)*
+- **Search:** full-text across tours (Postgres tsvector → Algolia/ES later). *(New module.)*
+- **SEO layer:** JSON-LD structured data, per-locale XML sitemaps, breadcrumbs, internal linking, CRO display fields (social proof, urgency, recency).
+- **i18n:** 7 locales (en, es, nl, pt, fr, de, zh), English slugs, hreflang + x-default, ISR. *(Already implemented — see `04-multilingual/MULTILINGUAL-CONTENT.md`.)*
+
+The migration from current code to this target is tracked in **`technical-doc/V2-DEVELOPMENT-ALIGNMENT-PLAN.md`**. The featured-slot economy, bookings, payments, reviews, operator onboarding, notifications, and chat described below are **retained as-is** (V2 does not cover the transactional layer).
+
+---
+
 ## Roles & Authentication
 
 The platform has three roles: **USER (Customer)**, **TOUR_OPERATOR**, and **ADMIN**. Each role has a distinct authentication flow.

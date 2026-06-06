@@ -5,6 +5,8 @@
 > Multilingual: `technical-doc/04-multilingual/MULTILINGUAL-CONTENT.md`
 > Access management: `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
 > Frontend/slot/booking reference: `CLAUDE-reference.md`
+> **Discovery/SEO architecture (canonical, reflects V2 PDF): `technical-doc/02-architecture/PLATFORM-ARCHITECTURE-V2.md`**
+> **V2 alignment/migration plan: `technical-doc/V2-DEVELOPMENT-ALIGNMENT-PLAN.md`** · gap rationale: `technical-doc/ARCHITECTURE-V2-GAP-ANALYSIS.md`
 > **Master task checklist: `technical-doc/MASTER-CHECKLIST.md`**
 
 ---
@@ -25,9 +27,13 @@ Update the checklist in the same commit/response as the implementation work. Nev
 
 ## What This Project Is
 
-Caribbean tour marketplace. **Admins** manage destinations, categories, and hubs. **Operators** list trips and compete for 3 featured slots per category. **Travelers** book instantly — no 24h enquiry model.
+Island tour marketplace (reseller — commission on local operators). **Admins** manage destinations, categories, hubs, and collections. **Operators** list trips and compete for 3 featured slots per category. **Travelers** discover via three parallel layers (Categories | Activity Hubs | Collections), filter by attributes, and book instantly — no 24h enquiry model.
 
-Platform covers Caribbean destinations only (Curaçao, Aruba, Sint Maarten, etc.).
+**Discovery architecture (canonical):** `technical-doc/02-architecture/PLATFORM-ARCHITECTURE-V2.md`. Core hierarchy: Destination → Category → Tour → Attributes, with Activity Hubs and Collections as parallel discovery layers. Destinations are grouped by **region** (data attribute, no URL). A tour belongs to 1 destination, **1+ categories**, **0–n activity hubs**, and has one canonical flat URL `/{locale}/{destination}/{tour-slug}/`.
+
+**Launch destinations (5, all Caribbean):** Curaçao, Aruba, Sint Maarten, Saint Lucia, Bahamas. Schema scales to other regions (Atlantic, Mediterranean, Asia, Africa) without structural change.
+
+> Some V2 points (multi-category/multi-hub tours, flat tour URLs, attributes/filters, collections, category-page gating) are **target state** not yet built — tracked in `technical-doc/V2-DEVELOPMENT-ALIGNMENT-PLAN.md`. The featured-slot economy is retained as-is (V2 omits it).
 
 ---
 
@@ -108,19 +114,22 @@ pnpm prisma:validate
 
 | Entity | Create | Notes |
 |---|---|---|
-| Destinations | Admin only | Caribbean islands; pre-seeded; `is_seeded` flag protects from delete |
-| Categories | Admin only | **Global** — one category spans all destinations automatically |
-| Hubs | Admin only | **Destination-specific** — destination is mandatory on create |
-| Tours | Operators | Picks Destination → Category → Hub (optional) |
-| Featured slot | Operators | Via slot economy — lockSlot → publishTrip |
+| Destinations | Admin only | Islands; pre-seeded; `is_seeded` protects from delete; grouped by **region** (data attribute, no URL) |
+| Categories | Admin only | **Global** (the 19 canonical categories) — one category spans all destinations; page renders only when ≥1 published tour (target) |
+| Hubs (Activity Hubs) | Admin only | **Destination-specific** — destination mandatory; `hub_type` = location/highlight/area |
+| Collections | Admin only | Curated/filtered editorial lists (manual or dynamic); **new module, not yet built** |
+| Tours | Operators | Picks Destination → **1+ Categories** → **0–n Hubs** (target: many-to-many); one flat canonical URL |
+| Featured slot | Operators | Via slot economy — lockSlot → publishTrip (retained; not in V2) |
 | Top Island Experiences | Admin | Categories and Hubs only — never individual tours |
-| Page editorial content | Admin | About text, FAQ per destination/category/hub |
+| Page editorial content | Admin | About text, FAQ per destination/category/hub/collection |
+| Attributes / Filters | Admin (dictionary) + Operator (per-tour values) | Central `attribute_definitions` dictionary + `tour_attributes`; **new system, not yet built** |
 
 **Slug registry write rules:**
 - Category create → 1 `slug_registry` row **per active destination** (in same transaction)
 - Hub create → 1 `slug_registry` row for its destination (in same transaction)
+- Collection create → 1 `slug_registry` row for its destination (in same transaction) — *(target; module not yet built)*
 - Destination-only tour create → 1 `slug_registry` row (in same transaction)
-- Hub-anchored tour create → **NO** `slug_registry` row
+- Hub-anchored tour create → **NO** `slug_registry` row — *(CURRENT behavior. V2 TARGET: every tour is flat `/{dest}/{tour-slug}/` and **always** writes a TOUR row; the hub-nested URL is removed. See `V2-DEVELOPMENT-ALIGNMENT-PLAN.md` §B before changing.)*
 
 **FeaturedSlot write rule:**
 - Category create → seed exactly **3 FeaturedSlot rows** for that category (in same transaction, never after)

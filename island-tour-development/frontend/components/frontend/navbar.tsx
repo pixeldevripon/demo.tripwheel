@@ -10,7 +10,6 @@ import {
     ALL_LOCALES,
     LOCALE_COOKIE,
     LOCALE_NATIVE_LABELS,
-    localeFlag,
     localizeHref,
     type Locale,
 } from '@/lib/constants/locales';
@@ -53,13 +52,16 @@ const dropdownMotion = {
     transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
 } as const;
 
-/** Circular flag badge — uniform across locales regardless of flag aspect ratio. */
-function Flag({ code, className = 'size-6' }: { code: Locale; className?: string }) {
+/** Globe icon — single language affordance shared by every locale. */
+function Globe({ className = 'size-6' }: { className?: string }) {
     return (
-        <span
-            className={`relative inline-block overflow-hidden rounded-full ring-1 ring-black/10 shrink-0 ${className}`}>
-            <Image src={localeFlag(code)} alt='' fill sizes='28px' className='object-cover' />
-        </span>
+        <Image
+            src='/icons/nav-globe.svg'
+            alt=''
+            width={24}
+            height={24}
+            className={`shrink-0 ${className}`}
+        />
     );
 }
 
@@ -144,10 +146,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         onClick={() => switchLocale(code)}
                         aria-current={code === locale}
                         className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
-                        <span className='flex items-center gap-2.5'>
-                            <Flag code={code} className='size-5' />
-                            <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                        </span>
+                        <span>{LOCALE_NATIVE_LABELS[code]}</span>
                         <span className='uppercase text-xs text-it-ink-muted'>{code}</span>
                     </button>
                 </li>
@@ -319,7 +318,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             aria-label={dict.language}
                             aria-expanded={langOpen}
                             className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0'>
-                            <Flag code={locale} />
+                            <Globe />
                             <span className='text-base font-medium text-it-ink uppercase'>
                                 {locale}
                             </span>
@@ -396,7 +395,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             aria-label={dict.language}
                             aria-expanded={langOpen}
                             className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'>
-                            <Flag code={locale} />
+                            <Globe />
                         </button>
 
                         <AnimatePresence>

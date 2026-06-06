@@ -27,6 +27,7 @@
 - [Phase 16 — Notifications](#phase-16--notifications)
 - [Phase 17 — Admin Panel — Moderation & Management](#phase-17--admin-panel--moderation--management)
 - [Phase 18 — Wishlist](#phase-18--wishlist)
+- [Phase 19 — V2 Discovery & SEO Alignment](#phase-19--v2-discovery--seo-alignment)
 - [Missing Features — Industry-Best & Business Requirements](#missing-features--industry-best--business-requirements)
 
 ---
@@ -636,6 +637,73 @@
 
 ---
 
+## Phase 19 — V2 Discovery & SEO Alignment
+
+> Brings the codebase in line with `02-architecture/PLATFORM-ARCHITECTURE-V2.md`. Full detail + acceptance checks in `V2-DEVELOPMENT-ALIGNMENT-PLAN.md`. Slot economy retained as-is.
+
+### Workstream A — Additive data-model fields
+- ⬜ Add `region` enum + `Destination.region` (required); backfill 5 launch destinations = CARIBBEAN
+- ⬜ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, parentDestinationId
+- ⬜ Add category fields: icon, sortOrder, parentCategoryId, metaTitleTemplate, metaDescriptionTemplate
+- ⬜ Add hub fields: hubType enum (LOCATION/HIGHLIGHT/AREA), latitude, longitude
+- ⬜ Verify seed.ts has exactly the 19 canonical categories + 5 launch destinations
+- ⬜ Expose new fields in DTOs/Swagger + admin forms
+
+### Workstream B — Tour cardinality & flat URL (breaking)
+- ⬜ `TourCategory` join (many-to-many, isPrimary); migrate existing single categoryId
+- ⬜ `TourHub` join (many-to-many); migrate existing single hubId
+- ⬜ Every tour flat URL `/{dest}/{tour-slug}/` + always write slug_registry TOUR row; remove hub-nested route
+- ⬜ HubAllowedCategory check against any of the tour's categories
+- ⬜ Public GET /trips filters via join tables; breadcrumb/canonical use isPrimary category
+- ⬜ Update CLAUDE.md Rule #8 + TRIP-MODULE §3/§4.12/§4.13/§6.7
+
+### Workstream C — Category page gating
+- ⬜ Category page 404 when publishedTourCount = 0 (slug stays reserved)
+- ⬜ categories API returns publishedTourCount; omit zero-count from nav/listings
+
+### Workstream D — Attributes / Filters system (new module)
+- ⬜ `attribute_definitions` dictionary table + seed (global + category-specific)
+- ⬜ `tour_attributes` key-value table + indexes
+- ⬜ Backend attributes module: dictionary CRUD + per-tour assignment with validation
+- ⬜ GET /filters/:dest/:category (filters + value counts)
+- ⬜ Tour-listing filter query params + comma-separated multi-values
+- ⬜ Sorting incl. Recommended weighted score
+- ⬜ Filter-per-page-type rules + missing-data handling
+- ⬜ Frontend filter panel (sidebar/bottom-sheet, URL-driven, canonical→base)
+- ⬜ Ship Filter-Priority top-6 first
+
+### Workstream E — Collections module (new module)
+- ⬜ Collection model + translations + page content + FAQ
+- ⬜ slug_registry COLLECTION row on create
+- ⬜ Dynamic filter_query resolver
+- ⬜ Cannibalization naming guard vs category slugs
+- ⬜ Admin CRUD + frontend CollectionPage
+
+### Workstream F — Search (new module)
+- ⬜ Postgres tsvector full-text (title+description+highlights+category+hub names)
+- ⬜ GET /search?q=&destination=&locale= (SSR) + same filters/sort
+- ⬜ Autocomplete endpoint
+- ⬜ Frontend /search page
+
+### Workstream G — SEO layer
+- ⬜ JSON-LD emitters per page type (+ BreadcrumbList everywhere)
+- ⬜ Breadcrumbs per page type (tour uses primary category)
+- ⬜ XML sitemap index + per-type/per-locale files (published-only, non-empty categories)
+- ⬜ Internal linking matrix
+- ⬜ CRO fields: bookingCount, bookingCountToday, spotsRemaining, lastBookedAt + tour-card signals
+- ⬜ Confirm ISR revalidation values match §10
+
+### Workstream H — Slug redirects (decision-gated)
+- ⬜ Decision: keep immutable slugs vs add slug_redirects 301 table + 90-day cooldown
+- ⬜ If adopting: slug_redirects table + 301 handling + editable slug UI
+
+### i18n confirmations
+- ⬜ No-prefix → 302 locale fallback (Accept-Language) alongside localePrefix:'always'
+- ⬜ Add What-Gets-Translated priority list to MULTILINGUAL-CONTENT.md
+- ⬜ Per-locale Open Graph (og:locale, translated og:title/og:description)
+
+---
+
 ## Summary Stats
 
 | Phase | Total Tasks | ✅ Done | ⚠️ Partial | ⬜ Remaining |
@@ -659,8 +727,9 @@
 | Phase 16 — Notifications | 11 | 2 | 0 | 9 |
 | Phase 17 — Admin Moderation | 9 | 0 | 0 | 9 |
 | Phase 18 — Wishlist | 4 | 0 | 0 | 4 |
+| Phase 19 — V2 Discovery & SEO Alignment | 43 | 0 | 0 | 43 |
 | Missing Features (F-01 to F-23) | 23 | 0 | 0 | 23 |
-| **TOTAL** | **311** | **126** | **15** | **170** |
+| **TOTAL** | **354** | **126** | **15** | **213** |
 
-**Completion: ~41% of total scope implemented.**  
+**Completion: ~36% of total scope implemented.**  
 Core infrastructure (schema, auth, admin modules) is solid. The next highest-priority unimplemented blocks are: **Slot Economy (Phase 5)** → **BullMQ Workers (Phase 7)** → **Bookings + Payments (Phase 4.13–4.14)** → **Traveler Pages (Phase 11)**.

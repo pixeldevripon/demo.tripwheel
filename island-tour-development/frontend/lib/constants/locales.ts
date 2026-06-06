@@ -28,8 +28,14 @@ export const LOCALE_NATIVE_LABELS: Record<Locale, string> = {
   zh: '中文',
 };
 
+/** Supported display currencies. */
+export type Currency = 'EUR' | 'USD';
+
+/** All selectable currencies — order matches the footer currency switcher. */
+export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
+
 /** Currency per locale — EUR everywhere except Chinese (USD). */
-export const LOCALE_CURRENCY: Record<Locale, 'EUR' | 'USD'> = {
+export const LOCALE_CURRENCY: Record<Locale, Currency> = {
   en: 'EUR',
   es: 'EUR',
   nl: 'EUR',
@@ -39,8 +45,28 @@ export const LOCALE_CURRENCY: Record<Locale, 'EUR' | 'USD'> = {
   zh: 'USD',
 };
 
+/** Full display name for a currency (left side of the switcher row). */
+export const CURRENCY_NAMES: Record<Currency, string> = {
+  EUR: 'Euro',
+  USD: 'US Dollar',
+};
+
+/** Code + symbol label, e.g. `EUR (€)` (selector button + active row). */
+export const CURRENCY_LABELS: Record<Currency, string> = {
+  EUR: 'EUR (€)',
+  USD: 'USD ($)',
+};
+
 /** Cookie that remembers the visitor's chosen locale. */
 export const LOCALE_COOKIE = 'NEXT_LOCALE';
+
+/** Cookie that remembers the visitor's chosen currency. */
+export const CURRENCY_COOKIE = 'NEXT_CURRENCY';
+
+/** Type guard — narrows an arbitrary string to a supported `Currency`. */
+export function isCurrency(value: string | undefined | null): value is Currency {
+  return !!value && (ALL_CURRENCIES as string[]).includes(value);
+}
 
 /** Path to the flag SVG for a locale (lives in `/public/icons/flags`). */
 export function localeFlag(locale: Locale): string {

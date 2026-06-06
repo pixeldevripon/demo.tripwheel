@@ -7,11 +7,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
+    ALL_CURRENCIES,
     ALL_LOCALES,
+    CURRENCY_COOKIE,
+    CURRENCY_LABELS,
+    CURRENCY_NAMES,
+    isCurrency,
     LOCALE_COOKIE,
+    LOCALE_CURRENCY,
     LOCALE_NATIVE_LABELS,
-    localeFlag,
     localizeHref,
+    type Currency,
     type Locale,
 } from '@/lib/constants/locales';
 
@@ -55,27 +61,93 @@ const paymentsRow2 = [
     { src: '/footer/payment/pay-8.svg', alt: 'American Express' },
 ];
 
-function Selector({
-    label,
-    value,
-    icon,
-}: {
-    label: string;
-    value: string;
-    icon: React.ReactNode;
-}) {
+/** Interactive currency selector — opens upward, defaults to the locale's currency. */
+function CurrencySelector({ locale, label }: { locale: Locale; label: string }) {
+    const [open, setOpen] = useState(false);
+    const [currency, setCurrency] = useState<Currency>(LOCALE_CURRENCY[locale]);
+    const ref = useRef<HTMLDivElement>(null);
+
+    // Restore a previously chosen currency once mounted (starts from the locale
+    // default on both server and client to avoid a hydration mismatch).
+    useEffect(() => {
+        const stored = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith(`${CURRENCY_COOKIE}=`))
+            ?.split('=')[1];
+        if (isCurrency(stored)) setCurrency(stored);
+    }, []);
+
+    useEffect(() => {
+        function onPointerDown(event: PointerEvent) {
+            if (ref.current && !ref.current.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        }
+        document.addEventListener('pointerdown', onPointerDown);
+        return () => document.removeEventListener('pointerdown', onPointerDown);
+    }, []);
+
+    function selectCurrency(next: Currency) {
+        setOpen(false);
+        setCurrency(next);
+        document.cookie = `${CURRENCY_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+    }
+
     return (
         <div className='flex flex-col gap-1.5'>
             <span className='text-lg font-medium text-it-white lg:text-xl'>{label}</span>
-            <button
-                type='button'
-                className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
-                <span className='flex items-center gap-2'>
-                    {icon}
-                    <span className='text-sm text-it-ink lg:text-base'>{value}</span>
-                </span>
-                <ChevronDown size={20} strokeWidth={1.5} className='text-it-ink' />
-            </button>
+            <div ref={ref} className='relative'>
+                <button
+                    type='button'
+                    aria-expanded={open}
+                    onClick={() => setOpen((v) => !v)}
+                    className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full px-4 py-3 cursor-pointer border-none'>
+                    <span className='flex items-center gap-2'>
+                        <Image
+                            src='/footer/currency.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
+                        <span className='text-sm text-it-ink lg:text-base'>
+                            {CURRENCY_LABELS[currency]}
+                        </span>
+                    </span>
+                    <motion.span
+                        className='inline-flex'
+                        animate={{ rotate: open ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}>
+                        <ChevronDown size={20} strokeWidth={1.5} className='text-it-ink' />
+                    </motion.span>
+                </button>
+
+                <AnimatePresence>
+                    {open && (
+                        <motion.ul
+                            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                            className='absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 m-0 list-none origin-bottom overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg'>
+                            {ALL_CURRENCIES.map((code) => (
+                                <li key={code}>
+                                    <button
+                                        type='button'
+                                        onClick={() => selectCurrency(code)}
+                                        aria-current={code === currency}
+                                        className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === currency ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                        <span>{CURRENCY_NAMES[code]}</span>
+                                        <span className='uppercase text-xs text-it-ink-muted'>
+                                            {code}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </motion.ul>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }
@@ -150,18 +222,7 @@ function LanguageSelector({ locale, label }: { locale: Locale; label: string }) 
                                         onClick={() => switchLocale(code)}
                                         aria-current={code === locale}
                                         className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
-                                        <span className='flex items-center gap-2.5'>
-                                            <span className='relative inline-block size-5 overflow-hidden rounded-full ring-1 ring-black/10 shrink-0'>
-                                                <Image
-                                                    src={localeFlag(code)}
-                                                    alt=''
-                                                    fill
-                                                    sizes='20px'
-                                                    className='object-cover'
-                                                />
-                                            </span>
-                                            {LOCALE_NATIVE_LABELS[code]}
-                                        </span>
+                                        <span>{LOCALE_NATIVE_LABELS[code]}</span>
                                         <span className='uppercase text-xs text-it-ink-muted'>
                                             {code}
                                         </span>
@@ -278,19 +339,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                     {/* Right column: selectors + payments — full-width row on mobile (capped on tablet) */}
                     <div className='col-span-2 flex flex-col gap-8 w-full max-w-md lg:max-w-73.5'>
                         <LanguageSelector locale={locale} label={dict.language} />
-                        <Selector
-                            label={dict.currency}
-                            value='USD ($)'
-                            icon={
-                                <Image
-                                    src='/footer/currency.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-6'
-                                />
-                            }
-                        />
+                        <CurrencySelector locale={locale} label={dict.currency} />
 
                         {/* Payment badges — uniform 64×36 (mobile) / 73×40 (desktop) boxes, packed */}
                         <div className='grid w-64 grid-cols-4 gap-y-2 lg:w-73'>

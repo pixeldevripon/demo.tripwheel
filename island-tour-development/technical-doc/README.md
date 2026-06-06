@@ -26,6 +26,14 @@ technical-doc/
 |---|---|
 | [MASTER-CHECKLIST.md](./MASTER-CHECKLIST.md) | Every task across all 18 phases — ✅ implemented, ⚠️ partial, ⬜ remaining — plus 23 missing features. Source of truth for "what's next". |
 
+### Platform Architecture V2 (Notion PDF) — Reflected
+
+| File | Purpose |
+|---|---|
+| [02-architecture/PLATFORM-ARCHITECTURE-V2.md](./02-architecture/PLATFORM-ARCHITECTURE-V2.md) | **Canonical** discovery/SEO architecture — faithfully reflects all 11 sections of the V2 Notion PDF (hierarchy, destinations+region, 19 categories, multi-category tours, attributes/filters, collections, URL structure, slug registry, JSON-LD/sitemaps/search, i18n). States target state; slot economy retained. |
+| [V2-DEVELOPMENT-ALIGNMENT-PLAN.md](./V2-DEVELOPMENT-ALIGNMENT-PLAN.md) | Phased, checkboxed migration plan to bring schema/backend/frontend in line with V2 (workstreams A–H). |
+| [ARCHITECTURE-V2-GAP-ANALYSIS.md](./ARCHITECTURE-V2-GAP-ANALYSIS.md) | Why each delta exists — conflicts, missing systems, field gaps between V2 and our docs/schema. |
+
 ### 01 — Project Scope
 
 | File | Purpose |

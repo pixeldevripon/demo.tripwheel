@@ -3,6 +3,14 @@
 > Phase 4 scope: Trip CRUD + all child model management + lifecycle transitions.
 > Slot system (SlotLock, FeaturedSlot interactions) is deferred to Phase 5.
 > Upload module (Cloudinary) is a parallel Phase 4 track.
+>
+> ⚠️ **V2 alignment (target state — see `02-architecture/PLATFORM-ARCHITECTURE-V2.md` §4 + `V2-DEVELOPMENT-ALIGNMENT-PLAN.md` §B).** This doc currently describes a tour with a **single** category and an optional **single** hub, plus a **hub-anchored two-segment URL** `/{dest}/{hub}/{tour}/`. The V2 target is:
+> - Tour belongs to **1+ categories** (many-to-many via `TourCategory`, one `isPrimary` for the breadcrumb).
+> - Tour belongs to **0–n hubs** (many-to-many via `TourHub`).
+> - **Every** tour has one **flat** canonical URL `/{dest}/{tour-slug}/` and **always** writes a slug_registry `TOUR` row; the hub-nested URL is removed.
+> - Most boolean/enum tour properties (booking_type, instant_confirmation, free_cancellation, wheelchair_accessible, …) move into the **Attributes** system, not Trip columns.
+>
+> Sections §3 (Data Model), §4.12 (Hub Validation), §4.13 (Slug Generation), and §6.7 (URL Routing) below reflect the **current** single-category/hub-nested design and will be revised when Workstream B lands.
 
 ---
 
