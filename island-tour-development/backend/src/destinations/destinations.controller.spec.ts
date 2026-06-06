@@ -9,7 +9,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale, Permission } from '@prisma/client';
+import { Locale, Permission, Region } from '@prisma/client';
 import { DestinationController } from './destinations.controller';
 import { DestinationService } from './destinations.service';
 import {
@@ -157,7 +157,7 @@ describe('DestinationController', () => {
     it('delegates to service.create with dto and user.id', async () => {
       service.create.mockResolvedValue({ id: 'new-dest' });
 
-      const dto: CreateDestinationDto = { name: 'Aruba' };
+      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
       await controller.create(dto, mockAdminUser);
 
       expect(service.create).toHaveBeenCalledWith(dto, 'admin-1');
@@ -167,7 +167,7 @@ describe('DestinationController', () => {
       const created = { id: 'new-dest', name: 'Aruba', slug: 'aruba' };
       service.create.mockResolvedValue(created);
 
-      const result = await controller.create({ name: 'Aruba' }, mockAdminUser);
+      const result = await controller.create({ name: 'Aruba', region: Region.CARIBBEAN }, mockAdminUser);
 
       expect(result).toEqual(created);
     });

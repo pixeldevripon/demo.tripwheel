@@ -3,6 +3,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AddOnUnit, AgeBandType, PickupModel, PricingModel, ScheduleStatus, TripStatus, UnitType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDecimal,
   IsEnum,
@@ -27,8 +29,12 @@ export class TripResponseDto {
   @ApiProperty({ enum: TripStatus }) status!: TripStatus;
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) operatorId!: string;
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) destinationId!: string;
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) categoryId!: string;
-  @ApiPropertyOptional({ example: null }) hubId!: string | null;
+  @ApiProperty({ type: [String], example: ['3fa85f64-…', 'a1b2c3d4-…'], description: 'All category ids (V2 §4)' })
+  categoryIds!: string[];
+  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category (breadcrumb/canonical)' })
+  primaryCategoryId!: string | null;
+  @ApiProperty({ type: [String], example: [], description: '0–n activity hub ids (discovery tag, no URL impact)' })
+  hubIds!: string[];
   @ApiProperty({ enum: PricingModel }) pricingModel!: PricingModel;
   @ApiPropertyOptional({ enum: UnitType }) unitType!: UnitType | null;
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
@@ -157,12 +163,34 @@ export class TripPublicDetailResponseDto extends TripResponseDto {
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
 
+export enum TripSort {
+  recommended = 'recommended',
+  price_asc = 'price_asc',
+  price_desc = 'price_desc',
+  rating = 'rating',
+  newest = 'newest',
+}
+
 export class TripQueryDto {
   @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   search?: string;
+
+  @ApiPropertyOptional({ enum: TripSort, default: TripSort.recommended, description: 'Sort order (default: Recommended)' })
+  @IsOptional()
+  @IsEnum(TripSort)
+  sort?: TripSort = TripSort.recommended;
+
+  @ApiPropertyOptional({ example: 60, description: 'Min duration in minutes' })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) durationMin?: number;
+
+  @ApiPropertyOptional({ example: 480, description: 'Max duration in minutes' })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) durationMax?: number;
+
+  @ApiPropertyOptional({ example: 4.0, description: 'Minimum average rating' })
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(5) ratingMin?: number;
 
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()
@@ -224,10 +252,7 @@ export class TripBySlugQueryDto {
   @IsString()
   destinationSlug!: string;
 
-  @ApiPropertyOptional({ example: 'mambo-beach', description: 'Required for hub-anchored tour URLs' })
-  @IsOptional()
-  @IsString()
-  hubSlug?: string;
+  // hubSlug removed in Stage 5 — every tour is flat /{destination}/{tour-slug}/ (no hub nesting).
 
   @ApiPropertyOptional({ enum: Locale, default: 'en' })
   @IsOptional()
@@ -316,14 +341,22 @@ export class CreateTripDto {
   @IsUUID()
   destinationId!: string;
 
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
-  @IsUUID()
-  categoryId!: string;
+  @ApiProperty({ type: [String], example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'], description: '1+ category ids (V2 §4)' })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  categoryIds!: string[];
 
-  @ApiPropertyOptional({ example: null })
+  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category — must be one of categoryIds. Defaults to the first.' })
   @IsOptional()
   @IsUUID()
-  hubId?: string;
+  primaryCategoryId?: string;
+
+  @ApiPropertyOptional({ type: [String], example: [], description: '0–n activity hub ids' })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  hubIds?: string[];
 
   @ApiPropertyOptional({ enum: PricingModel, default: PricingModel.PER_PERSON })
   @IsOptional()
@@ -398,12 +431,25 @@ export class UpdateTripDto {
   @MaxLength(120)
   name?: string;
 
-  // Phase 4: category change is allowed on LIVE trips (returns a warning).
-  // Phase 5: this will be blocked when a featured slot is held.
+  // V2 §4: supply categoryIds to replace the full category set; supply primaryCategoryId
+  // alone to re-point the primary among the existing categories.
+  @ApiPropertyOptional({ type: [String], example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  categoryIds?: string[];
+
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()
   @IsUUID()
-  categoryId?: string;
+  primaryCategoryId?: string;
+
+  @ApiPropertyOptional({ type: [String], example: [], description: '0–n activity hub ids (replaces the full hub set)' })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  hubIds?: string[];
 
   @ApiPropertyOptional({ enum: PricingModel })
   @IsOptional()

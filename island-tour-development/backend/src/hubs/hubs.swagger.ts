@@ -114,6 +114,7 @@ export function ApiCreateHubDocs() {
       summary: 'Create a new hub (Admin/Editor)',
       description:
         'Atomically creates the hub and seeds one slug_registry row for its destination. ' +
+        'Requires `hubType` (location | highlight | area — V2 §5) and accepts latitude/longitude. ' +
         'Optionally seeds allowed categories in the same transaction.',
     }),
     ApiResponse({ status: 201, type: HubDetailLocalizedResponseDto }),
@@ -128,7 +129,7 @@ export function ApiUpdateHubDocs() {
     ApiOperation({
       summary: 'Update a hub (Admin/Editor)',
       description:
-        'Updates display name, description, or active status. Slug is immutable. ' +
+        'Updates any of: name, description, hubType, latitude, longitude, active status. Slug is immutable. ' +
         'If isActive changes, the slug_registry row is mirrored in the same transaction.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),

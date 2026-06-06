@@ -1,5 +1,15 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role, SlotStatus, SlugEntityType } from '@prisma/client';
+import {
+  AttributeDataType,
+  FilterDisplayType,
+  HubType,
+  Prisma,
+  PrismaClient,
+  Region,
+  Role,
+  SlotStatus,
+  SlugEntityType,
+} from '@prisma/client';
 import 'dotenv/config';
 import { auth } from '../src/auth/auth.instance';
 
@@ -48,6 +58,7 @@ async function main() {
   await seedCategories();
   await seedDestinations();
   await seedHubs();
+  await seedAttributes();
 }
 
 // ── Pre-seeded categories ──────────────────────────────────────────────────────
@@ -56,20 +67,35 @@ async function main() {
 // slug_registry rows are NOT seeded here — they are created in seedDestinations(),
 // because slug_registry requires a destination slug.
 // NOTE: Klein Curaçao is a Hub, not a category. Do not add it here.
+// The canonical 19 global categories (Platform Architecture V2 §3). Order = sortOrder.
+// "Catamaran Trip" is a boat_type attribute, "Private Charters" a booking_type attribute,
+// "Dolphin Encounters" a hub/wildlife theme — none are categories.
 const SEED_CATEGORIES = [
-  { name: 'Boat Tours',        slug: 'boat-tours' },
-  { name: 'Sunset Cruises',    slug: 'sunset-cruises' },
-  { name: 'Buggy Tours',       slug: 'buggy-tours' },
-  { name: 'Snorkeling Trips',  slug: 'snorkeling-trips' },
-  { name: 'Private Charters',  slug: 'private-charters' },
-  { name: 'Catamaran Trip',    slug: 'catamaran-trip' },
-  { name: 'Dolphin Encounters', slug: 'dolphin-encounters' },
+  { name: 'Boat Tours & Cruises',      slug: 'boat-tours' },
+  { name: 'Snorkeling Tours',          slug: 'snorkeling' },
+  { name: 'Scuba Diving',              slug: 'scuba-diving' },
+  { name: 'Sunset Cruises',            slug: 'sunset-cruises' },
+  { name: 'Sightseeing Tours',         slug: 'sightseeing-tours' },
+  { name: 'Day Trips',                 slug: 'day-trips' },
+  { name: 'Off-Road Tours',            slug: 'off-road-tours' },
+  { name: 'Jet Ski Tours',             slug: 'jet-ski' },
+  { name: 'Parasailing',               slug: 'parasailing' },
+  { name: 'Water Sports',              slug: 'water-sports' },
+  { name: 'Fishing Trips',             slug: 'fishing-trips' },
+  { name: 'Nature & Wildlife Tours',   slug: 'nature-wildlife-tours' },
+  { name: 'Hiking Tours',              slug: 'hiking-tours' },
+  { name: 'Adventure Tours',           slug: 'adventure-tours' },
+  { name: 'Cultural & Historical Tours', slug: 'cultural-tours' },
+  { name: 'Food & Drink Tours',        slug: 'food-tours' },
+  { name: 'Attraction Tickets',        slug: 'attraction-tickets' },
+  { name: 'Luxury Experiences',        slug: 'luxury-experiences' },
+  { name: 'Workshops & Classes',       slug: 'workshops-classes' },
 ];
 
 async function seedCategories() {
   console.log('Seeding categories...');
 
-  for (const cat of SEED_CATEGORIES) {
+  for (const [idx, cat] of SEED_CATEGORIES.entries()) {
     const existing = await prisma.category.findUnique({ where: { slug: cat.slug } });
     if (existing) {
       console.log(`  Category "${cat.name}" already exists. Skipping.`);
@@ -78,7 +104,7 @@ async function seedCategories() {
 
     await prisma.$transaction(async (tx) => {
       const category = await tx.category.create({
-        data: { name: cat.name, slug: cat.slug, isSeeded: true },
+        data: { name: cat.name, slug: cat.slug, isSeeded: true, sortOrder: idx + 1 },
       });
 
       await tx.featuredSlot.createMany({
@@ -100,11 +126,13 @@ async function seedCategories() {
 // ── Pre-seeded destinations ────────────────────────────────────────────────────
 // isSeeded = true means the service blocks deletion of these records.
 // On create: seeds one 'tours' RESERVED slug_registry row + one row per active category.
+// V2 launch list = 5 Caribbean islands (Platform Architecture V2 §2).
 const SEED_DESTINATIONS = [
-  { name: 'Curaçao',      slug: 'curacao'       },
-  { name: 'Aruba',        slug: 'aruba'          },
-  { name: 'Sint Maarten', slug: 'sint-maarten'   },
-  { name: 'Saint Lucia',  slug: 'saint-lucia'    },
+  { name: 'Curaçao',      slug: 'curacao',      region: Region.CARIBBEAN },
+  { name: 'Aruba',        slug: 'aruba',        region: Region.CARIBBEAN },
+  { name: 'Sint Maarten', slug: 'sint-maarten', region: Region.CARIBBEAN },
+  { name: 'Saint Lucia',  slug: 'saint-lucia',  region: Region.CARIBBEAN },
+  { name: 'Bahamas',      slug: 'bahamas',      region: Region.CARIBBEAN },
 ];
 
 async function seedDestinations() {
@@ -119,7 +147,7 @@ async function seedDestinations() {
 
     await prisma.$transaction(async (tx) => {
       const destination = await tx.destination.create({
-        data: { name: dest.name, slug: dest.slug, isSeeded: true },
+        data: { name: dest.name, slug: dest.slug, region: dest.region, isSeeded: true },
       });
 
       // Seed the 'tours' RESERVED slug — protects the /curacao/tours/ URL
@@ -167,10 +195,11 @@ const SEED_HUBS = [
     destinationSlug: 'curacao',
     name: 'Klein Curaçao',
     slug: 'klein-curacao',
+    hubType: HubType.LOCATION,
     description:
       'A small uninhabited island off the southeast coast of Curaçao, ' +
       'renowned for pristine white beaches, crystal-clear waters, and excellent snorkeling.',
-    allowedCategorySlugs: ['boat-tours', 'snorkeling-trips', 'private-charters', 'catamaran-trip'],
+    allowedCategorySlugs: ['boat-tours', 'snorkeling', 'day-trips'],
   },
 ];
 
@@ -202,6 +231,7 @@ async function seedHubs() {
           destinationId: destination.id,
           name: hub.name,
           slug: hub.slug,
+          hubType: hub.hubType,
           description: hub.description,
           isSeeded: true,
         },
@@ -237,6 +267,116 @@ async function seedHubs() {
   }
 
   console.log('Hubs seeded.');
+}
+
+// ── Attribute dictionary (Platform Architecture V2 §7) ──────────────────────────
+// appliesToCategories holds category SLUGS ([] = global). Idempotent: upsert by key.
+type AttrSeed = {
+  key: string;
+  displayName: string;
+  dataType: AttributeDataType;
+  allowedValues?: string[];
+  appliesToCategories?: string[];
+  isFilterable?: boolean;
+  isSortable?: boolean;
+};
+
+const ATTRIBUTE_DEFS: AttrSeed[] = [
+  // Global
+  { key: 'booking_type', displayName: 'Booking Type', dataType: AttributeDataType.ENUM, allowedValues: ['private', 'shared'] },
+  { key: 'duration_minutes', displayName: 'Duration', dataType: AttributeDataType.INTEGER, isSortable: true },
+  { key: 'pickup_available', displayName: 'Hotel Pickup', dataType: AttributeDataType.BOOLEAN },
+  { key: 'instant_confirmation', displayName: 'Instant Confirmation', dataType: AttributeDataType.BOOLEAN },
+  { key: 'free_cancellation', displayName: 'Free Cancellation', dataType: AttributeDataType.BOOLEAN },
+  { key: 'minimum_age', displayName: 'Minimum Age', dataType: AttributeDataType.INTEGER },
+  { key: 'guide_languages', displayName: 'Guide Languages', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['english', 'spanish', 'dutch', 'french', 'german', 'portuguese'] },
+  { key: 'wheelchair_accessible', displayName: 'Wheelchair Accessible', dataType: AttributeDataType.BOOLEAN },
+  { key: 'family_friendly', displayName: 'Family Friendly', dataType: AttributeDataType.BOOLEAN },
+  { key: 'suitable_for_beginners', displayName: 'Suitable for Beginners', dataType: AttributeDataType.BOOLEAN },
+  { key: 'food_included', displayName: 'Food Included', dataType: AttributeDataType.BOOLEAN },
+  { key: 'drinks_included', displayName: 'Drinks Included', dataType: AttributeDataType.BOOLEAN },
+  { key: 'equipment_included', displayName: 'Equipment Included', dataType: AttributeDataType.BOOLEAN },
+  { key: 'snorkeling_included', displayName: 'Snorkeling Included', dataType: AttributeDataType.BOOLEAN },
+  { key: 'sunset_tour', displayName: 'Sunset Tour', dataType: AttributeDataType.BOOLEAN },
+  { key: 'cancellation_window_hours', displayName: 'Cancellation Window (hours)', dataType: AttributeDataType.INTEGER, isFilterable: false },
+  { key: 'maximum_travelers', displayName: 'Maximum Travelers', dataType: AttributeDataType.INTEGER, isFilterable: false },
+  { key: 'meeting_point', displayName: 'Meeting Point', dataType: AttributeDataType.TEXT, isFilterable: false },
+  // Boat Tours
+  { key: 'boat_type', displayName: 'Boat Type', dataType: AttributeDataType.ENUM, allowedValues: ['catamaran', 'yacht', 'speedboat', 'sailboat', 'glass_bottom'], appliesToCategories: ['boat-tours'] },
+  { key: 'snorkeling_stop_count', displayName: 'Snorkeling Stops', dataType: AttributeDataType.INTEGER, appliesToCategories: ['boat-tours'] },
+  { key: 'sunset_cruise', displayName: 'Sunset Cruise', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
+  { key: 'onboard_toilet', displayName: 'Onboard Toilet', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
+  { key: 'open_bar_included', displayName: 'Open Bar Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
+  // Snorkeling
+  { key: 'snorkeling_equipment_included', displayName: 'Snorkeling Equipment Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
+  { key: 'guide_included', displayName: 'Guide Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
+  { key: 'swimming_required', displayName: 'Swimming Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
+  // wildlife_type spans snorkeling + nature-wildlife (union of allowed values)
+  { key: 'wildlife_type', displayName: 'Wildlife', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['turtles', 'coral', 'tropical_fish', 'rays', 'dolphins', 'whales', 'flamingos'], appliesToCategories: ['snorkeling', 'nature-wildlife-tours'] },
+  // Scuba Diving
+  { key: 'dive_type', displayName: 'Dive Type', dataType: AttributeDataType.ENUM, allowedValues: ['discover_scuba', 'certified', 'night_dive'], appliesToCategories: ['scuba-diving'] },
+  { key: 'certification_required', displayName: 'Certification Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['scuba-diving'] },
+  { key: 'max_depth', displayName: 'Max Depth', dataType: AttributeDataType.ENUM, allowedValues: ['12m', '18m', '30m'], appliesToCategories: ['scuba-diving'] },
+  // Off-Road
+  { key: 'vehicle_type', displayName: 'Vehicle Type', dataType: AttributeDataType.ENUM, allowedValues: ['buggy', 'atv', 'utv', 'jeep'], appliesToCategories: ['off-road-tours'] },
+  { key: 'driver_license_required', displayName: 'Driver License Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['off-road-tours'] },
+  { key: 'offroad_difficulty', displayName: 'Difficulty', dataType: AttributeDataType.ENUM, allowedValues: ['easy', 'moderate', 'extreme'], appliesToCategories: ['off-road-tours'] },
+  // Water Sports / Jet Ski / Parasailing
+  { key: 'water_sport_type', displayName: 'Water Sport', dataType: AttributeDataType.ENUM, allowedValues: ['jet_ski', 'kayak', 'sup', 'surf', 'parasail'], appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
+  { key: 'instructor_included', displayName: 'Instructor Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
+  { key: 'passenger_allowed', displayName: 'Passenger Allowed', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
+  // Nature & Wildlife
+  { key: 'animal_guarantee', displayName: 'Animal Sighting Guarantee', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['nature-wildlife-tours'] },
+  // Food & Drink
+  { key: 'tasting_type', displayName: 'Tasting Type', dataType: AttributeDataType.ENUM, allowedValues: ['food', 'wine', 'rum', 'cocktail'], appliesToCategories: ['food-tours'] },
+  { key: 'meal_included', displayName: 'Meal Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['food-tours'] },
+  // Adventure
+  { key: 'adventure_type', displayName: 'Adventure Type', dataType: AttributeDataType.ENUM, allowedValues: ['zipline', 'bungee', 'skydiving', 'cliff_jumping'], appliesToCategories: ['adventure-tours'] },
+  { key: 'height_requirement', displayName: 'Height Requirement (cm)', dataType: AttributeDataType.INTEGER, appliesToCategories: ['adventure-tours'] },
+  // Hiking
+  { key: 'fitness_level', displayName: 'Fitness Level', dataType: AttributeDataType.ENUM, allowedValues: ['easy', 'moderate', 'hard'], appliesToCategories: ['hiking-tours'] },
+  { key: 'trail_distance_km', displayName: 'Trail Distance (km)', dataType: AttributeDataType.DECIMAL, appliesToCategories: ['hiking-tours'] },
+  // Attraction Tickets
+  { key: 'ticket_type', displayName: 'Ticket Type', dataType: AttributeDataType.ENUM, allowedValues: ['museum', 'park', 'attraction', 'show'], appliesToCategories: ['attraction-tickets'] },
+  // Luxury
+  { key: 'tier', displayName: 'Tier', dataType: AttributeDataType.ENUM, allowedValues: ['premium', 'luxury', 'ultra_luxury'], appliesToCategories: ['luxury-experiences'] },
+  // Workshops
+  { key: 'class_type', displayName: 'Class Type', dataType: AttributeDataType.ENUM, allowedValues: ['cooking', 'surf_lesson', 'art', 'craft'], appliesToCategories: ['workshops-classes'] },
+];
+
+function filterDisplayFor(dataType: AttributeDataType): FilterDisplayType | null {
+  switch (dataType) {
+    case AttributeDataType.BOOLEAN: return FilterDisplayType.CHECKBOX;
+    case AttributeDataType.ENUM: return FilterDisplayType.RADIO;
+    case AttributeDataType.ENUM_MULTI: return FilterDisplayType.CHECKBOX;
+    case AttributeDataType.INTEGER:
+    case AttributeDataType.DECIMAL: return FilterDisplayType.RANGE_SLIDER;
+    default: return null;
+  }
+}
+
+async function seedAttributes() {
+  console.log('Seeding attribute dictionary...');
+  for (let i = 0; i < ATTRIBUTE_DEFS.length; i++) {
+    const def = ATTRIBUTE_DEFS[i];
+    const isFilterable = def.isFilterable ?? true;
+    const data = {
+      displayName: def.displayName,
+      dataType: def.dataType,
+      allowedValues: def.allowedValues ? (def.allowedValues as Prisma.InputJsonValue) : Prisma.JsonNull,
+      appliesToCategories: def.appliesToCategories ?? [],
+      isFilterable,
+      isSortable: def.isSortable ?? false,
+      filterDisplayType: isFilterable ? filterDisplayFor(def.dataType) : null,
+      sortOrder: i + 1,
+    };
+    await prisma.attributeDefinition.upsert({
+      where: { key: def.key },
+      create: { key: def.key, ...data },
+      update: data,
+    });
+  }
+  console.log(`Attribute dictionary seeded (${ATTRIBUTE_DEFS.length} definitions).`);
 }
 
 main()

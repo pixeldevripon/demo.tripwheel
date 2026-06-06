@@ -12,6 +12,7 @@ import {
   Post,
   Query,
   Req,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
@@ -54,8 +55,14 @@ export class TripsController {
   @Get()
   @Public()
   @ApiGetAllTripsDocs()
-  findAll(@Query() query: TripQueryDto) {
-    return this.tripsService.findAll(query);
+  findAll(
+    // Relaxed pipe: dynamic attribute params (e.g. ?boat_type=catamaran) are NOT in the DTO,
+    // so we strip them from `query` without rejecting, and read them from the raw request query.
+    @Query(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: false }))
+    query: TripQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.tripsService.findAll(query, req.query as Record<string, unknown>);
   }
 
   // ── Public slug-based detail — static prefix before :id ──────────────────────

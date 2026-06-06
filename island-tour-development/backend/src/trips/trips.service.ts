@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { Role, ScheduleStatus, SlugEntityType, TripStatus } from '@prisma/client';
-import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, UpdateTripDto } from './dto/trip.dto';
+import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, TripSort, UpdateTripDto } from './dto/trip.dto';
 
 @Injectable()
 export class TripsService {
@@ -26,8 +26,6 @@ export class TripsService {
     status: true,
     operatorId: true,
     destinationId: true,
-    categoryId: true,
-    hubId: true,
     pricingModel: true,
     unitType: true,
     basePrice: true,
@@ -47,7 +45,27 @@ export class TripsService {
     publishedAt: true,
     createdAt: true,
     updatedAt: true,
+    // V2 §4 many-to-many — flattened by flattenTrip() into categoryIds/primaryCategoryId/hubIds.
+    categories: { select: { categoryId: true, isPrimary: true } },
+    hubs: { select: { hubId: true } },
   } as const;
+
+  /**
+   * Flattens the TourCategory/TourHub relation arrays into the response-friendly
+   * `categoryIds` / `primaryCategoryId` / `hubIds` shape.
+   */
+  private flattenTrip<T extends {
+    categories?: { categoryId: string; isPrimary: boolean }[];
+    hubs?: { hubId: string }[];
+  }>(trip: T) {
+    const { categories, hubs, ...rest } = trip;
+    return {
+      ...rest,
+      categoryIds: categories?.map((c) => c.categoryId) ?? [],
+      primaryCategoryId: categories?.find((c) => c.isPrimary)?.categoryId ?? null,
+      hubIds: hubs?.map((h) => h.hubId) ?? [],
+    };
+  }
 
   private readonly heroImageSelect = {
     id: true,
@@ -104,23 +122,60 @@ export class TripsService {
     }
   }
 
+  /**
+   * Resolves an ordered list of tour ids to flattened LIVE trips, preserving the input
+   * order and dropping any that are missing/not live. Used by manual Collections.
+   */
+  async findPublicByIds(ids: string[]) {
+    if (!ids.length) return [];
+    const trips = await this.prisma.trip.findMany({
+      where: { id: { in: ids }, status: TripStatus.LIVE, isActive: true },
+      select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+    });
+    const byId = new Map(trips.map((t) => [t.id, this.flattenTrip(t)]));
+    return ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => Boolean(t));
+  }
+
   // ── Public list ───────────────────────────────────────────────────────────────
 
-  async findAll(query: TripQueryDto) {
-    const { search, destinationId, categoryId, hubId, pricingModel, minPrice, maxPrice, page = 1, limit = 20 } = query;
+  // Known/typed query params — everything else in the raw query is treated as an attribute filter.
+  private static readonly RESERVED_QUERY_KEYS = new Set([
+    'search', 'destinationId', 'categoryId', 'hubId', 'pricingModel',
+    'minPrice', 'maxPrice', 'durationMin', 'durationMax', 'ratingMin',
+    'locale', 'page', 'limit', 'sort',
+  ]);
+
+  async findAll(query: TripQueryDto, rawQuery: Record<string, unknown> = {}) {
+    const {
+      search, destinationId, categoryId, hubId, pricingModel,
+      minPrice, maxPrice, durationMin, durationMax, ratingMin,
+      sort = TripSort.recommended, page = 1, limit = 20,
+    } = query;
 
     const where: Prisma.TripWhereInput = { status: TripStatus.LIVE, isActive: true };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
-    if (categoryId) where.categoryId = categoryId;
-    if (hubId) where.hubId = hubId;
+    if (categoryId) where.categories = { some: { categoryId } };
+    if (hubId) where.hubs = { some: { hubId } };
     if (pricingModel) where.pricingModel = pricingModel;
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.basePrice = {};
       if (minPrice !== undefined) where.basePrice.gte = minPrice;
       if (maxPrice !== undefined) where.basePrice.lte = maxPrice;
     }
+    if (durationMin !== undefined || durationMax !== undefined) {
+      where.durationMinutes = {};
+      if (durationMin !== undefined) where.durationMinutes.gte = durationMin;
+      if (durationMax !== undefined) where.durationMinutes.lte = durationMax;
+    }
+    if (ratingMin !== undefined) where.aggregateRating = { gte: ratingMin };
 
+    // Dynamic attribute filters (V2 §7): any non-reserved query key that maps to a
+    // filterable dictionary attribute. Comma = OR within a key; multiple keys = AND.
+    const attributeFilters = await this.buildAttributeFilters(rawQuery);
+    if (attributeFilters.length > 0) where.AND = attributeFilters;
+
+    const orderBy = this.buildOrderBy(sort);
     const skip = (page - 1) * limit;
 
     const [total, data] = await Promise.all([
@@ -129,19 +184,71 @@ export class TripsService {
         where,
         select: {
           ...this.tripSelect,
-          images: {
-            where: { isHero: true },
-            select: this.heroImageSelect,
-            take: 1,
-          },
+          images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 },
         },
-        orderBy: { publishedAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
       }),
     ]);
 
-    return { total, page, limit, data };
+    return { total, page, limit, sort, data: data.map((t) => this.flattenTrip(t)) };
+  }
+
+  /** Maps the requested sort to a Prisma orderBy. */
+  private buildOrderBy(sort: TripSort): Prisma.TripOrderByWithRelationInput[] {
+    switch (sort) {
+      case TripSort.price_asc:
+        return [{ basePrice: { sort: 'asc', nulls: 'last' } }];
+      case TripSort.price_desc:
+        return [{ basePrice: { sort: 'desc', nulls: 'last' } }];
+      case TripSort.rating:
+        return [{ aggregateRating: { sort: 'desc', nulls: 'last' } }, { aggregateReviewCount: 'desc' }];
+      case TripSort.newest:
+        return [{ publishedAt: 'desc' }];
+      case TripSort.recommended:
+      default:
+        // V2 weighted "Recommended" (bookings×0.4 + rating×0.3 + recency×0.2 + reviews×0.1).
+        // Approximated with a DB orderBy until the CRO booking counters land (Stage 8);
+        // a materialized recommendedScore column can replace this then.
+        return [
+          { isSponsored: 'desc' },
+          { aggregateRating: { sort: 'desc', nulls: 'last' } },
+          { aggregateReviewCount: 'desc' },
+          { publishedAt: 'desc' },
+        ];
+    }
+  }
+
+  /**
+   * Turns raw attribute query params into AND-ed `attributes.some` conditions.
+   * Only keys present (and filterable) in the dictionary are honored; others are ignored.
+   */
+  private async buildAttributeFilters(rawQuery: Record<string, unknown>): Promise<Prisma.TripWhereInput[]> {
+    const candidates = Object.keys(rawQuery).filter(
+      (k) => !TripsService.RESERVED_QUERY_KEYS.has(k) && typeof rawQuery[k] === 'string' && rawQuery[k] !== '',
+    );
+    if (candidates.length === 0) return [];
+
+    const defs = await this.prisma.attributeDefinition.findMany({
+      where: { key: { in: candidates }, isFilterable: true, isActive: true },
+      select: { key: true },
+    });
+    const validKeys = new Set(defs.map((d) => d.key));
+
+    const filters: Prisma.TripWhereInput[] = [];
+    for (const key of candidates) {
+      if (!validKeys.has(key)) continue;
+      const values = String(rawQuery[key]).split(',').map((v) => v.trim()).filter(Boolean);
+      if (values.length === 0) continue;
+      // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
+      const valueOr = values.flatMap((v) => [
+        { attributeValue: v },
+        { attributeValue: { contains: JSON.stringify(v) } },
+      ]);
+      filters.push({ attributes: { some: { attributeKey: key, OR: valueOr } } });
+    }
+    return filters;
   }
 
   // ── Admin all trips ───────────────────────────────────────────────────────────
@@ -167,8 +274,8 @@ export class TripsService {
             take: 1,
           },
           destination: { select: { name: true } },
-          category: { select: { name: true } },
-          hub: { select: { name: true } },
+          categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+          hubs: { select: { hubId: true, hub: { select: { name: true } } } },
           operator: {
             select: {
               id: true,
@@ -215,8 +322,8 @@ export class TripsService {
             take: 1,
           },
           destination: { select: { name: true } },
-          category: { select: { name: true } },
-          hub: { select: { name: true } },
+          categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+          hubs: { select: { hubId: true, hub: { select: { name: true } } } },
           featuredSlot: {
             select: { slotNumber: true, status: true },
           },
@@ -236,7 +343,10 @@ export class TripsService {
   // ── Single trip ───────────────────────────────────────────────────────────────
 
   private flattenCounts(trip: any) {
-    const { _count, images, featuredSlot, operator, destination, category, hub, ...rest } = trip;
+    const { _count, images, featuredSlot, operator, destination, categories, hubs, ...rest } = trip;
+    const cats = categories ?? [];
+    const tourHubs = hubs ?? [];
+    const primary = cats.find((c: any) => c.isPrimary);
     return {
       ...rest,
       heroImage: images?.[0] ?? null,
@@ -247,8 +357,12 @@ export class TripsService {
       featuredSlotNumber: featuredSlot?.slotNumber ?? null,
       featuredSlotStatus: featuredSlot?.status ?? null,
       destinationName: destination?.name ?? null,
-      categoryName: category?.name ?? null,
-      hubName: hub?.name ?? null,
+      categoryIds: cats.map((c: any) => c.categoryId),
+      primaryCategoryId: primary?.categoryId ?? null,
+      primaryCategoryName: primary?.category?.name ?? null,
+      categoryNames: cats.map((c: any) => c.category?.name).filter(Boolean),
+      hubIds: tourHubs.map((h: any) => h.hubId),
+      hubNames: tourHubs.map((h: any) => h.hub?.name).filter(Boolean),
       ...(operator !== undefined && {
         operatorInfo: {
           id: operator.id,
@@ -271,8 +385,8 @@ export class TripsService {
           take: 1,
         },
         destination: { select: { name: true } },
-        category: { select: { name: true } },
-        hub: { select: { name: true } },
+        categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+        hubs: { select: { hubId: true, hub: { select: { name: true } } } },
         featuredSlot: {
           select: { slotNumber: true, status: true },
         },
@@ -301,16 +415,16 @@ export class TripsService {
   // ── Public slug-based lookup (trip detail page) ───────────────────────────────
 
   async findBySlug(slug: string, query: TripBySlugQueryDto) {
-    const { destinationSlug, hubSlug, locale = Locale.en } = query;
+    const { destinationSlug, locale = Locale.en } = query;
 
+    // V2 §4/§5: every tour has one flat canonical URL /{destination}/{tour-slug}/.
+    // Hubs are a discovery tag, not part of the URL — resolve purely by destination + slug.
     const trip = await this.prisma.trip.findFirst({
       where: {
         slug,
         status: TripStatus.LIVE,
         isActive: true,
         destination: { slug: destinationSlug },
-        // destination-only: hubId must be null; hub-anchored: hub slug must match
-        ...(hubSlug ? { hub: { slug: hubSlug } } : { hubId: null }),
       },
       select: {
         ...this.tripSelect,
@@ -434,7 +548,7 @@ export class TripsService {
     }));
 
     return {
-      ...rest,
+      ...this.flattenTrip(rest),
       translation: resolvedTranslation,
       highlights: resolvedHighlights,
       inclusions: resolvedInclusions,
@@ -456,7 +570,6 @@ export class TripsService {
     destinationId: string,
     destinationSlug: string,
     operatorId: string,
-    isHubAnchored: boolean,
   ): Promise<string> {
     // If this operator already has this exact slug → hard conflict, no auto-fix.
     const ownConflict = await this.prisma.trip.findFirst({
@@ -467,14 +580,13 @@ export class TripsService {
       throw new ConflictException(`You already have a trip with slug "${baseSlug}" at this destination`);
     }
 
+    // V2 §5: every tour is flat /{destination}/{tour-slug}/, so ALWAYS check the slug registry.
     const [tripConflict, registryConflict] = await Promise.all([
       this.prisma.trip.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
-      !isHubAnchored
-        ? this.prisma.slugRegistry.findUnique({
-            where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
+      this.prisma.slugRegistry.findUnique({
+        where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
+        select: { id: true },
+      }),
     ]);
 
     if (!tripConflict && !registryConflict) return baseSlug;
@@ -499,12 +611,10 @@ export class TripsService {
 
       const [candidateTrip, candidateRegistry] = await Promise.all([
         this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
-        !isHubAnchored
-          ? this.prisma.slugRegistry.findUnique({
-              where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
-              select: { id: true },
-            })
-          : Promise.resolve(null),
+        this.prisma.slugRegistry.findUnique({
+          where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
+          select: { id: true },
+        }),
       ]);
 
       if (candidateTrip?.operatorId === operatorId) {
@@ -532,42 +642,47 @@ export class TripsService {
       throw new BadRequestException('Destination not found or is not active');
     }
 
-    // Validate category
-    const category = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
-      select: { id: true, isActive: true },
+    // Validate categories (V2 §4: 1+ categories, one primary).
+    const categoryIds = [...new Set(dto.categoryIds)];
+    if (categoryIds.length === 0) {
+      throw new BadRequestException('At least one category is required');
+    }
+    const primaryCategoryId = dto.primaryCategoryId ?? categoryIds[0];
+    if (!categoryIds.includes(primaryCategoryId)) {
+      throw new BadRequestException('primaryCategoryId must be one of categoryIds');
+    }
+    const foundCategories = await this.prisma.category.findMany({
+      where: { id: { in: categoryIds }, isActive: true },
+      select: { id: true },
     });
-    if (!category || !category.isActive) {
-      throw new BadRequestException('Category not found or is not active');
+    if (foundCategories.length !== categoryIds.length) {
+      throw new BadRequestException('One or more categories not found or not active');
     }
 
-    // Resolve a unique slug — auto-suffixes with operator name if taken by another entity.
-    const slug = await this.resolveUniqueSlug(
-      baseSlug,
-      dto.destinationId,
-      destination.slug,
-      operatorId,
-      !!dto.hubId,
-    );
+    const hubIds = [...new Set(dto.hubIds ?? [])];
+
+    // Resolve a unique slug — always checks the slug registry (flat URLs, V2 §5).
+    const slug = await this.resolveUniqueSlug(baseSlug, dto.destinationId, destination.slug, operatorId);
 
     return this.prisma.$transaction(async (tx) => {
-      // Hub validation inside transaction to prevent TOCTOU race conditions
-      if (dto.hubId) {
+      // Hub validation inside transaction (TOCTOU-safe). A hub is allowed if it belongs to
+      // the destination AND at least one of the tour's categories is in its allowed list.
+      for (const hubId of hubIds) {
         const hub = await tx.hub.findUnique({
-          where: { id: dto.hubId },
+          where: { id: hubId },
           select: { id: true, destinationId: true, isActive: true },
         });
         if (!hub || !hub.isActive) {
-          throw new BadRequestException('Hub not found or is not active');
+          throw new BadRequestException(`Hub ${hubId} not found or is not active`);
         }
         if (hub.destinationId !== dto.destinationId) {
-          throw new BadRequestException('Hub does not belong to the specified destination');
+          throw new BadRequestException(`Hub ${hubId} does not belong to the specified destination`);
         }
-        const allowed = await tx.hubAllowedCategory.findUnique({
-          where: { hubId_categoryId: { hubId: dto.hubId, categoryId: dto.categoryId } },
+        const allowedCount = await tx.hubAllowedCategory.count({
+          where: { hubId, categoryId: { in: categoryIds } },
         });
-        if (!allowed) {
-          throw new BadRequestException('Category is not allowed in this hub');
+        if (allowedCount === 0) {
+          throw new BadRequestException(`None of the tour's categories are allowed in hub ${hubId}`);
         }
       }
 
@@ -578,8 +693,6 @@ export class TripsService {
             slug,
             operatorId,
             destinationId: dto.destinationId,
-            categoryId: dto.categoryId,
-            hubId: dto.hubId ?? null,
             pricingModel: dto.pricingModel,
             unitType: dto.unitType ?? null,
             basePrice: dto.basePrice ?? null,
@@ -591,6 +704,13 @@ export class TripsService {
             cancellationHours: dto.cancellationHours ?? 24,
             h1Override: dto.h1Override ?? null,
             breadcrumbLabel: dto.breadcrumbLabel ?? null,
+            categories: {
+              create: categoryIds.map((categoryId) => ({
+                categoryId,
+                isPrimary: categoryId === primaryCategoryId,
+              })),
+            },
+            hubs: { create: hubIds.map((hubId) => ({ hubId })) },
           },
           select: this.tripSelect,
         })
@@ -602,28 +722,26 @@ export class TripsService {
           throw err;
         });
 
-      // Only destination-only trips get a slug_registry row
-      if (!dto.hubId) {
-        await tx.slugRegistry
-          .create({
-            data: {
-              destinationSlug: destination.slug,
-              slug: trip.slug,
-              entityType: SlugEntityType.TOUR,
-              entityId: trip.id,
-              isActive: true,
-            },
-          })
-          .catch((err: any) => {
-            if (err?.code === 'P2002') {
-              throw new ConflictException(`Slug "${slug}" is already taken at destination "${destination.slug}"`);
-            }
-            throw err;
-          });
-      }
+      // V2 §5: every tour gets a flat /{destination}/{tour-slug}/ slug_registry TOUR row.
+      await tx.slugRegistry
+        .create({
+          data: {
+            destinationSlug: destination.slug,
+            slug: trip.slug,
+            entityType: SlugEntityType.TOUR,
+            entityId: trip.id,
+            isActive: true,
+          },
+        })
+        .catch((err: any) => {
+          if (err?.code === 'P2002') {
+            throw new ConflictException(`Slug "${slug}" is already taken at destination "${destination.slug}"`);
+          }
+          throw err;
+        });
 
       this.logger.log(`Operator ${operatorId} created trip "${dto.name}" (${trip.id})`);
-      return trip;
+      return this.flattenTrip(trip);
     });
   }
 
@@ -639,35 +757,98 @@ export class TripsService {
 
     const warnings: string[] = [];
 
-    // Phase 4: category change is allowed on LIVE trips with a warning.
-    // Phase 5 will add: if (dto.categoryId && trip.status === LIVE && trip.featuredSlot) throw ConflictException
-    if (dto.categoryId && dto.categoryId !== trip.categoryId && trip.status === TripStatus.LIVE) {
-      warnings.push('Category changed on a LIVE trip. In Phase 5 this will be blocked if a featured slot is held.');
+    // Validate category set if a replacement was supplied.
+    let categoryIds: string[] | undefined;
+    let primaryCategoryId: string | undefined;
+    if (dto.categoryIds !== undefined) {
+      categoryIds = [...new Set(dto.categoryIds)];
+      if (categoryIds.length === 0) throw new BadRequestException('At least one category is required');
+      primaryCategoryId = dto.primaryCategoryId ?? categoryIds[0];
+      if (!categoryIds.includes(primaryCategoryId)) {
+        throw new BadRequestException('primaryCategoryId must be one of categoryIds');
+      }
+      const found = await this.prisma.category.findMany({
+        where: { id: { in: categoryIds }, isActive: true },
+        select: { id: true },
+      });
+      if (found.length !== categoryIds.length) {
+        throw new BadRequestException('One or more categories not found or not active');
+      }
     }
+    const hubIds = dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
 
-    const updated = await this.prisma.trip.update({
-      where: { id },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
-        ...(dto.pricingModel !== undefined && { pricingModel: dto.pricingModel }),
-        ...(dto.unitType !== undefined && { unitType: dto.unitType }),
-        ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
-        ...(dto.durationMinutes !== undefined && { durationMinutes: dto.durationMinutes }),
-        ...(dto.pickupModel !== undefined && { pickupModel: dto.pickupModel }),
-        ...(dto.maxPartySize !== undefined && { maxPartySize: dto.maxPartySize }),
-        ...(dto.minPartySize !== undefined && { minPartySize: dto.minPartySize }),
-        ...(dto.bookingCutoffMinutes !== undefined && { bookingCutoffMinutes: dto.bookingCutoffMinutes }),
-        ...(dto.cancellationHours !== undefined && { cancellationHours: dto.cancellationHours }),
-        ...(dto.h1Override !== undefined && { h1Override: dto.h1Override }),
-        ...(dto.breadcrumbLabel !== undefined && { breadcrumbLabel: dto.breadcrumbLabel }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
-      select: this.tripSelect,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.trip.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.pricingModel !== undefined && { pricingModel: dto.pricingModel }),
+          ...(dto.unitType !== undefined && { unitType: dto.unitType }),
+          ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
+          ...(dto.durationMinutes !== undefined && { durationMinutes: dto.durationMinutes }),
+          ...(dto.pickupModel !== undefined && { pickupModel: dto.pickupModel }),
+          ...(dto.maxPartySize !== undefined && { maxPartySize: dto.maxPartySize }),
+          ...(dto.minPartySize !== undefined && { minPartySize: dto.minPartySize }),
+          ...(dto.bookingCutoffMinutes !== undefined && { bookingCutoffMinutes: dto.bookingCutoffMinutes }),
+          ...(dto.cancellationHours !== undefined && { cancellationHours: dto.cancellationHours }),
+          ...(dto.h1Override !== undefined && { h1Override: dto.h1Override }),
+          ...(dto.breadcrumbLabel !== undefined && { breadcrumbLabel: dto.breadcrumbLabel }),
+          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        },
+      });
+
+      // Replace the full category set, or just re-point the primary among existing.
+      if (categoryIds) {
+        await tx.tourCategory.deleteMany({ where: { tripId: id } });
+        await tx.tourCategory.createMany({
+          data: categoryIds.map((categoryId) => ({
+            tripId: id,
+            categoryId,
+            isPrimary: categoryId === primaryCategoryId,
+          })),
+        });
+      } else if (dto.primaryCategoryId !== undefined) {
+        const existing = await tx.tourCategory.findUnique({
+          where: { tripId_categoryId: { tripId: id, categoryId: dto.primaryCategoryId } },
+          select: { id: true },
+        });
+        if (!existing) throw new BadRequestException('primaryCategoryId must be one of the tour categories');
+        await tx.tourCategory.updateMany({ where: { tripId: id }, data: { isPrimary: false } });
+        await tx.tourCategory.update({ where: { id: existing.id }, data: { isPrimary: true } });
+      }
+
+      // Replace the full hub set (validate destination + allowed-category).
+      if (hubIds) {
+        const effectiveCategoryIds =
+          categoryIds ??
+          (await tx.tourCategory.findMany({ where: { tripId: id }, select: { categoryId: true } })).map(
+            (c) => c.categoryId,
+          );
+        for (const hubId of hubIds) {
+          const hub = await tx.hub.findUnique({
+            where: { id: hubId },
+            select: { id: true, destinationId: true, isActive: true },
+          });
+          if (!hub || !hub.isActive) throw new BadRequestException(`Hub ${hubId} not found or is not active`);
+          if (hub.destinationId !== trip.destinationId) {
+            throw new BadRequestException(`Hub ${hubId} does not belong to the destination`);
+          }
+          const allowedCount = await tx.hubAllowedCategory.count({
+            where: { hubId, categoryId: { in: effectiveCategoryIds } },
+          });
+          if (allowedCount === 0) {
+            throw new BadRequestException(`None of the tour's categories are allowed in hub ${hubId}`);
+          }
+        }
+        await tx.tourHub.deleteMany({ where: { tripId: id } });
+        await tx.tourHub.createMany({ data: hubIds.map((hubId) => ({ tripId: id, hubId })) });
+      }
+
+      return tx.trip.findUniqueOrThrow({ where: { id }, select: this.tripSelect });
     });
 
     this.logger.log(`User ${requesterId} updated trip ${id}`);
-    return { trip: updated, warnings };
+    return { trip: this.flattenTrip(updated), warnings };
   }
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
@@ -706,7 +887,7 @@ export class TripsService {
     });
 
     this.logger.log(`User ${userId} published trip ${id}`);
-    return updated;
+    return this.flattenTrip(updated);
   }
 
   async pause(id: string, userId: string, userRole: Role) {
@@ -725,7 +906,7 @@ export class TripsService {
     });
 
     this.logger.log(`User ${userId} paused trip ${id}`);
-    return updated;
+    return this.flattenTrip(updated);
   }
 
   async unpause(id: string, userId: string, userRole: Role) {
@@ -742,7 +923,7 @@ export class TripsService {
     });
 
     this.logger.log(`User ${userId} unpaused trip ${id}`);
-    return updated;
+    return this.flattenTrip(updated);
   }
 
   async archive(id: string, requesterId: string, requesterRole: Role) {
@@ -762,16 +943,14 @@ export class TripsService {
         select: this.tripSelect,
       });
 
-      // Deactivate slug_registry row for destination-only trips
-      if (!trip.hubId) {
-        await tx.slugRegistry.updateMany({
-          where: { entityType: SlugEntityType.TOUR, entityId: id },
-          data: { isActive: false },
-        });
-      }
+      // Every tour has a flat TOUR slug_registry row → deactivate it (keeps the slug reserved).
+      await tx.slugRegistry.updateMany({
+        where: { entityType: SlugEntityType.TOUR, entityId: id },
+        data: { isActive: false },
+      });
 
       this.logger.log(`User ${requesterId} archived trip ${id}`);
-      return updated;
+      return this.flattenTrip(updated);
     });
   }
 
@@ -790,16 +969,14 @@ export class TripsService {
         select: this.tripSelect,
       });
 
-      // Re-activate slug_registry row for destination-only trips
-      if (!trip.hubId) {
-        await tx.slugRegistry.updateMany({
-          where: { entityType: SlugEntityType.TOUR, entityId: id },
-          data: { isActive: true },
-        });
-      }
+      // Re-activate the flat TOUR slug_registry row.
+      await tx.slugRegistry.updateMany({
+        where: { entityType: SlugEntityType.TOUR, entityId: id },
+        data: { isActive: true },
+      });
 
       this.logger.log(`User ${requesterId} restored trip ${id} to DRAFT`);
-      return updated;
+      return this.flattenTrip(updated);
     });
   }
 
@@ -811,12 +988,11 @@ export class TripsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      if (!trip.hubId) {
-        await tx.slugRegistry.deleteMany({
-          where: { entityType: SlugEntityType.TOUR, entityId: id },
-        });
-      }
-      // Cascade deletes all child models via Prisma schema onDelete: Cascade
+      // Every tour has a flat TOUR slug_registry row → remove it.
+      await tx.slugRegistry.deleteMany({
+        where: { entityType: SlugEntityType.TOUR, entityId: id },
+      });
+      // Cascade deletes all child models (incl. TourCategory/TourHub) via onDelete: Cascade
       await tx.trip.delete({ where: { id } });
     });
 

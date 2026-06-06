@@ -223,6 +223,12 @@ enum SlugEntityType {
   RESERVED
 }
 
+// Collections (V2 §6) — curated (manual) or filter-based (dynamic) editorial lists.
+enum CollectionType {
+  MANUAL
+  DYNAMIC
+}
+
 enum FeaturedEntityType {
   CATEGORY
   HUB
@@ -233,6 +239,24 @@ enum HubPickType {
   MOST_POPULAR
   BEST_FOR_FAMILIES
   BEST_VALUE
+}
+
+// ── Attributes / Filters (V2 §7) ──────────────────────────────────────────────
+
+enum AttributeDataType {
+  BOOLEAN
+  ENUM
+  ENUM_MULTI
+  INTEGER
+  DECIMAL
+  TEXT
+}
+
+enum FilterDisplayType {
+  CHECKBOX
+  RANGE_SLIDER
+  RADIO
+  DROPDOWN
 }
 
 // ── Featured Slots ────────────────────────────────────────────────────────────

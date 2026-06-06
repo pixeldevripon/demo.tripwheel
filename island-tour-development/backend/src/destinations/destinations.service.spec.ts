@@ -19,7 +19,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale, SlugEntityType } from '@prisma/client';
+import { Locale, Region, SlugEntityType } from '@prisma/client';
 import { DestinationService } from './destinations.service';
 import {
   CreateDestinationDto,
@@ -375,7 +375,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba' };
+      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
       const result = await service.create(dto, adminId);
 
       expect(prisma.$transaction).toHaveBeenCalled();
@@ -388,7 +388,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba' };
+      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
       await service.create(dto, adminId);
 
       expect(prisma.slugRegistry.create).toHaveBeenCalledWith({
@@ -412,7 +412,7 @@ describe('DestinationService', () => {
       prisma.category.findMany.mockResolvedValue(categories);
       prisma.slugRegistry.createMany.mockResolvedValue({ count: 2 });
 
-      const dto: CreateDestinationDto = { name: 'Aruba' };
+      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
       await service.create(dto, adminId);
 
       expect(prisma.slugRegistry.createMany).toHaveBeenCalledWith({
@@ -429,7 +429,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await service.create({ name: 'Aruba' }, adminId);
+      await service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId);
 
       expect(prisma.slugRegistry.createMany).not.toHaveBeenCalled();
     });
@@ -440,7 +440,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba' };
+      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
       await expect(service.create(dto, adminId)).rejects.toThrow(ConflictException);
     });
 
@@ -450,7 +450,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await expect(service.create({ name: 'Aruba' }, adminId)).rejects.toThrow(
+      await expect(service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId)).rejects.toThrow(
         'DB connection lost',
       );
     });
@@ -461,7 +461,7 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await service.create({ name: 'Curaçao' }, adminId);
+      await service.create({ name: 'Curaçao', region: Region.CARIBBEAN }, adminId);
 
       expect(prisma.destination.create).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -642,36 +642,47 @@
 > Brings the codebase in line with `02-architecture/PLATFORM-ARCHITECTURE-V2.md`. Full detail + acceptance checks in `V2-DEVELOPMENT-ALIGNMENT-PLAN.md`. Slot economy retained as-is.
 
 ### Workstream A — Additive data-model fields
-- ⚠️ Add `Region` enum + `Destination.region` (nullable in Stage 1 → required after backfill) — *schema written + validated; migration not yet applied*
-- ⚠️ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, ogImage, parentDestinationId (+ self-relation) — *schema written + validated*
-- ⚠️ Add category fields: description, icon, sortOrder, parentCategoryId (+ self-relation), metaTitleTemplate, metaDescriptionTemplate — *schema written + validated*
-- ⚠️ Add `HubType` enum (LOCATION/HIGHLIGHT/AREA) + Hub fields: hubType, latitude, longitude — *schema written + validated*
-- ⬜ Apply migration (`prisma migrate dev -n add_v2_fields`) + `prisma generate`
-- ⬜ Verify seed.ts has exactly the 19 canonical categories + 5 launch destinations *(Stage 2)*
-- ⬜ Expose new fields in DTOs/Swagger + admin forms + service `*Select` consts
+- ✅ Add `Region` enum + `Destination.region` (nullable for now; make required once create DTO accepts it)
+- ✅ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, ogImage, parentDestinationId (+ self-relation)
+- ✅ Add category fields: description, icon, sortOrder, parentCategoryId (+ self-relation), metaTitleTemplate, metaDescriptionTemplate
+- ✅ Add `HubType` enum (LOCATION/HIGHLIGHT/AREA) + Hub fields: hubType, latitude, longitude
+- ✅ Migration applied — DB reset + fresh `init` migration (`20260606195507_init`) + `region_required` (`20260606201350_region_required`, region now NOT NULL) + `prisma generate`
+- ✅ Backend wiring: new fields exposed in Create/Update/Response DTOs, Swagger `ApiOperation` descriptions, and service `*Select` + create/update logic (destinations, categories, hubs). Type-check clean; **305 module tests pass**
+- ⬜ Frontend admin forms for the new fields (region selector, geo, icon, sortOrder, hubType) — separate frontend task
 
-### Workstream B — Tour cardinality & flat URL (breaking)
-- ⬜ `TourCategory` join (many-to-many, isPrimary); migrate existing single categoryId
-- ⬜ `TourHub` join (many-to-many); migrate existing single hubId
-- ⬜ Every tour flat URL `/{dest}/{tour-slug}/` + always write slug_registry TOUR row; remove hub-nested route
-- ⬜ HubAllowedCategory check against any of the tour's categories
-- ⬜ Public GET /trips filters via join tables; breadcrumb/canonical use isPrimary category
-- ⬜ Update CLAUDE.md Rule #8 + TRIP-MODULE §3/§4.12/§4.13/§6.7
+### Workstream B-prep / Stage 2 — Seed correction
+- ✅ `seed.ts` now seeds exactly the **19 canonical categories** (+ sortOrder), the **5 launch destinations** (region=CARIBBEAN), Klein Curaçao hub (hubType=LOCATION, allowed = boat-tours/snorkeling/day-trips)
+- ✅ Fresh seed verified: 19 categories, 5 destinations × (19 category + 1 reserved) slug rows, 1 hub
+- ℹ️ Backfill script not needed — dev DB reset fresh per user decision
 
-### Workstream C — Category page gating
-- ⬜ Category page 404 when publishedTourCount = 0 (slug stays reserved)
-- ⬜ categories API returns publishedTourCount; omit zero-count from nav/listings
+### Workstream B — Tour cardinality & flat URL (breaking) ✅ (backend)
+- ✅ `TourCategory` join (many-to-many, isPrimary) — migration `20260606203433_tours_multi_category_hub`
+- ✅ `TourHub` join (many-to-many)
+- ✅ Every tour flat URL `/{dest}/{tour-slug}/` + always writes slug_registry TOUR row; hub-nested URL + `hubSlug` removed (Stage 5 folded in — multi-hub makes hub-in-URL incoherent)
+- ✅ HubAllowedCategory check against **any** of the tour's categories
+- ✅ Public GET /trips filters via join tables (`categories.some`/`hubs.some`); breadcrumb/canonical use `isPrimary` (primaryCategoryId)
+- ✅ Service/DTO/Swagger updated; `getPublishedTourCount` + category/hub remove-guards switched to the join; trips.service.spec rewritten; **479 tests pass**, tsc clean
+- ⬜ Update CLAUDE.md Rule #8 + TRIP-MODULE §3/§4.12/§4.13/§6.7 (docs)
+- ⬜ Frontend: multi-select category(+primary)/hub form, flat-URL routes (see 06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md)
+
+### Workstream C — Category page gating ✅
+- ✅ Category page 404 when publishedTourCount = 0 (slug stays reserved) — `GET /categories/destination/:destinationSlug/:categorySlug`
+- ✅ Destination-scoped category list omits zero-count + returns publishedTourCount — `GET /categories/destination/:destinationSlug`
+- ✅ `CategoryService.getPublishedTourCount` helper (counts LIVE+active via categoryId; switches to TourCategory join in Stage 4)
+- ✅ Swagger docs + response DTOs (CategoryByDestinationResponseDto, CategoryDetailByDestinationResponseDto); tsc clean; 100 category tests pass; gating verified against live DB
 
 ### Workstream D — Attributes / Filters system (new module)
-- ⬜ `attribute_definitions` dictionary table + seed (global + category-specific)
-- ⬜ `tour_attributes` key-value table + indexes
-- ⬜ Backend attributes module: dictionary CRUD + per-tour assignment with validation
-- ⬜ GET /filters/:dest/:category (filters + value counts)
-- ⬜ Tour-listing filter query params + comma-separated multi-values
-- ⬜ Sorting incl. Recommended weighted score
-- ⬜ Filter-per-page-type rules + missing-data handling
-- ⬜ Frontend filter panel (sidebar/bottom-sheet, URL-driven, canonical→base)
-- ⬜ Ship Filter-Priority top-6 first
+**6a (backend foundation) ✅**
+- ✅ `attribute_definitions` dictionary table + seed (46 defs: 18 global + category-specific) — migration `20260606210321_attributes_and_tour_attributes`
+- ✅ `tour_attributes` key-value table + indexes
+- ✅ Backend `attributes` module: dictionary CRUD (admin) + per-tour assignment with dictionary validation (type/allowed-values, ENUM_MULTI comma→JSON, ownership) — 15 tests pass, tsc clean
+**6b (consumption) ✅ (backend)**
+- ✅ `GET /filters/:dest/:category` (applicable filters + value counts + price/duration ranges)
+- ✅ Tour-listing dynamic attribute filters (comma=OR within key, multi-key AND) via raw query + dictionary validation
+- ✅ Duration/rating filters; sorting (`recommended` default | price_asc | price_desc | rating | newest); rating/price nulls-last
+- ✅ Missing-data handling (some-semantics exclude tours lacking an active filter; null price/rating sort last) + Swagger documents typed params + dynamic-attribute pattern with examples — 499 tests pass
+- ⚠️ Recommended sort is a DB-orderBy approximation (sponsored→rating→reviews→recency) until CRO booking counters land (Stage 8) → exact weighted score then
+- ⬜ Frontend filter panel (sidebar/bottom-sheet, URL-driven, canonical→base) + admin dictionary/per-tour editor (see 05-FRONTEND-IMPACT-LOG.md)
 
 ### Workstream E — Collections module (new module)
 - ⬜ Collection model + translations + page content + FAQ

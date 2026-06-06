@@ -34,6 +34,12 @@ export class CategoryService {
     name: true,
     slug: true,
     heroImage: true,
+    description: true,
+    icon: true,
+    sortOrder: true,
+    metaTitleTemplate: true,
+    metaDescriptionTemplate: true,
+    parentCategoryId: true,
     isActive: true,
     isSeeded: true,
     createdAt: true,
@@ -137,13 +143,128 @@ export class CategoryService {
     };
   }
 
+  // ── V2 category-page tour-gating (Stage 3) ────────────────────────────────────
+
+  /**
+   * Count published (LIVE + active) tours for a category within a destination.
+   * NOTE: uses the single `categoryId` FK today; Stage 4 (many-to-many) will switch
+   * this to count via the `TourCategory` join.
+   */
+  async getPublishedTourCount(categoryId: string, destinationId: string): Promise<number> {
+    return this.prisma.trip.count({
+      where: {
+        categories: { some: { categoryId } },
+        destinationId,
+        status: TripStatus.LIVE,
+        isActive: true,
+      },
+    });
+  }
+
+  /**
+   * V2 §3: list categories for a destination that have ≥1 published tour.
+   * Empty-category pages must not exist, so zero-count categories are excluded.
+   * Returns localized categories ordered by sortOrder, each with publishedTourCount.
+   */
+  async getActiveByDestinationSlug(destinationSlug: string, locale: Locale = Locale.en) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { slug: destinationSlug },
+      select: { id: true, isActive: true },
+    });
+    if (!destination || !destination.isActive) {
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    }
+
+    const grouped = await this.prisma.tourCategory.groupBy({
+      by: ['categoryId'],
+      where: { trip: { destinationId: destination.id, status: TripStatus.LIVE, isActive: true } },
+      _count: { _all: true },
+    });
+    const countByCategory = new Map(grouped.map((g) => [g.categoryId, g._count._all]));
+    const categoryIds = [...countByCategory.keys()];
+    if (categoryIds.length === 0) return [];
+
+    const categories = await this.prisma.category.findMany({
+      where: { id: { in: categoryIds }, isActive: true },
+      select: {
+        ...this.categorySelect,
+        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    return categories.map(({ translations, ...cat }) => ({
+      ...applyTranslation(cat, translations[0], locale),
+      publishedTourCount: countByCategory.get(cat.id) ?? 0,
+    }));
+  }
+
+  /**
+   * V2 §3: category detail for a specific destination. Returns 404 when the
+   * (category, destination) pair has zero published tours — the slug_registry row
+   * stays active so the slug remains reserved, but the page must not render.
+   */
+  async getBySlugForDestination(
+    destinationSlug: string,
+    categorySlug: string,
+    locale: Locale = Locale.en,
+  ) {
+    const [destination, category] = await Promise.all([
+      this.prisma.destination.findUnique({
+        where: { slug: destinationSlug },
+        select: { id: true, isActive: true },
+      }),
+      this.prisma.category.findUnique({
+        where: { slug: categorySlug },
+        select: {
+          ...this.categorySelect,
+          translations: { where: { locale }, select: translationSelect },
+        },
+      }),
+    ]);
+    if (!destination || !destination.isActive) {
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    }
+    if (!category || !category.isActive) {
+      throw new NotFoundException(`Category "${categorySlug}" not found`);
+    }
+
+    const publishedTourCount = await this.getPublishedTourCount(category.id, destination.id);
+    if (publishedTourCount === 0) {
+      throw new NotFoundException(
+        `Category "${categorySlug}" has no published tours in "${destinationSlug}"`,
+      );
+    }
+
+    const { translations, ...cat } = category;
+    const t = translations[0];
+    return {
+      ...applyTranslation(cat, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+      publishedTourCount,
+    };
+  }
+
   async create(dto: CreateCategoryDto, adminId: string) {
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     return this.prisma.$transaction(async (tx) => {
       const category = await tx.category
         .create({
-          data: { name: dto.name, slug, heroImage: dto.heroImage ?? null, createdBy: adminId },
+          data: {
+            name: dto.name,
+            slug,
+            heroImage: dto.heroImage ?? null,
+            description: dto.description ?? null,
+            icon: dto.icon ?? null,
+            sortOrder: dto.sortOrder ?? 0,
+            metaTitleTemplate: dto.metaTitleTemplate ?? null,
+            metaDescriptionTemplate: dto.metaDescriptionTemplate ?? null,
+            parentCategoryId: dto.parentCategoryId ?? null,
+            createdBy: adminId,
+          },
           select: this.categorySelect,
         })
         .catch((err: any) => {
@@ -193,6 +314,12 @@ export class CategoryService {
           data: {
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+            ...(dto.description !== undefined && { description: dto.description }),
+            ...(dto.icon !== undefined && { icon: dto.icon }),
+            ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+            ...(dto.metaTitleTemplate !== undefined && { metaTitleTemplate: dto.metaTitleTemplate }),
+            ...(dto.metaDescriptionTemplate !== undefined && { metaDescriptionTemplate: dto.metaDescriptionTemplate }),
+            ...(dto.parentCategoryId !== undefined && { parentCategoryId: dto.parentCategoryId }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.categorySelect,
@@ -223,7 +350,7 @@ export class CategoryService {
 
     await this.prisma.$transaction(async (tx) => {
       const tripCount = await tx.trip.count({
-        where: { categoryId: id, isActive: true, status: { not: TripStatus.DRAFT } },
+        where: { categories: { some: { categoryId: id } }, isActive: true, status: { not: TripStatus.DRAFT } },
       });
       if (tripCount > 0) {
         throw new ConflictException(

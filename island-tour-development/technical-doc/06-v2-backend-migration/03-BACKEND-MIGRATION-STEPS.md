@@ -7,6 +7,7 @@
 > - Every destructive/structural change is preceded by a **backfill** of existing data, then the old column is dropped in a **separate** later migration.
 > - Keep the slot economy intact — none of these steps touch `featured-slots`, `waitlist`, `bookings`.
 > - Run `pnpm prisma:validate` and the test suite after each stage. Commit per stage.
+> - **After each stage, update `05-FRONTEND-IMPACT-LOG.md`** with the backend→UI deltas (new/changed endpoints, required fields, behavior) so the frontend can pick up every point later. This is mandatory, not optional.
 
 Commands (from `backend/` or root):
 ```bash

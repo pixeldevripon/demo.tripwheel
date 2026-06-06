@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "Locale" AS ENUM ('en', 'es', 'nl', 'pt', 'fr', 'de', 'zh');
+
+-- CreateEnum
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'EDITOR', 'STAFF', 'GUIDE', 'TOUR_OPERATOR', 'USER');
 
 -- CreateEnum
@@ -27,6 +30,12 @@ CREATE TYPE "AddOnUnit" AS ENUM ('PER_PERSON', 'FLAT');
 
 -- CreateEnum
 CREATE TYPE "ScheduleStatus" AS ENUM ('AVAILABLE', 'SOLD_OUT', 'CLOSED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "Region" AS ENUM ('CARIBBEAN', 'ATLANTIC', 'MEDITERRANEAN', 'ASIA', 'AFRICA');
+
+-- CreateEnum
+CREATE TYPE "HubType" AS ENUM ('LOCATION', 'HIGHLIGHT', 'AREA');
 
 -- CreateEnum
 CREATE TYPE "SlugEntityType" AS ENUM ('TOUR', 'CATEGORY', 'HUB', 'COLLECTION', 'RESERVED');
@@ -76,9 +85,16 @@ CREATE TABLE "categories" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "heroImage" TEXT,
     "isSeeded" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdBy" TEXT,
+    "description" TEXT,
+    "icon" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "metaTitleTemplate" TEXT,
+    "metaDescriptionTemplate" TEXT,
+    "parentCategoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -86,56 +102,30 @@ CREATE TABLE "categories" (
 );
 
 -- CreateTable
-CREATE TABLE "slug_registry" (
+CREATE TABLE "category_page_content" (
     "id" TEXT NOT NULL,
-    "destinationSlug" TEXT NOT NULL,
-    "slug" TEXT NOT NULL,
-    "entityType" "SlugEntityType" NOT NULL,
-    "entityId" TEXT,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "categoryId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "aboutText" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
 
-    CONSTRAINT "slug_registry_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "category_page_content_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "translations" (
+CREATE TABLE "category_translations" (
     "id" TEXT NOT NULL,
-    "entityType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
-    "field" TEXT NOT NULL,
-    "value" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "name" TEXT,
+    "overview" TEXT,
+    "h1Override" TEXT,
+    "breadcrumbLabel" TEXT,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "translations_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "page_content" (
-    "id" TEXT NOT NULL,
-    "pageType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
-    "field" TEXT NOT NULL,
-    "value" TEXT NOT NULL,
-
-    CONSTRAINT "page_content_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "faqs" (
-    "id" TEXT NOT NULL,
-    "pageType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
-    "question" TEXT NOT NULL,
-    "answer" TEXT NOT NULL,
-    "displayOrder" INTEGER NOT NULL DEFAULT 0,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-
-    CONSTRAINT "faqs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "category_translations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -147,10 +137,47 @@ CREATE TABLE "destinations" (
     "isSeeded" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdBy" TEXT,
+    "region" "Region",
+    "country" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "timezone" TEXT,
+    "currency" TEXT,
+    "language" TEXT,
+    "galleryImages" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "ogImage" TEXT,
+    "parentDestinationId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "destinations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "destination_translations" (
+    "id" TEXT NOT NULL,
+    "destinationId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "name" TEXT,
+    "overview" TEXT,
+    "h1Override" TEXT,
+    "breadcrumbLabel" TEXT,
+    "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "destination_translations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "destination_page_content" (
+    "id" TEXT NOT NULL,
+    "destinationId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "aboutText" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
+
+    CONSTRAINT "destination_page_content_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -160,6 +187,9 @@ CREATE TABLE "hubs" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
+    "hubType" "HubType",
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
     "isSeeded" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdBy" TEXT,
@@ -167,6 +197,33 @@ CREATE TABLE "hubs" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "hubs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "hub_translations" (
+    "id" TEXT NOT NULL,
+    "hubId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "name" TEXT,
+    "overview" TEXT,
+    "h1Override" TEXT,
+    "breadcrumbLabel" TEXT,
+    "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "hub_translations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "hub_page_content" (
+    "id" TEXT NOT NULL,
+    "hubId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "aboutText" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
+
+    CONSTRAINT "hub_page_content_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -211,17 +268,6 @@ CREATE TABLE "hub_comparison_tours" (
 );
 
 -- CreateTable
-CREATE TABLE "hub_content" (
-    "id" TEXT NOT NULL,
-    "hubId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
-    "field" TEXT NOT NULL,
-    "value" TEXT NOT NULL,
-
-    CONSTRAINT "hub_content_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "featured_experiences" (
     "id" TEXT NOT NULL,
     "entityType" "FeaturedEntityType" NOT NULL,
@@ -232,6 +278,20 @@ CREATE TABLE "featured_experiences" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "featured_experiences_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "faqs" (
+    "id" TEXT NOT NULL,
+    "pageType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "question" TEXT NOT NULL,
+    "answer" TEXT NOT NULL,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "faqs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -499,6 +559,19 @@ CREATE TABLE "mollie_configuration" (
 );
 
 -- CreateTable
+CREATE TABLE "slug_registry" (
+    "id" TEXT NOT NULL,
+    "destinationSlug" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "entityType" "SlugEntityType" NOT NULL,
+    "entityId" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "slug_registry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "trips" (
     "id" TEXT NOT NULL,
     "operatorId" TEXT NOT NULL,
@@ -595,6 +668,7 @@ CREATE TABLE "tour_highlights" (
     "id" TEXT NOT NULL,
     "tripId" TEXT NOT NULL,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "imageUrl" TEXT,
 
     CONSTRAINT "tour_highlights_pkey" PRIMARY KEY ("id")
 );
@@ -603,7 +677,7 @@ CREATE TABLE "tour_highlights" (
 CREATE TABLE "tour_highlight_translations" (
     "id" TEXT NOT NULL,
     "highlightId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
     "text" TEXT NOT NULL,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
 
@@ -616,6 +690,7 @@ CREATE TABLE "tour_inclusions" (
     "tripId" TEXT NOT NULL,
     "icon" TEXT NOT NULL DEFAULT 'check',
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "imageUrl" TEXT,
 
     CONSTRAINT "tour_inclusions_pkey" PRIMARY KEY ("id")
 );
@@ -624,7 +699,7 @@ CREATE TABLE "tour_inclusions" (
 CREATE TABLE "tour_inclusion_translations" (
     "id" TEXT NOT NULL,
     "inclusionId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
     "label" TEXT NOT NULL,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
 
@@ -635,7 +710,7 @@ CREATE TABLE "tour_inclusion_translations" (
 CREATE TABLE "trip_translations" (
     "id" TEXT NOT NULL,
     "tripId" TEXT NOT NULL,
-    "locale" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
     "title" TEXT,
     "overview" TEXT,
     "description" TEXT,
@@ -796,25 +871,19 @@ CREATE UNIQUE INDEX "categories_slug_key" ON "categories"("slug");
 CREATE INDEX "categories_slug_idx" ON "categories"("slug");
 
 -- CreateIndex
-CREATE INDEX "slug_registry_destinationSlug_slug_isActive_idx" ON "slug_registry"("destinationSlug", "slug", "isActive");
+CREATE INDEX "categories_parentCategoryId_idx" ON "categories"("parentCategoryId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "slug_registry_destinationSlug_slug_key" ON "slug_registry"("destinationSlug", "slug");
+CREATE INDEX "category_page_content_categoryId_locale_idx" ON "category_page_content"("categoryId", "locale");
 
 -- CreateIndex
-CREATE INDEX "translations_entityType_entityId_locale_idx" ON "translations"("entityType", "entityId", "locale");
+CREATE UNIQUE INDEX "category_page_content_categoryId_locale_key" ON "category_page_content"("categoryId", "locale");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "translations_entityType_entityId_locale_field_key" ON "translations"("entityType", "entityId", "locale", "field");
+CREATE INDEX "category_translations_categoryId_locale_idx" ON "category_translations"("categoryId", "locale");
 
 -- CreateIndex
-CREATE INDEX "page_content_pageType_entityId_locale_idx" ON "page_content"("pageType", "entityId", "locale");
-
--- CreateIndex
-CREATE UNIQUE INDEX "page_content_pageType_entityId_locale_field_key" ON "page_content"("pageType", "entityId", "locale", "field");
-
--- CreateIndex
-CREATE INDEX "faqs_pageType_entityId_locale_idx" ON "faqs"("pageType", "entityId", "locale");
+CREATE UNIQUE INDEX "category_translations_categoryId_locale_key" ON "category_translations"("categoryId", "locale");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "destinations_slug_key" ON "destinations"("slug");
@@ -826,10 +895,40 @@ CREATE INDEX "destinations_slug_idx" ON "destinations"("slug");
 CREATE INDEX "destinations_isActive_idx" ON "destinations"("isActive");
 
 -- CreateIndex
+CREATE INDEX "destinations_region_idx" ON "destinations"("region");
+
+-- CreateIndex
+CREATE INDEX "destinations_parentDestinationId_idx" ON "destinations"("parentDestinationId");
+
+-- CreateIndex
+CREATE INDEX "destination_translations_destinationId_locale_idx" ON "destination_translations"("destinationId", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "destination_translations_destinationId_locale_key" ON "destination_translations"("destinationId", "locale");
+
+-- CreateIndex
+CREATE INDEX "destination_page_content_destinationId_locale_idx" ON "destination_page_content"("destinationId", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "destination_page_content_destinationId_locale_key" ON "destination_page_content"("destinationId", "locale");
+
+-- CreateIndex
 CREATE INDEX "hubs_destinationId_idx" ON "hubs"("destinationId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "hubs_destinationId_slug_key" ON "hubs"("destinationId", "slug");
+
+-- CreateIndex
+CREATE INDEX "hub_translations_hubId_locale_idx" ON "hub_translations"("hubId", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "hub_translations_hubId_locale_key" ON "hub_translations"("hubId", "locale");
+
+-- CreateIndex
+CREATE INDEX "hub_page_content_hubId_locale_idx" ON "hub_page_content"("hubId", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "hub_page_content_hubId_locale_key" ON "hub_page_content"("hubId", "locale");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "hub_allowed_categories_hubId_categoryId_key" ON "hub_allowed_categories"("hubId", "categoryId");
@@ -841,16 +940,13 @@ CREATE UNIQUE INDEX "hub_our_picks_hubId_tourId_key" ON "hub_our_picks"("hubId",
 CREATE UNIQUE INDEX "hub_comparison_tours_groupId_tourId_key" ON "hub_comparison_tours"("groupId", "tourId");
 
 -- CreateIndex
-CREATE INDEX "hub_content_hubId_locale_idx" ON "hub_content"("hubId", "locale");
-
--- CreateIndex
-CREATE UNIQUE INDEX "hub_content_hubId_locale_field_key" ON "hub_content"("hubId", "locale", "field");
-
--- CreateIndex
 CREATE INDEX "featured_experiences_entityType_entityId_idx" ON "featured_experiences"("entityType", "entityId");
 
 -- CreateIndex
 CREATE INDEX "featured_experiences_destinationId_idx" ON "featured_experiences"("destinationId");
+
+-- CreateIndex
+CREATE INDEX "faqs_pageType_entityId_locale_idx" ON "faqs"("pageType", "entityId", "locale");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "featured_slots_tripId_key" ON "featured_slots"("tripId");
@@ -917,6 +1013,12 @@ CREATE INDEX "reviews_operatorId_isApproved_idx" ON "reviews"("operatorId", "isA
 
 -- CreateIndex
 CREATE INDEX "mollie_configuration_id_idx" ON "mollie_configuration"("id");
+
+-- CreateIndex
+CREATE INDEX "slug_registry_destinationSlug_slug_isActive_idx" ON "slug_registry"("destinationSlug", "slug", "isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "slug_registry_destinationSlug_slug_key" ON "slug_registry"("destinationSlug", "slug");
 
 -- CreateIndex
 CREATE INDEX "trips_operatorId_idx" ON "trips"("operatorId");
@@ -1024,16 +1126,40 @@ ALTER TABLE "bookings" ADD CONSTRAINT "bookings_operatorId_fkey" FOREIGN KEY ("o
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "tour_schedules"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "categories" ADD CONSTRAINT "categories_parentCategoryId_fkey" FOREIGN KEY ("parentCategoryId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "categories" ADD CONSTRAINT "categories_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "category_page_content" ADD CONSTRAINT "category_page_content_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "category_translations" ADD CONSTRAINT "category_translations_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "destinations" ADD CONSTRAINT "destinations_parentDestinationId_fkey" FOREIGN KEY ("parentDestinationId") REFERENCES "destinations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "destinations" ADD CONSTRAINT "destinations_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "destination_translations" ADD CONSTRAINT "destination_translations_destinationId_fkey" FOREIGN KEY ("destinationId") REFERENCES "destinations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "destination_page_content" ADD CONSTRAINT "destination_page_content_destinationId_fkey" FOREIGN KEY ("destinationId") REFERENCES "destinations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hubs" ADD CONSTRAINT "hubs_destinationId_fkey" FOREIGN KEY ("destinationId") REFERENCES "destinations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hubs" ADD CONSTRAINT "hubs_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "hub_translations" ADD CONSTRAINT "hub_translations_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "hub_page_content" ADD CONSTRAINT "hub_page_content_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hub_allowed_categories" ADD CONSTRAINT "hub_allowed_categories_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1055,9 +1181,6 @@ ALTER TABLE "hub_comparison_tours" ADD CONSTRAINT "hub_comparison_tours_groupId_
 
 -- AddForeignKey
 ALTER TABLE "hub_comparison_tours" ADD CONSTRAINT "hub_comparison_tours_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "trips"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "hub_content" ADD CONSTRAINT "hub_content_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "featured_slots" ADD CONSTRAINT "featured_slots_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

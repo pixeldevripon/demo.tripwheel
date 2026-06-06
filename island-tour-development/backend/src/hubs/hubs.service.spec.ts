@@ -16,7 +16,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale, SlugEntityType, TripStatus } from '@prisma/client';
+import { HubType, Locale, SlugEntityType, TripStatus } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -495,7 +495,7 @@ describe('HubService', () => {
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new' }));
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await service.create(dto, 'admin-1');
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -518,7 +518,7 @@ describe('HubService', () => {
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new', slug: 'klein-curacao' }));
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await service.create(dto, 'admin-1');
 
       expect(_tx.hub.create).toHaveBeenCalledWith(
@@ -532,7 +532,7 @@ describe('HubService', () => {
       const { _tx } = prisma;
       _tx.destination.findUnique.mockResolvedValue(null);
 
-      const dto: CreateHubDto = { destinationId: 'nonexistent-dest', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'nonexistent-dest', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await expect(service.create(dto, 'admin-1')).rejects.toThrow(NotFoundException);
     });
 
@@ -543,7 +543,7 @@ describe('HubService', () => {
       const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
       _tx.hub.create.mockRejectedValue(p2002);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await expect(service.create(dto, 'admin-1')).rejects.toThrow(ConflictException);
     });
 
@@ -555,7 +555,7 @@ describe('HubService', () => {
       const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
       _tx.slugRegistry.create.mockRejectedValue(p2002);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await expect(service.create(dto, 'admin-1')).rejects.toThrow(ConflictException);
     });
 
@@ -570,6 +570,7 @@ describe('HubService', () => {
       const dto: CreateHubDto = {
         destinationId: 'dest-1',
         name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
         allowedCategoryIds: ['cat-1', 'cat-2'],
       };
       await service.create(dto, 'admin-1');
@@ -592,7 +593,7 @@ describe('HubService', () => {
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new' }));
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       await service.create(dto, 'admin-1');
 
       expect(_tx.hubAllowedCategory.createMany).not.toHaveBeenCalled();
@@ -606,7 +607,7 @@ describe('HubService', () => {
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hub.findUniqueOrThrow.mockResolvedValue(expectedHub);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       const result = await service.create(dto, 'admin-1');
 
       expect(result).toEqual(expectedHub);
@@ -736,7 +737,7 @@ describe('HubService', () => {
       expect(_tx.trip.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            hubId: 'hub-1',
+            hubs: { some: { hubId: 'hub-1' } },
             isActive: true,
             status: { not: TripStatus.DRAFT },
           },

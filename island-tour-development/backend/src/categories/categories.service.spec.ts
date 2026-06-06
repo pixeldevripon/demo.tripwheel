@@ -716,7 +716,7 @@ describe('CategoryService', () => {
 
       expect(prisma.trip.count).toHaveBeenCalledWith({
         where: {
-          categoryId: 'cat-1',
+          categories: { some: { categoryId: 'cat-1' } },
           isActive: true,
           status: { not: TripStatus.DRAFT },
         },

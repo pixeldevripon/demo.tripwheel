@@ -26,6 +26,8 @@ import {
   ApiGetActiveCategoriesDocs,
   ApiGetAllCategoriesDocs,
   ApiGetAllTranslationsDocs,
+  ApiGetCategoriesByDestinationDocs,
+  ApiGetCategoryByDestinationSlugDocs,
   ApiGetCategoryByIdDocs,
   ApiGetCategoryBySlugDocs,
   ApiGetFaqsDocs,
@@ -91,6 +93,30 @@ export class CategoryController {
   @ApiGetCategoryBySlugDocs()
   getBySlug(@Param('slug') slug: string, @Query() query: LocaleQueryDto) {
     return this.categoryService.getBySlug(slug, query.locale);
+  }
+
+  // ── V2 destination-scoped, tour-gated (Stage 3) ──────────────────────────────
+  // Static `destination/...` segments MUST precede the dynamic `:id` route below.
+
+  @Get('destination/:destinationSlug')
+  @Public()
+  @ApiGetCategoriesByDestinationDocs()
+  getActiveByDestination(
+    @Param('destinationSlug') destinationSlug: string,
+    @Query() query: LocaleQueryDto,
+  ) {
+    return this.categoryService.getActiveByDestinationSlug(destinationSlug, query.locale);
+  }
+
+  @Get('destination/:destinationSlug/:categorySlug')
+  @Public()
+  @ApiGetCategoryByDestinationSlugDocs()
+  getByDestinationSlug(
+    @Param('destinationSlug') destinationSlug: string,
+    @Param('categorySlug') categorySlug: string,
+    @Query() query: LocaleQueryDto,
+  ) {
+    return this.categoryService.getBySlugForDestination(destinationSlug, categorySlug, query.locale);
   }
 
   @Get(':id')

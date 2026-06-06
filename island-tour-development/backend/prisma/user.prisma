@@ -31,6 +31,7 @@ model User {
   destinationsCreated Destination[]  @relation("DestinationCreator")
   hubsCreated         Hub[]          @relation("HubCreator")
   categoriesCreated   Category[]     @relation("CategoryCreator")
+  collectionsCreated  Collection[]   @relation("CollectionCreator")
 
   @@index([id, email])
   @@index([role])

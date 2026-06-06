@@ -38,6 +38,9 @@ export class HubService {
     name: true,
     slug: true,
     description: true,
+    hubType: true,
+    latitude: true,
+    longitude: true,
     isSeeded: true,
     isActive: true,
     createdAt: true,
@@ -50,6 +53,9 @@ export class HubService {
     name: true,
     slug: true,
     description: true,
+    hubType: true,
+    latitude: true,
+    longitude: true,
     isSeeded: true,
     isActive: true,
     createdAt: true,
@@ -204,6 +210,9 @@ export class HubService {
             name: dto.name,
             slug,
             description: dto.description,
+            hubType: dto.hubType,
+            latitude: dto.latitude ?? null,
+            longitude: dto.longitude ?? null,
             createdBy: adminId,
           },
           select: { id: true },
@@ -264,6 +273,9 @@ export class HubService {
           data: {
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.description !== undefined && { description: dto.description }),
+            ...(dto.hubType !== undefined && { hubType: dto.hubType }),
+            ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+            ...(dto.longitude !== undefined && { longitude: dto.longitude }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.hubDetailSelect,
@@ -295,7 +307,7 @@ export class HubService {
 
     await this.prisma.$transaction(async (tx) => {
       const tripCount = await tx.trip.count({
-        where: { hubId: id, isActive: true, status: { not: TripStatus.DRAFT } },
+        where: { hubs: { some: { hubId: id } }, isActive: true, status: { not: TripStatus.DRAFT } },
       });
       if (tripCount > 0) {
         throw new ConflictException(

@@ -1,11 +1,13 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { HubType } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -33,6 +35,10 @@ export class HubResponseDto {
   @ApiProperty({ example: 'klein-curacao' }) slug!: string;
   @ApiPropertyOptional({ example: 'A small uninhabited island off the coast of Curaçao.' })
   description!: string | null;
+  @ApiPropertyOptional({ enum: HubType, example: HubType.LOCATION, nullable: true })
+  hubType!: HubType | null;
+  @ApiPropertyOptional({ example: 11.9833, nullable: true }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.6333, nullable: true }) longitude!: number | null;
   @ApiProperty({ example: true }) isSeeded!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) createdAt!: Date;
@@ -193,6 +199,17 @@ export class CreateHubDto {
   @IsString()
   description?: string;
 
+  // ── V2 fields ──────────────────────────────────────────────────────────────
+  @ApiProperty({ enum: HubType, example: HubType.LOCATION, description: 'location | highlight | area (V2 §5).' })
+  @IsEnum(HubType)
+  hubType!: HubType;
+
+  @ApiPropertyOptional({ example: 11.9833, description: 'For location-type hubs.' })
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+
+  @ApiPropertyOptional({ example: -68.6333 })
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
+
   @ApiPropertyOptional({
     type: [String],
     example: ['cat-id-1', 'cat-id-2'],
@@ -215,6 +232,15 @@ export class UpdateHubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ enum: HubType, example: HubType.LOCATION })
+  @IsOptional() @IsEnum(HubType) hubType?: HubType;
+
+  @ApiPropertyOptional({ example: 11.9833 })
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+
+  @ApiPropertyOptional({ example: -68.6333 })
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

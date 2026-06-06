@@ -99,7 +99,9 @@ export function ApiCreateDestinationDocs() {
       summary: 'Create a new destination (Admin/Editor)',
       description:
         'Atomically creates the destination, seeds one RESERVED slug_registry row for "tours", ' +
-        'and seeds one CATEGORY slug_registry row per existing active category.',
+        'and seeds one CATEGORY slug_registry row per existing active category. ' +
+        'Requires `region` (V2 §2) and accepts the geo/SEO fields: country, latitude, longitude, ' +
+        'timezone, currency, language, galleryImages, ogImage, parentDestinationId.',
     }),
     ApiResponse({ status: 201, type: DestinationResponseDto }),
     ApiResponse({ status: 409, description: 'Slug already exists', type: ConflictErrorDto }),
@@ -110,8 +112,11 @@ export function ApiCreateDestinationDocs() {
 export function ApiUpdateDestinationDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update destination name, hero image, or active status (Admin/Editor)',
-      description: 'Slug is immutable. If isActive changes, all slug_registry rows update accordingly.',
+      summary: 'Update destination fields (Admin/Editor)',
+      description:
+        'Updates any of: name, heroImage, region, country, latitude, longitude, timezone, currency, ' +
+        'language, galleryImages, ogImage, isActive. Slug is immutable. ' +
+        'If isActive changes, all slug_registry rows update accordingly.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiResponse({ status: 200, type: DestinationResponseDto }),

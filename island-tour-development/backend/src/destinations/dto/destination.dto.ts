@@ -1,10 +1,13 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Region } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -21,6 +24,18 @@ export class DestinationResponseDto {
   @ApiProperty({ example: 'curacao' }) slug!: string;
   @ApiPropertyOptional({ example: 'https://cdn.example.com/curacao-hero.jpg' })
   heroImage!: string | null;
+  @ApiPropertyOptional({ enum: Region, example: Region.CARIBBEAN, nullable: true })
+  region!: Region | null;
+  @ApiPropertyOptional({ example: 'Curaçao', nullable: true }) country!: string | null;
+  @ApiPropertyOptional({ example: 12.1696, nullable: true }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.99, nullable: true }) longitude!: number | null;
+  @ApiPropertyOptional({ example: 'America/Curacao', nullable: true }) timezone!: string | null;
+  @ApiPropertyOptional({ example: 'USD', nullable: true }) currency!: string | null;
+  @ApiPropertyOptional({ example: 'en', nullable: true }) language!: string | null;
+  @ApiProperty({ type: [String], example: [] }) galleryImages!: string[];
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/curacao-og.jpg', nullable: true })
+  ogImage!: string | null;
+  @ApiPropertyOptional({ example: null, nullable: true }) parentDestinationId!: string | null;
   @ApiProperty({ example: true }) isSeeded!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) createdAt!: Date;
@@ -303,6 +318,38 @@ export class CreateDestinationDto {
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  // ── V2 fields ──────────────────────────────────────────────────────────────
+  @ApiProperty({ enum: Region, example: Region.CARIBBEAN, description: 'Geographic region (required — V2 §2). No URL impact.' })
+  @IsEnum(Region)
+  region!: Region;
+
+  @ApiPropertyOptional({ example: 'Aruba' })
+  @IsOptional() @IsString() country?: string;
+
+  @ApiPropertyOptional({ example: 12.5211 })
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+
+  @ApiPropertyOptional({ example: -69.9683 })
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
+
+  @ApiPropertyOptional({ example: 'America/Aruba' })
+  @IsOptional() @IsString() timezone?: string;
+
+  @ApiPropertyOptional({ example: 'USD' })
+  @IsOptional() @IsString() currency?: string;
+
+  @ApiPropertyOptional({ example: 'en' })
+  @IsOptional() @IsString() language?: string;
+
+  @ApiPropertyOptional({ type: [String], example: [] })
+  @IsOptional() @IsArray() @IsString({ each: true }) galleryImages?: string[];
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/aruba-og.jpg' })
+  @IsOptional() @IsString() ogImage?: string;
+
+  @ApiPropertyOptional({ description: 'Parent destination id for future sub-destinations (unused at launch).' })
+  @IsOptional() @IsString() parentDestinationId?: string;
 }
 
 export class UpdateDestinationDto {
@@ -316,6 +363,33 @@ export class UpdateDestinationDto {
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  @ApiPropertyOptional({ enum: Region, example: Region.CARIBBEAN })
+  @IsOptional() @IsEnum(Region) region?: Region;
+
+  @ApiPropertyOptional({ example: 'Aruba' })
+  @IsOptional() @IsString() country?: string;
+
+  @ApiPropertyOptional({ example: 12.5211 })
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+
+  @ApiPropertyOptional({ example: -69.9683 })
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
+
+  @ApiPropertyOptional({ example: 'America/Aruba' })
+  @IsOptional() @IsString() timezone?: string;
+
+  @ApiPropertyOptional({ example: 'USD' })
+  @IsOptional() @IsString() currency?: string;
+
+  @ApiPropertyOptional({ example: 'en' })
+  @IsOptional() @IsString() language?: string;
+
+  @ApiPropertyOptional({ type: [String], example: [] })
+  @IsOptional() @IsArray() @IsString({ each: true }) galleryImages?: string[];
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/aruba-og.jpg' })
+  @IsOptional() @IsString() ogImage?: string;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

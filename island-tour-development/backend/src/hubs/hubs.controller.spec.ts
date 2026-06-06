@@ -9,7 +9,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale } from '@prisma/client';
+import { HubType, Locale } from '@prisma/client';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import {
   ActiveHubsQueryDto,
@@ -147,7 +147,7 @@ describe('HubController', () => {
       const expected = { id: 'hub-new', name: 'Klein Curaçao' };
       service.create.mockResolvedValue(expected as any);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao' };
+      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
       const user = makeAuthUser({ id: 'admin-1' });
       const result = await controller.create(dto, user);
 

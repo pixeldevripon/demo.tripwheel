@@ -10,6 +10,8 @@ import { Locale } from '@/common/constants/locales';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
+  CategoryByDestinationResponseDto,
+  CategoryDetailByDestinationResponseDto,
   CategoryDetailResponseDto,
   CategoryLocalizedResponseDto,
   CategoryPageContentResponseDto,
@@ -69,6 +71,39 @@ export function ApiGetActiveCategoriesDocs() {
   );
 }
 
+export function ApiGetCategoriesByDestinationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'List categories that have ≥1 published tour in a destination (public)',
+      description:
+        'V2 §3 tour-gating: only categories with at least one LIVE tour in the destination are returned, ' +
+        'each with publishedTourCount, ordered by sortOrder. Used for destination-page nav/listing and sitemaps.',
+    }),
+    ApiParam({ name: 'destinationSlug', example: 'curacao' }),
+    localeParam,
+    ApiResponse({ status: 200, type: [CategoryByDestinationResponseDto] }),
+    ApiResponse({ status: 404, description: 'Destination not found', type: NotFoundErrorDto }),
+    ...publicErrors,
+  );
+}
+
+export function ApiGetCategoryByDestinationSlugDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get a category page for a destination (public, tour-gated)',
+      description:
+        'V2 §3: returns 404 when the (category, destination) pair has zero published tours — empty category ' +
+        'pages must not render. The slug stays reserved in slug_registry; only the page is gated.',
+    }),
+    ApiParam({ name: 'destinationSlug', example: 'curacao' }),
+    ApiParam({ name: 'categorySlug', example: 'boat-tours' }),
+    localeParam,
+    ApiResponse({ status: 200, type: CategoryDetailByDestinationResponseDto }),
+    ApiResponse({ status: 404, description: 'Destination/category not found or no published tours', type: NotFoundErrorDto }),
+    ...publicErrors,
+  );
+}
+
 export function ApiGetCategoryBySlugDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Get category by slug (public)' }),
@@ -98,7 +133,8 @@ export function ApiCreateCategoryDocs() {
     ApiOperation({
       summary: 'Create a new category (Admin/Editor)',
       description:
-        'Atomically creates the category, seeds 3 FeaturedSlot rows, and inserts one slug_registry row per active destination.',
+        'Atomically creates the category, seeds 3 FeaturedSlot rows, and inserts one slug_registry row per active destination. ' +
+        'Accepts the V2 fields: description, icon, sortOrder, metaTitleTemplate, metaDescriptionTemplate, parentCategoryId.',
     }),
     ApiResponse({ status: 201, type: CategoryResponseDto }),
     ApiResponse({ status: 409, description: 'Slug already exists', type: ConflictErrorDto }),
@@ -109,8 +145,11 @@ export function ApiCreateCategoryDocs() {
 export function ApiUpdateCategoryDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update category name or active status (Admin/Editor)',
-      description: 'Slug is immutable. If isActive changes, all slug_registry rows update accordingly.',
+      summary: 'Update category fields (Admin/Editor)',
+      description:
+        'Updates any of: name, heroImage, description, icon, sortOrder, metaTitleTemplate, ' +
+        'metaDescriptionTemplate, parentCategoryId, isActive. Slug is immutable. ' +
+        'If isActive changes, all slug_registry rows update accordingly.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: CategoryResponseDto }),

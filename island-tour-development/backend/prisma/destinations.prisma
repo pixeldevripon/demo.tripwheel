@@ -11,9 +11,8 @@ model Destination {
   isActive  Boolean @default(true)
   createdBy String? // null = seeded; userId = admin who created
 
-  // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
-  // `region` is nullable in Stage 1; backfilled in Stage 2, then made required.
-  region              Region? // geographic grouping (no URL layer) — V2 §2
+  // ── V2 fields ────────────────────────────────────────────────────────────────
+  region              Region // geographic grouping (no URL layer) — V2 §2 (required)
   country             String?
   latitude            Float?
   longitude           Float?
@@ -33,6 +32,7 @@ model Destination {
   creator      User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
   hubs         Hub[]
   trips        Trip[]
+  collections  Collection[]
   translations DestinationTranslation[]
   pageContents DestinationPageContent[]
 
@@ -105,7 +105,7 @@ model Hub {
   comparisonGroups  HubComparisonGroup[]
   translations      HubTranslation[]
   pageContents      HubPageContent[]
-  trips             Trip[]
+  tourHubs          TourHub[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])

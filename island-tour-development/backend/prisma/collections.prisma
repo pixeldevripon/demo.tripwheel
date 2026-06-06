@@ -1,0 +1,62 @@
+// Collections domain (Platform Architecture V2 §6).
+// Editorial/curated tour lists within a destination — NOT part of the core taxonomy.
+// MANUAL = ordered tourIds; DYNAMIC = a saved filterQuery resolved at read time.
+// Admin-only create; writes a COLLECTION slug_registry row in the same transaction.
+
+model Collection {
+  id             String         @id @default(uuid())
+  destinationId  String
+  name           String
+  slug           String // unique per destination; must NOT collide with a category slug (cannibalization guard)
+  collectionType CollectionType
+  tourIds        String[]       @default([]) // MANUAL: ordered tour ids
+  filterQuery    Json? // DYNAMIC: saved attribute/price/category filter
+  heroImage      String?
+  sortOrder      String         @default("recommended") // how tours are sorted (maps to TripSort)
+  isActive       Boolean        @default(true)
+  isSeeded       Boolean        @default(false)
+  createdBy      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  destination  Destination             @relation(fields: [destinationId], references: [id])
+  creator      User?                   @relation("CollectionCreator", fields: [createdBy], references: [id])
+  translations CollectionTranslation[]
+  pageContents CollectionPageContent[]
+
+  @@unique([destinationId, slug])
+  @@index([destinationId])
+  @@map("collections")
+}
+
+model CollectionTranslation {
+  id                  String     @id @default(uuid())
+  collectionId        String
+  collection          Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  locale              Locale
+  name                String? // null falls back to Collection.name
+  overview            String?
+  h1Override          String?
+  breadcrumbLabel     String?
+  isMachineTranslated Boolean    @default(false)
+  updatedAt           DateTime   @updatedAt
+
+  @@unique([collectionId, locale])
+  @@index([collectionId, locale])
+  @@map("collection_translations")
+}
+
+model CollectionPageContent {
+  id              String     @id @default(uuid())
+  collectionId    String
+  collection      Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  locale          Locale
+  aboutText       String?
+  metaTitle       String?
+  metaDescription String?
+
+  @@unique([collectionId, locale])
+  @@index([collectionId, locale])
+  @@map("collection_page_content")
+}

@@ -128,8 +128,7 @@ pnpm prisma:validate
 - Category create → 1 `slug_registry` row **per active destination** (in same transaction)
 - Hub create → 1 `slug_registry` row for its destination (in same transaction)
 - Collection create → 1 `slug_registry` row for its destination (in same transaction) — *(target; module not yet built)*
-- Destination-only tour create → 1 `slug_registry` row (in same transaction)
-- Hub-anchored tour create → **NO** `slug_registry` row — *(CURRENT behavior. V2 TARGET: every tour is flat `/{dest}/{tour-slug}/` and **always** writes a TOUR row; the hub-nested URL is removed. See `V2-DEVELOPMENT-ALIGNMENT-PLAN.md` §B before changing.)*
+- Tour create → **always** 1 `slug_registry` TOUR row (in same transaction). Every tour is flat `/{dest}/{tour-slug}/`; hubs are a discovery tag with no URL effect. *(Implemented in Stage 4/5 — the old hub-nested URL and the "hub-anchored skips slug_registry" rule are removed.)*
 
 **FeaturedSlot write rule:**
 - Category create → seed exactly **3 FeaturedSlot rows** for that category (in same transaction, never after)
@@ -374,8 +373,8 @@ In the same transaction. Never create FeaturedSlot rows outside of category crea
 ### 7. FeaturedSlot rows are permanent
 Never DELETE FeaturedSlot rows. Only UPDATE: `status`, `tripId`, `acquiredAt`, `expiresAt`. Every category always has exactly 3 rows.
 
-### 8. Hub-anchored tours never write to slug_registry
-If `hub_id` is set, skip the `slug_registry` insert. Only destination-only tours (`hub_id = null`) get a registry row.
+### 8. Every tour is flat and always writes a slug_registry TOUR row
+A tour has one canonical URL `/{dest}/{tour-slug}/` and **always** writes a `slug_registry` TOUR row on create (and toggles/removes it on archive/restore/remove). Tours belong to **1+ categories** (one `isPrimary`) via `TourCategory` and **0–n hubs** via `TourHub`; hubs are a discovery tag with **no** URL effect — there is no hub-nested tour URL. *(Stage 4/5. The earlier "hub-anchored tours skip slug_registry" rule is removed.)*
 
 ### 9. Destinations with `is_seeded = true` cannot be deleted
 Guard in service: throw 403 ForbiddenException if `destination.isSeeded === true`.

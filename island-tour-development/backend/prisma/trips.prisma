@@ -3,11 +3,11 @@
 // Publish blocks: <5 images, no hero, overview empty, highlights <3.
 
 model Trip {
-  id            String  @id @default(uuid())
+  id            String @id @default(uuid())
   operatorId    String
   destinationId String
-  categoryId    String
-  hubId         String? // null = destination-only tour; set = hub-anchored
+  // V2 §4: a tour belongs to 1+ categories (one primary) and 0–n hubs — see TourCategory / TourHub.
+  // Single categoryId/hubId were removed in Stage 4 (multi-category/multi-hub).
 
   name   String
   slug   String // English only, unique per destination
@@ -47,8 +47,9 @@ model Trip {
   // Relations
   operator           Operator            @relation(fields: [operatorId], references: [id])
   destination        Destination         @relation(fields: [destinationId], references: [id])
-  category           Category            @relation(fields: [categoryId], references: [id])
-  hub                Hub?                @relation(fields: [hubId], references: [id])
+  categories         TourCategory[] // 1+ categories, exactly one isPrimary
+  hubs               TourHub[] // 0–n hubs
+  attributes         TourAttribute[] // V2 §7 — filterable key-value properties
   images             TourImage[]
   ageBands           TourAgeBand[]
   addOns             TourAddOn[]
@@ -69,10 +70,42 @@ model Trip {
   @@unique([destinationId, slug])
   @@index([operatorId])
   @@index([destinationId])
-  @@index([categoryId])
-  @@index([hubId])
   @@index([status])
   @@map("trips")
+}
+
+// ── Tour ↔ Category (many-to-many, V2 §4) ─────────────────────────────────────
+// A tour has 1+ categories; exactly one row per trip has isPrimary = true
+// (drives the breadcrumb "Home → Destination → Primary Category → Tour" and the canonical).
+model TourCategory {
+  id         String  @id @default(uuid())
+  tripId     String
+  categoryId String
+  isPrimary  Boolean @default(false)
+
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([tripId, categoryId])
+  @@index([categoryId])
+  @@index([tripId, isPrimary])
+  @@map("tour_categories")
+}
+
+// ── Tour ↔ Activity Hub (many-to-many, V2 §4/§5) ──────────────────────────────
+// Hub membership is a pure discovery tag — it has NO effect on the tour URL
+// (every tour is flat /{destination}/{tour-slug}/ — Stage 5).
+model TourHub {
+  id     String @id @default(uuid())
+  tripId String
+  hubId  String
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  hub  Hub  @relation(fields: [hubId], references: [id])
+
+  @@unique([tripId, hubId])
+  @@index([hubId])
+  @@map("tour_hubs")
 }
 
 // ── Tour Images ───────────────────────────────────────────────────────────────

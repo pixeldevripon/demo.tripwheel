@@ -14,6 +14,7 @@ import {
   TripDetailResponseDto,
   TripPublicDetailResponseDto,
   TripResponseDto,
+  TripSort,
   TripUpdateResponseDto,
 } from './dto/trip.dto';
 
@@ -66,15 +67,34 @@ export function ApiGetTripBySlugDocs() {
 
 export function ApiGetAllTripsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all live trips with optional filters (public)' }),
+    ApiOperation({
+      summary: 'List all live trips with filters, attribute facets & sorting (public)',
+      description:
+        'Live tour listing (V2 §7). Beyond the typed params below, you may pass **any filterable attribute key ' +
+        'from the dictionary as a query param** — e.g. `?boat_type=catamaran,yacht&booking_type=private&free_cancellation=true`. ' +
+        'Comma-separated values are OR-ed within a key; multiple attribute keys are AND-ed. ' +
+        'These keys are **dynamic / data-driven**, so they are not enumerated as fixed fields here — the authoritative ' +
+        'set of keys (and their allowed values) for a given page comes from `GET /filters/{dest}/{category}` ' +
+        'or `GET /attributes?category={slug}`. A few common ones are shown below as examples. Unknown keys are ignored.',
+    }),
+    // Typed params
     ApiQuery({ name: 'destinationId', required: false, type: String }),
     ApiQuery({ name: 'categoryId', required: false, type: String }),
     ApiQuery({ name: 'hubId', required: false, type: String }),
     ApiQuery({ name: 'pricingModel', required: false, enum: PricingModel }),
+    ApiQuery({ name: 'search', required: false, type: String }),
     ApiQuery({ name: 'minPrice', required: false, type: Number }),
     ApiQuery({ name: 'maxPrice', required: false, type: Number }),
+    ApiQuery({ name: 'durationMin', required: false, type: Number, description: 'Min duration (minutes)' }),
+    ApiQuery({ name: 'durationMax', required: false, type: Number, description: 'Max duration (minutes)' }),
+    ApiQuery({ name: 'ratingMin', required: false, type: Number, description: 'Minimum average rating (0–5)' }),
+    ApiQuery({ name: 'sort', required: false, enum: TripSort, description: 'Default: recommended' }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
+    // Example dynamic attribute filters (representative — full list is dictionary-driven)
+    ApiQuery({ name: 'booking_type', required: false, type: String, example: 'private', description: 'Example attribute filter (global). See GET /attributes.' }),
+    ApiQuery({ name: 'free_cancellation', required: false, type: String, example: 'true', description: 'Example attribute filter (global).' }),
+    ApiQuery({ name: 'boat_type', required: false, type: String, example: 'catamaran,yacht', description: 'Example category-specific attribute filter (boat-tours). Comma = OR.' }),
     ApiResponse({ status: 200, type: PaginatedTripsResponseDto }),
     ...publicErrors,
   );

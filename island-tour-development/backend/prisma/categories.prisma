@@ -26,12 +26,12 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator       User?                 @relation("CategoryCreator", fields: [createdBy], references: [id])
-  allowedInHubs HubAllowedCategory[]
-  featuredSlots FeaturedSlot[]
-  trips         Trip[]
-  translations  CategoryTranslation[]
-  pageContents  CategoryPageContent[]
+  creator        User?                 @relation("CategoryCreator", fields: [createdBy], references: [id])
+  allowedInHubs  HubAllowedCategory[]
+  featuredSlots  FeaturedSlot[]
+  tourCategories TourCategory[]
+  translations   CategoryTranslation[]
+  pageContents   CategoryPageContent[]
 
   @@index([slug])
   @@index([parentCategoryId])

@@ -42,6 +42,7 @@ technical-doc/
 | [06-v2-backend-migration/02-BACKEND-CHANGE-LIST.md](./06-v2-backend-migration/02-BACKEND-CHANGE-LIST.md) | Itemized backend + core-logic changes per V2, mapped to exact files/models (9 groups). |
 | [06-v2-backend-migration/03-BACKEND-MIGRATION-STEPS.md](./06-v2-backend-migration/03-BACKEND-MIGRATION-STEPS.md) | Ordered, reversible runbook (8 stages) with migrations, backfills, and verification checks. |
 | [06-v2-backend-migration/04-BEFORE-AFTER-AND-LOGIC.md](./06-v2-backend-migration/04-BEFORE-AFTER-AND-LOGIC.md) | Per-change before → after + the reasoning/logic. Read to understand the migration without reading code. |
+| [06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md](./06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md) | **Living log** of backend→UI changes per stage (admin + public). Updated after every backend stage; read this first when starting frontend work. |
 
 ### 01 — Project Scope
 

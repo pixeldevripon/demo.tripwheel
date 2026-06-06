@@ -1,0 +1,41 @@
+// Attributes / Filters domain (Platform Architecture V2 §7).
+// A central dictionary (AttributeDefinition) defines every valid attribute + allowed values;
+// per-tour values live as key-value rows in TourAttribute, validated against the dictionary on save.
+
+// The central attribute dictionary. Admin-managed.
+// `appliesToCategories` holds category SLUGS (stable, human-readable) — empty = global attribute.
+model AttributeDefinition {
+  id                  String             @id @default(uuid())
+  key                 String             @unique // e.g. 'boat_type', 'booking_type'
+  displayName         String // UI label, e.g. 'Boat Type'
+  dataType            AttributeDataType
+  allowedValues       Json? // for ENUM/ENUM_MULTI: array of valid string values
+  appliesToCategories String[]           @default([]) // category slugs; [] = global
+  isFilterable        Boolean            @default(true)
+  isSortable          Boolean            @default(false)
+  filterDisplayType   FilterDisplayType?
+  sortOrder           Int                @default(0) // display order in the filter panel
+  isActive            Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isFilterable])
+  @@index([isActive])
+  @@map("attribute_definitions")
+}
+
+// Per-tour attribute values. One row per (tour, attribute). `attributeValue` stores a
+// string, a stringified number, or a JSON-encoded array (for ENUM_MULTI).
+model TourAttribute {
+  id             String @id @default(uuid())
+  tripId         String
+  attributeKey   String // references AttributeDefinition.key (the dictionary is the contract)
+  attributeValue String @db.VarChar(500)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, attributeKey])
+  @@index([attributeKey, attributeValue])
+  @@map("tour_attributes")
+}

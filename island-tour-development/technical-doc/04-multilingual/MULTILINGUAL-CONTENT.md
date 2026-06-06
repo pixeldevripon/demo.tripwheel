@@ -149,7 +149,9 @@ slug_registry
 | `/{locale}/{destination}/` | `app/[locale]/[destination]/page.tsx` | No — destination slug is the segment itself |
 | `/{locale}/{destination}/{slug}/` | `app/[locale]/[destination]/[slug]/page.tsx` | Yes — `[slug]` is ambiguous |
 
-The destination page routes directly without a slug registry lookup. All sub-pages (category, hub, tour) require the registry to resolve entity type.
+The destination page routes directly without a slug registry lookup. All sub-pages (category, hub, collection, tour) require the registry to resolve entity type.
+
+> **Canonical routing contract:** the full, current page-resolution flow (exact endpoint `GET /api/v1/slug-registry/resolve?destinationSlug=&slug=`, the `entityType` switch, Stage 3 gating, flat tour URLs) lives in **`06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md` → "Public-site routing contract"**. The `GET /slug-registry?destination=&slug=` shape used in §4.8 below is illustrative and predates the `/resolve` endpoint — defer to the Impact Log.
 
 ---
 

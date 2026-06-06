@@ -3,6 +3,7 @@ export const FAQ_PAGE_TYPE = {
   CATEGORY: 'category',
   HUB: 'hub',
   TOUR: 'tour',
+  COLLECTION: 'collection',
 } as const;
 
 export type FaqPageType = (typeof FAQ_PAGE_TYPE)[keyof typeof FAQ_PAGE_TYPE];
