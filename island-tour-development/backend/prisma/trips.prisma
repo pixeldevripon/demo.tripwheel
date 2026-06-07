@@ -36,6 +36,12 @@ model Trip {
   aggregateReviewCount Int       @default(0)
   aggregatesUpdatedAt  DateTime?
 
+  // CRO counters (V2 §10) — maintained by the bookings module; power social proof + Recommended sort.
+  bookingCount      Int       @default(0) // total bookings (sort signal + "Booked N times")
+  bookingCountToday Int       @default(0) // bookings today ("Booked 12 times today")
+  spotsRemaining    Int? // available spots across upcoming schedules ("Only 3 left")
+  lastBookedAt      DateTime? // last booking time ("Last booked 2 hours ago")
+
   // Flags
   isSponsored Boolean @default(false) // admin toggles for promoted tours
   isActive    Boolean @default(true)

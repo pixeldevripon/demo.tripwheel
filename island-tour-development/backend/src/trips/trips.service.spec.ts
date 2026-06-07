@@ -51,6 +51,7 @@ function createMockPrismaService() {
       updateMany: jest.fn(),
     },
     tourHub: { deleteMany: jest.fn(), createMany: jest.fn() },
+    tourAgeBand: { findMany: jest.fn() },
     slugRegistry: {
       findUnique: jest.fn(),
       create: jest.fn(),
@@ -373,6 +374,30 @@ describe('TripsService', () => {
     });
   });
 
+  // ── search ────────────────────────────────────────────────────────────────────
+
+  describe('search', () => {
+    it('short-circuits (no DB query) for terms under 2 chars', async () => {
+      const res = await service.search({ q: 'a' });
+      expect(res.data).toEqual([]);
+      expect(res.total).toBe(0);
+      expect(prisma.trip.findMany).not.toHaveBeenCalled();
+    });
+
+    it('searches across name/translations/category/hub/highlights and flattens results', async () => {
+      prisma.trip.count.mockResolvedValue(1);
+      prisma.trip.findMany.mockResolvedValue([makeTrip({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
+      const res = await service.search({ q: 'catamaran', destinationSlug: 'curacao' });
+      const where = prisma.trip.findMany.mock.calls[0][0].where;
+      expect(where.destination).toEqual({ slug: 'curacao' });
+      expect(where.status).toBe(TripStatus.LIVE);
+      expect(Array.isArray(where.OR)).toBe(true);
+      expect(where.OR[0]).toEqual({ name: { contains: 'catamaran', mode: 'insensitive' } });
+      expect(res.query).toBe('catamaran');
+      expect(res.data[0].categoryIds).toEqual(['cat-1']);
+    });
+  });
+
   // ── findBySlug — flat URL (no hub nesting) ─────────────────────────────────────
 
   describe('findBySlug', () => {
@@ -418,8 +443,42 @@ describe('TripsService', () => {
 
     it('collects all readiness errors', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ images: [], highlights: [], translations: [] }));
+      prisma.trip.findUnique.mockResolvedValue(makeTrip({ images: [], highlights: [], translations: [], ageBands: [] }));
       await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
+    });
+
+    it('requires a price (no basePrice and no age bands → blocked)', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.trip.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [] });
+      await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toMatchObject({
+        response: { message: expect.arrayContaining([expect.stringMatching(/price is required/i)]) },
+      });
+    });
+
+    it('allows publish when an age band provides the price (no basePrice)', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.trip.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [{ id: 'b1' }] });
+      prisma.trip.update.mockResolvedValue(makeTrip({ status: TripStatus.LIVE }));
+      await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).resolves.toBeDefined();
+    });
+  });
+
+  describe('recomputePriceFrom', () => {
+    it('uses the cheapest age-band price when bands exist', async () => {
+      prisma.trip.findUnique.mockResolvedValue({ basePrice: 200 });
+      prisma.tourAgeBand.findMany.mockResolvedValue([{ price: 120 }, { price: 75 }, { price: 90 }]);
+      prisma.trip.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('trip-1');
+      expect(pf).toBe(75);
+      expect(prisma.trip.update).toHaveBeenCalledWith({ where: { id: 'trip-1' }, data: { priceFrom: 75 } });
+    });
+
+    it('falls back to basePrice when there are no age bands', async () => {
+      prisma.trip.findUnique.mockResolvedValue({ basePrice: 99 });
+      prisma.tourAgeBand.findMany.mockResolvedValue([]);
+      prisma.trip.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('trip-1');
+      expect(pf).toBe(99);
     });
   });
 

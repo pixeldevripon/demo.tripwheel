@@ -26,7 +26,7 @@
 | 6a — Attributes (dictionary + assignment) | ✅ done | 🔵 TODO | Admin: dictionary mgmt screens + per-tour attribute editor (dictionary-driven) |
 | 6b — Filters / sort (listing) | ✅ done | 🔵 TODO | Public: filter sidebar/bottom-sheet + sort dropdown consuming `/filters` + `/trips` params |
 | 7 — Collections | ✅ done | 🔵 TODO | Admin CRUD (manual/dynamic) + public collection page at `/{dest}/{slug}/` |
-| 8 — Search / SEO | ⚪ upcoming | ⚪ | Search page, JSON-LD, sitemaps, breadcrumbs, CRO badges |
+| 8 — Search / SEO / CRO | ✅ backend (search + CRO fields) | 🔵 TODO | Search page; JSON-LD / sitemaps / breadcrumbs / internal-linking = frontend rendering (data ready); CRO badges |
 
 ---
 
@@ -209,14 +209,43 @@ Both accept `?locale=`.
 - Price/duration sliders use `priceRange`/`durationRange` bounds.
 - ⚠️ **Note:** attribute query keys are **dynamic** (data-driven from the dictionary), so they're documented as a *pattern* in Swagger (description + examples), not as fixed fields — the authoritative list of keys for a category is `GET /filters` / `GET /attributes?category=`.
 
-## Stage 7 — Collections ⚪ (upcoming)
-- **Admin:** Collection CRUD (manual = tour multi-select; dynamic = filter-query builder), slug field with **cannibalization warning** vs category slugs, translations/page-content/FAQ tabs (same pattern as category/hub).
-- **Public:** Collection page at `/{dest}/{collection}/` (slug resolver already has a COLLECTION branch to wire).
+## Stage 7 — Collections 🔵 (DONE — backend)
 
-## Stage 8 — Search / SEO / CRO ⚪ (upcoming)
-- **Search page** `/search?q=&destination=`; autocomplete component.
-- **SEO:** JSON-LD per page type, `BreadcrumbList` everywhere (tour crumb = primary category), per-locale sitemaps, per-locale Open Graph.
-- **CRO:** tour-card/detail badges from `bookingCountToday`, `spotsRemaining`, `lastBookedAt`, trust signals, price anchor.
+**Backend change.** New `Collection` (+ translations + page content + FAQ) module (migration `20260606213217_collections`). A collection registers a `COLLECTION` slug in the slug registry, so the public resolver's `COLLECTION` branch now points at a real page.
+
+**Endpoints:**
+- **Public:**
+  - `GET /api/v1/collections?destinationSlug={slug}&locale=` → active collections for a destination (localized).
+  - `GET /api/v1/collections/slug/{slug}?destinationSlug={slug}&locale=` → collection detail **+ resolved `tours[]`** (MANUAL = ordered `tourIds`; DYNAMIC = `filterQuery` resolved via the tour-listing engine, reusing Stage 6 filters).
+  - `GET /collections/:id/page-content?locale=` · `GET /collections/:id/faqs?locale=` (same shape as category/hub).
+- **Admin (`CREATE_CONTENT`/`EDIT_CONTENT`/`DELETE_CONTENT`/`MANAGE_SYSTEM`):** `POST /collections`, `PATCH /collections/:id`, `DELETE /collections/:id` (soft), `DELETE /collections/:id/force`, translations (`GET`/`GET :locale`/`PATCH :locale`/`DELETE :locale`), `PATCH /collections/:id/page-content/:locale`, FAQ CRUD.
+
+**`CreateCollectionDto`:** `destinationId, name, slug?, collectionType (MANUAL|DYNAMIC), tourIds?[], filterQuery? (object), heroImage?, sortOrder?`. MANUAL requires `tourIds`; DYNAMIC requires `filterQuery` (e.g. `{ categoryId, attributes: { booking_type: 'private', boat_type: ['catamaran','yacht'] }, minPrice, maxPrice, durationMin, durationMax, ratingMin }`). **Slug must not equal a category slug** (cannibalization guard → 409).
+
+**Frontend tasks:**
+- **Public:** wire the slug resolver's `COLLECTION` case → `CollectionPage` at `/{locale}/{dest}/{slug}/`, fetch `GET /collections/slug/{slug}?destinationSlug=`, render `tours[]` (already in tour-card shape) + page content + FAQ.
+- **Admin:** Collection CRUD — type toggle (manual = tour multi-select with ordering; dynamic = filter-query builder reusing the attribute dictionary), slug field with **category-slug cannibalization warning**, translations/page-content/FAQ tabs (same pattern as category/hub), `sortOrder` select.
+- `types/collection.ts` + `lib/api/collection.ts` + hooks.
+
+## Stage 8 — Search / SEO / CRO 🔵 (backend: search + CRO fields DONE)
+
+**Backend change.**
+- **Search:** `GET /api/v1/search?q={term}&destinationSlug={slug}&page=&limit=` (public). Matches tour name/translations + category & hub names + highlight text; optional destination scope; Recommended ordering; returns `{ total, page, limit, query, data: [tour cards] }`. (V1 = case-insensitive `contains`; tsvector/Algolia is the documented upgrade.)
+- **CRO fields on `Trip`** (migration `20260607025718_trip_cro_fields`): `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` — now in all trip responses. Maintained by the bookings module (Phase 4); the **Recommended sort now leads with `bookingCount`**.
+
+**Pricing (no schema change — model kept; V2's flat price_adult/child/infant NOT added):**
+- Tour pricing = `pricingModel` (PER_PERSON | UNIT) + `unitType` + `basePrice` (flat) and/or `TourAgeBand[]` (ADULT/CHILD/INFANT, custom bands). `price_adult/child/infant` are represented by age bands.
+- `priceFrom` (the "From $X" anchor) is now **auto-recomputed** on basePrice/age-band changes — frontend can trust it for display.
+- **Publish now requires a price:** a tour needs `basePrice` OR ≥1 age band, else publish 400s. The trip form should enforce this before enabling publish.
+
+**Frontend tasks:**
+- **Search page** `/search?q=&destination=` consuming `GET /search`; optional autocomplete.
+- **CRO badges** on tour card/detail from `bookingCountToday` ("Booked 12 times today"), `spotsRemaining` ("Only 3 left"), `lastBookedAt`, plus trust signals (free_cancellation/instant_confirmation attributes) and price anchor.
+- **SEO (frontend rendering — all data already exposed):**
+  - **JSON-LD** per page type — Tour=`TouristTrip`+`AggregateOffer`(price)+`AggregateRating`(aggregateRating/Count)+`BreadcrumbList`; Category/Collection=`CollectionPage`+`ItemList`(from tours); Destination=`Place`+`ItemList`; Hub adds `Article`+`FAQPage`(from `/faqs`).
+  - **Breadcrumbs** everywhere; tour crumb uses **`primaryCategoryId`** (already in responses).
+  - **Per-locale XML sitemaps**: published-only; exclude zero-tour categories (use `GET /categories/destination/:dest`); collections from `GET /collections?destinationSlug=`.
+  - **Internal linking** + per-locale Open Graph (page-content `metaTitle`/`metaDescription` + `ogImage`).
 
 ---
 

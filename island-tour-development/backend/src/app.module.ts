@@ -15,6 +15,7 @@ import { SlugRegistryModule } from './slug-registry/slug-registry.module';
 import { TripsModule } from '@/trips/trips.module';
 import { AttributesModule } from '@/attributes/attributes.module';
 import { CollectionsModule } from '@/collections/collections.module';
+import { SearchModule } from '@/search/search.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -35,6 +36,7 @@ import { CollectionsModule } from '@/collections/collections.module';
     TripsModule,
     AttributesModule,
     CollectionsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

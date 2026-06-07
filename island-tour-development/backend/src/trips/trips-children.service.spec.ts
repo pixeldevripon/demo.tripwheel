@@ -46,6 +46,7 @@ function createMockTripsService() {
   return {
     findTripOrThrow: jest.fn(),
     assertOwnership: jest.fn(),
+    recomputePriceFrom: jest.fn(),
   };
 }
 

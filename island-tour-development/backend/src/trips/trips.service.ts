@@ -40,6 +40,10 @@ export class TripsService {
     breadcrumbLabel: true,
     aggregateRating: true,
     aggregateReviewCount: true,
+    bookingCount: true,
+    bookingCountToday: true,
+    spotsRemaining: true,
+    lastBookedAt: true,
     isSponsored: true,
     isActive: true,
     publishedAt: true,
@@ -123,6 +127,28 @@ export class TripsService {
   }
 
   /**
+   * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a trip:
+   * the cheapest age-band price, or `basePrice` when there are no age bands.
+   * Call after any change to basePrice or age bands. Returns the new value.
+   */
+  async recomputePriceFrom(tripId: string): Promise<Prisma.Decimal | null> {
+    const [trip, bands] = await Promise.all([
+      this.prisma.trip.findUnique({ where: { id: tripId }, select: { basePrice: true } }),
+      this.prisma.tourAgeBand.findMany({ where: { tripId }, select: { price: true } }),
+    ]);
+    if (!trip) return null;
+
+    const candidates = bands.length > 0 ? bands.map((b) => b.price) : trip.basePrice ? [trip.basePrice] : [];
+    let priceFrom: Prisma.Decimal | null = null;
+    for (const c of candidates) {
+      if (priceFrom === null || Number(c) < Number(priceFrom)) priceFrom = c;
+    }
+
+    await this.prisma.trip.update({ where: { id: tripId }, data: { priceFrom } });
+    return priceFrom;
+  }
+
+  /**
    * Resolves an ordered list of tour ids to flattened LIVE trips, preserving the input
    * order and dropping any that are missing/not live. Used by manual Collections.
    */
@@ -134,6 +160,45 @@ export class TripsService {
     });
     const byId = new Map(trips.map((t) => [t.id, this.flattenTrip(t)]));
     return ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => Boolean(t));
+  }
+
+  /**
+   * Full-text-ish search across tour name + translations (title/overview/description) +
+   * category names + hub names + highlight text. Optionally scoped to a destination.
+   * V1 uses case-insensitive `contains` (Postgres ILIKE); upgrade path: a `tsvector` GIN
+   * column or Algolia/ElasticSearch for ranking + typo tolerance (V2 §10).
+   */
+  async search(params: { q?: string; destinationSlug?: string; page?: number; limit?: number }) {
+    const { destinationSlug, page = 1, limit = 20 } = params;
+    const term = params.q?.trim();
+    if (!term || term.length < 2) {
+      return { total: 0, page, limit, query: term ?? '', data: [] as ReturnType<typeof this.flattenTrip>[] };
+    }
+    const ci = { contains: term, mode: 'insensitive' as const };
+    const where: Prisma.TripWhereInput = {
+      status: TripStatus.LIVE,
+      isActive: true,
+      ...(destinationSlug && { destination: { slug: destinationSlug } }),
+      OR: [
+        { name: ci },
+        { translations: { some: { OR: [{ title: ci }, { overview: ci }, { description: ci }] } } },
+        { categories: { some: { category: { name: ci } } } },
+        { hubs: { some: { hub: { name: ci } } } },
+        { highlights: { some: { translations: { some: { text: ci } } } } },
+      ],
+    };
+    const skip = (page - 1) * limit;
+    const [total, data] = await Promise.all([
+      this.prisma.trip.count({ where }),
+      this.prisma.trip.findMany({
+        where,
+        select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+        orderBy: this.buildOrderBy(TripSort.recommended),
+        skip,
+        take: limit,
+      }),
+    ]);
+    return { total, page, limit, query: term, data: data.map((t) => this.flattenTrip(t)) };
   }
 
   // ── Public list ───────────────────────────────────────────────────────────────
@@ -209,10 +274,12 @@ export class TripsService {
       case TripSort.recommended:
       default:
         // V2 weighted "Recommended" (bookings×0.4 + rating×0.3 + recency×0.2 + reviews×0.1).
-        // Approximated with a DB orderBy until the CRO booking counters land (Stage 8);
-        // a materialized recommendedScore column can replace this then.
+        // Prisma can't order by a computed expression, so we approximate with a multi-key
+        // ordering led by the booking count (the heaviest weight). For an exact score, add a
+        // materialized `recommendedScore` column updated by a periodic/worker job and order by it.
         return [
           { isSponsored: 'desc' },
+          { bookingCount: 'desc' },
           { aggregateRating: { sort: 'desc', nulls: 'last' } },
           { aggregateReviewCount: 'desc' },
           { publishedAt: 'desc' },
@@ -696,6 +763,7 @@ export class TripsService {
             pricingModel: dto.pricingModel,
             unitType: dto.unitType ?? null,
             basePrice: dto.basePrice ?? null,
+            priceFrom: dto.basePrice ?? null, // no age bands at create → from = base; recomputed on age-band changes
             durationMinutes: dto.durationMinutes ?? null,
             pickupModel: dto.pickupModel,
             maxPartySize: dto.maxPartySize ?? null,
@@ -847,6 +915,11 @@ export class TripsService {
       return tx.trip.findUniqueOrThrow({ where: { id }, select: this.tripSelect });
     });
 
+    // Keep the "From $X" anchor in sync if basePrice changed.
+    if (dto.basePrice !== undefined) {
+      updated.priceFrom = await this.recomputePriceFrom(id);
+    }
+
     this.logger.log(`User ${requesterId} updated trip ${id}`);
     return { trip: this.flattenTrip(updated), warnings };
   }
@@ -861,6 +934,7 @@ export class TripsService {
         images: { select: { id: true, isHero: true } },
         highlights: { select: { id: true } },
         translations: { where: { locale: Locale.en }, select: { overview: true } },
+        ageBands: { select: { id: true } },
       },
     });
     if (!trip) throw new NotFoundException(`Trip ${id} not found`);
@@ -877,6 +951,11 @@ export class TripsService {
     if (!enTranslation?.overview?.trim()) errors.push('An English overview is required to publish');
 
     if (trip.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
+
+    // Price required: a flat basePrice OR at least one age band (V2 §4).
+    if (trip.basePrice == null && trip.ageBands.length === 0) {
+      errors.push('A price is required to publish (set a base price or at least one age band)');
+    }
 
     if (errors.length > 0) throw new BadRequestException(errors);
 

@@ -220,6 +220,7 @@ export class TripChildrenService {
       select: this.ageBandSelect,
     });
 
+    await this.tripsService.recomputePriceFrom(tripId);
     this.logger.log(`User ${requesterId} added age band to trip ${tripId}`);
     return band;
   }
@@ -253,6 +254,7 @@ export class TripChildrenService {
       select: this.ageBandSelect,
     });
 
+    if (dto.price !== undefined) await this.tripsService.recomputePriceFrom(tripId);
     this.logger.log(`User ${requesterId} updated age band ${bandId} on trip ${tripId}`);
     return updated;
   }
@@ -267,6 +269,7 @@ export class TripChildrenService {
     if (!existing) throw new NotFoundException(`Age band ${bandId} not found on trip ${tripId}`);
 
     await this.prisma.tourAgeBand.delete({ where: { id: bandId } });
+    await this.tripsService.recomputePriceFrom(tripId);
     this.logger.log(`User ${requesterId} removed age band ${bandId} from trip ${tripId}`);
     return { message: 'Age band removed successfully' };
   }

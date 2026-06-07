@@ -684,26 +684,26 @@
 - ⚠️ Recommended sort is a DB-orderBy approximation (sponsored→rating→reviews→recency) until CRO booking counters land (Stage 8) → exact weighted score then
 - ⬜ Frontend filter panel (sidebar/bottom-sheet, URL-driven, canonical→base) + admin dictionary/per-tour editor (see 05-FRONTEND-IMPACT-LOG.md)
 
-### Workstream E — Collections module (new module)
-- ⬜ Collection model + translations + page content + FAQ
-- ⬜ slug_registry COLLECTION row on create
-- ⬜ Dynamic filter_query resolver
-- ⬜ Cannibalization naming guard vs category slugs
-- ⬜ Admin CRUD + frontend CollectionPage
+### Workstream E — Collections module (new module) ✅ (backend)
+- ✅ Collection model + translations + page content + FAQ (migration `20260606213217_collections`)
+- ✅ slug_registry COLLECTION row on create (same transaction)
+- ✅ Dynamic filterQuery resolver (reuses TripsService.findAll + attribute engine) + MANUAL ordered-tourIds resolver
+- ✅ Cannibalization guard (reject collection slug == category slug)
+- ✅ Admin CRUD + public list/detail; 7 collection tests pass, tsc clean, 506 total pass
+- ⬜ Frontend CollectionPage + admin CRUD UI (see 05-FRONTEND-IMPACT-LOG.md)
 
-### Workstream F — Search (new module)
-- ⬜ Postgres tsvector full-text (title+description+highlights+category+hub names)
-- ⬜ GET /search?q=&destination=&locale= (SSR) + same filters/sort
-- ⬜ Autocomplete endpoint
-- ⬜ Frontend /search page
+### Workstream F — Search (new module) ✅ (backend)
+- ✅ `GET /search?q=&destinationSlug=&page=&limit=` (public) over name/translations/category/hub/highlights; Recommended ordering; flattened tour-card results — search tests pass
+- ⚠️ V1 = case-insensitive `contains` (ILIKE); tsvector GIN / Algolia ranking + typo-tolerance is the documented upgrade
+- ⬜ Autocomplete endpoint (later) · ⬜ Frontend /search page
 
 ### Workstream G — SEO layer
-- ⬜ JSON-LD emitters per page type (+ BreadcrumbList everywhere)
-- ⬜ Breadcrumbs per page type (tour uses primary category)
-- ⬜ XML sitemap index + per-type/per-locale files (published-only, non-empty categories)
-- ⬜ Internal linking matrix
-- ⬜ CRO fields: bookingCount, bookingCountToday, spotsRemaining, lastBookedAt + tour-card signals
-- ⬜ Confirm ISR revalidation values match §10
+- ✅ CRO fields: `bookingCount, bookingCountToday, spotsRemaining, lastBookedAt` (migration `trip_cro_fields`) exposed in trip responses; Recommended sort now leads with bookingCount
+- ⬜ JSON-LD emitters per page type (+ BreadcrumbList everywhere) — *frontend; data exposed*
+- ⬜ Breadcrumbs per page type (tour uses primaryCategoryId) — *frontend; data exposed*
+- ⬜ XML sitemap index + per-type/per-locale files (published-only, non-empty categories) — *frontend route handlers; data exposed*
+- ⬜ Internal linking matrix — *frontend; data exposed*
+- ⬜ Confirm ISR revalidation values match §10 — *frontend*
 
 ### Workstream H — Slug redirects (decision-gated)
 - ⬜ Decision: keep immutable slugs vs add slug_redirects 301 table + 90-day cooldown
