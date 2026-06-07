@@ -1,7 +1,9 @@
 // Slug Registry — resolves dynamic URL segments to entity type + ID.
 // Each row is written in the same transaction as the entity it represents.
-// Hub-anchored tours do NOT get a row here (URL structure is sufficient).
+// V2 flat URLs: EVERY tour gets a TOUR row (one canonical /{dest}/{slug}/);
+// hubs are a discovery tag with no URL effect.
 // 'tours' slug is pre-seeded as RESERVED for every destination.
+// Full lifecycle + frontend usage: technical-doc/02-architecture/SLUG-REGISTRY.md
 model SlugRegistry {
   id              String         @id @default(uuid())
   destinationSlug String // 'curacao' — matches Destination.slug

@@ -658,7 +658,8 @@ export class TripsService {
 
     if (!tripConflict && !registryConflict) return baseSlug;
 
-    // Slug is occupied by another entity — build an operator-name suffix.
+    // Slug is occupied by another entity — append the operator name (V2 pages 11–15).
+    // NEVER append a number (-2, -3): confusing for users and bad for SEO.
     const operator = await this.prisma.operator.findUnique({
       where: { id: operatorId },
       select: {
@@ -671,26 +672,27 @@ export class TripsService {
       operator?.user?.name ??
       operatorId.slice(0, 8);
     const suffix = generateSlug(rawName);
-    const suffixedBase = `${baseSlug}-${suffix}`;
+    const candidate = `${baseSlug}-${suffix}`;
 
-    for (let i = 0; i <= 99; i++) {
-      const candidate = i === 0 ? suffixedBase : `${suffixedBase}-${i}`;
+    const [candidateTrip, candidateRegistry] = await Promise.all([
+      this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
+      this.prisma.slugRegistry.findUnique({
+        where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
+        select: { id: true },
+      }),
+    ]);
 
-      const [candidateTrip, candidateRegistry] = await Promise.all([
-        this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
-        this.prisma.slugRegistry.findUnique({
-          where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
-          select: { id: true },
-        }),
-      ]);
-
-      if (candidateTrip?.operatorId === operatorId) {
-        throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
-      }
-      if (!candidateTrip && !candidateRegistry) return candidate;
+    if (candidateTrip?.operatorId === operatorId) {
+      throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
     }
+    if (!candidateTrip && !candidateRegistry) return candidate;
 
-    throw new ConflictException(`Unable to find a unique slug for "${baseSlug}" at this destination`);
+    // The operator-name suffix is also taken. We do NOT fall back to numeric suffixes,
+    // so the operator must pick a different tour name or slug.
+    throw new ConflictException(
+      `Both "${baseSlug}" and "${candidate}" are already taken at this destination. ` +
+        `Please choose a different tour name or slug.`,
+    );
   }
 
   // ── Create ────────────────────────────────────────────────────────────────────

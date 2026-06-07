@@ -586,6 +586,8 @@ Destination
 
 ## 9. Slug Registry — Routing & Uniqueness
 
+> **Detailed reference:** [`SLUG-REGISTRY.md`](./SLUG-REGISTRY.md) — when rows are added vs. skipped, full lifecycle sync (toggle/delete/cascade), the frontend routing switch, and how a tour resolves with a flat slug.
+
 Categories, activity hubs, collections, and tours all live at the same URL level `/{destination}/{slug}/`. The slug registry is the single source of truth that resolves which entity a slug points to and prevents collisions.
 
 ### Table: `slugs` (our model: `SlugRegistry`)

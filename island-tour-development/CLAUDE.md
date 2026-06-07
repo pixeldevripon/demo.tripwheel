@@ -6,6 +6,7 @@
 > Access management: `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
 > Frontend/slot/booking reference: `CLAUDE-reference.md`
 > **Discovery/SEO architecture (canonical, reflects V2 PDF): `technical-doc/02-architecture/PLATFORM-ARCHITECTURE-V2.md`**
+> **Slug registry (detailed: rows, lifecycle, frontend routing, flat-slug resolution): `technical-doc/02-architecture/SLUG-REGISTRY.md`**
 > **V2 alignment/migration plan: `technical-doc/V2-DEVELOPMENT-ALIGNMENT-PLAN.md`** · gap rationale: `technical-doc/ARCHITECTURE-V2-GAP-ANALYSIS.md`
 > **Master task checklist: `technical-doc/MASTER-CHECKLIST.md`**
 
@@ -136,6 +137,8 @@ pnpm prisma:validate
 ---
 
 ## Slug Registry — How It Works
+
+> Full detail (when rows are added/skipped, complete lifecycle sync, frontend routing switch, flat-slug resolution): **`technical-doc/02-architecture/SLUG-REGISTRY.md`**
 
 The `[slug]` URL segment is ambiguous — could be a category, hub, or destination-only tour. The slug registry resolves it.
 

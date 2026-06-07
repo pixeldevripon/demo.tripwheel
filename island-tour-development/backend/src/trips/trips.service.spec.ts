@@ -191,6 +191,24 @@ describe('TripsService', () => {
       prisma.trip.findFirst.mockResolvedValueOnce({ id: 'existing' }); // ownConflict
       await expect(service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(ConflictException);
     });
+
+    it('throws 409 (never appends a number) when both base and operator-name slug are taken', async () => {
+      prisma.trip.findFirst
+        .mockResolvedValueOnce(null) // ownConflict
+        .mockResolvedValueOnce(null) // base trip conflict
+        .mockResolvedValueOnce(null); // candidate trip
+      prisma.slugRegistry.findUnique
+        .mockResolvedValueOnce({ id: 'reg-1' }) // base registry conflict
+        .mockResolvedValueOnce({ id: 'reg-2' }); // candidate registry also taken
+      prisma.operator.findUnique.mockResolvedValue({
+        id: 'op-1',
+        companyInfo: { companyName: 'Bluefin Charters' },
+        user: { name: 'Bob' },
+      });
+
+      await expect(service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(ConflictException);
+      expect(prisma.trip.create).not.toHaveBeenCalled();
+    });
   });
 
   // ── create — validation + many-to-many ────────────────────────────────────────
