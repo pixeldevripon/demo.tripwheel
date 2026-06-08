@@ -9,7 +9,7 @@ export interface Collection {
   name: string;
   slug: string;
   collectionType: CollectionType;
-  tourIds: string[];
+  tourIds: string[] | null; // null/empty for DYNAMIC collections
   filterQuery: Record<string, unknown> | null;
   heroImage: string | null;
   sortOrder: string;

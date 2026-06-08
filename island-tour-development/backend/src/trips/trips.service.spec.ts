@@ -421,7 +421,7 @@ describe('TripsService', () => {
   describe('findBySlug', () => {
     it('resolves purely by destination + slug (no hub condition)', async () => {
       prisma.trip.findFirst.mockResolvedValue(
-        makeTrip({ images: [], translations: [], highlights: [], inclusions: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
+        makeTrip({ images: [], translations: [], highlights: [], inclusions: [], exclusions: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
       );
       const result: any = await service.findBySlug('sunset-catamaran-cruise', { destinationSlug: 'curacao' } as any);
       const whereArg = prisma.trip.findFirst.mock.calls[0][0].where;

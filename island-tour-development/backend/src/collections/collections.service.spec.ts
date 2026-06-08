@@ -4,7 +4,7 @@
  */
 import { PrismaService } from '@/prisma/prisma.service';
 import { TripsService } from '@/trips/trips.service';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CollectionType, SlugEntityType } from '@prisma/client';
 import { CollectionsService } from './collections.service';
@@ -119,6 +119,44 @@ describe('CollectionsService', () => {
         { booking_type: 'private', boat_type: 'catamaran,yacht' },
       );
       expect(res.tours).toEqual([{ id: 't9' }]);
+    });
+  });
+
+  describe('getByIdAdmin', () => {
+    it('returns the collection by id', async () => {
+      const collection = { id: 'col-1', name: 'Top 10', slug: 'top-10-tours', isActive: true };
+      prisma.collection.findUnique.mockResolvedValue(collection);
+      const res = await service.getByIdAdmin('col-1');
+      expect(prisma.collection.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'col-1' } }),
+      );
+      expect(res).toEqual(collection);
+    });
+
+    it('throws 404 when the collection is missing', async () => {
+      prisma.collection.findUnique.mockResolvedValue(null);
+      await expect(service.getByIdAdmin('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getAllByDestinationAdmin', () => {
+    it('returns all (active + inactive) collections for a destination', async () => {
+      prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1' });
+      const rows = [
+        { id: 'col-1', isActive: true },
+        { id: 'col-2', isActive: false },
+      ];
+      prisma.collection.findMany.mockResolvedValue(rows);
+      const res = await service.getAllByDestinationAdmin('curacao');
+      expect(prisma.collection.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { destinationId: 'dest-1' } }),
+      );
+      expect(res).toEqual(rows);
+    });
+
+    it('throws 404 when the destination is missing', async () => {
+      prisma.destination.findUnique.mockResolvedValue(null);
+      await expect(service.getAllByDestinationAdmin('nope')).rejects.toThrow(NotFoundException);
     });
   });
 

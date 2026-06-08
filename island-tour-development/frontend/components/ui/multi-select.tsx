@@ -151,7 +151,12 @@ export function MultiSelect({
                 )}
                 <span className="truncate text-xs font-medium">{opt.label}</span>
                 {!disabled && (
-                  <button type="button" onClick={(e) => remove(e, opt.value)} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => remove(e, opt.value)}
+                    aria-label={`Remove ${opt.label}`}
+                    className="shrink-0"
+                  >
                     <XIcon className="size-3 text-muted-foreground hover:text-foreground" />
                   </button>
                 )}

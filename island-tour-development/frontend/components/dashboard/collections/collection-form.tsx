@@ -112,6 +112,11 @@ export function CollectionForm({ collection }: CollectionFormProps) {
     if (!isEditMode && !slugTouched) setValue('slug', toSlug(nameValue), { shouldValidate: !!nameValue });
   }, [nameValue, isEditMode, slugTouched, setValue]);
 
+  // Clear selected tours when the destination changes (create mode) — tours are destination-scoped.
+  useEffect(() => {
+    if (!isEditMode) setValue('tourIds', []);
+  }, [destinationId, isEditMode, setValue]);
+
   // Tours scoped to the selected destination (client-side filter of admin trips)
   const tourOptions = useMemo(
     () =>

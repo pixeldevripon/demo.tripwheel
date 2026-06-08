@@ -127,6 +127,13 @@ export class TripInclusionInlineDto {
   @ApiProperty({ example: 'Open bar' }) label!: string;
 }
 
+export class TripExclusionInlineDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: 'x' }) icon!: string;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ example: 'Gratuities' }) label!: string;
+}
+
 export class TripAgeBandInlineDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: AgeBandType }) bandType!: AgeBandType;
@@ -165,6 +172,7 @@ export class TripPublicDetailResponseDto extends TripResponseDto {
   @ApiProperty({ type: [TripImageInlineDto] }) images!: TripImageInlineDto[];
   @ApiProperty({ type: [TripHighlightInlineDto] }) highlights!: TripHighlightInlineDto[];
   @ApiProperty({ type: [TripInclusionInlineDto] }) inclusions!: TripInclusionInlineDto[];
+  @ApiProperty({ type: [TripExclusionInlineDto] }) exclusions!: TripExclusionInlineDto[];
   @ApiProperty({ type: [TripAgeBandInlineDto] }) ageBands!: TripAgeBandInlineDto[];
   @ApiProperty({ type: [TripAddOnInlineDto] }) addOns!: TripAddOnInlineDto[];
   @ApiProperty({ type: [String], example: ['en', 'nl'] }) languages!: string[];

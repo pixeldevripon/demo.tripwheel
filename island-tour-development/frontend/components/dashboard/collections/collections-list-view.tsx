@@ -112,7 +112,7 @@ export function CollectionsListView() {
                     <TableCell className="text-sm font-medium">{c.name}</TableCell>
                     <TableCell><Badge variant="secondary">{c.collectionType}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {c.collectionType === 'MANUAL' ? `${c.tourIds.length} tours` : 'dynamic'}
+                      {c.collectionType === 'MANUAL' ? `${(c.tourIds ?? []).length} tours` : 'dynamic'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={c.isActive ? 'default' : 'outline'}>

@@ -1514,6 +1514,296 @@ describe('TripChildrenService', () => {
     });
   });
 
+  // ── Exclusions ────────────────────────────────────────────────────────────────
+
+  describe('getExclusions', () => {
+    it('calls assertTripAccess then returns all exclusions ordered by displayOrder', async () => {
+      const exclusions = [makeExclusion()];
+      prisma.tourExclusion.findMany.mockResolvedValue(exclusions);
+
+      const result = await service.getExclusions('trip-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(result).toEqual(exclusions);
+      expect(tripsService.findTripOrThrow).toHaveBeenCalledWith('trip-1');
+      expect(prisma.tourExclusion.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tripId: 'trip-1' },
+          orderBy: { displayOrder: 'asc' },
+        }),
+      );
+    });
+
+    it('propagates NotFoundException from assertTripAccess when trip does not exist', async () => {
+      tripsService.findTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
+
+      await expect(
+        service.getExclusions('trip-99', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates ForbiddenException from assertTripAccess for non-owner operators', async () => {
+      tripsService.assertOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have permission to modify this trip'),
+      );
+
+      await expect(
+        service.getExclusions('trip-1', 'user-other', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('addExclusion', () => {
+    it('creates an exclusion with English label inside a transaction and returns it', async () => {
+      const exclusion = makeExclusion();
+      prisma.tourExclusion.create.mockResolvedValue({ id: 'excl-1' });
+      prisma.tourExclusionTranslation.create.mockResolvedValue({});
+      prisma.tourExclusion.findUnique.mockResolvedValue(exclusion);
+
+      const result = await service.addExclusion(
+        'trip-1',
+        { label: 'Flights not included', icon: 'x' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.tourExclusion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tripId: 'trip-1' }),
+        }),
+      );
+      expect(prisma.tourExclusionTranslation.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ label: 'Flights not included', locale: 'en' }),
+        }),
+      );
+      expect(result).toEqual(exclusion);
+    });
+
+    it('defaults icon to "x" when not provided', async () => {
+      prisma.tourExclusion.create.mockResolvedValue({ id: 'excl-1' });
+      prisma.tourExclusionTranslation.create.mockResolvedValue({});
+      prisma.tourExclusion.findUnique.mockResolvedValue(makeExclusion());
+
+      await service.addExclusion('trip-1', { label: 'Flights not included' }, 'user-1', Role.TOUR_OPERATOR);
+
+      expect(prisma.tourExclusion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ icon: 'x' }),
+        }),
+      );
+    });
+
+    it('propagates NotFoundException when trip does not exist', async () => {
+      tripsService.findTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
+
+      await expect(
+        service.addExclusion('trip-99', { label: 'Flights not included' }, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates ForbiddenException for non-owner operators', async () => {
+      tripsService.assertOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have permission to modify this trip'),
+      );
+
+      await expect(
+        service.addExclusion(
+          'trip-1',
+          { label: 'Flights not included' },
+          'user-other',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('updateExclusion', () => {
+    it('updates exclusion fields and returns the updated record', async () => {
+      const existing = makeExclusion();
+      const updated = { ...existing, icon: 'circle-x', displayOrder: 2 };
+      prisma.tourExclusion.findFirst.mockResolvedValue(existing);
+      prisma.tourExclusion.update.mockResolvedValue(updated);
+
+      const result = await service.updateExclusion(
+        'trip-1', 'excl-1', { icon: 'circle-x', displayOrder: 2 }, 'user-1', Role.TOUR_OPERATOR,
+      );
+
+      expect(result.icon).toBe('circle-x');
+      expect(result.displayOrder).toBe(2);
+      expect(prisma.tourExclusion.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'excl-1' } }),
+      );
+    });
+
+    it('throws NotFoundException when exclusion does not belong to the trip', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateExclusion('trip-1', 'excl-99', { icon: 'x' }, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates ForbiddenException from assertTripAccess for non-owner operators', async () => {
+      tripsService.assertOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have permission to modify this trip'),
+      );
+
+      await expect(
+        service.updateExclusion('trip-1', 'excl-1', { icon: 'x' }, 'user-other', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('removeExclusion', () => {
+    it('deletes the exclusion and returns success message', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue(makeExclusion());
+      prisma.tourExclusion.delete.mockResolvedValue({});
+
+      const result = await service.removeExclusion('trip-1', 'excl-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(result).toEqual({ message: 'Exclusion removed successfully' });
+      expect(prisma.tourExclusion.delete).toHaveBeenCalledWith({ where: { id: 'excl-1' } });
+    });
+
+    it('throws NotFoundException when exclusion is not found on the trip', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.removeExclusion('trip-1', 'excl-99', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates ForbiddenException for non-owner operators', async () => {
+      tripsService.assertOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have permission to modify this trip'),
+      );
+
+      await expect(
+        service.removeExclusion('trip-1', 'excl-1', 'user-other', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('upsertExclusionTranslation', () => {
+    it('upserts the label translation and returns it', async () => {
+      const exclusion = { id: 'excl-1' };
+      const translation = { locale: Locale.nl, label: 'Vluchten niet inbegrepen', isMachineTranslated: false };
+      prisma.tourExclusion.findFirst.mockResolvedValue(exclusion);
+      prisma.tourExclusionTranslation.upsert.mockResolvedValue(translation);
+
+      const result = await service.upsertExclusionTranslation(
+        'trip-1', 'excl-1', Locale.nl,
+        { label: 'Vluchten niet inbegrepen' },
+        'user-1', Role.TOUR_OPERATOR,
+      );
+
+      expect(result).toEqual(translation);
+      expect(prisma.tourExclusionTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl } },
+          create: expect.objectContaining({ label: 'Vluchten niet inbegrepen', locale: Locale.nl }),
+          update: expect.objectContaining({ label: 'Vluchten niet inbegrepen' }),
+        }),
+      );
+    });
+
+    it('defaults isMachineTranslated to false when not provided', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
+      prisma.tourExclusionTranslation.upsert.mockResolvedValue({});
+
+      await service.upsertExclusionTranslation(
+        'trip-1', 'excl-1', Locale.nl,
+        { label: 'Vluchten niet inbegrepen' },
+        'user-1', Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tourExclusionTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ isMachineTranslated: false }),
+        }),
+      );
+    });
+
+    it('throws NotFoundException when exclusion does not belong to the trip', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.upsertExclusionTranslation(
+          'trip-1', 'excl-99', Locale.nl,
+          { label: 'Some label' },
+          'user-1', Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates ForbiddenException from assertTripAccess for non-owner operators', async () => {
+      tripsService.assertOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have permission to modify this trip'),
+      );
+
+      await expect(
+        service.upsertExclusionTranslation(
+          'trip-1', 'excl-1', Locale.nl,
+          { label: 'Some label' },
+          'user-other', Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('deleteExclusionTranslation', () => {
+    it('throws BadRequestException when attempting to delete the English translation', async () => {
+      await expect(
+        service.deleteExclusionTranslation('trip-1', 'excl-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(BadRequestException);
+
+      // Should not proceed to any Prisma call for the exclusion lookup
+      expect(prisma.tourExclusion.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('deletes a non-English translation and returns success message', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
+      prisma.tourExclusionTranslation.delete.mockResolvedValue({});
+
+      const result = await service.deleteExclusionTranslation(
+        'trip-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR,
+      );
+
+      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
+      expect(prisma.tourExclusionTranslation.delete).toHaveBeenCalledWith({
+        where: { exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl } },
+      });
+    });
+
+    it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
+      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      prisma.tourExclusionTranslation.delete.mockRejectedValue(p2025);
+
+      await expect(
+        service.deleteExclusionTranslation('trip-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when exclusion does not belong to the trip', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.deleteExclusionTranslation('trip-1', 'excl-99', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('re-throws unknown errors from tourExclusionTranslation.delete unchanged', async () => {
+      prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
+      prisma.tourExclusionTranslation.delete.mockRejectedValue(new Error('DB timeout'));
+
+      await expect(
+        service.deleteExclusionTranslation('trip-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow('DB timeout');
+    });
+  });
+
   // ── ADMIN bypass for child operations ─────────────────────────────────────────
 
   describe('ADMIN bypass via assertOwnership', () => {

@@ -85,6 +85,7 @@ function FaqCard({ faq, collectionId }: FaqCardProps) {
     watch,
     formState: { errors },
   } = useForm<Omit<FaqFormValues, 'locale'>>({
+    resolver: zodResolver(faqSchema.omit({ locale: true })),
     defaultValues: {
       question: faq.question,
       answer: faq.answer,

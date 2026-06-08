@@ -1,19 +1,17 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { icons as lucideIcons, TagIcon, LockIcon } from 'lucide-react';
+import { LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
-import { getCategoryIconName } from '@/lib/constants/category-icons';
+import { getCategoryIconName, getCategoryIconComponent } from '@/lib/constants/category-icons';
 import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
 function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
-  const name = getCategoryIconName(slug, icon);
-  const Cmp = (lucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[name];
-  if (!Cmp) return <TagIcon className="size-4 text-muted-foreground" />;
+  const Cmp = getCategoryIconComponent(getCategoryIconName(slug, icon));
   return <Cmp className="size-4 text-muted-foreground" />;
 }
 

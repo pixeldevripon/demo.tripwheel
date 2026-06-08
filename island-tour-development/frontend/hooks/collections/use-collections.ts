@@ -146,7 +146,8 @@ export function useUpsertCollectionPageContent() {
       payload: UpsertCollectionPageContentPayload;
     }) => collectionsApi.upsertPageContent(id, locale, payload),
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: collectionKeys.pageContent(vars.id) });
+      // Prefix-match all locales (the cached key includes the specific locale).
+      qc.invalidateQueries({ queryKey: [...collectionKeys.all, 'page-content', vars.id] });
     },
   });
 }

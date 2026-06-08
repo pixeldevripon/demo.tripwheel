@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { icons as lucideIcons, ChevronsUpDownIcon, XIcon } from 'lucide-react';
+import { ChevronsUpDownIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,23 +10,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { CATEGORY_ICON_NAMES, getCategoryIconComponent } from '@/lib/constants/category-icons';
 
-/**
- * Curated set of category-relevant Lucide icon names (PascalCase keys of the
- * lucide-react `icons` map). The stored value is the icon name string.
- */
-export const CATEGORY_ICON_NAMES = [
-  'Ship', 'Sailboat', 'Anchor', 'Waves', 'Fish', 'LifeBuoy', 'Turtle', 'Bird',
-  'Mountain', 'MountainSnow', 'TreePalm', 'Trees', 'Tent', 'Compass', 'Map', 'MapPin',
-  'Binoculars', 'Camera', 'Footprints', 'Bike', 'Car', 'Caravan', 'Plane', 'Waypoints',
-  'Sun', 'Sunset', 'Droplets', 'Wind', 'Snowflake', 'Zap',
-  'Utensils', 'UtensilsCrossed', 'Wine', 'Coffee', 'Ticket', 'Sparkles',
-  'Drama', 'Music', 'Palette', 'GraduationCap', 'Flower2', 'Gem', 'Crown', 'Star',
-] as const;
+export { CATEGORY_ICON_NAMES };
 
 function LucideByName({ name, className }: { name: string; className?: string }) {
-  const Cmp = (lucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[name];
-  if (!Cmp) return null;
+  const Cmp = getCategoryIconComponent(name);
   return <Cmp className={className} />;
 }
 
