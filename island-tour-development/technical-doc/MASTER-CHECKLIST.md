@@ -648,7 +648,7 @@
 - ✅ Add `HubType` enum (LOCATION/HIGHLIGHT/AREA) + Hub fields: hubType, latitude, longitude
 - ✅ Migration applied — DB reset + fresh `init` migration (`20260606195507_init`) + `region_required` (`20260606201350_region_required`, region now NOT NULL) + `prisma generate`
 - ✅ Backend wiring: new fields exposed in Create/Update/Response DTOs, Swagger `ApiOperation` descriptions, and service `*Select` + create/update logic (destinations, categories, hubs). Type-check clean; **305 module tests pass**
-- ⬜ Frontend admin forms for the new fields (region selector, geo, icon, sortOrder, hubType) — separate frontend task
+- ✅ Frontend admin forms for the new fields — destination (required Region select, **currency select**, geo/timezone/language, gallery, ogImage, parent), category (description/sortOrder/meta + **Lucide icon picker**), hub (required HubType select + lat/lng). tsc clean; `next build` OK
 
 ### Workstream B-prep / Stage 2 — Seed correction
 - ✅ `seed.ts` now seeds exactly the **19 canonical categories** (+ sortOrder), the **5 launch destinations** (region=CARIBBEAN), Klein Curaçao hub (hubType=LOCATION, allowed = boat-tours/snorkeling/day-trips)
@@ -663,7 +663,8 @@
 - ✅ Public GET /trips filters via join tables (`categories.some`/`hubs.some`); breadcrumb/canonical use `isPrimary` (primaryCategoryId)
 - ✅ Service/DTO/Swagger updated; `getPublishedTourCount` + category/hub remove-guards switched to the join; trips.service.spec rewritten; **479 tests pass**, tsc clean
 - ⬜ Update CLAUDE.md Rule #8 + TRIP-MODULE §3/§4.12/§4.13/§6.7 (docs)
-- ⬜ Frontend: multi-select category(+primary)/hub form, flat-URL routes (see 06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md)
+- ✅ Frontend admin: trip create + details-tab use **multi-select Categories (with primary star) + multi-select Hubs**; list columns show primary category (+N) and hub names; publish-readiness includes a price check
+- ⬜ Frontend public: flat-URL routes (`[locale]/[destination]/[slug]` resolver) — public-site track
 
 ### Workstream C — Category page gating ✅
 - ✅ Category page 404 when publishedTourCount = 0 (slug stays reserved) — `GET /categories/destination/:destinationSlug/:categorySlug`
@@ -682,15 +683,18 @@
 - ✅ Duration/rating filters; sorting (`recommended` default | price_asc | price_desc | rating | newest); rating/price nulls-last
 - ✅ Missing-data handling (some-semantics exclude tours lacking an active filter; null price/rating sort last) + Swagger documents typed params + dynamic-attribute pattern with examples — 499 tests pass
 - ⚠️ Recommended sort is a DB-orderBy approximation (sponsored→rating→reviews→recency) until CRO booking counters land (Stage 8) → exact weighted score then
-- ⬜ Frontend filter panel (sidebar/bottom-sheet, URL-driven, canonical→base) + admin dictionary/per-tour editor (see 05-FRONTEND-IMPACT-LOG.md)
+- ✅ Frontend admin: attribute **dictionary CRUD** screens (`/dashboard/attributes`, gated `MANAGE_SYSTEM`) + **per-tour attribute editor** tab on the trip (renders by dataType; union of all the tour's categories' attributes)
+- ⬜ Frontend public: filter panel (sidebar/bottom-sheet, URL-driven, canonical→base) — public-site track
 
 ### Workstream E — Collections module (new module) ✅ (backend)
 - ✅ Collection model + translations + page content + FAQ (migration `20260606213217_collections`)
 - ✅ slug_registry COLLECTION row on create (same transaction)
 - ✅ Dynamic filterQuery resolver (reuses TripsService.findAll + attribute engine) + MANUAL ordered-tourIds resolver
 - ✅ Cannibalization guard (reject collection slug == category slug)
-- ✅ Admin CRUD + public list/detail; 7 collection tests pass, tsc clean, 506 total pass
-- ⬜ Frontend CollectionPage + admin CRUD UI (see 05-FRONTEND-IMPACT-LOG.md)
+- ✅ Admin CRUD + public list/detail; 11 collection tests pass (incl. `getByIdAdmin`/`getAllByDestinationAdmin`), tsc clean
+- ✅ Dedicated `CREATE/VIEW/EDIT/DELETE_COLLECTION` permissions (Permission enum + roles.config ADMIN/EDITOR + frontend rbac); controller migrated off generic `*_CONTENT`; admin reads added (`GET /collections/:id`, `GET /collections/admin/all`)
+- ✅ Frontend admin: full Collections CRUD (`/dashboard/collections`) — destination-scoped list, MANUAL (ordered tour multi-select) / DYNAMIC (filter-query builder) form, category-slug cannibalization warning, + Translations / Page Content / FAQ tabs (detail-shell + sub-nav)
+- ⬜ Frontend public: CollectionPage at `/{dest}/{slug}/` — public-site track
 
 ### Workstream F — Search (new module) ✅ (backend)
 - ✅ `GET /search?q=&destinationSlug=&page=&limit=` (public) over name/translations/category/hub/highlights; Recommended ordering; flattened tour-card results — search tests pass
@@ -709,6 +713,16 @@
 - ✅ Decision locked (2026-06-07): **keep immutable slugs** — no `slug_redirects` table, no editable-slug UI, no 90-day cooldown. Deliberate divergence from V2 (safer for bookings/indexed URLs). Documented in `PLATFORM-ARCHITECTURE-V2.md §9`, `SLUG-REGISTRY.md`, `SOFT-DELETE-STRATEGY.md`, gap-analysis A5.
 - ✅ Enforced: no `slug` on any Update DTO; set once at create; resolver 404s with no redirect step.
 - ⬜ Optional future (full V2 parity, not scheduled): admin-only slug-change + `slug_redirects` 301 row (`MANAGE_SYSTEM`).
+
+### Workstream I — Tour exclusions, admin tabs & verification (2026-06-08)
+- ✅ **Tour Exclusions** — new `TourExclusion` + `TourExclusionTranslation` models (migration `tour_exclusions`) + `Trip.exclusions`; backend child-service CRUD + translation methods (mirror inclusions: assertTripAccess, transactional create, en-delete guard, P2025→404); 6 controller endpoints; DTOs; exposed in `findBySlug` + `TripPublicDetailResponseDto`. Frontend: types/api/hooks + **Exclusions tab** on the trip edit view.
+- ✅ **Currency enum** — `Currency` Prisma enum (USD/EUR/GBP/CAD/ANG/AWG/XCD/BSD); `Destination.currency` String→enum (migration `currency_enum`); DTO `@IsEnum`; frontend currency `<Select>` + `CURRENCY_LABELS`.
+- ✅ **Hub translation / page-content / FAQ admin tabs** — verified present and wired (sub-nav tabs).
+- ✅ **Taxonomy cleanup** — `lib/constants/category-icons.ts` (19 canonical slug→Lucide map + tree-shakeable component map); category list renders resolved icon; dead public routing slugs replaced (buggy-tours→off-road-tours, catamaran-trips→boat-tours, snorkeling-trips→snorkeling, private-charters→luxury-experiences).
+- ✅ **Tests** — backend Jest: exclusion methods + collection admin reads added (**539 tests pass**; 1 pre-existing unrelated `users` ESM spec failure). Frontend Playwright: **131 new e2e tests** across 6 admin specs (235 total recognized).
+- ✅ **Code review (backend + frontend)** — fixed: public-detail `exclusions` DTO, `tourIds` null-crash guard, collection page-content invalidation locale mismatch, collection-form tour reset on destination change, FAQ inline-edit resolver, MultiSelect a11y label, removed full lucide manifest import.
+- ✅ `recomputePriceFrom(tripId, tx?)` now runs inside the age-band mutation's `$transaction` (add/update/remove) — closes the stale-`priceFrom` concurrency window.
+- ✅ `exclusionCount` added to list `_count` selects + `flattenCounts` + `TripDetailResponseDto` + frontend `TripListItem` (consistency with inclusionCount).
 
 ### i18n confirmations
 - ⬜ No-prefix → 302 locale fallback (Accept-Language) alongside localePrefix:'always'

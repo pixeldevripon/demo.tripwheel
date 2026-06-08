@@ -54,6 +54,7 @@ export interface TripListItem {
   scheduleCount?: number;
   highlightCount?: number;
   inclusionCount?: number;
+  exclusionCount?: number;
   featuredSlotNumber?: number | null;
   featuredSlotStatus?: string | null;
   // Only in admin list

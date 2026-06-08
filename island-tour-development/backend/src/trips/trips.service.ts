@@ -130,11 +130,19 @@ export class TripsService {
    * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a trip:
    * the cheapest age-band price, or `basePrice` when there are no age bands.
    * Call after any change to basePrice or age bands. Returns the new value.
+   *
+   * Pass `tx` to run inside the caller's transaction — required when called right
+   * after an age-band mutation so the read+update sees a consistent band set
+   * (otherwise a concurrent band change can produce a stale `priceFrom`).
    */
-  async recomputePriceFrom(tripId: string): Promise<Prisma.Decimal | null> {
+  async recomputePriceFrom(
+    tripId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Prisma.Decimal | null> {
+    const client = tx ?? this.prisma;
     const [trip, bands] = await Promise.all([
-      this.prisma.trip.findUnique({ where: { id: tripId }, select: { basePrice: true } }),
-      this.prisma.tourAgeBand.findMany({ where: { tripId }, select: { price: true } }),
+      client.trip.findUnique({ where: { id: tripId }, select: { basePrice: true } }),
+      client.tourAgeBand.findMany({ where: { tripId }, select: { price: true } }),
     ]);
     if (!trip) return null;
 
@@ -144,7 +152,7 @@ export class TripsService {
       if (priceFrom === null || Number(c) < Number(priceFrom)) priceFrom = c;
     }
 
-    await this.prisma.trip.update({ where: { id: tripId }, data: { priceFrom } });
+    await client.trip.update({ where: { id: tripId }, data: { priceFrom } });
     return priceFrom;
   }
 
@@ -354,7 +362,7 @@ export class TripsService {
             select: { slotNumber: true, status: true },
           },
           _count: {
-            select: { images: true, schedules: true, highlights: true, inclusions: true },
+            select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -395,7 +403,7 @@ export class TripsService {
             select: { slotNumber: true, status: true },
           },
           _count: {
-            select: { images: true, schedules: true, highlights: true, inclusions: true },
+            select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -421,6 +429,7 @@ export class TripsService {
       scheduleCount: _count?.schedules ?? 0,
       highlightCount: _count?.highlights ?? 0,
       inclusionCount: _count?.inclusions ?? 0,
+      exclusionCount: _count?.exclusions ?? 0,
       featuredSlotNumber: featuredSlot?.slotNumber ?? null,
       featuredSlotStatus: featuredSlot?.status ?? null,
       destinationName: destination?.name ?? null,
@@ -458,7 +467,7 @@ export class TripsService {
           select: { slotNumber: true, status: true },
         },
         _count: {
-          select: { images: true, schedules: true, highlights: true, inclusions: true },
+          select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
         },
       },
     });

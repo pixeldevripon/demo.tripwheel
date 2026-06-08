@@ -78,6 +78,7 @@ export class TripDetailResponseDto extends TripResponseDto {
   @ApiProperty({ example: 0 }) scheduleCount!: number;
   @ApiProperty({ example: 0 }) highlightCount!: number;
   @ApiProperty({ example: 0 }) inclusionCount!: number;
+  @ApiProperty({ example: 0 }) exclusionCount!: number;
 }
 
 export class PaginatedTripsResponseDto {

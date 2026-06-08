@@ -208,22 +208,25 @@ export class TripChildrenService {
   async addAgeBand(tripId: string, dto: CreateTourAgeBandDto, requesterId: string, requesterRole: Role) {
     await this.assertTripAccess(tripId, requesterId, requesterRole);
 
-    const band = await this.prisma.tourAgeBand.create({
-      data: {
-        tripId,
-        bandType: dto.bandType,
-        label: dto.label,
-        minAge: dto.minAge ?? null,
-        maxAge: dto.maxAge ?? null,
-        price: dto.price,
-        minCount: dto.minCount ?? 0,
-        maxCount: dto.maxCount ?? null,
-        displayOrder: dto.displayOrder ?? 0,
-      },
-      select: this.ageBandSelect,
+    const band = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.tourAgeBand.create({
+        data: {
+          tripId,
+          bandType: dto.bandType,
+          label: dto.label,
+          minAge: dto.minAge ?? null,
+          maxAge: dto.maxAge ?? null,
+          price: dto.price,
+          minCount: dto.minCount ?? 0,
+          maxCount: dto.maxCount ?? null,
+          displayOrder: dto.displayOrder ?? 0,
+        },
+        select: this.ageBandSelect,
+      });
+      await this.tripsService.recomputePriceFrom(tripId, tx);
+      return created;
     });
 
-    await this.tripsService.recomputePriceFrom(tripId);
     this.logger.log(`User ${requesterId} added age band to trip ${tripId}`);
     return band;
   }
@@ -243,21 +246,26 @@ export class TripChildrenService {
     });
     if (!existing) throw new NotFoundException(`Age band ${bandId} not found on trip ${tripId}`);
 
-    const updated = await this.prisma.tourAgeBand.update({
-      where: { id: bandId },
-      data: {
-        ...(dto.label !== undefined && { label: dto.label }),
-        ...(dto.minAge !== undefined && { minAge: dto.minAge }),
-        ...(dto.maxAge !== undefined && { maxAge: dto.maxAge }),
-        ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.minCount !== undefined && { minCount: dto.minCount }),
-        ...(dto.maxCount !== undefined && { maxCount: dto.maxCount }),
-        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
-      },
-      select: this.ageBandSelect,
+    const data = {
+      ...(dto.label !== undefined && { label: dto.label }),
+      ...(dto.minAge !== undefined && { minAge: dto.minAge }),
+      ...(dto.maxAge !== undefined && { maxAge: dto.maxAge }),
+      ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.minCount !== undefined && { minCount: dto.minCount }),
+      ...(dto.maxCount !== undefined && { maxCount: dto.maxCount }),
+      ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+    };
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.tourAgeBand.update({
+        where: { id: bandId },
+        data,
+        select: this.ageBandSelect,
+      });
+      if (dto.price !== undefined) await this.tripsService.recomputePriceFrom(tripId, tx);
+      return result;
     });
 
-    if (dto.price !== undefined) await this.tripsService.recomputePriceFrom(tripId);
     this.logger.log(`User ${requesterId} updated age band ${bandId} on trip ${tripId}`);
     return updated;
   }
@@ -271,8 +279,10 @@ export class TripChildrenService {
     });
     if (!existing) throw new NotFoundException(`Age band ${bandId} not found on trip ${tripId}`);
 
-    await this.prisma.tourAgeBand.delete({ where: { id: bandId } });
-    await this.tripsService.recomputePriceFrom(tripId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tourAgeBand.delete({ where: { id: bandId } });
+      await this.tripsService.recomputePriceFrom(tripId, tx);
+    });
     this.logger.log(`User ${requesterId} removed age band ${bandId} from trip ${tripId}`);
     return { message: 'Age band removed successfully' };
   }
