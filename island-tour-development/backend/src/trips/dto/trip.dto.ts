@@ -49,6 +49,16 @@ export class TripResponseDto {
   @ApiPropertyOptional({ example: null }) breadcrumbLabel!: string | null;
   @ApiPropertyOptional({ example: 4.8 }) aggregateRating!: number | null;
   @ApiProperty({ example: 0 }) aggregateReviewCount!: number;
+  // CRO signals (V2 §10). Columns exist + are returned, but stay at 0/null until the
+  // bookings module (Phase 4) populates them. Documented here so Swagger matches the runtime response.
+  @ApiProperty({ example: 0, description: 'Total bookings (CRO + Recommended-sort signal). 0 until the bookings module ships.' })
+  bookingCount!: number;
+  @ApiProperty({ example: 0, description: 'Bookings today ("Booked N times today"). 0 until the bookings module ships.' })
+  bookingCountToday!: number;
+  @ApiPropertyOptional({ example: null, description: 'Spots left across upcoming schedules ("Only X left"). null until the bookings module ships.' })
+  spotsRemaining!: number | null;
+  @ApiPropertyOptional({ example: null, description: 'Last booking time ("Last booked 2 hours ago"). null until the bookings module ships.' })
+  lastBookedAt!: Date | null;
   @ApiProperty({ example: false }) isSponsored!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
   @ApiPropertyOptional({ example: null }) publishedAt!: Date | null;

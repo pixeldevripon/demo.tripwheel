@@ -27,7 +27,7 @@ A quick map of "current → target":
 | Collections | enum stub only | full module | E |
 | Search | none | tsvector → (Algolia later) | F |
 | Structured data / sitemaps / breadcrumbs | none | full SEO layer | G |
-| Slug redirects | immutable slugs | decision: keep vs 301 table | H |
+| Slug redirects | immutable slugs | ✅ DECIDED: keep immutable (no 301 table) — deliberate divergence | H |
 
 ---
 
@@ -119,11 +119,12 @@ Author `technical-doc/06-discovery/SEO-STRUCTURED-DATA.md` from `PLATFORM-ARCHIT
 
 ---
 
-## Workstream H — Slug redirects (decision-gated)
-- ⬜ **Decision:** keep **immutable slugs** (current, simpler, safest for bookings) **or** adopt V2's editable slugs + `slug_redirects` 301 table + 90-day cooldown.
-- ⬜ If adopting: **[migration]** `slug_redirects` table (§9), 301 handling in the slug resolver (step 5), editable slug in admin with redirect-on-change, soft-delete 90-day cooldown.
-- ⬜ If keeping immutable: document the deliberate divergence in `PLATFORM-ARCHITECTURE-V2.md §9` (already noted) and `SOFT-DELETE-STRATEGY.md`.
-- **Acceptance:** either redirects work end-to-end, or the divergence is documented and the editable-slug UI is explicitly out of scope.
+## Workstream H — Slug redirects (DECIDED: keep immutable)
+- ✅ **Decision (locked 2026-06-07):** keep **immutable slugs** — no `slug_redirects` table, no editable-slug UI, no 90-day cooldown (slugs reserved indefinitely via soft-delete tombstone). Simpler and safest for a booking platform (slugs tied to indexed URLs and bookings never move). V2's editable-slug + 301 + 90-day cooldown is **explicitly out of scope.**
+- ✅ Divergence documented: `PLATFORM-ARCHITECTURE-V2.md §9` (rules 4–5), `02-architecture/SLUG-REGISTRY.md` (§2–4), `SOFT-DELETE-STRATEGY.md`, and gap-analysis A5.
+- ✅ Enforced in code: no `slug` field on any Update DTO; slug set once at create via `generateSlug`; resolver goes straight to 404 when a slug is unknown/inactive (no redirect-table lookup step).
+- ⬜ **Optional future (for full V2 parity — not scheduled):** an admin-only "change slug" path that writes the new slug **and** a `slug_redirects` 301 row (gated `MANAGE_SYSTEM`). This is the single change that would close the only remaining slug divergence; defer until an operator-typo/bad-slug correction need is real.
+- **Acceptance:** ✅ met — the divergence is documented and the editable-slug UI is explicitly out of scope.
 
 ---
 

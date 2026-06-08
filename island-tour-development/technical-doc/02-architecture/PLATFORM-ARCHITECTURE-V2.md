@@ -681,6 +681,8 @@ Tour-listing query params: `?category=&booking_type=&boat_type=catamaran,yacht&d
 ### Search Architecture
 Primary conversion driver. Full-text across tour **title + description + highlights + category names + activity hub names**. Features: autocomplete (destination + category suggestions); destination-scoped or global; same filters/sort as category pages; URL `/search?q=catamaran&destination=curacao`. **Recommended:** Algolia or ElasticSearch (faceted). **Fallback / our starting point:** PostgreSQL full-text (`tsvector`). *(New build — see alignment plan §Search.)*
 
+> **Implemented (V1) vs target.** This section is the **target**. What's shipped (`src/search/` → `TripsService.search`) is a **keyword V1**: case-insensitive `contains` (ILIKE) across the field set above, destination-scoped/global, paginated, Recommended-sorted. **Not yet built:** `tsvector`/GIN ranking, autocomplete, and faceted filtering *on `/search`* (faceted filters + sort live on `GET /trips`, the category-listing endpoint — not on `/search`). The upgrade to tsvector/Algolia is a later perf pass and is transparent to the frontend (same response contract).
+
 ### Structured Data (JSON-LD / Schema.org) — on every page
 
 | Page Type | Schema Types |

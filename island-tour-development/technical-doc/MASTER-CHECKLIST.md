@@ -705,9 +705,10 @@
 - ⬜ Internal linking matrix — *frontend; data exposed*
 - ⬜ Confirm ISR revalidation values match §10 — *frontend*
 
-### Workstream H — Slug redirects (decision-gated)
-- ⬜ Decision: keep immutable slugs vs add slug_redirects 301 table + 90-day cooldown
-- ⬜ If adopting: slug_redirects table + 301 handling + editable slug UI
+### Workstream H — Slug redirects (DECIDED: keep immutable)
+- ✅ Decision locked (2026-06-07): **keep immutable slugs** — no `slug_redirects` table, no editable-slug UI, no 90-day cooldown. Deliberate divergence from V2 (safer for bookings/indexed URLs). Documented in `PLATFORM-ARCHITECTURE-V2.md §9`, `SLUG-REGISTRY.md`, `SOFT-DELETE-STRATEGY.md`, gap-analysis A5.
+- ✅ Enforced: no `slug` on any Update DTO; set once at create; resolver 404s with no redirect step.
+- ⬜ Optional future (full V2 parity, not scheduled): admin-only slug-change + `slug_redirects` 301 row (`MANAGE_SYSTEM`).
 
 ### i18n confirmations
 - ⬜ No-prefix → 302 locale fallback (Accept-Language) alongside localePrefix:'always'

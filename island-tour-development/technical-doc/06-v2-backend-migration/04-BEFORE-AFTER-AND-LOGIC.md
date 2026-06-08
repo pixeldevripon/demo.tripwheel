@@ -102,23 +102,32 @@ Most of V2's "tour fields" (`booking_type, instant_confirmation, free_cancellati
 
 ---
 
-## 9. Search: none → full-text, faceted
+## 9. Search: none → keyword search (V1)
 
 **Before.** No search backend exists (the UI implies "search" but nothing serves it).
 
-**After.** Postgres `tsvector` full-text over tour title + description + highlights + category + hub names; `GET /search` (SSR) with the same filters/sort as category pages; autocomplete. Algolia/ES is the documented scale-up path.
+**After (what shipped — V1).** A `GET /search` endpoint (`src/search/` → `TripsService.search`) that does **case-insensitive `contains` (Postgres ILIKE)** across tour name + translations (title/overview/description) + category names + hub names + highlight text; optional `destinationSlug` scope; paginated; **Recommended** ordering. Returns `{ total, page, limit, query, data: [tour cards] }`.
 
-**Why.** Search is the other primary conversion driver in V2. Starting with Postgres `tsvector` avoids a new infra dependency and is sufficient at launch volume; the API contract is engine-agnostic so swapping to Algolia later is transparent to the frontend.
+**Not built yet (target state — do NOT assume these exist):**
+- ❌ **`tsvector`/GIN full-text** — it's plain ILIKE, no ranking or typo tolerance. The service comment marks tsvector/Algolia as the upgrade path.
+- ❌ **Faceted `/search`** — `/search` ignores attribute filters, price/duration/rating, and `sort`. *Faceted filtering + sort lives on a different endpoint: `GET /trips`* (the category-listing endpoint, fully implemented — see §7/§8). Do not conflate the two.
+- ❌ **Autocomplete** — no suggestion endpoint.
+
+**Why.** Search is a primary conversion driver in V2, but ILIKE is sufficient at launch volume and avoids new infra. The response contract is engine-agnostic, so upgrading to `tsvector` (a GIN column) or Algolia/ES later is transparent to the frontend. Tracked as a later perf pass, not a launch blocker.
 
 ---
 
-## 10. SEO layer & CRO: none → structured-data, sitemaps, social proof
+## 10. SEO layer & CRO: none → (partial) — data ready, rendering + counters pending
 
 **Before.** No JSON-LD, no XML sitemaps, no breadcrumb spec; Trip has `aggregateRating/reviewCount` but none of the CRO counters.
 
-**After.** Per-page JSON-LD (TouristTrip/CollectionPage/Place/FAQPage + BreadcrumbList), per-locale sitemap index (published-only, non-empty categories), breadcrumb paths (tour uses primary category), and CRO fields (`bookingCountToday`, `spotsRemaining`, `lastBookedAt`).
+**After — split by what actually shipped:**
 
-**Why.** These are how the platform earns and converts organic traffic — the entire point of the "SEO-optimized, CRO-optimized" framing in V2. Structured data drives rich results; sitemaps drive indexation (and must exclude the empty pages from #6); CRO signals ("Booked 12 times today", "Only 3 spots left") lift booking rates. The CRO counters are partly derivable from bookings/schedules, so they're cheap to add.
+- ✅ **CRO columns + exposure (shipped):** `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` added to `Trip` (migration `…_trip_cro_fields`), exposed in **every** trip response (`tripSelect`), and the **Recommended** sort orders by `bookingCount desc`.
+- ⚠️ **CRO counters are NOT maintained yet (shipped-but-inert):** nothing writes to these columns — **there is no bookings module** (`src/bookings/` does not exist; Phase 4). So values are permanently `0 / 0 / null / null` today, the "Booked N today" / "Only X left" badges render empty, and the `bookingCount` sort key is effectively inert until bookings + a schedule-spots aggregator exist.
+- ❌ **JSON-LD, XML sitemaps, breadcrumbs (target — NOT built):** none exist in backend or frontend. These are **frontend rendering** and the public site is not built. The backend already **exposes the data** they need (`aggregateRating`/`aggregateReviewCount`, `primaryCategoryId` for the breadcrumb, page-content `metaTitle`/`metaDescription`/`ogImage`, FAQs, and the non-empty category lists to exclude empty pages) — so this is "data-ready, rendering-not-built".
+
+**Why.** These are how the platform earns and converts organic traffic — the point of the "SEO-optimized, CRO-optimized" framing in V2. Structured data drives rich results; sitemaps drive indexation (and must exclude the empty pages from #6); CRO signals lift booking rates. The CRO columns are cheap to add and were added early so the read paths are stable — but the **counters only come alive once the bookings module populates them**, and the SEO rendering is frontend work (Stage 8 of the frontend plan).
 
 ---
 

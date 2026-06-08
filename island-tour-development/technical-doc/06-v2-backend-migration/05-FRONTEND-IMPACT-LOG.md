@@ -231,7 +231,7 @@ Both accept `?locale=`.
 
 **Backend change.**
 - **Search:** `GET /api/v1/search?q={term}&destinationSlug={slug}&page=&limit=` (public). Matches tour name/translations + category & hub names + highlight text; optional destination scope; Recommended ordering; returns `{ total, page, limit, query, data: [tour cards] }`. (V1 = case-insensitive `contains`; tsvector/Algolia is the documented upgrade.)
-- **CRO fields on `Trip`** (migration `20260607025718_trip_cro_fields`): `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` — now in all trip responses. Maintained by the bookings module (Phase 4); the **Recommended sort now leads with `bookingCount`**.
+- **CRO fields on `Trip`** (migration `20260607025718_trip_cro_fields`): `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` — columns exist and are in **all** trip responses, and the **Recommended sort leads with `bookingCount`**. ⚠️ **But they are NOT populated yet** — the bookings module (`src/bookings/`, Phase 4) that would maintain them **does not exist**, so values are always `0 / 0 / null / null` and the sort key is inert. Build the CRO badges, but expect empty/zero values until bookings ship (hide a badge when its value is 0/null).
 
 **Pricing (no schema change — model kept; V2's flat price_adult/child/infant NOT added):**
 - Tour pricing = `pricingModel` (PER_PERSON | UNIT) + `unitType` + `basePrice` (flat) and/or `TourAgeBand[]` (ADULT/CHILD/INFANT, custom bands). `price_adult/child/infant` are represented by age bands.

@@ -56,6 +56,7 @@ These are real contradictions. They cannot both be true; a decision is required 
 | **Ours** | Slugs are **immutable after creation** (TRIP-MODULE §4.13, slug field pattern). No `slug_redirects` table exists. Soft-delete keeps the slug forever (no 90-day concept). |
 | **Conflict** | Different philosophies (immutable vs mutable-with-redirect). Our "forever" reservation is arguably safer than V2's 90-day cooldown for booking integrity. |
 | **Change needed** | Decision: keep immutable (simpler, already built) **or** add `slug_redirects` + 301 handling + editable slugs. If we keep immutable, document the deliberate divergence so V2's redirect section isn't treated as a requirement. |
+| **✅ Resolved (2026-06-07)** | **KEEP IMMUTABLE.** No `slug_redirects`, no editable-slug UI, no 90-day cooldown (reserved indefinitely). Enforced in code (no `slug` on Update DTOs) and documented in `PLATFORM-ARCHITECTURE-V2.md §9`, `SLUG-REGISTRY.md`, `SOFT-DELETE-STRATEGY.md`, and alignment-plan Workstream H. Optional future parity: admin-only slug-change + 301 row (`MANAGE_SYSTEM`) — not scheduled. |
 
 ### A6. Slot economy — **core feature vs absent** 🔴 Scope decision
 | | Value |

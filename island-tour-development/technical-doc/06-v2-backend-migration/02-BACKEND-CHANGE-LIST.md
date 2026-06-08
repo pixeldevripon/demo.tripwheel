@@ -91,10 +91,10 @@
 
 | # | Change | File(s) |
 |---|---|---|
-| 8.1 | Search: Postgres `tsvector` over tour title+description+highlights+category+hub names; `GET /search` (SSR), autocomplete | `src/search/**` (new) |
-| 8.2 | JSON-LD emitters per page type; breadcrumbs (tour uses primary category) | frontend |
-| 8.3 | XML sitemap index + per-type/per-locale files (published-only, non-empty categories) | frontend route handlers |
-| 8.4 | CRO fields `[mig]`: add/derive `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` on `Trip` | `prisma/trips.prisma` + read paths |
+| 8.1 | Search (**V1 shipped**): `GET /search` — ILIKE `contains` over tour name+translations+category+hub names+highlights, destination-scoped, paginated, Recommended sort. `tsvector`/GIN, autocomplete, and faceted `/search` are **target, not built** (facets/sort live on `GET /trips`). | `src/search/**` (new) |
+| 8.2 | JSON-LD emitters per page type; breadcrumbs (tour uses primary category) — **NOT built** (frontend; data ready) | frontend |
+| 8.3 | XML sitemap index + per-type/per-locale files (published-only, non-empty categories) — **NOT built** (frontend; data ready) | frontend route handlers |
+| 8.4 | CRO fields `[mig]`: `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` on `Trip` — **columns + response exposure shipped, but unpopulated** (no bookings module yet → always 0/null; Recommended sort key inert) | `prisma/trips.prisma` + read paths |
 | 8.5 | Confirm no-prefix → 302 locale fallback; per-locale Open Graph; add translate-priority list to multilingual doc | `frontend/middleware.ts`, docs |
 
 ## Group 9 — Slug redirects (decision-gated) 🟡

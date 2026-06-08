@@ -142,7 +142,7 @@ pnpm prisma:migrate:deploy     # prod
 ## STAGE 8 — Search, SEO, i18n confirmations 🟡
 *Implements Group 8 (and Group 9 if redirects adopted).*
 
-1. **Search** `search/` module: Postgres `tsvector` GIN index over tour title+description+highlights+category+hub names; `GET /search?q=&destination=&locale=` (SSR), autocomplete endpoint. Reuse the filter engine.
+1. **Search** `search/` module (**shipped as V1 = ILIKE**): `GET /search?q=&destinationSlug=&locale=&page=&limit=` → case-insensitive `contains` over tour name+translations+category+hub names+highlight text, optional destination scope, Recommended sort, paginated. **Deferred to a later perf pass (target):** `tsvector` GIN index/ranking, autocomplete endpoint, and faceting on `/search` (faceted filters + sort already exist on `GET /trips`, not `/search`).
 2. **SEO (frontend):** JSON-LD per page type (Tour/Category/Destination/Hub/Collection) + `BreadcrumbList` everywhere; breadcrumb tour-crumb = primary category.
 3. **Sitemaps (frontend):** `/sitemap.xml` index + per-type/per-locale files; published-only; exclude zero-tour categories (Stage 3).
 4. **CRO fields** `[mig]`: add/derive `bookingCount`, `bookingCountToday`, `spotsRemaining`, `lastBookedAt` on `Trip`; expose on card/detail.
