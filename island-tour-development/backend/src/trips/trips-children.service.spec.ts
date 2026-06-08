@@ -106,6 +106,19 @@ function createMockPrismaService() {
       upsert: jest.fn(),
       delete: jest.fn(),
     },
+    tourExclusion: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    tourExclusionTranslation: {
+      create: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
+    },
     tripTranslation: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -215,6 +228,18 @@ function makeInclusion(overrides: Partial<Record<string, unknown>> = {}) {
     displayOrder: 0,
     imageUrl: null,
     translations: [{ locale: 'en', label: 'Open bar', isMachineTranslated: false }],
+    ...overrides,
+  };
+}
+
+function makeExclusion(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'excl-1',
+    tripId: 'trip-1',
+    icon: 'x',
+    displayOrder: 0,
+    imageUrl: null,
+    translations: [{ locale: 'en', label: 'Flights not included', isMachineTranslated: false }],
     ...overrides,
   };
 }
