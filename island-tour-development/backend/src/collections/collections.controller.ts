@@ -3,7 +3,7 @@ import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorato
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { Body, Controller, Delete, Get, Param, ParseEnumPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import { CollectionsService } from './collections.service';
 import {
@@ -60,8 +60,22 @@ export class CollectionsController {
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
 
+  @Get('admin/all')
+  @RequirePermissions(Permission.VIEW_COLLECTIONS)
+  @ApiOperation({ summary: 'Admin: list all collections (active + inactive) for a destination slug' })
+  getAllAdmin(@Query() query: ActiveCollectionsQueryDto) {
+    return this.collectionsService.getAllByDestinationAdmin(query.destinationSlug);
+  }
+
+  @Get(':id')
+  @RequirePermissions(Permission.VIEW_COLLECTIONS)
+  @ApiOperation({ summary: 'Admin: get a single collection by id (for the edit form)' })
+  getByIdAdmin(@Param('id') id: string) {
+    return this.collectionsService.getByIdAdmin(id);
+  }
+
   @Post()
-  @RequirePermissions(Permission.CREATE_CONTENT)
+  @RequirePermissions(Permission.CREATE_COLLECTION)
   @ApiCreateCollectionDocs()
   create(@Body() dto: CreateCollectionDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.create(dto, user.id);
@@ -70,21 +84,21 @@ export class CollectionsController {
   // ── Translations (Admin) ────────────────────────────────────────────────────
 
   @Get(':id/translations')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiGetCollectionTranslationsDocs()
   getAllTranslations(@Param('id') id: string) {
     return this.collectionsService.getAllTranslations(id);
   }
 
   @Get(':id/translations/:locale')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiGetCollectionTranslationByLocaleDocs()
   getTranslationsByLocale(@Param('id') id: string, @Param('locale', new ParseEnumPipe(Locale)) locale: Locale) {
     return this.collectionsService.getTranslationsByLocale(id, locale);
   }
 
   @Patch(':id/translations/:locale')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpsertCollectionTranslationsDocs()
   upsertTranslations(
     @Param('id') id: string,
@@ -96,7 +110,7 @@ export class CollectionsController {
   }
 
   @Delete(':id/translations/:locale')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiDeleteCollectionTranslationsDocs()
   deleteTranslations(
     @Param('id') id: string,
@@ -116,7 +130,7 @@ export class CollectionsController {
   }
 
   @Patch(':id/page-content/:locale')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpsertCollectionPageContentDocs()
   upsertPageContent(
     @Param('id') id: string,
@@ -137,14 +151,14 @@ export class CollectionsController {
   }
 
   @Post(':id/faqs')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiCreateCollectionFaqDocs()
   createFaq(@Param('id') id: string, @Body() dto: CreateFaqDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.createFaq(id, dto, user.id);
   }
 
   @Patch(':id/faqs/:faqId')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpdateCollectionFaqDocs()
   updateFaq(
     @Param('id') id: string,
@@ -156,7 +170,7 @@ export class CollectionsController {
   }
 
   @Delete(':id/faqs/:faqId')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiDeleteCollectionFaqDocs()
   deleteFaq(@Param('id') id: string, @Param('faqId') faqId: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.deleteFaq(id, faqId, user.id);
@@ -165,7 +179,7 @@ export class CollectionsController {
   // ── Update / delete (dynamic :id — declared after sub-routes) ─────────────────
 
   @Patch(':id')
-  @RequirePermissions(Permission.EDIT_CONTENT)
+  @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpdateCollectionDocs()
   update(@Param('id') id: string, @Body() dto: UpdateCollectionDto, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.update(id, dto, user.id);
@@ -179,7 +193,7 @@ export class CollectionsController {
   }
 
   @Delete(':id')
-  @RequirePermissions(Permission.DELETE_CONTENT)
+  @RequirePermissions(Permission.DELETE_COLLECTION)
   @ApiDeleteCollectionDocs()
   remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.remove(id, user.id);

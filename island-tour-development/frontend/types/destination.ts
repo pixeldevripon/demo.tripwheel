@@ -1,11 +1,23 @@
 import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Region } from '@/types/enums';
 export type { Locale } from '@/lib/constants/locales';
+export type { Region, Currency } from '@/types/enums';
 
 export interface Destination {
   id: string;
   name: string;
   slug: string;
   heroImage: string | null;
+  region: Region | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+  currency: Currency | null;
+  language: string | null;
+  galleryImages: string[];
+  ogImage: string | null;
+  parentDestinationId: string | null;
   isSeeded: boolean;
   isActive: boolean;
   createdAt: string;
@@ -66,11 +78,30 @@ export interface CreateDestinationPayload {
   name: string;
   slug?: string;
   heroImage?: string | null;
+  region: Region;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string | null;
+  currency?: Currency | null;
+  language?: string | null;
+  galleryImages?: string[];
+  ogImage?: string | null;
+  parentDestinationId?: string | null;
 }
 
 export interface UpdateDestinationPayload {
   name?: string;
   heroImage?: string | null;
+  region?: Region;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string | null;
+  currency?: Currency | null;
+  language?: string | null;
+  galleryImages?: string[];
+  ogImage?: string | null;
   isActive?: boolean;
 }
 

@@ -28,7 +28,7 @@ const POPULAR: Record<string, { label: string; slug: string }[]> = {
     curacao: [
         { label: 'Klein Curaçao', slug: 'klein-curacao' },
         { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-        { label: 'Buggy Tours', slug: 'buggy-tours' },
+        { label: 'Off-Road Tours', slug: 'off-road-tours' },
     ],
 };
 
@@ -59,20 +59,20 @@ const EXPLORE_TYPES: ExploreType[] = [
         image: '/images/home-page/islands/aruba.jpg',
     },
     {
-        name: 'Buggy Tours',
-        slug: 'buggy-tours',
+        name: 'Off-Road Tours',
+        slug: 'off-road-tours',
         tours: 42,
         image: '/images/home-page/categories/buggy-tours.jpg',
     },
     {
         name: 'Snorkeling Trips',
-        slug: 'snorkeling-trips',
+        slug: 'snorkeling',
         tours: 42,
         image: '/images/home-page/categories/snorkel-trips.jpg',
     },
     {
         name: 'Private Charters',
-        slug: 'private-charters',
+        slug: 'luxury-experiences',
         tours: 42,
         image: '/images/home-page/islands/saint-lucia.jpg',
     },

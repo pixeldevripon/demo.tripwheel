@@ -202,12 +202,18 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       id: 'category',
       header: 'Category',
       cell: ({ row }) => {
-        const name = row.original.categoryName;
-        if (!name) return <span className="text-xs text-muted-foreground">—</span>;
+        const primary = row.original.primaryCategoryName;
+        const all = row.original.categoryNames ?? [];
+        const extra = all.length > 1 ? all.length - 1 : 0;
+        const label = primary ?? all[0];
+        if (!label) return <span className="text-xs text-muted-foreground">—</span>;
         return (
           <div className="flex items-center gap-1.5">
             <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
-            <span className="text-sm truncate max-w-28">{name}</span>
+            <span className="text-sm truncate max-w-28">{label}</span>
+            {extra > 0 && (
+              <span className="text-xs text-muted-foreground shrink-0">+{extra}</span>
+            )}
           </div>
         );
       },
@@ -215,19 +221,21 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
     },
     {
       id: 'location',
-      header: 'Destination / Hub',
+      header: 'Destination / Hubs',
       cell: ({ row }) => {
         const trip = row.original;
         const dest = trip.destinationName;
-        const hub = trip.hubName;
+        const hubs = trip.hubNames ?? [];
         if (!dest) return <span className="text-xs text-muted-foreground">—</span>;
         return (
           <div className="flex items-start gap-1.5">
             <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="min-w-0">
               <div className="text-sm truncate max-w-28">{dest}</div>
-              {hub && (
-                <div className="text-xs text-muted-foreground truncate max-w-28">{hub}</div>
+              {hubs.length > 0 && (
+                <div className="text-xs text-muted-foreground truncate max-w-28">
+                  {hubs.join(', ')}
+                </div>
               )}
             </div>
           </div>

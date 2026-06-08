@@ -537,6 +537,18 @@ export class TripsService {
           },
           orderBy: { displayOrder: 'asc' },
         },
+        exclusions: {
+          select: {
+            id: true,
+            icon: true,
+            displayOrder: true,
+            translations: {
+              where: { locale: { in: [locale, Locale.en] } },
+              select: { locale: true, label: true },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
         ageBands: {
           select: {
             id: true,
@@ -590,7 +602,7 @@ export class TripsService {
     if (!trip) throw new NotFoundException('Trip not found');
 
     // Apply locale → EN fallback for translated child models
-    const { translations, highlights, inclusions, languages, ...rest } = trip;
+    const { translations, highlights, inclusions, exclusions, languages, ...rest } = trip;
 
     const resolvedTranslation =
       translations.find((t) => t.locale === locale) ??
@@ -614,11 +626,21 @@ export class TripsService {
           i.translations.find((t) => t.locale === Locale.en))?.label ?? '',
     }));
 
+    const resolvedExclusions = exclusions.map((e) => ({
+      id: e.id,
+      icon: e.icon,
+      displayOrder: e.displayOrder,
+      label:
+        (e.translations.find((t) => t.locale === locale) ??
+          e.translations.find((t) => t.locale === Locale.en))?.label ?? '',
+    }));
+
     return {
       ...this.flattenTrip(rest),
       translation: resolvedTranslation,
       highlights: resolvedHighlights,
       inclusions: resolvedInclusions,
+      exclusions: resolvedExclusions,
       languages: languages.map((l) => l.language),
     };
   }

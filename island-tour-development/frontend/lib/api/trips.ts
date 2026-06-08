@@ -6,6 +6,7 @@ import type {
   CreateTourAgeBandPayload,
   CreateTourHighlightPayload,
   CreateTourInclusionPayload,
+  CreateTourExclusionPayload,
   CreateTourSchedulePayload,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -15,6 +16,7 @@ import type {
   TourHighlight,
   TourImage,
   TourInclusion,
+  TourExclusion,
   TourLanguage,
   TourSchedule,
   TripListItem,
@@ -25,10 +27,12 @@ import type {
   UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
+  UpdateTourExclusionPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
   UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
+  UpsertExclusionTranslationPayload,
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
@@ -284,6 +288,47 @@ export const tripsApi = {
 
   deleteInclusionTranslation(tripId: string, inclusionId: string, locale: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/trips/${tripId}/inclusions/${inclusionId}/translations/${locale}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Exclusions
+  getExclusions(tripId: string): Promise<TourExclusion[]> {
+    return apiFetch<TourExclusion[]>(`/trips/${tripId}/exclusions`);
+  },
+
+  addExclusion(tripId: string, payload: CreateTourExclusionPayload): Promise<TourExclusion> {
+    return apiFetch<TourExclusion>(`/trips/${tripId}/exclusions`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateExclusion(tripId: string, exclusionId: string, payload: UpdateTourExclusionPayload): Promise<TourExclusion> {
+    return apiFetch<TourExclusion>(`/trips/${tripId}/exclusions/${exclusionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removeExclusion(tripId: string, exclusionId: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/trips/${tripId}/exclusions/${exclusionId}`, { method: 'DELETE' });
+  },
+
+  upsertExclusionTranslation(
+    tripId: string,
+    exclusionId: string,
+    locale: string,
+    payload: UpsertExclusionTranslationPayload
+  ): Promise<TourExclusion> {
+    return apiFetch<TourExclusion>(`/trips/${tripId}/exclusions/${exclusionId}/translations/${locale}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteExclusionTranslation(tripId: string, exclusionId: string, locale: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/trips/${tripId}/exclusions/${exclusionId}/translations/${locale}`, {
       method: 'DELETE',
     });
   },

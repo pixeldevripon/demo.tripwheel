@@ -28,7 +28,7 @@ const FILTER_CATEGORIES: FilterCategory[] = [
     { label: 'Boat Tours', slug: 'boat-tours' },
     { label: 'Snorkeling', slug: 'snorkeling' },
     { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-    { label: 'Buggy Tours', slug: 'buggy-tours' },
+    { label: 'Off-Road Tours', slug: 'off-road-tours' },
     { label: 'Under €100 (21)', slug: 'under-100' },
 ];
 

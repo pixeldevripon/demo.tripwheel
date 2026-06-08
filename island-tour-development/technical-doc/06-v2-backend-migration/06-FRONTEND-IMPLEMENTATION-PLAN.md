@@ -275,15 +275,23 @@ After each phase:
 
 | Phase | Module | Stage(s) | Status |
 |---|---|---|---|
-| F0.1 | Shared enums | 1/6/7 | ⬜ |
-| F0.2 | MultiSelect primitive | 4/6a/7 | ⬜ |
-| F1 | Destinations form | 1 | ⬜ |
-| F2 | Categories form | 1 | ⬜ |
-| F3 | Hubs form | 1 | ⬜ |
-| F4 | Trips (multi-cat/hub, flat URL, publish guard) | 4/5/8 | ⬜ |
-| F5 | Attributes (dictionary + per-tour) | 6a | ⬜ |
-| F6 | Collections (CRUD) | 7 | ⬜ |
-| F7 | Taxonomy cleanup + icon map | 2 | ⬜ |
+| F0.1 | Shared enums (`types/enums.ts`) | 1/6/7 | ✅ |
+| F0.2 | MultiSelect primitive (`components/ui/multi-select.tsx`) | 4/6a/7 | ✅ |
+| F1 | Destinations form (region + geo/SEO fields) | 1 | ✅ |
+| F2 | Categories form (description/icon/sortOrder/meta/parent) | 1 | ✅ |
+| F3 | Hubs form (hubType + lat/lng) | 1 | ✅ |
+| F4 | Trips (multi-cat+primary / multi-hub; types/form/edit/columns) | 4/5 | ✅ |
+| F4b | Trip publish-guard client checklist (Stage 8) | 8 | ✅ (price added to readiness) |
+| F5 | Attributes (dictionary admin + per-tour editor tab) | 6a | ✅ |
+| F6 | Collections (CRUD: manual/dynamic, list, form, pages) | 7 | ✅ |
+| — | Currency → Prisma enum + selector (everywhere) | — | ✅ |
+| — | Category icon → Lucide picker | — | ✅ |
+| — | Dedicated `*_COLLECTION` permissions (backend + frontend) | — | ✅ |
+| F6b | Collection translations/page-content/FAQ tabs (clone category) | 7 | ⬜ |
+| F6b | Collection translations/page-content/FAQ tabs | 7 | ✅ |
+| — | Hub translations/page-content/FAQ tabs | 1 | ✅ (already present) |
+| — | Exclusions (backend model + module + frontend tab) | — | ✅ |
+| F7 | Taxonomy cleanup + category-icon map | 2 | ✅ |
 | P1–P7 | Public-site track | 3/5/6b/7/8 | ⬜ |
 
 > Legend: ⬜ not started · ⚠️ partial · ✅ done. Mirror status into `05-FRONTEND-IMPACT-LOG.md` Quick index.

@@ -13,7 +13,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission, Role } from '@prisma/client';
 import {
   AddTourImageDto,
@@ -22,15 +22,18 @@ import {
   CreateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
+  CreateTourExclusionDto,
   CreateTourScheduleDto,
   UpdateTourAddOnDto,
   UpdateTourAgeBandDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
+  UpdateTourExclusionDto,
   UpdateTourScheduleDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
+  UpsertExclusionTranslationDto,
   UpsertTripTranslationDto,
 } from './dto/trip-children.dto';
 import {
@@ -382,6 +385,74 @@ export class TripChildrenController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.tripChildrenService.deleteInclusionTranslation(tripId, inclusionId, locale, user.id, user.role);
+  }
+
+  // ── Exclusions ────────────────────────────────────────────────────────────────
+
+  @Get('exclusions')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiOperation({ summary: "List a trip's exclusions (what's NOT included)" })
+  getExclusions(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tripChildrenService.getExclusions(tripId, user.id, user.role);
+  }
+
+  @Post('exclusions')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiOperation({ summary: 'Add an exclusion to a trip (creates the English label)' })
+  addExclusion(
+    @Param('tripId') tripId: string,
+    @Body() dto: CreateTourExclusionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tripChildrenService.addExclusion(tripId, dto, user.id, user.role);
+  }
+
+  @Patch('exclusions/:exclusionId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiOperation({ summary: 'Update an exclusion (icon / order / image)' })
+  updateExclusion(
+    @Param('tripId') tripId: string,
+    @Param('exclusionId') exclusionId: string,
+    @Body() dto: UpdateTourExclusionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tripChildrenService.updateExclusion(tripId, exclusionId, dto, user.id, user.role);
+  }
+
+  @Delete('exclusions/:exclusionId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiOperation({ summary: 'Remove an exclusion from a trip' })
+  removeExclusion(
+    @Param('tripId') tripId: string,
+    @Param('exclusionId') exclusionId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tripChildrenService.removeExclusion(tripId, exclusionId, user.id, user.role);
+  }
+
+  @Patch('exclusions/:exclusionId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiOperation({ summary: 'Upsert an exclusion label translation for a locale' })
+  upsertExclusionTranslation(
+    @Param('tripId') tripId: string,
+    @Param('exclusionId') exclusionId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertExclusionTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tripChildrenService.upsertExclusionTranslation(tripId, exclusionId, locale, dto, user.id, user.role);
+  }
+
+  @Delete('exclusions/:exclusionId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiOperation({ summary: 'Delete a non-English exclusion translation' })
+  deleteExclusionTranslation(
+    @Param('tripId') tripId: string,
+    @Param('exclusionId') exclusionId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tripChildrenService.deleteExclusionTranslation(tripId, exclusionId, locale, user.id, user.role);
   }
 
   // ── Trip Translations — static routes before :locale ─────────────────────────

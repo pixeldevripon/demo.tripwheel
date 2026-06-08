@@ -456,6 +456,80 @@ export class UpsertInclusionTranslationDto {
   isMachineTranslated?: boolean;
 }
 
+// ── Exclusion DTOs ────────────────────────────────────────────────────────────
+
+export class TourExclusionTranslationDto {
+  @ApiProperty({ example: 'en' }) locale!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty() isMachineTranslated!: boolean;
+}
+
+export class TourExclusionResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tripId!: string;
+  @ApiProperty() icon!: string;
+  @ApiProperty() displayOrder!: number;
+  @ApiPropertyOptional() imageUrl?: string | null;
+  @ApiProperty({ type: [TourExclusionTranslationDto] }) translations!: TourExclusionTranslationDto[];
+}
+
+export class CreateTourExclusionDto {
+  @ApiProperty({ example: 'Gratuities' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  label!: string;
+
+  @ApiPropertyOptional({ example: 'x' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  icon?: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string;
+}
+
+export class UpdateTourExclusionDto {
+  @ApiPropertyOptional({ example: 'x' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  icon?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string | null;
+}
+
+export class UpsertExclusionTranslationDto {
+  @ApiProperty({ example: 'Gratuities' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  label!: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean;
+}
+
 // ── Trip Translation DTOs ─────────────────────────────────────────────────────
 
 export class TripTranslationResponseDto {

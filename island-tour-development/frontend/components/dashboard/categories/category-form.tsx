@@ -7,8 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  useActiveCategories,
   useCreateCategory,
   useUpdateCategory,
 } from '@/hooks/categories/use-categories';
@@ -21,6 +30,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { CategoryDeleteDialog } from './category-delete-dialog';
+import { CategoryIconPicker } from './category-icon-picker';
 import { useRole } from '@/contexts/role-context';
 
 function toSlug(value: string) {
@@ -39,6 +49,15 @@ const categorySchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   slug: z.string().min(2, 'Slug must be at least 2 characters').regex(/^[a-z0-9-]+$/, 'Slug may only contain lowercase letters, numbers, and hyphens'),
   heroImage: z.string().optional(),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  sortOrder: z
+    .string()
+    .optional()
+    .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= 0), 'Must be 0 or greater'),
+  metaTitleTemplate: z.string().optional(),
+  metaDescriptionTemplate: z.string().optional(),
+  parentCategoryId: z.string().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -59,6 +78,8 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
   const isPending = isCreating || isUpdating;
   const { can } = useRole();
 
+  const { data: activeCategories } = useActiveCategories();
+
   const {
     register,
     handleSubmit,
@@ -71,13 +92,23 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
       name: category?.name ?? '',
       slug: category?.slug ?? '',
       heroImage: category?.heroImage ?? '',
+      description: category?.description ?? '',
+      icon: category?.icon ?? '',
+      sortOrder: category?.sortOrder?.toString() ?? '0',
+      metaTitleTemplate: category?.metaTitleTemplate ?? '',
+      metaDescriptionTemplate: category?.metaDescriptionTemplate ?? '',
+      parentCategoryId: category?.parentCategoryId ?? '',
       isActive: category?.isActive ?? true,
     },
   });
 
   const heroImageValue = watch('heroImage');
+  const iconValue = watch('icon');
+  const parentValue = watch('parentCategoryId');
   const isActiveValue = watch('isActive');
   const nameValue = watch('name');
+
+  const parentOptions = (activeCategories ?? []).filter(c => c.id !== category?.id);
 
   const [slugTouched, setSlugTouched] = useState(false);
   useEffect(() => {
@@ -94,6 +125,12 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           payload: {
             name: values.name,
             heroImage: values.heroImage || null,
+            description: values.description || null,
+            icon: values.icon || null,
+            sortOrder: values.sortOrder ? Number(values.sortOrder) : 0,
+            metaTitleTemplate: values.metaTitleTemplate || null,
+            metaDescriptionTemplate: values.metaDescriptionTemplate || null,
+            parentCategoryId: values.parentCategoryId || null,
             isActive: values.isActive,
           },
         },
@@ -111,7 +148,17 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
       );
     } else {
       createCategory(
-        { name: values.name, slug: values.slug, heroImage: values.heroImage || null },
+        {
+          name: values.name,
+          slug: values.slug,
+          heroImage: values.heroImage || null,
+          description: values.description || null,
+          icon: values.icon || null,
+          sortOrder: values.sortOrder ? Number(values.sortOrder) : 0,
+          metaTitleTemplate: values.metaTitleTemplate || null,
+          metaDescriptionTemplate: values.metaDescriptionTemplate || null,
+          parentCategoryId: values.parentCategoryId || null,
+        },
         {
           onSuccess: (created) => {
             toast.success('Category created successfully.');
@@ -191,6 +238,61 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 }
               />
               <FieldError>{errors.heroImage?.message}</FieldError>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Description</Label>
+              <Textarea {...register('description')} rows={3} placeholder="Short category description" />
+            </Field>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Icon</Label>
+                <CategoryIconPicker
+                  value={iconValue || null}
+                  onChange={name => setValue('icon', name ?? '')}
+                />
+                <FieldDescription>Pick a Lucide icon for this category.</FieldDescription>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Sort Order</Label>
+                <Input type="number" min={0} {...register('sortOrder')} placeholder="0" aria-invalid={!!errors.sortOrder} />
+                <FieldError>{errors.sortOrder?.message}</FieldError>
+              </Field>
+            </div>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Meta Title Template</Label>
+              <Input {...register('metaTitleTemplate')} placeholder="{category} in {destination}" />
+              <FieldDescription>Tokens: {'{category}'}, {'{destination}'}.</FieldDescription>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Meta Description Template</Label>
+              <Textarea {...register('metaDescriptionTemplate')} rows={2} placeholder="Browse {category} in {destination}…" />
+              <FieldDescription>Tokens: {'{category}'}, {'{destination}'}.</FieldDescription>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Parent Category</Label>
+              <Select
+                value={parentValue || '__none__'}
+                onValueChange={v =>
+                  setValue('parentCategoryId', v === '__none__' ? '' : v)
+                }>
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {parentOptions.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>Optional — for future sub-categories.</FieldDescription>
             </Field>
 
             {isEditMode && (

@@ -99,6 +99,12 @@ enum Permission {
   EDIT_CATEGORY
   DELETE_CATEGORY
 
+  // Collections
+  CREATE_COLLECTION
+  VIEW_COLLECTIONS
+  EDIT_COLLECTION
+  DELETE_COLLECTION
+
   // Bookings
   VIEW_BOOKINGS
   EDIT_BOOKING
@@ -213,6 +219,19 @@ enum HubType {
   LOCATION
   HIGHLIGHT
   AREA
+}
+
+// Supported currencies (ISO 4217). Launch set: Caribbean island currencies + major
+// tourist source currencies. Used wherever a currency is stored/displayed.
+enum Currency {
+  USD // US Dollar
+  EUR // Euro
+  GBP // British Pound
+  CAD // Canadian Dollar
+  ANG // Netherlands Antillean Guilder (Curaçao, Sint Maarten)
+  AWG // Aruban Florin (Aruba)
+  XCD // East Caribbean Dollar (Saint Lucia)
+  BSD // Bahamian Dollar (Bahamas)
 }
 
 enum SlugEntityType {

@@ -15,8 +15,10 @@ export interface TripListItem {
   status: TripStatus;
   operatorId: string;
   destinationId: string;
-  categoryId: string;
-  hubId: string | null;
+  // V2: many-to-many categories (one primary) + many-to-many hubs
+  categoryIds: string[];
+  primaryCategoryId: string | null;
+  hubIds: string[];
   pricingModel: PricingModel;
   unitType: UnitType | null;
   basePrice: string | null;
@@ -36,10 +38,16 @@ export interface TripListItem {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // CRO signals (0/null until the bookings module ships)
+  bookingCount: number;
+  bookingCountToday: number;
+  spotsRemaining: number | null;
+  lastBookedAt: string | null;
   // Resolved names (from backend join)
   destinationName?: string | null;
-  categoryName?: string | null;
-  hubName?: string | null;
+  categoryNames?: string[];
+  primaryCategoryName?: string | null;
+  hubNames?: string[];
   // Only in detail
   heroImage?: TripHeroImage | null;
   imageCount?: number;
@@ -149,6 +157,21 @@ export interface TourInclusion {
   translations: TourInclusionTranslation[];
 }
 
+export interface TourExclusionTranslation {
+  locale: string;
+  label: string;
+  isMachineTranslated: boolean;
+}
+
+export interface TourExclusion {
+  id: string;
+  tripId: string;
+  icon: string;
+  displayOrder: number;
+  imageUrl?: string | null;
+  translations: TourExclusionTranslation[];
+}
+
 export interface TripTranslation {
   locale: string;
   title: string | null;
@@ -192,8 +215,9 @@ export interface CreateTripPayload {
   name: string;
   slug?: string;
   destinationId: string;
-  categoryId: string;
-  hubId?: string | null;
+  categoryIds: string[];
+  primaryCategoryId?: string;
+  hubIds?: string[];
   pricingModel?: PricingModel;
   unitType?: UnitType;
   basePrice?: string;
@@ -209,7 +233,9 @@ export interface CreateTripPayload {
 
 export interface UpdateTripPayload {
   name?: string;
-  categoryId?: string;
+  categoryIds?: string[];
+  primaryCategoryId?: string;
+  hubIds?: string[];
   pricingModel?: PricingModel;
   unitType?: UnitType;
   basePrice?: string;
@@ -313,6 +339,24 @@ export interface UpdateTourInclusionPayload {
 }
 
 export interface UpsertInclusionTranslationPayload {
+  label: string;
+  isMachineTranslated?: boolean;
+}
+
+export interface CreateTourExclusionPayload {
+  label: string;
+  icon?: string;
+  displayOrder?: number;
+  imageUrl?: string;
+}
+
+export interface UpdateTourExclusionPayload {
+  icon?: string;
+  displayOrder?: number;
+  imageUrl?: string | null;
+}
+
+export interface UpsertExclusionTranslationPayload {
   label: string;
   isMachineTranslated?: boolean;
 }

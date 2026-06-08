@@ -28,11 +28,21 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { HubDeleteDialog } from './hub-delete-dialog';
 import { useRole } from '@/contexts/role-context';
+import { HUB_TYPE_VALUES } from '@/types/enums';
 
 const hubSchema = z.object({
   destinationId: z.string().min(1, 'Destination is required'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
+  hubType: z.enum(HUB_TYPE_VALUES as [string, ...string[]], { message: 'Hub type is required' }),
+  latitude: z
+    .string()
+    .optional()
+    .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= -90 && Number(v) <= 90), 'Latitude must be between -90 and 90'),
+  longitude: z
+    .string()
+    .optional()
+    .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= -180 && Number(v) <= 180), 'Longitude must be between -180 and 180'),
   isActive: z.boolean().optional(),
 });
 
@@ -67,12 +77,19 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
       destinationId: hub?.destinationId ?? '',
       name: hub?.name ?? '',
       description: hub?.description ?? '',
+      hubType: hub?.hubType ?? undefined,
+      latitude: hub?.latitude?.toString() ?? '',
+      longitude: hub?.longitude?.toString() ?? '',
       isActive: hub?.isActive ?? true,
     },
   });
 
   const isActiveValue = watch('isActive');
   const destinationIdValue = watch('destinationId');
+  const hubTypeValue = watch('hubType');
+
+  const num = (v: string | undefined) =>
+    v === '' || v === undefined ? null : Number(v);
 
   function onSubmit(values: HubFormValues) {
     if (isEditMode && hub) {
@@ -82,6 +99,9 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           payload: {
             name: values.name,
             description: values.description || null,
+            hubType: values.hubType as HubDetail['hubType'] ?? undefined,
+            latitude: num(values.latitude),
+            longitude: num(values.longitude),
             isActive: values.isActive,
           },
         },
@@ -101,6 +121,9 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           destinationId: values.destinationId,
           name: values.name,
           description: values.description || null,
+          hubType: values.hubType as NonNullable<HubDetail['hubType']>,
+          latitude: num(values.latitude),
+          longitude: num(values.longitude),
         },
         {
           onSuccess: (created) => {
@@ -196,6 +219,52 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                 Short description shown in hub listings and previews.
               </FieldDescription>
             </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">
+                Hub Type <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={hubTypeValue ?? ''}
+                onValueChange={v => setValue('hubType', v, { shouldValidate: true })}>
+                <SelectTrigger aria-invalid={!!errors.hubType}>
+                  <SelectValue placeholder="Select a hub type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {HUB_TYPE_VALUES.map(t => (
+                    <SelectItem key={t} value={t}>
+                      {t.charAt(0) + t.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError>{errors.hubType?.message}</FieldError>
+            </Field>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Latitude</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  {...register('latitude')}
+                  placeholder="e.g. 11.9833"
+                  aria-invalid={!!errors.latitude}
+                />
+                <FieldError>{errors.latitude?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Longitude</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  {...register('longitude')}
+                  placeholder="e.g. -68.6500"
+                  aria-invalid={!!errors.longitude}
+                />
+                <FieldError>{errors.longitude?.message}</FieldError>
+              </Field>
+            </div>
 
             {isEditMode && (
               <Field>

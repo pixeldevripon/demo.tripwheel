@@ -17,15 +17,18 @@ import {
   CreateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
+  CreateTourExclusionDto,
   CreateTourScheduleDto,
   UpdateTourAddOnDto,
   UpdateTourAgeBandDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
+  UpdateTourExclusionDto,
   UpdateTourScheduleDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
+  UpsertExclusionTranslationDto,
   UpsertTripTranslationDto,
 } from './dto/trip-children.dto';
 
@@ -704,6 +707,159 @@ export class TripChildrenService {
       });
 
     this.logger.log(`User ${requesterId} deleted inclusion translation [${locale}] for inclusion ${inclusionId}`);
+    return { message: `Translation for locale "${locale}" deleted` };
+  }
+
+  // ── Exclusions ────────────────────────────────────────────────────────────────
+
+  private readonly exclusionSelect = {
+    id: true,
+    tripId: true,
+    icon: true,
+    displayOrder: true,
+    imageUrl: true,
+    translations: { select: { locale: true, label: true, isMachineTranslated: true } },
+  } as const;
+
+  async getExclusions(tripId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    return this.prisma.tourExclusion.findMany({
+      where: { tripId },
+      select: this.exclusionSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  async addExclusion(
+    tripId: string,
+    dto: CreateTourExclusionDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const exclusion = await tx.tourExclusion.create({
+        data: {
+          tripId,
+          icon: dto.icon ?? 'x',
+          displayOrder: dto.displayOrder ?? 0,
+          imageUrl: dto.imageUrl ?? null,
+        },
+        select: { id: true },
+      });
+      await tx.tourExclusionTranslation.create({
+        data: { exclusionId: exclusion.id, locale: LocaleEnum.en, label: dto.label },
+      });
+      return tx.tourExclusion.findUnique({
+        where: { id: exclusion.id },
+        select: this.exclusionSelect,
+      });
+    });
+
+    this.logger.log(`User ${requesterId} added exclusion to trip ${tripId}`);
+    return result;
+  }
+
+  async updateExclusion(
+    tripId: string,
+    exclusionId: string,
+    dto: UpdateTourExclusionDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourExclusion.findFirst({
+      where: { id: exclusionId, tripId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+
+    const updated = await this.prisma.tourExclusion.update({
+      where: { id: exclusionId },
+      data: {
+        ...(dto.icon !== undefined && { icon: dto.icon }),
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...('imageUrl' in dto && { imageUrl: dto.imageUrl ?? null }),
+      },
+      select: this.exclusionSelect,
+    });
+
+    this.logger.log(`User ${requesterId} updated exclusion ${exclusionId} on trip ${tripId}`);
+    return updated;
+  }
+
+  async removeExclusion(tripId: string, exclusionId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourExclusion.findFirst({
+      where: { id: exclusionId, tripId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+
+    await this.prisma.tourExclusion.delete({ where: { id: exclusionId } });
+    this.logger.log(`User ${requesterId} removed exclusion ${exclusionId} from trip ${tripId}`);
+    return { message: 'Exclusion removed successfully' };
+  }
+
+  async upsertExclusionTranslation(
+    tripId: string,
+    exclusionId: string,
+    locale: Locale,
+    dto: UpsertExclusionTranslationDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+
+    const exclusion = await this.prisma.tourExclusion.findFirst({
+      where: { id: exclusionId, tripId },
+      select: { id: true },
+    });
+    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+
+    const result = await this.prisma.tourExclusionTranslation.upsert({
+      where: { exclusionId_locale: { exclusionId, locale } },
+      create: { exclusionId, locale, label: dto.label, isMachineTranslated: dto.isMachineTranslated ?? false },
+      update: { label: dto.label, isMachineTranslated: dto.isMachineTranslated ?? false },
+      select: { locale: true, label: true, isMachineTranslated: true },
+    });
+
+    this.logger.log(`User ${requesterId} upserted exclusion translation [${locale}] for exclusion ${exclusionId}`);
+    return result;
+  }
+
+  async deleteExclusionTranslation(
+    tripId: string,
+    exclusionId: string,
+    locale: Locale,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTripAccess(tripId, requesterId, requesterRole);
+
+    if (locale === Locale.en) {
+      throw new BadRequestException('English exclusion text cannot be deleted. Update the label instead.');
+    }
+
+    const exclusion = await this.prisma.tourExclusion.findFirst({
+      where: { id: exclusionId, tripId },
+      select: { id: true },
+    });
+    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+
+    await this.prisma.tourExclusionTranslation
+      .delete({ where: { exclusionId_locale: { exclusionId, locale } } })
+      .catch((err: any) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException(`No translation found for locale "${locale}"`);
+        }
+        throw err;
+      });
+
+    this.logger.log(`User ${requesterId} deleted exclusion translation [${locale}] for exclusion ${exclusionId}`);
     return { message: `Translation for locale "${locale}" deleted` };
   }
 

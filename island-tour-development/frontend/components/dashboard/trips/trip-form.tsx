@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { MapPinIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,11 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import type { Resolver } from 'react-hook-form';
 import { useCreateTrip } from '@/hooks/trips/use-trips';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
-import { useHubMatchForCategory } from '@/hooks/hubs/use-hubs';
+import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 
 function toSlug(value: string) {
   return value
@@ -46,8 +46,9 @@ const createTripSchema = z.object({
     .optional()
     .or(z.literal('')),
   destinationId: z.string().min(1, 'Destination is required'),
-  categoryId: z.string().min(1, 'Category is required'),
-  hubId: z.string().optional(),
+  categoryIds: z.array(z.string()).min(1, 'Select at least one category'),
+  primaryCategoryId: z.string().optional(),
+  hubIds: z.array(z.string()).optional(),
   pricingModel: z.enum(['PER_PERSON', 'UNIT']).optional(),
   basePrice: z
     .string()
@@ -66,8 +67,9 @@ type CreateTripFormValues = {
   name: string;
   slug: string;
   destinationId: string;
-  categoryId: string;
-  hubId: string;
+  categoryIds: string[];
+  primaryCategoryId: string;
+  hubIds: string[];
   pricingModel: 'PER_PERSON' | 'UNIT';
   basePrice: string;
   durationMinutes: string;
@@ -82,8 +84,6 @@ export function TripForm() {
   const router = useRouter();
   const { mutate: createTrip, isPending } = useCreateTrip();
   const [slugTouched, setSlugTouched] = useState(false);
-  // null = not yet answered; true = accepted hub; false = declined hub
-  const [hubDecision, setHubDecision] = useState<boolean | null>(null);
 
   const { data: destinations } = useActiveDestinations();
   const { data: categories } = useActiveCategories();
@@ -101,8 +101,9 @@ export function TripForm() {
       name: '',
       slug: '',
       destinationId: '',
-      categoryId: '',
-      hubId: '',
+      categoryIds: [],
+      primaryCategoryId: '',
+      hubIds: [],
       pricingModel: 'PER_PERSON',
       basePrice: '',
       durationMinutes: '',
@@ -116,12 +117,12 @@ export function TripForm() {
 
   const nameValue = watch('name');
   const destinationId = watch('destinationId');
-  const categoryId = watch('categoryId');
+  const categoryIds = watch('categoryIds');
+  const primaryCategoryId = watch('primaryCategoryId');
 
-  const { data: matchedHub, isFetching: isCheckingHub } = useHubMatchForCategory(
-    destinationId || undefined,
-    categoryId || undefined,
-  );
+  // Hubs available for the chosen destination (only those whose allowed categories
+  // intersect the selected categories are valid — the backend enforces this).
+  const { data: hubs } = useActiveHubs(destinationId || undefined);
 
   useEffect(() => {
     if (!slugTouched) {
@@ -129,20 +130,19 @@ export function TripForm() {
     }
   }, [nameValue, slugTouched, setValue]);
 
-  // Reset hub decision and hubId when destination or category changes
+  // Clear selected hubs when the destination changes (hubs are destination-scoped).
   useEffect(() => {
-    setHubDecision(null);
-    setValue('hubId', '');
-  }, [destinationId, categoryId, setValue]);
+    setValue('hubIds', []);
+  }, [destinationId, setValue]);
 
-  // When hub match is confirmed, set hubId in the form
+  // Keep primary valid: default to the first category, clear if it leaves the set.
   useEffect(() => {
-    if (hubDecision === true && matchedHub) {
-      setValue('hubId', matchedHub.id);
-    } else if (hubDecision === false) {
-      setValue('hubId', '');
+    if (categoryIds.length === 0) {
+      if (primaryCategoryId) setValue('primaryCategoryId', '');
+    } else if (!categoryIds.includes(primaryCategoryId)) {
+      setValue('primaryCategoryId', categoryIds[0]);
     }
-  }, [hubDecision, matchedHub, setValue]);
+  }, [categoryIds, primaryCategoryId, setValue]);
 
   function onSubmit(values: CreateTripFormValues) {
     createTrip(
@@ -150,8 +150,9 @@ export function TripForm() {
         name: values.name,
         slug: values.slug || undefined,
         destinationId: values.destinationId,
-        categoryId: values.categoryId,
-        hubId: values.hubId || null,
+        categoryIds: values.categoryIds,
+        primaryCategoryId: values.primaryCategoryId || values.categoryIds[0],
+        hubIds: values.hubIds,
         pricingModel: values.pricingModel,
         basePrice: values.basePrice || undefined,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : undefined,
@@ -177,8 +178,6 @@ export function TripForm() {
       }
     );
   }
-
-  const showHubPrompt = !!matchedHub && hubDecision === null && !isCheckingHub;
 
   return (
     <Card>
@@ -245,105 +244,49 @@ export function TripForm() {
 
           <Field>
             <Label className="text-xs font-semibold uppercase">
-              Category <span className="text-destructive">*</span>
+              Categories <span className="text-destructive">*</span>
             </Label>
             <Controller
-              name="categoryId"
+              name="categoryIds"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-invalid={!!errors.categoryId}>
-                    <SelectValue placeholder="Select a category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categories ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select categories…"
+                  searchPlaceholder="Search categories…"
+                  primaryValue={primaryCategoryId || null}
+                  onPrimaryChange={(v) => setValue('primaryCategoryId', v)}
+                />
               )}
             />
-            <FieldError>{errors.categoryId?.message}</FieldError>
+            <FieldDescription>
+              Pick one or more. The starred category is the primary (used for the breadcrumb &amp; canonical URL).
+            </FieldDescription>
+            <FieldError>{errors.categoryIds?.message}</FieldError>
           </Field>
 
-          {/* Hub auto-detection */}
-          {destinationId && categoryId && (
-            <div>
-              {isCheckingHub && (
-                <p className="text-xs text-muted-foreground">Checking for matching hub...</p>
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Activity Hubs</Label>
+            <Controller
+              name="hubIds"
+              control={control}
+              render={({ field }) => (
+                <MultiSelect
+                  options={(hubs ?? []).map((h) => ({ value: h.id, label: h.name }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder={destinationId ? 'Select hubs…' : 'Select a destination first'}
+                  searchPlaceholder="Search hubs…"
+                  disabled={!destinationId}
+                />
               )}
-
-              {showHubPrompt && (
-                <div className="flex items-start gap-3 rounded-none border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-3">
-                  <MapPinIcon className="size-4 text-blue-500 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      Hub match found: <span className="font-semibold">{matchedHub.name}</span>
-                    </p>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
-                      This destination + category combination is covered by the{' '}
-                      <span className="font-medium">{matchedHub.name}</span> hub. Do you want to
-                      list this trip under that hub? Hub-anchored trips appear at a dedicated hub
-                      URL instead of the destination listing.
-                    </p>
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setHubDecision(true)}
-                      >
-                        Yes, list under {matchedHub.name}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setHubDecision(false)}
-                      >
-                        No, destination-only
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {hubDecision === true && matchedHub && (
-                <div className="flex items-center justify-between gap-2 rounded-none border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <MapPinIcon className="size-4 text-emerald-500 shrink-0" />
-                    <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                      Trip will be listed under hub:{' '}
-                      <span className="font-semibold">{matchedHub.name}</span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setHubDecision(null)}
-                    className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
-                </div>
-              )}
-
-              {hubDecision === false && matchedHub && (
-                <div className="flex items-center justify-between gap-2 rounded-none border border-foreground/10 bg-muted/40 px-4 py-3">
-                  <p className="text-sm text-muted-foreground">
-                    Trip will be listed as a destination-only tour (no hub).
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setHubDecision(null)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            />
+            <FieldDescription>
+              Optional discovery tags (0–n). A hub must allow at least one of the trip&apos;s categories.
+            </FieldDescription>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field>

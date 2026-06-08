@@ -6,10 +6,25 @@ export interface Category {
   name: string;
   slug: string;
   heroImage: string | null;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  metaTitleTemplate: string | null;
+  metaDescriptionTemplate: string | null;
+  parentCategoryId: string | null;
   isSeeded: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Returned by the destination-scoped, tour-gated endpoints. */
+export interface CategoryByDestination extends CategoryLocalized {
+  publishedTourCount: number;
+}
+
+export interface CategoryDetailByDestination extends CategoryDetail {
+  publishedTourCount: number;
 }
 
 export interface CategoryLocalized extends Category {
@@ -66,11 +81,23 @@ export interface CreateCategoryPayload {
   name: string;
   slug?: string;
   heroImage?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+  metaTitleTemplate?: string | null;
+  metaDescriptionTemplate?: string | null;
+  parentCategoryId?: string | null;
 }
 
 export interface UpdateCategoryPayload {
   name?: string;
   heroImage?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+  metaTitleTemplate?: string | null;
+  metaDescriptionTemplate?: string | null;
+  parentCategoryId?: string | null;
   isActive?: boolean;
 }
 

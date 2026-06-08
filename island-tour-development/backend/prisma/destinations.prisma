@@ -17,7 +17,7 @@ model Destination {
   latitude            Float?
   longitude           Float?
   timezone            String? // IANA timezone, e.g. 'America/Curacao'
-  currency            String? // default currency code, e.g. 'USD' | 'EUR'
+  currency            Currency? // default currency (ISO 4217 enum)
   language            String? // primary language code
   galleryImages       String[]      @default([])
   ogImage             String? // Open Graph image

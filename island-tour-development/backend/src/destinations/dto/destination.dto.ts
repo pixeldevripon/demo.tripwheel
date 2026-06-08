@@ -1,6 +1,6 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Region } from '@prisma/client';
+import { Currency, Region } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -30,7 +30,7 @@ export class DestinationResponseDto {
   @ApiPropertyOptional({ example: 12.1696, nullable: true }) latitude!: number | null;
   @ApiPropertyOptional({ example: -68.99, nullable: true }) longitude!: number | null;
   @ApiPropertyOptional({ example: 'America/Curacao', nullable: true }) timezone!: string | null;
-  @ApiPropertyOptional({ example: 'USD', nullable: true }) currency!: string | null;
+  @ApiPropertyOptional({ enum: Currency, example: Currency.USD, nullable: true }) currency!: Currency | null;
   @ApiPropertyOptional({ example: 'en', nullable: true }) language!: string | null;
   @ApiProperty({ type: [String], example: [] }) galleryImages!: string[];
   @ApiPropertyOptional({ example: 'https://cdn.example.com/curacao-og.jpg', nullable: true })
@@ -336,8 +336,8 @@ export class CreateDestinationDto {
   @ApiPropertyOptional({ example: 'America/Aruba' })
   @IsOptional() @IsString() timezone?: string;
 
-  @ApiPropertyOptional({ example: 'USD' })
-  @IsOptional() @IsString() currency?: string;
+  @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
+  @IsOptional() @IsEnum(Currency) currency?: Currency;
 
   @ApiPropertyOptional({ example: 'en' })
   @IsOptional() @IsString() language?: string;
@@ -379,8 +379,8 @@ export class UpdateDestinationDto {
   @ApiPropertyOptional({ example: 'America/Aruba' })
   @IsOptional() @IsString() timezone?: string;
 
-  @ApiPropertyOptional({ example: 'USD' })
-  @IsOptional() @IsString() currency?: string;
+  @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
+  @IsOptional() @IsEnum(Currency) currency?: Currency;
 
   @ApiPropertyOptional({ example: 'en' })
   @IsOptional() @IsString() language?: string;

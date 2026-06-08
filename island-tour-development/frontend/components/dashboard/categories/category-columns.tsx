@@ -1,13 +1,21 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { TagIcon, LockIcon } from 'lucide-react';
+import { icons as lucideIcons, TagIcon, LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
+import { getCategoryIconName } from '@/lib/constants/category-icons';
 import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
+
+function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
+  const name = getCategoryIconName(slug, icon);
+  const Cmp = (lucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[name];
+  if (!Cmp) return <TagIcon className="size-4 text-muted-foreground" />;
+  return <Cmp className="size-4 text-muted-foreground" />;
+}
 
 export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
   {
@@ -52,7 +60,7 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
                 className="size-full object-cover"
               />
             ) : (
-              <TagIcon className="size-4 text-muted-foreground" />
+              <CategoryLucideIcon slug={category.slug} icon={category.icon} />
             )}
           </div>
           <Link

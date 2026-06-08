@@ -24,6 +24,8 @@ import {
 import type { Resolver } from 'react-hook-form';
 import { useUpdateTrip, useLanguages, useAddLanguage, useRemoveLanguage } from '@/hooks/trips/use-trips';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
+import { useActiveHubs } from '@/hooks/hubs/use-hubs';
+import { MultiSelect } from '@/components/ui/multi-select';
 import type { TripListItem } from '@/types/trip';
 
 const COMMON_LANGUAGES = [
@@ -173,7 +175,9 @@ function LanguagesCard({ tripId }: { tripId: string }) {
 
 const detailsSchema = z.object({
   name: z.string().min(3).max(120),
-  categoryId: z.string().min(1, 'Required'),
+  categoryIds: z.array(z.string()).min(1, 'Select at least one category'),
+  primaryCategoryId: z.string().optional(),
+  hubIds: z.array(z.string()).optional(),
   pricingModel: z.enum(['PER_PERSON', 'UNIT']),
   basePrice: z
     .string()
@@ -193,7 +197,9 @@ const detailsSchema = z.object({
 
 type DetailsFormValues = {
   name: string;
-  categoryId: string;
+  categoryIds: string[];
+  primaryCategoryId: string;
+  hubIds: string[];
   pricingModel: 'PER_PERSON' | 'UNIT';
   basePrice: string;
   durationMinutes: string;
@@ -215,6 +221,7 @@ interface TripDetailsTabProps {
 export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const { mutate: updateTrip, isPending } = useUpdateTrip();
   const { data: categories } = useActiveCategories();
+  const { data: hubs } = useActiveHubs(trip.destinationId || undefined);
 
   const {
     register,
@@ -228,7 +235,9 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
     resolver: zodResolver(detailsSchema) as unknown as Resolver<DetailsFormValues>,
     defaultValues: {
       name: trip.name,
-      categoryId: trip.categoryId,
+      categoryIds: trip.categoryIds,
+      primaryCategoryId: trip.primaryCategoryId ?? trip.categoryIds[0] ?? '',
+      hubIds: trip.hubIds,
       pricingModel: trip.pricingModel,
       basePrice: trip.basePrice ?? '',
       durationMinutes: trip.durationMinutes != null ? String(trip.durationMinutes) : '',
@@ -246,7 +255,9 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   useEffect(() => {
     reset({
       name: trip.name,
-      categoryId: trip.categoryId,
+      categoryIds: trip.categoryIds,
+      primaryCategoryId: trip.primaryCategoryId ?? trip.categoryIds[0] ?? '',
+      hubIds: trip.hubIds,
       pricingModel: trip.pricingModel,
       basePrice: trip.basePrice ?? '',
       durationMinutes: trip.durationMinutes != null ? String(trip.durationMinutes) : '',
@@ -262,6 +273,17 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   }, [trip, reset]);
 
   const isActiveValue = watch('isActive');
+  const categoryIds = watch('categoryIds');
+  const primaryCategoryId = watch('primaryCategoryId');
+
+  // Keep primary valid within the selected set.
+  useEffect(() => {
+    if (categoryIds.length === 0) {
+      if (primaryCategoryId) setValue('primaryCategoryId', '');
+    } else if (!categoryIds.includes(primaryCategoryId)) {
+      setValue('primaryCategoryId', categoryIds[0]);
+    }
+  }, [categoryIds, primaryCategoryId, setValue]);
 
   function onSubmit(values: DetailsFormValues) {
     updateTrip(
@@ -269,7 +291,9 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
         id: trip.id,
         payload: {
           name: values.name,
-          categoryId: values.categoryId,
+          categoryIds: values.categoryIds,
+          primaryCategoryId: values.primaryCategoryId || values.categoryIds[0],
+          hubIds: values.hubIds,
           pricingModel: values.pricingModel,
           basePrice: values.basePrice || undefined,
           durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : undefined,
@@ -341,27 +365,47 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
           <Field>
             <Label className="text-xs font-semibold uppercase">
-              Category <span className="text-destructive">*</span>
+              Categories <span className="text-destructive">*</span>
             </Label>
             <Controller
-              name="categoryId"
+              name="categoryIds"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-invalid={!!errors.categoryId}>
-                    <SelectValue placeholder="Select a category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categories ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select categories…"
+                  searchPlaceholder="Search categories…"
+                  primaryValue={primaryCategoryId || null}
+                  onPrimaryChange={(v) => setValue('primaryCategoryId', v)}
+                />
               )}
             />
-            <FieldError>{errors.categoryId?.message}</FieldError>
+            <FieldDescription>
+              The starred category is the primary (breadcrumb &amp; canonical URL).
+            </FieldDescription>
+            <FieldError>{errors.categoryIds?.message}</FieldError>
+          </Field>
+
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Activity Hubs</Label>
+            <Controller
+              name="hubIds"
+              control={control}
+              render={({ field }) => (
+                <MultiSelect
+                  options={(hubs ?? []).map((h) => ({ value: h.id, label: h.name }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select hubs…"
+                  searchPlaceholder="Search hubs…"
+                />
+              )}
+            />
+            <FieldDescription>
+              Optional discovery tags (0–n). A hub must allow one of the trip&apos;s categories.
+            </FieldDescription>
           </Field>
 
           <div className="grid grid-cols-2 gap-4">

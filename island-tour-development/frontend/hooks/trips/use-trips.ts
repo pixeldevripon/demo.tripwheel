@@ -8,6 +8,7 @@ import type {
   CreateTourAgeBandPayload,
   CreateTourHighlightPayload,
   CreateTourInclusionPayload,
+  CreateTourExclusionPayload,
   CreateTourSchedulePayload,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -16,10 +17,12 @@ import type {
   UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
+  UpdateTourExclusionPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
   UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
+  UpsertExclusionTranslationPayload,
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
@@ -35,6 +38,7 @@ export const tripKeys = {
   languages: (tripId: string) => [...tripKeys.all, 'languages', tripId] as const,
   highlights: (tripId: string) => [...tripKeys.all, 'highlights', tripId] as const,
   inclusions: (tripId: string) => [...tripKeys.all, 'inclusions', tripId] as const,
+  exclusions: (tripId: string) => [...tripKeys.all, 'exclusions', tripId] as const,
   translations: (tripId: string) => [...tripKeys.all, 'translations', tripId] as const,
   translationByLocale: (tripId: string, locale: string) => [...tripKeys.translations(tripId), locale] as const,
   schedules: (tripId: string) => [...tripKeys.all, 'schedules', tripId] as const,
@@ -109,6 +113,14 @@ export function useInclusions(tripId: string) {
   return useQuery({
     queryKey: tripKeys.inclusions(tripId),
     queryFn: () => tripsApi.getInclusions(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function useExclusions(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.exclusions(tripId),
+    queryFn: () => tripsApi.getExclusions(tripId),
     enabled: !!tripId,
   });
 }
@@ -484,6 +496,73 @@ export function useDeleteInclusionTranslation() {
       tripsApi.deleteInclusionTranslation(tripId, inclusionId, locale),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
+    },
+  });
+}
+
+// Mutations — Exclusions
+export function useAddExclusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourExclusionPayload }) =>
+      tripsApi.addExclusion(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateExclusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, exclusionId, payload }: { tripId: string; exclusionId: string; payload: UpdateTourExclusionPayload }) =>
+      tripsApi.updateExclusion(tripId, exclusionId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveExclusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, exclusionId }: { tripId: string; exclusionId: string }) =>
+      tripsApi.removeExclusion(tripId, exclusionId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpsertExclusionTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      exclusionId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      exclusionId: string;
+      locale: string;
+      payload: UpsertExclusionTranslationPayload;
+    }) => tripsApi.upsertExclusionTranslation(tripId, exclusionId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
+    },
+  });
+}
+
+export function useDeleteExclusionTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, exclusionId, locale }: { tripId: string; exclusionId: string; locale: string }) =>
+      tripsApi.deleteExclusionTranslation(tripId, exclusionId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
     },
   });
 }

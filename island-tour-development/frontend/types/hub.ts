@@ -1,5 +1,7 @@
 import type { Locale } from '@/lib/constants/locales';
+import type { HubType } from '@/types/enums';
 export type { Locale } from '@/lib/constants/locales';
+export type { HubType } from '@/types/enums';
 
 export interface Hub {
   id: string;
@@ -7,6 +9,9 @@ export interface Hub {
   name: string;
   slug: string;
   description: string | null;
+  hubType: HubType | null;
+  latitude: number | null;
+  longitude: number | null;
   isSeeded: boolean;
   isActive: boolean;
   createdAt: string;
@@ -79,12 +84,18 @@ export interface CreateHubPayload {
   destinationId: string;
   name: string;
   description?: string | null;
+  hubType: HubType;
+  latitude?: number | null;
+  longitude?: number | null;
   allowedCategoryIds?: string[];
 }
 
 export interface UpdateHubPayload {
   name?: string;
   description?: string | null;
+  hubType?: HubType;
+  latitude?: number | null;
+  longitude?: number | null;
   isActive?: boolean;
 }
 

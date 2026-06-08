@@ -101,6 +101,28 @@ export class CollectionsService {
     };
   }
 
+  // ── Admin read ──────────────────────────────────────────────────────────────
+
+  /** Raw collection by id (active or inactive) — for the admin edit form. */
+  async getByIdAdmin(id: string) {
+    return this.findCollectionOrThrow(id);
+  }
+
+  /** All collections (active + inactive) for a destination — for the admin list. */
+  async getAllByDestinationAdmin(destinationSlug: string) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { slug: destinationSlug },
+      select: { id: true },
+    });
+    if (!destination) throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+
+    return this.prisma.collection.findMany({
+      where: { destinationId: destination.id },
+      select: this.collectionSelect,
+      orderBy: { name: 'asc' },
+    });
+  }
+
   /** MANUAL → ordered tourIds; DYNAMIC → filterQuery resolved via the tour-listing engine. */
   private async resolveTours(collection: {
     destinationId: string;

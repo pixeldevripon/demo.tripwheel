@@ -62,6 +62,7 @@ model Trip {
   languages          TourLanguage[]
   highlights         TourHighlight[]
   inclusions         TourInclusion[]
+  exclusions         TourExclusion[]
   translations       TripTranslation[]
   schedules          TourSchedule[]
   featuredSlot       FeaturedSlot?
@@ -245,6 +246,35 @@ model TourInclusionTranslation {
 
   @@unique([inclusionId, locale])
   @@map("tour_inclusion_translations")
+}
+
+// ── Exclusions ────────────────────────────────────────────────────────────────
+// What's NOT included in the tour (e.g. 'Gratuities', 'Hotel pickup').
+model TourExclusion {
+  id           String  @id @default(uuid())
+  tripId       String
+  icon         String  @default("x") // icon slug for UI
+  displayOrder Int     @default(0)
+  imageUrl     String?
+
+  trip         Trip                       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  translations TourExclusionTranslation[]
+
+  @@index([tripId])
+  @@map("tour_exclusions")
+}
+
+model TourExclusionTranslation {
+  id                  String  @id @default(uuid())
+  exclusionId         String
+  locale              Locale
+  label               String // 'Gratuities', 'Hotel pickup'
+  isMachineTranslated Boolean @default(false)
+
+  exclusion TourExclusion @relation(fields: [exclusionId], references: [id], onDelete: Cascade)
+
+  @@unique([exclusionId, locale])
+  @@map("tour_exclusion_translations")
 }
 
 // ── Trip Translations ─────────────────────────────────────────────────────────

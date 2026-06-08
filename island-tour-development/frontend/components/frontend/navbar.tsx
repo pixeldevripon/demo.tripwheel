@@ -27,8 +27,8 @@ const islands: { name: string; slug: string }[] = [
 const categories: { name: string; slug: string }[] = [
     { name: 'Boat Tours', slug: 'boat-tours' },
     { name: 'Snorkeling', slug: 'snorkeling' },
-    { name: 'Catamaran Trips', slug: 'catamaran-trips' },
-    { name: 'Buggy Tours', slug: 'buggy-tours' },
+    { name: 'Boat Tours', slug: 'boat-tours' },
+    { name: 'Off-Road Tours', slug: 'off-road-tours' },
     { name: 'Island Hopping', slug: 'island-hopping' },
 ];
 
@@ -542,7 +542,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                                 <>
                                     <div className='my-3 h-px bg-it-border' />
                                     <span className='px-1 pb-1 text-xs font-medium text-it-ink-muted'>
-                                        {dict.categories}
+                                        {dict.categories} 
                                     </span>
                                     {categories.map((cat, i) => (
                                         <motion.div

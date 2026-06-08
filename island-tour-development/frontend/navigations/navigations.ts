@@ -14,8 +14,10 @@ import {
     MapPin,
     MessageSquare,
     Settings,
+    SlidersHorizontal,
     Star,
     Tag,
+    Layers,
     Users,
     Waypoints,
 } from 'lucide-react';
@@ -229,6 +231,18 @@ const dashboardNav: NavItem[] = [
         icon: Tag,
         permissions: [Permission.CREATE_CATEGORY],
     },
+    {
+        title: 'Attributes',
+        url: 'attributes',
+        icon: SlidersHorizontal,
+        permissions: [Permission.MANAGE_SYSTEM],
+    },
+    {
+        title: 'Collections',
+        url: 'collections',
+        icon: Layers,
+        permissions: [Permission.VIEW_COLLECTIONS, Permission.CREATE_COLLECTION],
+    },
 
     // ─── Media ─────────────────────────────────────────────────────────────────
     {
@@ -273,4 +287,5 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+
 
