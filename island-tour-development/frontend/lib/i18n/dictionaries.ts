@@ -23,7 +23,6 @@ const dictionaries = {
 /** Shape of a dictionary — inferred from the English (canonical) file. */
 export type Dictionary = Awaited<ReturnType<(typeof dictionaries)['en']>>;
 
-// cache-bust: footer + listings CTA dict keys (2026-06-09)
 export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
     'use cache';
     // Translation JSON is static per locale — cache indefinitely (locale is the key).

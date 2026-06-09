@@ -171,11 +171,12 @@ export default async function AllToursPage({
             <section className='bg-it-white pb-32.5'>
                 <div className='it-container'>
                     {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
-                    <div className='flex flex-col gap-10 pt-15'>
+                    <div className='flex flex-col max-md:gap-8 gap-10 pt-15'>
                         <ToursHeader
                             dict={dict.destination.allTours.heading}
                             destinationName={destinationName}
                             total={32}
+                            selectDateLabel={dict.destination.allTours.toolbar.selectDate}
                         />
 
                         <div

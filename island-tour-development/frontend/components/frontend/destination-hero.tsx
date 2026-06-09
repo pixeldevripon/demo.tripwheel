@@ -2,7 +2,6 @@
 
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { CalendarDays } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -86,27 +85,20 @@ export function DestinationHero({
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder={dict.searchPlaceholder}
                                 aria-label={dict.searchPlaceholder}
-                                className='min-w-0 flex-1 bg-transparent border-none outline-none text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                className='min-w-0 flex-1 bg-transparent border-none outline-none text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
 
-                            {/* Divider — desktop only */}
-                            <span className='mx-8 hidden h-8.5 w-px shrink-0 bg-it-heading md:block' />
+                            {/* Vertical divider — between search field and date (mobile + desktop) */}
+                            <span className='mx-4 h-8.5 w-px shrink-0 bg-it-heading md:mx-8' />
 
-                            {/* Date picker — calendar icon on mobile, "Select date" text on desktop */}
+                            {/* Date picker — "Select date" text on both mobile and desktop */}
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
                                 <PopoverTrigger asChild>
                                     <button
                                         type='button'
                                         aria-label={dict.selectDate}
-                                        className={`flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] tracking-[-0.012em] ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
-                                        {/* Mobile: icon when empty, selected date once chosen */}
-                                        <CalendarDays
-                                            className={`size-5 md:hidden ${date ? 'hidden' : ''}`}
-                                            strokeWidth={1.5}
-                                        />
-                                        <span className={`${date ? 'inline' : 'hidden'} md:inline`}>
-                                            {date ? format(date, 'd MMM yyyy') : dict.selectDate}
-                                        </span>
+                                        className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                                        {date ? format(date, 'd MMM yyyy') : dict.selectDate}
                                     </button>
                                 </PopoverTrigger>
                                 {/* Light theme + 8px radius applied via props for this instance —

@@ -80,6 +80,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
     const catRef = useRef<HTMLDivElement>(null);
     const langRef = useRef<HTMLDivElement>(null);
     const mobileLangRef = useRef<HTMLDivElement>(null);
+    const mobileIslandRef = useRef<HTMLDivElement>(null);
     const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
     // Home keeps the discovery layout ("Select your Island"); every other page
@@ -109,7 +110,10 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
     useEffect(() => {
         function onPointerDown(event: PointerEvent) {
             const target = event.target as Node;
-            if (islandRef.current && !islandRef.current.contains(target)) setIslandOpen(false);
+            const insideIsland =
+                islandRef.current?.contains(target) ||
+                mobileIslandRef.current?.contains(target);
+            if (!insideIsland) setIslandOpen(false);
             if (catRef.current && !catRef.current.contains(target)) setCatOpen(false);
             const insideLang =
                 langRef.current?.contains(target) || mobileLangRef.current?.contains(target);
@@ -387,6 +391,45 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                             />
                         </button>
                     )}
+
+                    {/* Destination / island selector — location pin beside the globe */}
+                    <div ref={mobileIslandRef} className='relative'>
+                        <button
+                            onClick={() => {
+                                setLangOpen(false);
+                                setIslandOpen(v => !v);
+                            }}
+                            aria-label={dict.selectIsland}
+                            aria-expanded={islandOpen}
+                            className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'>
+                            <Image
+                                src='/icons/nav-location.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-6 shrink-0'
+                            />
+                        </button>
+
+                        <AnimatePresence>
+                            {islandOpen && (
+                                <motion.div
+                                    {...dropdownMotion}
+                                    className='absolute top-[calc(100%+18px)] right-0 min-w-45 origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
+                                    {islands.map(island => (
+                                        <Link
+                                            key={island.slug}
+                                            href={localizeHref(locale, `/${island.slug}`)}
+                                            onClick={() => setIslandOpen(false)}
+                                            aria-current={island.slug === currentIsland?.slug}
+                                            className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                            {island.name}
+                                        </Link>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
                     {/* Language */}
                     <div ref={mobileLangRef} className='relative'>

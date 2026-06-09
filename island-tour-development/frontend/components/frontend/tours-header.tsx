@@ -1,4 +1,5 @@
 import { cacheLife } from 'next/cache';
+import { ToursDatePill } from '@/components/frontend/tours-date-pill';
 
 export type ToursHeaderDict = {
     /** Title template — e.g. "All {destination} tours & activities in {year}" */
@@ -29,10 +30,13 @@ export async function ToursHeader({
     dict,
     destinationName,
     total,
+    selectDateLabel,
 }: {
     dict: ToursHeaderDict;
     destinationName: string;
     total: number;
+    /** "Select date" label — drives the mobile date pill beside the count line. */
+    selectDateLabel: string;
 }) {
     const title = dict.title
         .replace('{destination}', destinationName)
@@ -40,8 +44,8 @@ export async function ToursHeader({
     const count = dict.availableCount.replace('{count}', String(total));
 
     return (
-        <div className='flex flex-col gap-2'>
-            <div className='flex flex-col gap-1'>
+        <div className='flex flex-col gap-4 md:gap-2'>
+            <div className='flex flex-col gap-2 md:gap-1'>
                 <h1 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                     {title}
                 </h1>
@@ -49,10 +53,15 @@ export async function ToursHeader({
                     {dict.subtitle}
                 </p>
             </div>
-            <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                <span className='font-medium text-it-heading'>{count}</span>{' '}
-                <span className='text-it-text-muted'>{dict.availableLabel}</span>
-            </p>
+            {/* Count + date — date pill sits on this row on mobile (Figma), and
+                lives in the toolbar on desktop. */}
+            <div className='flex items-center justify-between gap-2'>
+                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                    <span className='font-medium text-it-heading'>{count}</span>{' '}
+                    <span className='text-it-text-muted'>{dict.availableLabel}</span>
+                </p>
+                <ToursDatePill selectDateLabel={selectDateLabel} className='md:hidden' />
+            </div>
         </div>
     );
 }

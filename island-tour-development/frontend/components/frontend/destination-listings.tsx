@@ -85,11 +85,14 @@ export function DestinationListings({
                         (bleeds to the screen edges via -mx-4/px-4). The cards adapt
                         their own typography via container queries (see TourCard).
                         sm+: standard 2 × 3 grid. */}
-                    <div className=' flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden'>
+                    <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
                         {tours.map(tour => (
+                            // Cards in view: ~1.2 (<480) → 1.5 (480+) → ~2.3 (640+ tablet);
+                            // full 3-col grid from lg. Widths are viewport fractions so a
+                            // sliver of the next card always peeks.
                             <div
                                 key={tour.id}
-                                className='w-43 shrink-0 snap-start sm:w-auto sm:shrink'>
+                                className='w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto'>
                                 <TourCard tour={tour} dict={cardDict} />
                             </div>
                         ))}

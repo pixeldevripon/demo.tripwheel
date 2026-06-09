@@ -75,7 +75,7 @@ interface ToursFilterBarProps {
 /* ── Shared atom styles ────────────────────────────────────────────── */
 
 const PILL_BASE =
-    'flex h-12.5 shrink-0 items-center gap-2 rounded-it-full px-6 py-3 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors';
+    'flex h-9.5 md:h-12.5 shrink-0 items-center gap-2 rounded-it-full px-3 md:px-6 py-2 md:py-3 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors';
 
 /**
  * Tours filter & sort toolbar — matches Figma node 47167:4032.
@@ -188,7 +188,7 @@ export function ToursFilterBar({
                             <PopoverTrigger asChild>
                                 <button
                                     type='button'
-                                    className={`${PILL_BASE} border ${
+                                    className={`${PILL_BASE} max-md:hidden border ${
                                         date
                                             ? 'border-it-heading bg-it-surface'
                                             : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
@@ -232,7 +232,7 @@ export function ToursFilterBar({
                                         alt=''
                                         width={24}
                                         height={24}
-                                        className='size-6 shrink-0'
+                                        className='size-5 md:size-6 shrink-0'
                                     />
                                     {guestsLabel}
                                 </button>
@@ -299,11 +299,11 @@ export function ToursFilterBar({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-6 shrink-0'
+                                className='size-5 md:size-6 shrink-0'
                             />
                             {dict.filters}
                             {activeFilterCount > 0 && (
-                                <span className='inline-flex h-6.5 min-w-6.5 items-center justify-center rounded-it-full bg-it-heading px-2 text-[16px] leading-[1.6] text-it-white'>
+                                <span className='inline-flex h-5.5 min-w-5.5 md:h-6.5 md:min-w-6.5 items-center justify-center rounded-it-full bg-it-heading px-2 text-[14px] md:text-[16px] leading-[1.6] text-it-white'>
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -347,24 +347,26 @@ export function ToursFilterBar({
                 </div>
             </div>
 
-            {/* ── Row 2 — counter + chips + clear all · sort ──────────────── */}
-            <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4'>
+            {/* ── Row 2 — counter + chips + clear all · sort ──────────────────
+                Mobile: counter/chips/clear-all scroll horizontally (clear-all sits
+                off-screen, reachable by scroll); sort stays pinned right. */}
+            <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4'>
                 {/* Left — counter, applied chips, clear all */}
-                <div className='flex flex-wrap items-center gap-x-8 gap-y-3'>
-                    <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
-                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                <div className='flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:flex-auto md:flex-wrap md:overflow-visible md:gap-x-8 md:gap-y-3 md:pb-0 [&::-webkit-scrollbar]:hidden'>
+                    <div className='flex shrink-0 items-center gap-2 md:flex-wrap md:gap-x-4 md:gap-y-2'>
+                        <p className='m-0 shrink-0 whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em]'>
                             <span className='font-medium text-it-heading'>{counterLabel}</span>{' '}
                             <span className='text-it-text-muted'>{dict.toursWord}</span>
                         </p>
 
                         {chips.length > 0 && (
-                            <div className='flex flex-wrap items-center gap-2'>
+                            <div className='flex shrink-0 items-center gap-2 md:flex-wrap'>
                                 {chips.map((chip) => (
                                     <button
                                         key={chip.slug}
                                         type='button'
                                         onClick={() => removeChip(chip.slug)}
-                                        className='inline-flex items-center gap-0.75 rounded-it-full border border-it-heading/10 bg-it-surface py-1.25 pl-5 pr-3.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted transition-colors hover:text-it-heading'>
+                                        className='inline-flex shrink-0 items-center gap-0.75 whitespace-nowrap rounded-it-full border border-it-heading/10 bg-it-surface py-1 pl-3 pr-2.5 text-[14px] md:py-1.25 md:pl-5 md:pr-3.5 md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted transition-colors hover:text-it-heading'>
                                         {chip.label}
                                         <Image
                                             src='/icons/filters/close-circle.svg'
@@ -383,29 +385,29 @@ export function ToursFilterBar({
                         <button
                             type='button'
                             onClick={clearAll}
-                            className='cursor-pointer border-none bg-transparent p-0 text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-colors hover:text-it-primary-hover'>
+                            className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-colors hover:text-it-primary-hover md:text-[16px]'>
                             {dict.clearAll}
                         </button>
                     )}
                 </div>
 
-                {/* Right — sort dropdown */}
-                <div className='flex shrink-0 items-center gap-3.5'>
-                    <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                {/* Right — sort dropdown (responsive text/spacing on mobile) */}
+                <div className='flex max-md:hidden shrink-0 items-center gap-2 md:gap-3.5'>
+                    <span className='whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
                         {dict.sortBy}
                     </span>
                     <Popover open={sortOpen} onOpenChange={setSortOpen}>
                         <PopoverTrigger asChild>
                             <button
                                 type='button'
-                                className='flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                className='flex cursor-pointer items-center gap-1.5 whitespace-nowrap border-none bg-transparent p-0 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:gap-2 md:text-[16px]'>
                                 {sortDict[sort]}
                                 <Image
                                     src='/icons/filters/chevron-down.svg'
                                     alt=''
                                     width={20}
                                     height={20}
-                                    className={`size-5 shrink-0 transition-transform ${sortOpen ? 'rotate-180' : ''}`}
+                                    className={`size-4 shrink-0 transition-transform md:size-5 ${sortOpen ? 'rotate-180' : ''}`}
                                 />
                             </button>
                         </PopoverTrigger>
