@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Favoritos locais",
-      "browseAll": "Ver todos os passeios em {destination}",
+      "seeAllCount": "Ver os {count} tours em {destination}",
+      "seeAll": "Ver todos os tours em {destination}",
       "new": "Novo",
       "likelyToSellOut": "Provável esgotar",
       "mostPopular": "Mais popular",

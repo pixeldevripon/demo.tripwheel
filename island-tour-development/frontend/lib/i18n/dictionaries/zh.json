@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "当地人最爱",
-      "browseAll": "浏览{destination}的所有旅游",
+      "seeAllCount": "查看 {destination} 的全部 {count} 个旅行",
+      "seeAll": "查看 {destination} 的所有旅行",
       "new": "新品",
       "likelyToSellOut": "即将售罄",
       "mostPopular": "最受欢迎",

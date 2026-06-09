@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Coups de cœur des locaux",
-      "browseAll": "Parcourir tous les circuits à {destination}",
+      "seeAllCount": "Voir les {count} tours à {destination}",
+      "seeAll": "Voir tous les tours à {destination}",
       "new": "Nouveau",
       "likelyToSellOut": "Risque d'être complet",
       "mostPopular": "Le plus populaire",

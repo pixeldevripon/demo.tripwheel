@@ -79,8 +79,9 @@ export function BadgeChip({ type, dict, className = '' }: BadgeChipProps) {
     return (
         <span
             className={[
-                'h-8 inline-flex items-center justify-center rounded-full px-[14px]',
-                'text-[14px] font-normal leading-[1.4] tracking-[-0.012em]',
+                'inline-flex items-center justify-center rounded-full',
+                'h-6 px-2.5 text-[10px] @[220px]:h-8 @[220px]:px-[14px] @[220px]:text-[14px]',
+                'font-normal leading-[1.4] tracking-[-0.012em]',
                 colorClass,
                 className,
             ].join(' ')}
@@ -140,19 +141,20 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
             }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={[
-                'group flex flex-col rounded-[24px] overflow-hidden',
+                // @container: the card adapts its own typography to its width —
+                // compact at ~172px (mobile carousel), full size in wide grid cells.
+                '@container group flex flex-col rounded-[16px] @[220px]:rounded-[24px] overflow-hidden',
                 className,
             ].join(' ')}
         >
             {/* ── Image area ──────────────────────────────────────────────── */}
             <motion.div
-                className="relative w-full shrink-0 overflow-hidden bg-it-border"
-                style={{ aspectRatio: '384 / 270' }}
+                className="relative aspect-[86/74] w-full shrink-0 overflow-hidden bg-it-border @[220px]:aspect-[64/45]"
                 animate={{
-                    borderTopLeftRadius: '24px',
-                    borderTopRightRadius: '24px',
-                    borderBottomLeftRadius: isHovered ? '0px' : '24px',
-                    borderBottomRightRadius: isHovered ? '0px' : '24px',
+                    borderTopLeftRadius: '16px',
+                    borderTopRightRadius: '16px',
+                    borderBottomLeftRadius: isHovered ? '0px' : '16px',
+                    borderBottomRightRadius: isHovered ? '0px' : '16px',
                 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
@@ -183,7 +185,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                             e.stopPropagation();
                             setWishlisted((v) => !v);
                         }}
-                        className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-all duration-150 active:scale-90 hover:shadow-it-md"
+                        className="ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-all duration-150 active:scale-90 hover:shadow-it-md"
                     >
                         <Image
                             src={
@@ -194,6 +196,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                             alt=""
                             width={24}
                             height={24}
+                            className="size-5 @[220px]:size-6"
                             aria-hidden="true"
                         />
                     </button>
@@ -274,12 +277,12 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
 
             {/* ── Card info ────────────────────────────────────────────────── */}
             <motion.div
-                className={cn('flex flex-col gap-3 pt-4 pb-5', className)}
+                className={cn('flex flex-col gap-1 pt-3 pb-1 @[220px]:gap-3 @[220px]:pt-4 @[220px]:pb-5', className)}
                 animate={{ paddingLeft: isHovered ? 16 : 0, paddingRight: isHovered ? 16 : 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
                 {/* Star rating row — always rendered to keep card heights consistent */}
-                <div className="flex items-center gap-1.5 h-[22px]" aria-hidden={tour.rating === undefined}>
+                <div className="flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]" aria-hidden={tour.rating === undefined}>
                     {tour.rating !== undefined ? (
                         <>
                             <Image
@@ -287,9 +290,10 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                                 alt="Star"
                                 width={16}
                                 height={16}
+                                className="size-4"
                                 aria-hidden="true"
                             />
-                            <span className="text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
+                            <span className="text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
                                 {tour.rating}{' '}
                                 <span className="text-it-heading/50">
                                     ({tour.reviewCount?.toLocaleString()})
@@ -303,7 +307,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                 </div>
 
                 {/* Tour title */}
-                <h3 className="m-0 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2">
+                <h3 className="m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2">
                     {tour.title}
                 </h3>
 
@@ -315,9 +319,10 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                             alt=""
                             width={16}
                             height={16}
+                            className="size-3 @[220px]:size-4"
                             aria-hidden="true"
                         />
-                        <span className="text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
+                        <span className="text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
                             {tour.duration}
                         </span>
                     </span>
@@ -325,7 +330,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                     {tour.pickupAvailable && (
                         <>
                             <span
-                                className="mx-3 size-1 rounded-full bg-it-heading/20 flex-none"
+                                className="mx-2 @[220px]:mx-3 size-1 rounded-full bg-it-heading/20 flex-none"
                                 aria-hidden="true"
                             />
                             <span className="flex items-center gap-1">
@@ -334,9 +339,10 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                                     alt=""
                                     width={16}
                                     height={16}
+                                    className="size-3 @[220px]:size-4"
                                     aria-hidden="true"
                                 />
-                                <span className="text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
+                                <span className="text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
                                     {dict.pickupAvailable}
                                 </span>
                             </span>
@@ -346,13 +352,13 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
 
                 {/* Price */}
                 <div className="flex items-baseline flex-wrap gap-x-1">
-                    <span className="text-[12px] leading-[1.6] text-it-heading/50">
+                    <span className="text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50">
                         {dict.from}
                     </span>
-                    <span className="font-medium text-[16px] leading-[1.25] tracking-[-0.012em] text-it-ink">
+                    <span className="font-medium text-[12px] @[220px]:text-[16px] leading-[1.25] tracking-[-0.012em] text-it-ink">
                         ${tour.price}
                     </span>
-                    <span className="text-[12px] leading-[1.6] text-it-heading/50">
+                    <span className="text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50">
                         {priceLabel}
                     </span>
 
@@ -362,7 +368,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                                 className="mx-1 size-1 rounded-full bg-it-heading/20 self-center flex-none"
                                 aria-hidden="true"
                             />
-                            <span className="text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
+                            <span className="text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
                                 {dict.priceVaries}
                             </span>
                         </>
@@ -371,7 +377,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
 
                 {/* Free cancellation */}
                 {tour.freeCancellation && (
-                    <p className="m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
+                    <p className="m-0 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70">
                         {dict.freeCancellation}
                     </p>
                 )}

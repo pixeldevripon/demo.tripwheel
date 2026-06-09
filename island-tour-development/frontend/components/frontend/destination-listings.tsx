@@ -8,6 +8,7 @@
  *   import { DestinationListings } from '@/components/frontend/destination-listings';
  */
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Reveal } from './reveal';
@@ -17,14 +18,26 @@ import { TourCard } from './tour-card';
 // Re-export so page files only need one import location.
 export type { TourCardDict, TourListing };
 
+/**
+ * Below this many tours, the "See all" CTA hides the count — a low number
+ * (e.g. "See all 12 tours") signals scarcity and works against the CTA.
+ */
+const COUNT_CTA_THRESHOLD = 20;
+
 export type DestinationListingsDict = TourCardDict & {
     /** Section heading — e.g. "Locals' favorites" */
     title: string;
     /**
-     * Footer CTA label with a `{destination}` placeholder.
-     * e.g. "Browse all tours in {destination}"
+     * CTA when the tour count is high enough to be compelling (≥ 20).
+     * Placeholders: `{count}` and `{destination}`.
+     * e.g. "See all {count} tours in {destination}"
      */
-    browseAll: string;
+    seeAllCount: string;
+    /**
+     * CTA fallback when the count is low/unknown — no number.
+     * Placeholder: `{destination}`. e.g. "See all {destination} tours"
+     */
+    seeAll: string;
 };
 
 interface DestinationListingsProps {
@@ -34,6 +47,8 @@ interface DestinationListingsProps {
     locale: Locale;
     /** Destination slug — used to build the "All Tours" page href. */
     destinationSlug: string;
+    /** Total published tours in this destination — drives the conditional count CTA. */
+    totalCount: number;
 }
 
 export function DestinationListings({
@@ -42,11 +57,18 @@ export function DestinationListings({
     destinationName,
     locale,
     destinationSlug,
+    totalCount,
 }: DestinationListingsProps) {
-    // Derive the subset of dict that TourCard needs (all keys except title/browseAll).
-    const { title, browseAll, ...cardDict } = dict;
+    // Derive the subset of dict that TourCard needs.
+    const { title, seeAll, seeAllCount, ...cardDict } = dict;
 
-    const browseLabel = browseAll.replace('{destination}', destinationName);
+    // Show the dynamic count only when it's compelling; otherwise drop the number.
+    const browseLabel =
+        totalCount >= COUNT_CTA_THRESHOLD
+            ? seeAllCount
+                  .replace('{count}', String(totalCount))
+                  .replace('{destination}', destinationName)
+            : seeAll.replace('{destination}', destinationName);
     const browseHref = localizeHref(locale, `/${destinationSlug}/tours`);
 
     return (
@@ -58,14 +80,18 @@ export function DestinationListings({
                         {title}
                     </h2>
 
-                    {/* ── 2 × 3 tour grid ──────────────────────────────────── */}
-                    <div className='grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3'>
+                    {/* ── Tours ────────────────────────────────────────────────
+                        Mobile: horizontal swipe carousel of compact 172px cards
+                        (bleeds to the screen edges via -mx-4/px-4). The cards adapt
+                        their own typography via container queries (see TourCard).
+                        sm+: standard 2 × 3 grid. */}
+                    <div className=' flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden'>
                         {tours.map(tour => (
-                            <TourCard
+                            <div
                                 key={tour.id}
-                                tour={tour}
-                                dict={cardDict}
-                            />
+                                className='w-43 shrink-0 snap-start sm:w-auto sm:shrink'>
+                                <TourCard tour={tour} dict={cardDict} />
+                            </div>
                         ))}
                     </div>
 
@@ -80,8 +106,15 @@ export function DestinationListings({
                         {/* CTA floats above the line on a white pill */}
                         <Link
                             href={browseHref}
-                            className='relative z-10 inline-flex items-center gap-2 bg-it-white px-5 py-2.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-150 hover:text-it-primary-hover hover:border-it-primary'>
+                            className='group relative z-10 inline-flex items-center gap-1 bg-it-white px-5 py-2.5 font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-150 hover:text-it-primary-hover'>
                             {browseLabel}
+                            <Image
+                                src='/icons/cta-arrow-right.svg'
+                                alt=''
+                                width={20}
+                                height={20}
+                                className='size-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5'
+                            />
                         </Link>
                     </div>
                 </Reveal>

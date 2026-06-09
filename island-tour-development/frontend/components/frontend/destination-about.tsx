@@ -29,7 +29,7 @@ export function DestinationAbout({
     const secondParagraph = paragraphs.slice(Math.ceil(paragraphs.length / 2)).join('. ').replace(/\.*$/, '.');
 
     return (
-        <section className='it-section bg-it-surface border-b border-it-heading/5'>
+        <section className='it-section pt-[32px]! bg-it-surface border-b border-it-heading/5'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-10 md:gap-12'>
                     {/* Top Section: Title & Body Copy */}

@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Favorieten van locals",
-      "browseAll": "Bekijk alle tours in {destination}",
+      "seeAllCount": "Bekijk alle {count} tours in {destination}",
+      "seeAll": "Bekijk alle tours in {destination}",
       "new": "Nieuw",
       "likelyToSellOut": "Snel uitverkocht",
       "mostPopular": "Meest populair",

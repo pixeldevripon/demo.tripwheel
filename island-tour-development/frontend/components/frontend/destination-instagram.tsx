@@ -44,17 +44,16 @@ export function DestinationInstagram({ dict }: { dict: InstagramDict }) {
         <section className='it-section pt-[32px]! bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-8 md:gap-10'>
-                    {/* Header row — @islandtours  |  View more on Instagram */}
+                    {/* Header row — @island.tours_  |  View more on Instagram */}
                     <div className='flex items-center justify-between'>
                         <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                            @islandtours
+                            @island.tours_
                         </h2>
                         <a
-                            href='https://www.instagram.com/islandtours'
+                            href='https://www.instagram.com/island.tours_'
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary-hover'
-                        >
+                            className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary-hover'>
                             {dict.viewMore || 'View more on Instagram'}
                         </a>
                     </div>
@@ -69,8 +68,7 @@ export function DestinationInstagram({ dict }: { dict: InstagramDict }) {
                                 rel='noopener noreferrer'
                                 className='group relative block overflow-hidden rounded-[16px] bg-it-surface'
                                 style={{ aspectRatio: '384 / 337' }}
-                                aria-label={post.alt}
-                            >
+                                aria-label={post.alt}>
                                 <Image
                                     src={post.src}
                                     alt={post.alt}
@@ -88,3 +86,6 @@ export function DestinationInstagram({ dict }: { dict: InstagramDict }) {
         </section>
     );
 }
+
+
+

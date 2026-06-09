@@ -23,6 +23,16 @@ const DESTINATION_NAMES: Record<string, string> = {
     bonaire: 'Bonaire',
 };
 
+// Total published tours per destination (placeholder — comes from the API later).
+// Drives the conditional "See all {count} tours" CTA (count shown only when ≥ 20).
+const DESTINATION_TOUR_COUNTS: Record<string, number> = {
+    curacao: 87,
+    aruba: 64,
+    'sint-maarten': 38,
+    'saint-lucia': 22,
+    bonaire: 12,
+};
+
 // Popular searches per destination (placeholder — comes from the API later).
 const POPULAR: Record<string, { label: string; slug: string }[]> = {
     curacao: [
@@ -225,6 +235,7 @@ export default async function DestinationPage({
                 destinationName={destinationName}
                 locale={locale as Locale}
                 destinationSlug={destination}
+                totalCount={DESTINATION_TOUR_COUNTS[destination] ?? TOURS.length}
             />
             <DestinationInstagram dict={dict.destination.instagram} />
 

@@ -179,7 +179,7 @@
         },
         "pay": {
           "title": "Pay as little as 20%",
-          "subtitle": "Today, the rest later"
+          "subtitle": "today, the rest later"
         }
       },
       "filterModal": {
@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Locals' favorites",
-      "browseAll": "Browse all tours in {destination}",
+      "seeAllCount": "See all {count} tours in {destination}",
+      "seeAll": "See all {destination} tours",
       "new": "New",
       "likelyToSellOut": "Likely to sell out",
       "mostPopular": "Most popular",

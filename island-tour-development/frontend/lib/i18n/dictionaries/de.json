@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Favoriten der Einheimischen",
-      "browseAll": "Alle Touren in {destination} durchsuchen",
+      "seeAllCount": "Alle {count} Touren in {destination} ansehen",
+      "seeAll": "Alle Touren in {destination} ansehen",
       "new": "Neu",
       "likelyToSellOut": "Wahrscheinlich ausverkauft",
       "mostPopular": "Am beliebtesten",

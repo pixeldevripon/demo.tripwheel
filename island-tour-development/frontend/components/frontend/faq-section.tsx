@@ -49,14 +49,15 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
     const [openIndex, setOpenIndex] = useState(0);
 
     return (
-        <section className='it-section bg-it-surface'>
+        <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
-                <Reveal className='flex flex-col-reverse gap-12 lg:flex-row lg:gap-[118px]'>
-                    {/* Left — help, WhatsApp, guarantees, payments */}
+                <Reveal className='flex flex-col gap-12 lg:flex-row lg:gap-[118px]'>
+                    {/* Left — help, WhatsApp, guarantees, payments.
+                        On mobile this block sits above the accordion (matches Figma). */}
                     <div className='flex flex-col gap-8 lg:w-115 lg:gap-14'>
-                        <div className='flex flex-col gap-8 lg:gap-14'>
+                        <div className='flex flex-col gap-12 lg:gap-14'>
                             {/* Heading */}
-                            <div className='flex flex-col gap-6'>
+                            <div className='flex flex-col gap-4 lg:gap-6'>
                                 <h2 className='m-0 font-medium text-[32px] lg:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
                                     {dict.title}
                                 </h2>

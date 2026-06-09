@@ -179,7 +179,7 @@
         },
         "pay": {
           "title": "Paga desde el 20%",
-          "subtitle": "Hoy, el resto después"
+          "subtitle": "hoy, el resto después"
         }
       },
       "filterModal": {
@@ -237,7 +237,8 @@
     },
     "listings": {
       "title": "Favoritos de los locales",
-      "browseAll": "Explorar todos los tours en {destination}",
+      "seeAllCount": "Ver los {count} tours en {destination}",
+      "seeAll": "Ver todos los tours en {destination}",
       "new": "Nuevo",
       "likelyToSellOut": "Probable de agotarse",
       "mostPopular": "Más popular",
