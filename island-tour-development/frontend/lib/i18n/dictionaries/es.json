@@ -10,24 +10,31 @@
     "search": "Buscar"
   },
   "footer": {
-    "tagline": "Island Tours. Hecho por isleños. Copyright ©2026",
+    "tagline": "Hecho por isleños.",
+    "ourStory": "Nuestra historia",
     "explore": "Explorar",
-    "legal": "Legal",
     "support": "Soporte",
+    "workWithUs": "Trabaja con nosotros",
+    "legal": "Legal",
     "language": "Idioma",
     "currency": "Moneda",
     "links": {
-      "privacy": "Política de privacidad",
-      "terms": "Términos del servicio",
-      "cookies": "Política de cookies",
+      "boatTours": "Tours en barco",
+      "buggyTours": "Tours en buggy",
+      "sunsetCruises": "Cruceros al atardecer",
       "help": "Centro de ayuda",
-      "contact": "Contacto"
+      "contact": "Contáctanos",
+      "listTour": "Publica tu tour",
+      "affiliate": "Conviértete en afiliado",
+      "privacy": "Política de privacidad",
+      "cookies": "Política de cookies",
+      "terms": "Términos del servicio",
+      "cancellation": "Política de cancelación",
+      "legalNotice": "Aviso legal"
     },
-    "trust": {
-      "secure": "Reserva segura",
-      "cancellation": "Cancelación gratuita en la mayoría de los tours",
-      "experts": "Expertos locales"
-    }
+    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+    "registration": "KvK Curaçao 169950",
+    "manageCookies": "Gestionar cookies"
   },
   "common": {
     "popular": "Popular",
@@ -130,9 +137,21 @@
         "filters": "Filtros",
         "selectDate": "Seleccionar fecha",
         "guestTypes": {
-          "adults": { "label": "Adultos", "hint": "13+ años", "word": "adultos" },
-          "children": { "label": "Niños", "hint": "2–12 años", "word": "niños" },
-          "infants": { "label": "Bebés", "hint": "Menores de 2", "word": "bebés" }
+          "adults": {
+            "label": "Adultos",
+            "hint": "13+ años",
+            "word": "adultos"
+          },
+          "children": {
+            "label": "Niños",
+            "hint": "2–12 años",
+            "word": "niños"
+          },
+          "infants": {
+            "label": "Bebés",
+            "hint": "Menores de 2",
+            "word": "bebés"
+          }
         },
         "resultsCount": "{shown} de {total}",
         "toursWord": "tours",
@@ -146,22 +165,47 @@
         "defaultSuffix": "(Predeterminado)"
       },
       "trust": {
-        "builtByLocals": { "title": "Hecho por locales", "subtitle": "Que crecieron aquí" },
-        "freeCancellation": { "title": "Cancelación gratuita", "subtitle": "En la mayoría de tours" },
-        "message": { "title": "Somos locales", "subtitle": "Escríbenos por WhatsApp" },
-        "pay": { "title": "Paga desde el 20%", "subtitle": "Hoy, el resto después" }
+        "builtByLocals": {
+          "title": "Hecho por locales",
+          "subtitle": "Que crecieron aquí"
+        },
+        "freeCancellation": {
+          "title": "Cancelación gratuita",
+          "subtitle": "En la mayoría de tours"
+        },
+        "message": {
+          "title": "Somos locales",
+          "subtitle": "Escríbenos por WhatsApp"
+        },
+        "pay": {
+          "title": "Paga desde el 20%",
+          "subtitle": "Hoy, el resto después"
+        }
       },
       "filterModal": {
         "title": "Filtrar",
         "price": "Precio",
         "duration": "Duración",
-        "durations": { "upTo2": "Hasta 2 horas", "2to4": "2 a 4 horas", "4to6": "4 a 6 horas", "fullDay": "Día completo (6+ horas)" },
+        "durations": {
+          "upTo2": "Hasta 2 horas",
+          "2to4": "2 a 4 horas",
+          "4to6": "4 a 6 horas",
+          "fullDay": "Día completo (6+ horas)"
+        },
         "timeOfDay": "Hora del día",
-        "times": { "morning": "Mañana", "afternoon": "Tarde", "evening": "Noche" },
+        "times": {
+          "morning": "Mañana",
+          "afternoon": "Tarde",
+          "evening": "Noche"
+        },
         "freeCancellation": "Cancelación gratuita",
         "freeCancellationNote": "Todos los tours incluyen cancelación gratuita.",
         "cancellationLabel": "Filtra por hasta cuándo puedes cancelar:",
-        "cancellation": { "24h": "Hasta 24h antes", "48h": "48h antes", "72h": "72h antes" },
+        "cancellation": {
+          "24h": "Hasta 24h antes",
+          "48h": "48h antes",
+          "72h": "72h antes"
+        },
         "pickupAvailable": "Recogida disponible",
         "ratings": "Valoraciones",
         "ratingsNote": "(oculto hasta que haya reseñas)",

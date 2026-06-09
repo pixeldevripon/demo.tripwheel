@@ -10,24 +10,31 @@
     "search": "Zoeken naar"
   },
   "footer": {
-    "tagline": "Island Tours. Gemaakt door eilandbewoners. Copyright ©2026",
+    "tagline": "Gemaakt door eilandbewoners.",
+    "ourStory": "Ons verhaal",
     "explore": "Ontdek",
-    "legal": "Juridisch",
     "support": "Ondersteuning",
+    "workWithUs": "Werken met ons",
+    "legal": "Juridisch",
     "language": "Taal",
     "currency": "Valuta",
     "links": {
-      "privacy": "Privacybeleid",
-      "terms": "Servicevoorwaarden",
-      "cookies": "Cookiebeleid",
+      "boatTours": "Boottochten",
+      "buggyTours": "Buggytochten",
+      "sunsetCruises": "Zonsondergangcruises",
       "help": "Helpcentrum",
-      "contact": "Contact"
+      "contact": "Neem contact op",
+      "listTour": "Plaats je tour",
+      "affiliate": "Word affiliate",
+      "privacy": "Privacybeleid",
+      "cookies": "Cookiebeleid",
+      "terms": "Servicevoorwaarden",
+      "cancellation": "Annuleringsbeleid",
+      "legalNotice": "Juridische kennisgeving"
     },
-    "trust": {
-      "secure": "Veilig boeken",
-      "cancellation": "Gratis annulering op de meeste tours",
-      "experts": "Lokale experts"
-    }
+    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+    "registration": "KvK Curaçao 169950",
+    "manageCookies": "Cookies beheren"
   },
   "common": {
     "popular": "Populair",
@@ -130,9 +137,21 @@
         "filters": "Filters",
         "selectDate": "Datum kiezen",
         "guestTypes": {
-          "adults": { "label": "Volwassenen", "hint": "13+ jaar", "word": "volwassenen" },
-          "children": { "label": "Kinderen", "hint": "2–12 jaar", "word": "kinderen" },
-          "infants": { "label": "Baby's", "hint": "Onder 2", "word": "baby's" }
+          "adults": {
+            "label": "Volwassenen",
+            "hint": "13+ jaar",
+            "word": "volwassenen"
+          },
+          "children": {
+            "label": "Kinderen",
+            "hint": "2–12 jaar",
+            "word": "kinderen"
+          },
+          "infants": {
+            "label": "Baby's",
+            "hint": "Onder 2",
+            "word": "baby's"
+          }
         },
         "resultsCount": "{shown} van {total}",
         "toursWord": "tours",
@@ -146,22 +165,47 @@
         "defaultSuffix": "(Standaard)"
       },
       "trust": {
-        "builtByLocals": { "title": "Gebouwd door locals", "subtitle": "Die hier zijn opgegroeid" },
-        "freeCancellation": { "title": "Gratis annuleren", "subtitle": "Bij de meeste tours" },
-        "message": { "title": "Wij zijn locals", "subtitle": "Stuur ons een bericht op WhatsApp" },
-        "pay": { "title": "Betaal vanaf 20%", "subtitle": "Vandaag, de rest later" }
+        "builtByLocals": {
+          "title": "Gebouwd door locals",
+          "subtitle": "Die hier zijn opgegroeid"
+        },
+        "freeCancellation": {
+          "title": "Gratis annuleren",
+          "subtitle": "Bij de meeste tours"
+        },
+        "message": {
+          "title": "Wij zijn locals",
+          "subtitle": "Stuur ons een bericht op WhatsApp"
+        },
+        "pay": {
+          "title": "Betaal vanaf 20%",
+          "subtitle": "Vandaag, de rest later"
+        }
       },
       "filterModal": {
         "title": "Filter",
         "price": "Prijs",
         "duration": "Duur",
-        "durations": { "upTo2": "Tot 2 uur", "2to4": "2 tot 4 uur", "4to6": "4 tot 6 uur", "fullDay": "Hele dag (6+ uur)" },
+        "durations": {
+          "upTo2": "Tot 2 uur",
+          "2to4": "2 tot 4 uur",
+          "4to6": "4 tot 6 uur",
+          "fullDay": "Hele dag (6+ uur)"
+        },
         "timeOfDay": "Tijdstip",
-        "times": { "morning": "Ochtend", "afternoon": "Middag", "evening": "Avond" },
+        "times": {
+          "morning": "Ochtend",
+          "afternoon": "Middag",
+          "evening": "Avond"
+        },
         "freeCancellation": "Gratis annuleren",
         "freeCancellationNote": "Alle tours zijn gratis te annuleren.",
         "cancellationLabel": "Filter op hoe laat je kunt annuleren:",
-        "cancellation": { "24h": "Tot 24u van tevoren", "48h": "48u van tevoren", "72h": "72u van tevoren" },
+        "cancellation": {
+          "24h": "Tot 24u van tevoren",
+          "48h": "48u van tevoren",
+          "72h": "72u van tevoren"
+        },
         "pickupAvailable": "Ophalen beschikbaar",
         "ratings": "Beoordelingen",
         "ratingsNote": "(verborgen tot er reviews zijn)",

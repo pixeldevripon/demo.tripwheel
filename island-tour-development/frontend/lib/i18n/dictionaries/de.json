@@ -10,24 +10,31 @@
     "search": "Suchen"
   },
   "footer": {
-    "tagline": "Island Tours. Von Inselbewohnern gemacht. Copyright ©2026",
+    "tagline": "Von Inselbewohnern gemacht.",
+    "ourStory": "Unsere Geschichte",
     "explore": "Entdecken",
-    "legal": "Rechtliches",
     "support": "Support",
+    "workWithUs": "Mit uns arbeiten",
+    "legal": "Rechtliches",
     "language": "Sprache",
     "currency": "Währung",
     "links": {
-      "privacy": "Datenschutz",
-      "terms": "Nutzungsbedingungen",
-      "cookies": "Cookie-Richtlinie",
+      "boatTours": "Bootstouren",
+      "buggyTours": "Buggy-Touren",
+      "sunsetCruises": "Sonnenuntergangstouren",
       "help": "Hilfecenter",
-      "contact": "Kontakt"
+      "contact": "Kontakt",
+      "listTour": "Tour eintragen",
+      "affiliate": "Partner werden",
+      "privacy": "Datenschutz",
+      "cookies": "Cookie-Richtlinie",
+      "terms": "Nutzungsbedingungen",
+      "cancellation": "Stornierungsrichtlinie",
+      "legalNotice": "Impressum"
     },
-    "trust": {
-      "secure": "Sichere Buchung",
-      "cancellation": "Kostenlose Stornierung bei den meisten Touren",
-      "experts": "Lokale Experten"
-    }
+    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+    "registration": "KvK Curaçao 169950",
+    "manageCookies": "Cookies verwalten"
   },
   "common": {
     "popular": "Beliebt",
@@ -130,9 +137,21 @@
         "filters": "Filter",
         "selectDate": "Datum wählen",
         "guestTypes": {
-          "adults": { "label": "Erwachsene", "hint": "Ab 13 J.", "word": "Erwachsene" },
-          "children": { "label": "Kinder", "hint": "2–12 J.", "word": "Kinder" },
-          "infants": { "label": "Kleinkinder", "hint": "Unter 2", "word": "Kleinkinder" }
+          "adults": {
+            "label": "Erwachsene",
+            "hint": "Ab 13 J.",
+            "word": "Erwachsene"
+          },
+          "children": {
+            "label": "Kinder",
+            "hint": "2–12 J.",
+            "word": "Kinder"
+          },
+          "infants": {
+            "label": "Kleinkinder",
+            "hint": "Unter 2",
+            "word": "Kleinkinder"
+          }
         },
         "resultsCount": "{shown} von {total}",
         "toursWord": "Touren",
@@ -146,22 +165,47 @@
         "defaultSuffix": "(Standard)"
       },
       "trust": {
-        "builtByLocals": { "title": "Von Locals gemacht", "subtitle": "Die hier aufgewachsen sind" },
-        "freeCancellation": { "title": "Kostenlose Stornierung", "subtitle": "Bei den meisten Touren" },
-        "message": { "title": "Wir sind Locals", "subtitle": "Schreib uns auf WhatsApp" },
-        "pay": { "title": "Zahle ab 20%", "subtitle": "Heute, den Rest später" }
+        "builtByLocals": {
+          "title": "Von Locals gemacht",
+          "subtitle": "Die hier aufgewachsen sind"
+        },
+        "freeCancellation": {
+          "title": "Kostenlose Stornierung",
+          "subtitle": "Bei den meisten Touren"
+        },
+        "message": {
+          "title": "Wir sind Locals",
+          "subtitle": "Schreib uns auf WhatsApp"
+        },
+        "pay": {
+          "title": "Zahle ab 20%",
+          "subtitle": "Heute, den Rest später"
+        }
       },
       "filterModal": {
         "title": "Filter",
         "price": "Preis",
         "duration": "Dauer",
-        "durations": { "upTo2": "Bis zu 2 Stunden", "2to4": "2 bis 4 Stunden", "4to6": "4 bis 6 Stunden", "fullDay": "Ganzer Tag (6+ Stunden)" },
+        "durations": {
+          "upTo2": "Bis zu 2 Stunden",
+          "2to4": "2 bis 4 Stunden",
+          "4to6": "4 bis 6 Stunden",
+          "fullDay": "Ganzer Tag (6+ Stunden)"
+        },
         "timeOfDay": "Tageszeit",
-        "times": { "morning": "Morgens", "afternoon": "Nachmittags", "evening": "Abends" },
+        "times": {
+          "morning": "Morgens",
+          "afternoon": "Nachmittags",
+          "evening": "Abends"
+        },
         "freeCancellation": "Kostenlose Stornierung",
         "freeCancellationNote": "Alle Touren sind kostenlos stornierbar.",
         "cancellationLabel": "Filtern nach Stornierungsfrist:",
-        "cancellation": { "24h": "Bis 24 Std. vorher", "48h": "48 Std. vorher", "72h": "72 Std. vorher" },
+        "cancellation": {
+          "24h": "Bis 24 Std. vorher",
+          "48h": "48 Std. vorher",
+          "72h": "72 Std. vorher"
+        },
         "pickupAvailable": "Abholung verfügbar",
         "ratings": "Bewertungen",
         "ratingsNote": "(ausgeblendet bis Bewertungen vorliegen)",

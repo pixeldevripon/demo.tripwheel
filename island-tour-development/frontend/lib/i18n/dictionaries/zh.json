@@ -10,24 +10,31 @@
     "search": "搜索"
   },
   "footer": {
-    "tagline": "Island Tours。由岛民打造。版权所有 ©2026",
+    "tagline": "由岛民打造。",
+    "ourStory": "我们的故事",
     "explore": "探索",
-    "legal": "法律",
     "support": "支持",
+    "workWithUs": "与我们合作",
+    "legal": "法律",
     "language": "语言",
     "currency": "货币",
     "links": {
-      "privacy": "隐私政策",
-      "terms": "服务条款",
-      "cookies": "Cookie 政策",
+      "boatTours": "乘船游览",
+      "buggyTours": "沙滩车之旅",
+      "sunsetCruises": "日落巡航",
       "help": "帮助中心",
-      "contact": "联系我们"
+      "contact": "联系我们",
+      "listTour": "发布您的旅行",
+      "affiliate": "成为联盟伙伴",
+      "privacy": "隐私政策",
+      "cookies": "Cookie 政策",
+      "terms": "服务条款",
+      "cancellation": "取消政策",
+      "legalNotice": "法律声明"
     },
-    "trust": {
-      "secure": "安全预订",
-      "cancellation": "大多数旅行可免费取消",
-      "experts": "本地专家"
-    }
+    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+    "registration": "KvK Curaçao 169950",
+    "manageCookies": "管理 Cookie"
   },
   "common": {
     "popular": "热门",
@@ -130,9 +137,21 @@
         "filters": "筛选",
         "selectDate": "选择日期",
         "guestTypes": {
-          "adults": { "label": "成人", "hint": "13 岁以上", "word": "成人" },
-          "children": { "label": "儿童", "hint": "2–12 岁", "word": "儿童" },
-          "infants": { "label": "婴儿", "hint": "2 岁以下", "word": "婴儿" }
+          "adults": {
+            "label": "成人",
+            "hint": "13 岁以上",
+            "word": "成人"
+          },
+          "children": {
+            "label": "儿童",
+            "hint": "2–12 岁",
+            "word": "儿童"
+          },
+          "infants": {
+            "label": "婴儿",
+            "hint": "2 岁以下",
+            "word": "婴儿"
+          }
         },
         "resultsCount": "{shown} / {total}",
         "toursWord": "个行程",
@@ -146,22 +165,47 @@
         "defaultSuffix": "（默认）"
       },
       "trust": {
-        "builtByLocals": { "title": "由当地人打造", "subtitle": "在这里长大" },
-        "freeCancellation": { "title": "免费取消", "subtitle": "适用于大多数行程" },
-        "message": { "title": "我们是当地人", "subtitle": "通过 WhatsApp 联系我们" },
-        "pay": { "title": "最低支付 20%", "subtitle": "今天，余款稍后再付" }
+        "builtByLocals": {
+          "title": "由当地人打造",
+          "subtitle": "在这里长大"
+        },
+        "freeCancellation": {
+          "title": "免费取消",
+          "subtitle": "适用于大多数行程"
+        },
+        "message": {
+          "title": "我们是当地人",
+          "subtitle": "通过 WhatsApp 联系我们"
+        },
+        "pay": {
+          "title": "最低支付 20%",
+          "subtitle": "今天，余款稍后再付"
+        }
       },
       "filterModal": {
         "title": "筛选",
         "price": "价格",
         "duration": "时长",
-        "durations": { "upTo2": "最多 2 小时", "2to4": "2 至 4 小时", "4to6": "4 至 6 小时", "fullDay": "全天 (6+ 小时)" },
+        "durations": {
+          "upTo2": "最多 2 小时",
+          "2to4": "2 至 4 小时",
+          "4to6": "4 至 6 小时",
+          "fullDay": "全天 (6+ 小时)"
+        },
         "timeOfDay": "时段",
-        "times": { "morning": "上午", "afternoon": "下午", "evening": "晚上" },
+        "times": {
+          "morning": "上午",
+          "afternoon": "下午",
+          "evening": "晚上"
+        },
         "freeCancellation": "免费取消",
         "freeCancellationNote": "所有行程均含免费取消。",
         "cancellationLabel": "按可取消时限筛选：",
-        "cancellation": { "24h": "出发前 24 小时内", "48h": "出发前 48 小时", "72h": "出发前 72 小时" },
+        "cancellation": {
+          "24h": "出发前 24 小时内",
+          "48h": "出发前 48 小时",
+          "72h": "出发前 72 小时"
+        },
         "pickupAvailable": "提供接送",
         "ratings": "评分",
         "ratingsNote": "（有评价后显示）",

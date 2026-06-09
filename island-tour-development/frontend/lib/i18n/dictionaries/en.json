@@ -10,24 +10,31 @@
     "search": "Search for"
   },
   "footer": {
-    "tagline": "Island Tours. Built by Islanders. Copyright ©2026",
+    "tagline": "Built by Islanders.",
+    "ourStory": "Our Story",
     "explore": "Explore",
-    "legal": "Legal",
     "support": "Support",
+    "workWithUs": "Work with us",
+    "legal": "Legal",
     "language": "Language",
     "currency": "Currency",
     "links": {
-      "privacy": "Privacy Policy",
-      "terms": "Terms of Service",
-      "cookies": "Cookie Policy",
+      "boatTours": "Boat Tours",
+      "buggyTours": "Buggy Tours",
+      "sunsetCruises": "Sunset Cruises",
       "help": "Help Center",
-      "contact": "Contact"
+      "contact": "Contact us",
+      "listTour": "List your tour",
+      "affiliate": "Become an affiliate",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookie Policy",
+      "terms": "Terms of Service",
+      "cancellation": "Cancellation Policy",
+      "legalNotice": "Legal Notice"
     },
-    "trust": {
-      "secure": "Secure booking",
-      "cancellation": "Free cancellation on most tours",
-      "experts": "Local experts"
-    }
+    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+    "registration": "KvK Curaçao 169950",
+    "manageCookies": "Manage cookies"
   },
   "common": {
     "popular": "Popular",
@@ -130,9 +137,21 @@
         "filters": "Filters",
         "selectDate": "Select date",
         "guestTypes": {
-          "adults": { "label": "Adults", "hint": "Age 13+", "word": "adults" },
-          "children": { "label": "Children", "hint": "Age 2–12", "word": "children" },
-          "infants": { "label": "Infants", "hint": "Under 2", "word": "infants" }
+          "adults": {
+            "label": "Adults",
+            "hint": "Age 13+",
+            "word": "adults"
+          },
+          "children": {
+            "label": "Children",
+            "hint": "Age 2–12",
+            "word": "children"
+          },
+          "infants": {
+            "label": "Infants",
+            "hint": "Under 2",
+            "word": "infants"
+          }
         },
         "resultsCount": "{shown} of {total}",
         "toursWord": "tours",
@@ -146,22 +165,47 @@
         "defaultSuffix": "(Default)"
       },
       "trust": {
-        "builtByLocals": { "title": "Built by locals", "subtitle": "Who grew up here" },
-        "freeCancellation": { "title": "Free cancellation", "subtitle": "On most tours" },
-        "message": { "title": "We're locals", "subtitle": "Message us on WhatsApp" },
-        "pay": { "title": "Pay as little as 20%", "subtitle": "Today, the rest later" }
+        "builtByLocals": {
+          "title": "Built by locals",
+          "subtitle": "Who grew up here"
+        },
+        "freeCancellation": {
+          "title": "Free cancellation",
+          "subtitle": "On most tours"
+        },
+        "message": {
+          "title": "We're locals",
+          "subtitle": "Message us on WhatsApp"
+        },
+        "pay": {
+          "title": "Pay as little as 20%",
+          "subtitle": "Today, the rest later"
+        }
       },
       "filterModal": {
         "title": "Filter",
         "price": "Price",
         "duration": "Duration",
-        "durations": { "upTo2": "Up to 2 hours", "2to4": "2 to 4 hours", "4to6": "4 to 6 hours", "fullDay": "Full day (6+ hours)" },
+        "durations": {
+          "upTo2": "Up to 2 hours",
+          "2to4": "2 to 4 hours",
+          "4to6": "4 to 6 hours",
+          "fullDay": "Full day (6+ hours)"
+        },
         "timeOfDay": "Time of day",
-        "times": { "morning": "Morning", "afternoon": "Afternoon", "evening": "Evening" },
+        "times": {
+          "morning": "Morning",
+          "afternoon": "Afternoon",
+          "evening": "Evening"
+        },
         "freeCancellation": "Free cancellation",
         "freeCancellationNote": "All tours include free cancellation.",
         "cancellationLabel": "Filter by how late you can cancel:",
-        "cancellation": { "24h": "Up to 24h before", "48h": "48h before", "72h": "72h before" },
+        "cancellation": {
+          "24h": "Up to 24h before",
+          "48h": "48h before",
+          "72h": "72h before"
+        },
         "pickupAvailable": "Pickup available",
         "ratings": "Ratings",
         "ratingsNote": "(hidden until reviews exist)",

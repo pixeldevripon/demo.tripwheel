@@ -23,6 +23,7 @@
     --it-ink-secondary:    #444444;
     --it-ink-muted:        #a0a3a9;
     --it-ink-placeholder:  #a6a6a6;
+    --it-footer-muted:     #a3a3a3;   /* footer link/copy + social-ring grey */
 
     /* Content text on light surfaces (Figma section copy) */
     --it-heading:          #2c2c2c;
@@ -246,6 +247,7 @@
     --color-it-ink-secondary:   var(--it-ink-secondary);
     --color-it-ink-muted:       var(--it-ink-muted);
     --color-it-ink-placeholder: var(--it-ink-placeholder);
+    --color-it-footer-muted:    var(--it-footer-muted);
     --color-it-white:           var(--it-white);
     --color-it-bg:              var(--it-bg);
     --color-it-surface:         var(--it-surface);
