@@ -18,26 +18,14 @@ export const HUB_TYPE_VALUES: HubType[] = ['LOCATION', 'HIGHLIGHT', 'AREA'];
 // Supported currencies (ISO 4217) — must match the backend Prisma `Currency` enum.
 export type Currency =
   | 'USD'
-  | 'EUR'
-  | 'GBP'
-  | 'CAD'
-  | 'ANG'
-  | 'AWG'
-  | 'XCD'
-  | 'BSD';
+  | 'EUR';
 
-export const CURRENCY_VALUES: Currency[] = ['USD', 'EUR', 'GBP', 'CAD', 'ANG', 'AWG', 'XCD', 'BSD'];
+export const CURRENCY_VALUES: Currency[] = ['USD', 'EUR'];
 
 /** Currency code → human label for selectors. */
 export const CURRENCY_LABELS: Record<Currency, string> = {
-  USD: 'USD — US Dollar',
-  EUR: 'EUR — Euro',
-  GBP: 'GBP — British Pound',
-  CAD: 'CAD — Canadian Dollar',
-  ANG: 'ANG — Netherlands Antillean Guilder',
-  AWG: 'AWG — Aruban Florin',
-  XCD: 'XCD — East Caribbean Dollar',
-  BSD: 'BSD — Bahamian Dollar',
+  USD: 'USD',
+  EUR: 'EUR',
 };
 
 export type AttributeDataType =

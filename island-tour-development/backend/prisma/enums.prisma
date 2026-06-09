@@ -226,12 +226,6 @@ enum HubType {
 enum Currency {
   USD // US Dollar
   EUR // Euro
-  GBP // British Pound
-  CAD // Canadian Dollar
-  ANG // Netherlands Antillean Guilder (Curaçao, Sint Maarten)
-  AWG // Aruban Florin (Aruba)
-  XCD // East Caribbean Dollar (Saint Lucia)
-  BSD // Bahamian Dollar (Bahamas)
 }
 
 enum SlugEntityType {
