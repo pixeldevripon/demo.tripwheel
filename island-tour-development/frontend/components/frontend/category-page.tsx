@@ -288,6 +288,7 @@ export async function CategoryPage({
                                 </h2>
                                 <CategoryFilterBar
                                     dict={dict.destination.categoryFilter}
+                                    filterDict={t.filterModal}
                                     categories={SECONDARY_FILTER_CATEGORIES}
                                 />
                             </div>

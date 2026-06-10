@@ -294,7 +294,7 @@ export function CategoryFilterBar({
                             {chips.map((chip) => (
                                 <span
                                     key={chip.key}
-                                    className='flex items-center gap-[3px] rounded-it-full border border-it-heading/10 bg-it-surface py-[5px] pr-5 pl-5'>
+                                    className='flex items-center gap-0.75 rounded-it-full border border-it-heading/10 bg-it-surface py-1.25 pr-5 pl-5'>
                                     <span className='whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                         {chip.label}
                                     </span>
