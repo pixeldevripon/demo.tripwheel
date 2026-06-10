@@ -1,6 +1,8 @@
 import type {
   CategoriesQueryParams,
+  CategoryByDestination,
   CategoryDetail,
+  CategoryDetailByDestination,
   CategoryFaq,
   CategoryLocalized,
   CategoryPageContent,
@@ -61,6 +63,21 @@ export const categoriesApi = {
     return apiFetch<CategoryLocalized[]>(`/categories/active${query}`);
   },
 
+  /**
+   * Categories that have ≥1 published (LIVE) tour at this destination, localized,
+   * each with its per-destination `publishedTourCount`. This is the source for
+   * the destination "Explore by type" rail + category quick-filters: it returns
+   * exactly the categories whose pages will render (gating-consistent), so links
+   * never 404. Returns `[]` when the destination has no published tours yet.
+   */
+  getActiveByDestination(
+    destinationSlug: string,
+    locale?: Locale,
+  ): Promise<CategoryByDestination[]> {
+    const query = buildQuery({ locale: locale ?? undefined });
+    return apiFetch<CategoryByDestination[]>(`/categories/destination/${destinationSlug}${query}`);
+  },
+
   getById(id: string, locale?: Locale): Promise<CategoryDetail> {
     const query = buildQuery({ locale: locale ?? undefined });
     return apiFetch<CategoryDetail>(`/categories/${id}${query}`);
@@ -69,6 +86,28 @@ export const categoriesApi = {
   getBySlug(slug: string, locale?: Locale): Promise<CategoryDetail> {
     const query = buildQuery({ locale: locale ?? undefined });
     return apiFetch<CategoryDetail>(`/categories/slug/${slug}${query}`);
+  },
+
+  /**
+   * Destination-scoped, tour-gated category detail — the public category PAGE
+   * fetch. Returns `publishedTourCount`; the backend 404s when the category has
+   * **zero** published tours at this destination (Stage-3 gating —
+   * ROUTING-AND-RESOLUTION.md §7). Maps a 404 to `null` so the page can render
+   * `notFound()`; other failures throw.
+   */
+  async getBySlugForDestination(
+    destinationSlug: string,
+    categorySlug: string,
+    locale?: Locale,
+  ): Promise<CategoryDetailByDestination | null> {
+    const query = buildQuery({ locale: locale ?? undefined });
+    const res = await fetch(
+      `${BASE_URL}/categories/destination/${destinationSlug}/${categorySlug}${query}`,
+      { credentials: 'include', headers: { 'Content-Type': 'application/json' } },
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Category fetch failed (${res.status})`);
+    return res.json() as Promise<CategoryDetailByDestination>;
   },
 
   create(payload: CreateCategoryPayload): Promise<CategoryDetail> {

@@ -10,18 +10,20 @@ import {
 } from '@/components/frontend/destination-listings';
 import type { TourListing } from '@/components/frontend/tour-card';
 import { FaqSection } from '@/components/frontend/faq-section';
+import { categoriesApi } from '@/lib/api/categories';
+import { destinationsApi } from '@/lib/api/destinations';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
 
-// Destination display names (proper nouns — not translated, only resolved from the slug).
-const DESTINATION_NAMES: Record<string, string> = {
-    curacao: 'Curaçao',
-    aruba: 'Aruba',
-    'sint-maarten': 'Sint Maarten',
-    'saint-lucia': 'Saint Lucia',
-    bonaire: 'Bonaire',
-};
+// Fallback slugs for static generation if the backend is unreachable at build.
+const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+];
 
 // Total published tours per destination (placeholder — comes from the API later).
 // Drives the conditional "See all {count} tours" CTA (count shown only when ≥ 20).
@@ -46,46 +48,6 @@ const DEFAULT_POPULAR = [
     { label: 'Boat Tours', slug: 'boat-tours' },
     { label: 'Snorkeling', slug: 'snorkeling' },
     { label: 'Island Hopping', slug: 'island-hopping' },
-];
-
-// "Explore by type" cards (placeholder — comes from the API later).
-const EXPLORE_TYPES: ExploreType[] = [
-    {
-        name: 'Klein Curaçao',
-        slug: 'klein-curacao',
-        tours: 42,
-        image: '/images/home-page/islands/curacao.jpg',
-    },
-    {
-        name: 'Boat Tours',
-        slug: 'boat-tours',
-        tours: 42,
-        image: '/images/home-page/categories/catamaran-trips.jpg',
-    },
-    {
-        name: 'Sunset Cruises',
-        slug: 'sunset-cruises',
-        tours: 42,
-        image: '/images/home-page/islands/aruba.jpg',
-    },
-    {
-        name: 'Off-Road Tours',
-        slug: 'off-road-tours',
-        tours: 42,
-        image: '/images/home-page/categories/buggy-tours.jpg',
-    },
-    {
-        name: 'Snorkeling Trips',
-        slug: 'snorkeling',
-        tours: 42,
-        image: '/images/home-page/categories/snorkel-trips.jpg',
-    },
-    {
-        name: 'Private Charters',
-        slug: 'luxury-experiences',
-        tours: 42,
-        image: '/images/home-page/islands/saint-lucia.jpg',
-    },
 ];
 
 // ── Locals' Favorites mock data (6 cards — replace with API data later) ─────
@@ -193,9 +155,17 @@ const TOURS: TourListing[] = [
     },
 ];
 
-/** Prerender the known destinations so `params` is static (no request-time dynamic hole). */
-export function generateStaticParams() {
-    return Object.keys(DESTINATION_NAMES).map(destination => ({ destination }));
+/** Prerender active destinations from the backend; fall back to launch slugs. */
+export async function generateStaticParams() {
+    try {
+        const destinations = await destinationsApi.getActive();
+        if (destinations.length > 0) {
+            return destinations.map(d => ({ destination: d.slug }));
+        }
+    } catch {
+        // backend unavailable at build — fall through to launch slugs
+    }
+    return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
 }
 
 /**
@@ -211,9 +181,29 @@ export default async function DestinationPage({
     if (!isLocale(locale)) notFound();
 
     const dict = await getDictionary(locale);
-    const destinationName =
-        DESTINATION_NAMES[destination] ??
-        destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    // Resolve the destination from the backend (localized name). A missing or
+    // inactive destination 404s (MULTILINGUAL-CONTENT.md §5.9–§5.10).
+    const dest = await destinationsApi
+        .getBySlug(destination, locale as Locale)
+        .catch(() => null);
+    if (!dest || !dest.isActive) notFound();
+    const destinationName = dest.name;
+
+    // "Explore by type" — categories that have ≥1 published tour at this
+    // destination (localized, with real per-destination counts). Gating-consistent
+    // with the category pages, so every card links to a page that will render.
+    const exploreCategories: ExploreType[] = await categoriesApi
+        .getActiveByDestination(destination, locale as Locale)
+        .then(cats =>
+            cats.map(c => ({
+                name: c.name,
+                slug: c.slug,
+                tours: c.publishedTourCount,
+                image: c.heroImage ?? undefined,
+            })),
+        )
+        .catch(() => []);
 
     return (
         <>
@@ -223,12 +213,14 @@ export default async function DestinationPage({
                 locale={locale as Locale}
                 popular={POPULAR[destination] ?? DEFAULT_POPULAR}
             />
-            <DestinationExploreTypes
-                dict={dict.destination.exploreTypes}
-                locale={locale as Locale}
-                destinationSlug={destination}
-                categories={EXPLORE_TYPES}
-            />
+            {exploreCategories.length > 0 && (
+                <DestinationExploreTypes
+                    dict={dict.destination.exploreTypes}
+                    locale={locale as Locale}
+                    destinationSlug={destination}
+                    categories={exploreCategories}
+                />
+            )}
             <DestinationListings
                 dict={dict.destination.listings}
                 tours={TOURS}

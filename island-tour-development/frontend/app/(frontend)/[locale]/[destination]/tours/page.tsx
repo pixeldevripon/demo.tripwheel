@@ -9,18 +9,19 @@ import {
     ToursListing,
 } from '@/components/frontend/tours-listing';
 import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
+import { destinationsApi } from '@/lib/api/destinations';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
 
-// Destination display names (proper nouns — not translated, only resolved from the slug).
-const DESTINATION_NAMES: Record<string, string> = {
-    curacao: 'Curaçao',
-    aruba: 'Aruba',
-    'sint-maarten': 'Sint Maarten',
-    'saint-lucia': 'Saint Lucia',
-    bonaire: 'Bonaire',
-};
+// Fallback slugs for static generation if the backend is unreachable at build.
+const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+];
 
 // Category quick-filter pills (placeholder — comes from the API later).
 const FILTER_CATEGORIES: FilterCategory[] = [
@@ -138,9 +139,17 @@ const ALL_TOURS: TourListing[] = [0, 1, 2].flatMap(group =>
     BASE_TOURS.map(tour => ({ ...tour, id: `${tour.id}-${group}` }))
 );
 
-/** Prerender the known destinations so `params` is static. */
-export function generateStaticParams() {
-    return Object.keys(DESTINATION_NAMES).map(destination => ({ destination }));
+/** Prerender active destinations from the backend; fall back to launch slugs. */
+export async function generateStaticParams() {
+    try {
+        const destinations = await destinationsApi.getActive();
+        if (destinations.length > 0) {
+            return destinations.map(d => ({ destination: d.slug }));
+        }
+    } catch {
+        // backend unavailable at build — fall through to launch slugs
+    }
+    return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
 }
 
 /**
@@ -156,9 +165,13 @@ export default async function AllToursPage({
     if (!isLocale(locale)) notFound();
 
     const dict = await getDictionary(locale);
-    const destinationName =
-        DESTINATION_NAMES[destination] ??
-        destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    // Resolve the destination from the backend (localized name); 404 if missing/inactive.
+    const dest = await destinationsApi
+        .getBySlug(destination, locale as Locale)
+        .catch(() => null);
+    if (!dest || !dest.isActive) notFound();
+    const destinationName = dest.name;
 
     return (
         <>
@@ -168,10 +181,10 @@ export default async function AllToursPage({
                 destinationSlug={destination}
                 dict={dict.destination.allTours.breadcrumb}
             />
-            <section className='bg-it-white pb-32.5'>
+            <section className='bg-it-white pb-8 md:pb-32.5'>
                 <div className='it-container'>
                     {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
-                    <div className='flex flex-col max-md:gap-8 gap-10 pt-15'>
+                    <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
                         <ToursHeader
                             dict={dict.destination.allTours.heading}
                             destinationName={destinationName}

@@ -316,11 +316,12 @@ for (const locale of LOCALES) revalidatePath(`/${locale}/aruba/`);
 | Flat tour URLs (Stage 4/5 — no hub-nested route, no `hubSlug` param) | ✅ Implemented |
 | Frontend `[locale]/[destination]/page.tsx` (destination) | ✅ Built |
 | Frontend `[locale]/[destination]/tours/page.tsx` (RESERVED listing) | ✅ Built |
-| Frontend `[locale]/[destination]/[slug]/page.tsx` (polymorphic resolver + switch) | ⬜ **Not yet built** |
-| `lib/api/slug-registry.ts` → `resolveSlug()` | ⬜ Not yet built |
-| `CategoryPage` / `HubPage` / `CollectionPage` / `TourPage` components | ⬜ Not yet built |
+| Frontend `[locale]/[destination]/[slug]/page.tsx` (polymorphic resolver + switch) | ✅ Built — resolve→switch + localized metadata/hreflang |
+| `lib/api/slug-registry.ts` → `resolveSlug()` | ✅ Built (returns `null` on 404 → `notFound()`) |
+| `CategoryPage` component | ✅ Built (`components/frontend/category-page.tsx`) — gated detail + page-content + FAQs, reuses the All-Tours layout |
+| `HubPage` / `CollectionPage` / `TourPage` components | ⬜ Not yet built — `[slug]` switch 404s these branches for now |
 
-**The single missing piece** for full public routing is the dynamic `[slug]` route (the resolve→switch in §5.2) and the four page components it dispatches to. Everything it depends on (the resolve endpoint, the registry rows, the detail endpoints) already exists.
+**Remaining piece** for full public routing is the HUB / COLLECTION / TOUR page components (the `[slug]` resolve→switch and the CATEGORY branch are built). Everything they depend on (the resolve endpoint, the registry rows, the detail endpoints) already exists.
 
 ### Frontend build tasks
 
