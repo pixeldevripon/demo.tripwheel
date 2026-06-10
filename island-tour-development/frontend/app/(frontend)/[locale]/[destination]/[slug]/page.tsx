@@ -32,6 +32,52 @@ async function resolveDestinationName(
 
 type PageParams = { locale: string; destination: string; slug: string };
 
+// Fallback combos for static generation if the backend is unreachable at build.
+// Pairing the launch destinations with a few canonical category slugs guarantees
+// `generateStaticParams` is never empty, which keeps `[destination]`/`[slug]` in
+// static-generation mode (so the shared `[locale]` layout's `await params` is not
+// treated as request-time data and the static shell prerenders without blocking).
+const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+];
+const FALLBACK_CATEGORY_SLUGS = ['boat-tours', 'snorkeling', 'sunset-cruises'];
+
+/**
+ * Prerender the destination × category combos from the backend (gating-consistent
+ * with `getActiveByDestination`, so every prerendered path actually renders).
+ * Non-listed slugs (hubs, etc.) render on demand via the default `dynamicParams`.
+ *
+ * This must stay non-empty: providing ≥1 sample keeps the dynamic segments in
+ * static-generation mode, which is what stops the `[locale]` layout from blocking
+ * on `params` under Cache Components.
+ */
+export async function generateStaticParams() {
+    try {
+        const destinations = await destinationsApi.getActive();
+        if (destinations.length > 0) {
+            const combos = await Promise.all(
+                destinations.map(async (d) => {
+                    const cats = await categoriesApi
+                        .getActiveByDestination(d.slug, DEFAULT_LOCALE)
+                        .catch(() => []);
+                    return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
+                }),
+            );
+            const flat = combos.flat();
+            if (flat.length > 0) return flat;
+        }
+    } catch {
+        // backend unavailable at build — fall through to launch combos
+    }
+    return LAUNCH_DESTINATION_SLUGS.flatMap((destination) =>
+        FALLBACK_CATEGORY_SLUGS.map((slug) => ({ destination, slug })),
+    );
+}
+
 /**
  * Localized SEO metadata + hreflang. Slugs are identical across locales — only
  * the locale prefix changes — so every entity page emits an alternate for all 7

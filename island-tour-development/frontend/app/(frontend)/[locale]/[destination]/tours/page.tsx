@@ -24,7 +24,7 @@ const LAUNCH_DESTINATION_SLUGS = [
 ];
 
 // Category quick-filter pills (placeholder — comes from the API later).
-const FILTER_CATEGORIES: FilterCategory[] = [
+export const FILTER_CATEGORIES: FilterCategory[] = [
     { label: 'Klein Curaçao', slug: 'klein-curacao' },
     { label: 'Boat Tours', slug: 'boat-tours' },
     { label: 'Snorkeling', slug: 'snorkeling' },

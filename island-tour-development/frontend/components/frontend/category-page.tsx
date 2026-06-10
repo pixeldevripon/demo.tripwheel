@@ -2,17 +2,20 @@ import { notFound } from 'next/navigation';
 import { categoriesApi } from '@/lib/api/categories';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { CategoryFilterBar } from './category-filter-bar';
+import { CategoryTrustStrip } from './category-trust-strip';
+import { CategoryYouMightLike, type RelatedCategory } from './category-you-might-like';
 import { DestinationAbout } from './destination-about';
 import { FaqSection } from './faq-section';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
-import { ToursDatePill } from './tours-date-pill';
+import { ToursHeader } from './tours-header';
 import {
     type FilterCategory,
     ToursFilterBar,
 } from './tours-filter-bar';
 import { ToursListing } from './tours-listing';
-import { ToursTrustStrip } from './tours-trust-strip';
+import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours/page';
 
 /**
  * Category page — the CATEGORY branch of the polymorphic `[slug]` route
@@ -114,6 +117,32 @@ const MOCK_TOURS: TourListing[] = [
     },
 ];
 
+// "You might also like" card imagery. Used directly for the placeholder set
+// (when the backend returns no siblings) and as a per-card fallback when a real
+// sibling category has no `heroImage` yet — so every card always shows an image.
+const RELATED_IMAGES = [
+    '/images/home-page/categories/catamaran-trips.jpg',
+    '/images/home-page/categories/snorkel-trips.jpg',
+    '/images/home-page/islands/curacao.jpg',
+];
+const FALLBACK_RELATED: RelatedCategory[] = [
+    { name: 'Sunset Cruises', slug: 'sunset-cruises', image: RELATED_IMAGES[0] },
+    { name: 'Snorkelling', slug: 'snorkeling', image: RELATED_IMAGES[1] },
+    { name: 'Dolphin Experience', slug: 'dolphin-experience', image: RELATED_IMAGES[2] },
+];
+
+// Quick-filter pills for the secondary "active tours" listing block (Figma
+// 47171:1499) — distinct from the top listing's FILTER_CATEGORIES. Placeholder
+// until the per-attribute filter API is wired.
+const SECONDARY_FILTER_CATEGORIES: FilterCategory[] = [
+    { label: 'Catamaran', slug: 'catamaran' },
+    { label: 'Speedboat', slug: 'speedboat' },
+    { label: 'Sailing boat', slug: 'sailing-boat' },
+    { label: 'Sunset Cruises', slug: 'sunset-cruises' },
+    { label: 'Buggy Tours', slug: 'buggy-tours' },
+    { label: 'Under €100 (21)', slug: 'under-100' },
+];
+
 interface CategoryPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -150,17 +179,30 @@ export async function CategoryPage({
     const t = dict.destination.allTours;
     const total = category.publishedTourCount;
 
-    // Heading: prefer the localized H1 override, else the (already localized) name.
-    const heading = category.h1Override ?? category.name;
+    // Heading: prefer the localized H1 override, else the localized
+    // "{category} in {destination}" pattern (Figma category header).
+    const heading =
+        category.h1Override ??
+        t.heading.categoryTitle
+            .replace('{category}', category.name)
+            .replace('{destination}', destinationName);
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
-    const count = t.heading.availableCount.replace('{count}', String(total));
 
-    // Localized quick-filter pills; current category pinned + pre-selected.
-    const filterCategories: FilterCategory[] = activeCategories.map((c) => ({
-        label: c.name,
-        slug: c.slug,
-    }));
     const currentChip: FilterCategory = { label: category.name, slug: category.slug };
+
+    // "You might also like" — sibling categories at this destination (current one
+    // excluded), up to 3. Falls back to the placeholder set until the backend
+    // returns siblings.
+    const relatedFromApi: RelatedCategory[] = activeCategories
+        .filter((c) => c.slug !== category.slug)
+        .slice(0, 3)
+        .map((c, i) => ({
+            name: c.name,
+            slug: c.slug,
+            image: c.heroImage ?? RELATED_IMAGES[i % RELATED_IMAGES.length],
+        }));
+    const relatedCategories =
+        relatedFromApi.length > 0 ? relatedFromApi : FALLBACK_RELATED;
 
     // FAQs come from the backend (per locale); reuse the FAQ section chrome from
     // the dictionary and swap in the localized items. Hidden when there are none.
@@ -178,32 +220,21 @@ export async function CategoryPage({
                 dict={{ home: t.breadcrumb.home, current: breadcrumbLabel }}
             />
 
-            <section className='bg-it-white pb-32.5'>
+            <section className='bg-it-white pb-17.5 md:pb-32.5'>
                 <div className='it-container'>
+                    {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
                     <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
-                        {/* ── Category header (localized H1 + overview + count) ── */}
-                        <div className='flex flex-col gap-4 md:gap-2'>
-                            <div className='flex flex-col gap-2 md:gap-1'>
-                                <h1 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                    {heading}
-                                </h1>
-                                {category.overview && (
-                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                        {category.overview}
-                                    </p>
-                                )}
-                            </div>
-                            <div className='flex items-center justify-between gap-2'>
-                                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                    <span className='font-medium text-it-heading'>{count}</span>{' '}
-                                    <span className='text-it-text-muted'>{t.heading.availableLabel}</span>
-                                </p>
-                                <ToursDatePill
-                                    selectDateLabel={t.toolbar.selectDate}
-                                    className='md:hidden'
-                                />
-                            </div>
-                        </div>
+                        {/* Category header — reuses the All-Tours heading with a
+                            pre-resolved "{category} in {destination}" title and a
+                            category-specific subtitle. */}
+                        <ToursHeader
+                            dict={t.heading}
+                            destinationName={destinationName}
+                            total={total}
+                            selectDateLabel={t.toolbar.selectDate}
+                            title={heading}
+                            subtitle='Most boat tours offer free cancellation up to 48h before'
+                        />
 
                         <div className='h-px w-full bg-it-heading/10' aria-hidden='true' />
 
@@ -214,7 +245,7 @@ export async function CategoryPage({
                                 sortDict={t.sort}
                                 filterDict={t.filterModal}
                                 hasReviews
-                                categories={filterCategories}
+                                categories={FILTER_CATEGORIES}
                                 guestCount={2}
                                 shown={Math.min(MOCK_TOURS.length, total)}
                                 total={total}
@@ -225,14 +256,52 @@ export async function CategoryPage({
                             <ToursListing
                                 tours={MOCK_TOURS}
                                 dict={dict.destination.listings}
-                                pageCount={Math.max(1, Math.ceil(total / MOCK_TOURS.length))}
+                                pageCount={6}
                             />
                         </div>
                     </div>
                 </div>
             </section>
 
-            <ToursTrustStrip dict={t.trust} />
+            {/* "You might also like" — related sibling categories (Figma 47070:2238). */}
+            <CategoryYouMightLike
+                title={dict.destination.youMightLike}
+                items={relatedCategories}
+                locale={locale}
+                destinationSlug={destinationSlug}
+            />
+
+            {/* ── Big section (Figma 47171:1499): trust strip + a second
+                "active tours" header/filter/listing block. ── */}
+            <section className='it-section max-md:pt-8! bg-it-white'>
+                <div className='it-container'>
+                    {/* 56px between the header/filter block and the grid. */}
+                    <div className='flex flex-col gap-14'>
+                        {/* 40px between the trust strip and the header/filter. */}
+                        <div className='flex flex-col gap-10'>
+                            <CategoryTrustStrip dict={dict.destination.categoryTrust} />
+
+                            {/* Header + filter toolbar (Figma 2147227767) — 40px gap. */}
+                            <div className='flex flex-col gap-10'>
+                                <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                                    Boat tours active
+                                </h2>
+                                <CategoryFilterBar
+                                    dict={dict.destination.categoryFilter}
+                                    categories={SECONDARY_FILTER_CATEGORIES}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Listing grid — 6 cards, no pagination (Figma 2147227769). */}
+                        <ToursListing
+                            tours={MOCK_TOURS}
+                            dict={dict.destination.listings}
+                            pageCount={1}
+                        />
+                    </div>
+                </div>
+            </section>
 
             {/* Editorial "about" section — only when the locale has aboutText. */}
             {pageContent.aboutText && (

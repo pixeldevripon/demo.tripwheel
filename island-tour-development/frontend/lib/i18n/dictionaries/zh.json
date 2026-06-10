@@ -129,6 +129,7 @@
       },
       "heading": {
         "title": "{year}年{destination}的所有行程与活动",
+        "categoryTitle": "{destination}的{category}",
         "subtitle": "从克莱因库拉索的一日游到沙滩车冒险，我们在岛上提供的每一个行程。",
         "availableCount": "{count} 个行程",
         "availableLabel": "可预订"
@@ -223,6 +224,34 @@
     "exploreTypes": {
       "title": "按类型探索",
       "tours": "个项目"
+    },
+    "youMightLike": "您可能也喜欢",
+    "categoryTrust": {
+      "builtByLocals": "由在此长大的当地人打造",
+      "freeCancellation": "大多数行程免费取消",
+      "whatsapp": "WhatsApp 支持，我们是本地人",
+      "deposit": "仅需 20% 定金即可预订"
+    },
+    "categoryFilter": {
+      "date": "日期",
+      "duration": "时长",
+      "price": "价格",
+      "groupSize": "团队人数",
+      "language": "语言",
+      "activeFilters": "已选筛选：",
+      "clearAll": "全部清除",
+      "groupSizeLabel": "出行人数",
+      "groupSizeHint": "您团队的总人数",
+      "guideLanguageTitle": "导游语言",
+      "languages": {
+        "en": "英语",
+        "es": "西班牙语",
+        "nl": "荷兰语",
+        "pap": "帕皮阿门托语",
+        "fr": "法语",
+        "de": "德语",
+        "pt": "葡萄牙语"
+      }
     },
     "about": {
       "title": "关于{destination}的旅行",

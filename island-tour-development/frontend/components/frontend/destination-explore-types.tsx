@@ -53,14 +53,16 @@ export function DestinationExploreTypes({
                     </h2>
 
                     <div className='relative'>
-                        <div ref={emblaRef} className='overflow-hidden'>
+                        <div
+                            ref={emblaRef}
+                            className='overflow-x-scroll it-scrollbar-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden '>
                             <div className='flex gap-4 md:gap-6'>
-                                {categories.map((cat) => (
+                                {categories.map(cat => (
                                     <Link
                                         key={cat.slug}
                                         href={localizeHref(
                                             locale,
-                                            `/${destinationSlug}/${cat.slug}`,
+                                            `/${destinationSlug}/${cat.slug}`
                                         )}
                                         className='group relative block size-40 md:size-45 shrink-0 overflow-hidden rounded-[16px] bg-it-border'>
                                         {cat.image && (
@@ -102,7 +104,10 @@ export function DestinationExploreTypes({
                             onClick={() => emblaApi?.scrollNext()}
                             disabled={!canNext}
                             className='hidden lg:grid absolute top-1/2 right-0 size-12 translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
-                            <ChevronRight className='size-7' strokeWidth={1.5} />
+                            <ChevronRight
+                                className='size-7'
+                                strokeWidth={1.5}
+                            />
                         </button>
                     </div>
                 </Reveal>
@@ -110,3 +115,4 @@ export function DestinationExploreTypes({
         </section>
     );
 }
+

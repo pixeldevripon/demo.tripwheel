@@ -129,6 +129,7 @@
       },
       "heading": {
         "title": "Alle {destination} tours & activiteiten in {year}",
+        "categoryTitle": "{category} in {destination}",
         "subtitle": "Van dagtrips naar Klein Curaçao tot buggy-avonturen. Elke tour die we op het eiland aanbieden.",
         "availableCount": "{count} tours",
         "availableLabel": "beschikbaar"
@@ -223,6 +224,34 @@
     "exploreTypes": {
       "title": "Verken op type",
       "tours": "tours"
+    },
+    "youMightLike": "Misschien vind je dit ook leuk",
+    "categoryTrust": {
+      "builtByLocals": "Gemaakt door locals die hier opgroeiden",
+      "freeCancellation": "Gratis annulering bij de meeste tours",
+      "whatsapp": "WhatsApp-ondersteuning, wij zijn lokaal",
+      "deposit": "Slechts 20% aanbetaling om te boeken"
+    },
+    "categoryFilter": {
+      "date": "Datum",
+      "duration": "Duur",
+      "price": "Prijs",
+      "groupSize": "Groepsgrootte",
+      "language": "Taal",
+      "activeFilters": "Actieve filters:",
+      "clearAll": "Alles wissen",
+      "groupSizeLabel": "Reizigers",
+      "groupSizeHint": "Totaal aantal personen in je groep",
+      "guideLanguageTitle": "Taal van de gids",
+      "languages": {
+        "en": "Engels",
+        "es": "Spaans",
+        "nl": "Nederlands",
+        "pap": "Papiaments",
+        "fr": "Frans",
+        "de": "Duits",
+        "pt": "Portugees"
+      }
     },
     "about": {
       "title": "Over tours in {destination}",

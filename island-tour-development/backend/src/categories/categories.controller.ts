@@ -49,6 +49,7 @@ import {
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
+import { Throttle } from '@nestjs/throttler/dist/throttler.decorator';
 
 @ApiTags('Categories')
 @Controller('categories')

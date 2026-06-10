@@ -59,7 +59,7 @@ export function countActiveFilters(f: TourFilters): number {
 
 /* ── Control atoms ─────────────────────────────────────────────────── */
 
-function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+export function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
     return (
         <button
             type='button'
@@ -142,7 +142,7 @@ function Stars({ rating }: { rating: number }) {
     );
 }
 
-function PriceRange({ value, onChange }: { value: [number, number]; onChange: (v: [number, number]) => void }) {
+export function PriceRange({ value, onChange }: { value: [number, number]; onChange: (v: [number, number]) => void }) {
     const trackRef = useRef<HTMLDivElement>(null);
     const [drag, setDrag] = useState<null | 0 | 1>(null);
     const pct = (v: number) => ((v - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;

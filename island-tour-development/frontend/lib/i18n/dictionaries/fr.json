@@ -129,6 +129,7 @@
       },
       "heading": {
         "title": "Toutes les excursions et activités à {destination} en {year}",
+        "categoryTitle": "{category} à {destination}",
         "subtitle": "Des excursions d'une journée à Klein Curaçao aux aventures en buggy. Toutes les excursions que nous proposons sur l'île.",
         "availableCount": "{count} excursions",
         "availableLabel": "disponibles"
@@ -223,6 +224,34 @@
     "exploreTypes": {
       "title": "Explorer par type",
       "tours": "circuits"
+    },
+    "youMightLike": "Vous aimerez aussi",
+    "categoryTrust": {
+      "builtByLocals": "Créé par des locaux qui ont grandi ici",
+      "freeCancellation": "Annulation gratuite sur la plupart des excursions",
+      "whatsapp": "Assistance WhatsApp, nous sommes locaux",
+      "deposit": "Seulement 20% d'acompte pour réserver"
+    },
+    "categoryFilter": {
+      "date": "Date",
+      "duration": "Durée",
+      "price": "Prix",
+      "groupSize": "Taille du groupe",
+      "language": "Langue",
+      "activeFilters": "Filtres actifs :",
+      "clearAll": "Tout effacer",
+      "groupSizeLabel": "Voyageurs",
+      "groupSizeHint": "Nombre total de personnes dans votre groupe",
+      "guideLanguageTitle": "Langue du guide",
+      "languages": {
+        "en": "Anglais",
+        "es": "Espagnol",
+        "nl": "Néerlandais",
+        "pap": "Papiamento",
+        "fr": "Français",
+        "de": "Allemand",
+        "pt": "Portugais"
+      }
     },
     "about": {
       "title": "À propos des excursions à {destination}",
