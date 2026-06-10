@@ -226,6 +226,8 @@
       "tours": "tours"
     },
     "youMightLike": "Misschien vind je dit ook leuk",
+    "categoryAboutTitle": "Over {category} in {destination}",
+    "faqTitle": "Veelgestelde vragen",
     "categoryTrust": {
       "builtByLocals": "Gemaakt door locals die hier opgroeiden",
       "freeCancellation": "Gratis annulering bij de meeste tours",

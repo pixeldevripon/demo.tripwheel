@@ -226,6 +226,8 @@
       "tours": "Touren"
     },
     "youMightLike": "Das könnte dir auch gefallen",
+    "categoryAboutTitle": "Über {category} in {destination}",
+    "faqTitle": "Häufig gestellte Fragen",
     "categoryTrust": {
       "builtByLocals": "Von Einheimischen erstellt, die hier aufgewachsen sind",
       "freeCancellation": "Kostenlose Stornierung bei den meisten Touren",

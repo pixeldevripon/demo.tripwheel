@@ -226,6 +226,8 @@
       "tours": "circuits"
     },
     "youMightLike": "Vous aimerez aussi",
+    "categoryAboutTitle": "À propos de {category} à {destination}",
+    "faqTitle": "Questions fréquentes",
     "categoryTrust": {
       "builtByLocals": "Créé par des locaux qui ont grandi ici",
       "freeCancellation": "Annulation gratuite sur la plupart des excursions",

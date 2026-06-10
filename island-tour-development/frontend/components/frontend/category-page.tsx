@@ -1,21 +1,21 @@
-import { notFound } from 'next/navigation';
+import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours/page';
 import { categoriesApi } from '@/lib/api/categories';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { notFound } from 'next/navigation';
+import { CategoryAbout } from './category-about';
 import { CategoryFilterBar } from './category-filter-bar';
 import { CategoryTrustStrip } from './category-trust-strip';
-import { CategoryYouMightLike, type RelatedCategory } from './category-you-might-like';
-import { DestinationAbout } from './destination-about';
+import {
+    CategoryYouMightLike,
+    type RelatedCategory,
+} from './category-you-might-like';
 import { FaqSection } from './faq-section';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
+import { type FilterCategory, ToursFilterBar } from './tours-filter-bar';
 import { ToursHeader } from './tours-header';
-import {
-    type FilterCategory,
-    ToursFilterBar,
-} from './tours-filter-bar';
 import { ToursListing } from './tours-listing';
-import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours/page';
 
 /**
  * Category page — the CATEGORY branch of the polymorphic `[slug]` route
@@ -40,7 +40,11 @@ import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours
 const MOCK_TOURS: TourListing[] = [
     {
         id: 'c-1',
-        images: ['/images/tours/tour-1-1.jpg', '/images/tours/tour-1-2.jpg', '/images/tours/tour-1-3.jpg'],
+        images: [
+            '/images/tours/tour-1-1.jpg',
+            '/images/tours/tour-1-2.jpg',
+            '/images/tours/tour-1-3.jpg',
+        ],
         badge: 'new',
         title: 'Klein Curaçao Catamaran Day Trip with Open bar & BBQ included',
         duration: '4 to 5 hours',
@@ -64,7 +68,11 @@ const MOCK_TOURS: TourListing[] = [
     },
     {
         id: 'c-3',
-        images: ['/images/tours/tour-3-1.jpg', '/images/tours/tour-3-2.jpg', '/images/tours/tour-3-3.jpg'],
+        images: [
+            '/images/tours/tour-3-1.jpg',
+            '/images/tours/tour-3-2.jpg',
+            '/images/tours/tour-3-3.jpg',
+        ],
         badge: 'mostPopular',
         rating: 4.8,
         reviewCount: 1738,
@@ -77,7 +85,11 @@ const MOCK_TOURS: TourListing[] = [
     },
     {
         id: 'c-4',
-        images: ['/images/tours/tour-4-1.jpg', '/images/tours/tour-4-2.jpg', '/images/tours/tour-4-3.jpg'],
+        images: [
+            '/images/tours/tour-4-1.jpg',
+            '/images/tours/tour-4-2.jpg',
+            '/images/tours/tour-4-3.jpg',
+        ],
         badge: null,
         rating: 4.8,
         reviewCount: 1738,
@@ -91,7 +103,11 @@ const MOCK_TOURS: TourListing[] = [
     },
     {
         id: 'c-5',
-        images: ['/images/tours/tour-5-1.jpg', '/images/tours/tour-3-2.jpg', '/images/tours/tour-3-3.jpg'],
+        images: [
+            '/images/tours/tour-5-1.jpg',
+            '/images/tours/tour-3-2.jpg',
+            '/images/tours/tour-3-3.jpg',
+        ],
         badge: null,
         rating: 4.8,
         reviewCount: 1738,
@@ -104,7 +120,11 @@ const MOCK_TOURS: TourListing[] = [
     },
     {
         id: 'c-6',
-        images: ['/images/tours/tour-6-1.jpg', '/images/tours/tour-1-2.jpg', '/images/tours/tour-6-3.jpg'],
+        images: [
+            '/images/tours/tour-6-1.jpg',
+            '/images/tours/tour-1-2.jpg',
+            '/images/tours/tour-6-3.jpg',
+        ],
         badge: null,
         rating: 4.8,
         reviewCount: 1738,
@@ -126,9 +146,17 @@ const RELATED_IMAGES = [
     '/images/home-page/islands/curacao.jpg',
 ];
 const FALLBACK_RELATED: RelatedCategory[] = [
-    { name: 'Sunset Cruises', slug: 'sunset-cruises', image: RELATED_IMAGES[0] },
+    {
+        name: 'Sunset Cruises',
+        slug: 'sunset-cruises',
+        image: RELATED_IMAGES[0],
+    },
     { name: 'Snorkelling', slug: 'snorkeling', image: RELATED_IMAGES[1] },
-    { name: 'Dolphin Experience', slug: 'dolphin-experience', image: RELATED_IMAGES[2] },
+    {
+        name: 'Dolphin Experience',
+        slug: 'dolphin-experience',
+        image: RELATED_IMAGES[2],
+    },
 ];
 
 // Quick-filter pills for the secondary "active tours" listing block (Figma
@@ -168,10 +196,16 @@ export async function CategoryPage({
     // categories (for the localized quick-filter pills) in parallel. The detail
     // gate is authoritative — a `null` means 0 published tours → notFound().
     const [category, pageContent, faqs, activeCategories] = await Promise.all([
-        categoriesApi.getBySlugForDestination(destinationSlug, categorySlug, locale),
+        categoriesApi.getBySlugForDestination(
+            destinationSlug,
+            categorySlug,
+            locale
+        ),
         categoriesApi.getPageContent(categoryId, locale),
         categoriesApi.getFaqs(categoryId, locale),
-        categoriesApi.getActiveByDestination(destinationSlug, locale).catch(() => []),
+        categoriesApi
+            .getActiveByDestination(destinationSlug, locale)
+            .catch(() => []),
     ]);
 
     if (!category) notFound();
@@ -188,13 +222,16 @@ export async function CategoryPage({
             .replace('{destination}', destinationName);
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
 
-    const currentChip: FilterCategory = { label: category.name, slug: category.slug };
+    const currentChip: FilterCategory = {
+        label: category.name,
+        slug: category.slug,
+    };
 
     // "You might also like" — sibling categories at this destination (current one
     // excluded), up to 3. Falls back to the placeholder set until the backend
     // returns siblings.
     const relatedFromApi: RelatedCategory[] = activeCategories
-        .filter((c) => c.slug !== category.slug)
+        .filter(c => c.slug !== category.slug)
         .slice(0, 3)
         .map((c, i) => ({
             name: c.name,
@@ -204,11 +241,26 @@ export async function CategoryPage({
     const relatedCategories =
         relatedFromApi.length > 0 ? relatedFromApi : FALLBACK_RELATED;
 
-    // FAQs come from the backend (per locale); reuse the FAQ section chrome from
-    // the dictionary and swap in the localized items. Hidden when there are none.
+    // "About {category} in {destination}" editorial heading (Figma 47171:5647).
+    const aboutTitle = dict.destination.categoryAboutTitle
+        .replace('{category}', category.name)
+        .replace('{destination}', destinationName);
+    // Body copy from the backend; falls back to the localized placeholder until
+    // category page-content is authored (mirrors the MOCK_TOURS convention).
+    const aboutDescription =
+        pageContent.aboutText ?? dict.destination.about.description;
+
+    // FAQs come from the backend (per locale); reuse the FAQ accordion chrome and
+    // swap in the localized items + the "Frequently asked questions" title. Falls
+    // back to the placeholder items until category FAQs are authored.
+    const faqItems =
+        faqs.length > 0
+            ? faqs.map(f => ({ q: f.question, a: f.answer }))
+            : dict.home.faq.items;
     const faqDict = {
         ...dict.home.faq,
-        items: faqs.map((f) => ({ q: f.question, a: f.answer })),
+        title: dict.destination.faqTitle,
+        items: faqItems,
     };
 
     return (
@@ -236,7 +288,10 @@ export async function CategoryPage({
                             subtitle='Most boat tours offer free cancellation up to 48h before'
                         />
 
-                        <div className='h-px w-full bg-it-heading/10' aria-hidden='true' />
+                        <div
+                            className='h-px w-full bg-it-heading/10'
+                            aria-hidden='true'
+                        />
 
                         {/* ── Toolbar + grid ────────────────────────────────── */}
                         <div className='flex flex-col gap-8'>
@@ -273,16 +328,18 @@ export async function CategoryPage({
 
             {/* ── Big section (Figma 47171:1499): trust strip + a second
                 "active tours" header/filter/listing block. ── */}
-            <section className='it-section max-md:pt-8! bg-it-white'>
+            <section className='it-section max-md:pt-8! pb-[32px]! md:pb-[56px]! bg-it-white'>
                 <div className='it-container'>
                     {/* 56px between the header/filter block and the grid. */}
                     <div className='flex flex-col gap-14'>
                         {/* 40px between the trust strip and the header/filter. */}
-                        <div className='flex flex-col gap-10'>
-                            <CategoryTrustStrip dict={dict.destination.categoryTrust} />
+                        <div className='flex flex-col max-md:-mb-4 gap-10'>
+                            <CategoryTrustStrip
+                                dict={dict.destination.categoryTrust}
+                            />
 
-                            {/* Header + filter toolbar (Figma 2147227767) — 40px gap. */}
-                            <div className='flex flex-col gap-10'>
+                            {/* Header + filter toolbar (Figma 2147227767) — 24px mobile / 40px md+. */}
+                            <div className='flex flex-col gap-6 md:gap-10'>
                                 <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     Boat tours active
                                 </h2>
@@ -304,16 +361,18 @@ export async function CategoryPage({
                 </div>
             </section>
 
-            {/* Editorial "about" section — only when the locale has aboutText. */}
-            {pageContent.aboutText && (
-                <DestinationAbout
-                    destinationName={destinationName}
-                    dict={{ ...dict.destination.about, description: pageContent.aboutText }}
-                />
-            )}
+            {/* Editorial "about" section (Figma 47171:5647). */}
+            <CategoryAbout
+                title={aboutTitle}
+                description={aboutDescription}
+                learnMoreLabel={dict.destination.about.learnMore}
+                readLessLabel='Read Less'
+            />
 
-            {/* Category FAQs (localized) — hidden when none exist for this locale. */}
-            {faqs.length > 0 && <FaqSection dict={faqDict} />}
+            {/* Category FAQs — title + accordion only (Figma 47070:2456). */}
+            <FaqSection dict={faqDict} minimal />
         </>
     );
 }
+
+

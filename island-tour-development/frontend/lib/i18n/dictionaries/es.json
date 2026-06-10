@@ -226,6 +226,8 @@
       "tours": "tours"
     },
     "youMightLike": "También te puede gustar",
+    "categoryAboutTitle": "Sobre {category} en {destination}",
+    "faqTitle": "Preguntas frecuentes",
     "categoryTrust": {
       "builtByLocals": "Creado por locales que crecieron aquí",
       "freeCancellation": "Cancelación gratuita en la mayoría de los tours",

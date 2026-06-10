@@ -226,6 +226,8 @@
       "tours": "个项目"
     },
     "youMightLike": "您可能也喜欢",
+    "categoryAboutTitle": "关于{destination}的{category}",
+    "faqTitle": "常见问题",
     "categoryTrust": {
       "builtByLocals": "由在此长大的当地人打造",
       "freeCancellation": "大多数行程免费取消",

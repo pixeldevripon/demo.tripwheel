@@ -49,7 +49,8 @@ const DURATION_KEYS = ['upTo2', '2to4', '4to6', 'fullDay'] as const;
 /* ── Shared atom styles ────────────────────────────────────────────── */
 
 const PILL =
-    'flex h-12.5 shrink-0 cursor-pointer items-center gap-2 rounded-it-full border px-6 py-3 text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-heading transition-colors';
+    'flex h-9.5 md:h-12.5 shrink-0 cursor-pointer items-center gap-2 rounded-it-full border px-3 md:px-6 py-2 md:py-3 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-heading transition-colors';
+const PILL_ICON = 'size-5 md:size-6 shrink-0';
 const PILL_ON = 'border-it-heading bg-[#f7f7f7]';
 const PILL_OFF = 'border-it-heading/10 bg-transparent hover:bg-it-surface';
 const POPOVER =
@@ -118,17 +119,17 @@ export function CategoryFilterBar({
     }));
 
     return (
-        // Toolbar → chips row: 24px (Figma Frame 2147227674 gap=24).
-        <div className='flex flex-col gap-6'>
-            {/* Toolbar — horizontally scrollable, scrollbar hidden. */}
-            <div className='flex items-center gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                {/* Dimension pills */}
-                <div className='flex shrink-0 items-center gap-2'>
+        // Toolbar → chips row: 16px mobile / 24px md+ (Figma).
+        <div className='flex flex-col gap-4 md:gap-6'>
+            {/* Toolbar — mobile: two stacked scroll rows; md+: one scroll row. */}
+            <div className='flex flex-col gap-2 md:flex-row md:items-center md:gap-4 md:overflow-x-auto md:pb-1 md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden'>
+                {/* Dimension pills — own scroll row on mobile */}
+                <div className='flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-visible md:pb-0 md:shrink-0'>
                     {/* Date — calendar popover (same control as the top filter bar). */}
                     <Popover open={dateOpen} onOpenChange={setDateOpen}>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${date ? PILL_ON : PILL_OFF}`}>
-                                <Image src='/icons/filters/calendar.svg' alt='' width={24} height={24} className='size-6 shrink-0' />
+                                <Image src='/icons/filters/calendar.svg' alt='' width={24} height={24} className={PILL_ICON} />
                                 {date ? format(date, 'd MMM') : dict.date}
                             </button>
                         </PopoverTrigger>
@@ -151,7 +152,7 @@ export function CategoryFilterBar({
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${durations.length > 0 ? PILL_ON : PILL_OFF}`}>
-                                <Image src='/icons/filters/routing.svg' alt='' width={24} height={24} className='size-6 shrink-0' />
+                                <Image src='/icons/filters/routing.svg' alt='' width={24} height={24} className={PILL_ICON} />
                                 {dict.duration}
                             </button>
                         </PopoverTrigger>
@@ -176,7 +177,7 @@ export function CategoryFilterBar({
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${priceActive ? PILL_ON : PILL_OFF}`}>
-                                <Image src='/icons/filters/coin.svg' alt='' width={24} height={24} className='size-6 shrink-0' />
+                                <Image src='/icons/filters/coin.svg' alt='' width={24} height={24} className={PILL_ICON} />
                                 {dict.price}
                             </button>
                         </PopoverTrigger>
@@ -196,7 +197,7 @@ export function CategoryFilterBar({
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${groupSize > 0 ? PILL_ON : PILL_OFF}`}>
-                                <Image src='/icons/filters/people.svg' alt='' width={24} height={24} className='size-6 shrink-0' />
+                                <Image src='/icons/filters/people.svg' alt='' width={24} height={24} className={PILL_ICON} />
                                 {dict.groupSize}
                             </button>
                         </PopoverTrigger>
@@ -239,7 +240,7 @@ export function CategoryFilterBar({
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${languages.length > 0 ? PILL_ON : PILL_OFF}`}>
-                                <Image src='/icons/filters/global.svg' alt='' width={24} height={24} className='size-6 shrink-0' />
+                                <Image src='/icons/filters/global.svg' alt='' width={24} height={24} className={PILL_ICON} />
                                 {dict.language}
                             </button>
                         </PopoverTrigger>
@@ -261,41 +262,45 @@ export function CategoryFilterBar({
                     </Popover>
                 </div>
 
-                {/* Divider — 34px tall hairline. */}
-                <div className='h-8.5 w-px shrink-0 bg-it-heading/10' aria-hidden='true' />
+                {/* Category group — divider + pills; own scroll row on mobile.
+                    On mobile this wraps to a second row (the divider leads it). */}
+                <div className='flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-4 md:overflow-visible md:pb-0 md:shrink-0'>
+                    {/* Divider — 28px grey on mobile, 34px faint on md+. */}
+                    <div className='h-7 w-px shrink-0 bg-it-text-muted md:h-8.5 md:bg-it-heading/10' aria-hidden='true' />
 
-                {/* Category pills — single-select. */}
-                <div className='flex shrink-0 items-center gap-2'>
-                    {categories.map((cat) => {
-                        const selected = cat.slug === selectedCat;
-                        return (
-                            <button
-                                key={cat.slug}
-                                type='button'
-                                onClick={() => setSelectedCat(cat.slug)}
-                                className={`${PILL} ${
-                                    selected ? 'border-transparent bg-it-heading/10' : PILL_OFF
-                                }`}>
-                                {cat.label}
-                            </button>
-                        );
-                    })}
+                    {/* Category pills — single-select. */}
+                    <div className='flex items-center gap-1 md:gap-2'>
+                        {categories.map((cat) => {
+                            const selected = cat.slug === selectedCat;
+                            return (
+                                <button
+                                    key={cat.slug}
+                                    type='button'
+                                    onClick={() => setSelectedCat(cat.slug)}
+                                    className={`${PILL} ${
+                                        selected ? 'border-transparent bg-it-heading/10' : PILL_OFF
+                                    }`}>
+                                    {cat.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
             {/* Active Filters row — 32px between the chips group and Clear-all. */}
             {chips.length > 0 && (
                 <div className='flex flex-wrap items-center gap-x-8 gap-y-3'>
-                    <div className='flex flex-wrap items-center gap-4'>
-                        <span className='whitespace-nowrap text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <div className='flex flex-wrap items-center gap-2 md:gap-4'>
+                        <span className='whitespace-nowrap text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[16px]'>
                             {dict.activeFilters}
                         </span>
-                        <div className='flex flex-wrap items-center gap-2'>
+                        <div className='flex flex-wrap items-center gap-1 md:gap-2'>
                             {chips.map((chip) => (
                                 <span
                                     key={chip.key}
-                                    className='flex items-center gap-0.75 rounded-it-full border border-it-heading/10 bg-it-surface py-1.25 pr-5 pl-5'>
-                                    <span className='whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                    className='flex items-center gap-0.75 rounded-it-full border border-it-heading/10 bg-it-surface px-3 py-1 md:px-5 md:py-1.25'>
+                                    <span className='whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
                                         {chip.label}
                                     </span>
                                     <button
@@ -312,7 +317,7 @@ export function CategoryFilterBar({
                     <button
                         type='button'
                         onClick={clearAll}
-                        className='cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                        className='hidden cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary md:inline-flex'>
                         {dict.clearAll}
                     </button>
                 </div>

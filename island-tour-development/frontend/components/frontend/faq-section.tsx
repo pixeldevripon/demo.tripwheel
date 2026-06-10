@@ -45,15 +45,23 @@ const payments = [
     { src: '/icons/payments/pay-8.svg', alt: 'American Express' },
 ];
 
-export function FaqSection({ dict }: { dict: FaqDict }) {
+export function FaqSection({ dict, minimal = false }: { dict: FaqDict; minimal?: boolean }) {
     const [openIndex, setOpenIndex] = useState(0);
 
     return (
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-12 lg:flex-row lg:gap-[118px]'>
-                    {/* Left — help, WhatsApp, guarantees, payments.
-                        On mobile this block sits above the accordion (matches Figma). */}
+                <Reveal className={`flex flex-col lg:flex-row lg:gap-[118px] ${minimal ? 'gap-4' : 'gap-12'}`}>
+                    {/* Minimal (category page, Figma 47070:2456): title only on the left. */}
+                    {minimal ? (
+                        <div className='lg:w-113 lg:shrink-0'>
+                            <h2 className='m-0 font-medium text-[24px] lg:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                                {dict.title}
+                            </h2>
+                        </div>
+                    ) : (
+                    /* Left — help, WhatsApp, guarantees, payments.
+                        On mobile this block sits above the accordion (matches Figma). */
                     <div className='flex flex-col gap-8 lg:w-115 lg:gap-14'>
                         <div className='flex flex-col gap-12 lg:gap-14'>
                             {/* Heading */}
@@ -130,6 +138,7 @@ export function FaqSection({ dict }: { dict: FaqDict }) {
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Right — accordion */}
                     <div className='flex flex-1 flex-col gap-3 lg:gap-4'>
