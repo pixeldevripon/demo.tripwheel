@@ -56,11 +56,11 @@
       },
       {
         "title": "Plans change. No problem",
-        "body": "Most tours fully refundable — cancel up to 24h before"
+        "body": "Free cancellation on every tour, no questions asked"
       },
       {
         "title": "Help when you need it",
-        "body": "Chat 24/7 · WhatsApp anytime"
+        "body": "Message us on WhatsApp, 08:00 - 20:00"
       }
     ],
     "experiences": {
@@ -94,7 +94,7 @@
       "subtitle": "We're locals. We grew up here, we know these tours, and we want you to have the best time on these islands.",
       "whatsapp": "Chat on WhatsApp",
       "guarantees": [
-        "Free cancellation on most tours, no forms",
+        "Free cancellation, no questions asked",
         "Pay as little as 20% today, the rest later"
       ],
       "items": [
@@ -172,7 +172,7 @@
         },
         "freeCancellation": {
           "title": "Free cancellation",
-          "subtitle": "On most tours"
+          "subtitle": "No questions asked"
         },
         "message": {
           "title": "We're locals",
@@ -226,11 +226,23 @@
       "tours": "tours"
     },
     "youMightLike": "You might also like",
+    "hub": {
+      "whyTitle": "Why {hub}",
+      "titlePattern": "{hub} day trips",
+      "tripsHeading": "{count} {hub} day trips. Pick yours.",
+      "tripsSubtitle": "Select a date, or compare below first",
+      "charters": { "heading": "{count} private charters. Yours alone.", "subtitle": "Exclusively for your group, plus the crew.", "dayCharters": "Day charters", "overnightCharters": "Overnight charters" },
+      "sponsored": "Sponsored",
+      "tabs": { "trips": "Trips", "privateCharters": "Private charters", "compare": "Compare", "discover": "Discover" },
+      "tagline": "Where islanders send their visitors",
+      "selectDate": "Select date",
+      "checkAvailability": "Check Availability"
+    },
     "categoryAboutTitle": "About {category} in {destination}",
     "faqTitle": "Frequently asked questions",
     "categoryTrust": {
       "builtByLocals": "Built by locals who grew up here",
-      "freeCancellation": "Free cancellation on most tours",
+      "freeCancellation": "Free cancellation, no questions asked",
       "whatsapp": "WhatsApp support we're local",
       "deposit": "Only 20% deposit to book"
     },
@@ -259,6 +271,7 @@
       "title": "About tours in {destination}",
       "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
       "learnMore": "Learn More",
+      "readLess": "Read Less",
       "topThings": "Top things to do",
       "planning": "Planning your trip",
       "whyBook": "Why book with Island Tours"

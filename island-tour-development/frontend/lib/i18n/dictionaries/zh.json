@@ -56,11 +56,11 @@
       },
       {
         "title": "计划有变？没问题",
-        "body": "大多数旅行可全额退款 — 出发前 24 小时可取消"
+        "body": "每个行程均可免费取消，无需理由"
       },
       {
         "title": "随时为您提供帮助",
-        "body": "24/7 在线客服 · 随时 WhatsApp"
+        "body": "通过 WhatsApp 联系我们，08:00 - 20:00"
       }
     ],
     "experiences": {
@@ -94,7 +94,7 @@
       "subtitle": "我们是本地人。我们在这里长大，了解这些旅行，希望您在这些岛屿上度过最美好的时光。",
       "whatsapp": "通过 WhatsApp 聊天",
       "guarantees": [
-        "大多数旅游免费取消，无需填表",
+        "免费取消，无需理由",
         "今天最低只需支付 20%，余款稍后支付"
       ],
       "items": [
@@ -172,7 +172,7 @@
         },
         "freeCancellation": {
           "title": "免费取消",
-          "subtitle": "适用于大多数行程"
+          "subtitle": "无需理由"
         },
         "message": {
           "title": "我们是当地人",
@@ -226,11 +226,23 @@
       "tours": "个项目"
     },
     "youMightLike": "您可能也喜欢",
+    "hub": {
+      "whyTitle": "为什么选择{hub}",
+      "titlePattern": "{hub}一日游",
+      "tripsHeading": "{count}个{hub}一日游。挑选您的行程。",
+      "tripsSubtitle": "选择日期，或先在下方比较",
+      "charters": { "heading": "{count}个私人包船。专属于您。", "subtitle": "专属于您的团队，外加船员。", "dayCharters": "日间包船", "overnightCharters": "过夜包船" },
+      "sponsored": "赞助",
+      "tabs": { "trips": "行程", "privateCharters": "私人包船", "compare": "比较", "discover": "发现" },
+      "tagline": "岛民推荐访客去的地方",
+      "selectDate": "选择日期",
+      "checkAvailability": "查看可用性"
+    },
     "categoryAboutTitle": "关于{destination}的{category}",
     "faqTitle": "常见问题",
     "categoryTrust": {
       "builtByLocals": "由在此长大的当地人打造",
-      "freeCancellation": "大多数行程免费取消",
+      "freeCancellation": "免费取消，无需理由",
       "whatsapp": "WhatsApp 支持，我们是本地人",
       "deposit": "仅需 20% 定金即可预订"
     },
@@ -259,6 +271,7 @@
       "title": "关于{destination}的旅行",
       "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
       "learnMore": "了解更多",
+      "readLess": "收起",
       "topThings": "最热门的活动",
       "planning": "规划您的行程",
       "whyBook": "为什么选择 Island Tours 预订"

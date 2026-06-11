@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { Reveal } from './reveal';
 
 export type CategoryTrustDict = {
     builtByLocals: string;
@@ -24,7 +25,7 @@ const ORDER: (keyof CategoryTrustDict)[] = [
  */
 export function CategoryTrustStrip({ dict }: { dict: CategoryTrustDict }) {
     return (
-        <div className='flex flex-col gap-6 md:gap-10'>
+        <Reveal className='flex flex-col gap-6 md:gap-10'>
             <ul className='m-0 flex list-none flex-col gap-2 p-0 md:flex-row md:items-center md:justify-between md:gap-2'>
                 {ORDER.map((key) => (
                     <li key={key} className='flex items-center gap-2'>
@@ -42,6 +43,6 @@ export function CategoryTrustStrip({ dict }: { dict: CategoryTrustDict }) {
                 ))}
             </ul>
             <div className='h-px w-full bg-it-heading/10' aria-hidden='true' />
-        </div>
+        </Reveal>
     );
 }

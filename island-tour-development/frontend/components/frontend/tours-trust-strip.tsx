@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { Reveal } from './reveal';
 
 type TrustItem = { title: string; subtitle: string };
 
@@ -28,7 +29,7 @@ export function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                 {/* Mobile: 2×2 grid of compact 14px items, 16px row gaps,
                     32px band padding (Figma node 48540:16942).
                     md+: single justified row of 16px items (node 47626:9337). */}
-                <div className='grid grid-cols-2 gap-x-4 gap-y-4 py-8 md:flex md:items-center md:justify-between md:gap-x-6 md:py-22.5'>
+                <Reveal className='grid grid-cols-2 gap-x-4 gap-y-4 py-8 md:flex md:items-center md:justify-between md:gap-x-6 md:py-22.5'>
                     {ITEMS.map(({ key, icon }) => {
                         const item = dict[key];
                         return (
@@ -51,7 +52,7 @@ export function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                             </div>
                         );
                     })}
-                </div>
+                </Reveal>
             </div>
         </section>
     );

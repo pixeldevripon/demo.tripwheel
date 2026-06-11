@@ -50,6 +50,14 @@
         radial-gradient(110% 110% at 14% 88%, rgba(0, 201, 80, 0.12) 0%, transparent 52%),
         linear-gradient(135deg, #d4f1ee 0%, #eaf6f2 34%, #fdf6ec 66%, #fbe6d6 100%);
 
+    /* Hub hero — deep ocean gradient sized for white text + white borders
+       (the light hero gradient above is left untouched for existing heroes). */
+    --it-hub-hero-bg:      #0c333d;
+    --it-hub-hero-gradient:
+        radial-gradient(120% 120% at 80% 12%, rgba(232, 97, 26, 0.30) 0%, transparent 48%),
+        radial-gradient(120% 120% at 10% 92%, rgba(0, 201, 80, 0.22) 0%, transparent 54%),
+        linear-gradient(135deg, #0b2f3a 0%, #114b54 38%, #0e3b48 70%, #0a2630 100%);
+
     /* Editorial banner — solid orange base; washes to white toward the right (desktop fan) or bottom (mobile fan) */
     --it-editorial-orange: linear-gradient(135deg, #f67e01 0%, #f54900 100%);
     --it-editorial-gradient:
@@ -258,6 +266,7 @@
     --color-it-heading:         var(--it-heading);
     --color-it-text-muted:      var(--it-text-muted);
     --color-it-hero-bg:         var(--it-hero-bg);
+    --color-it-hub-hero-bg:     var(--it-hub-hero-bg);
     --color-it-hero-heading:    var(--it-hero-heading);
     --color-it-hero-text:       var(--it-hero-text);
     --color-it-search-border:     var(--it-search-border);

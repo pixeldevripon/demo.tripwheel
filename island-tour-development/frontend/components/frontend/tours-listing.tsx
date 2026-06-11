@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { Reveal } from './reveal';
 import { TourCard } from './tour-card';
 import type { TourCardDict, TourListing } from './tour-card';
 
@@ -26,7 +27,7 @@ export function ToursListing({
     const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
 
     return (
-        <div className='flex flex-col gap-12 sm:gap-18'>
+        <Reveal className='flex flex-col gap-12 sm:gap-18'>
             {/* ── Tour grid ───────────────────────────────────────────────
                 Mobile: 2-col grid of compact 177px cards (16px gaps) — the
                 <TourCard> renders its compact variant automatically below a
@@ -89,7 +90,7 @@ export function ToursListing({
                     </button>
                 </nav>
             )}
-        </div>
+        </Reveal>
     );
 }
 

@@ -56,11 +56,11 @@
       },
       {
         "title": "Os planos mudam. Sem problema",
-        "body": "A maioria dos tours é totalmente reembolsável — cancele até 24h antes"
+        "body": "Cancelamento gratuito em todos os tours, sem perguntas"
       },
       {
         "title": "Ajuda quando precisar",
-        "body": "Chat 24/7 · WhatsApp a qualquer momento"
+        "body": "Fale connosco no WhatsApp, 08:00 - 20:00"
       }
     ],
     "experiences": {
@@ -94,7 +94,7 @@
       "subtitle": "Somos locais. Crescemos aqui, conhecemos estes tours e queremos que tenha a melhor experiência nestas ilhas.",
       "whatsapp": "Conversar no WhatsApp",
       "guarantees": [
-        "Cancelamento gratuito na maioria dos tours, sem formulários",
+        "Cancelamento gratuito, sem perguntas",
         "Pague a partir de 20% hoje, o resto depois"
       ],
       "items": [
@@ -172,7 +172,7 @@
         },
         "freeCancellation": {
           "title": "Cancelamento gratuito",
-          "subtitle": "Na maioria dos tours"
+          "subtitle": "Sem perguntas"
         },
         "message": {
           "title": "Somos locais",
@@ -226,11 +226,23 @@
       "tours": "tours"
     },
     "youMightLike": "Você também pode gostar",
+    "hub": {
+      "whyTitle": "Porquê {hub}",
+      "titlePattern": "Passeios de um dia a {hub}",
+      "tripsHeading": "{count} passeios de um dia a {hub}. Escolha o seu.",
+      "tripsSubtitle": "Selecione uma data ou compare primeiro abaixo",
+      "charters": { "heading": "{count} fretamentos privados. Só para si.", "subtitle": "Exclusivamente para o seu grupo, mais a tripulação.", "dayCharters": "Fretamentos de dia", "overnightCharters": "Fretamentos noturnos" },
+      "sponsored": "Patrocinado",
+      "tabs": { "trips": "Viagens", "privateCharters": "Fretamentos privados", "compare": "Comparar", "discover": "Descobrir" },
+      "tagline": "Para onde os locais enviam os seus visitantes",
+      "selectDate": "Selecionar data",
+      "checkAvailability": "Ver disponibilidade"
+    },
     "categoryAboutTitle": "Sobre {category} em {destination}",
     "faqTitle": "Perguntas frequentes",
     "categoryTrust": {
       "builtByLocals": "Feito por locais que cresceram aqui",
-      "freeCancellation": "Cancelamento gratuito na maioria dos tours",
+      "freeCancellation": "Cancelamento gratuito, sem perguntas",
       "whatsapp": "Suporte por WhatsApp, somos locais",
       "deposit": "Apenas 20% de depósito para reservar"
     },
@@ -259,6 +271,7 @@
       "title": "Sobre passeios em {destination}",
       "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
       "learnMore": "Saiba mais",
+      "readLess": "Ler menos",
       "topThings": "Principais coisas para fazer",
       "planning": "Planejando sua viagem",
       "whyBook": "Por que reservar com a Island Tours"

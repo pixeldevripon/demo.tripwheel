@@ -11,6 +11,7 @@ import {
     type RelatedCategory,
 } from './category-you-might-like';
 import { FaqSection } from './faq-section';
+import { Reveal } from './reveal';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
 import { type FilterCategory, ToursFilterBar } from './tours-filter-bar';
@@ -328,7 +329,7 @@ export async function CategoryPage({
 
             {/* ── Big section (Figma 47171:1499): trust strip + a second
                 "active tours" header/filter/listing block. ── */}
-            <section className='it-section max-md:pt-8! pb-[32px]! md:pb-[56px]! bg-it-white'>
+            <section className='it-section max-md:pt-8! pb-8! md:pb-14! bg-it-white'>
                 <div className='it-container'>
                     {/* 56px between the header/filter block and the grid. */}
                     <div className='flex flex-col gap-14'>
@@ -339,7 +340,7 @@ export async function CategoryPage({
                             />
 
                             {/* Header + filter toolbar (Figma 2147227767) — 24px mobile / 40px md+. */}
-                            <div className='flex flex-col gap-6 md:gap-10'>
+                            <Reveal className='flex flex-col gap-6 md:gap-10'>
                                 <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     Boat tours active
                                 </h2>
@@ -348,7 +349,7 @@ export async function CategoryPage({
                                     filterDict={t.filterModal}
                                     categories={SECONDARY_FILTER_CATEGORIES}
                                 />
-                            </div>
+                            </Reveal>
                         </div>
 
                         {/* Listing grid — 6 cards, no pagination (Figma 2147227769). */}

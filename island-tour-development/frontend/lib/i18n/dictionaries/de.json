@@ -56,11 +56,11 @@
       },
       {
         "title": "Pläne ändern sich. Kein Problem",
-        "body": "Die meisten Touren sind voll erstattbar — Stornierung bis 24 Std. vorher"
+        "body": "Kostenlose Stornierung bei jeder Tour, ohne Wenn und Aber"
       },
       {
         "title": "Hilfe, wenn du sie brauchst",
-        "body": "24/7 Chat · WhatsApp jederzeit"
+        "body": "Schreib uns auf WhatsApp, 08:00 - 20:00"
       }
     ],
     "experiences": {
@@ -94,7 +94,7 @@
       "subtitle": "Wir sind Einheimische. Wir sind hier aufgewachsen, wir kennen diese Touren und möchten, dass du die beste Zeit auf diesen Inseln hast.",
       "whatsapp": "Auf WhatsApp chatten",
       "guarantees": [
-        "Kostenlose Stornierung bei den meisten Touren, ohne Formulare",
+        "Kostenlose Stornierung, ohne Wenn und Aber",
         "Zahle heute schon ab 20%, den Rest später"
       ],
       "items": [
@@ -172,7 +172,7 @@
         },
         "freeCancellation": {
           "title": "Kostenlose Stornierung",
-          "subtitle": "Bei den meisten Touren"
+          "subtitle": "Ohne Wenn und Aber"
         },
         "message": {
           "title": "Wir sind Locals",
@@ -226,11 +226,23 @@
       "tours": "Touren"
     },
     "youMightLike": "Das könnte dir auch gefallen",
+    "hub": {
+      "whyTitle": "Warum {hub}",
+      "titlePattern": "Tagesausflüge nach {hub}",
+      "tripsHeading": "{count} Tagesausflüge nach {hub}. Triff deine Wahl.",
+      "tripsSubtitle": "Wähle ein Datum oder vergleiche zuerst unten",
+      "charters": { "heading": "{count} private Charter. Ganz für dich.", "subtitle": "Exklusiv für deine Gruppe, plus die Crew.", "dayCharters": "Tagescharter", "overnightCharters": "Übernachtungscharter" },
+      "sponsored": "Gesponsert",
+      "tabs": { "trips": "Touren", "privateCharters": "Private Charter", "compare": "Vergleichen", "discover": "Entdecken" },
+      "tagline": "Wohin Einheimische ihre Besucher schicken",
+      "selectDate": "Datum auswählen",
+      "checkAvailability": "Verfügbarkeit prüfen"
+    },
     "categoryAboutTitle": "Über {category} in {destination}",
     "faqTitle": "Häufig gestellte Fragen",
     "categoryTrust": {
       "builtByLocals": "Von Einheimischen erstellt, die hier aufgewachsen sind",
-      "freeCancellation": "Kostenlose Stornierung bei den meisten Touren",
+      "freeCancellation": "Kostenlose Stornierung, ohne Wenn und Aber",
       "whatsapp": "WhatsApp-Support, wir sind vor Ort",
       "deposit": "Nur 20% Anzahlung zum Buchen"
     },
@@ -259,6 +271,7 @@
       "title": "Über Touren in {destination}",
       "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
       "learnMore": "Mehr erfahren",
+      "readLess": "Weniger anzeigen",
       "topThings": "Top-Aktivitäten",
       "planning": "Planen Sie Ihre Reise",
       "whyBook": "Warum bei Island Tours buchen"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { CategoryPage } from '@/components/frontend/category-page';
+import { HubPage } from '@/components/frontend/hub-page';
 import { categoriesApi } from '@/lib/api/categories';
 import {
     ALL_LOCALES,
@@ -161,11 +162,23 @@ export default async function EntityPage({
                 />
             );
 
+        case 'HUB':
+            if (!resolution.entityId) notFound();
+            return (
+                <HubPage
+                    destinationSlug={destination}
+                    hubSlug={slug}
+                    hubId={resolution.entityId}
+                    destinationName={destinationName}
+                    locale={locale}
+                    dict={dict}
+                />
+            );
+
         case 'RESERVED':
             redirect(localizeHref(locale, `/${destination}/tours`));
 
-        // HUB / COLLECTION / TOUR pages are not built yet (see routing doc §11).
-        case 'HUB':
+        // COLLECTION / TOUR pages are not built yet (see routing doc §11).
         case 'COLLECTION':
         case 'TOUR':
         default:
