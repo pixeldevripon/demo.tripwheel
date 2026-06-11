@@ -6,16 +6,19 @@ import { Fragment, useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HubTourCard, type HubTour, type HubTourCardDict } from './hub-tour-card';
+import { HubPicks, type HubPicksData } from './hub-picks';
 import { Reveal } from './reveal';
 
 /** One card group inside a panel — an optional title (e.g. "Day charters (11)") + its tours. */
 export type HubCardGroup = { title?: string; tours: HubTour[] };
 
-/** A scroll-nav section's content — heading, subtitle, and one or more card groups. */
+/** A scroll-nav section's content — heading, subtitle, card groups, and an optional picks block. */
 export type HubTripsPanelData = {
     title: string;
     subtitle: string;
     groups: HubCardGroup[];
+    /** Optional editorial "top picks" block appended after the groups. */
+    picks?: HubPicksData;
 };
 
 const GRID =
@@ -140,6 +143,14 @@ export function HubTripsPanel({
                           ))}
                       </Reveal>
                   )}
+
+            {/* Editorial top-picks block (Private charters). Extra top spacing
+                separates it from the grids above. */}
+            {panel.picks && (
+                <div className='pt-4 md:pt-8'>
+                    <HubPicks data={panel.picks} />
+                </div>
+            )}
         </div>
     );
 }

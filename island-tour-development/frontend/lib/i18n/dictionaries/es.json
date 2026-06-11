@@ -232,6 +232,7 @@
       "tripsHeading": "{count} excursiones de un día a {hub}. Elige la tuya.",
       "tripsSubtitle": "Selecciona una fecha o compara primero abajo",
       "charters": { "heading": "{count} chárteres privados. Solo para ti.", "subtitle": "Exclusivamente para tu grupo, más la tripulación.", "dayCharters": "Chárteres de día", "overnightCharters": "Chárteres de noche" },
+      "picks": { "heading": "Hemos estado en cada barco", "subtitle": "Nuestras mejores opciones, una para cada tipo de viajero", "bookTrip": "Reservar este viaje", "footerNote": "Nuestras elecciones honestas, no anuncios pagados.", "seeAllTours": "Ver todos los tours", "best": "MEJOR EN GENERAL", "popular": "MÁS POPULAR", "families": "MEJOR PARA FAMILIAS" },
       "sponsored": "Patrocinado",
       "tabs": { "trips": "Viajes", "privateCharters": "Chárteres privados", "compare": "Comparar", "discover": "Descubrir" },
       "tagline": "A donde los locales envían a sus visitantes",

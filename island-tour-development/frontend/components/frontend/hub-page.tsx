@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import { hubsApi } from '@/lib/api/hubs';
-import type { Locale } from '@/lib/constants/locales';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { HubHero, type HubHeroMeta } from './hub-hero';
+import { type HubPick } from './hub-pick-card';
 import { type HubTour } from './hub-tour-card';
 import { HubTripsSection } from './hub-trips-section';
 import { HubWhySection } from './hub-why-section';
@@ -96,6 +97,47 @@ const MOCK_NIGHT_CHARTERS: HubTour[] = [
     freeCancellation: true,
 }));
 
+// Editorial "We've been on every boat" top picks (Figma node 48024:11563) —
+// part of the Private charters panel. Placeholder copy until authored.
+const MOCK_PICK_CONTENT: Omit<HubPick, 'label' | 'labelText'>[] = [
+    {
+        id: 'pick-1',
+        title: 'Yacht with Beach House',
+        rating: 4.8,
+        reviewCount: 1738,
+        type: 'Yacht',
+        description:
+            "The island's only dive school, a massage with a million-dollar view, and a fully equipped beach house all on a quieter stretch, set apart from the other boats.",
+        duration: 'Full day',
+        price: 150,
+        image: null,
+    },
+    {
+        id: 'pick-2',
+        title: 'Catamaran with Open Bar',
+        rating: 4.8,
+        reviewCount: 1738,
+        type: 'Catamaran',
+        description:
+            'The biggest catamarans on the island and the best open bar of any Klein Curaçao trip. Most-booked year after year - for the ultimate Caribbean sailing vibe.',
+        duration: 'Full day',
+        price: 140,
+        image: null,
+    },
+    {
+        id: 'pick-3',
+        title: 'Family Boat with Beach House',
+        rating: 4.8,
+        reviewCount: 1738,
+        type: 'Motorboat',
+        description:
+            'A beach house with its own watch-tower a 360° view over the whole island. A calm, steady boat. Easy and relaxed for families and friends.',
+        duration: 'Full day',
+        price: 150,
+        image: null,
+    },
+];
+
 interface HubPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -142,6 +184,14 @@ export async function HubPage({
         .replace('{count}', String(MOCK_TRIPS.length))
         .replace('{hub}', hub.name);
     const chartersDict = hubDict.charters;
+    const picksDict = hubDict.picks;
+    const pickLabels: HubPick['label'][] = ['best', 'popular', 'families'];
+    const pickLabelText = [picksDict.best, picksDict.popular, picksDict.families];
+    const picks: HubPick[] = MOCK_PICK_CONTENT.map((p, i) => ({
+        ...p,
+        label: pickLabels[i],
+        labelText: pickLabelText[i],
+    }));
     const tripsTabs = [
         { key: 'trips', label: hubDict.tabs.trips },
         { key: 'private-charters', label: hubDict.tabs.privateCharters },
@@ -171,6 +221,20 @@ export async function HubPage({
                     tours: MOCK_NIGHT_CHARTERS,
                 },
             ],
+            picks: {
+                title: picksDict.heading,
+                subtitle: picksDict.subtitle,
+                footerNote: picksDict.footerNote,
+                seeAllLabel: picksDict.seeAllTours,
+                seeAllHref: localizeHref(locale, `/${destinationSlug}/tours`),
+                items: picks,
+                card: {
+                    from: listingsDict.from,
+                    bookTrip: picksDict.bookTrip,
+                    learnMore: dict.destination.about.learnMore,
+                    readLess: dict.destination.about.readLess,
+                },
+            },
         },
         null,
         null,

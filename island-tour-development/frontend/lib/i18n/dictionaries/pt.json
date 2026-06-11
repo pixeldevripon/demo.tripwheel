@@ -232,6 +232,7 @@
       "tripsHeading": "{count} passeios de um dia a {hub}. Escolha o seu.",
       "tripsSubtitle": "Selecione uma data ou compare primeiro abaixo",
       "charters": { "heading": "{count} fretamentos privados. Só para si.", "subtitle": "Exclusivamente para o seu grupo, mais a tripulação.", "dayCharters": "Fretamentos de dia", "overnightCharters": "Fretamentos noturnos" },
+      "picks": { "heading": "Já estivemos em cada barco", "subtitle": "As nossas melhores escolhas - uma para cada tipo de viajante", "bookTrip": "Reservar este passeio", "footerNote": "As nossas escolhas honestas, não colocações pagas.", "seeAllTours": "Ver todos os passeios", "best": "MELHOR NO GERAL", "popular": "MAIS POPULAR", "families": "MELHOR PARA FAMÍLIAS" },
       "sponsored": "Patrocinado",
       "tabs": { "trips": "Viagens", "privateCharters": "Fretamentos privados", "compare": "Comparar", "discover": "Descobrir" },
       "tagline": "Para onde os locais enviam os seus visitantes",

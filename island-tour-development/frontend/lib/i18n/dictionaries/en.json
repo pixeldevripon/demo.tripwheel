@@ -232,6 +232,7 @@
       "tripsHeading": "{count} {hub} day trips. Pick yours.",
       "tripsSubtitle": "Select a date, or compare below first",
       "charters": { "heading": "{count} private charters. Yours alone.", "subtitle": "Exclusively for your group, plus the crew.", "dayCharters": "Day charters", "overnightCharters": "Overnight charters" },
+      "picks": { "heading": "We've been on every boat", "subtitle": "Our top picks - one for every type of traveler", "bookTrip": "Book this Trip", "footerNote": "Our honest picks not paid placements.", "seeAllTours": "See All Tours", "best": "BEST OVERALL", "popular": "MOST POPULAR", "families": "BEST FOR FAMILIES" },
       "sponsored": "Sponsored",
       "tabs": { "trips": "Trips", "privateCharters": "Private charters", "compare": "Compare", "discover": "Discover" },
       "tagline": "Where islanders send their visitors",

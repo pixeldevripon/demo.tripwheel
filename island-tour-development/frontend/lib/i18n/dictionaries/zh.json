@@ -232,6 +232,7 @@
       "tripsHeading": "{count}个{hub}一日游。挑选您的行程。",
       "tripsSubtitle": "选择日期，或先在下方比较",
       "charters": { "heading": "{count}个私人包船。专属于您。", "subtitle": "专属于您的团队，外加船员。", "dayCharters": "日间包船", "overnightCharters": "过夜包船" },
+      "picks": { "heading": "我们体验过每一艘船", "subtitle": "我们的精选——每种旅客都有一款", "bookTrip": "预订此行程", "footerNote": "我们诚实的推荐，并非付费排名。", "seeAllTours": "查看所有行程", "best": "综合最佳", "popular": "最受欢迎", "families": "最适合家庭" },
       "sponsored": "赞助",
       "tabs": { "trips": "行程", "privateCharters": "私人包船", "compare": "比较", "discover": "发现" },
       "tagline": "岛民推荐访客去的地方",

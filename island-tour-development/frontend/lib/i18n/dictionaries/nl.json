@@ -232,6 +232,7 @@
       "tripsHeading": "{count} dagtochten naar {hub}. Maak je keuze.",
       "tripsSubtitle": "Selecteer een datum of vergelijk eerst hieronder",
       "charters": { "heading": "{count} privécharters. Helemaal voor jou.", "subtitle": "Exclusief voor jouw groep, plus de bemanning.", "dayCharters": "Dagcharters", "overnightCharters": "Overnachtcharters" },
+      "picks": { "heading": "We zijn op elke boot geweest", "subtitle": "Onze topkeuzes - één voor elk type reiziger", "bookTrip": "Boek deze trip", "footerNote": "Onze eerlijke keuzes, geen betaalde plaatsingen.", "seeAllTours": "Alle tours bekijken", "best": "BESTE ALGEMEEN", "popular": "MEEST POPULAIR", "families": "BESTE VOOR GEZINNEN" },
       "sponsored": "Gesponsord",
       "tabs": { "trips": "Trips", "privateCharters": "Privécharters", "compare": "Vergelijken", "discover": "Ontdekken" },
       "tagline": "Waar eilandbewoners hun bezoekers heen sturen",

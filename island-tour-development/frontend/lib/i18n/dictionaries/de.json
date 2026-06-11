@@ -232,6 +232,7 @@
       "tripsHeading": "{count} Tagesausflüge nach {hub}. Triff deine Wahl.",
       "tripsSubtitle": "Wähle ein Datum oder vergleiche zuerst unten",
       "charters": { "heading": "{count} private Charter. Ganz für dich.", "subtitle": "Exklusiv für deine Gruppe, plus die Crew.", "dayCharters": "Tagescharter", "overnightCharters": "Übernachtungscharter" },
+      "picks": { "heading": "Wir waren auf jedem Boot", "subtitle": "Unsere Favoriten - einer für jeden Reisetyp", "bookTrip": "Diese Tour buchen", "footerNote": "Unsere ehrliche Auswahl, keine bezahlten Platzierungen.", "seeAllTours": "Alle Touren ansehen", "best": "INSGESAMT BESTE", "popular": "AM BELIEBTESTEN", "families": "BESTE FÜR FAMILIEN" },
       "sponsored": "Gesponsert",
       "tabs": { "trips": "Touren", "privateCharters": "Private Charter", "compare": "Vergleichen", "discover": "Entdecken" },
       "tagline": "Wohin Einheimische ihre Besucher schicken",
