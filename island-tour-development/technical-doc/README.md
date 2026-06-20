@@ -66,6 +66,22 @@ This is the navigation index. Start here.
 
 ---
 
+## 06 — OCTO API migration
+
+> Migrating the booking/availability API to strictly follow the [OCTO standard](https://docs.octo.travel/).
+> OCTO is the API contract for the product → availability → booking core; the master rules remain the
+> business logic. Start with the specification reference, then the migration checklist.
+
+| File | Purpose |
+|---|---|
+| [06-octo-migration/OCTO-SPECIFICATION-REFERENCE.md](./06-octo-migration/OCTO-SPECIFICATION-REFERENCE.md) | Captured OCTO spec (detailed): endpoints, full schemas, sub-schemas, enums, capabilities, headers, booking lifecycle, errors, worked examples. The durable reference. |
+| [06-octo-migration/OCTO-API-MIGRATION-CHECKLIST.md](./06-octo-migration/OCTO-API-MIGRATION-CHECKLIST.md) | Gap analysis + step-by-step plan: scope decision, entity mapping, schema/route/response/error changes, decisions to confirm, build sequence. |
+| [06-octo-migration/OCTO-AVAILABILITY-AND-BOOKING.md](./06-octo-migration/OCTO-AVAILABILITY-AND-BOOKING.md) | Real-time availability + booking deep-dive: inventory model, concurrency/overbooking prevention, reserve→confirm holds, expiry, webhooks, iCal-as-secondary, phased checklist + MVP cut. |
+| [06-octo-migration/OCTO-PRISMA-SCHEMA-DESIGN.md](./06-octo-migration/OCTO-PRISMA-SCHEMA-DESIGN.md) | Complete proposed Prisma split-schema (tours/options/units, availability/departures, bookings + unit items, payments, reviews, supplier/eligibility, spotlight, OCTO webhooks) — OCTO-aligned + master rules. Design only; live schema untouched until approved. |
+| [06-octo-migration/OCTO-FRONTEND-ALIGNMENT.md](./06-octo-migration/OCTO-FRONTEND-ALIGNMENT.md) | Frontend changes to consume the OCTO API: types, clients, money helper, booking widget (two-step), checkout, error handling. Keep in lockstep with the backend. |
+
+---
+
 ## obsolete/ — superseded docs
 
 [`obsolete/`](./obsolete/) holds the V2-PDF-era documentation that the master now supersedes (Platform Architecture V2 reflections, the V2 development alignment plan, the V2 gap analysis, and the `06-v2-backend-migration/` set). Kept for history only — do not build from them. See [`obsolete/README.md`](./obsolete/README.md).
