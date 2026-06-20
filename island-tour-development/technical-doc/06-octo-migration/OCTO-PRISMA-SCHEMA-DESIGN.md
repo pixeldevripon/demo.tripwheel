@@ -997,3 +997,25 @@ model PickupLocation {
 - **#3 per-unit-by-date pricing** — NOT added (prices don't vary by date).
 - **#4 platform→operator payout/settlement ledger** — not modeled yet; revisit if settlement
   reporting becomes a launch requirement (per-booking `Payment` covers charges/refunds today).
+
+---
+
+## 17. Coverage-audit gap closures (G1–G11)
+
+A full audit against the master checklist + architecture docs found 11 gaps (5 launch-blocking,
+6 should-fix). All were applied to the live schema (additive only). Deferred: G12 (review rating
+distribution), G13 (collection per-tour rationale), G14 (payout ledger).
+
+| Gap | Severity | Closure |
+|---|---|---|
+| **G1** slug 301 redirects + 90-day cooldown | launch-blocker | New `SlugRedirect` table (`from/toSlug`, `statusCode`); `SlugRegistry.deletedAt` for cooldown |
+| **G2** booking commission-rate snapshot | launch-blocker | `Booking.commissionRate Decimal(5,4)` (fraction, e.g. 0.2750) |
+| **G3** multi-currency EUR normalization | launch-blocker | `Booking.totalEur` + `fxRateToEur` (currency = original; commissionAmount stays EUR) |
+| **G4** `booking_complete` attribution contract | launch-blocker | `Booking`: `utmTerm/utmContent`, `gbraid/wbraid/fbclid`, `island`, `customerLocale`, `customerId` |
+| **G6** force-majeure pardons | launch-blocker | New `ForceMajeurePardon` table (destination + date range); `Destination.forceMajeurePardons` |
+| **G5** Stripe billing snapshot | should-fix | `Booking`: `billingCountry/PostalCode/City`, `paymentMethodLast4/Brand` |
+| **G7** eligibility grace lifecycle | should-fix | `Tour.graceStartedAt` + `graceMetric` |
+| **G8** departure ops columns | should-fix | `Departure`: `soldOutAt`, `source`, `manuallyEdited`, `externalRef`; `Tour.availabilityConfirmedAt` |
+| **G9** tour marketing/info content | should-fix | `TourTranslation`: `shortDescription`, `whatToBring`, `knowBeforeYouGo`, `notSuitableFor`, `localTip`, `meetingPointText`; `Tour.meetingPointLat/Lng`, `departureCity` |
+| **G10** typed exclusions (LD18) | should-fix | `TourExclusion.type` (`ExclusionType`) + `priceText` |
+| **G11** tour audience/accessibility flags | should-fix | `Tour`: `minAgeYears`, `fitnessLevel`, `bookingType`, `weatherDependent`, `wheelchairAccessible`, `familyFriendly`, `suitableForBeginners`, `isLocalsFavourite` (+ enums `FitnessLevel`, `TourBookingType`, `ExclusionType`) |

@@ -25,3 +25,21 @@ model SpotlightRequest {
   @@index([tourId])
   @@map("spotlight_requests")
 }
+
+// Force-majeure pardon (master COMMERCIAL §6) — an admin marks a date range + destination
+// (e.g. a hurricane day). Operator cancellations inside a pardoned range are excluded from the
+// cancellation-rate eligibility metric for EVERY operator at once.
+model ForceMajeurePardon {
+  id            String   @id @default(uuid())
+  destinationId String
+  startDate     DateTime @db.Date
+  endDate       DateTime @db.Date
+  reason        String
+  createdBy     String // admin user id
+  createdAt     DateTime @default(now())
+
+  destination Destination @relation(fields: [destinationId], references: [id])
+
+  @@index([destinationId, startDate, endDate])
+  @@map("force_majeure_pardons")
+}

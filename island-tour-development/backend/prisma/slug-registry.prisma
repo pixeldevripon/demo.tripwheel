@@ -11,9 +11,26 @@ model SlugRegistry {
   entityType      SlugEntityType // TOUR | CATEGORY | HUB | COLLECTION | RESERVED
   entityId        String? // null only when entityType = RESERVED
   isActive        Boolean        @default(true) // false = 404 but slug stays protected
+  deletedAt       DateTime? // G1 — set on hard delete; slug is reusable only after a 90-day cooldown
   createdAt       DateTime       @default(now())
 
   @@unique([destinationSlug, slug])
   @@index([destinationSlug, slug, isActive])
   @@map("slug_registry")
+}
+
+// 301 redirect table — a slug rename writes a row here (master SLUG-REGISTRY §2.3).
+// Resolution checks redirects when a slug 404s; chains are collapsed to the final target.
+model SlugRedirect {
+  id              String   @id @default(uuid())
+  destinationSlug String
+  fromSlug        String
+  toSlug          String
+  entityType      SlugEntityType
+  statusCode      Int      @default(301)
+  createdAt       DateTime @default(now())
+
+  @@unique([destinationSlug, fromSlug])
+  @@index([destinationSlug, fromSlug])
+  @@map("slug_redirects")
 }

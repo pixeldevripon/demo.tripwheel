@@ -198,6 +198,26 @@ enum AddOnUnit {
   FLAT
 }
 
+// Typed exclusions (LD18 / master E.3) — what an exclusion line actually means.
+enum ExclusionType {
+  PAID_ADVANCE // available but costs extra, pay in advance
+  PAID_ONSITE // available but costs extra, pay on site
+  UNAVAILABLE // simply not provided
+  NOT_PERMITTED // not allowed on this tour
+}
+
+// Tour audience/accessibility flags (master E.3).
+enum FitnessLevel {
+  EASY
+  MODERATE
+  CHALLENGING
+}
+
+enum TourBookingType {
+  PRIVATE
+  SHARED
+}
+
 // ── OCTO catalog ──────────────────────────────────────────────────────────────
 
 enum OctoAvailabilityType {

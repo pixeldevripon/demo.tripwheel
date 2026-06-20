@@ -36,6 +36,7 @@ model Destination {
   translations      DestinationTranslation[]
   pageContents      DestinationPageContent[]
   spotlightRequests SpotlightRequest[]
+  forceMajeurePardons ForceMajeurePardon[]
 
   @@index([slug])
   @@index([isActive])

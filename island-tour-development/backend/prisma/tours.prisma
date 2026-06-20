@@ -50,12 +50,30 @@ model Tour {
   tierLockedUntil  DateTime?
   qualityScore     Decimal          @default(0) @db.Decimal(6, 2) // nightly job
   eligibilityState EligibilityState @default(LOCKED)
+  graceStartedAt   DateTime? // G7 — when the 30-day eligibility grace began
+  graceMetric      String? // which metric failed (rating | review_count | cancellation_rate)
   isBookable       Boolean          @default(false) // ≥1 AVAILABLE departure ≤30d (nightly)
+  availabilityConfirmedAt DateTime? // G8 — operator "availability is current" freshness nudge
   firstPublishedAt DateTime?
 
   // ── SEO / Content overrides ──
   h1Override      String?
   breadcrumbLabel String?
+
+  // ── Meeting point / departure (master E.3; localized text in TourTranslation) ──
+  meetingPointLat Float?
+  meetingPointLng Float?
+  departureCity   String?
+
+  // ── Audience / accessibility flags (master E.3 — power filters, badges, JSON-LD) ──
+  minAgeYears          Int? // tour-level minimum age (distinct from per-unit TourUnit.minAge)
+  fitnessLevel         FitnessLevel?
+  bookingType          TourBookingType? // private | shared
+  weatherDependent     Boolean          @default(false)
+  wheelchairAccessible Boolean          @default(false)
+  familyFriendly       Boolean          @default(false)
+  suitableForBeginners Boolean          @default(false)
+  isLocalsFavourite    Boolean          @default(false)
 
   // ── Cached review aggregates (updated on review approve) ──
   aggregateRating      Float?
@@ -318,10 +336,12 @@ model TourInclusionTranslation {
 // ── Exclusions ────────────────────────────────────────────────────────────────
 // Serialized into OCTO content features[] as EXCLUSION.
 model TourExclusion {
-  id           String  @id @default(uuid())
+  id           String         @id @default(uuid())
   tourId       String
-  icon         String  @default("x")
-  displayOrder Int     @default(0)
+  icon         String         @default("x")
+  type         ExclusionType? // LD18 — paid_advance | paid_onsite | unavailable | not_permitted
+  priceText    String? // e.g. "$15 per person" when type is PAID_*
+  displayOrder Int            @default(0)
   imageUrl     String?
 
   tour         Tour                       @relation(fields: [tourId], references: [id], onDelete: Cascade)
@@ -454,6 +474,13 @@ model TourTranslation {
   title               String?
   overview            String? // 80–200 words, paragraph breaks only
   description         String?
+  // ── Marketing / info content (master E.3, LD19/LD22/LD23) ──
+  shortDescription    String? // one-line teaser for cards
+  whatToBring         String?
+  knowBeforeYouGo     String?
+  notSuitableFor      String?
+  localTip            String?
+  meetingPointText    String? // localized meeting-point description (geo on Tour)
   isMachineTranslated Boolean  @default(false)
   updatedAt           DateTime @updatedAt
 

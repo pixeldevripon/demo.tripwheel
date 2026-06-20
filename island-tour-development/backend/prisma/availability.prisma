@@ -59,6 +59,12 @@ model Departure {
   utcCutoffAt        DateTime
   priceOverride      Decimal?           @db.Decimal(10, 2)
 
+  // ── Operational (master E.9) ──
+  soldOutAt      DateTime? // when it flipped SOLD_OUT (demand signal)
+  source         String    @default("schedule") // schedule | exception | api
+  manuallyEdited Boolean   @default(false) // protect from re-materialization overwrite
+  externalRef    String? // operator/external system id when source = api
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
