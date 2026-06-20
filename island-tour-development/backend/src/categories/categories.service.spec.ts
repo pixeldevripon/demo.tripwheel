@@ -3,8 +3,8 @@
  *
  * PrismaService is fully mocked — no real database connection is made.
  * Tests cover every public method: happy paths, all error branches, pagination,
- * locale translation fallback, transaction semantics (slug_registry + featuredSlot
- * seeding on create, soft-delete via remove), and the English-translation guard in
+ * locale translation fallback, transaction semantics (slug_registry seeding on
+ * create, soft-delete via remove), and the English-translation guard in
  * deleteTranslations.
  */
 
@@ -63,9 +63,6 @@ function createMockPrismaService() {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-    },
-    featuredSlot: {
-      createMany: jest.fn(),
     },
     destination: {
       findMany: jest.fn(),
@@ -464,7 +461,6 @@ describe('CategoryService', () => {
     it('creates category inside a $transaction', async () => {
       const created = makeCategoryRecord({ id: 'cat-new' });
       prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
       prisma.destination.findMany.mockResolvedValue([]);
 
       await service.create(dto, adminId);
@@ -475,7 +471,6 @@ describe('CategoryService', () => {
     it('auto-generates a slug from the category name', async () => {
       const created = makeCategoryRecord({ id: 'cat-new', slug: 'boat-tours' });
       prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
       prisma.destination.findMany.mockResolvedValue([]);
 
       await service.create({ name: 'Boat Tours' }, adminId);
@@ -487,27 +482,9 @@ describe('CategoryService', () => {
       );
     });
 
-    it('seeds exactly 3 FeaturedSlot rows with slots 1, 2, 3 and AVAILABLE status', async () => {
-      const created = makeCategoryRecord({ id: 'cat-new' });
-      prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
-      prisma.destination.findMany.mockResolvedValue([]);
-
-      await service.create(dto, adminId);
-
-      expect(prisma.featuredSlot.createMany).toHaveBeenCalledWith({
-        data: [
-          { categoryId: 'cat-new', slotNumber: 1, status: 'AVAILABLE' },
-          { categoryId: 'cat-new', slotNumber: 2, status: 'AVAILABLE' },
-          { categoryId: 'cat-new', slotNumber: 3, status: 'AVAILABLE' },
-        ],
-      });
-    });
-
     it('inserts one slug_registry row per active destination', async () => {
       const created = makeCategoryRecord({ id: 'cat-new', slug: 'boat-tours' });
       prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
       prisma.destination.findMany.mockResolvedValue([
         { slug: 'curacao' },
         { slug: 'aruba' },
@@ -536,7 +513,6 @@ describe('CategoryService', () => {
     it('skips slug_registry insert when no active destinations exist', async () => {
       const created = makeCategoryRecord({ id: 'cat-new' });
       prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
       prisma.destination.findMany.mockResolvedValue([]);
 
       await service.create(dto, adminId);
@@ -560,7 +536,6 @@ describe('CategoryService', () => {
     it('returns the created category record', async () => {
       const created = makeCategoryRecord({ id: 'cat-new' });
       prisma.category.create.mockResolvedValue(created);
-      prisma.featuredSlot.createMany.mockResolvedValue({ count: 3 });
       prisma.destination.findMany.mockResolvedValue([]);
 
       const result = await service.create(dto, adminId);

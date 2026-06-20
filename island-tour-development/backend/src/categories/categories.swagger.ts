@@ -133,7 +133,7 @@ export function ApiCreateCategoryDocs() {
     ApiOperation({
       summary: 'Create a new category (Admin/Editor)',
       description:
-        'Atomically creates the category, seeds 3 FeaturedSlot rows, and inserts one slug_registry row per active destination. ' +
+        'Atomically creates the category and inserts one slug_registry row per active destination. ' +
         'Accepts the V2 fields: description, icon, sortOrder, metaTitleTemplate, metaDescriptionTemplate, parentCategoryId.',
     }),
     ApiResponse({ status: 201, type: CategoryResponseDto }),
@@ -163,7 +163,7 @@ export function ApiForceDeleteCategoryDocs() {
     ApiOperation({
       summary: 'Permanently delete a category (Admin only)',
       description:
-        'Hard delete. Removes the category and all related data (translations, FAQs, page content, featured slots, slug registry rows). Seeded categories are protected. This action is irreversible.',
+        'Hard delete. Removes the category and all related data (translations, FAQs, page content, slug registry rows). Seeded categories are protected. This action is irreversible.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, description: 'Category permanently deleted' }),
@@ -178,7 +178,7 @@ export function ApiDeleteCategoryDocs() {
     ApiOperation({
       summary: 'Deactivate a category (Admin/Editor)',
       description:
-        'Soft-delete: sets isActive = false. FeaturedSlot rows are never deleted. Seeded categories and those with active trips are blocked.',
+        'Soft-delete: sets isActive = false. Seeded categories and those with active trips are blocked.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: DeleteCategoryResponseDto }),

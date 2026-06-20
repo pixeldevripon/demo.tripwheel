@@ -38,8 +38,6 @@ enum Permission {
   MANAGE_SYSTEM
   MANAGE_TRIPS
   MANAGE_OPERATORS
-  MANAGE_SLOTS
-  VIEW_SLOT_ANALYTICS
   CREATE_CONTENT
   VIEW_CONTENT
   EDIT_CONTENT
@@ -270,25 +268,6 @@ enum FilterDisplayType {
   RANGE_SLIDER
   RADIO
   DROPDOWN
-}
-
-// ── Featured Slots ────────────────────────────────────────────────────────────
-
-enum SlotStatus {
-  AVAILABLE
-  SOFT_LOCKED
-  HARD_RESERVED
-}
-
-// ── Waitlist ──────────────────────────────────────────────────────────────────
-
-enum WaitlistStatus {
-  WAITING
-  OFFERED
-  CLAIMED
-  PASSED
-  EXPIRED
-  CANCELLED
 }
 
 // ── Bookings ──────────────────────────────────────────────────────────────────

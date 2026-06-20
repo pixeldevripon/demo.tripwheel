@@ -274,14 +274,6 @@ export class CategoryService {
           throw err;
         });
 
-      await tx.featuredSlot.createMany({
-        data: [1, 2, 3].map((slotNumber) => ({
-          categoryId: category.id,
-          slotNumber,
-          status: 'AVAILABLE',
-        })),
-      });
-
       const destinations = await tx.destination.findMany({
         where: { isActive: true },
         select: { slug: true },
@@ -377,21 +369,6 @@ export class CategoryService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // Resolve featured slot IDs for this category
-      const slots = await tx.featuredSlot.findMany({
-        where: { categoryId: id },
-        select: { id: true },
-      });
-      const slotIds = slots.map((s) => s.id);
-
-      if (slotIds.length > 0) {
-        // Delete slot children first (no cascade defined in schema)
-        await tx.slotLock.deleteMany({ where: { slotId: { in: slotIds } } });
-        await tx.slotHistory.deleteMany({ where: { slotId: { in: slotIds } } });
-        await tx.waitlistEntry.deleteMany({ where: { slotId: { in: slotIds } } });
-        await tx.featuredSlot.deleteMany({ where: { categoryId: id } });
-      }
-
       await tx.slugRegistry.deleteMany({
         where: { entityType: SlugEntityType.CATEGORY, entityId: id },
       });

@@ -20,8 +20,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.MANAGE_OPERATOR_PAYMENTS,
     Permission.MANAGE_SYSTEM,
     Permission.MANAGE_TRIPS,
-    Permission.MANAGE_SLOTS,
-    Permission.VIEW_SLOT_ANALYTICS,
     Permission.CREATE_CONTENT,
     Permission.VIEW_CONTENT,
     Permission.EDIT_CONTENT,
@@ -217,7 +215,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.EDIT_PROFILE,
     Permission.MANAGE_TRIPS,
     Permission.VIEW_CATEGORIES,
-    Permission.VIEW_SLOT_ANALYTICS,
   ],
 
   [Role.USER]: [

@@ -65,9 +65,6 @@ model Trip {
   exclusions         TourExclusion[]
   translations       TripTranslation[]
   schedules          TourSchedule[]
-  featuredSlot       FeaturedSlot?
-  slotLock           SlotLock?
-  waitlistEntries    WaitlistEntry[]
   bookings           Booking[]
   reviews            Review[]
   wishlists          Wishlist[]

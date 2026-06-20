@@ -7,7 +7,6 @@ import {
   PrismaClient,
   Region,
   Role,
-  SlotStatus,
   SlugEntityType,
 } from '@prisma/client';
 import 'dotenv/config';
@@ -63,7 +62,6 @@ async function main() {
 
 // ── Pre-seeded categories ──────────────────────────────────────────────────────
 // isSeeded = true means the service blocks deletion of these records.
-// FeaturedSlot rows (3 per category) are seeded here as well.
 // slug_registry rows are NOT seeded here — they are created in seedDestinations(),
 // because slug_registry requires a destination slug.
 // NOTE: Klein Curaçao is a Hub, not a category. Do not add it here.
@@ -105,14 +103,6 @@ async function seedCategories() {
     await prisma.$transaction(async (tx) => {
       const category = await tx.category.create({
         data: { name: cat.name, slug: cat.slug, isSeeded: true, sortOrder: idx + 1 },
-      });
-
-      await tx.featuredSlot.createMany({
-        data: [1, 2, 3].map((slotNumber) => ({
-          categoryId: category.id,
-          slotNumber,
-          status: SlotStatus.AVAILABLE,
-        })),
       });
 
       // slug_registry rows are deferred — created in seedDestinations()

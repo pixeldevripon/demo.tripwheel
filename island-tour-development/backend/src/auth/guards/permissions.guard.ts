@@ -24,7 +24,7 @@ import type { AuthenticatedRequest } from '@/auth/auth.types';
  *     createTrip() {}
  *
  *   Require multiple permissions (ALL must be granted):
- *     @RequirePermissions(Permission.MANAGE_TRIPS, Permission.VIEW_SLOT_ANALYTICS)
+ *     @RequirePermissions(Permission.MANAGE_TRIPS, Permission.VIEW_BOOKINGS)
  *     @Get('/operator/dashboard')
  *     getDashboard() {}
  */

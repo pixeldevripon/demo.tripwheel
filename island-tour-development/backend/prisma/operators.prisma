@@ -22,12 +22,9 @@ model Operator {
   mollieConfig OperatorMollieConfig?
 
   // Relations — platform
-  trips           Trip[]
-  featuredSlots   FeaturedSlot[]
-  slotLocks       SlotLock[]
-  waitlistEntries WaitlistEntry[]
-  bookings        Booking[]
-  reviews         Review[]
+  trips    Trip[]
+  bookings Booking[]
+  reviews  Review[]
 
   @@index([verificationStatus])
   @@map("operators")

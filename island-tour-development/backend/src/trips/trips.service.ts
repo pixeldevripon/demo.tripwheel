@@ -358,9 +358,6 @@ export class TripsService {
               user: { select: { name: true, email: true } },
             },
           },
-          featuredSlot: {
-            select: { slotNumber: true, status: true },
-          },
           _count: {
             select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
           },
@@ -399,9 +396,6 @@ export class TripsService {
           destination: { select: { name: true } },
           categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
           hubs: { select: { hubId: true, hub: { select: { name: true } } } },
-          featuredSlot: {
-            select: { slotNumber: true, status: true },
-          },
           _count: {
             select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
           },
@@ -418,7 +412,7 @@ export class TripsService {
   // ── Single trip ───────────────────────────────────────────────────────────────
 
   private flattenCounts(trip: any) {
-    const { _count, images, featuredSlot, operator, destination, categories, hubs, ...rest } = trip;
+    const { _count, images, operator, destination, categories, hubs, ...rest } = trip;
     const cats = categories ?? [];
     const tourHubs = hubs ?? [];
     const primary = cats.find((c: any) => c.isPrimary);
@@ -430,8 +424,6 @@ export class TripsService {
       highlightCount: _count?.highlights ?? 0,
       inclusionCount: _count?.inclusions ?? 0,
       exclusionCount: _count?.exclusions ?? 0,
-      featuredSlotNumber: featuredSlot?.slotNumber ?? null,
-      featuredSlotStatus: featuredSlot?.status ?? null,
       destinationName: destination?.name ?? null,
       categoryIds: cats.map((c: any) => c.categoryId),
       primaryCategoryId: primary?.categoryId ?? null,
@@ -463,9 +455,6 @@ export class TripsService {
         destination: { select: { name: true } },
         categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
         hubs: { select: { hubId: true, hub: { select: { name: true } } } },
-        featuredSlot: {
-          select: { slotNumber: true, status: true },
-        },
         _count: {
           select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
         },
