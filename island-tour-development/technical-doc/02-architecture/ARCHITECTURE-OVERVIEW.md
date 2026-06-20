@@ -1,676 +1,273 @@
-# Island Tours — Architecture & Concept Guide
+# Island Tours — System & Backend Architecture
 
-> **Purpose:** Understand the system design, business rules, schema reasoning, and technical decisions before implementing.
-> Companion to `IMPLEMENTATION_GUIDE.md` (step-by-step code) and `DEEP_DIVE_QA.md` (specific Q&A).
+> **Canonical source:** master §1 (platform/infra) and §2.5 (rendering), with §7.2 (placement engine) and §8 (tracking).
+> **Purpose:** the system/backend architecture — stack, auth, data-access conventions, the Next.js rendering strategy per page type, and the nightly/async background jobs the platform requires. This is the engineering spine; for discovery/IA see [`PLATFORM-ARCHITECTURE.md`](./PLATFORM-ARCHITECTURE.md), for commercial logic see [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md).
 
 ---
 
 ## Table of Contents
 
 1. [System in One Breath](#1-system-in-one-breath)
-2. [Architecture Overview](#2-architecture-overview)
-3. [Real-Time Strategy — SSE](#3-real-time-strategy--sse)
-4. [Frontend Data Strategy](#4-frontend-data-strategy)
-5. [Authentication & Authorization with Better Auth](#5-authentication--authorization-with-better-auth)
-6. [Prisma Schema — Full Structure with Reasoning](#6-prisma-schema--full-structure-with-reasoning)
-7. [The Slot Economy — Core Business Logic](#7-the-slot-economy--core-business-logic)
-8. [NestJS Backend Module Map](#8-nestjs-backend-module-map)
-9. [Next.js Frontend Page Map](#9-nextjs-frontend-page-map)
-10. [Edge Cases You Must Handle](#10-edge-cases-you-must-handle)
-11. [Background Jobs with BullMQ](#11-background-jobs-with-bullmq)
-12. [Key Technical Decisions — Summary Table](#12-key-technical-decisions--summary-table)
+2. [High-Level Stack](#2-high-level-stack)
+3. [Layer Responsibilities](#3-layer-responsibilities)
+4. [Authentication & Authorization (Better Auth)](#4-authentication--authorization-better-auth)
+5. [Data-Access Conventions](#5-data-access-conventions)
+6. [Next.js Rendering Strategy (per page type)](#6-nextjs-rendering-strategy-per-page-type)
+7. [Placement Engine — Architectural View](#7-placement-engine--architectural-view)
+8. [Background & Nightly Jobs](#8-background--nightly-jobs)
+9. [Tracking & Analytics Pipeline](#9-tracking--analytics-pipeline)
+10. [Real-Time / SSE — Out of Scope](#10-real-time--sse--out-of-scope)
+11. [Key Technical Decisions](#11-key-technical-decisions)
 
 ---
 
 ## 1. System in One Breath
 
-Island Tours is a **marketplace platform** where:
+Island Tours is a Caribbean tour marketplace (reseller; commission on local operators). Three actors:
 
-- **Operators** (tour businesses) create and list trips.
-- **Travelers** browse, search, and book those trips.
-- **Admins** moderate, configure, and manage the whole platform.
+- **Travelers** discover tours through three parallel discovery layers (Categories | Activity Hubs | Collections) plus All Tours, filter by attributes, and book instantly — no enquiry model.
+- **Operators** list tours, pick a commission **tier** in their dashboard, and earn placement through tier rank + a quality score, gated by an eligibility engine.
+- **Admins** manage destinations, categories, hubs, collections, approve Destination Spotlight requests, and issue force-majeure cancellation pardons.
 
-The distinctive feature is the **featured slot system**:
+Placement is **not** a slot economy. It is governed by **commission tiers + a ranking query + an eligibility engine** (master §7.2). See [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md).
 
-- Every trip category (e.g., "Boat & sail · Cyclades") has exactly **3 featured slots**.
-- A featured slot gives the operator better visibility — hero carousel, top-of-category pin, sponsored badge — in exchange for a **higher platform commission**.
-- Slot 1 = best placement, lowest extra commission (22%).
-- Slot 2 = mid placement, 25% commission.
-- Slot 3 = lowest featured placement, 30% commission.
-- Standard listings always pay 20% and get no placement boost.
-- When an operator picks a slot in the creation wizard, it gets **soft-locked for 15 minutes** — a countdown starts.
-- If they publish before 15 minutes → slot becomes **hard-reserved** (theirs for up to 90 days).
-- If two operators both try to publish on the same slot at the same moment → **first HTTP request wins**. The loser gets a recovery modal.
-- If all 3 slots are taken → operators can join a **FIFO waitlist**. When a slot frees, the next in line gets a **24-hour offer window** to claim it.
-- Operators can also skip the waitlist queue by paying a fee (max 3 paid skips per queue entry).
+Launch scope: **3 live destinations** in rollout order — Curaçao (launch), Aruba, Sint Maarten. Saint Lucia and Bahamas are seeded pipeline rows only (master §1.2).
 
 ---
 
-## 2. Architecture Overview
+## 2. High-Level Stack
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        FRONTEND                              │
-│  Next.js 15 (App Router)                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Server Comp. │  │ Client Comp. │  │  Server Actions  │   │
-│  │ (SSR/SSG)    │  │ + TanStack Q │  │  (mutations)     │   │
-│  └──────────────┘  └──────┬───────┘  └────────┬─────────┘   │
-│                           │ SSE (slot updates) │ REST calls  │
-└───────────────────────────┼────────────────────┼────────────┘
-                            │                    │
-┌───────────────────────────┼────────────────────┼────────────┐
-│                        BACKEND                               │
-│  NestJS                   │                    │             │
-│  ┌──────────────┐  ┌──────┴───────┐  ┌─────────┴────────┐   │
-│  │  REST API    │  │  SSE Gateway │  │  BullMQ Workers  │   │
-│  │  (CRUD, auth)│  │  (slot events│  │  (TTL expiry,    │   │
-│  └──────┬───────┘  └──────┬───────┘  │   waitlist jobs) │   │
-│         │                 │          └────────┬─────────┘   │
-│  ┌──────┴─────────────────┴────────────────────┴──────────┐  │
-│  │   Service Layer (slots, trips, bookings, waitlist)      │  │
-│  └──────────────────────────┬───────────────────────────--┘  │
-│                             │                                 │
-│  ┌──────────────┐   ┌───────┴──────────┐                     │
-│  │  Prisma ORM  │   │  Redis (Upstash) │                     │
-│  │  PostgreSQL  │   │  TTL keys + pub/ │                     │
-│  └──────────────┘   │  sub + BullMQ   │                     │
-│                     └─────────────────┘                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Responsibilities of each layer:**
-
-- **PostgreSQL** — source of truth for everything permanent: users, trips, slot assignments, bookings.
-- **Redis** — ephemeral state: TTL countdowns, BullMQ job queues, pub/sub event channels.
-- **BullMQ** — all scheduled/background work: expiring slot locks, sending waitlist notifications, releasing 90-day caps.
-- **SSE** — real-time slot status pushed to connected operator browsers.
-- **Better Auth** — session management (lives on the Next.js side, validated on the NestJS side).
-
----
-
-## 3. Real-Time Strategy — SSE
-
-### Why SSE, Not WebSockets
-
-When an operator opens the slot picker, they need live updates — did someone just soft-lock slot #2 in the last 3 seconds? Did a TTL expire and free up slot #1?
-
-**WebSockets** create a two-way persistent connection. They are the right tool when both sides need to push messages in real-time — chat, collaborative editing, multiplayer. For Island Tours, the operator never sends real-time messages to the server. All mutations (reserve, publish, join waitlist) are standard HTTP POST calls. The only "live" need is receiving status changes from the server. WebSockets are overkill.
-
-**Server-Sent Events (SSE)** keep an HTTP connection open and the server pushes text events whenever something changes. One-way: server → client. Built into every browser. Auto-reconnects on disconnect. Five lines to set up in NestJS with `@Sse()`.
-
-### How It Flows
-
-```
-1. Operator A opens the slot picker
-   → browser opens: new EventSource('/api/v1/slots/stream?categoryId=...')
-   → NestJS keeps this HTTP connection open indefinitely
-
-2. Operator B (different browser) clicks "Reserve slot #2"
-   → POST /api/v1/slots/:slotId/lock
-   → SlotsService creates SlotLock in PostgreSQL
-   → SlotsService publishes to Redis channel: slot-events:{categoryId}
-
-3. NestJS SSE gateway has a Redis subscriber for that channel
-   → receives the Redis message
-   → writes it as an SSE event to all open EventSource connections for that category
-
-4. Operator A's browser fires onmessage
-   → TanStack Query cache updated: slot #2 = SOFT_LOCKED
-   → Slot card re-renders with lock indicator and countdown
-```
-
-### Why Redis Pub/Sub Is Needed
-
-If you run multiple NestJS instances (horizontal scaling), a publish event from Instance A needs to reach browsers connected to Instances B and C. Redis pub/sub is the message bus that fans events to all instances. Without it, only browsers connected to the same instance that processed the mutation would see the update.
-
-### SSE Connection Lifecycle
-
-- **Open:** When the SlotPicker component mounts, `useEffect` creates `new EventSource(...)`.
-- **Receive:** `source.onmessage` fires, TanStack Query cache is updated, UI re-renders.
-- **Reconnect:** If the connection drops, the browser automatically retries (built-in behavior of EventSource).
-- **Close:** When the component unmounts (operator navigates away), `source.close()` is called in the `useEffect` cleanup function. The NestJS Observable unsubscribes, the Redis channel subscription is cleaned up.
-
----
-
-## 4. Frontend Data Strategy
-
-### Three Tools, Three Jobs
-
-| Tool | Where it runs | Used for |
+| Layer | Tool | Notes |
 |---|---|---|
-| Next.js Server Components + `fetch()` | Server only | Traveler-facing pages (homepage, trip detail, search) — SSR for SEO, no client JS |
-| `unstable_cache` / `use cache` | Server only | Deduplicating DB queries during server render; revalidation on a schedule |
-| TanStack Query `useQuery` | Browser only | Operator/admin dashboard pages; any client component that needs caching, background refetch, or SSE integration |
-| TanStack Query `useMutation` | Browser only | Mutations that need optimistic updates or complex error handling (e.g., publish trip with race condition rollback) |
-| Server Actions | Server (called from client) | Simple mutations: join waitlist, save draft, update profile |
+| Backend framework | NestJS 11 — strict TypeScript | Modules follow `src/users/` pattern (see `CLAUDE.md`) |
+| Database | PostgreSQL via Prisma 7 ORM | **Split schema** in `backend/prisma/*.prisma`; Prisma 7 merges all files |
+| Auth | Better Auth — **backend only** | Session validation in NestJS; frontend never runs `betterAuth()` |
+| Frontend | Next.js (App Router) + **next-intl** | 7 locales; all UI strings via next-intl, no hardcoded English |
+| Payments | **Stripe** | Deposit/full charge at booking; webhook idempotency via `stripe_webhook_events` |
+| Transactional email | **Resend** (Postmark fallback) | SPF/DKIM/DMARC on a dedicated transactional subdomain (e.g. `bookings@mail.island.tours`), separate from marketing |
+| Async jobs | **BullMQ** (Redis-backed) | Email dispatch, departures materialization, demotion engine, AI translation — see §8 |
+| Tracking | GTM + Google Ads + GA4 + Meta Pixel + **server-side Meta CAPI** | One `booking_complete` dataLayer event on the TYP; Consent Mode v2 — see §9 |
+| Affiliate | **Trackdesk** | 8% of GMV from Island Tours' commission; attribution owned by our own `booking_complete` event |
+| API docs | `@nestjs/swagger` | Swagger UI at `/api/docs` |
+| Validation | `class-validator` + `class-transformer` | Global `ValidationPipe`, `whitelist` + `forbidNonWhitelisted` |
+| Rate limiting | `@nestjs/throttler` | Global guard, three tiers (20/s · 300/min · 3000/hr) |
 
-### The Pattern for Operator Pages
-
-The best approach for operator dashboard pages combines SSR initial load with TanStack Query client takeover:
-
-```
-1. Server Component renders initial data (fast first paint, no loading spinner)
-2. Pass data as initialData to TanStack Query
-3. TanStack Query takes over: caches it, background-refetches when stale
-4. SSE events update the cache in real-time where needed
-```
-
-This means the slot picker gets an instant initial view of slot states from SSR, then stays live via SSE without an extra loading state.
-
-### When NOT to Use TanStack Query
-
-- Static traveler pages (homepage, category browse, trip detail): use Next.js Server Components + `fetch()` with `next: { revalidate }`.
-- Simple one-off mutations with no optimistic update needs: use Server Actions directly with `useTransition`.
+Hosting: Next.js frontend + Node.js backend on TripWheel infrastructure (master §1.5). One Prisma instance per process — the backend owns all DB access; the frontend has no `prisma/` folder and no `DATABASE_URL`.
 
 ---
 
-## 5. Authentication & Authorization with Better Auth
+## 3. Layer Responsibilities
 
-### How Better Auth Is Split Across the Two Apps
-
-**Frontend (Next.js) — the auth server:**
-
-- `lib/auth.ts` creates the `betterAuth()` instance with the Prisma adapter.
-- `app/api/auth/[...all]/route.ts` exposes all auth endpoints via `toNextJsHandler(auth)`.
-- All sign-in, sign-up, OAuth, session management, and email verification happen here.
-- After login, Better Auth sets a cookie: `better-auth.session_token=<token>`.
-
-**Backend (NestJS) — the session validator:**
-
-- `auth.service.ts` creates a second `betterAuth()` instance using the same `BETTER_AUTH_SECRET`.
-- It never handles login or registration. It only calls `auth.api.getSession({ headers })`.
-- `AuthGuard` reads the session token from the cookie (or Bearer header), calls `getSession()`, and attaches `{ user, session }` to `request`.
-
-Both apps **must share the same `BETTER_AUTH_SECRET`**. The backend uses it to query the same session records that the frontend created.
-
-### Required Prisma Schema for Better Auth
-
-Better Auth's Prisma adapter expects these exact model names and table names. Do not rename them:
-
-```prisma
-model User        { ... @@map("user") }
-model Session     { ... @@map("session") }
-model Account     { ... @@map("account") }
-model Verification { ... @@map("verification") }
+```
+┌──────────────────────────────────────────────────────────────┐
+│  FRONTEND  — Next.js (App Router) + next-intl                  │
+│  Server Components (ISR/SSR) render content pages from the     │
+│  backend REST API. Client components handle the booking widget,│
+│  filters, and dashboards.                                      │
+│         │ REST (locale-aware content + booking) calls          │
+└─────────┼──────────────────────────────────────────────────────┘
+          │
+┌─────────┼──────────────────────────────────────────────────────┐
+│  BACKEND — NestJS 11                                            │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │  REST API    │  │  BullMQ Workers   │  │  Nightly Jobs    │  │
+│  │  (CRUD,auth, │  │  (email, mat'n,   │  │  (quality_score, │  │
+│  │   booking,   │  │   demotion, AI    │  │   eligibility,   │  │
+│  │   ranking)   │  │   translation)    │  │   aggregates)    │  │
+│  └──────┬───────┘  └────────┬──────────┘  └────────┬─────────┘  │
+│  ┌──────┴───────────────────┴──────────────────────┴────────┐  │
+│  │  Service layer (destinations, categories, hubs, trips,    │  │
+│  │  bookings, payments, reviews, availability, slug-registry)│  │
+│  └──────────────────────────┬────────────────────────────--─┘  │
+│  ┌──────────────┐  ┌─────────┴────────┐                         │
+│  │  Prisma ORM  │  │  Redis (BullMQ)  │  Stripe · Resend · CAPI  │
+│  │  PostgreSQL  │  │  queue + delays  │  (external integrations) │
+│  └──────────────┘  └──────────────────┘                         │
+└──────────────────────────────────────────────────────────────--┘
 ```
 
-Critical field requirements on `User`:
-- `emailVerified Boolean` — must be Boolean, not DateTime (NextAuth uses DateTime; Better Auth uses Boolean).
-- `image String?` — must be a URL string, not JSON.
-- `id String @id @default(uuid())` — Better Auth works with both uuid and cuid.
+- **PostgreSQL** — single source of truth for everything: destinations, categories, hubs, collections, tours, attributes, slug registry, bookings, reviews, availability/departures, tier state.
+- **Redis** — backs BullMQ only (job queue + delayed jobs). Not a primary store, not a pub/sub bus for live UI.
+- **BullMQ** — all async/scheduled work: transactional email, departures materialization, the eligibility demotion engine, AI translation jobs (§8).
+- **Stripe / Resend / Meta CAPI / Trackdesk** — external integrations called from the service layer.
+- **Better Auth** — session validation on the backend (§4).
 
-You can add custom fields to `User` (like `role`, `status`, `operatorProfile`) without breaking Better Auth as long as you do not remove or rename the required fields.
+---
 
-### Three Roles for Island Tours
+## 4. Authentication & Authorization (Better Auth)
 
-| Role | Who | What they can do |
+Better Auth lives on the **NestJS backend only** (`CLAUDE.md` Rule #12). The frontend never instantiates `betterAuth()`; all session logic is server-side.
+
+- `auth.instance.ts` creates the `betterAuth()` instance. `AuthGuard` reads `better-auth.session_token` (cookie or Bearer), calls `getSession()`, and attaches `{ user, session }` to the request.
+- CORS must use `credentials: true` via `parseCorsOrigins()` in both `main.ts` and `auth.instance.ts` (`CLAUDE.md` Rule #13).
+
+### Guard execution order (do not reorder)
+
+```
+ThrottlerGuard   → blocks rate-limited clients before any DB work
+AuthGuard        → validates session; populates request.user
+RolesGuard       → checks @Roles() metadata
+PermissionsGuard → checks @RequirePermissions() metadata
+```
+
+Use `@RequirePermissions()` on endpoints, never `@Roles()` on individual endpoints. Use `AuthenticatedRequest` / `TypedAuthUser` for typed access.
+
+### Roles (master §1.6, full detail in [`../05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`](../05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md))
+
+| Role | Created by | Key capability |
 |---|---|---|
-| `USER` | Travelers | Browse, search, book trips, write reviews |
-| `OPERATOR` | Tour businesses | Create/manage trips, manage featured slots, view own bookings and payouts |
-| `ADMIN` / `SUPER_ADMIN` | Platform staff | Moderate everything, configure slots, manage operators, view analytics |
+| USER | Auto on first booking | Browse, book, review |
+| TOUR_OPERATOR | Self-registration | List tours, pick commission tier, request Spotlight |
+| ADMIN | Seed only | Full management; approve Spotlight; issue force-majeure pardons |
 
-Role changes are controlled exclusively by the backend with `@Roles(Role.ADMIN)` protection. The frontend never directly sets a user's role.
-
-### How Guards Work Together in NestJS
-
-```typescript
-// Just authentication — any logged-in user
-@UseGuards(AuthGuard)
-@Get('profile')
-getProfile() {}
-
-// Authentication + role check
-@Roles(Role.OPERATOR, Role.ADMIN)
-@UseGuards(AuthGuard, RolesGuard)
-@Post('trips')
-createTrip(@AuthenticatedUser() user) {}
-
-// Admin only
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@UseGuards(AuthGuard, RolesGuard)
-@Patch('operators/:id/approve')
-approveOperator() {}
-```
+EDITOR / STAFF / GUIDE are designed but **not launch-active**. ADMIN is a strict superset of all lower roles. Roles are set server-side only — the frontend must never send a `role` field (`CLAUDE.md` Rule #10). The role model must support the commercial actions (operator tier selection; admin Spotlight approval and pardons) even though operator/admin tooling is outside the master's consumer scope.
 
 ---
 
-## 6. Prisma Schema — Full Structure with Reasoning
+## 5. Data-Access Conventions
 
-### Why a Split Schema (Multiple `.prisma` Files)
+These hold for every module (authoritative reference: `src/users/`; see `CLAUDE.md` Module Code Patterns).
 
-Your project already uses split schemas in `prisma/schema/`. This is Prisma's multi-file schema feature. Each domain gets its own file. It keeps things organized as the schema grows.
+- **Split Prisma schema** in `backend/prisma/` — one `.prisma` file per domain; Prisma 7 merges them. `prisma generate` is prepended to `build`/`start`.
+- **Always `select:`** in Prisma queries — never return raw DB rows.
+- **No try-catch for HttpExceptions** (Nest handles them). Only catch Prisma unique-constraint violations → `409 ConflictException`.
+- **Business rules live in the service**, not the controller. Controllers are thin routing only — no Prisma calls, no try-catch, no business logic.
+- **Transactional invariants** — every entity write that touches `slug_registry` must do so inside a Prisma transaction with the entity create (`CLAUDE.md` Rule #4):
+  - Category create → 1 `slug_registry` row **per active destination**, transactionally (Rule #5). **Do NOT seed FeaturedSlot rows** — that rule is removed under the tier model.
+  - Hub / Collection create → 1 `slug_registry` row for its destination.
+  - Tour create → always 1 `slug_registry` TOUR row; flat URL, no hub nesting (Rule #8).
+- **Slug renames** create a 301 entry in a redirect table automatically; deleted slugs enter a **90-day soft-delete cooldown** before reuse (master §2.3). See [`SLUG-REGISTRY.md`](./SLUG-REGISTRY.md) and [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md).
+- **Logging** — `this.logger.log(...)` on all mutating admin actions.
+- **Trip ownership** uses `operator.id`, not `user.id` (`CLAUDE.md` Rule #19) — resolve via `resolveOperatorId(userId, role?)`.
 
-### File-by-File Reasoning
+### Current code state (built vs. to build)
 
-**`base.prisma`** — generator and datasource. Never changes.
+| Built (schema + module) | To build |
+|---|---|
+| auth, users, operators, destinations, categories, hubs, collections, trips (+children), attributes/filters, slug-registry (resolve), search (keyword V1), settings, media-gallery | commission tiers / `quality_score` / ranking / eligibility engine; bookings service; reviews service; payments + Stripe + webhooks; availability/departures model (only a simple `TourSchedule` exists today); tracking pipeline; BullMQ workers; nightly jobs |
 
-**`enums.prisma`** — all enums for the project. Keep them together so you can see all possible values at a glance without navigating multiple files.
-
-**`user.prisma`** — the Better Auth core tables (`User`, `Session`, `Account`, `Verification`) plus the custom fields Island Tours needs (`role`, `status`, `operatorProfile` relation). The table names `@@map("user")` etc. are fixed by Better Auth.
-
-**`operator.prisma`** — `OperatorProfile` is separate from `User` because not every user is an operator. An operator profile is created when a user applies to become an operator and is approved by admin.
-
-**`categories.prisma`** — `Category` and `SubCategory`. Simple lookup tables. Important: every time a category is created, 3 `FeaturedSlot` rows must be created immediately (seeded). This is enforced in `CategoriesService.create()`.
-
-**`trips.prisma`** — `Trip` and `TripSchedule`. A trip has many schedules (different dates/times). The `status` enum drives visibility: only `LIVE` trips show to travelers.
-
-**`featured-slots.prisma`** — the four models that implement the slot economy:
-
-- `FeaturedSlot` — permanent rows (3 per category). Only UPDATE, never INSERT/DELETE in normal operation.
-- `SlotLock` — temporary (max 15 min TTL). Created on slot pick, deleted on publish or TTL expiry.
-- `WaitlistEntry` — one per operator per slot. FIFO by `createdAt`. Status drives the offer lifecycle.
-- `SlotHistory` — audit log. Every state change writes a row here. Required for the 7-day turnover heatmap in the slot picker UI.
-
-**`bookings.prisma`** — `Booking` and `Review`. Commission is stored on the booking at creation time (not recalculated later), so even if slot rates change, historical earnings are preserved.
-
-### Key Schema Design Decisions
-
-**Why `WaitlistEntry` does not store `position` as a number:**
-Position is always derived at query time (`COUNT(entries WHERE createdAt < this.createdAt AND status IN (WAITING, OFFERED))`). Storing it as a number would require updating every row in the queue whenever someone joins or leaves — an expensive operation prone to race conditions.
-
-**Why `SlotLock` has a `bullJobId` field:**
-When an operator publishes before TTL, we need to cancel the BullMQ TTL-expiry job. Without the job ID, we cannot find it to cancel. Same logic applies to `WaitlistEntry.offerJobId`.
-
-**Why `FeaturedSlot.tripId` is `@unique`:**
-A trip can only hold one featured slot, and a slot can only be held by one trip. The `@unique` constraint on `tripId` enforces both halves of this at the database level.
-
-**Why commissions are stored on `Booking`, not calculated at read time:**
-Commission rates can change (e.g., admin adjusts rates, or an operator moves from slot #2 to slot #3). Historical bookings must always show the rate that was in effect when the booking was made.
+> **To remove (legacy slot scaffolding):** `FeaturedSlot` / `SlotLock` / `SlotHistory` / `WaitlistEntry` exist in the schema and category-create currently seeds 3 `FeaturedSlot` rows. These are superseded by the tier model and must be removed. Tracked in the master checklist, not in this doc.
+>
+> **Mismatches to fix in code (master checklist):** `cancellationHours` default 24 → enum default 48; no `payment_model` field; thin Booking model; category gating likely ≥1 not ≥3; no 301/redirect table or cooldown.
 
 ---
 
-## 7. The Slot Economy — Core Business Logic
+## 6. Next.js Rendering Strategy (per page type)
 
-### Flow 1: Soft-Lock (Operator Picks a Slot)
+Canonical table (master §2.5). All content API endpoints accept a `locale` query param defaulting to `en`, with English fallback for missing translations.
 
-```
-Trigger: POST /api/v1/slots/:slotId/lock
+| Page type | Rendering | Revalidation |
+|---|---|---|
+| Homepage | ISR | 60s |
+| Destination | ISR | 60s |
+| All Tours | ISR | 60s |
+| Category | ISR | 60s |
+| Collection | ISR | 60s |
+| Activity Hub | ISR | 300s |
+| Tour detail | ISR | 30s |
+| Search results | SSR | not cached |
+| Thank You page (TYP) | Server-rendered | — (noindex; master §8.2) |
 
-1. Start Prisma transaction
-2. Check FeaturedSlot.status === AVAILABLE → else throw 409
-3. Check no SlotLock exists for this featuredSlotId (unique constraint also enforces this)
-4. Create SlotLock { expiresAt: now() + 15min }
-5. Update FeaturedSlot.status = SOFT_LOCKED
-6. Write SlotHistory row
-7. Commit transaction
-
-After commit:
-8. Schedule BullMQ delayed job: release-lock (delay: 15min)
-9. Store BullMQ job ID in SlotLock.bullJobId
-10. Publish Redis event to slot-events:{categoryId}: { type: 'slot.locked', rank, expiresAt }
-11. Return SlotLock (with expiresAt) to frontend → frontend starts countdown display
-```
-
-### Flow 2: Hard-Reserve (Operator Publishes)
-
-```
-Trigger: POST /api/v1/trips/:tripId/publish
-
-1. Find SlotLock for this tripId
-   → Not found? Throw 410 Gone ("Lock expired, start over")
-   → expiresAt <= now? Throw 410 Gone
-
-2. Start Prisma transaction
-3. Conditional UPDATE — this is the race condition guard:
-   UPDATE featured_slots
-   SET status = 'HARD_RESERVED', trip_id = :tripId,
-       acquired_at = now(), expires_at = now() + 90days
-   WHERE id = :slotId AND status = 'SOFT_LOCKED'
-
-   → If 0 rows updated: another operator's publish arrived first → throw 409
-     { code: 'SLOT_TAKEN' } → frontend shows race condition modal
-   → If 1 row updated: we won
-
-4. Set Trip.status = LIVE, publishedAt = now()
-5. Delete SlotLock
-6. Write SlotHistory row
-7. Commit transaction
-
-After commit:
-8. Cancel BullMQ TTL job using SlotLock.bullJobId
-9. Schedule BullMQ job: expire-cap (delay: 90 days)
-10. Publish Redis event: { type: 'slot.taken', rank }
-```
-
-### Flow 3: TTL Expiry (Background Worker)
-
-```
-Trigger: BullMQ job 'release-lock' fires 15 minutes after soft-lock
-
-1. Look up SlotLock by ID
-   → Not found? Operator published before TTL. Job is stale. Do nothing.
-2. Start transaction
-3. Delete SlotLock
-4. Update FeaturedSlot.status = AVAILABLE, tripId = null
-5. Write SlotHistory row (reason: 'ttl_expired')
-6. Commit
-
-After commit:
-7. Publish Redis event: { type: 'slot.released', rank }
-8. Check for WAITING WaitlistEntry for this slot
-9. If found (FIFO — first by createdAt): offer it → Flow 4
-```
-
-### Flow 4: Waitlist Offer
-
-```
-Trigger: Slot becomes available (TTL expiry, operator releases, 90-day cap)
-
-1. Find first WaitlistEntry WHERE featuredSlotId = :id AND status = 'WAITING'
-   ORDER BY createdAt ASC LIMIT 1
-2. Update: status = 'OFFERED', offeredAt = now(), offerExpiresAt = now() + 24h
-3. Schedule BullMQ job: expire-offer (delay: 24h)
-4. Store job ID in WaitlistEntry.offerJobId
-5. Send email + push notification to the operator
-6. Publish Redis event to slot-offer:{operatorId}: { type: 'offer.received' }
-```
-
-### Flow 5: Offer Claimed
-
-```
-Trigger: POST /api/v1/waitlist/:id/claim
-
-1. Validate: status === 'OFFERED' AND offerExpiresAt > now()
-2. Check FeaturedSlot is still AVAILABLE (someone else may have grabbed it)
-   → If taken: expire this offer, offer to next in queue
-3. In transaction:
-   - Update WaitlistEntry.status = 'CLAIMED', claimedAt = now()
-   - Call lockSlot() → creates a new SlotLock for this operator
-4. Cancel BullMQ offer-expiry job
-5. Return SlotLock data → redirect operator to the creation wizard with slot pre-selected
-```
-
-### Flow 6: 90-Day Cap Expiry
-
-```
-Trigger: BullMQ job 'expire-cap' fires 90 days after hard-reserve
-
-1. Release the slot (same as Flow 3, step 3–7)
-2. Notify the operator: "Your featured slot has expired. Re-queue to continue."
-3. Offer to the waitlist if entries exist
-```
-
-### The Race Condition in Detail
-
-The race condition happens when two operators are both in the wizard, both have a soft-lock on the same slot (which should not happen due to the unique constraint — only one soft-lock per slot). Actually the race condition is subtler: two operators could both have a soft-lock on **different** slots, but what if one operator publishes a trip that was assigned slot #2, and simultaneously another operator's BullMQ TTL job fires for slot #2? In that case:
-
-The conditional UPDATE `WHERE status = 'SOFT_LOCKED'` handles it atomically. PostgreSQL processes one UPDATE at a time. Whoever gets to the row first sets it to `HARD_RESERVED`. The second UPDATE finds `status != 'SOFT_LOCKED'` and updates 0 rows.
-
-This is why you do **not** need a Redis distributed lock for this. The database itself is the arbiter.
+Tour detail uses the shortest revalidation (30s) because availability and pricing must stay current. Activity Hubs cache longest (300s) — predominantly static SEO content. Search is fully dynamic SSR. The TYP is server-rendered with `conversion_fired_at` set server-side before render for mark-first idempotency (§9).
 
 ---
 
-## 8. NestJS Backend Module Map
+## 7. Placement Engine — Architectural View
+
+The placement engine replaces the legacy slot economy entirely. Full detail in [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md); the architectural shape:
+
+### Tiers (operator-selected in the dashboard)
+
+| tier_key | Commission | tier_rank |
+|---|---|---|
+| premium | 30% | 1 |
+| featured | 27.5% | 2 |
+| boosted | 25% | 3 |
+| organic | 22.5% | 4 |
+| standard (default) | 20% | 5 |
+| **Destination Spotlight** | 35% | separate labeled block, max 3/destination, manual approval |
+
+`standard` is the default and deliberately ranks below `organic`. Tour tier columns: `commission_tier DECIMAL(4,1)` default 20.0, `tier_key VARCHAR(20)` default `'standard'`, `tier_rank SMALLINT` default 5 (denormalized from `tier_key`, never client-written), `tier_locked_until TIMESTAMP` nullable, `quality_score DECIMAL(6,2)` default 0. On tier change all three tier fields update together and `tier_locked_until = now + 30 days`.
+
+### Ranking (category page / search)
 
 ```
-src/
-├── auth/                         # Better Auth session validation
-│   ├── auth.module.ts            # @Global() — available everywhere
-│   ├── auth.service.ts           # betterAuth() instance for getSession()
-│   └── guards/
-│       ├── auth.guard.ts         # validates session token
-│       ├── roles.guard.ts        # checks user.role
-│       └── permissions.guard.ts  # checks permission array
-│
-├── slots/                        # The slot economy — most critical
-│   ├── slots.module.ts
-│   ├── slots.controller.ts       # lock, release, stream (SSE)
-│   ├── slots.service.ts          # lockSlot, publishTrip, releaseSlot
-│   └── slot-events.service.ts    # Redis pub/sub → RxJS Observable for SSE
-│
-├── waitlist/
-│   ├── waitlist.module.ts
-│   ├── waitlist.controller.ts    # join, claim, pass, leave
-│   └── waitlist.service.ts       # offerSlot, claimOffer, passOffer
-│
-├── trips/
-│   ├── trips.module.ts
-│   ├── trips.controller.ts       # CRUD + publish endpoint
-│   └── trips.service.ts
-│
-├── categories/
-│   ├── categories.module.ts
-│   ├── categories.controller.ts
-│   └── categories.service.ts     # create() also seeds 3 FeaturedSlot rows
-│
-├── operators/
-│   ├── operators.module.ts
-│   ├── operators.controller.ts   # apply, approve, reject, getMySlots
-│   └── operators.service.ts
-│
-├── bookings/
-│   ├── bookings.module.ts
-│   ├── bookings.controller.ts
-│   └── bookings.service.ts
-│
-├── workers/                      # BullMQ processors
-│   ├── workers.module.ts
-│   ├── slot-lock-expiry.processor.ts   # fires 15min after lock creation
-│   └── waitlist-offer.processor.ts     # fires 24h after offer is made
-│
-└── admin/
-    ├── admin.module.ts
-    ├── admin.controller.ts
-    └── admin.service.ts
+ORDER BY tier_rank ASC, quality_score DESC, id ASC
 ```
 
-### Controller Route Map
+A **bookability filter** excludes a tour from every ranked result when `status != active`, `is_bookable = false`, or there is **no open departure in the next 30 days** — the next eligible tour moves up; the excluded tour is not billed for its tier during the unbookable period. A **diversity pass** runs after ranking. Destination Spotlight renders as a separate labeled block, never interleaved.
 
-```
-GET    /api/v1/slots/category/:categoryId     Public — slot states for slot picker
-POST   /api/v1/slots/:slotId/lock             OPERATOR — soft-lock
-DELETE /api/v1/slots/:slotId/lock             OPERATOR — manually release lock
-GET    /api/v1/slots/stream?categoryId=       Public — SSE stream (EventSource)
-
-POST   /api/v1/waitlist/join                  OPERATOR — join queue
-POST   /api/v1/waitlist/:id/claim             OPERATOR — accept offer
-POST   /api/v1/waitlist/:id/pass              OPERATOR — decline offer (keep position)
-DELETE /api/v1/waitlist/:id                   OPERATOR — leave queue entirely
-GET    /api/v1/waitlist/my-entries            OPERATOR — my queue positions
-
-GET    /api/v1/trips                          Public — live trips with filters
-GET    /api/v1/trips/:slug                    Public — trip detail
-POST   /api/v1/trips                          OPERATOR — create draft
-PATCH  /api/v1/trips/:id                      OPERATOR — update
-POST   /api/v1/trips/:id/publish              OPERATOR — publish (race condition endpoint)
-POST   /api/v1/trips/:id/pause                OPERATOR — pause live trip
-DELETE /api/v1/trips/:id                      OPERATOR — archive
-
-POST   /api/v1/operators/apply                USER — apply to become operator
-GET    /api/v1/operators/me                   OPERATOR — my profile
-GET    /api/v1/operators/me/slots             OPERATOR — slots dashboard data
-PATCH  /api/v1/operators/:id/approve          ADMIN — verify operator
-PATCH  /api/v1/operators/:id/reject           ADMIN
-
-GET    /api/v1/categories                     Public
-POST   /api/v1/categories                     ADMIN
-PATCH  /api/v1/categories/:id                 ADMIN
-```
+`quality_score` is computed by a nightly job and is **read-only at query time** (§8). `commission_rate` / `commission_amount` snapshot onto every booking at creation and never change retroactively.
 
 ---
 
-## 9. Next.js Frontend Page Map
+## 8. Background & Nightly Jobs
 
-```
-app/
-├── (public)/                             Server Components — SSR, SEO-optimized
-│   ├── page.tsx                          Homepage: hero carousel + category grids
-│   ├── search/page.tsx                   Search results with featured boost label
-│   ├── [category]/[sub]/page.tsx         Category browse page
-│   └── trips/[slug]/page.tsx             Trip detail + booking form (form is client)
-│
-├── (operator)/                           Client Components — TanStack Query
-│   └── operator/
-│       ├── layout.tsx                    Session check → redirect if not OPERATOR
-│       ├── dashboard/page.tsx            Overview stats
-│       ├── trips/
-│       │   ├── page.tsx                  Trips list (useQuery + refetch)
-│       │   ├── new/page.tsx              6-step wizard (useReducer state)
-│       │   └── [id]/edit/page.tsx
-│       ├── featured/page.tsx             Slots dashboard (active + waitlist + categories)
-│       ├── bookings/page.tsx
-│       └── payouts/page.tsx
-│
-├── (admin)/                              Admin panel — TanStack Query
-│   └── admin/
-│       ├── layout.tsx                    Session check → redirect if not ADMIN
-│       ├── dashboard/page.tsx
-│       ├── operators/page.tsx            Approve/reject operators
-│       ├── trips/page.tsx
-│       └── slots/page.tsx
-│
-├── login/page.tsx                        Uses existing LoginForm component
-├── signup/page.tsx                       Uses existing SignupForm component
-├── become-operator/page.tsx              Operator application form
-└── api/auth/[...all]/route.ts            Better Auth — do not modify
-```
+The master requires the following async/scheduled work. **BullMQ** (Redis-backed) runs queued/delayed jobs; nightly jobs run on a schedule (cron-style trigger into a BullMQ queue or a scheduler).
 
-### Data Fetching by Page Type
+### Nightly jobs
 
-**Traveler pages (Server Components):**
+| Job | What it does | Source |
+|---|---|---|
+| **quality_score recompute** | For every active tour, recompute `quality_score` (0–100, read-only at query time): `(avg_rating/5)*40 + (min(review_count,100)/100)*25 + (listing_completeness/100)*20 + (conversion_rate/max_conv)*15`. `max_conv` = highest conversion rate among active tours in the **same category**, recomputed per run. | master §7.2 |
+| **Departures materialization** | Materialize `departures` for **12 rolling months** from `availability_schedules` (weekly pattern) + `availability_exceptions` (per-date overrides). **Never touches** departures that have bookings, manual edits, or `source = api`. Single-day tours only (v1). | master §2 / E.9 |
+| **Eligibility check → notify → grace → auto-demote** | After a tour's one-time 90-day provisional window (from first publish), nightly enforce the flat eligibility bar (5 reviews · rating ≥4.0 · operator cancellation rate ≤10% trailing 90 days, min 10 bookings, admin force-majeure pardons). On failure: notify the operator, allow **30 days of grace**, then **auto-demote to the highest tier the tour still qualifies for**. Existing bookings keep their snapshotted commission. | master §7.2 |
+| **Operator aggregate recompute** | Recompute operator-level aggregates (rating, review count, cancellation rate over trailing 90 days) used by the eligibility check and by the LD11 review cold-start fallback. | master §7.2 / E.7 |
 
-```typescript
-// fetch() with revalidation — no client library needed
-const trips = await fetch(
-  `${process.env.BACKEND_API_URL}/trips?featured=true`,
-  { next: { revalidate: 60 } }  // re-fetch at most every 60 seconds
-).then(r => r.json());
-```
+### Queued / delayed jobs (BullMQ)
 
-**Operator pages (Client Components):**
+| Queue | Trigger | What it does |
+|---|---|---|
+| **email** | Booking confirmed, etc. | Send transactional email via Resend (Postmark fallback) |
+| **pre-tour reminder email** | Scheduled relative to departure | Send the pre-tour reminder (trigger + suppression rules, payment-model lines, upsell condition) — master §6.7 |
+| **AI translation** | Content saved without a manual translation | Generate machine translations (marked `isMachineTranslated`) per [`../04-multilingual/MULTILINGUAL-CONTENT.md`](../04-multilingual/MULTILINGUAL-CONTENT.md) |
+| **departures materialization** | Schedule/exception change or nightly tick | Re-materialize affected `departures` (respecting the never-touch rules above) |
+| **demotion** | Driven by the nightly eligibility check | Apply the 30-day grace + auto-demotion transition |
 
-```typescript
-// TanStack Query — caching + background refetch + loading/error states
-const { data } = useQuery({
-  queryKey: ['operator-trips'],
-  queryFn: () => apiClient('/trips/my-trips'),
-  staleTime: 30_000,
-});
-```
-
-**Slot picker (Client Component with SSE):**
-
-```typescript
-// 1. Initial data from useQuery
-const { data } = useQuery({ queryKey: ['slots', categoryId], ... });
-
-// 2. SSE updates merge into the same cache
-useSlotStream(categoryId); // custom hook — opens EventSource, calls setQueryData on events
-
-// 3. UI reads from cache — automatically re-renders on any update
-```
+Notes:
+- Departures: `availability_schedules` (tour_id, weekday 0–6 Mon=0, start_time, capacity_override, valid_from/until, status), `availability_exceptions` (date, start_time nullable, type close_date/close_slot/add_slot/set_capacity, capacity, note, created_by), `departures` (UNIQUE (tour_id, date, start_time): capacity, booked_count, status open/closed/sold_out/cancelled, sold_out_at, source schedule/exception/api, external_ref, manually_edited). All party bands count toward capacity. Bookability = EXISTS an open departure within 30 days. See [`AVAILABILITY-AND-DEPARTURES.md`](./AVAILABILITY-AND-DEPARTURES.md).
+- `quality_score` and the eligibility check are read-only at query time — ranking never recomputes them inline.
 
 ---
 
-## 10. Edge Cases You Must Handle
+## 9. Tracking & Analytics Pipeline
 
-The wireframes define 6 edge cases that the system must handle gracefully:
+Canonical: master §8; detail in [`TRACKING-AND-ANALYTICS.md`](./TRACKING-AND-ANALYTICS.md).
 
-### EC-01: All Slots Taken
+- **One** `booking_complete` dataLayer event on the Thank You page fans out to **4 GTM tags**: Conversion Linker, Google Ads, GA4 `purchase`, Meta Pixel — plus **server-side Meta CAPI** with event-id dedup against the Pixel event.
+- **Conversion value = `commission_amount` in EUR**, never GMV.
+- **Mark-first idempotency**: `conversion_fired_at` is set server-side before the TYP renders, so a refresh never double-fires.
+- TYP route `/{destination}/thank-you/{bookingRef}` where `bookingRef = public_ref` (uuid, non-enumerable), **no locale prefix**, `noindex`.
+- `operator_full` bookings bypass payment/webhook and are created confirmed at commit.
+- **Consent Mode v2**: EEA denied by default, US/CA granted.
+- **Stripe webhook idempotency** via a `stripe_webhook_events` table.
+- **Affiliate (Trackdesk):** attribution is owned by our own `booking_complete` event; promo codes double as attribution IDs; commission goes on hold at booking and approves after the cancellation window closes (clawback-safe). See [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md).
 
-**What happens:** All 3 `FeaturedSlot` rows have `status = HARD_RESERVED`.
-
-**Backend:** `GET /api/v1/slots/category/:id` returns all three as taken. Also returns estimated ETAs per slot (calculated from waitlist queue depth and average historical hold duration via `SlotHistory`).
-
-**Frontend:** Instead of the slot picker, render the `AllSlotsTakenView` — shows all 3 slot cards as taken, estimated wait time for each, and a "Join queue" button per slot.
-
-### EC-02: Race Condition on Submit
-
-**What happens:** Two operators both have valid soft-locks, but only one can hard-reserve. The conditional UPDATE returns 0 rows for the loser.
-
-**Backend:** `POST /trips/:id/publish` returns `{ statusCode: 409, code: 'SLOT_TAKEN' }`.
-
-**Frontend:** The `useMutation` `onError` handler detects `error.code === 'SLOT_TAKEN'`, rolls back the optimistic update, and shows `RaceConditionModal` overlaid on the wizard. The operator can pick again, publish as standard, or join the waitlist.
-
-### EC-03: Editing a Live Trip
-
-**What happens:** Operator edits a trip that is currently `LIVE` and holds a featured slot.
-
-**Backend:** `PATCH /trips/:id` allows content updates (title, description, photos, pricing) on live trips. Changing `categoryId` is blocked if the trip holds a slot — that requires releasing the slot first.
-
-**Frontend:** Show a warning banner on the edit page: "Changes save immediately to the live listing."
-
-### EC-04: TTL Expired Mid-Wizard
-
-**What happens:** Operator is on the review step, the 15-minute countdown hits zero.
-
-**Detection paths:**
-
-1. SSE event `slot.released` arrives for the slot the operator holds → component detects it is their lock → shows expiry warning.
-2. Operator clicks "Publish →" and server returns `410 Gone`.
-
-**Frontend response:** Clear `selectedSlot` state, disable the publish button, show a toast/banner, return operator to the slot picker step.
-
-### EC-05: Pre-Book Window (24h Before Departure)
-
-**What happens:** 24 hours before a scheduled trip date, the system activates a special window.
-
-**Backend:** A BullMQ job is scheduled when a `TripSchedule` is created, set to fire at `(schedule.date - 24h)`. The worker can trigger price updates, "last-minute" badges, or block new bookings.
-
-### EC-06: Removed / Paused Trip
-
-**What happens:** Operator pauses or archives a trip that holds a featured slot.
-
-**Backend:** `TripsService.pause()` and `TripsService.archive()` both call `SlotsService.releaseSlot(featuredSlotId, 'operator_released')`. This automatically triggers the waitlist offer flow for the next person in queue.
+Booking records carry click IDs (gclid/gbraid/wbraid/fbclid) and UTM (source/medium/campaign/term/content) for attribution; see [`BOOKING-AND-PAYMENTS.md`](./BOOKING-AND-PAYMENTS.md) and [`DATA-MODEL.md`](./DATA-MODEL.md).
 
 ---
 
-## 11. Background Jobs with BullMQ
+## 10. Real-Time / SSE — Out of Scope
 
-All time-sensitive operations run as delayed BullMQ jobs. Jobs survive server restarts (stored in Redis). Jobs are cancellable (store the job ID in the database row).
-
-### Queue: `slot-ttl`
-
-| Job name | Scheduled when | Delay | What it does |
-|---|---|---|---|
-| `release-lock` | SlotLock created | 15 minutes | Expires lock, sets slot to AVAILABLE, offers to waitlist |
-| `expire-cap` | FeaturedSlot hard-reserved | 90 days | Releases slot, notifies operator, offers to waitlist |
-
-**Cancellation:** When operator publishes before TTL → `queue.getJob(bullJobId).then(job => job?.remove())`.
-
-### Queue: `waitlist-offers`
-
-| Job name | Scheduled when | Delay | What it does |
-|---|---|---|---|
-| `expire-offer` | WaitlistEntry offered | 24 hours | Marks offer expired, offers to next in queue |
-
-**Cancellation:** When operator claims offer → cancel job using `offerJobId`.
-
-### Queue: `notifications`
-
-| Job name | Scheduled when | Delay | What it does |
-|---|---|---|---|
-| `send-email` | Various events | 0 (immediate) | Send via Nodemailer |
-| `pre-book-activate` | TripSchedule created | `date - 24h - now` | Activates 24h pre-booking window |
-
-### Critical: Two Separate Redis Connections
-
-BullMQ needs one Redis connection for its queue operations. The SSE pub/sub needs two — one for `subscribe` mode and one for `publish`. A Redis connection in `subscribe` mode cannot send other commands.
-
-```
-Redis Connection 1: BullMQ queue (ioredis managed by @nestjs/bullmq)
-Redis Connection 2: SlotEventsService publisher (ioredis, SlotsService injects)
-Redis Connection 3: SlotEventsService subscriber (ioredis, listens to pub/sub channels)
-```
+The legacy architecture used SSE + Redis pub/sub to broadcast live slot-state changes to operator browsers. **There is no slot economy**, so there is **no real-time requirement** in the master. SSE, WebSockets, and Redis pub/sub for live UI are **out of scope** unless a future need arises. Redis is retained only as the BullMQ backing store. ISR revalidation (§6) is sufficient for keeping content pages current.
 
 ---
 
-## 12. Key Technical Decisions — Summary Table
+## 11. Key Technical Decisions
 
 | Decision | Choice | Reasoning |
 |---|---|---|
-| Real-time slot updates | Server-Sent Events (SSE) | Server→client only push. Simpler than WebSockets. Works with Redis pub/sub for horizontal scale. Auto-reconnect built in. |
-| Client data fetching | TanStack Query v5 | Cache + background refetch + SSE integration via `setQueryData` + `useMutation` for optimistic updates. |
-| Server mutations | Server Actions or TanStack `useMutation` | Server Actions for simple forms; `useMutation` when optimistic updates or complex error handling needed. |
-| Traveler pages | Next.js Server Components + `fetch()` | SSR for SEO. No client library overhead. `unstable_cache` for DB deduplication. |
-| Auth | Better Auth (frontend-hosted) | Handles sessions, OAuth, email verification. NestJS validates sessions via shared secret. |
-| Authorization | `AuthGuard` + `RolesGuard` + `@Roles()` | Already built in the codebase. Three-role system: USER (traveler), OPERATOR, ADMIN. |
-| Race condition prevention | PostgreSQL conditional UPDATE | `WHERE status = 'SOFT_LOCKED'` — atomic, no Redis lock needed. 0 rows updated = loser. |
-| TTL enforcement | BullMQ delayed job | Survives server restart. Cancellable. Reliable 15-min expiry. |
-| Slot event broadcast | Redis pub/sub | Already in stack (Upstash). Fanout works across multiple NestJS instances. |
-| Schema organization | Split Prisma files (existing pattern) | One file per domain. Already configured in the project. |
-| 90-day slot cap | BullMQ delayed job | Scheduled at hard-reserve time. Cancel if operator voluntarily releases. |
-| Waitlist ordering | FIFO by `createdAt` (derived at query time) | Never store `position` as a number — race conditions and expensive updates on every queue change. |
-| Commission storage | Stored on `Booking` at creation time | Rates can change. Historical bookings must reflect the rate at booking time. |
-| FeaturedSlot lifecycle | Permanent rows, only UPDATE status | Create 3 rows per category on seed. Never INSERT/DELETE in normal operation. |
+| Placement engine | Commission **tiers + ranking + eligibility** (no slots) | Master §7.2. Ethical CRO; placement earned by tier rank + quality, not by holding a scarce slot. |
+| Ranking order | `tier_rank ASC, quality_score DESC, id ASC` | Deterministic, same-tier collisions resolved by quality then id; no per-category tier cap. |
+| quality_score | Nightly job, read-only at query time, 0–100 | Keeps ranking queries cheap; recomputed against per-category `max_conv`. |
+| Eligibility enforcement | Nightly check → notify → 30-day grace → auto-demote | Flat bar after a 90-day provisional window; bookings keep snapshotted commission. |
+| Availability | `availability_schedules` + `availability_exceptions` → materialized `departures` | Bookability = open departure within 30 days; nightly materialization of 12 rolling months. |
+| Backend framework | NestJS 11 + Prisma 7 split schema | Modular, strict TS; one file per domain merged by Prisma 7. |
+| Auth | Better Auth, backend-only | Single secret; frontend never runs `betterAuth()`. |
+| Rendering | ISR per page type; SSR for search; server-rendered TYP | Master §2.5; balances freshness against SEO/perf. |
+| Async work | BullMQ (Redis) | Email, materialization, demotion, AI translation. No SSE/pub-sub. |
+| Payments | Stripe; webhook idempotency via `stripe_webhook_events` | 4 payment models snapshotted onto the booking. |
+| Email | Resend (Postmark fallback) on a dedicated transactional subdomain | SPF/DKIM/DMARC; separate from marketing. |
+| Tracking | Single `booking_complete` event → 4 GTM tags + Meta CAPI | Conversion value = `commission_amount` EUR; mark-first idempotency; Consent Mode v2. |
+| Real-time | **None** (out of scope) | No slot economy → no live-update requirement. |
+| Commission storage | `commission_rate` / `commission_amount` snapshot on the booking | Rates change; historical bookings must reflect the rate at booking time. |

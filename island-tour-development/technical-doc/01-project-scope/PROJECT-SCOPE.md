@@ -1,243 +1,199 @@
 # Island Tours — Project Scope
 
-Island Tours is a complete tour and travel management marketplace application. Tour operators can join as a tour operator by signing up and they can create and list their trips. They can feature their trips by giving a cut-off commission to Island Tours. Users can book a trip and pay for it.
+> Canonical source: master §1 (`technical-doc/island-tours-platform-master.html` v1.9). This document states the business requirements: what Island Tours is, who uses it, the commission-tier business model, the four payment models, instant booking, and the edge cases the platform must handle.
 
 ---
 
-## Discovery & SEO Architecture (V2)
+## 1. What Island Tours Is
 
-The public-facing discovery, URL, attribute, filter, search, and SEO architecture is specified canonically in **`technical-doc/02-architecture/PLATFORM-ARCHITECTURE-V2.md`** (reflects the V2 Notion PDF). Summary of scope it adds to this project:
+Island Tours is a **Caribbean tour marketplace** built on the "Built by Islanders" ethos: local curation as the ethical, locally owned alternative to global OTAs (Viator, GetYourGuide, Klook, Headout). Travelers discover and book tours and activities; local operators supply them; Island Tours earns a **commission per booking** — it is a reseller, not the tour provider.
 
-- **Core hierarchy:** Destination → Category → Tour → Attributes, with **Activity Hubs** and **Collections** as two parallel discovery layers. A tour belongs to 1 destination, **1+ categories**, **0–n activity hubs**, one canonical flat URL.
-- **Region layer:** destinations grouped by region (Caribbean/Atlantic/Mediterranean/Asia/Africa) — a data attribute, no URL.
-- **19 global categories** with fixed slugs; category pages render only when there is ≥1 published tour.
-- **Attributes / Filters system:** central `attribute_definitions` dictionary + `tour_attributes`; global + category-specific filters; faceted filtering, sorting (incl. weighted "Recommended"). *(New build.)*
-- **Collections:** manual or dynamic curated tour lists. *(New module.)*
-- **Search:** full-text across tours (Postgres tsvector → Algolia/ES later). *(New module.)*
-- **SEO layer:** JSON-LD structured data, per-locale XML sitemaps, breadcrumbs, internal linking, CRO display fields (social proof, urgency, recency).
-- **i18n:** 7 locales (en, es, nl, pt, fr, de, zh), English slugs, hreflang + x-default, ISR. *(Already implemented — see `04-multilingual/MULTILINGUAL-CONTENT.md`.)*
+- **Tagline:** "Island Tours. Built by Islanders." The sign-off form is "Built by Islanders." The tagline is a brand mark (like a logo) and stays in English in all seven locales — never translated.
+- **Commercial model:** commission-based marketplace. Operators pay a **tiered commission**, snapshotted onto the booking at creation time (master §1.4, §7.1).
 
-The migration from current code to this target is tracked in **`technical-doc/V2-DEVELOPMENT-ALIGNMENT-PLAN.md`**. The featured-slot economy, bookings, payments, reviews, operator onboarding, notifications, and chat described below are **retained as-is** (V2 does not cover the transactional layer).
+### Positioning pillars (master §1.1)
+
+| Pillar | Meaning |
+|---|---|
+| Local curation, not an algorithmic catalog | Editorial picks are made by people who live on the islands. |
+| Ethical CRO | No fake urgency, no fake scarcity, no badge inflation, no dark patterns, no pre-checked add-ons. Paid placement is always labeled **Sponsored**. |
+| Transparency | Total price before checkout, no hidden fees, clear cancellation, claims always verifiable. |
+| Caribbean-proud voice | Warm, direct, first-person plural, never corporate. |
 
 ---
 
-## Roles & Authentication
+## 2. Launch Scope (master §1.2, confirmed June 10 2026)
 
-The platform has three roles: **USER (Customer)**, **TOUR_OPERATOR**, and **ADMIN**. Each role has a distinct authentication flow.
+Three **live** destinations, in rollout order. Saint Lucia and the Bahamas exist as **seeded pipeline rows only** — the architecture lists five, but every 2026 surface (homepage hero quick links, email spec, reviews) works with the three-island set.
 
-### Authentication by Role
+| # | Destination | Slug | Status |
+|---|---|---|---|
+| 1 | Curaçao | `/curacao/` | Launch |
+| 2 | Aruba | `/aruba/` | Rollout 2 |
+| 3 | Sint Maarten | `/sint-maarten/` | Rollout 3 |
+| 4 | Saint Lucia | `/saint-lucia/` | Pipeline, seeded only |
+| 5 | Bahamas | `/bahamas/` | Pipeline, seeded only |
 
-| Role | Sign-up Method | Login Method |
+The destination data model supports unlimited expansion with no structural change. Destinations are grouped by **region** (a data attribute, no URL). `parent_destination_id` is nullable for future sub-destinations, unused at launch. See `../02-architecture/PLATFORM-ARCHITECTURE.md` and `../02-architecture/DATA-MODEL.md`.
+
+### Languages and currency (master §1.3)
+
+- **Seven locales from launch**, English primary: `EN, NL, DE, FR, ES, PT, ZH`. Slugs are English in every locale, never translated.
+- **Display currency** defaults per locale, with a footer selector override that persists for the session (NOT destination-based): EN, ZH → USD; NL, DE, FR, ES, PT → EUR. The nav never carries the selector. `destination.currency` is operator/payout context only and does not drive display currency.
+
+See `../04-multilingual/MULTILINGUAL-CONTENT.md`.
+
+---
+
+## 3. User Roles and Flows (master §1, §7; brief §16)
+
+Three launch-active roles. EDITOR/STAFF/GUIDE are designed but not launch-active. ADMIN is a strict superset of OPERATOR and USER. Roles are set **server-side only** — the frontend never sends a `role` field. See `../05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`.
+
+| Role | Created by | Core capability |
 |---|---|---|
-| USER / Customer | No self-registration. Credentials (email + temporary password) are auto-generated and emailed when a booking is made. | Email + password only. User can change credentials via forgot/reset password. |
-| TOUR_OPERATOR | Self-registration via Better Auth — email/password with mandatory email verification, plus social login (Google). | Email/password or social login (Google) via Better Auth. |
-| ADMIN | Created by database seeding only. No public sign-up. | Email + password only. |
+| USER (traveler) | Auto-created on first booking | Discover → book → pay → review |
+| TOUR_OPERATOR | Self-registration (Better Auth, email verification + Google) | List tours, pick a commission tier, manage availability |
+| ADMIN | Database seed only | Manage destinations / categories / hubs / collections, approve Spotlight, issue force-majeure pardons |
 
-> **Note:** The email notification provider is TBD and will be configured separately. The system is designed with a pluggable mail service (Nodemailer-compatible).
+### 3.1 Traveler flow — discover → book → pay → review
 
----
+1. **Discover.** Three parallel discovery layers per destination — **Categories**, **Activity Hubs**, **Collections** — plus the All Tours catalog and Search. Listing order follows the tier ranking (`tier_rank ASC, quality_score DESC, id ASC`); paid placements P1–P3 carry a gray **Sponsored** badge. (master §2.1, §7.2)
+2. **Book.** **Instant booking, no enquiry model.** The traveler selects a departure and party, and the booking is **confirmed instantly on every payment model**. Pre-payment copy is agentless ("You'll get a secure link to pay the rest") and never names the operator (disintermediation control).
+3. **Pay.** Deposit or full amount via Stripe at booking, per the payment model (§5 below). The Thank You page fires one `booking_complete` conversion event.
+4. **Review.** A traveler can submit a review only against a **confirmed booking** ("every review from a confirmed booking, no exceptions"). Reviewer first name + last initial only; travel month + year; rating 1–5; text per locale. See `../02-architecture/DATA-MODEL.md` (E.7).
 
-## User Role (Customer)
+### 3.2 Operator flow — list tours, pick a tier, manage availability
 
-Users gain access only after making a booking. Their credentials are created automatically and delivered via email.
+- **Self-register** via Better Auth (email/password with mandatory verification, plus Google). Operators inherit all traveler capabilities.
+- **List tours.** Create a tour as DRAFT, attach it to 1 destination, 1+ categories (one primary), 0–n hubs, fill localized content and pricing, then publish. See `../03-implementation/TRIP-MODULE.md`.
+- **Pick a commission tier** in the dashboard (§4). On change, the tier is locked for 30 days. Tier eligibility is enforced by the eligibility engine (§4.2).
+- **Manage availability.** Operators set a weekly availability pattern and per-date exceptions; the platform materializes concrete departures. See `../02-architecture/AVAILABILITY-AND-DEPARTURES.md`.
+- **Request Destination Spotlight** (35% placement block) — manual approval by Island Tours, max 3 simultaneous per destination.
 
-**Authentication**
-- Login with email and temporary password provided on first booking
-- Change password via forgot password / reset password flow
-- No social login for customers
+### 3.3 Admin flow — manage the marketplace
 
-**Trip Discovery**
-- Browse and search all live trips
-- Filter trips by category, price, date, location, and rating
-- View trip detail pages (description, photos, schedules, operator info, reviews)
-- Add trips to wishlist
+- Manage **destinations, categories, hubs, collections** and their editorial/page content.
+- **Approve Destination Spotlight** requests (operator requests, Island Tours approves).
+- **Issue force-majeure pardons** that exclude qualifying cancellations from an operator's trailing-90-day cancellation rate.
+- Confirm operator non-payment reports (the only path that forfeits a deposit — §6).
 
-**Booking & Payments**
-- Book a trip (selects a specific trip schedule/departure date)
-- Pay for the trip via available payment gateways (Stripe, Mollie, or PayPal — whichever admin has enabled)
-- View all personal bookings
-- Cancel a booking (subject to cancellation policy)
-
-**Post-Trip**
-- Rate and review a completed trip
-- Chat with the tour operator (chat system design TBD)
+> Operator and admin tooling is out of the master's consumer scope, but the role model must support these actions.
 
 ---
 
-## Tour Operator Role
+## 4. Commission-Tier Business Model (master §1.4, §7) — replaces the slot economy
 
-Tour operators are businesses or individuals who list trips on the platform.
+> **There is no featured-slot economy.** The earlier 3-slots-per-category, soft-lock/hard-reserve, waitlist, and paid-skip mechanism is removed entirely. Placement is governed by **commission tiers + a ranking query + an eligibility engine**. See `../02-architecture/COMMERCIAL-MODEL.md`.
 
-**Authentication**
-- Self-registration via Better Auth
-- Email/password sign-up with mandatory email verification before activation
-- Social login via Google and GitHub
-- Login via credentials or social login
+### 4.1 Tiers
 
-**All User (Customer) Features**
-Tour operators inherit all customer features — they can browse, search, filter, wishlist, book, and pay for trips listed by other operators. They can rate and review other operators' trips.
+Operators pay a tiered commission, locked at booking time as `commission_amount` on the booking record. Tier mechanics are **internal commercial logic, never user-facing**.
 
-**Trip Management (Own Trips)**
-- Create and list trips (details, photos via Cloudinary, pricing, schedules)
-- Trips are created as **DRAFT** first, then published as **LIVE**
-- Each trip supports multiple scheduled departures (dates) with individual capacity limits
-- Edit live trips (title, description, photos, pricing update immediately)
-- Pause a live trip (removes from public listing, releases featured slot if held)
-- Archive a trip (permanent removal from public listing, releases featured slot if held)
+| Tier (`tier_key`) | Commission | `tier_rank` |
+|---|---|---|
+| `premium` | 30% | 1 |
+| `featured` | 27.5% | 2 |
+| `boosted` | 25% | 3 |
+| `organic` | 22.5% | 4 |
+| `standard` (default) | 20% | 5 |
+| **Destination Spotlight** | 35% | separate labeled block, never interleaved; max 3 per destination; manual approval |
 
-**Featured Slot System**
-- When publishing a trip, the operator chooses between a **Standard listing** or a **Featured listing**
-- Featured listings require selecting one of 3 available slots per trip category
-- Slot tiers and commissions per booking:
-  - Slot 1 — best placement (hero carousel, top pin) — 22% platform commission
-  - Slot 2 — mid placement — 25% platform commission
-  - Slot 3 — lowest featured placement — 30% platform commission
-  - Standard listing — no placement boost — 20% platform commission
-- **Soft-lock:** Selecting a slot reserves it for 15 minutes while the operator completes the creation wizard. If not published within 15 minutes, the lock is released automatically.
-- **Hard-reserve:** Publishing the trip before the TTL expires converts the soft-lock to a hard-reserve (held for up to 90 days)
-- **Race condition:** If two operators publish on the same slot simultaneously, the first HTTP request wins. The losing operator sees a recovery modal and can pick a different slot, publish as standard, or join the waitlist.
-- **Slot expiry:** After 90 days, the slot is automatically released and offered to the next person in the waitlist.
-- If all 3 slots in a category are taken, the operator can publish as a standard listing, or join the **Waitlist** for a preferred slot.
+`standard` is the default for new tours and the locked rate for operators on a negotiated 20% agreement. It **deliberately ranks below `organic`**, so a 20% operator who wants to outrank other base-rate tours moves up to `organic` at 22.5%.
 
-**Waitlist**
-- FIFO queue per slot per category
-- When a slot becomes available, the next operator in queue receives a **24-hour offer window** to claim it
-- If the offer is not claimed within 24 hours, it passes to the next in queue
-- Operators can skip ahead in the queue by paying a fee (maximum 3 paid skips per queue entry)
+**Ranking:** `ORDER BY tier_rank ASC, quality_score DESC, id ASC`. Same-tier collisions are expected and valid; there is no per-category tier cap. A bookability filter excludes a tour when `status != active`, `is_bookable = false`, or it has no open departure in the next 30 days. A diversity pass runs after ranking. Tier also drives `deposit_pct` (20–30 in 2.5 steps).
 
-**Dashboard**
-- View all own trips (with status: DRAFT, LIVE, PAUSED, ARCHIVED)
-- View all bookings for own trips
-- Cancel bookings
-- View featured slot status and waitlist position (if any)
-- See pending slot offer banners with countdown timer
+**Tier lock:** on change, `tier_key`, `commission_tier`, and `tier_rank` update together and `tier_locked_until = now + 30 days`; further changes are rejected while the lock is in the future.
 
----
+### 4.2 Eligibility engine
 
-## Admin Role
+A flat eligibility bar opens the paid tiers (`boosted`, `featured`, `premium`), applied **after a one-time 90-day provisional window** from first publish during which any tier may be held:
 
-Admins are created by database seeding. There is no public admin registration.
+- **5 reviews**, rating **≥ 4.0**, operator **cancellation rate ≤ 10%** (trailing 90 days, minimum 10 bookings; admin force-majeure pardons apply).
+- **Destination Spotlight** additionally requires **10 reviews**, **4.5** rating, manual approval, and the max-3 cap.
 
-**Seeded credentials:** `email: admin@islandtours.com` / `password: [set in seed script]`
+A nightly check enforces eligibility: notify → **30-day grace** → automatic demotion to the highest tier the tour still qualifies for. Existing bookings keep their snapshotted commission. See `../02-architecture/COMMERCIAL-MODEL.md`.
 
-**All Customer Features**
-Admins inherit all customer features — browse, search, wishlist, book, pay, review, and chat.
+### 4.3 Quality score
 
-**Platform Management**
-- Manage tour operators (view, approve, suspend, ban accounts)
-- Manage all trips (view, force-pause, force-archive any trip)
-- Manage trip categories (create, edit, delete — seeding 3 featured slots per new category automatically)
-- Manage featured slots (view all slots across all categories, override slot assignments if needed)
-- View and manage the waitlist per slot
-
-**Booking & Payment Oversight**
-- View all bookings across the platform
-- Cancel any booking
-- View payment transaction history
-
-**Payment Gateway Configuration**
-- Enable or disable payment methods: Stripe, Mollie, PayPal
-- Configure commission rates per slot tier (default: 20% standard, 22% / 25% / 30% featured)
-
-**Notification Configuration**
-- Enable or disable notification types (email, push) from admin panel
-
-**Overview Dashboard**
-- Total trips (by status), tour operators, bookings, and revenue
-- Recent bookings, payments, and cancellations
-- Notification feed
-- Platform health (slot fill rate, waitlist depth)
-
----
-
-## Trip Lifecycle
+`quality_score` (0–100) is computed by a **nightly job** and is read-only at query time:
 
 ```
-DRAFT → LIVE → PAUSED → ARCHIVED
-              ↑_____↓ (operator can pause/unpause a live trip)
+quality_score =
+  (avg_rating / 5)               * 40 +
+  (min(review_count, 100) / 100) * 25 +
+  (listing_completeness / 100)   * 20 +
+  (conversion_rate / max_conv)   * 15
 ```
 
-- **DRAFT**: Created but not yet published. Not visible to customers. Operator can edit freely.
-- **LIVE**: Published and visible to customers. Content edits (title, description, photos, pricing) save immediately. Changing the category of a live trip that holds a featured slot requires releasing the slot first.
-- **PAUSED**: Operator-paused. Not visible to customers. Featured slot (if held) is released automatically and offered to the waitlist.
-- **ARCHIVED**: Permanently removed from public listing. Featured slot (if held) is released automatically.
+`max_conv` = highest conversion rate among active tours in the same category, recomputed per run.
+
+### 4.4 Affiliate program (master §7.3)
+
+Trackdesk (primary). Rate: **8% of GMV**, funded entirely out of Island Tours' commission take. Commission goes on hold at booking and approves after the cancellation window closes (clawback-safe). Attribution is owned by the platform's own `booking_complete` event; promo codes double as attribution identifiers. See `../02-architecture/TRACKING-AND-ANALYTICS.md`.
 
 ---
 
-## Trip Schedules
+## 5. Payment Models (master §1.4, §5.8) — four canonical models
 
-Each trip listing can have multiple scheduled departures (e.g., the same boat tour offered every Saturday). Each schedule has:
-- Departure date and time
-- Capacity (max bookings)
-- Current booking count
-- Status (available, full, completed, cancelled)
+The booking is **confirmed instantly on every model**. The chosen model is snapshotted onto the booking. On deposit models the traveler pays `deposit_pct`% to Island Tours via Stripe at booking; the balance is the operator's transaction. See `../02-architecture/BOOKING-AND-PAYMENTS.md`.
 
-A BullMQ background job activates a **pre-booking window 24 hours before departure** — this can trigger last-minute price adjustments, "last-minute availability" badges, or block new bookings depending on configuration.
-
----
-
-## Featured Slot System — Technical Summary
-
-- Every trip **category** has exactly **3 FeaturedSlot rows**, created when the category is seeded. These rows are never deleted — only their status and assignment are updated.
-- Slot statuses: `AVAILABLE → SOFT_LOCKED (15 min TTL) → HARD_RESERVED (up to 90 days) → AVAILABLE`
-- All slot timing is enforced by **BullMQ delayed jobs** stored in Redis (survive server restarts, cancellable)
-- Real-time slot status updates are pushed to connected operator browsers via **Server-Sent Events (SSE)**
-- Commission rates are stored on the Booking record at the time of booking (so historical bookings reflect the rate that was in effect, even if rates change later)
-
----
-
-## Payment System
-
-- Supported gateways: **Stripe**, **Mollie**, **PayPal**
-- Admin can enable or disable any gateway from the admin panel
-- Payments are tied to bookings
-- Refunds on cancellation are handled per-gateway
-
----
-
-## Notification System
-
-| Event | Recipient(s) | Channel |
+| Model | Balance handling | Deposit at booking |
 |---|---|---|
-| Trip booked | User, Tour Operator, Admin | Email + Push |
-| Booking cancelled | User, Tour Operator, Admin | Email + Push |
-| Featured slot offer available | Tour Operator | Email + Push |
-| Slot offer expired (no action taken) | Tour Operator | Email |
-| Slot TTL expired mid-wizard | Tour Operator | In-app toast / SSE event |
-| Pre-departure window activated (24h before) | Tour Operator | Email |
-| Account credentials created | User (new customer) | Email |
-| Password reset | User / Tour Operator | Email |
+| `operator_link` (default) | Operator emails a secure payment link; balance paid online before the deadline | `deposit_pct`% via Stripe |
+| `on_arrival` | Balance paid in person on arrival (card or cash, or cash only, per tour) | `deposit_pct`% via Stripe |
+| `paid_in_full` | Traveler paid 100% at booking via Island Tours | 100% via Stripe |
+| `operator_full` | Operator collects the full amount; checkout takes no payment | none (bypasses payment + webhook; created confirmed) |
 
-- Email notifications are sent via a pluggable email provider (Nodemailer-compatible — provider TBD)
-- Push notifications via a push provider (TBD — Firebase or equivalent)
-- Admin can enable or disable any notification type from the admin panel
+**Two-phase operator visibility:** before payment, all copy is agentless and never names the operator (disintermediation control). After booking, the operator is named deliberately — on `operator_link` tours the Thank You page and confirmation email say the operator will send the balance link, so that email is expected and not mistaken for phishing (the C2 mitigation).
 
 ---
 
-## Chat System
+## 6. Cancellation and Free-Cancellation Policy (master §6.2)
 
-- Users can chat with tour operators
-- Tour operators can chat with users
-- Admins can chat with tour operators
-- **Technical design for the chat system is deferred** and will be specified in a separate design document before implementation.
-
----
-
-## Image Uploads
-
-- Trip photos are uploaded and managed via **Cloudinary**
-- Tour operator profile photos via Cloudinary
-- Admin can remove images that violate platform policy
+- `cancellation_hours` is an int enum `[24, 48, 72, 168]`, **default 48**, stored NOT NULL.
+- **One window governs both** the balance deadline and free cancellation: `cancelDeadline = tour start − cancellation_hours` (tour-local time, shown "(local time)").
+- **Free cancellation is a listing requirement** — every published tour carries a window.
+- **Forfeiting a deposit is never automatic.** Operator reports non-payment → admin confirms → only then is the deposit forfeited.
+- **Operator-forced cancellation** → full refund or free reschedule, always.
 
 ---
 
-## Edge Cases the System Must Handle
+## 7. Page Types (master §2.1)
+
+| Page type | Job | Example URL |
+|---|---|---|
+| Homepage | Destination selection, nothing else | `/` |
+| Destination | Island overview, entry to all discovery layers | `/en/curacao/` |
+| All Tours | Full filterable catalog per destination | `/en/curacao/tours/` |
+| Category | One activity type per destination (SEO workhorse) | `/en/curacao/boat-tours/` |
+| Activity Hub | One location/highlight/area with its own decision logic | `/en/curacao/klein-curacao/` |
+| Collection | Persona/intent-driven curated list, cuts across categories | `/en/curacao/best-things-to-do/` |
+| Tour detail | Conversion page | `/en/curacao/{tour-slug}/` |
+| Checkout + Thank You | Transaction and confirmation | see §5.8, §5.9 |
+| Search results | Query results within a destination | `/en/search?q={query}&destination={dest}` |
+| Help Center | Site-level FAQ with FAQPage schema | `/help` |
+
+Tours live **flat directly under the destination** — no `/tour/` segment, no hub nesting. See `../02-architecture/ROUTING-AND-RESOLUTION.md` and `../02-architecture/SLUG-REGISTRY.md`.
+
+---
+
+## 8. Edge Cases the System Must Handle
 
 | ID | Scenario | Behavior |
 |---|---|---|
-| EC-01 | All 3 slots in a category are taken | Show estimated wait times per slot; offer waitlist join per slot |
-| EC-02 | Two operators publish on the same slot simultaneously | First HTTP request wins; loser gets recovery modal (pick again / standard / waitlist) |
-| EC-03 | Operator is mid-wizard when their 15-min TTL expires | SSE event detects expiry; operator is returned to slot picker step with a toast |
-| EC-04 | Operator edits a LIVE trip | Warning banner: "Changes save immediately to the live listing" |
-| EC-05 | 24 hours before a scheduled departure | BullMQ job activates pre-booking window (last-minute badge, optional booking block) |
-| EC-06 | Operator pauses or archives a trip holding a featured slot | Slot is released automatically; waitlist offer flow triggered for next in queue |
+| EC-01 | A tour drops below an eligible tier (review/rating/cancellation-rate threshold) | Nightly check notifies, opens a 30-day grace, then auto-demotes to the highest still-qualifying tier; existing bookings keep snapshotted commission |
+| EC-02 | Operator changes tier within the 30-day lock | Rejected while `tier_locked_until` is in the future |
+| EC-03 | Tour has no open departure in the next 30 days | Excluded from every ranked result set; not billed for its tier during the unbookable period |
+| EC-04 | Category has fewer than 3 published tours in a destination | Category page is `draft` — excluded from nav, sitemaps, internal links, and search until the threshold is met (checked on every tour status change, both directions) |
+| EC-05 | `operator_full` booking | Bypasses payment + webhook; created confirmed at commit; still fires the conversion event |
+| EC-06 | Traveler misses the balance deadline (deposit model) | Forfeiting is never automatic — operator reports non-payment, admin confirms, only then is the deposit forfeited |
+| EC-07 | Operator-forced cancellation | Full refund or free reschedule, always |
+| EC-08 | Destination Spotlight request when 3 already active in that destination | Rejected (max-3 cap); request queued for manual approval when a slot frees |
+| EC-09 | Slug renamed or a slug deleted | Rename creates a 301 redirect entry automatically; a deleted slug enters a 90-day reuse cooldown |
+| EC-10 | Review submitted without a confirmed booking | Rejected — reviews are gated on a confirmed `booking_id` |
+
+---
+
+## 9. Infrastructure (master §1.5)
+
+Next.js frontend, NestJS backend on TripWheel infrastructure; next-intl for all UI strings (no hardcoded English); PostgreSQL via Prisma; **Stripe** payments; **Resend** as the transactional email provider (Postmark fallback) on a dedicated transactional subdomain with full SPF/DKIM/DMARC, separate from marketing email; **GTM, Google Ads, GA4, Meta Pixel + server-side Meta CAPI** for tracking (master §8). Backend and frontend are independent apps in one monorepo; **Better Auth lives on NestJS only**. See `../03-implementation/IMPLEMENTATION-GUIDE.md`.

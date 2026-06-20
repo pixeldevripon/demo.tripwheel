@@ -1,762 +1,426 @@
-# Island Tours — Master Implementation Checklist
+# Master checklist
 
-> **Legend:** ✅ Implemented · ⬜ Not implemented · ⚠️ Partial / placeholder UI only  
-> **Source of truth:** Implementation status verified against the actual codebase on 2026-05-30. Last updated: 2026-05-30.  
-> Items are sorted by phase then priority. Within each phase, critical-path items appear first.
-
----
-
-## Table of Contents
-
-- [Phase 0 — Project Structure](#phase-0--project-structure)
-- [Phase 1 — Environment Setup](#phase-1--environment-setup)
-- [Phase 2 — Prisma Schema](#phase-2--prisma-schema)
-- [Phase 3 — Authentication & Authorization](#phase-3--authentication--authorization)
-- [Phase 4 — Backend Core Modules](#phase-4--backend-core-modules)
-- [Phase 5 — Slot Economy](#phase-5--slot-economy)
-- [Phase 6 — Waitlist System](#phase-6--waitlist-system)
-- [Phase 7 — BullMQ Background Jobs](#phase-7--bullmq-background-jobs)
-- [Phase 8 — Real-Time SSE Gateway](#phase-8--real-time-sse-gateway)
-- [Phase 9 — Frontend: Project Structure & TanStack Query](#phase-9--frontend-project-structure--tanstack-query)
-- [Phase 10 — Frontend: Auth Integration](#phase-10--frontend-auth-integration)
-- [Phase 11 — Frontend: Traveler Pages](#phase-11--frontend-traveler-pages)
-- [Phase 12 — Frontend: Admin / Operator Dashboard](#phase-12--frontend-admin--operator-dashboard)
-- [Phase 13 — Frontend: Slot Picker](#phase-13--frontend-slot-picker)
-- [Phase 14 — Frontend: Trip Creation Wizard](#phase-14--frontend-trip-creation-wizard)
-- [Phase 15 — Edge Cases](#phase-15--edge-cases)
-- [Phase 16 — Notifications](#phase-16--notifications)
-- [Phase 17 — Admin Panel — Moderation & Management](#phase-17--admin-panel--moderation--management)
-- [Phase 18 — Wishlist](#phase-18--wishlist)
-- [Phase 19 — V2 Discovery & SEO Alignment](#phase-19--v2-discovery--seo-alignment)
-- [Missing Features — Industry-Best & Business Requirements](#missing-features--industry-best--business-requirements)
+> **Canonical source:** `island-tours-platform-master.html` (v1.9). The single checklist for the
+> project: it enumerates **every actionable point of the master** and marks its status in the
+> **current codebase**. This is the only checklist — there is no separate alignment doc.
+>
+> Legend: `- [x]` implemented · `- [ ]` remaining. A `⚠️` note on an unchecked item means *partially*
+> built (exists but diverges from the master). Code paths are under `backend/` unless noted; frontend
+> items are the public Next.js app (largely unbuilt).
+>
+> **Update this file in the same commit as the work** — flip `- [ ]` → `- [x]`, correct stale lines,
+> and refresh the progress table. The featured-slot economy is replaced by commission tiers.
 
 ---
 
-## Phase 0 — Project Structure
+## Overall progress
 
-| # | Task | Status |
-|---|---|---|
-| 0.1 | Monorepo layout (backend/ + frontend/ in single repo, no Turborepo) | ✅ |
-| 0.2 | Backend — `src/` with domain module folders | ✅ |
-| 0.3 | Frontend — Next.js 15 App Router with `(auth)` and `(dashboard)` route groups | ✅ |
-| 0.4 | Split Prisma schema (16 `.prisma` files in `backend/prisma/`) | ✅ |
+**43 of 203 tracked master points implemented (~21%)**, 160 remaining (15 of which are partial —
+built but diverging from the master). The discovery/content schema is largely done; the commercial
+tier engine, transactions, availability, tracking, and the public site are the open work.
 
----
-
-## Phase 1 — Environment Setup
-
-| # | Task | Status |
-|---|---|---|
-| 1.1 | Backend `.env` with all required variables (DB, Better Auth, Redis, Cloudinary, SMTP, OAuth) | ✅ |
-| 1.2 | Frontend `.env.local` with `NEXT_PUBLIC_BACKEND_URL` and `BACKEND_API_URL` | ✅ |
-| 1.3 | Backend packages installed (better-auth, @nestjs/bullmq, bullmq, ioredis) | ✅ |
-| 1.4 | Frontend packages installed (@tanstack/react-query, better-auth client) | ✅ |
-| 1.5 | `env.validate.ts` — fails fast on missing env vars before Nest boots | ✅ |
-| 1.6 | Local Redis for development (Docker or Upstash) | ✅ |
-
----
-
-## Phase 2 — Prisma Schema
-
-| # | Task | Status |
-|---|---|---|
-| 2.1 | `schema.prisma` — generator + datasource entry file | ✅ |
-| 2.2 | `enums.prisma` — Role, TripStatus, SlotStatus, BookingStatus, WaitlistStatus, OperatorVerificationStatus | ✅ |
-| 2.3 | `user.prisma` — User, Session, Account, Verification (Better Auth-compatible table names) | ✅ |
-| 2.4 | `operators.prisma` — Operator, OperatorCompanyInfo, OperatorSocialMedia, OperatorStripeConfig, OperatorMollieConfig | ✅ |
-| 2.5 | `destinations.prisma` — Destination, Hub, HubAllowedCategory, HubOurPick, HubContent, FeaturedExperience | ✅ |
-| 2.6 | `categories.prisma` — Category, CategoryTranslation, CategoryPageContent | ✅ |
-| 2.7 | `trips.prisma` — Trip + all child models (TourImage, TourSchedule, TourAgeBand, TourAddOn, TourHighlight, TourInclusion, etc.) | ✅ |
-| 2.8 | `featured-slots.prisma` — FeaturedSlot, SlotLock, SlotHistory | ✅ |
-| 2.9 | `waitlist.prisma` — WaitlistEntry | ✅ |
-| 2.10 | `bookings.prisma` — Booking | ✅ |
-| 2.11 | `reviews.prisma` — Review | ✅ |
-| 2.12 | `wishlist.prisma` — Wishlist | ✅ |
-| 2.13 | `faq.prisma` — Faq (polymorphic: pageType + entityId discriminator) | ✅ |
-| 2.14 | `slug-registry.prisma` — SlugRegistry | ✅ |
-| 2.15 | `media-gallery.prisma` — MediaGallery | ✅ |
-| 2.16 | `settings.prisma` — SiteInfo, SiteSEO, SocialMedia, SMTP, Mailchimp, StripeConfiguration, mollieConfiguration | ✅ |
-| 2.17 | `webhooks.prisma` — Webhooks, WebhookPoint | ✅ |
-| 2.18 | Migrations run (`prisma migrate dev`) | ✅ |
-| 2.19 | Seed script (`backend/prisma/seed.ts`) — admin user + starter categories + 3 FeaturedSlot rows per category | ✅ |
-| 2.20 | Wishlist model added before first migration (not after — would require separate migration) | ✅ |
+| Master section | Done | Remaining | Partial |
+| --- | ---: | ---: | ---: |
+| §1 Platform & positioning | 10 | 17 | 2 |
+| §2 Information architecture | 15 | 16 | 3 |
+| §3 Design system & shared components (frontend) | 0 | 12 | 0 |
+| §4 Brand voice (frontend copy) | 0 | 4 | 0 |
+| §5 Page specifications (frontend) | 0 | 11 | 1 |
+| §6 Booking flow, payments & email | 0 | 13 | 1 |
+| §7 Commercial model | 0 | 15 | 0 |
+| §8 Tracking & analytics | 0 | 12 | 0 |
+| Appendix A — Locked decisions (LD1–LD33) | 5 | 28 | 3 |
+| Appendix E — Consolidated data model | 13 | 27 | 5 |
+| Remove (was slot economy) | 0 | 5 | 0 |
+| **Total** | **43** | **160** | **15** |
 
 ---
 
-## Phase 3 — Authentication & Authorization
+## §1 Platform & positioning
 
-| # | Task | Status |
-|---|---|---|
-| 3.1 | Better Auth instance (`auth.instance.ts`) — email/password + Google OAuth + session config | ✅ |
-| 3.2 | Auth controller — mounts all Better Auth routes at `/api/auth/*` via `toNodeHandler` | ✅ |
-| 3.3 | `AuthGuard` — reads `better-auth.session_token` cookie or Bearer token; populates `request.user` | ✅ |
-| 3.4 | `RolesGuard` — checks `@Roles()` metadata | ✅ |
-| 3.5 | `PermissionsGuard` — checks `@RequirePermissions()` metadata | ✅ |
-| 3.6 | `@Roles()` decorator | ✅ |
-| 3.7 | `@RequirePermissions()` decorator | ✅ |
-| 3.8 | `@Public()` decorator — marks endpoints that skip `AuthGuard` | ✅ |
-| 3.9 | `@AuthenticatedUser()` param decorator | ✅ |
-| 3.10 | `@SkipThrottle()` decorator — for webhook endpoints | ✅ |
-| 3.11 | `ThrottlerGuard` — 3-tier rate limiting (20 req/s · 300 req/min · 3000 req/hr) in `AuthModule` | ✅ |
-| 3.12 | CORS — `credentials: true` + `parseCorsOrigins()` in `main.ts` and `auth.instance.ts` | ✅ |
-| 3.13 | `ROLE_PERMISSIONS` map in `backend/src/config/roles.config.ts` (6 roles, 80+ permissions) | ✅ |
-| 3.14 | `auth.types.ts` — `AuthenticatedRequest`, `TypedAuthUser` typed interfaces | ✅ |
-| 3.15 | `AuthModule` imported in `AppModule`; ThrottlerGuard fires before AuthGuard | ✅ |
-| 3.16 | Auto-create guest USER account on first booking (with temp password emailed) | ⬜ |
+### 1.1 Positioning
 
----
+- [x] Reseller marketplace, commission on local operators — `operators/`
+- [ ] Positioning pillars surfaced in product copy (local curation, ethical CRO, transparency, voice) — frontend
+- [ ] Tagline "Island Tours. Built by Islanders." (English in all locales, never translated) — frontend
 
-## Phase 4 — Backend Core Modules
+### 1.2 Launch scope
 
-### 4.0 — App Setup
+- [x] Destinations data-driven, expansion-ready (`region`, `parent_destination_id`) — `destinations.prisma`
+- [x] Seed 5 destinations (Curaçao, Aruba, Sint Maarten, Saint Lucia, Bahamas) with `is_seeded` guard
+- [ ] Curaçao/Aruba/Sint Maarten live; Saint Lucia + Bahamas pipeline (status gating on surfaces) — ⚠️ status enum exists; pipeline-vs-live surfacing not enforced
+- [x] Region grouping is a data attribute with no URL — `Region` enum
 
-| # | Task | Status |
-|---|---|---|
-| 4.0.1 | `AppModule` — registers all domain modules, global `ValidationPipe` (`whitelist: true`, `forbidNonWhitelisted: true`) | ✅ |
-| 4.0.2 | `PrismaService` — `@Global()`, injected into every service without re-importing PrismaModule | ✅ |
-| 4.0.3 | `HttpExceptionFilter` — global exception filter with consistent error response shape | ✅ |
-| 4.0.4 | Swagger (`@nestjs/swagger`) — available at `/api/docs`; all endpoints documented | ✅ |
+### 1.3 Languages & currency
 
-### 4.1 — Users Module
+- [x] 7 locales EN/NL/DE/FR/ES/PT/ZH — `Locale` enum
+- [x] English slugs in every locale — slug registry, no translated slugs
+- [x] `next-intl` for UI strings (no hardcoded English) — frontend scaffold
+- [ ] Display currency locale-default (EN/ZH→USD, others→EUR) — ⚠️ `Currency` enum exists; locale→currency mapping not wired
+- [ ] Footer currency selector override, session-persistent; nav never carries it — frontend
+- [x] `destination.currency` is operator/payout context only — `destinations.prisma`
+- [ ] Locale-aware number/currency formatting — frontend
 
-| # | Task | Status |
-|---|---|---|
-| 4.1.1 | `UsersService` — `findAll`, `findOne`, `update`, `deactivate` (soft delete) | ✅ |
-| 4.1.2 | `UsersController` — CRUD routes protected by `MANAGE_USERS` permission | ✅ |
-| 4.1.3 | Swagger docs for all user endpoints | ✅ |
+### 1.4 Business model & money flow
 
-### 4.2 — Settings Module
+- [ ] Commission tiers (premium 30 / featured 27.5 / boosted 25 / organic 22.5 / standard 20)
+- [ ] Destination Spotlight 35% (separate block, max 3/destination, manual approval)
+- [ ] `commission_rate` + `commission_amount` snapshot on booking, never retroactive
+- [ ] `deposit_pct` 20–30 in 2.5 steps, tier-driven
+- [ ] 4 payment models (operator_link / on_arrival / paid_in_full / operator_full)
+- [ ] Deposit/balance split (deposit to Island Tours via Stripe; balance is operator's)
+- [ ] Two-phase operator visibility (pre-payment agentless, post-booking named)
 
-| # | Task | Status |
-|---|---|---|
-| 4.2.1 | `SettingsService` — manage SiteInfo, SiteSEO, SMTP, Mailchimp, Stripe, Mollie, social media configs | ✅ |
-| 4.2.2 | `SettingsController` — all settings endpoints with `MANAGE_SETTINGS` permission guard | ✅ |
-| 4.2.3 | Unit tests (`settings.service.spec.ts`, `settings.controller.spec.ts`) | ✅ |
+### 1.5 Infrastructure
 
-### 4.3 — Operators Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.3.1 | `OperatorsService.apply()` — creates `Operator` record with `UNVERIFIED` status | ✅ |
-| 4.3.2 | `OperatorsService.approve()` — sets `verificationStatus = VERIFIED`, promotes `User.role = TOUR_OPERATOR` | ✅ |
-| 4.3.3 | `OperatorsService.reject()` — sets `verificationStatus = REJECTED` | ✅ |
-| 4.3.4 | `OperatorsService.getProfile()` — operator profile with trips and slot holdings | ✅ |
-| 4.3.5 | `OperatorsController` — `/operators/apply`, `/operators/me`, `/operators/:id/approve`, `/operators/:id/reject` | ✅ |
-| 4.3.6 | Unit tests (`operators.service.spec.ts`, `operators.controller.spec.ts`) | ✅ |
-
-### 4.4 — Destinations Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.4.1 | `DestinationsService` — `findAll`, `findOne`, `create`, `update`, `deactivate` (soft delete guard for `isSeeded`) | ✅ |
-| 4.4.2 | Translation sub-resource — `upsertTranslation`, `deleteTranslation` (blocks delete on `en` locale) | ✅ |
-| 4.4.3 | Page content sub-resource — `upsertPageContent` | ✅ |
-| 4.4.4 | FAQs sub-resource — `createFaq`, `updateFaq`, `deleteFaq`, `reorderFaqs` | ✅ |
-| 4.4.5 | `DestinationsController` — full REST with nested translation/faq/page-content routes | ✅ |
-| 4.4.6 | Unit tests (`destinations.service.spec.ts`, `destinations.controller.spec.ts`) | ✅ |
-| 4.4.7 | Force delete (`DELETE /destinations/:id/force`) — permanently removes inactive, non-seeded destination; clears all `slug_registry` rows for that destination slug; Prisma cascade handles hubs, translations, FAQs, page content; guarded by `MANAGE_SYSTEM` | ✅ |
-
-### 4.5 — Categories Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.5.1 | `CategoriesService.create()` — creates category + 3 FeaturedSlot rows + `slug_registry` row per active destination (all in one transaction) | ✅ |
-| 4.5.2 | `CategoriesService` — `findAll`, `findOne`, `update`, `deactivate` | ✅ |
-| 4.5.3 | Translation sub-resource — upsert + delete (blocks `en` delete) | ✅ |
-| 4.5.4 | Page content sub-resource | ✅ |
-| 4.5.5 | FAQs sub-resource | ✅ |
-| 4.5.6 | `CategoriesController` — full REST + nested routes | ✅ |
-| 4.5.7 | Unit tests | ✅ |
-| 4.5.8 | Force delete (`DELETE /categories/:id/force`) — permanently removes inactive, non-seeded category; explicitly deletes SlotLock → SlotHistory → WaitlistEntry → FeaturedSlot → SlugRegistry in order (no cascade defined); Prisma cascade then handles translations, FAQs, page content; guarded by `MANAGE_SYSTEM` | ✅ |
-
-### 4.6 — Hubs Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.6.1 | `HubsService` — `create` (writes one `slug_registry` row for the hub's destination in same transaction), `findAll`, `findOne`, `update`, `deactivate` | ✅ |
-| 4.6.2 | `HubsController` — full REST routes | ✅ |
-| 4.6.3 | Unit tests (`hubs.service.spec.ts`, `hubs.controller.spec.ts`) | ✅ |
-
-### 4.7 — Slug Registry Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.7.1 | `SlugRegistryService` — `resolve(destinationSlug, slug)` → returns entity type + id | ✅ |
-| 4.7.2 | `SlugRegistryController` — public lookup endpoint for frontend router | ✅ |
-
-### 4.8 — Media Gallery Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.8.1 | `CloudinaryService` — upload, delete, transform | ✅ |
-| 4.8.2 | `MediaGalleryService` — CRUD for media assets with Cloudinary integration | ✅ |
-| 4.8.3 | `MediaGalleryController` — upload + manage endpoints | ✅ |
-| 4.8.4 | `MediaUploadProcessor` — BullMQ processor for async media jobs | ✅ |
-| 4.8.5 | Unit tests | ✅ |
-
-### 4.9 — Mail Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.9.1 | `MailService` — Nodemailer transporter with SMTP config from `Settings` | ✅ |
-| 4.9.2 | Email template: email verification | ✅ |
-| 4.9.3 | Email template: password reset | ✅ |
-| 4.9.4 | Email template: new guest credentials (auto-created USER on booking) | ⬜ |
-| 4.9.5 | Email template: booking confirmation (sent to traveler + operator + admin) | ⬜ |
-| 4.9.6 | Email template: booking cancellation | ⬜ |
-| 4.9.7 | Email template: slot offer available (waitlist) | ⬜ |
-| 4.9.8 | Email template: slot offer expired (no action in 24h) | ⬜ |
-| 4.9.9 | Email template: 90-day slot cap expired | ⬜ |
-| 4.9.10 | Email template: pre-departure notification (24h before) | ⬜ |
-
-### 4.10 — Trips Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.10.1 | `TripsService.create()` — creates trip as DRAFT; resolves `operatorId` from `userId` via `resolveOperatorId()` | ✅ |
-| 4.10.2 | `TripsService.update()` — validates ownership; blocks `categoryId` change while holding featured slot | ✅ |
-| 4.10.3 | `TripsService.getMyTrips()` — operator's own trips with status + server-side search + featured slot rank | ✅ |
-| 4.10.4 | `TripsService.findLive()` — public live trips with filter params (category, price, date, search) | ✅ |
-| 4.10.5 | `TripsService.findBySlug()` — trip detail with operator, reviews, slot rank | ✅ |
-| 4.10.6 | `TripsService.publish()` — changes status to LIVE (calls `SlotsService` if featured slot selected) | ✅ |
-| 4.10.7 | `TripsService.pause()` — sets PAUSED; Phase 5 hook stub for `SlotsService.releaseSlot()` in place | ⚠️ |
-| 4.10.8 | `TripsService.unpause()` — restores to LIVE | ✅ |
-| 4.10.9 | `TripsService.archive()` — sets ARCHIVED; Phase 5 hook stub for `SlotsService.releaseSlot()` in place | ⚠️ |
-| 4.10.10 | Admin lifecycle bypass — `publish`, `pause`, `archive` skip ownership check when `userRole === ADMIN` | ✅ |
-| 4.10.11 | `resolveOperatorId()` helper — resolves `userId → operatorId`; auto-provisions operator for ADMIN | ✅ |
-| 4.10.12 | Child entities controller (`trips-children.controller.ts`) — schedules, images, highlights, inclusions, add-ons, age bands | ✅ |
-| 4.10.13 | `TripsController` — all CRUD + lifecycle routes | ✅ |
-| 4.10.14 | Swagger docs (`trips.swagger.ts`) | ✅ |
-| 4.10.15 | `PENDING_REVIEW` status resolved — decide DRAFT→LIVE directly or DRAFT→PENDING_REVIEW→LIVE | ⬜ |
-| 4.10.16 | `findOne()` ownership bug fixed — compares `operatorId` not raw `userId` | ✅ |
-| 4.10.17 | Admin all-trips endpoint (`GET /trips/admin/all`) — filters by status, operatorId, search | ✅ |
-| 4.10.18 | Featured slot rank (`featuredSlotNumber`, `featuredSlotStatus`) included in `findMyTrips()` + `findOne()` | ✅ |
-| 4.10.19 | Admin force delete — `remove()` bypasses DRAFT-only restriction for `ADMIN` role; admin can permanently delete LIVE/PAUSED/ARCHIVED trips | ✅ |
-
-### 4.11 — Upload Module *(Gap G4)*
-
-| # | Task | Status |
-|---|---|---|
-| 4.11.1 | `UploadService.uploadFile()` — uploads to Cloudinary via Multer; returns `{ url, publicId }` | ⬜ |
-| 4.11.2 | `UploadController` — `POST /api/v1/upload` guarded by `UPLOAD_MEDIA` permission | ⬜ |
-| 4.11.3 | `UploadModule` imported in `AppModule` | ⬜ |
-
-### 4.12 — Reviews Module *(Gap G5)*
-
-| # | Task | Status |
-|---|---|---|
-| 4.12.1 | `ReviewsService.create()` — validates booking is `COMPLETED`, belongs to author, no duplicate review | ⬜ |
-| 4.12.2 | `ReviewsService.findByTrip()` — paginated public reviews (only `isPublic = true`) | ⬜ |
-| 4.12.3 | `ReviewsService.delete()` — operator or admin can delete | ⬜ |
-| 4.12.4 | `ReviewsController` — `POST /api/v1/reviews`, `GET /api/v1/trips/:tripId/reviews`, `DELETE /api/v1/reviews/:id` | ⬜ |
-| 4.12.5 | `ReviewsModule` imported in `AppModule` | ⬜ |
-
-### 4.13 — Bookings Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.13.1 | `BookingsService.create()` — creates booking; captures commission rate at booking time; auto-creates guest account if new email | ⬜ |
-| 4.13.2 | `BookingsService.confirm()` — called by payment webhook; sets `CONFIRMED`, `paidAt = now()` | ⬜ |
-| 4.13.3 | `BookingsService.cancel()` — traveler or operator cancels; triggers gateway refund | ⬜ |
-| 4.13.4 | `BookingsService.getMyBookings()` — traveler booking history | ⬜ |
-| 4.13.5 | `BookingsService.getOperatorBookings()` — all bookings for operator's trips | ⬜ |
-| 4.13.6 | `BookingsController` — all booking routes | ⬜ |
-| 4.13.7 | `BookingsModule` imported in `AppModule` | ⬜ |
-
-### 4.14 — Payments Module *(Gap G3)*
-
-| # | Task | Status |
-|---|---|---|
-| 4.14.1 | `PaymentsService.createCheckoutSession()` — creates Stripe/Mollie/PayPal payment session; returns redirect URL | ⬜ |
-| 4.14.2 | `PaymentsService.refund()` — issues refund via gateway stored on booking | ⬜ |
-| 4.14.3 | Stripe webhook endpoint — `POST /api/v1/webhooks/stripe`; `@Public()` + `@SkipThrottle()`; verifies signature | ⬜ |
-| 4.14.4 | Mollie webhook endpoint — same pattern | ⬜ |
-| 4.14.5 | PayPal webhook endpoint — same pattern | ⬜ |
-| 4.14.6 | `PaymentsModule` imported in `AppModule` | ⬜ |
-
-### 4.15 — Wishlist Module
-
-| # | Task | Status |
-|---|---|---|
-| 4.15.1 | `WishlistService.add()` — upsert Wishlist row (idempotent) | ⬜ |
-| 4.15.2 | `WishlistService.remove()` — delete; graceful if row doesn't exist | ⬜ |
-| 4.15.3 | `WishlistService.getAll()` — all wishlisted trips with trip join | ⬜ |
-| 4.15.4 | `WishlistController` — `POST /api/v1/wishlist`, `DELETE /api/v1/wishlist/:tripId`, `GET /api/v1/wishlist` | ⬜ |
-| 4.15.5 | `WishlistModule` imported in `AppModule` | ⬜ |
-
-### 4.16 — Admin User Management Module *(F-05)*
-
-> Create and manage platform-internal staff (EDITOR / STAFF / GUIDE roles). Admins invite staff via email; all role changes are server-side only.
-
-| # | Task | Status |
-|---|---|---|
-| 4.16.1 | `User` schema additions — `invitedBy UUID?`, `invitedAt DateTime?`, `accountStatus` enum (ACTIVE / SUSPENDED / DEACTIVATED) | ⬜ |
-| 4.16.2 | `EDITOR`, `STAFF`, `GUIDE` roles in `Role` enum (`enums.prisma`) and `ROLE_PERMISSIONS` map (`roles.config.ts`) | ⬜ |
-| 4.16.3 | `AdminUsersService.inviteStaff()` — creates user account with temporary password; sets `invitedBy + invitedAt`; sends invite email | ⬜ |
-| 4.16.4 | `AdminUsersService.updateRole()` — changes role; blocks `ADMIN` assignment via API; logs change | ⬜ |
-| 4.16.5 | `AdminUsersService.deactivate()` — soft-deactivates account (`accountStatus = DEACTIVATED`); revokes active sessions | ⬜ |
-| 4.16.6 | `AdminUsersController` — `POST /admin/staff`, `GET /admin/users`, `PATCH /admin/users/:id/role`, `DELETE /admin/users/:id`; all guarded by `MANAGE_USERS` | ⬜ |
-| 4.16.7 | Email template: staff invite — credentials + assigned role + dashboard link | ⬜ |
-| 4.16.8 | `AdminUsersModule` imported in `AppModule` | ⬜ |
-
-### 4.17 — Operator Team Management Module *(F-12)*
-
-> Multi-seat operator accounts. An OWNER can invite MANAGER / STAFF members who act within the operator's account scope.
-
-| # | Task | Status |
-|---|---|---|
-| 4.17.1 | `OperatorTeamMember` schema — `id`, `operatorId`, `userId`, `teamRole` (OWNER / MANAGER / STAFF), `invitedBy`, `invitedAt`, `status` (PENDING / ACTIVE / REVOKED) | ⬜ |
-| 4.17.2 | `teamRole` enum added to `enums.prisma` | ⬜ |
-| 4.17.3 | `OperatorTeamService.invite()` — creates PENDING record; sends invite email with accept token | ⬜ |
-| 4.17.4 | `OperatorTeamService.acceptInvite()` — validates token; creates User if new; sets status ACTIVE | ⬜ |
-| 4.17.5 | `OperatorTeamService.updateRole()` — OWNER only; blocks self-demotion below OWNER | ⬜ |
-| 4.17.6 | `OperatorTeamService.revoke()` — sets status REVOKED; revokes sessions | ⬜ |
-| 4.17.7 | `OperatorTeamService.listMembers()` — returns all team members for current operator | ⬜ |
-| 4.17.8 | `OperatorTeamController` — `GET /operators/team`, `POST /operators/team/invite`, `PATCH /operators/team/:id/role`, `DELETE /operators/team/:id` | ⬜ |
-| 4.17.9 | Accept-invite public endpoint — `POST /operators/team/accept/:token`; `@Public()` | ⬜ |
-| 4.17.10 | `resolveOperatorId()` in `TripsService` updated — resolves for active team members (maps `userId → operatorId` via `OperatorTeamMember`) | ⬜ |
-| 4.17.11 | Email template: operator team invite | ⬜ |
-| 4.17.12 | `OperatorTeamModule` imported in `AppModule` | ⬜ |
+- [x] NestJS backend, Prisma, PostgreSQL — `backend/`
+- [x] Better Auth backend-only — `auth/`
+- [ ] next-intl wired end-to-end on the public site — frontend
+- [ ] Stripe payments integration — config models only
+- [ ] Resend transactional email (SPF/DKIM/DMARC), Postmark fallback — SMTP settings only
+- [ ] GTM / Google Ads / GA4 / Meta Pixel + server-side Meta CAPI — none
 
 ---
 
-## Phase 5 — Slot Economy
+## §2 Information architecture
 
-> **Status: Not started.** This is the most critical unimplemented phase — all slot-related frontend depends on it.
+### 2.1 Core hierarchy
 
-| # | Task | Status |
-|---|---|---|
-| 5.1 | `SlotsModule` — registers `slot-ttl` BullMQ queue; exports `SlotsService` and `SlotEventsService` | ⬜ |
-| 5.2 | `SlotsService.lockSlot()` — Prisma transaction: check AVAILABLE → create SlotLock → update to SOFT_LOCKED → write SlotHistory → schedule BullMQ TTL job → publish Redis event | ⬜ |
-| 5.3 | `SlotsService.publishTrip()` — race condition guard: atomic `updateMany` with `WHERE status = SOFT_LOCKED` → if count=0 throw 409 `SLOT_TAKEN` → update HARD_RESERVED → set Trip to LIVE → cancel TTL job → schedule 90-day cap job → publish Redis event | ⬜ |
-| 5.4 | `SlotsService.releaseSlot()` — set AVAILABLE → delete SlotLock → write SlotHistory → publish Redis event → offer to first WAITING waitlist entry | ⬜ |
-| 5.5 | `SlotsService.getSlotsByCategory()` — returns all 3 FeaturedSlot rows for a category with current status | ⬜ |
-| 5.6 | `SlotsController` — `GET /slots/category/:categoryId`, `POST /slots/:slotId/lock`, `DELETE /slots/:slotId/lock` | ⬜ |
-| 5.7 | `SlotsModule` imported in `AppModule` | ⬜ |
+- [x] Destination → (Categories | Activity Hubs | Collections | All Tours) → Tour detail
+- [x] Categories global (one set reused per destination) — `categories.prisma`
+- [x] `parent_destination_id` nullable for future sub-destinations
+- [x] Activity-Hub-vs-Collection split (place/product vs persona/intent)
 
----
+### 2.2 URL structure
 
-## Phase 6 — Waitlist System
+- [x] `/{locale}/{destination}/{slug}/` shape — routing/resolver
+- [x] Tours flat, no `/tour/` segment, no hub nesting — `TourHub` has no URL effect
+- [ ] Locale prefix always present; no-prefix → 302 via Accept-Language → /en/ — frontend middleware
+- [x] Slugs English worldwide, one per page — slug registry
+- [ ] Trailing-slash canonical; hreflang 7 + x-default; per-locale/per-type sitemaps — frontend SEO
 
-| # | Task | Status |
-|---|---|---|
-| 6.1 | `WaitlistService.joinQueue()` — create `WaitlistEntry { status: WAITING }`; return with position count | ⬜ |
-| 6.2 | `WaitlistService.offerSlot()` — update to OFFERED; schedule 24h BullMQ expiry job; store `offerJobId`; send email notification; publish Redis per-operator event | ⬜ |
-| 6.3 | `WaitlistService.claimOffer()` — validate OFFERED + not expired; re-check slot AVAILABLE; in transaction: update to CLAIMED; call `SlotsService.lockSlot()`; cancel BullMQ expiry job | ⬜ |
-| 6.4 | `WaitlistService.passOffer()` — update to WAITING (keeps position); cancel BullMQ job; offer to next in FIFO queue | ⬜ |
-| 6.5 | `WaitlistController` — `POST /waitlist/join`, `POST /waitlist/:id/claim`, `POST /waitlist/:id/pass`, `DELETE /waitlist/:id`, `GET /waitlist/my-entries`, `GET /waitlist/eta/:categoryId` | ⬜ |
-| 6.6 | `WaitlistModule` imported in `AppModule` | ⬜ |
-| 6.7 | Skip-paid queue jump (max 3 skips per entry) — gate behind future payment feature flag *(Gap G6)* | ⬜ |
+### 2.3 Slug registry
 
----
+- [x] Registry maps slug → one page type (category/hub/collection/tour/reserved) — `slug-registry.prisma`
+- [x] 19 categories + reserved `tours` = 20 protected slugs per destination
+- [x] Unique per (destination_slug, slug); same slug allowed across destinations
+- [x] Locale-independent resolution at request time — resolve endpoint
+- [ ] Renames create a 301 entry automatically (redirect table) — ⚠️ slugs currently immutable; no redirect table
+- [ ] Deleted slugs enter a 90-day reuse cooldown — not implemented
 
-## Phase 7 — BullMQ Background Jobs
+### 2.4 Categories
 
-| # | Task | Status |
-|---|---|---|
-| 7.1 | `SlotTtlProcessor` — handles `release-lock` job (TTL expired → `releaseSlot`) and `expire-cap` job (90-day cap → `releaseSlot` + email to operator) | ⬜ |
-| 7.2 | `WaitlistOfferProcessor` — handles `expire-offer` job (offer not claimed → update to EXPIRED → offer to next in FIFO) | ⬜ |
-| 7.3 | `WorkersModule` — registers `slot-ttl` + `waitlist-offers` queues; imports `SlotsModule` + `WaitlistModule` | ⬜ |
-| 7.4 | `WorkersModule` imported in `AppModule` | ⬜ |
-| 7.5 | Pre-departure job — BullMQ job scheduled at `TripSchedule` creation; fires at `schedule.date - 24h`; activates last-minute badges, optionally blocks new bookings | ⬜ |
-| 7.6 | Store `bullJobId` on `SlotLock` and `offerJobId` on `WaitlistEntry` for early cancellation | ✅ *(schema done, wiring pending)* |
+- [x] 19 global categories with fixed slugs
+- [x] Multi-category tagging (1+ per tour, one `isPrimary`) — `TourCategory`
+- [ ] Category page live only at **≥3** published tours — ⚠️ currently 404s at 0 (effectively ≥1)
+- [ ] Threshold automation on every tour status change (both directions) — ⚠️ gating exists; ≥3 re-check needed
+- [x] Day Trips as the one duration-based category — category present
+- [ ] "Luxury" word allowed only as category label/H1, banned in running copy — frontend
 
----
+### 2.5 Rendering & performance
 
-## Phase 8 — Real-Time SSE Gateway
+- [ ] ISR per page type (Home/Dest/AllTours/Category/Collection 60s, Hub 300s, Tour 30s) — frontend
+- [ ] Search SSR not cached; TYP server-rendered — frontend
+- [x] Content endpoints accept `locale` with English fallback — services
 
-| # | Task | Status |
-|---|---|---|
-| 8.1 | `SlotEventsService` — dedicated Redis subscriber connection (`ioredis`); `getStream(categoryId)` returns `Observable<MessageEvent>` | ⬜ |
-| 8.2 | Separate publisher connection in `SlotsService` — pub/sub rule: subscriber and publisher must be separate Redis connections | ⬜ |
-| 8.3 | SSE endpoint on `SlotsController` — `@Sse()` `GET /slots/stream?categoryId=` | ⬜ |
-| 8.4 | Resolve Gap G12 — pick one approach: 60s polling OR per-operator SSE channel (`slot-offer:{operatorId}`) for waitlist offer notifications | ⬜ |
+### 2.6 Structured data
 
----
+- [ ] BreadcrumbList on every page with breadcrumbs — frontend
+- [ ] Tour Product/Offer (acceptedPaymentMethod, suggestedMinAge, accessibility, refundPolicy, includes/excludes, Review+AggregateRating) — frontend
+- [ ] FAQPage (Help, Collection, Hub, Destination) — frontend (FAQ data exists)
+- [ ] All Tours ItemList; Search none/noindex — frontend
 
-## Phase 9 — Frontend: Project Structure & TanStack Query
+### 2.7 Breadcrumbs
 
-| # | Task | Status |
-|---|---|---|
-| 9.1 | Auth client (`lib/auth-client.ts`) — `createAuthClient()` pointing to NestJS backend | ✅ |
-| 9.2 | TanStack Query setup — `QueryClientProvider` + `ReactQueryDevtools` in root `providers.tsx` | ✅ |
-| 9.3 | API client helper (`lib/api/`) — per-module files with `credentials: 'include'` and typed errors | ✅ |
-| 9.4 | All TanStack Query hooks (`hooks/<module>/use-<module>.ts`) — categories, destinations, hubs, trips, media, profile | ✅ |
-| 9.5 | All TypeScript type definitions (`types/<module>.ts`) — category, destination, hub, trip, media, profile | ✅ |
-| 9.6 | RBAC config (`lib/config/rbac.ts`) — mirrors backend `ROLE_PERMISSIONS` map | ✅ |
-| 9.7 | RBAC utility (`lib/rbac-utils.ts`) — `hasPermission`, `hasAnyPermission` helpers | ✅ |
-| 9.8 | Role context (`contexts/role-context.tsx`) — `RoleProvider` + `useRole()` hook (`can`, `canAny`) | ✅ |
-| 9.9 | Navigation config (`navigations/navigations.ts`) — sidebar nav items with permission filtering | ✅ |
-| 9.10 | App directory structure — `(auth)`, `(dashboard)` route groups, `onboarding` | ✅ |
-| 9.11 | Route middleware (`middleware.ts`) — guards `/dashboard` routes; redirects unauthenticated users | ✅ |
-| 9.12 | `(public)` route group for traveler pages (homepage, trip detail, search) | ⬜ |
-| 9.13 | `lib/api/slots.ts` — slot API client | ⬜ |
-| 9.14 | `lib/api/bookings.ts` — bookings API client | ⬜ |
-| 9.15 | `lib/api/wishlist.ts` — wishlist API client | ⬜ |
-| 9.16 | `hooks/slots/use-slots.ts` — slot query + lock mutation | ⬜ |
-| 9.17 | `hooks/bookings/use-bookings.ts` | ⬜ |
-| 9.18 | `types/slot.ts`, `types/booking.ts`, `types/wishlist.ts` | ⬜ |
+- [ ] Separator `›`; three tour variants (Hub / Category / Destination) by primary attachment — frontend
+- [ ] Mobile visible on tour pages, hidden on destination pages (LD8) — frontend
+- [ ] Final crumb not clickable; BreadcrumbList JSON-LD — frontend
 
 ---
 
-## Phase 10 — Frontend: Auth Integration
+## §3 Design system & shared components (frontend)
 
-| # | Task | Status |
-|---|---|---|
-| 10.1 | Login page (`app/(auth)/login/page.tsx`) — email + password via `signIn.email()` | ✅ |
-| 10.2 | Signup page (`app/(auth)/signup/page.tsx`) — operator self-registration via `signUp.email()` | ✅ |
-| 10.3 | Forgot password page (`app/(auth)/forgot-password/page.tsx`) | ✅ |
-| 10.4 | Reset password page (`app/(auth)/reset-password/page.tsx`) | ✅ |
-| 10.5 | Google OAuth sign-in button on login/signup pages | ⬜ |
-| 10.6 | Become-operator page (`app/become-operator/page.tsx`) — form submits to `/operators/apply`; shows pending state after submission *(Gap G9)* | ⬜ |
-| 10.7 | Dashboard layout session guard — redirect to `/login` if no valid session | ✅ |
-
----
-
-## Phase 11 — Frontend: Traveler Pages
-
-> **Status: Not started.** No `(public)` route group exists. All traveler-facing pages are missing.
-
-| # | Task | Status |
-|---|---|---|
-| 11.1 | Homepage (`app/(public)/page.tsx`) — hero carousel with top featured trip (Slot 1), category grid | ⬜ |
-| 11.2 | Category browse page (`app/(public)/[destinationSlug]/[categorySlug]/page.tsx`) — trips with featured badge ordering | ⬜ |
-| 11.3 | Trip detail page (`app/(public)/trips/[slug]/page.tsx`) — hero, booking form, reviews, operator info | ⬜ |
-| 11.4 | Search page (`app/(public)/search/page.tsx`) — filter by category, price, date, location, rating | ⬜ |
-| 11.5 | `generateStaticParams` for trip detail and category pages (ISR revalidation) | ⬜ |
-| 11.6 | `BookingForm` client component — selects departure date, guest count, payment gateway | ⬜ |
-| 11.7 | Trip cards component — shows featured badge (Slot 1/2/3), price, rating | ⬜ |
-| 11.8 | User booking history page (post-login) | ⬜ |
-| 11.9 | User profile / account settings page | ⬜ |
+- [ ] Color tokens (#E8611A primary, #1F2937 ink, #6B7280, #E5E7EB, #16A34A) + WCAG AA — `frontend-tokens.css`
+- [ ] Typography scale (H1 semibold, H2 consistent, body 14–15px, microcopy 11–12px)
+- [ ] One SVG icon library, monochrome line, 18–20px; no emoji in production (LD20)
+- [ ] Three-tier separator system: `·` middot / `,` geo / `›` breadcrumbs (pipe retired)
+- [ ] Shared `<TourCard />` (whole-card clickable, heart, badge slot, carousel, meta row)
+- [ ] Duration formatter (locale-aware, ranges, no decimals)
+- [ ] Badges: Sponsored, Most popular, Likely to sell out, New, numbered 01–10
+- [ ] Single demand-signal trigger (§3.7), no fake urgency
+- [ ] Diversity pass after ranking (§3.8)
+- [ ] Navigation bar variants; Footer (currency selector, tagline, island links)
+- [ ] Trust components per page type (locked matrix §3.11)
+- [ ] Filters & sorting row (modal + category chips, dual count, applied-filter pills) — backend filters exist (`attributes`)
 
 ---
 
-## Phase 12 — Frontend: Admin / Operator Dashboard
+## §4 Brand voice (frontend copy)
 
-### 12.1 — Implemented Pages
-
-| # | Task | Status |
-|---|---|---|
-| 12.1.1 | Dashboard home (`dashboard/page.tsx`) — stats overview, mock data from `dashboardActions.ts` | ✅ |
-| 12.1.2 | Destinations list (`dashboard/destinations/page.tsx`) + table with search, filter, pagination | ✅ |
-| 12.1.3 | New destination form (`dashboard/destinations/new/page.tsx`) + slug auto-generation | ✅ |
-| 12.1.4 | Destination edit (`dashboard/destinations/[id]/edit/page.tsx`) | ✅ |
-| 12.1.5 | Destination translations (`dashboard/destinations/[id]/translations/page.tsx`) | ✅ |
-| 12.1.6 | Destination page content (`dashboard/destinations/[id]/page-content/page.tsx`) | ✅ |
-| 12.1.7 | Destination FAQs (`dashboard/destinations/[id]/faqs/page.tsx`) | ✅ |
-| 12.1.8 | Categories list + new + edit + translations + FAQs + page-content (full set) | ✅ |
-| 12.1.9 | Hubs list + new + edit (partial — no translation/faq tabs yet) | ✅ |
-| 12.1.10 | Trips list (`dashboard/trips/page.tsx`) + table with server-side search, status filter, RBAC-gated actions | ✅ |
-| 12.1.11 | New trip form (`dashboard/trips/new/page.tsx`) — multi-tab form (details, pricing, images, schedules, languages, translations) | ✅ |
-| 12.1.12 | Trip edit (`dashboard/trips/[id]/edit/page.tsx`) — same multi-tab form; archive confirmation dialog; real EN overview readiness check | ✅ |
-| 12.1.13 | Media gallery page (`dashboard/media/page.tsx`) | ✅ |
-| 12.1.14 | Settings page (`dashboard/settings/page.tsx`) with system sub-section | ✅ |
-| 12.1.15 | Profile page (`dashboard/profile/page.tsx`) | ✅ |
-| 12.1.16 | Dashboard RBAC — `useRole().can()` gates Add buttons, bulk Delete, row-action Delete, Danger Zone | ✅ |
-| 12.1.17 | `ForceDeleteDialog` common component (`components/dashboard/common/force-delete-dialog.tsx`) — shared destructive confirmation with entity name, consequence note, and irreversibility warning | ✅ |
-| 12.1.18 | Force delete in destination and category row actions — admin-only, visible only on inactive non-seeded entities; hooks `useForceDeleteDestination` / `useForceDeleteCategory` wired to `DELETE /:id/force` API | ✅ |
-| 12.1.19 | Force delete in trip row actions — admin-only on non-DRAFT trips; `TripDeleteDialog` adapted with `isForce` prop for distinct warning copy | ✅ |
-
-### 12.2 — Placeholder Pages (UI shell only — no real API integration)
-
-| # | Task | Status |
-|---|---|---|
-| 12.2.1 | Users list page (`dashboard/users/page.tsx`) | ⚠️ |
-| 12.2.2 | Bookings page (`dashboard/bookings/page.tsx`) | ⚠️ |
-| 12.2.3 | Payments page (`dashboard/payments/page.tsx`) | ⚠️ |
-| 12.2.4 | Reviews page (`dashboard/reviews/page.tsx`) | ⚠️ |
-| 12.2.5 | Analytics page (`dashboard/analytics/page.tsx`) | ⚠️ |
-| 12.2.6 | Activities page (`dashboard/activities/page.tsx`) + new | ⚠️ |
-| 12.2.7 | Blogs page (`dashboard/blogs/page.tsx`) + new | ⚠️ |
-| 12.2.8 | Enquiries page (`dashboard/enquiries/page.tsx`) | ⚠️ |
-| 12.2.9 | Leads page (`dashboard/leads/page.tsx`) | ⚠️ |
-| 12.2.10 | Partners page (`dashboard/partners/page.tsx`) + new | ⚠️ |
-| 12.2.11 | Pickup / drop-off points page (`dashboard/pickup-drops/page.tsx`) + new | ⚠️ |
-
-### 12.3 — Missing Dashboard Pages
-
-| # | Task | Status |
-|---|---|---|
-| 12.3.1 | Operators management page — list, approve/reject/suspend/ban with real API | ⬜ |
-| 12.3.2 | Featured slots management page — all slots across all categories, current holder, waitlist depth | ⬜ |
-| 12.3.3 | Waitlist viewer page — FIFO queue per slot with claim/pass/leave actions | ⬜ |
-| 12.3.4 | Operator dashboard — "My Slots" view (slot status, waitlist position, pending offer banner) | ⬜ |
-| 12.3.5 | Operator dashboard — Payouts / earnings page | ⬜ |
-| 12.3.6 | Hub edit translation/faq/page-content tabs (same pattern as destinations) | ⬜ |
-| 12.3.7 | Dashboard stats wired to real API (replace `dashboardActions.ts` mock) | ⬜ |
-
-### 12.4 — Admin User & Team Management UI *(F-05 / F-12)*
-
-| # | Task | Status |
-|---|---|---|
-| 12.4.1 | Admin users page — replace placeholder (`12.2.1`) with real API; list EDITOR/STAFF/GUIDE users; filter by role + status; show `invitedBy`, `accountStatus` badge | ⬜ |
-| 12.4.2 | Invite staff dialog — role selector (EDITOR / STAFF / GUIDE only; ADMIN blocked); email input; submits to `POST /admin/staff` | ⬜ |
-| 12.4.3 | Edit user role dialog — change role with confirmation; ADMIN option excluded from dropdown | ⬜ |
-| 12.4.4 | Deactivate user action — row-action "Deactivate" calls `DELETE /admin/users/:id`; confirmation dialog | ⬜ |
-| 12.4.5 | Operator team management page (`dashboard/settings/team`) — list team members with role badge + status; invite and revoke actions | ⬜ |
-| 12.4.6 | Invite team member modal — email + role (MANAGER / STAFF); submits to `POST /operators/team/invite` | ⬜ |
-| 12.4.7 | Change team member role dialog — OWNER only; blocks self-demotion | ⬜ |
-| 12.4.8 | Accept-invite page (`/invite/[token]`) — public page; new invitees set password + activate account | ⬜ |
-| 12.4.9 | GUIDE assigned trips tab — "Guides" tab on trip edit page; list assigned guides; assign/remove via `POST/DELETE /trips/:id/guides` | ⬜ |
+- [ ] Voice rules (warm, direct, first-person plural)
+- [ ] Banned words list enforced (LD9), no em-dashes in platform copy
+- [ ] English variant rules; "(local time)" on all deadline copy
+- [ ] Locked microcopy strings implemented verbatim per page spec
 
 ---
 
-## Phase 13 — Frontend: Slot Picker
+## §5 Page specifications (frontend)
 
-> **Status: Not started.** Depends on Phase 5 (backend slot economy).
-
-| # | Task | Status |
-|---|---|---|
-| 13.1 | `hooks/use-slot-stream.ts` — opens SSE connection via `EventSource`; updates TanStack Query cache on `slot.locked`, `slot.released`, `slot.taken` events | ⬜ |
-| 13.2 | `SlotPicker` component — shows 3 slot cards with live status; "Reserve slot" triggers `lockSlot` mutation | ⬜ |
-| 13.3 | `TTLCountdown` component — real-time countdown; turns red below 2 minutes; fires `onExpired` callback at zero | ⬜ |
-| 13.4 | `AllSlotsTakenView` — shows all 3 slots as taken; estimated wait times from `GET /waitlist/eta/:categoryId`; "Join queue" per slot | ⬜ |
-| 13.5 | `RaceConditionModal` — shown on 409 `SLOT_TAKEN`; options: pick again, publish as standard, join waitlist | ⬜ |
-| 13.6 | `OfferBanner` — shown when a waitlist entry has `status === OFFERED`; countdown + claim/pass buttons | ⬜ |
-
----
-
-## Phase 14 — Frontend: Trip Creation Wizard
-
-> **Status: Partial.** `trips/new/page.tsx` renders a `TripForm` (multi-tab) but is not the 6-step featured-slot wizard with `useReducer` state machine.
-
-| # | Task | Status |
-|---|---|---|
-| 14.1 | `WizardState` + `useReducer` — steps: Details → Pricing → Photos → Visibility → SlotPicker → Review | ⬜ |
-| 14.2 | Step 1 — Trip Details (title, category, destination, hub, description) | ⚠️ *(in TripForm)* |
-| 14.3 | Step 2 — Pricing (price per person, currency, group size limits, duration) | ⚠️ *(in TripForm)* |
-| 14.4 | Step 3 — Photos (Cloudinary upload, drag-to-reorder) | ⚠️ *(in TripForm)* |
-| 14.5 | Step 4 — Visibility choice (Standard listing vs Featured) | ⬜ |
-| 14.6 | Step 5 — Slot Picker (only shown if Featured; skip if Standard) | ⬜ |
-| 14.7 | Step 6 — Review & publish confirmation (shows TTL countdown if slot locked) | ⬜ |
-| 14.8 | `SLOT_EXPIRED` reducer action — clears selected slot, returns to Step 5 | ⬜ |
-| 14.9 | `PublishTripButton` with optimistic update + rollback on error + race condition modal | ⬜ |
+- [ ] 5.1 Homepage (hero H1, micro trust bar, video carousel, social proof, featured destinations, NeedHelp, footer)
+- [ ] 5.2 Destination page (hero+search, category quick links, Locals' favorites, Instagram, About 350–500w/3×H2)
+- [ ] 5.3 All Tours page (H1 with year, filter row, 3×6 grid/18 per page, trust strip, ranking + diversity)
+- [ ] 5.4 Category page (H1+intro, filters, ranked grid, About content, related categories, no trust bar)
+- [ ] 5.5 Activity Hub page (hero fast facts, sticky anchor nav, Our Pick, comparison table, FAQ, related) — backend our-picks/comparison built
+- [ ] 5.6 Collection page (editorial banner, intro, curated grid no sort/filter, FAQ, keep-exploring) — backend collections built
+- [ ] 5.7 Tour detail page (breadcrumbs, H1 LD15, gallery, widget, overview LD22, ✓/✗ LD18, Meeting & Pickup LD19, Important Info LD23, reviews, related LD33)
+- [ ] 5.8 Checkout (single-page accordion, payment-model-aware, no payment section on operator_full)
+- [ ] 5.9 Thank You page (server-rendered, operator-first support, masked email)
+- [ ] 5.10 Search results (Postgres, tours-only, two-stage ranking, noindex) — ⚠️ basic search exists, no two-stage ranking
+- [ ] 5.11 Help Center `/help` (FAQPage schema, LD21)
 
 ---
 
-## Phase 15 — Edge Cases
+## §6 Booking flow, payments & email
 
-| # | Task | Status |
-|---|---|---|
-| 15.1 | **EC-01** All slots taken — render `AllSlotsTakenView` with estimated wait times and per-slot queue join | ⬜ |
-| 15.2 | **EC-02** Race condition recovery — 409 `SLOT_TAKEN` → `RaceConditionModal` with pick-again / standard / waitlist options | ⬜ |
-| 15.3 | **EC-03** TTL expired mid-wizard — SSE `slot.released` event fires `SLOT_EXPIRED` dispatch; server 410 on publish also fires it | ⬜ |
-| 15.4 | **EC-04** Editing a live trip — warning banner: "Changes save immediately to the live listing" | ⬜ |
-| 15.5 | **EC-05** Pre-departure window (24h before departure) — BullMQ job activates last-minute badge, optionally blocks bookings | ⬜ |
-| 15.6 | **EC-06** Pause/archive releases slot automatically — `SlotsService.releaseSlot()` called in `pause()` and `archive()` | ⬜ |
-| 15.7 | **EC-07** Waitlist offer banner on operator dashboard — poll `GET /waitlist/my-entries` every 60s; show `OfferBanner` for OFFERED entries | ⬜ |
+### 6.1 Widget states
 
----
+- [ ] S1–S5 widget (date-first, travelers second, capacity-aware, time-slot chips) — frontend
+- [ ] CTA progression: Check availability → Continue → 🔒 Reserve my spot · Pay $X (bare on operator_full)
+- [ ] Booking cutoff behavior per `booking_cutoff_minutes` — ⚠️ field exists (`trips.bookingCutoffMinutes`); widget behavior not built
 
-## Phase 16 — Notifications
+### 6.2 Payment & cancellation lifecycle
 
-| # | Task | Status |
-|---|---|---|
-| 16.1 | `MailService` base implementation — Nodemailer transporter reading SMTP config from Settings DB | ✅ |
-| 16.2 | Email verification template | ✅ |
-| 16.3 | Password reset template | ✅ |
-| 16.4 | Wire `sendCredentials()` into `BookingsService.createGuestAccount()` | ⬜ |
-| 16.5 | Wire `sendBookingConfirmation()` into `BookingsService.confirm()` (to traveler + operator + admin) | ⬜ |
-| 16.6 | Wire `sendBookingCancellation()` into `BookingsService.cancel()` | ⬜ |
-| 16.7 | Wire `sendSlotOffer()` into `WaitlistService.offerSlot()` | ⬜ |
-| 16.8 | Wire `sendSlotOfferExpired()` into `WaitlistOfferProcessor` (expire-offer job) | ⬜ |
-| 16.9 | Wire `sendSlotCapExpired()` into `SlotTtlProcessor` (expire-cap job) | ⬜ |
-| 16.10 | Push notification stub (`PushService`) — logs to console; replaceable with Firebase later | ⬜ |
-| 16.11 | Notification config toggles — admin can enable/disable notification types from settings panel | ⬜ |
+- [ ] `cancellation_hours` enum [24,48,72,168] default 48, NOT NULL — ⚠️ exists as plain int default 24
+- [ ] One window governs balance deadline AND free cancellation; computed `cancelDeadline` (tour-local)
+- [ ] Free cancellation is a listing requirement (CMS-enforced)
+- [ ] Forfeit never automatic (operator reports → admin confirms)
+- [ ] Operator-forced cancellation → full refund or free reschedule
 
----
+### 6.3 Trust strip & modals
 
-## Phase 17 — Admin Panel: Moderation & Management
+- [ ] Two clickable lines (cancellation + deposit), payment-model-aware, locked modal copy (LD5) — frontend
 
-| # | Task | Status |
-|---|---|---|
-| 17.1 | Admin dashboard stats wired to real API (`GET /api/v1/admin/analytics`) — operator count, live trips, bookings today, revenue MTD | ⬜ |
-| 17.2 | Operators management — list all operators with status badges; Approve / Reject / Suspend / Ban buttons | ⬜ |
-| 17.3 | Backend: `PATCH /admin/operators/:id/suspend` and `/ban` endpoints | ⬜ |
-| 17.4 | Trips moderation page — list all trips; Force-Pause / Force-Archive row actions | ⬜ |
-| 17.5 | Backend: `POST /admin/trips/:id/force-pause` and `/force-archive` (both call `SlotsService.releaseSlot()`) | ⬜ |
-| 17.6 | Trips moderation: `PENDING_REVIEW` tab with Approve / Reject actions (if Option B chosen for Gap G2) | ⬜ |
-| 17.7 | Slots management page — all FeaturedSlot rows grouped by category; current holder, `expiresAt`, waitlist depth | ⬜ |
-| 17.8 | Backend: `GET /admin/slots` and `POST /admin/slots/:id/override` (admin force-release) | ⬜ |
-| 17.9 | Waitlist viewer per slot — expandable drawer showing all WAITING entries in FIFO order | ⬜ |
+### 6.4 Cancellation flow (C1)
+
+- [ ] Tokenized confirmation page (no raw-click cancel), account pointer
+
+### 6.5 Booking confirmation email
+
+- [ ] 11 content blocks, payment-model-aware, masked render, `display_ref` as ticket (LD4), localized
+
+### 6.6 WhatsApp behavior
+
+- [ ] WhatsApp support 08:00–20:00, platform fallback after booking
+
+### 6.7 Pre-tour reminder email
+
+- [ ] Send 24h before start; "Today:" last-minute variant; payment-model blocks; no payment links ever
 
 ---
 
-## Phase 18 — Wishlist
+## §7 Commercial model
 
-| # | Task | Status |
-|---|---|---|
-| 18.1 | `WishlistModule` — backend service + controller (see Phase 4.15) | ⬜ |
-| 18.2 | `WishlistButton` client component — heart icon; toggled via `useMutation`; invisible to guests | ⬜ |
-| 18.3 | Place `WishlistButton` on trip cards (category browse) and trip detail hero | ⬜ |
-| 18.4 | Wishlist page (`dashboard/wishlist/page.tsx` or user profile) — grid of saved trips | ⬜ |
+### 7.1 Tiers
 
----
+- [ ] Tour tier columns `commission_tier`/`tier_key`/`tier_rank`/`tier_locked_until`/`quality_score`
+- [ ] New tours default standard (20%, rank 5); `tier_rank` denormalized, never client-written
+- [ ] Tier change updates all three + sets `tier_locked_until = now+30d`; rejected while locked
+- [ ] `deposit_pct` tier-driven
 
-## Missing Features — Industry-Best & Business Requirements
+### 7.2 Ranking & eligibility
 
-> These were identified as not-yet-planned gaps during documentation review. They are not in the current `IMPLEMENTATION_GUIDE.md` but are required for a production-grade platform. Sorted by priority.
+- [ ] Ranking query `tier_rank ASC, quality_score DESC, id ASC`
+- [ ] Bookability filter (status=active, is_bookable, EXISTS open departure within 30d)
+- [ ] `quality_score` nightly formula (rating 40 / reviews 25 / completeness 20 / conversion 15)
+- [ ] Eligibility flat bar (5 reviews / 4.0 / ≤10% cancellation, min 10 bookings)
+- [ ] One-time 90-day provisional window from first publish
+- [ ] Nightly enforcement → notify → 30-day grace → auto-demote (keep snapshotted commission)
+- [ ] Destination Spotlight extra bar (10/4.5) + manual approval + max-3 cap
+- [ ] Force-majeure pardons (admin: date range + destination)
+- [ ] Sponsored/Most popular/Locals' favorites badges & labels
 
-### CRITICAL
+### 7.3 Affiliate program
 
-| ID | Feature | What to Build |
-|---|---|---|
-| F-01 | **Multi-Factor Authentication (MFA)** | TOTP (authenticator app) for ADMIN/EDITOR/STAFF/GUIDE. Better Auth plugin `twoFactor`. Enforce at login; bypass on trusted devices via `deviceId` cookie. QR code setup in profile settings. | ⬜ |
-| F-05 | **Role Management UI for internal staff** | Admin panel: list all internal users (EDITOR/STAFF/GUIDE), assign roles, deactivate accounts. Backend: `PATCH /admin/users/:id/role` with `MANAGE_USERS` guard. Never expose ADMIN role assignment via UI. | ⬜ |
-| F-09 | **Operator KYC / Document Verification** | `OperatorKYC` schema: business registration doc, ID upload, status (PENDING/VERIFIED/REJECTED). Backend: `POST /operators/me/kyc/submit`. Admin review queue. Block trip publishing until KYC verified. | ⬜ |
-| F-13 | **Trip Content Moderation Queue** | Implement `PENDING_REVIEW` status — new operators' first N trips go to queue. Backend: approve/reject endpoints. Admin "Pending Review" tab. Email operator when approved or rejected. | ⬜ |
-| F-15 | **GDPR Right to Erasure** | `POST /me/deletion-request` (30-day cooling off). Scheduled anonymisation job. `GET /me/data-export` (DSAR download). "Delete my account" + "Export my data" in profile settings. | ⬜ |
-| F-17 | **Emergency Kill Switch / Circuit Breaker** | Feature flags in Redis: `bookings_enabled`, `slot_locking_enabled`, `operator_registration_enabled`, `new_trip_publishing_enabled`. `FeatureFlagService` injects 503 when flag off. Admin Settings → Platform Controls toggles. | ⬜ |
-
-### HIGH
-
-| ID | Feature | What to Build |
-|---|---|---|
-| F-02 | **Session Management & Active Sessions List** | `GET /me/sessions` — list all active sessions with device, location, last-seen. `DELETE /me/sessions/:id` — revoke individual. `DELETE /me/sessions` — sign out all devices. Frontend: Settings → Security. | ⬜ |
-| F-03 | **Login Audit Log & Suspicious Login Detection** | Log every login attempt (IP, user agent, result). Flag login from new country/device → send alert email. Admin: view login history per user. Schema: `LoginAuditLog`. | ⬜ |
-| F-06 | **GUIDE Role Scoped to Assigned Trips** | Schema: `GuideAssignment { guideUserId, tripId, assignedBy, assignedAt }`. `GET /trips/my-assigned` for GUIDEs. GUIDE can view trip detail and bookings only for assigned trips. | ⬜ |
-| F-10 | **Granular Operator Suspension States** | Expand `OperatorVerificationStatus`: ACTIVE / SUSPENDED (temporary, with reason + duration) / CONTENT_REVIEW (can't publish new trips) / BANNED (permanent). Email operator on status change. | ⬜ |
-| F-11 | **Operator Contract & Commission Acceptance** | Schema: `OperatorContractAcceptance`. On approval: send ToS. Block publishing until accepted. On rate change: create pending acceptance record; block new publishing after 15 days. | ⬜ |
-| F-14 | **Review Moderation & Dispute System** | Add `moderationStatus` to `Review`. `POST /reviews/:id/flag`. Admin moderation queue. Email reviewer when removed. Frontend: "Flag" option on each review; admin flagged filter tab. | ⬜ |
-| F-16 | **Financial Record Retention Policy** | `retentionExpiresAt` on `Booking` (createdAt + 7 years). Block deletion while in retention. Scheduled hard-delete job for expired records. Admin settings: retention policy view. | ⬜ |
-| F-18 | **Admin Impersonation (Support Tool)** | `POST /admin/impersonate/:userId` — short-lived impersonation token. All actions tagged with `impersonatedBy`. Sticky red banner on every page while impersonating. No destructive actions allowed. | ⬜ |
-| F-19 | **Notification Preference Centre** | `NotificationPreference` schema (per user, per type, per channel). Transactional emails non-disableable. Marketing requires opt-in. Frontend: Settings → Notifications grouped by category. | ⬜ |
-| F-21 | **Per-Operator Revenue Analytics** | `GET /operators/me/analytics` — bookings, gross/net revenue, by-trip breakdown. `GET /operators/me/analytics/slot-performance` — slot ROI. Frontend: operator overview with charts + date range picker. | ⬜ |
-| F-22 | **Platform-Wide Admin Analytics** | `GET /admin/analytics/overview` — GMV, commission, slot fill rate. `GET /admin/analytics/slots` — heatmap from `SlotHistory`. `GET /admin/analytics/operators` — top earners, KYC pipeline. Frontend: admin overview page wired up. | ⬜ |
-
-### MEDIUM
-
-| ID | Feature | What to Build |
-|---|---|---|
-| F-04 | **Password Policy & Breach Detection** | Min 12 chars for ADMIN/EDITOR, 8 for others. Check against HaveIBeenPwned API on registration. Force ADMIN password change every 90 days. Frontend: password strength meter. | ⬜ |
-| F-07 | **ADMIN Sub-roles / Departmental Permissions** | `AdminProfile { departmentRole: SUPER_ADMIN / FINANCE / CONTENT / SUPPORT }`. Department roles restrict which ADMIN permissions are exercised (finance can't edit content, content can't view payments). | ⬜ |
-| F-08 | **Time-Limited Role Assignments for Internal Staff** | `expiresAt DateTime?` on role assignment. Scheduled job: expire EDITOR/STAFF/GUIDE roles that have passed. Admin sees expiry on role management page. | ⬜ |
-| F-12 | **Multi-Seat Operator Accounts** | `OperatorTeamMember` schema. Owner invites by email. OWNER/MANAGER/STAFF sub-roles within the operator account. Team management UI in operator settings. | ⬜ |
-| F-20 | **In-App Notification Centre** | `Notification` schema. `NotificationService.create()` called alongside every email send. Bell icon in dashboard header with unread count. SSE push per-user. All notifications page. | ⬜ |
-| F-23 | **Operator API Keys (Programmatic Access)** | `ApiKey` schema (hashed, prefix only for display). `ApiKeyGuard` alternative to session auth. Scoped permissions at key creation. Key management UI in operator settings. | ⬜ |
+- [ ] Trackdesk integration (8% of GMV from commission, on-hold→approved lifecycle)
+- [ ] Promo codes double as attribution IDs; USD + EUR payouts
 
 ---
 
-## Phase 19 — V2 Discovery & SEO Alignment
+## §8 Tracking & analytics
 
-> Brings the codebase in line with `02-architecture/PLATFORM-ARCHITECTURE-V2.md`. Full detail + acceptance checks in `V2-DEVELOPMENT-ALIGNMENT-PLAN.md`. Slot economy retained as-is.
+### 8.1 Principles
 
-### Workstream A — Additive data-model fields
-- ✅ Add `Region` enum + `Destination.region` (nullable for now; make required once create DTO accepts it)
-- ✅ Add destination fields: country, latitude, longitude, timezone, currency, language, galleryImages, ogImage, parentDestinationId (+ self-relation)
-- ✅ Add category fields: description, icon, sortOrder, parentCategoryId (+ self-relation), metaTitleTemplate, metaDescriptionTemplate
-- ✅ Add `HubType` enum (LOCATION/HIGHLIGHT/AREA) + Hub fields: hubType, latitude, longitude
-- ✅ Migration applied — DB reset + fresh `init` migration (`20260606195507_init`) + `region_required` (`20260606201350_region_required`, region now NOT NULL) + `prisma generate`
-- ✅ Backend wiring: new fields exposed in Create/Update/Response DTOs, Swagger `ApiOperation` descriptions, and service `*Select` + create/update logic (destinations, categories, hubs). Type-check clean; **305 module tests pass**
-- ✅ Frontend admin forms for the new fields — destination (required Region select, **currency select**, geo/timezone/language, gallery, ogImage, parent), category (description/sortOrder/meta + **Lucide icon picker**), hub (required HubType select + lat/lng). tsc clean; `next build` OK
+- [ ] Conversion value = `commission_amount` (EUR), never GMV
+- [ ] One `booking_complete` event → 4 GTM tags (Conversion Linker, Google Ads, GA4, Meta Pixel)
+- [ ] Enhanced Conversions / Advanced Matching with hashed PII
+- [ ] Server-side Meta CAPI in parallel, event-id dedup
+- [ ] Mark-first idempotency via `conversion_fired_at`
+- [ ] Click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at booking creation
+- [ ] Consent Mode v2 (EEA denied default, US/CA granted)
 
-### Workstream B-prep / Stage 2 — Seed correction
-- ✅ `seed.ts` now seeds exactly the **19 canonical categories** (+ sortOrder), the **5 launch destinations** (region=CARIBBEAN), Klein Curaçao hub (hubType=LOCATION, allowed = boat-tours/snorkeling/day-trips)
-- ✅ Fresh seed verified: 19 categories, 5 destinations × (19 category + 1 reserved) slug rows, 1 hub
-- ℹ️ Backfill script not needed — dev DB reset fresh per user decision
+### 8.2 Flow
 
-### Workstream B — Tour cardinality & flat URL (breaking) ✅ (backend)
-- ✅ `TourCategory` join (many-to-many, isPrimary) — migration `20260606203433_tours_multi_category_hub`
-- ✅ `TourHub` join (many-to-many)
-- ✅ Every tour flat URL `/{dest}/{tour-slug}/` + always writes slug_registry TOUR row; hub-nested URL + `hubSlug` removed (Stage 5 folded in — multi-hub makes hub-in-URL incoherent)
-- ✅ HubAllowedCategory check against **any** of the tour's categories
-- ✅ Public GET /trips filters via join tables (`categories.some`/`hubs.some`); breadcrumb/canonical use `isPrimary` (primaryCategoryId)
-- ✅ Service/DTO/Swagger updated; `getPublishedTourCount` + category/hub remove-guards switched to the join; trips.service.spec rewritten; **479 tests pass**, tsc clean
-- ⬜ Update CLAUDE.md Rule #8 + TRIP-MODULE §3/§4.12/§4.13/§6.7 (docs)
-- ✅ Frontend admin: trip create + details-tab use **multi-select Categories (with primary star) + multi-select Hubs**; list columns show primary category (+N) and hub names; publish-readiness includes a price check
-- ⬜ Frontend public: flat-URL routes (`[locale]/[destination]/[slug]` resolver) — public-site track
+- [ ] `/payment/processing` → Stripe webhook (idempotent via `stripe_webhook_events`) → TYP → push once
+- [ ] TYP route `/{destination}/thank-you/{public_ref}`, no locale prefix, noindex
+- [ ] operator_full bypasses charge/webhook, created confirmed at commit
 
-### Workstream C — Category page gating ✅
-- ✅ Category page 404 when publishedTourCount = 0 (slug stays reserved) — `GET /categories/destination/:destinationSlug/:categorySlug`
-- ✅ Destination-scoped category list omits zero-count + returns publishedTourCount — `GET /categories/destination/:destinationSlug`
-- ✅ `CategoryService.getPublishedTourCount` helper (counts LIVE+active via categoryId; switches to TourCategory join in Stage 4)
-- ✅ Swagger docs + response DTOs (CategoryByDestinationResponseDto, CategoryDetailByDestinationResponseDto); tsc clean; 100 category tests pass; gating verified against live DB
+### 8.3 Data contract
 
-### Workstream D — Attributes / Filters system (new module)
-**6a (backend foundation) ✅**
-- ✅ `attribute_definitions` dictionary table + seed (46 defs: 18 global + category-specific) — migration `20260606210321_attributes_and_tour_attributes`
-- ✅ `tour_attributes` key-value table + indexes
-- ✅ Backend `attributes` module: dictionary CRUD (admin) + per-tour assignment with dictionary validation (type/allowed-values, ENUM_MULTI comma→JSON, ownership) — 15 tests pass, tsc clean
-**6b (consumption) ✅ (backend)**
-- ✅ `GET /filters/:dest/:category` (applicable filters + value counts + price/duration ranges)
-- ✅ Tour-listing dynamic attribute filters (comma=OR within key, multi-key AND) via raw query + dictionary validation
-- ✅ Duration/rating filters; sorting (`recommended` default | price_asc | price_desc | rating | newest); rating/price nulls-last
-- ✅ Missing-data handling (some-semantics exclude tours lacking an active filter; null price/rating sort last) + Swagger documents typed params + dynamic-attribute pattern with examples — 499 tests pass
-- ⚠️ Recommended sort is a DB-orderBy approximation (sponsored→rating→reviews→recency) until CRO booking counters land (Stage 8) → exact weighted score then
-- ✅ Frontend admin: attribute **dictionary CRUD** screens (`/dashboard/attributes`, gated `MANAGE_SYSTEM`) + **per-tour attribute editor** tab on the trip (renders by dataType; union of all the tour's categories' attributes)
-- ⬜ Frontend public: filter panel (sidebar/bottom-sheet, URL-driven, canonical→base) — public-site track
+- [ ] `booking_complete` payload (booking_value EUR, currency, refs, tour/operator/island, items[], user_data hashes, click_ids) type-checked in CI
 
-### Workstream E — Collections module (new module) ✅ (backend)
-- ✅ Collection model + translations + page content + FAQ (migration `20260606213217_collections`)
-- ✅ slug_registry COLLECTION row on create (same transaction)
-- ✅ Dynamic filterQuery resolver (reuses TripsService.findAll + attribute engine) + MANUAL ordered-tourIds resolver
-- ✅ Cannibalization guard (reject collection slug == category slug)
-- ✅ Admin CRUD + public list/detail; 11 collection tests pass (incl. `getByIdAdmin`/`getAllByDestinationAdmin`), tsc clean
-- ✅ Dedicated `CREATE/VIEW/EDIT/DELETE_COLLECTION` permissions (Permission enum + roles.config ADMIN/EDITOR + frontend rbac); controller migrated off generic `*_CONTENT`; admin reads added (`GET /collections/:id`, `GET /collections/admin/all`)
-- ✅ Frontend admin: full Collections CRUD (`/dashboard/collections`) — destination-scoped list, MANUAL (ordered tour multi-select) / DYNAMIC (filter-query builder) form, category-slug cannibalization warning, + Translations / Page Content / FAQ tabs (detail-shell + sub-nav)
-- ⬜ Frontend public: CollectionPage at `/{dest}/{slug}/` — public-site track
+### 8.4 Definition of Done
 
-### Workstream F — Search (new module) ✅ (backend)
-- ✅ `GET /search?q=&destinationSlug=&page=&limit=` (public) over name/translations/category/hub/highlights; Recommended ordering; flattened tour-card results — search tests pass
-- ⚠️ V1 = case-insensitive `contains` (ILIKE); tsvector GIN / Algolia ranking + typo-tolerance is the documented upgrade
-- ⬜ Autocomplete endpoint (later) · ⬜ Frontend /search page
-
-### Workstream G — SEO layer
-- ✅ CRO fields: `bookingCount, bookingCountToday, spotsRemaining, lastBookedAt` (migration `trip_cro_fields`) exposed in trip responses; Recommended sort now leads with bookingCount
-- ⬜ JSON-LD emitters per page type (+ BreadcrumbList everywhere) — *frontend; data exposed*
-- ⬜ Breadcrumbs per page type (tour uses primaryCategoryId) — *frontend; data exposed*
-- ⬜ XML sitemap index + per-type/per-locale files (published-only, non-empty categories) — *frontend route handlers; data exposed*
-- ⬜ Internal linking matrix — *frontend; data exposed*
-- ⬜ Confirm ISR revalidation values match §10 — *frontend*
-
-### Workstream H — Slug redirects (DECIDED: keep immutable)
-- ✅ Decision locked (2026-06-07): **keep immutable slugs** — no `slug_redirects` table, no editable-slug UI, no 90-day cooldown. Deliberate divergence from V2 (safer for bookings/indexed URLs). Documented in `PLATFORM-ARCHITECTURE-V2.md §9`, `SLUG-REGISTRY.md`, `SOFT-DELETE-STRATEGY.md`, gap-analysis A5.
-- ✅ Enforced: no `slug` on any Update DTO; set once at create; resolver 404s with no redirect step.
-- ⬜ Optional future (full V2 parity, not scheduled): admin-only slug-change + `slug_redirects` 301 row (`MANAGE_SYSTEM`).
-
-### Workstream I — Tour exclusions, admin tabs & verification (2026-06-08)
-- ✅ **Tour Exclusions** — new `TourExclusion` + `TourExclusionTranslation` models (migration `tour_exclusions`) + `Trip.exclusions`; backend child-service CRUD + translation methods (mirror inclusions: assertTripAccess, transactional create, en-delete guard, P2025→404); 6 controller endpoints; DTOs; exposed in `findBySlug` + `TripPublicDetailResponseDto`. Frontend: types/api/hooks + **Exclusions tab** on the trip edit view.
-- ✅ **Currency enum** — `Currency` Prisma enum (USD/EUR/GBP/CAD/ANG/AWG/XCD/BSD); `Destination.currency` String→enum (migration `currency_enum`); DTO `@IsEnum`; frontend currency `<Select>` + `CURRENCY_LABELS`.
-- ✅ **Hub translation / page-content / FAQ admin tabs** — verified present and wired (sub-nav tabs).
-- ✅ **Taxonomy cleanup** — `lib/constants/category-icons.ts` (19 canonical slug→Lucide map + tree-shakeable component map); category list renders resolved icon; dead public routing slugs replaced (buggy-tours→off-road-tours, catamaran-trips→boat-tours, snorkeling-trips→snorkeling, private-charters→luxury-experiences).
-- ✅ **Tests** — backend Jest: exclusion methods + collection admin reads added (**539 tests pass**; 1 pre-existing unrelated `users` ESM spec failure). Frontend Playwright: **131 new e2e tests** across 6 admin specs (235 total recognized).
-- ✅ **Code review (backend + frontend)** — fixed: public-detail `exclusions` DTO, `tourIds` null-crash guard, collection page-content invalidation locale mismatch, collection-form tour reset on destination change, FAQ inline-edit resolver, MultiSelect a11y label, removed full lucide manifest import.
-- ✅ `recomputePriceFrom(tripId, tx?)` now runs inside the age-band mutation's `$transaction` (add/update/remove) — closes the stale-`priceFrom` concurrency window.
-- ✅ `exclusionCount` added to list `_count` selects + `flattenCounts` + `TripDetailResponseDto` + frontend `TripListItem` (consistency with inclusionCount).
-
-### i18n confirmations
-- ⬜ No-prefix → 302 locale fallback (Accept-Language) alongside localePrefix:'always'
-- ⬜ Add What-Gets-Translated priority list to MULTILINGUAL-CONTENT.md
-- ⬜ Per-locale Open Graph (og:locale, translated og:title/og:description)
+- [ ] GA4 one purchase/test booking; Meta one deduped Purchase; EC match rate > 60%
 
 ---
 
-## Summary Stats
+## Appendix A — Locked decisions (LD1–LD33)
 
-| Phase | Total Tasks | ✅ Done | ⚠️ Partial | ⬜ Remaining |
-|---|---|---|---|---|
-| Phase 0 — Project Structure | 4 | 4 | 0 | 0 |
-| Phase 1 — Environment | 6 | 6 | 0 | 0 |
-| Phase 2 — Prisma Schema | 20 | 20 | 0 | 0 |
-| Phase 3 — Auth & Authorization | 16 | 15 | 0 | 1 |
-| Phase 4 — Backend Core Modules | 88 | 43 | 1 | 44 |
-| Phase 5 — Slot Economy | 7 | 0 | 0 | 7 |
-| Phase 6 — Waitlist System | 7 | 0 | 0 | 7 |
-| Phase 7 — BullMQ Background Jobs | 6 | 1 | 0 | 5 |
-| Phase 8 — SSE Gateway | 4 | 0 | 0 | 4 |
-| Phase 9 — Frontend Structure | 18 | 11 | 0 | 7 |
-| Phase 10 — Frontend Auth | 7 | 5 | 0 | 2 |
-| Phase 11 — Traveler Pages | 9 | 0 | 0 | 9 |
-| Phase 12 — Dashboard | 40 | 19 | 11 | 16 |
-| Phase 13 — Slot Picker | 6 | 0 | 0 | 6 |
-| Phase 14 — Trip Creation Wizard | 9 | 0 | 3 | 6 |
-| Phase 15 — Edge Cases | 7 | 0 | 0 | 7 |
-| Phase 16 — Notifications | 11 | 2 | 0 | 9 |
-| Phase 17 — Admin Moderation | 9 | 0 | 0 | 9 |
-| Phase 18 — Wishlist | 4 | 0 | 0 | 4 |
-| Phase 19 — V2 Discovery & SEO Alignment | 43 | 0 | 0 | 43 |
-| Missing Features (F-01 to F-23) | 23 | 0 | 0 | 23 |
-| **TOTAL** | **354** | **126** | **15** | **213** |
+- [ ] LD1 `cancellation_hours` enum [24,48,72,168] default 48 in 5 render locations — ⚠️ field exists, wrong type/default
+- [ ] LD2 CTA progression (operator_full bare) — frontend
+- [x] LD3 "Pickup" no hyphen, platform-wide — copy convention
+- [ ] LD4 Email is the ticket (no QR/voucher; ref + ID at check-in)
+- [ ] LD5 Widget trust strip = exactly 2 clickable lines
+- [ ] LD6 Tagline in global footer (closing trust block dropped)
+- [ ] LD7 Exactly 3 quick-info badges (Duration, Pickup, Languages)
+- [ ] LD8 Mobile breadcrumbs on tour pages, hidden on destination
+- [ ] LD9 Banned words list, platform-wide
+- [x] LD10 Real operator names in spec examples only — N/A code
+- [ ] LD11 Provider Rating cold-start (<3 native AND operator ≥10 @ ≥4.0) — ⚠️ operator aggregates exist; fallback logic not built
+- [ ] LD12 Total price before checkout, fees itemized
+- [ ] LD13 Meta row rating · badge · location; `is_locals_favourite` boolean — field not present
+- [ ] LD14 Operator visibility "Supplied by {operator}" only
+- [ ] LD15 H1 `{Destination or Hub}: {Tour name}` Title Case 35–60 chars — `h1Override` exists; render not built
+- [ ] LD16 Sticky TOC, 7 items, fixed order
+- [ ] LD17 Stacked H2 layout
+- [ ] LD18 What's Included two-column ✓/✗ + inline conventions — ⚠️ exclusions label-only; need typed shape
+- [ ] LD19 Meeting & Pickup stacked, Maps text link, no embedded map — meeting_point fields not present
+- [ ] LD20 One SVG icon library, no emoji in production
+- [ ] LD21 No per-tour FAQ; site-level `/help` FAQPage — polymorphic FAQ exists; `/help` page not built
+- [ ] LD22 Highlights merged into Overview, bullets, optional local tip — `local_tip` not present
+- [ ] LD23 Important Info 3 subsections; `not_suitable_for` field — field not present
+- [ ] LD24 Tiered deposit 20–30% via `deposit_pct`
+- [x] LD25 Single-day tours only in v1 — no multi-day logic
+- [ ] LD26 Payment methods equal radio list, card default; no payment section on operator_full
+- [x] LD27 Critical-constraints callout — dropped (no action)
+- [x] LD28 AI review summary — deferred to V2 (no action)
+- [ ] LD29 Review preview module, Tier 1+2 at launch
+- [ ] LD30 Reviews sort hidden <10, filters hidden <20, newest first
+- [ ] LD31 Star distribution chart, renders at ≥3 reviews
+- [ ] LD32 Review translation (Google Translate API + show-original)
+- [ ] LD33 Related Tours two rows, dynamic titles, `related_tour_click` event
 
-**Completion: ~36% of total scope implemented.**  
-Core infrastructure (schema, auth, admin modules) is solid. The next highest-priority unimplemented blocks are: **Slot Economy (Phase 5)** → **BullMQ Workers (Phase 7)** → **Bookings + Payments (Phase 4.13–4.14)** → **Traveler Pages (Phase 11)**.
+---
+
+## Appendix E — Consolidated data model
+
+### E.1 destinations
+
+- [x] id, name, slug, region, country, descriptions, images, lat/lng/timezone, currency, language, meta, parent_destination_id, status, timestamps — `destinations.prisma`
+
+### E.2 categories
+
+- [x] id, name, slug (global), description, icon, sort_order, parent_category_id, meta templates — `categories.prisma`
+- [ ] `status` per destination driven by the ≥3 threshold automation — ⚠️ gating at ≥1
+
+### E.3 tours — identity & routing
+
+- [x] id, title, slug, destination_id, operator_id, categories[], activity_hubs[], h1_override, breadcrumb_label
+- [ ] departure_city
+
+### E.3 tours — localized content
+
+- [x] overview, highlights, included_items, gallery (is_hero/focal) — child tables + `TripTranslation`
+- [ ] short_description, what_to_bring, know_before_you_go, not_suitable_for, local_tip, category_display
+- [ ] excluded_items typed `{item, type, price_text?}` — ⚠️ `TourExclusion` is label-only
+
+### E.3 tours — pricing & party
+
+- [x] pricing_model, unit_type, age_bands[], add_ons[], max/min_party_size — `trips.prisma`
+- [ ] price_adult/child/infant naming reconciled with basePrice/priceFrom — ⚠️ mapping to build
+
+### E.3 tours — booking logic
+
+- [x] booking_cutoff_minutes, pickup_model, duration_minutes — `trips.prisma`
+- [ ] cancellation_hours enum default 48 — ⚠️ int default 24
+- [ ] free_cancellation derivable (drop standalone field at migration)
+- [ ] deposit_pct, payment_model, start_times[], instant_confirmation, booking_type, duration_minutes_max
+- [ ] meeting_point / meeting_point_lat / meeting_point_lng
+
+### E.3 tours — flags & accessibility
+
+- [ ] min_age_years, fitness_level, weather_dependent, wheelchair_accessible, family_friendly, suitable_for_beginners, is_locals_favourite
+- [x] guide_languages[] — `TourLanguage`
+
+### E.3 tours — computed
+
+- [x] aggregate_rating, review_count, booking_count(+today), spots_remaining, last_booked_at — cached fields
+- [ ] rating_distribution[], photo_review_count
+- [ ] quality_score (nightly)
+
+### E.3 tours — commercial tier
+
+- [ ] tier_key, commission_tier, tier_rank, tier_locked_until, first_published_at, eligibility_state(+grace), is_bookable
+
+### E.4 activity_hubs
+
+- [x] id, name, slug, destination_id, hub_type, short_description, images, content_sections, faq, lat/lng, meta, status — `destinations.prisma` (+ allowed categories, our picks, comparison)
+
+### E.5 collections
+
+- [x] id, name, slug, destination_id, collection_type, tour_ids[], filter_query, rationale, hero, sort_order, faq, meta, status — `collections.prisma`
+
+### E.6 operators
+
+- [x] display_name (via user), aggregate_rating, aggregate_review_count — `operators.prisma`
+- [ ] cancellation_rate_90d (nightly), contact_email, contact_phone (E.164)
+
+### E.7 reviews
+
+- [x] booking-gated FK, rating, comment, is_approved, tour/operator/user — `reviews.prisma`
+- [ ] reviewer first+last initial display, reviewer_type, travel month/year, per-locale text + translation cache, photos[], helpful_count, operator_response, moderation_status
+
+### E.8 bookings
+
+- [x] tour_id, user_id, operator_id, schedule_id, date, time, party_size, total/deposit amount, status, confirmation_code, add-ons — `bookings.prisma` (thin)
+- [ ] public_ref (uuid), display_ref (IT-2026-XXXXX), island (denormalized)
+- [ ] original_currency/amount, booking_total_eur, fx_rate_to_eur
+- [ ] commission_rate, commission_amount, payment_model, deposit_amount, payment_method_last4/brand
+- [ ] conversion_fired_at, gclid/gbraid/wbraid/fbclid, utm_*
+- [ ] customer_first/last_name (split), customer_email/phone (E.164), customer_id (hash), customer_locale
+- [ ] billing_country/postal_code/city (from Stripe)
+
+### E.9 availability & departures
+
+- [ ] availability_schedules (weekly pattern)
+- [ ] availability_exceptions (close_date/close_slot/add_slot/set_capacity)
+- [ ] departures (materialized truth, capacity/booked_count/status/sold_out_at/source/manually_edited)
+- [ ] Nightly materialization (12 rolling months), read contract, atomic claim, all-sold-out recovery
+- [ ] Operator portal (schedule editor, exceptions, blackouts, close-today, freshness nudge)
+- [ ] ⚠️ Replaces the existing simple `TourSchedule` model
+
+---
+
+## Remove (was the slot economy)
+
+- [ ] Delete `FeaturedSlot`, `SlotLock`, `SlotHistory`, `WaitlistEntry` + enums + relations
+- [ ] Remove 3-slot seeding (`featuredSlot.createMany([1,2,3])`) in `categories.service.ts`
+- [ ] Remove slot-release hooks in `trips.service.ts` and `MANAGE_SLOTS` permission (backend + `rbac.ts`)
+- [ ] Migration drops `featured_slots`, `slot_locks`, `slot_history`, `waitlist_entries`
+
+> `FeaturedExperience` (Top Island Experiences) and `Wishlist` are unrelated — keep.
+
+---
+
+## Execution order (dependency view)
+
+```
+Remove slots ─┐
+              ├─► tier columns + ranking ──► eligibility + nightly jobs ──► affiliate
+              ├─► tour E.3 fields (cancellation_hours, payment_model, content, flags)
+              ├─► availability/departures ──► bookings + payments ──► reviews
+              │                                                   └─► tracking/TYP ──► emails
+              ├─► slug 301 + 90-day cooldown
+              ├─► category gating ≥3
+              └─► public frontend (consumes all backend) ──► cleanup & DoD
+```

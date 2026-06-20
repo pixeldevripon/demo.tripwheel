@@ -1,16 +1,16 @@
 # Slug Registry — Architecture & Lifecycle Reference
 
-> **Status:** Canonical. Reflects the V2 flat-URL model (see `PLATFORM-ARCHITECTURE-V2.md` §9).
-> **Audience:** Backend + frontend engineers.
+> **Canonical source:** master §2.3 (slug registry, 301 renames, 90-day cooldown), §2.2 (URL structure), §2.4 (categories). `island-tours-platform-master.html` v1.9.
+> **Purpose:** The single reference for how the destination-scoped slug registry works — the table shape, when a row is written vs. tombstoned vs. removed, the 301-on-rename redirect table, the 90-day reuse cooldown, and how a flat tour slug is generated.
 > **Source of truth in code:** `backend/prisma/slug-registry.prisma`, `backend/src/slug-registry/slug-registry.service.ts`, and the `slugRegistry` write sites in `destinations`, `categories`, `hubs`, `collections`, and `trips` services.
 
-This document consolidates everything previously scattered across `CLAUDE.md`, `PLATFORM-ARCHITECTURE-V2.md` §9, `MULTILINGUAL-CONTENT.md`, the Frontend Impact Log, and `04-BEFORE-AFTER-AND-LOGIC.md`. It is the one place to understand: **how the registry works, when a row is written vs. skipped, how the full lifecycle stays in sync, how the frontend uses it to route, and how a trip resolves with a flat slug.**
+Companion docs: how rows are *read* to route a request → [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md); indexing impact → [`SEO-STRATEGY.md`](./SEO-STRATEGY.md); why deletes are deactivations → [`SOFT-DELETE-STRATEGY.md`](./SOFT-DELETE-STRATEGY.md).
 
 ---
 
 ## 1. Why the registry exists
 
-Every public page (other than the destination root) lives under one ambiguous URL shape:
+Every public page other than the destination root lives under one ambiguous URL shape:
 
 ```text
 /{locale}/{destination}/{slug}/
@@ -26,9 +26,9 @@ The `{slug}` segment is **polymorphic** — it could be:
 | `/en/curacao/sunset-catamaran-cruise/` | a **Tour** detail page |
 | `/en/curacao/tours/` | the **reserved** "all tours" listing |
 
-Next.js cannot tell these apart from the URL alone — they share the same route file. The **slug registry** is the single lookup table that resolves `{destination} + {slug}` → `{ entityType, entityId }`, so the frontend knows which page component to render and which API to call.
+Next.js cannot tell these apart from the URL alone — they share the same route file. The **slug registry** is the single lookup table that maps `{destination} + {slug}` → `{ entityType, entityId }`, so the frontend knows which page component to render and which API to call (master §2.3).
 
-> **Design rule:** a tour has **one** canonical flat URL. Hubs and categories a tour belongs to are *discovery tags* — they affect listing/filtering, **not** the tour's URL. There is no hub-nested tour URL.
+> **Design rule:** a tour has **one** canonical flat URL `/{locale}/{destination}/{tour-slug}/`. The categories and hubs a tour belongs to are *discovery tags* — they affect listing/filtering, **not** the tour's URL. There is no hub-nested tour URL and no `/tour/` segment.
 
 ---
 
@@ -59,238 +59,191 @@ model SlugRegistry {
 | Column | Meaning |
 |---|---|
 | `destinationSlug` | The island namespace. Denormalized copy of `Destination.slug` so resolution is a single-table lookup with no join. |
-| `slug` | The English URL segment. **Always English, never translated** (translations change the *page content*, not the URL). |
-| `entityType` | Tells the frontend which page to render and which entity table to query. |
+| `slug` | The English URL segment. **Always English, never translated** (translations change the *page content*, not the URL). Normalized via `generateSlug()`. |
+| `entityType` | Tells the frontend which page to render and which entity table to query. One of `TOUR · CATEGORY · HUB · COLLECTION · RESERVED`. |
 | `entityId` | FK-by-value to the owning row (`Category.id`, `Hub.id`, `Collection.id`, `Trip.id`). `null` **only** for `RESERVED`. |
-| `isActive` | `true` = page renders. `false` = **slug stays claimed but the page 404s**. This is how we disable an entity without freeing its slug (prevents a different entity from silently stealing a URL that may be bookmarked/indexed). |
+| `isActive` | `true` = page renders. `false` = **slug stays claimed but the page 404s** (tombstone). This disables an entity without freeing its slug. |
 
 ### The two invariants
 
 1. **Uniqueness:** `@@unique([destinationSlug, slug])` — within one destination a slug maps to exactly one entity. The *same* slug may exist under different destinations (`curacao/boat-tours` and `aruba/boat-tours` are independent rows).
-2. **Transactional integrity:** every registry row is written **in the same Prisma `$transaction` as the entity it represents.** A failed entity create rolls back its registry row, and vice-versa. There are never orphan rows or unrouteable entities. *(CLAUDE.md Critical Rule #4.)*
+2. **Transactional integrity:** every registry row is written **in the same Prisma `$transaction` as the entity it represents.** A failed entity create rolls back its registry row, and vice-versa — never orphan rows or unrouteable entities. *(CLAUDE.md Critical Rule #4.)*
 
 ---
 
-## 3. When a row is ADDED (and when it is SKIPPED)
+## 3. The 20 protected slugs per destination
 
-### 3.1 Quick reference
+At destination creation the registry is pre-seeded with **20 protected slugs**:
+
+- **19 global category slugs** (one `CATEGORY` row each), and
+- the reserved `tours` slug (one `RESERVED` row, `entityId = null`).
+
+The 19 canonical category slugs (master §2.4):
+
+```text
+boat-tours · snorkeling · scuba-diving · sunset-cruises · sightseeing-tours ·
+day-trips · off-road-tours · jet-ski · parasailing · water-sports · fishing-trips ·
+nature-wildlife-tours · hiking-tours · adventure-tours · cultural-tours · food-tours ·
+attraction-tickets · luxury-experiences · workshops-classes
+```
+
+Categories are **global** — the same 19-slug set is reused for every destination; a new category fans a row out to every active destination, and a new destination backfills a row for every existing active category (§5).
+
+---
+
+## 4. When a row is ADDED, TOMBSTONED, or REMOVED
+
+### 4.1 Write-on-create quick reference
 
 | Action | Registry write | `entityType` | `entityId` | Notes |
 |---|---|---|---|---|
-| **Destination create** | 1 `RESERVED` row + **1 `CATEGORY` row per existing active category** | `RESERVED` / `CATEGORY` | `null` / category id | Backfills every already-existing category into the new island. |
-| **Category create** | **1 `CATEGORY` row per existing active destination** | `CATEGORY` | category id | Fans out across all islands (categories are global). |
+| **Destination create** | 1 `RESERVED` row + **1 `CATEGORY` row per existing active category** | `RESERVED` / `CATEGORY` | `null` / category id | Backfills every existing category into the new island. |
+| **Category create** | **1 `CATEGORY` row per existing active destination** | `CATEGORY` | category id | Fans out across all islands (categories are global). Writes slug rows only — **no FeaturedSlot rows** (see §4.2). |
 | **Hub create** | exactly **1 `HUB` row** | `HUB` | hub id | Scoped to its one destination. |
 | **Collection create** | exactly **1 `COLLECTION` row** | `COLLECTION` | collection id | Scoped to its one destination. |
 | **Tour (Trip) create** | **always exactly 1 `TOUR` row** | `TOUR` | trip id | Unconditional — flat URL for every tour. |
-| **Translation create/edit** | ❌ **skipped** | — | — | Translations never touch the registry; slugs are English-only. |
-| **Tour edit (any field incl. slug-affecting name)** | ❌ **skipped** | — | — | Slugs are **immutable after create** (no `slug_redirects` table by decision). |
-| **Page-content / FAQ / featured-experience edits** | ❌ **skipped** | — | — | These are page payloads, not routable entities. |
+| **Translation create/edit** | skipped | — | — | Translations never touch the registry; slugs are English-only. |
+| **Page-content / FAQ edits** | skipped | — | — | Page payloads, not routable entities. |
+| **Rename (slug change)** | updates the row's `slug` **and writes a 301 redirect entry** | unchanged | unchanged | See §6. |
 
-### 3.2 The "skip" rule, stated plainly
+### 4.2 No FeaturedSlot seeding — slots are removed
 
-A registry row is written **only when a new routable entity is born.** It is **never** written on update of routable fields, because **slugs are immutable** — once a tour/category/hub/collection has a slug, that slug is frozen for the life of the entity. We deliberately chose immutability over a redirect table so that **booking links and indexed URLs never break** (V2 Group 9 decision: "keep immutable").
+> **CRITICAL CHANGE.** The earlier rule that "Category create seeds exactly 3 FeaturedSlot rows in the same transaction" is **removed.** The featured-slot economy (FeaturedSlot / SlotLock / SlotHistory / Waitlist) does not exist in the target architecture. Placement is governed by **commission tiers + a ranking query + an eligibility engine** (master §2.4 commercial model — see [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md)).
+>
+> Category create now writes **only** its slug-registry rows (one per active destination), transactionally. The category-create service must be updated to drop the `featuredSlot.createMany([...])` call.
 
-The only registry writes after creation are **state toggles and deletes** (next section) — never the creation of a *new* slug for an existing entity.
-
-### 3.3 Where each rule lives in code
-
-- Destination → `destinations.service.ts` `create()` — writes `RESERVED 'tours'` (entityId `null`) then `createMany` of one `CATEGORY` row per active category.
-- Category → `categories.service.ts` `create()` — `createMany` of one `CATEGORY` row per active destination (same transaction as the 3 `FeaturedSlot` rows).
-- Hub → `hubs.service.ts` `create()` — single `HUB` row.
-- Collection → `collections.service.ts` `create()` — single `COLLECTION` row.
-- Tour → `trips.service.ts` `create()` — single `TOUR` row, **unconditional**, after `resolveUniqueSlug()` (see §5).
-
-### 3.4 The reserved `tours` slug
+### 4.3 The reserved `tours` slug
 
 Every destination is seeded with one `RESERVED` row for slug `tours` (`entityId = null`). This:
+
 - Protects `/{destination}/tours/` so no category/hub/collection/tour can ever claim it.
-- Lets the frontend render the "all tours in this destination" listing page from a known, stable URL.
+- Lets the frontend render the "all tours in this destination" listing from a known, stable URL.
 
 `RESERVED` is the only `entityType` whose `entityId` is `null`.
 
----
+### 4.4 Soft disable (deactivate) → `isActive = false` (tombstone)
 
-## 4. Full lifecycle — how rows stay in sync
-
-Creation is only half the story. Each routable entity keeps its registry row(s) consistent through its whole lifecycle.
-
-### 4.1 Soft disable (deactivate) → `isActive = false`
-
-When an entity is deactivated (its `remove()` / soft-delete path), the matching registry row(s) are flipped to `isActive = false` **in the same transaction** — the row stays, the page 404s, the slug stays claimed.
+When an entity is deactivated, the matching registry row(s) are flipped to `isActive = false` **in the same transaction** — the row stays, the page 404s, the slug stays claimed.
 
 | Entity | What gets toggled |
 |---|---|
-| Destination deactivate | `updateMany` **all** rows `WHERE destinationSlug = <slug>` → `isActive:false` (the whole island goes dark: its reserved row, categories, hubs, collections, tours). |
-| Destination reactivate (`update` with `isActive:true`) | `updateMany` all rows for that `destinationSlug` → `isActive:true`. |
-| Category deactivate / reactivate | `updateMany` `WHERE entityType=CATEGORY AND entityId=<id>` (flips that category's row on **every** island at once). |
-| Hub deactivate / reactivate | `updateMany` `WHERE entityType=HUB AND entityId=<id>`. |
-| Collection deactivate / reactivate | `updateMany` `WHERE entityType=COLLECTION AND entityId=<id>`. |
-| Tour archive | `updateMany` `WHERE entityType=TOUR AND entityId=<id>` → `isActive:false`. |
-| Tour restore | `updateMany` same filter → `isActive:true`. |
+| Destination deactivate | `updateMany` **all** rows `WHERE destinationSlug = <slug>` → `isActive:false` (reserved row + categories + hubs + collections + tours). |
+| Destination reactivate | `updateMany` all rows for that `destinationSlug` → `isActive:true`. |
+| Category deactivate / reactivate | `updateMany WHERE entityType=CATEGORY AND entityId=<id>` (flips that category's row on **every** island at once). |
+| Hub deactivate / reactivate | `updateMany WHERE entityType=HUB AND entityId=<id>`. |
+| Collection deactivate / reactivate | `updateMany WHERE entityType=COLLECTION AND entityId=<id>`. |
+| Tour archive / restore | `updateMany WHERE entityType=TOUR AND entityId=<id>` → `isActive:false` / `true`. |
 
 > **Guarded deactivation:** destinations and categories refuse to deactivate while active non-draft trips are still assigned (throws `409`). This prevents stranding live, bookable tours behind a 404 parent.
 
-### 4.2 Hard delete (force delete) → row removed
+### 4.5 Hard delete (force delete) → row removed, then 90-day cooldown
 
-Permanent deletes physically `deleteMany` the registry rows in the same transaction as the entity delete:
+Permanent deletes `deleteMany` the registry rows in the same transaction as the entity delete:
 
 | Entity | Registry cleanup |
 |---|---|
-| Destination force-delete | `deleteMany WHERE destinationSlug = <slug>` (removes reserved + all child rows). Blocked if `isSeeded`. |
+| Destination force-delete | `deleteMany WHERE destinationSlug = <slug>`. Blocked if `isSeeded`. |
 | Category force-delete | `deleteMany WHERE entityType=CATEGORY AND entityId=<id>` (all islands). Blocked if `isSeeded`. |
 | Collection force-delete | `deleteMany WHERE entityType=COLLECTION AND entityId=<id>`. |
 | Tour remove (hard) | `deleteMany WHERE entityType=TOUR AND entityId=<id>`. |
 
-After a hard delete the slug is **free** and can be claimed by a future entity. (Contrast with soft disable, which keeps it claimed.)
+After a hard delete the slug is **not immediately reusable** — it enters a **90-day soft-delete cooldown** (§7) before any new entity can claim it, protecting against stale external links and search-index confusion (master §2.3).
 
-### 4.3 State-machine summary for a single slug
+### 4.6 State-machine summary for a single slug
 
 ```text
-        create()                deactivate()              forceDelete()
-  ∅ ─────────────▶ isActive:true ───────────▶ isActive:false ───────────▶ ∅ (row gone, slug free)
-                        ▲                            │
-                        └──────── reactivate ────────┘
+        create()                deactivate()              forceDelete()           +90 days
+  ∅ ─────────────▶ isActive:true ───────────▶ isActive:false ──────────▶ cooldown ──────────▶ ∅ (free)
+                        ▲   │                       │
+                rename  │   └──────── reactivate ───┘
+                301 ────┘
 ```
 
-`isActive:false` is the "tombstone" state: routable lookups 404, but the unique `(destinationSlug, slug)` pair is still occupied so nothing else can take the URL.
+`isActive:false` is the "tombstone" state: routable lookups 404, the unique `(destinationSlug, slug)` pair is still occupied so nothing else can take the URL. A hard delete frees the pair only after the cooldown window expires.
 
 ---
 
-## 5. How a TOUR resolves with a flat slug
+## 5. Step-by-step create cycles (per entity)
 
-Tours are the high-volume, operator-created entity, so slug assignment is the most defensive. It runs in `trips.service.ts`.
+Each cycle runs inside a single Prisma `$transaction`: if any step throws, **everything rolls back** and no slug is claimed.
 
-### 5.1 Building the base slug (`create()`)
-
-```ts
-const baseSlug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
-```
-
-- Operator may pass an explicit `slug`; otherwise it's derived from the tour name.
-- Either way it's normalized through `generateSlug()` (lowercase, ASCII-fold, hyphenate) so the stored value is always URL-safe.
-
-### 5.2 Ensuring uniqueness (`resolveUniqueSlug()`)
-
-Tours share the `(destinationSlug, slug)` namespace with categories, hubs, collections, and the reserved `tours` slug — so a tour slug must be unique against **both** the `trips` table **and** the `slug_registry`. The resolver enforces this in layers:
-
-1. **Own-duplicate guard.** If *this same operator* already has a trip with `baseSlug` at this destination → throw `409` (no silent auto-fix; the operator is duplicating their own listing).
-
-2. **Cross-entity collision check.** Look up, in parallel:
-   - any trip (any operator) with `baseSlug` at this destination, and
-   - any `slug_registry` row at `(destinationSlug, baseSlug)`.
-
-   If **neither** exists → `baseSlug` is free, return it as-is.
-
-3. **Suffixing (one attempt, never numeric).** If the slug is taken by *another* entity, append a single operator-identity suffix:
-   - suffix = `generateSlug(companyName ?? userName ?? operatorId[:8])`
-   - candidate = `"{baseSlug}-{suffix}"`.
-   - Re-check the candidate against both the trips table and the registry. If free → use it.
-   - If the candidate is taken by *this* operator → `409` (their own duplicate again).
-   - If the candidate is taken by *another* entity → `409` ("choose a different tour name or slug"). **No numeric suffix is ever tried** (V2 pages 11–15: numbers are bad for SEO).
-
-This gives human-readable, collision-free URLs like `sunset-cruise`, then `sunset-cruise-miss-ann` when two operators pick the same name. A third collision is rejected rather than turned into `sunset-cruise-miss-ann-1`.
-
-### 5.3 Atomic write
-
-Inside the create `$transaction`:
-1. `trip.create(...)` (with nested `TourCategory` / `TourHub` rows).
-2. `slugRegistry.create({ destinationSlug, slug: trip.slug, entityType: TOUR, entityId: trip.id, isActive: true })`.
-
-Both succeed or both roll back. A `P2002` on either is mapped to a `409` — including a **race-condition fallback**: if another request claimed the slug between the pre-check and the write, the unique constraint catches it and the operator is told to retry.
-
-### 5.4 Reading a tour back (`findBySlug`)
-
-The public tour page resolves **purely by destination + slug** — hubs/categories play no part in the URL:
-
-```ts
-trip = prisma.trip.findFirst({
-  where: { slug, status: LIVE, isActive: true, destination: { slug: destinationSlug } },
-  ...
-});
-```
-
-Only `LIVE` + `isActive` trips are returned; drafts/paused/archived 404 on the public side.
-
----
-
-## 6. Step-by-step create cycles (per entity)
-
-This section walks the **complete** create flow for each entity — what the admin/operator submits, what the service validates, every row written, and (for tours) exactly how the flat slug is generated. Each cycle runs inside a single Prisma `$transaction`: if any step throws, **everything rolls back** and no slug is claimed.
-
-### 6.1 Create a DESTINATION (admin)
+### 5.1 Create a DESTINATION (admin)
 
 `destinations.service.ts` `create()`.
 
 ```text
-Admin submits: { name: "Curaçao", slug?: "curacao", region: CARIBBEAN, heroImage, country?, lat?, lng?, … }
+Admin submits: { name: "Curaçao", slug?: "curacao", region: CARIBBEAN, heroImage, … }
 
-1. Slug   → slug = generateSlug(dto.slug ?? dto.name)        // "Curaçao" → "curacao"
+1. slug = generateSlug(dto.slug ?? dto.name)                 // "Curaçao" → "curacao"
 2. BEGIN TRANSACTION
 3. destination.create({ name, slug, region, …, createdBy })  // P2002 on slug → 409 "already exists"
-4. slugRegistry.create({                                     // reserve the listing URL
-       destinationSlug: "curacao", slug: "tours",
-       entityType: RESERVED, entityId: null })
+4. slugRegistry.create({ destinationSlug:"curacao", slug:"tours",
+                         entityType: RESERVED, entityId: null })   // reserve the listing URL
 5. categories = category.findMany({ isActive: true })        // every global category that exists now
 6. IF categories.length > 0:
-     slugRegistry.createMany(                                // backfill each into the new island
-       categories.map(c => ({ destinationSlug:"curacao", slug:c.slug,
-                              entityType: CATEGORY, entityId:c.id })))
+     slugRegistry.createMany(categories.map(c => ({
+       destinationSlug:"curacao", slug:c.slug, entityType: CATEGORY, entityId:c.id })))
 7. COMMIT  → log "seeded N category slug(s) + 1 reserved"
 ```
 
 **Rows written:** 1 `RESERVED` (`tours`) + 1 `CATEGORY` row per already-existing active category.
-**Result:** `/curacao/tours/` is reserved, and every existing category (`/curacao/boat-tours/`, `/curacao/diving/`, …) is immediately routable for the new island. New categories created *later* fan back into this destination via the category cycle (§6.2).
 
-### 6.2 Create a CATEGORY (admin)
+### 5.2 Create a CATEGORY (admin)
 
 `categories.service.ts` `create()`. Categories are **global** — one category spans every island.
 
 ```text
 Admin submits: { name: "Boat Tours", slug?: "boat-tours", description?, icon?, sortOrder?, … }
 
-1. Slug   → slug = generateSlug(dto.slug ?? dto.name)        // "boat-tours"
+1. slug = generateSlug(dto.slug ?? dto.name)                 // "boat-tours"
 2. BEGIN TRANSACTION
 3. category.create({ name, slug, …, createdBy })             // P2002 on slug → 409
-4. featuredSlot.createMany([                                 // CLAUDE.md Rule #6 — exactly 3, here only
-       {categoryId, slotNumber:1, status:AVAILABLE},
-       {categoryId, slotNumber:2, status:AVAILABLE},
-       {categoryId, slotNumber:3, status:AVAILABLE} ])
-5. destinations = destination.findMany({ isActive: true })   // fan out across all islands
-6. IF destinations.length > 0:
-     slugRegistry.createMany(
-       destinations.map(d => ({ destinationSlug:d.slug, slug:"boat-tours",
-                                entityType: CATEGORY, entityId: category.id })))
-7. COMMIT  → log "seeded N slug_registry row(s)"
+4. destinations = destination.findMany({ isActive: true })   // fan out across all islands
+5. IF destinations.length > 0:
+     slugRegistry.createMany(destinations.map(d => ({
+       destinationSlug:d.slug, slug:"boat-tours", entityType: CATEGORY, entityId: category.id })))
+6. COMMIT  → log "seeded N slug_registry row(s)"
 ```
 
-**Rows written:** 3 `FeaturedSlot` rows (always, only here) + 1 `CATEGORY` registry row **per active destination**.
-**Result:** `/curacao/boat-tours/`, `/aruba/boat-tours/`, … all resolve to this one category. The page still won't *render* until that destination has ≥1 published tour in the category (the gating rule, §7.4).
+**Rows written:** 1 `CATEGORY` registry row **per active destination**. **No FeaturedSlot rows** (§4.2).
+**Result:** `/curacao/boat-tours/`, `/aruba/boat-tours/`, … all resolve to this one category. The page does not *render* until that destination has **≥3 published tours** in the category (the gating rule, master §2.4 — see [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md) §7).
 
-### 6.3 Create an ACTIVITY HUB (admin)
+### 5.3 Create an ACTIVITY HUB (admin)
 
 `hubs.service.ts` `create()`. A hub is **destination-scoped** (one island).
 
 ```text
-Admin submits: { name: "Klein Curaçao", destinationId, hubType: HIGHLIGHT, description, lat?, lng? }
-                 // NOTE: hub does NOT accept an explicit slug — always derived from name
+Admin submits: { name: "Klein Curaçao", destinationId, hubType: HIGHLIGHT, … }
+                 // hub does NOT accept an explicit slug — always derived from name
 
-1. Slug   → slug = generateSlug(dto.name)                    // "klein-curacao"
+1. slug = generateSlug(dto.name)                             // "klein-curacao"
 2. BEGIN TRANSACTION
 3. destination = destination.findUnique({ id: destinationId })   // 404 if missing
-4. hub.create({ destinationId, name, slug, hubType, …, createdBy })
-       // P2002 → 409 "Hub slug already exists for this destination"
+4. hub.create({ destinationId, name, slug, hubType, …, createdBy })   // P2002 → 409
 5. slugRegistry.create({ destinationSlug: destination.slug, slug: "klein-curacao",
-                         entityType: HUB, entityId: hub.id })
-       // P2002 → 409 "Slug already taken for destination"
+                         entityType: HUB, entityId: hub.id })          // P2002 → 409
 6. COMMIT
 ```
 
-**Rows written:** exactly 1 `HUB` registry row, scoped to the hub's destination.
-**Result:** `/curacao/klein-curacao/` resolves to `HUB`. A hub is a **discovery tag** — it never becomes a URL prefix for the tours attached to it.
+**Rows written:** exactly 1 `HUB` registry row. A hub is a **discovery tag** — never a URL prefix for its tours.
 
-### 6.4 Create a TOUR (operator, or admin)
+### 5.4 Create a COLLECTION (admin)
 
-`trips.service.ts` `create()`. This is the most defensive cycle because tour slugs share the destination namespace with categories, hubs, collections, and the reserved `tours` slug.
+`collections.service.ts` `create()`. Destination-scoped, manual or dynamic/filtered.
+
+```text
+1. slug = generateSlug(dto.slug ?? dto.name)
+2. BEGIN TRANSACTION
+3. collection.create({ destinationId, name, slug, … })       // P2002 → 409
+4. slugRegistry.create({ destinationSlug, slug, entityType: COLLECTION, entityId: collection.id })
+5. COMMIT
+```
+
+Collection slugs must be **semantically distinct** from category slugs (`top-10-tours` correct, never `boat-tours-private` — that should be a filtered category URL instead, [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md) §11.3).
+
+### 5.5 Create a TOUR (operator, or admin)
+
+`trips.service.ts` `create()`. The most defensive cycle — tour slugs share the destination namespace with categories, hubs, collections, and the reserved `tours` slug.
 
 ```text
 Operator submits: { name, slug?, destinationId, categoryIds:[…], primaryCategoryId?,
@@ -298,175 +251,145 @@ Operator submits: { name, slug?, destinationId, categoryIds:[…], primaryCatego
 
 1. operatorId = resolveOperatorId(userId, role)   // user.id → operator.id (admin auto-provisions)
 2. baseSlug   = generateSlug(dto.slug ?? dto.name)
-
 3. Validate destination  → must exist AND isActive            // else 400
-4. Validate categories:
-     - dedupe categoryIds; require ≥1                          // else 400
-     - primaryCategoryId = dto.primaryCategoryId ?? categoryIds[0]; must be in categoryIds
-     - every categoryId must exist AND isActive                // else 400
-
-5. slug = resolveUniqueSlug(baseSlug, destinationId, destinationSlug, operatorId)   // ← see §6.5
-
+4. Validate categories: dedupe; require ≥1; primaryCategoryId ∈ categoryIds; each exists+isActive
+5. slug = resolveUniqueSlug(baseSlug, destinationId, destinationSlug, operatorId)   // ← see §6.x below
 6. BEGIN TRANSACTION
-7.   Validate each hubId (TOCTOU-safe, inside tx):
-        - hub exists AND isActive                              // else 400
-        - hub.destinationId === dto.destinationId              // else 400
-        - ≥1 of the tour's categories is in hub's allowed list // else 400
-8.   trip.create({ name, slug, operatorId, destinationId, pricing…,
-                   categories: { create: categoryIds.map(id => ({ categoryId:id,
-                                          isPrimary: id === primaryCategoryId })) },
-                   hubs:       { create: hubIds.map(id => ({ hubId:id })) } })
-        // P2002 on slug → 409 "taken concurrently, retry"  (race fallback)
-9.   slugRegistry.create({ destinationSlug, slug: trip.slug,
-                          entityType: TOUR, entityId: trip.id, isActive: true })
-        // P2002 → 409
+7.   Validate each hubId (TOCTOU-safe, inside tx): exists+isActive; same destination; allowed-category match
+8.   trip.create({ … categories:{create:…(one isPrimary)}, hubs:{create:…} })   // P2002 on slug → 409 (race)
+9.   slugRegistry.create({ destinationSlug, slug: trip.slug, entityType: TOUR, entityId: trip.id, isActive:true })
 10. COMMIT
 ```
 
-**Rows written:** 1 `Trip` + N `TourCategory` (one `isPrimary`) + M `TourHub` + **always** 1 `TOUR` registry row.
-**Result:** one flat canonical URL `/{destination}/{slug}/`. The tour's categories/hubs drive discovery and filtering only — they never appear in the URL.
+**Rows written:** 1 `Trip` + N `TourCategory` (one `isPrimary`) + M `TourHub` + **always** 1 `TOUR` registry row. The tour belongs to exactly **1 destination, 1+ categories, 0–n hubs**; categories/hubs drive discovery and filtering only — never the URL.
 
-### 6.5 How the TOUR slug is generated / resolved (the `klein-curacao-boat-trip` case)
+---
 
-This is `resolveUniqueSlug()` — the reason two operators can both name a tour the same thing and still get clean, distinct flat URLs.
+## 6. Slug collision resolution (`resolveUniqueSlug`) — implementation note
 
-**Step 1 — normalize.** `generateSlug()` lowercases, strips diacritics (Curaçao → curacao), removes punctuation, and joins words with hyphens:
+This is the algorithm `trips.service.ts` uses today so two operators can both name a tour the same thing and still get clean, distinct flat URLs. It is an **implementation detail**, reconciled below with the new 301/cooldown rules.
 
-```text
-"Klein Curaçao Boat Trip"  →  generateSlug  →  "klein-curacao-boat-trip"
-```
+**Step 1 — normalize.** `generateSlug()` lowercases, ASCII-folds (Curaçao → curacao), strips punctuation, hyphen-joins words → the **base slug** (`"Klein Curaçao Boat Trip"` → `klein-curacao-boat-trip`).
 
-This already *looks* joined/flat — the words of the tour name are hyphen-joined into one segment. That is the **base slug**.
+**Step 2 — own-duplicate guard.** If *this same operator* already has the base slug at this destination → `409` immediately (they are duplicating their own listing; no auto-rename).
 
-**Step 2 — own-duplicate guard.** If *this same operator* already has `klein-curacao-boat-trip` at this destination → `409` immediately (they're duplicating their own listing; no auto-rename).
+**Step 3 — cross-entity collision check.** In parallel, look for any **trip** (any operator) with that slug at this destination, and any **slug_registry** row at `(destinationSlug, baseSlug)`. If **both empty** → the base slug is free, use it as-is. (This check must also treat a slug still inside its 90-day cooldown as taken — §7.)
 
-**Step 3 — cross-entity collision check.** In parallel, look for:
-- any **trip** (any operator) with that slug at this destination, and
-- any **slug_registry** row at `(destinationSlug, "klein-curacao-boat-trip")` — i.e. a category/hub/collection/reserved slug.
-
-If **both are empty** → the base slug is free, use it as-is:
-
-```text
-/curacao/klein-curacao-boat-trip/
-```
-
-**Step 4 — suffix with operator identity (one attempt, no numbers).** If the slug is already claimed by *another* entity (e.g. another operator already took it, or it clashes with the `klein-curacao` hub's namespace), append the operator's identity **once**:
+**Step 4 — suffix with operator identity (one attempt, never numeric).** If the slug is claimed by *another* entity, append the operator identity once:
 
 ```text
 suffix    = generateSlug(companyName ?? userName ?? operatorId[:8])   // e.g. "bluefin-charters"
 candidate = "klein-curacao-boat-trip-bluefin-charters"
 ```
 
-Re-check the candidate against **both** the trips table and the registry:
-- candidate is free → use it.
-- candidate is taken by *this* operator → `409` (their own duplicate).
-- candidate is taken by *another* entity → **`409` "choose a different tour name or slug"**.
+Re-check the candidate against both the trips table and the registry:
+- free → use it;
+- taken by *this* operator → `409` (own duplicate);
+- taken by *another* entity → **`409` "choose a different tour name or slug"**.
 
-**Numbers are never appended** (`-2`, `-3`, …) — per V2 pages 11–15 they are confusing for users and bad for SEO. The operator-name suffix is the single fallback; if even that collides, the create is rejected and the operator must rename.
+**No numeric suffix is ever tried** (`-2`, `-3`, …) — numbers are confusing for users and poor for SEO. The operator-name suffix is the single fallback; a further collision is rejected.
 
-**Step 5 — atomic claim.** The winning slug is written as the `Trip.slug` **and** the `TOUR` registry row in the same transaction (§6.4 steps 8–9). A unique-constraint race between the pre-check and the write is caught as `409 "taken concurrently, retry"`.
+**Step 5 — atomic claim.** The winning slug is written as `Trip.slug` **and** the `TOUR` registry row in the same transaction. A unique-constraint race between the pre-check and the write is caught as `409 "taken concurrently, retry"`.
 
-> **Resolution example, end to end:**
-> - Operator A publishes "Klein Curaçao Boat Trip" → free → `/curacao/klein-curacao-boat-trip/`.
-> - Operator B (Bluefin Charters) publishes the same name → base taken → `/curacao/klein-curacao-boat-trip-bluefin-charters/`.
-> - Operator C (also "Bluefin Charters", or anyone whose suffix collides too) → **rejected with `409`**; C must choose a different name/slug. No `-1`/`-2` is ever generated.
-> - All accepted slugs are flat, human-readable, collision-free, and immutable for the life of the tour.
+> **Worked example:** Operator A → `klein-curacao-boat-trip`. Operator B (Bluefin Charters), same name → `klein-curacao-boat-trip-bluefin-charters`. Operator C whose suffix also collides → rejected with `409`; must rename. No `-1`/`-2` is ever generated.
 
 ---
 
-## 7. How the FRONTEND uses the registry
+## 7. 301 redirects on rename, and the 90-day reuse cooldown (master §2.3)
 
-### 7.1 The resolve endpoint
+The master supersedes the older "slugs are immutable, no redirect table" stance. Slugs **can** change, and two mechanisms keep old links and the search index safe.
 
-```
-GET /api/v1/slug-registry/resolve?destinationSlug={dest}&slug={slug}
-```
+### 7.1 Rename → automatic 301
 
-`slug-registry.service.ts` → `resolve()`:
-- Looks up the unique `(destinationSlug, slug)` row.
-- **404 if the row is missing OR `isActive === false`** (tombstoned slugs are treated as not-found by the public router).
-- On success returns:
+When an entity's slug is changed:
 
-```json
-{ "destinationSlug": "curacao", "slug": "boat-tours", "entityType": "CATEGORY", "entityId": "uuid…" }
-```
+1. In the same transaction, the registry row's `slug` is updated to the new value.
+2. A **redirect entry** is written to a redirect table mapping the **old** `(destinationSlug, oldSlug)` → the new flat URL, with `status = 301`.
+3. The public resolver checks the redirect table **before** returning a 404: a request for the old slug issues a permanent redirect to the new canonical URL ([`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md) §5.1).
 
-### 7.2 The routing switch
+A suggested redirect table (target schema, not yet built):
 
-The Next.js `[locale]/[destination]/[slug]` route resolves first, then branches on `entityType`:
+```prisma
+model SlugRedirect {
+  id              String   @id @default(uuid())
+  destinationSlug String   // 'curacao'
+  fromSlug        String   // old slug being vacated
+  toSlug          String   // new slug (or full target path for cross-type moves)
+  statusCode      Int      @default(301)
+  createdAt       DateTime @default(now())
 
-```ts
-const r = await resolveSlug(destination, slug); // 404 → notFound()
-
-switch (r.entityType) {
-  case 'CATEGORY':   return <CategoryPage   destination={destination} categoryId={r.entityId} locale={locale} />;
-  case 'HUB':        return <HubPage        destination={destination} hubId={r.entityId}      locale={locale} />;
-  case 'COLLECTION': return <CollectionPage destination={destination} collectionId={r.entityId} locale={locale} />;
-  case 'TOUR':       return <TourPage       destination={destination} slug={slug}             locale={locale} />;
-  case 'RESERVED':   return <DestinationToursListing destination={destination} locale={locale} />;
+  @@unique([destinationSlug, fromSlug])
+  @@map("slug_redirects")
 }
 ```
 
-- For **TOUR**, the frontend then calls the flat `findBySlug` endpoint (it already has the slug; it does not need `entityId`).
-- For **CATEGORY/HUB/COLLECTION**, it uses `entityId` to fetch that entity's page payload + filtered tour list.
+### 7.2 Deletion → 90-day cooldown before reuse
 
-### 7.3 Depth / segment rule
+A hard-deleted slug is **not** immediately available to a new entity. The freed `(destinationSlug, slug)` pair is held for **90 days** (the soft-delete cooldown) so that stale external links and indexed URLs are not silently rebound to an unrelated page. After the cooldown the slug may be reclaimed.
 
-- **1 segment** after destination (`/{dest}/{slug}/`) → always goes through the registry resolve.
-- The destination root (`/{dest}/`) is resolved directly against `Destination.slug`, **not** the registry.
-- There is **no** 2-segment tour URL. Any deeper path that isn't an explicitly defined route is a 404. (Hubs add a discovery *tag*, never a URL prefix.)
+Implementation options (target): keep a tombstone row with a `deletedAt` timestamp and refuse reuse until `now > deletedAt + 90 days`, or carry the cooldown in the redirect/registry table. `resolveUniqueSlug` (§6 step 3) must treat a slug still inside its cooldown window as **taken**.
 
-### 7.4 Category-gating nuance
-
-A `CATEGORY` resolve succeeding is **necessary but not sufficient** to render the page. Category pages additionally gate on **having ≥1 published tour at that destination** (`categories.service.ts` `getBySlugForDestination` returns 404 when `publishedTourCount === 0`). So the frontend may receive a valid `CATEGORY` resolution and still render `notFound()` if the category page payload comes back empty. The registry answers *"what is this slug?"*; the category service answers *"is this page allowed to render right now?"*.
-
-### 7.5 Recommended frontend caching
-
-Resolve results are safe to cache per `(destination, slug)` with revalidation, because slugs are immutable — the only thing that changes is `isActive`, which should bust the cache on the (rare) admin toggle. Treat a `404` from resolve as authoritative (render `notFound()`); do not fall back to guessing the entity type.
+> **Reconciling §6 with §7:** the operator-name-suffix collision logic is unchanged for *concurrent* live entities. The 301/cooldown rules add two extra "taken" conditions to the freshness check: a slug with an outstanding 301 source, and a slug inside its 90-day cooldown, both count as unavailable for a new claim.
 
 ---
 
-## 8. End-to-end worked examples
+## 8. How the FRONTEND uses the registry
 
-**A) Operator publishes "Sunset Catamaran Cruise" in Curaçao**
-1. `generateSlug("Sunset Catamaran Cruise")` → `sunset-catamaran-cruise`.
-2. `resolveUniqueSlug` — no trip, no registry row at `(curacao, sunset-catamaran-cruise)` → free.
-3. Transaction: `trip.create` + `slugRegistry.create(TOUR, isActive:true)`.
-4. Public URL `/en/curacao/sunset-catamaran-cruise/` → resolve → `TOUR` → `findBySlug`.
+### 8.1 Resolve endpoint
 
-**B) Two operators both name a trip "Island Hopping" in Aruba**
-1. Operator A: gets `island-hopping`.
-2. Operator B (Blue Bay Tours): `island-hopping` taken in registry → suffix with company name → `island-hopping-blue-bay-tours`. Both tours have stable, distinct flat URLs.
-3. A third operator whose suffix would also collide is **rejected with `409`** and must rename — no `island-hopping-2` is ever generated.
+```text
+GET /api/v1/slug-registry/resolve?destinationSlug={dest}&slug={slug}
+```
 
-**C) Admin adds a new category "Diving" after islands already exist**
-1. `category.create` fans out: one `CATEGORY` registry row per active destination (`curacao/diving`, `aruba/diving`, …) + 3 FeaturedSlots — all one transaction.
-2. `/en/curacao/diving/` resolves to `CATEGORY`, but the page still 404s until ≥1 published diving tour exists in Curaçao (§7.4).
+- Looks up the unique `(destinationSlug, slug)` row.
+- **404 if the row is missing OR `isActive === false`** (tombstoned slugs are not-found to the public router) — *unless* a 301 redirect entry exists for that old slug, in which case it redirects first (§7.1).
+- On success returns `{ destinationSlug, slug, entityType, entityId }`.
 
-**D) Admin deactivates the "Diving" category**
-1. `updateMany WHERE entityType=CATEGORY AND entityId=<diving>` → `isActive:false` on every island.
-2. All `/{dest}/diving/` URLs now resolve-404, but the slug stays claimed — no hub/collection can grab `diving` while it's parked.
+### 8.2 Routing switch & depth rule
+
+The Next.js `[locale]/[destination]/[slug]` route resolves first, then branches on `entityType` (full switch in [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md) §5.2). The destination root `/{dest}/` is matched directly against `Destination.slug`, not the registry. There is no 2-segment tour URL.
+
+### 8.3 Category-gating nuance
+
+A `CATEGORY` resolve succeeding is **necessary but not sufficient**. Category pages additionally gate on **≥3 published tours** at that destination (master §2.4); below the threshold the category service returns 404 and the category is `status: draft` (excluded from nav, sitemaps, internal links, search). The registry answers *"what is this slug?"*; the category service answers *"is this page allowed to render right now?"*.
 
 ---
 
 ## 9. Invariants checklist (for reviewers)
 
 - [ ] Every registry write is inside the entity's create/update `$transaction`.
-- [ ] Category create → one row **per active destination** (+ 3 FeaturedSlots).
-- [ ] Destination create → one `RESERVED 'tours'` row (+ one row per existing active category).
+- [ ] Category create → one row **per active destination**. **No FeaturedSlot rows** (slots removed).
+- [ ] Destination create → one `RESERVED 'tours'` row (+ one row per existing active category). 20 protected slugs per destination once all 19 categories exist.
 - [ ] Tour create → **always** one `TOUR` row; archive/restore toggle `isActive`; hard remove deletes it.
-- [ ] No code path writes a registry row on a *translation* or on a routable-field *edit* (slugs immutable).
+- [ ] No code path writes a registry row on a *translation* or a page-content edit.
+- [ ] Rename → 301 entry written + registry `slug` updated, same transaction.
+- [ ] Hard delete → slug held in a 90-day cooldown before reuse; `resolveUniqueSlug` treats in-cooldown slugs as taken.
 - [ ] Deactivate → `isActive:false` (row kept); force-delete → row removed.
 - [ ] `entityId` is `null` **iff** `entityType === RESERVED`.
-- [ ] Public `resolve()` treats `isActive:false` as 404.
+- [ ] Public `resolve()` treats `isActive:false` as 404 (after checking the 301 redirect table).
 
 ---
 
-## 10. Related docs
+## 10. Implementation status (as of 2026-06-20)
 
-- `PLATFORM-ARCHITECTURE-V2.md` §9 — discovery/URL architecture (canonical).
-- `04-multilingual/MULTILINGUAL-CONTENT.md` — why slugs are English-only; locale routing.
-- `02-architecture/SOFT-DELETE-STRATEGY.md` — `isActive` tombstone semantics platform-wide.
-- `06-v2-backend-migration/04-BEFORE-AFTER-AND-LOGIC.md` §5 — before/after of the flat-URL migration.
-- `06-v2-backend-migration/05-FRONTEND-IMPACT-LOG.md` — "Public-site routing contract" section.
-- `CLAUDE.md` — Critical Rules #4, #5, #6, #7, #8; "Slug Registry — How It Works".
+| Piece | Status |
+|---|---|
+| `SlugRegistry` table + `resolve()` endpoint | Built |
+| Transactional write sites (destination/category/hub/collection/tour) | Built |
+| `resolveUniqueSlug()` (operator-name suffix, no numerics) | Built |
+| Flat `TOUR` rows / no hub-nesting | Built |
+| Category-create FeaturedSlot seeding | **Exists in code — must be REMOVED** (slots gone) |
+| `SlugRedirect` table + 301-on-rename | **Not built** — target (master §2.3) |
+| 90-day reuse cooldown | **Not built** — target (master §2.3) |
+| Category gating threshold | Built at **≥1** — must change to canonical **≥3** (master §2.4) |
+
+---
+
+## 11. Related docs
+
+- [`ROUTING-AND-RESOLUTION.md`](./ROUTING-AND-RESOLUTION.md) — how rows are read to route a request, the two 404 layers, breadcrumbs.
+- [`SEO-STRATEGY.md`](./SEO-STRATEGY.md) — canonical/hreflang, sitemaps, why renames issue a 301.
+- [`SOFT-DELETE-STRATEGY.md`](./SOFT-DELETE-STRATEGY.md) — `isActive` tombstone semantics and the cooldown rationale.
+- [`COMMERCIAL-MODEL.md`](./COMMERCIAL-MODEL.md) — commission tiers + ranking + eligibility (what replaced the removed FeaturedSlot economy).
+- [`../04-multilingual/MULTILINGUAL-CONTENT.md`](../04-multilingual/MULTILINGUAL-CONTENT.md) — why slugs are English-only; locale routing.
+- `CLAUDE.md` — Critical Rules #4, #5, #8 (slug registry transactional integrity, fan-out, flat tour URLs).
