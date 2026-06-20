@@ -932,3 +932,68 @@ prisma/
 
 > Nothing here is applied to the live schema yet. On approval, I'll implement file-by-file in the order
 > of §13, generate migrations, and update [`../MASTER-CHECKLIST.md`](../MASTER-CHECKLIST.md).
+
+---
+
+## 16. Post-review additions (booking add-ons + pickups)
+
+Two gaps surfaced during review were closed in the live schema (decision: **prices do NOT vary by
+date**, so the flat `priceOverride` on `Departure`/`AvailabilitySchedule` is sufficient — no
+per-unit-by-date pricing model is added).
+
+### 16.1 Booking add-on line items (`bookings.prisma`)
+
+`TourAddOn` (the catalog extra) now has selected line items snapshotted onto the booking, so editing
+or deleting a tour add-on never mutates a placed booking. `addOnId` is a soft reference for reporting.
+
+```prisma
+model BookingAddOn {
+  id         String    @id @default(uuid())
+  bookingId  String
+  addOnId    String?                                // soft ref; snapshot below is source of truth
+  name       String                                 // snapshot of TourAddOn.name
+  unit       AddOnUnit @default(PER_PERSON)         // snapshot (PER_PERSON | FLAT)
+  quantity   Int       @default(1)
+  unitPrice  Decimal   @db.Decimal(10, 2)           // snapshot of TourAddOn.price
+  totalPrice Decimal   @db.Decimal(10, 2)           // unitPrice × qty (× pax if PER_PERSON), computed at booking time
+  booking    Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOn      TourAddOn? @relation(fields: [addOnId], references: [id], onDelete: SetNull)
+  @@index([bookingId])
+  @@map("booking_addons")
+}
+```
+`Booking` gains `addOns BookingAddOn[]`; `TourAddOn` gains `bookings BookingAddOn[]`.
+(EU Digital Fairness Act: add-ons are never pre-checked in the widget — see frontend doc §5.)
+
+### 16.2 First-class pickup locations (`tours.prisma`) — D12
+
+`PickupLocation` (+ translation) are first-class points (distinct from `TourLocation` itinerary). A
+`PAID_ADDON` pickup is additionally linked to a `TourAddOn` for charging.
+
+```prisma
+model PickupLocation {
+  id           String   @id @default(uuid())
+  tourId       String
+  name         String
+  latitude     Float?
+  longitude    Float?
+  address      String?
+  minutesPrior Int?                                 // pickup N minutes before departure
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  tour         Tour                        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  translations PickupLocationTranslation[]          // localized title + directions
+  @@index([tourId])
+  @@map("pickup_locations")
+}
+```
+`Tour` gains `pickupRequired Boolean @default(false)` (→ OCTO `option.pickupRequired`) and
+`pickupLocations PickupLocation[]`. `Booking` gains `pickupRequested Boolean` +
+`pickupLocationId String?` + `pickupLocation` relation.
+
+### 16.3 Still open (deferred, by decision)
+
+- **#3 per-unit-by-date pricing** — NOT added (prices don't vary by date).
+- **#4 platform→operator payout/settlement ledger** — not modeled yet; revisit if settlement
+  reporting becomes a launch requirement (per-booking `Payment` covers charges/refunds today).

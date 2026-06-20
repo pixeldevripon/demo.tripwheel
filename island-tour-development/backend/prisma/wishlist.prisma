@@ -5,13 +5,13 @@
 model Wishlist {
   id      String   @id @default(uuid())
   userId  String
-  tripId  String
+  tourId  String
   savedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tripId])
+  @@unique([userId, tourId])
   @@index([userId])
   @@map("wishlists")
 }

@@ -1,0 +1,73 @@
+// Availability domain — recurring schedules + date exceptions materialize into
+// Departure rows, which are the single source of truth for bookable inventory
+// (= OCTO Availability). See OCTO-AVAILABILITY-AND-BOOKING.md.
+
+// Recurring availability rule (operator-authored)
+model AvailabilitySchedule {
+  id            String   @id @default(uuid())
+  tourId        String
+  optionId      String? // null = applies to all options
+  weekdays      Int[]    @default([]) // 0=Sun … 6=Sat
+  startTimes    String[] @default([]) // ["09:00","13:00"]
+  capacity      Int
+  seasonStart   DateTime? @db.Date
+  seasonEnd     DateTime? @db.Date
+  priceOverride Decimal?  @db.Decimal(10, 2)
+  isActive      Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tour   Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  option TourOption? @relation(fields: [optionId], references: [id])
+
+  @@index([tourId])
+  @@map("availability_schedules")
+}
+
+// Date-specific override
+model AvailabilityException {
+  id            String                    @id @default(uuid())
+  tourId        String
+  optionId      String?
+  date          DateTime                  @db.Date
+  type          AvailabilityExceptionType
+  startTime     String? // for EXTRA_DEPARTURE / TIME_OVERRIDE
+  capacity      Int? // for CAPACITY_OVERRIDE
+  priceOverride Decimal?                  @db.Decimal(10, 2)
+  note          String?
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, date])
+  @@map("availability_exceptions")
+}
+
+// Materialized bookable slot (= OCTO Availability). Inventory source of truth.
+// vacancies is the atomic counter; a DB CHECK (vacancies >= 0) is the overbooking backstop.
+model Departure {
+  id       String @id @default(uuid())
+  tourId   String
+  optionId String
+
+  localDateTimeStart DateTime
+  localDateTimeEnd   DateTime?
+  allDay             Boolean            @default(false)
+  capacity           Int
+  vacancies          Int // atomic counter; CHECK (vacancies >= 0)
+  status             AvailabilityStatus @default(AVAILABLE)
+  utcCutoffAt        DateTime
+  priceOverride      Decimal?           @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tour     Tour       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  option   TourOption @relation(fields: [optionId], references: [id])
+  bookings Booking[]
+
+  @@unique([tourId, optionId, localDateTimeStart])
+  @@index([tourId, localDateTimeStart])
+  @@index([status])
+  @@map("departures")
+}

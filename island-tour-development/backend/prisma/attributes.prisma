@@ -29,13 +29,13 @@ model AttributeDefinition {
 // string, a stringified number, or a JSON-encoded array (for ENUM_MULTI).
 model TourAttribute {
   id             String @id @default(uuid())
-  tripId         String
+  tourId         String
   attributeKey   String // references AttributeDefinition.key (the dictionary is the contract)
   attributeValue String @db.VarChar(500)
 
-  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
-  @@unique([tripId, attributeKey])
+  @@unique([tourId, attributeKey])
   @@index([attributeKey, attributeValue])
   @@map("tour_attributes")
 }

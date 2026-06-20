@@ -1,0 +1,41 @@
+// OCTO notifications domain — the octo/notifications capability.
+// Distinct from the internal Webhooks/WebhookPoint (Zapier/n8n lead catches) — keep those.
+// Endpoints: /notifications/subscriptions CRUD + outbound delivery worker.
+// Spec: OCTO-SPECIFICATION-REFERENCE.md §5.4.
+
+model NotificationSubscription {
+  id                String             @id @default(uuid())
+  operatorId        String? // null = platform-level
+  url               String // subscriber webhook endpoint
+  secret            String // HMAC signing (our convention; D13)
+  notificationTypes NotificationType[] @default([]) // PRODUCT_UPDATE | AVAILABILITY_UPDATE | BOOKING_UPDATE
+  headers           Json?              @default("{}") // optional custom headers echoed on delivery
+  isActive          Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  operator   Operator?              @relation(fields: [operatorId], references: [id])
+  deliveries NotificationDelivery[]
+
+  @@index([operatorId])
+  @@map("notification_subscriptions")
+}
+
+model NotificationDelivery {
+  id               String                     @id @default(uuid()) // = notification id (idempotency for subscriber)
+  subscriptionId   String
+  notificationType NotificationType
+  payload          Json // { id, subscriptionId, notificationType, utcCreatedAt, data }
+  status           NotificationDeliveryStatus @default(PENDING)
+  attempts         Int                        @default(0)
+  lastError        String?
+  deliveredAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  subscription NotificationSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, status])
+  @@map("notification_deliveries")
+}

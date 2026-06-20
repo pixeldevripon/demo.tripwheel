@@ -1,0 +1,37 @@
+// Payments domain — Stripe/Mollie payments per booking + idempotent webhook ledger.
+
+model Payment {
+  id        String @id @default(uuid())
+  bookingId String
+
+  provider PaymentProvider @default(STRIPE)
+  kind     PaymentKind // DEPOSIT | BALANCE | FULL | REFUND
+  status   PaymentStatus   @default(REQUIRES_PAYMENT)
+  amount   Decimal         @db.Decimal(10, 2)
+  currency Currency
+  intentId String? // Stripe PaymentIntent id
+  chargeId String?
+  refundId String?
+  raw      Json? // provider payload snapshot
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([intentId])
+  @@map("payments")
+}
+
+// Idempotent webhook ledger (Stripe etc.) — keyed by provider event id.
+model StripeWebhookEvent {
+  id          String    @id // Stripe event id (idempotency)
+  type        String
+  processedAt DateTime?
+  payload     Json
+  createdAt   DateTime  @default(now())
+
+  @@map("stripe_webhook_events")
+}

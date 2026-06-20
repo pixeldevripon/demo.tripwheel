@@ -9,6 +9,15 @@ model Operator {
   aggregateReviewCount Int       @default(0)
   aggregatesUpdatedAt  DateTime?
 
+  // OCTO supplier contact (E.164 phone)
+  contactEmail String?
+  contactPhone String?
+
+  // Eligibility engine (master)
+  cancellationRate90d Decimal @default(0) @db.Decimal(5, 2) // % over trailing 90d
+  totalBookings       Int     @default(0)
+  forceMajeurePardons Int     @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -22,9 +31,11 @@ model Operator {
   mollieConfig OperatorMollieConfig?
 
   // Relations — platform
-  trips    Trip[]
-  bookings Booking[]
-  reviews  Review[]
+  tours                     Tour[]
+  bookings                  Booking[]
+  reviews                   Review[]
+  spotlightRequests         SpotlightRequest[]
+  notificationSubscriptions NotificationSubscription[]
 
   @@index([verificationStatus])
   @@map("operators")

@@ -1,0 +1,465 @@
+// Tours domain — Tour (= OCTO product) and all related child models.
+// Operators create tours; admins can moderate. OCTO hierarchy: Tour → TourOption → TourUnit.
+// Publish blocks: <5 images, no hero, overview empty, highlights <3.
+
+model Tour {
+  id            String @id @default(uuid())
+  operatorId    String
+  destinationId String
+  // V2 §4: a tour belongs to 1+ categories (one primary) and 0–n hubs — see TourCategory / TourHub.
+
+  name   String // canonical English name
+  slug   String // English only, unique per destination
+  status TourStatus @default(DRAFT)
+
+  // ── OCTO product attributes ──
+  timeZone             String               @default("America/Curacao") // IANA; derive from destination
+  availabilityType     OctoAvailabilityType @default(START_TIME)
+  instantConfirmation  Boolean              @default(true)
+  instantDelivery      Boolean              @default(true)
+  availabilityRequired Boolean              @default(true)
+  allowFreesale        Boolean              @default(false)
+  deliveryFormats      DeliveryFormat[]     @default([PDF_URL, QRCODE])
+  deliveryMethods      DeliveryMethod[]     @default([VOUCHER])
+  redemptionMethod     RedemptionMethod     @default(DIGITAL)
+  reference            String? // operator's external id (OCTO reference)
+
+  // ── Pricing model ──
+  pricingModel    PricingModel   @default(PER_PERSON) // → OCTO pricingPer
+  wholeUnitType   WholeUnitType? // when pricingModel = UNIT (boat/vehicle…)
+  defaultCurrency Currency       @default(USD)
+  basePrice       Decimal?       @db.Decimal(10, 2)
+  priceFrom       Decimal?       @db.Decimal(10, 2) // cached min for listing
+
+  // ── Operational / booking logic (master E.3) ──
+  durationMinutesFrom  Int?
+  durationMinutesTo    Int?
+  pickupModel          PickupModel  @default(NONE)
+  pickupRequired       Boolean      @default(false) // → OCTO option.pickupRequired
+  minPartySize         Int          @default(1) // → option.restrictions.minUnits
+  maxPartySize         Int? // → option.restrictions.maxUnits
+  bookingCutoffMinutes Int          @default(120) // → availability.utcCutoffAt
+  cancellationHours    Int          @default(48) // enum-bound [24,48,72,168]
+  paymentModel         PaymentModel @default(OPERATOR_LINK)
+  depositPct           Decimal      @default(20.0) @db.Decimal(4, 1) // 20–30 in 2.5 steps (tier-driven)
+
+  // ── Commercial engine (master) ──
+  commissionTier   Decimal          @default(20.0) @db.Decimal(4, 1) // 20/22.5/25/27.5/30 (+35 spotlight)
+  tierKey          TierKey          @default(standard)
+  tierRank         Int              @default(5) @db.SmallInt // denormalized; never client-written
+  tierLockedUntil  DateTime?
+  qualityScore     Decimal          @default(0) @db.Decimal(6, 2) // nightly job
+  eligibilityState EligibilityState @default(LOCKED)
+  isBookable       Boolean          @default(false) // ≥1 AVAILABLE departure ≤30d (nightly)
+  firstPublishedAt DateTime?
+
+  // ── SEO / Content overrides ──
+  h1Override      String?
+  breadcrumbLabel String?
+
+  // ── Cached review aggregates (updated on review approve) ──
+  aggregateRating      Float?
+  aggregateReviewCount Int       @default(0)
+  aggregatesUpdatedAt  DateTime?
+
+  // ── CRO counters (V2 §10) ──
+  bookingCount      Int       @default(0)
+  bookingCountToday Int       @default(0)
+  spotsRemaining    Int?
+  lastBookedAt      DateTime?
+
+  // ── Flags ──
+  isSponsored Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  operator           Operator               @relation(fields: [operatorId], references: [id])
+  destination        Destination            @relation(fields: [destinationId], references: [id])
+  options            TourOption[] // ≥1 (one DEFAULT)
+  categories         TourCategory[] // 1+ categories, exactly one isPrimary
+  hubs               TourHub[] // 0–n hubs
+  attributes         TourAttribute[] // V2 §7 — filterable key-value properties
+  images             TourImage[]
+  addOns             TourAddOn[]
+  languages          TourLanguage[]
+  highlights         TourHighlight[]
+  inclusions         TourInclusion[]
+  exclusions         TourExclusion[]
+  features           TourFeature[] // OTHER OCTO feature types (terms, accessibility…) — DS1
+  locations          TourLocation[] // OCTO locations / itinerary
+  pickupLocations    PickupLocation[] // OCTO pickup points (octo/pickups)
+  translations       TourTranslation[]
+  schedules          AvailabilitySchedule[]
+  exceptions         AvailabilityException[]
+  departures         Departure[]
+  bookings           Booking[]
+  reviews            Review[]
+  wishlists          Wishlist[]
+  spotlightRequests  SpotlightRequest[]
+  hubOurPicks        HubOurPick[]
+  hubComparisonTours HubComparisonTour[]
+
+  @@unique([destinationId, slug])
+  @@index([operatorId])
+  @@index([destinationId])
+  @@index([status])
+  @@index([tierRank, qualityScore]) // ranking
+  @@index([isBookable])
+  @@map("tours")
+}
+
+// ── TourOption (= OCTO option) ────────────────────────────────────────────────
+// Every tour has ≥1 option; one is the DEFAULT. Units belong to an option.
+model TourOption {
+  id           String  @id @default(uuid())
+  tourId       String
+  isDefault    Boolean @default(false) // OCTO option.default
+  internalName String  @default("Standard")
+  reference    String?
+
+  // OCTO option fields (some derived from Tour, persisted for multi-option futures)
+  availabilityLocalStartTimes String[] @default([]) // ["09:00","13:00"]
+  cancellationCutoffAmount    Int      @default(48)
+  cancellationCutoffUnit      String   @default("hour") // hour|minute|day
+  requiredContactFields       String[] @default(["firstName", "lastName", "emailAddress"])
+  minUnits                    Int? // restrictions.minUnits (default from tour.minPartySize)
+  maxUnits                    Int? // restrictions.maxUnits
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tour       Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  units      TourUnit[]
+  schedules  AvailabilitySchedule[]
+  departures Departure[]
+  bookings   Booking[]
+
+  @@index([tourId])
+  @@map("tour_options")
+}
+
+// ── TourUnit (= OCTO unit; replaces TourAgeBand) ──────────────────────────────
+model TourUnit {
+  id           String   @id @default(uuid())
+  optionId     String
+  type         UnitType // ADULT | CHILD | INFANT | … (OCTO)
+  internalName String // 'Adult', 'Child (4-12)'
+  reference    String?
+
+  // OCTO unit.restrictions
+  minAge        Int?
+  maxAge        Int?
+  idRequired    Boolean  @default(false)
+  minQuantity   Int?
+  maxQuantity   Int?
+  paxCount      Int      @default(1) // headcount consumed toward capacity
+  accompaniedBy String[] @default([]) // unit types that must accompany (e.g. ["ADULT"])
+
+  // Pricing (Decimal in DB → OCTO Pricing at boundary)
+  priceRetail   Decimal  @db.Decimal(10, 2)
+  priceOriginal Decimal? @db.Decimal(10, 2) // pre-discount (OCTO original)
+  priceNet      Decimal? @db.Decimal(10, 2) // operator net
+  taxes         Json?    @default("[]") // [{ name, retail, original?, net? }]
+
+  displayOrder Int @default(0)
+
+  option    TourOption        @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  unitItems BookingUnitItem[]
+
+  @@index([optionId])
+  @@map("tour_units")
+}
+
+// ── Tour ↔ Category (many-to-many, V2 §4) ─────────────────────────────────────
+model TourCategory {
+  id         String  @id @default(uuid())
+  tourId     String
+  categoryId String
+  isPrimary  Boolean @default(false)
+
+  tour     Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([tourId, categoryId])
+  @@index([categoryId])
+  @@index([tourId, isPrimary])
+  @@map("tour_categories")
+}
+
+// ── Tour ↔ Activity Hub (many-to-many, V2 §4/§5) ──────────────────────────────
+model TourHub {
+  id     String @id @default(uuid())
+  tourId String
+  hubId  String
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  hub  Hub  @relation(fields: [hubId], references: [id])
+
+  @@unique([tourId, hubId])
+  @@index([hubId])
+  @@map("tour_hubs")
+}
+
+// ── Tour Images ───────────────────────────────────────────────────────────────
+model TourImage {
+  id           String  @id @default(uuid())
+  tourId       String
+  url          String // JPEG/WebP URL (primary)
+  urlAvif      String? // AVIF variant
+  urlWebp      String? // WebP variant
+  isHero       Boolean @default(false)
+  focalX       Float   @default(0.5)
+  focalY       Float   @default(0.5)
+  altText      String?
+  displayOrder Int     @default(0)
+  width        Int
+  height       Int
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, displayOrder])
+  @@map("tour_images")
+}
+
+// ── Add-Ons ───────────────────────────────────────────────────────────────────
+// EU Digital Fairness Act: never pre-checked in frontend — always starts unchecked.
+model TourAddOn {
+  id           String    @id @default(uuid())
+  tourId       String
+  name         String
+  description  String?
+  price        Decimal   @db.Decimal(10, 2)
+  unit         AddOnUnit @default(PER_PERSON)
+  maxQuantity  Int       @default(1)
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+
+  tour     Tour           @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings BookingAddOn[]
+
+  @@index([tourId])
+  @@map("tour_addons")
+}
+
+// ── Tour Languages ────────────────────────────────────────────────────────────
+model TourLanguage {
+  id       String @id @default(uuid())
+  tourId   String
+  language String // ISO 639-1 code
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, language])
+  @@map("tour_languages")
+}
+
+// ── Highlights ────────────────────────────────────────────────────────────────
+// 3–6 bullet points per tour. Serialized into OCTO content features[] as HIGHLIGHT.
+model TourHighlight {
+  id           String  @id @default(uuid())
+  tourId       String
+  displayOrder Int     @default(0)
+  imageUrl     String?
+
+  tour         Tour                       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations TourHighlightTranslation[]
+
+  @@index([tourId, displayOrder])
+  @@map("tour_highlights")
+}
+
+model TourHighlightTranslation {
+  id                  String  @id @default(uuid())
+  highlightId         String
+  locale              Locale
+  text                String
+  isMachineTranslated Boolean @default(false)
+
+  highlight TourHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+
+  @@unique([highlightId, locale])
+  @@map("tour_highlight_translations")
+}
+
+// ── Inclusions ────────────────────────────────────────────────────────────────
+// Serialized into OCTO content features[] as INCLUSION.
+model TourInclusion {
+  id           String  @id @default(uuid())
+  tourId       String
+  icon         String  @default("check")
+  displayOrder Int     @default(0)
+  imageUrl     String?
+
+  tour         Tour                       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations TourInclusionTranslation[]
+
+  @@index([tourId])
+  @@map("tour_inclusions")
+}
+
+model TourInclusionTranslation {
+  id                  String  @id @default(uuid())
+  inclusionId         String
+  locale              Locale
+  label               String
+  isMachineTranslated Boolean @default(false)
+
+  inclusion TourInclusion @relation(fields: [inclusionId], references: [id], onDelete: Cascade)
+
+  @@unique([inclusionId, locale])
+  @@map("tour_inclusion_translations")
+}
+
+// ── Exclusions ────────────────────────────────────────────────────────────────
+// Serialized into OCTO content features[] as EXCLUSION.
+model TourExclusion {
+  id           String  @id @default(uuid())
+  tourId       String
+  icon         String  @default("x")
+  displayOrder Int     @default(0)
+  imageUrl     String?
+
+  tour         Tour                       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations TourExclusionTranslation[]
+
+  @@index([tourId])
+  @@map("tour_exclusions")
+}
+
+model TourExclusionTranslation {
+  id                  String  @id @default(uuid())
+  exclusionId         String
+  locale              Locale
+  label               String
+  isMachineTranslated Boolean @default(false)
+
+  exclusion TourExclusion @relation(fields: [exclusionId], references: [id], onDelete: Cascade)
+
+  @@unique([exclusionId, locale])
+  @@map("tour_exclusion_translations")
+}
+
+// ── OCTO content features OTHER than highlight/inclusion/exclusion (DS1) ───────
+// terms, accessibility, prebooking/prearrival info, redemption, additional info.
+model TourFeature {
+  id           String      @id @default(uuid())
+  tourId       String
+  type         FeatureType // not HIGHLIGHT/INCLUSION/EXCLUSION
+  displayOrder Int         @default(0)
+
+  tour         Tour                     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations TourFeatureTranslation[]
+
+  @@index([tourId, type])
+  @@map("tour_features")
+}
+
+model TourFeatureTranslation {
+  id                  String  @id @default(uuid())
+  featureId           String
+  locale              Locale
+  text                String
+  isMachineTranslated Boolean @default(false)
+
+  feature TourFeature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([featureId, locale])
+  @@map("tour_feature_translations")
+}
+
+// ── OCTO locations / itinerary (start, itinerary item, end, POI…) ─────────────
+model TourLocation {
+  id              String   @id @default(uuid())
+  tourId          String
+  types           String[] @default([]) // ["START"], ["ITINERARY_ITEM"], ["END"] …
+  latitude        Float?
+  longitude       Float?
+  streetAddress   String?
+  addressLocality String?
+  addressRegion   String?
+  postalCode      String?
+  addressCountry  String?
+  minutesTo       Int?
+  minutesAt       Int?
+  displayOrder    Int      @default(0)
+
+  tour         Tour                      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations TourLocationTranslation[]
+
+  @@index([tourId])
+  @@map("tour_locations")
+}
+
+model TourLocationTranslation {
+  id                  String  @id @default(uuid())
+  locationId          String
+  locale              Locale
+  title               String
+  shortDescription    String?
+  isMachineTranslated Boolean @default(false)
+
+  location TourLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, locale])
+  @@map("tour_location_translations")
+}
+
+// ── Pickup locations (octo/pickups; D12 — first-class pickup points) ───────────
+// Distinct from TourLocation (itinerary/start/end). A PAID_ADDON pickup is also linked
+// to a TourAddOn for charging; this model carries the geo + selectable point.
+model PickupLocation {
+  id           String  @id @default(uuid())
+  tourId       String
+  name         String // e.g. "Marriott Beach Resort — main lobby"
+  latitude     Float?
+  longitude    Float?
+  address      String?
+  minutesPrior Int? // pickup happens N minutes before departure
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  tour         Tour                        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  translations PickupLocationTranslation[]
+
+  @@index([tourId])
+  @@map("pickup_locations")
+}
+
+model PickupLocationTranslation {
+  id                  String  @id @default(uuid())
+  pickupLocationId    String
+  locale              Locale
+  title               String // localized point name
+  directions          String? // localized pickup directions
+  isMachineTranslated Boolean @default(false)
+
+  pickupLocation PickupLocation @relation(fields: [pickupLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([pickupLocationId, locale])
+  @@map("pickup_location_translations")
+}
+
+// ── Tour Translations ─────────────────────────────────────────────────────────
+// Per-locale content for title/overview/description (renamed from TripTranslation).
+model TourTranslation {
+  id                  String   @id @default(uuid())
+  tourId              String
+  locale              Locale
+  title               String?
+  overview            String? // 80–200 words, paragraph breaks only
+  description         String?
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, locale])
+  @@index([tourId, locale])
+  @@map("tour_translations")
+}

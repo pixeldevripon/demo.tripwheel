@@ -29,12 +29,13 @@ model Destination {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator      User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
-  hubs         Hub[]
-  trips        Trip[]
-  collections  Collection[]
-  translations DestinationTranslation[]
-  pageContents DestinationPageContent[]
+  creator           User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
+  hubs              Hub[]
+  tours             Tour[]
+  collections       Collection[]
+  translations      DestinationTranslation[]
+  pageContents      DestinationPageContent[]
+  spotlightRequests SpotlightRequest[]
 
   @@index([slug])
   @@index([isActive])
@@ -170,7 +171,7 @@ model HubOurPick {
   displayOrder Int         @default(0)
 
   hub  Hub  @relation(fields: [hubId], references: [id], onDelete: Cascade)
-  tour Trip @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
   @@unique([hubId, tourId])
   @@map("hub_our_picks")
@@ -196,7 +197,7 @@ model HubComparisonTour {
   displayOrder Int    @default(0)
 
   group HubComparisonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  tour  Trip               @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  tour  Tour               @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, tourId])
   @@map("hub_comparison_tours")

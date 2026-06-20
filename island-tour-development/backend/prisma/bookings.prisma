@@ -1,38 +1,144 @@
-// Bookings domain
+// Bookings domain — OCTO reserve → confirm lifecycle.
+// Booking holds inventory (ON_HOLD + utcExpiresAt); confirm commits; expiry/cancel release.
+// One BookingUnitItem per traveler (= OCTO unit item).
 
 model Booking {
-  id         String  @id @default(uuid())
-  tripId     String
-  userId     String
-  operatorId String
-  scheduleId String? // references a specific TourSchedule
+  id   String @id @default(uuid())
+  uuid String @unique @default(uuid()) // OCTO uuid (client-supplied; idempotency key)
 
-  // Booking details
-  date             DateTime      @db.Date
-  time             String? // 'HH:MM' — null for single-departure tours
-  partySize        Int
-  totalAmount      Decimal       @db.Decimal(10, 2)
-  depositAmount    Decimal       @db.Decimal(10, 2)
-  status           BookingStatus @default(PENDING)
-  confirmationCode String        @unique @default(uuid())
+  tourId      String
+  optionId    String
+  departureId String? // null when freesale
+  operatorId  String
+  userId      String? // guest auto-created; null until known
 
-  // Selected add-ons stored as JSON: [{ addOnId, qty, price }]
-  selectedAddOns Json?   @default("[]")
-  notes          String? // guest notes to operator
+  // OCTO refs
+  resellerReference String? // our display ref source
+  supplierReference String? // operator/external ref
+  publicRef         String  @unique @default(uuid()) // TYP url token
+  displayRef        String  @unique // IT-2026-00042 (human)
+
+  status   BookingStatus @default(ON_HOLD)
+  freesale Boolean       @default(false)
+  testMode Boolean       @default(false)
+
+  // Lifecycle timestamps
+  utcExpiresAt   DateTime?
+  utcConfirmedAt DateTime?
+  utcRedeemedAt  DateTime?
+
+  // Snapshot at booking time
+  paymentModel PaymentModel
+  currency     Currency
+  localDate    DateTime     @db.Date
+  startTime    String?
+
+  // Pickup (octo/pickups; D12)
+  pickupRequested  Boolean @default(false)
+  pickupLocationId String? // selected pickup point (null = no pickup / meet-on-site)
+
+  // Pricing snapshot (Decimal; minor units at boundary)
+  totalRetail      Decimal  @db.Decimal(10, 2)
+  totalNet         Decimal? @db.Decimal(10, 2)
+  commissionAmount Decimal? @db.Decimal(10, 2) // EUR-normalized conversion value; null = corruption
+  depositAmount    Decimal  @db.Decimal(10, 2)
+  balanceAmount    Decimal  @db.Decimal(10, 2) // operator-collected balance
+  taxes            Json?    @default("[]")
+
+  // Contact (OCTO Contact; guest override of User)
+  contactFirstName  String?
+  contactLastName   String?
+  contactFullName   String?
+  contactEmail      String?
+  contactPhone      String?
+  contactPostalCode String?
+  contactCountry    String?
+  contactLocales    String[] @default([])
+  notes             String?
+
+  // Attribution (master tracking E.8)
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  clickId           String? // gclid/fbclid/etc
+  affiliateId       String? // Trackdesk
+  conversionFiredAt DateTime? // mark-first idempotency
+
+  // Cancellation
+  cancellationRefund CancellationRefund?
+  cancelledBy        CancelledBy?
+  cancellationReason String?
+  utcCancelledAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trip     Trip          @relation(fields: [tripId], references: [id])
-  user     User          @relation(fields: [userId], references: [id])
-  operator Operator      @relation(fields: [operatorId], references: [id])
-  schedule TourSchedule? @relation(fields: [scheduleId], references: [id])
-  review   Review?
+  tour           Tour              @relation(fields: [tourId], references: [id])
+  option         TourOption        @relation(fields: [optionId], references: [id])
+  departure      Departure?        @relation(fields: [departureId], references: [id])
+  operator       Operator          @relation(fields: [operatorId], references: [id])
+  user           User?             @relation(fields: [userId], references: [id])
+  pickupLocation PickupLocation?   @relation(fields: [pickupLocationId], references: [id])
+  unitItems      BookingUnitItem[]
+  addOns         BookingAddOn[]
+  payments       Payment[]
+  review         Review?
 
-  @@index([tripId])
-  @@index([userId])
+  @@index([tourId])
   @@index([operatorId])
+  @@index([userId])
   @@index([status])
-  @@index([confirmationCode])
+  @@index([departureId])
+  @@index([localDate])
   @@map("bookings")
+}
+
+// OCTO UnitItem — one per traveler/ticket
+model BookingUnitItem {
+  id        String @id @default(uuid())
+  uuid      String @unique @default(uuid())
+  bookingId String
+  unitId    String
+
+  status        BookingStatus @default(ON_HOLD)
+  utcRedeemedAt DateTime?
+
+  // Per-traveler contact (optional; OCTO allows per-unit contact)
+  contactFirstName String?
+  contactLastName  String?
+
+  // Pricing snapshot
+  priceRetail Decimal  @db.Decimal(10, 2)
+  priceNet    Decimal? @db.Decimal(10, 2)
+
+  // Ticket (OCTO Ticket delivery artifact)
+  ticketCode           String?
+  ticketDeliveryFormat DeliveryFormat?
+  ticketUrl            String?
+
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  unit    TourUnit @relation(fields: [unitId], references: [id])
+
+  @@index([bookingId])
+  @@map("booking_unit_items")
+}
+
+// Selected add-on line item — snapshotted at booking time so a later edit/delete of
+// the TourAddOn never mutates a placed booking. addOnId is a soft reference for reporting.
+model BookingAddOn {
+  id        String  @id @default(uuid())
+  bookingId String
+  addOnId   String? // soft ref to TourAddOn; the snapshot below is the source of truth
+
+  name       String // snapshot of TourAddOn.name
+  unit       AddOnUnit @default(PER_PERSON) // snapshot (PER_PERSON | FLAT)
+  quantity   Int       @default(1)
+  unitPrice  Decimal   @db.Decimal(10, 2) // snapshot of TourAddOn.price
+  totalPrice Decimal   @db.Decimal(10, 2) // computed at booking time (unitPrice × qty × pax if PER_PERSON)
+
+  booking Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOn   TourAddOn? @relation(fields: [addOnId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@map("booking_addons")
 }

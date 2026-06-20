@@ -1,0 +1,27 @@
+// Commercial engine — Destination Spotlight request/approval.
+// Tier columns (commissionTier / tierKey / tierRank / quality / eligibility) live on Tour.
+// TierKey → commissionTier/tierRank mapping + 30-day lock is enforced in the service.
+// Quality-score + eligibility are nightly BullMQ jobs.
+
+model SpotlightRequest {
+  id            String @id @default(uuid())
+  tourId        String
+  operatorId    String
+  destinationId String
+
+  status      SpotlightStatus @default(REQUESTED)
+  requestedAt DateTime        @default(now())
+  approvedAt  DateTime?
+  approvedBy  String? // admin user id
+  startsAt    DateTime?
+  endsAt      DateTime?
+  note        String?
+
+  tour        Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  operator    Operator    @relation(fields: [operatorId], references: [id])
+  destination Destination @relation(fields: [destinationId], references: [id])
+
+  @@index([destinationId, status]) // enforce max 3 active per destination in service
+  @@index([tourId])
+  @@map("spotlight_requests")
+}

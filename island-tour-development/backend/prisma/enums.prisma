@@ -103,15 +103,24 @@ enum Permission {
   EDIT_COLLECTION
   DELETE_COLLECTION
 
+  // Availability (OCTO)
+  MANAGE_AVAILABILITY
+
   // Bookings
   VIEW_BOOKINGS
   EDIT_BOOKING
   DELETE_BOOKING
+  MANAGE_BOOKINGS
 
   // Payments
   VIEW_PAYMENTS
   EDIT_PAYMENT
   DELETE_PAYMENT
+  MANAGE_PAYMENTS
+
+  // Commercial engine (tiers / spotlight)
+  MANAGE_TIERS
+  APPROVE_SPOTLIGHT
 
   // Enquiries
   VIEW_ENQUIRIES
@@ -153,23 +162,24 @@ enum Permission {
   BULK_OPERATIONS
 }
 
-// ── Trip ──────────────────────────────────────────────────────────────────────
+// ── Tour ──────────────────────────────────────────────────────────────────────
 
-enum TripStatus {
+enum TourStatus {
   DRAFT
   LIVE
   PAUSED
   ARCHIVED
 }
 
-// ── Tour-specific ─────────────────────────────────────────────────────────────
-
+// Pricing model — maps to OCTO `pricingPer` at the boundary.
 enum PricingModel {
   PER_PERSON
   UNIT
 }
 
-enum UnitType {
+// Whole-unit (asset-priced) tour types — used when pricingModel = UNIT.
+// (Renamed from the old `UnitType`; `UnitType` now means the OCTO participant unit.)
+enum WholeUnitType {
   GROUP
   BOAT
   VEHICLE
@@ -183,22 +193,185 @@ enum PickupModel {
   NONE
 }
 
-enum AgeBandType {
-  ADULT
-  CHILD
-  INFANT
-}
-
 enum AddOnUnit {
   PER_PERSON
   FLAT
 }
 
-enum ScheduleStatus {
+// ── OCTO catalog ──────────────────────────────────────────────────────────────
+
+enum OctoAvailabilityType {
+  START_TIME
+  OPENING_HOURS
+}
+
+// OCTO participant unit type (one ticket buyer category).
+enum UnitType {
+  ADULT
+  YOUTH
+  CHILD
+  INFANT
+  FAMILY
+  SENIOR
+  STUDENT
+  MILITARY
+  OTHER
+}
+
+enum DeliveryFormat {
+  PDF_URL
+  QRCODE
+  CODE128
+  PKPASS_URL
+}
+
+enum DeliveryMethod {
+  VOUCHER
+  TICKET
+}
+
+enum RedemptionMethod {
+  DIGITAL
+  PRINT
+  MANIFEST
+}
+
+// OCTO content feature types. HIGHLIGHT/INCLUSION/EXCLUSION are sourced from their
+// own dedicated tables (DS1); the rest are stored on TourFeature.
+enum FeatureType {
+  INCLUSION
+  EXCLUSION
+  HIGHLIGHT
+  PREBOOKING_INFORMATION
+  PREARRIVAL_INFORMATION
+  REDEMPTION_INSTRUCTION
+  ACCESSIBILITY_INFORMATION
+  ADDITIONAL_INFORMATION
+  BOOKING_TERM
+  CANCELLATION_TERM
+}
+
+// ── Availability ──────────────────────────────────────────────────────────────
+
+enum AvailabilityStatus {
   AVAILABLE
+  FREESALE
   SOLD_OUT
+  LIMITED
   CLOSED
+}
+
+enum AvailabilityExceptionType {
+  BLACKOUT
+  EXTRA_DEPARTURE
+  CAPACITY_OVERRIDE
+  PRICE_OVERRIDE
+  TIME_OVERRIDE
+}
+
+// ── Bookings (OCTO lifecycle) ─────────────────────────────────────────────────
+
+enum BookingStatus {
+  ON_HOLD
+  CONFIRMED
+  EXPIRED
   CANCELLED
+  REDEEMED
+  PENDING
+  REJECTED
+}
+
+enum CancellationRefund {
+  FULL
+  PARTIAL
+  NONE
+}
+
+enum CancelledBy {
+  CUSTOMER
+  OPERATOR
+  ADMIN
+  SYSTEM
+}
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+
+enum PaymentModel {
+  OPERATOR_LINK
+  ON_ARRIVAL
+  PAID_IN_FULL
+  OPERATOR_FULL
+}
+
+enum PaymentProvider {
+  STRIPE
+  MOLLIE
+}
+
+enum PaymentKind {
+  DEPOSIT
+  BALANCE
+  FULL
+  REFUND
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELLED
+}
+
+// ── Commercial engine (master) ────────────────────────────────────────────────
+
+enum TierKey {
+  premium
+  featured
+  boosted
+  organic
+  standard
+}
+
+enum EligibilityState {
+  LOCKED
+  PROVISIONAL
+  ELIGIBLE
+  GRACE
+  DEMOTED
+}
+
+enum SpotlightStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  ACTIVE
+  EXPIRED
+}
+
+// ── Reviews (E.7) ─────────────────────────────────────────────────────────────
+
+enum ReviewModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ── OCTO notifications (octo/notifications webhooks) ───────────────────────────
+
+enum NotificationType {
+  PRODUCT_UPDATE
+  AVAILABILITY_UPDATE
+  BOOKING_UPDATE
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  DEAD
 }
 
 // ── Destinations & Hubs ───────────────────────────────────────────────────────
@@ -222,8 +395,8 @@ enum HubType {
 // Supported currencies (ISO 4217). Launch set: Caribbean island currencies + major
 // tourist source currencies. Used wherever a currency is stored/displayed.
 enum Currency {
-  USD // US Dollar
-  EUR // Euro
+  USD
+  EUR
 }
 
 enum SlugEntityType {
@@ -268,16 +441,6 @@ enum FilterDisplayType {
   RANGE_SLIDER
   RADIO
   DROPDOWN
-}
-
-// ── Bookings ──────────────────────────────────────────────────────────────────
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  REFUNDED
 }
 
 // ── Operator ──────────────────────────────────────────────────────────────────

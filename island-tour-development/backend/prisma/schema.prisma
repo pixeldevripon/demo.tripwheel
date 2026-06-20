@@ -7,19 +7,25 @@ datasource db {
   provider = "postgresql"
 }
 
-// Domain models live in separate files alongside this one:
+// Domain models live in separate files alongside this one (OCTO-aligned):
 //   enums.prisma          ← all enums
 //   user.prisma           ← User, Session, Account, Verification (Better Auth)
-//   operators.prisma      ← Operator, OperatorCompanyInfo, OperatorSocialMedia, payment configs
+//   operators.prisma      ← Operator (+ OCTO supplier contact + eligibility) + company/social/payment configs
 //   destinations.prisma   ← Destination, Hub, HubAllowedCategory, HubOurPick, HubComparisonGroup, FeaturedExperience
 //   categories.prisma     ← Category
-//   content.prisma        ← SlugRegistry, Translation, PageContent, Faq
-//   trips.prisma          ← Trip + child models (TourImage, TourAgeBand, TourAddOn, TourHighlight, TourInclusion, TourSchedule, etc.)
-//   featured-slots.prisma ← FeaturedSlot, SlotLock, SlotHistory
-//   waitlist.prisma       ← WaitlistEntry
-//   bookings.prisma       ← Booking
-//   reviews.prisma        ← Review
+//   collections.prisma    ← Collection (+ translation, page content)
+//   tours.prisma          ← Tour (= OCTO product) → TourOption → TourUnit + content children (images, add-ons,
+//                            languages, highlights, inclusions, exclusions, features, locations, translations)
+//   availability.prisma   ← AvailabilitySchedule, AvailabilityException, Departure (= OCTO Availability)
+//   bookings.prisma       ← Booking (OCTO reserve→confirm) + BookingUnitItem (= OCTO unit item)
+//   payments.prisma       ← Payment + StripeWebhookEvent (idempotent ledger)
+//   reviews.prisma        ← Review (per-tour, booking-gated) + ReviewTranslation
+//   tiers.prisma          ← SpotlightRequest (tier columns live on Tour)
+//   notifications.prisma  ← NotificationSubscription + NotificationDelivery (octo/notifications)
+//   attributes.prisma     ← AttributeDefinition, TourAttribute
+//   slug-registry.prisma  ← SlugRegistry
+//   faq.prisma            ← Faq (polymorphic)
 //   wishlist.prisma       ← Wishlist
 //   media-gallery.prisma  ← MediaGallery
 //   settings.prisma       ← SiteInfo, SiteSEO, SocialMedia, SMTP, Mailchimp, StripeConfiguration, etc.
-//   webhooks.prisma       ← Webhooks, WebhookPoint
+//   webhooks.prisma       ← Webhooks, WebhookPoint (internal Zapier/n8n lead catches — distinct from OCTO notifications)

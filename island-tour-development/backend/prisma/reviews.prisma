@@ -1,26 +1,63 @@
-// Reviews domain
-// One review per booking. Must be approved before showing on tour page.
-// Provider Rating rule (LD11): tour needs ≥3 approved reviews to show own rating.
-// Operator aggregate shown as fallback only if ≥10 reviews AND ≥4.0 avg.
+// Reviews domain — per-tour, booking-gated, moderated, multilingual (master E.7 + LD11).
+// One review per booking (bookingId @unique → "Verified booking").
+// LD11 cold-start: tour shows own rating with ≥3 approved reviews; else operator fallback
+// only if operator has ≥10 reviews AND ≥4.0 avg (enforced in the service, not the schema).
 
 model Review {
-  id         String  @id @default(uuid())
-  bookingId  String  @unique
-  tripId     String
+  id         String @id @default(uuid())
+  bookingId  String @unique // one review per booking → "Verified booking"
+  tourId     String // PER-TOUR
   operatorId String
   userId     String
-  rating     Int // 1–5
-  comment    String?
-  isApproved Boolean @default(false)
+
+  // Ratings — overall + optional sub-scores (all 1–5)
+  rating       Int // overall
+  ratingValue  Int? // value for money
+  ratingGuide  Int? // guide / host
+  ratingSafety Int? // safety / organization
+  title        String?
+
+  // Reviewer identity (privacy-safe display)
+  reviewerFirstName String?
+  reviewerInitial   String? // "Ada B."
+  reviewerCountry   String?
+
+  travelMonth Int? // 1–12
+  travelYear  Int?
+  photos      String[] @default([])
+
+  isVerified   Boolean @default(true) // always true (booking-gated)
+  helpfulCount Int     @default(0)
+
+  moderationStatus    ReviewModerationStatus @default(PENDING)
+  rejectionReason     String?
+  operatorResponse    String?
+  operatorRespondedAt DateTime?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  booking  Booking  @relation(fields: [bookingId], references: [id])
-  trip     Trip     @relation(fields: [tripId], references: [id])
-  operator Operator @relation(fields: [operatorId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  booking      Booking             @relation(fields: [bookingId], references: [id])
+  tour         Tour                @relation(fields: [tourId], references: [id])
+  operator     Operator            @relation(fields: [operatorId], references: [id])
+  user         User                @relation(fields: [userId], references: [id])
+  translations ReviewTranslation[]
 
-  @@index([tripId, isApproved])
-  @@index([operatorId, isApproved])
+  @@index([tourId, moderationStatus, createdAt]) // per-tour listing, newest-first
+  @@index([tourId, rating]) // sort by rating
+  @@index([operatorId, moderationStatus])
   @@map("reviews")
+}
+
+model ReviewTranslation {
+  id                  String  @id @default(uuid())
+  reviewId            String
+  locale              Locale
+  comment             String
+  isMachineTranslated Boolean @default(false)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, locale])
+  @@map("review_translations")
 }
