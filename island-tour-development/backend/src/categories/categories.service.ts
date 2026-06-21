@@ -2,6 +2,12 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import {
+  clearCooledDownSlugs,
+  markSlugsDeleted,
+  renameEntitySlug,
+  slugRowBlocks,
+} from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -280,6 +286,11 @@ export class CategoryService {
       });
 
       if (destinations.length > 0) {
+        // Clear any cooled-down ghosts so a previously force-deleted category slug can be reused.
+        await clearCooledDownSlugs(
+          tx,
+          destinations.map((dest) => ({ destinationSlug: dest.slug, slug: category.slug })),
+        );
         await tx.slugRegistry.createMany({
           data: destinations.map((dest) => ({
             destinationSlug: dest.slug,
@@ -299,11 +310,46 @@ export class CategoryService {
   }
 
   async update(id: string, dto: UpdateCategoryDto, adminId: string) {
+    // Resolve a slug rename up-front. A category slug is global, so the rename re-points its
+    // registry row in EVERY destination and writes a 301 per destination (master rules).
+    let renameFrom: string | undefined;
+    let renameTo: string | undefined;
+    if (dto.slug !== undefined) {
+      const current = await this.prisma.category.findUnique({ where: { id }, select: { slug: true } });
+      if (!current) throw new NotFoundException(`Category ${id} not found`);
+      const normalized = generateSlug(dto.slug);
+      if (normalized !== current.slug) {
+        // Category slugs are globally unique.
+        const clash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
+        if (clash && clash.id !== id) throw new ConflictException(`Category slug "${normalized}" already exists`);
+        // The target must not be held (in any destination) by another page — cooldown-aware.
+        const others = await this.prisma.slugRegistry.findMany({
+          where: { slug: normalized, NOT: { entityType: SlugEntityType.CATEGORY, entityId: id } },
+          select: { deletedAt: true },
+        });
+        if (others.some((r) => slugRowBlocks(r))) {
+          throw new ConflictException(`Slug "${normalized}" is already taken by another page in at least one destination`);
+        }
+        renameFrom = current.slug;
+        renameTo = normalized;
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      if (renameTo && renameFrom) {
+        await renameEntitySlug(tx, {
+          entityType: SlugEntityType.CATEGORY,
+          entityId: id,
+          fromSlug: renameFrom,
+          toSlug: renameTo,
+        });
+      }
+
       const updated = await tx.category
         .update({
           where: { id },
           data: {
+            ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
             ...(dto.description !== undefined && { description: dto.description }),
@@ -369,9 +415,9 @@ export class CategoryService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.slugRegistry.deleteMany({
-        where: { entityType: SlugEntityType.CATEGORY, entityId: id },
-      });
+      // Master slug-registry rule: hard delete starts the 90-day reuse cooldown (keep rows,
+      // isActive=false + deletedAt=now) across every destination the category was seeded into.
+      await markSlugsDeleted(tx, SlugEntityType.CATEGORY, id);
       // Cascade via Prisma schema handles: translations, FAQs, page content
       await tx.category.delete({ where: { id } });
     });

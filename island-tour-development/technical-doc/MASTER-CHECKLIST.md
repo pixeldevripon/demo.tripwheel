@@ -105,8 +105,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] 19 categories + reserved `tours` = 20 protected slugs per destination
 - [x] Unique per (destination_slug, slug); same slug allowed across destinations
 - [x] Locale-independent resolution at request time — resolve endpoint
-- [ ] Renames create a 301 entry automatically (redirect table) — ⚠️ slugs currently immutable; no redirect table
-- [ ] Deleted slugs enter a 90-day reuse cooldown — not implemented
+- [x] Renames create a 301 entry automatically (redirect table) — shared `slug-registry.util` (`renameEntitySlug`: re-point row + auto-301 + chain-collapse). Exposed via `slug?` on the Update DTO of tours, categories (global → 301 per destination), hubs, collections; redirect-aware `SlugRegistryService.resolve`. (Destination-slug rename deferred — it is the URL namespace.)
+- [x] Deleted slugs enter a 90-day reuse cooldown — `markSlugsDeleted`/`markDestinationSlugsDeleted` (keep row, `isActive=false`+`deletedAt`); cooldown-aware reuse (`slugRowBlocks`) + ghost-clear on create across tours, categories, hubs, collections, destinations
 
 ### 2.4 Categories
 
@@ -190,7 +190,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### 6.2 Payment & cancellation lifecycle
 
-- [ ] `cancellation_hours` enum [24,48,72,168] default 48, NOT NULL — ⚠️ exists as plain int default 24
+- [x] `cancellation_hours` enum [24,48,72,168] default 48, NOT NULL — schema `@default(48)`, DTO `@IsIn`, service default 48
 - [ ] One window governs balance deadline AND free cancellation; computed `cancelDeadline` (tour-local)
 - [ ] Free cancellation is a listing requirement (CMS-enforced)
 - [ ] Forfeit never automatic (operator reports → admin confirms)
@@ -326,13 +326,14 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### E.3 tours — identity & routing
 
 - [x] id, title, slug, destination_id, operator_id, categories[], activity_hubs[], h1_override, breadcrumb_label
-- [ ] departure_city
+- [x] departure_city — Tour column + trip create/update DTO + service + response
 
 ### E.3 tours — localized content
 
 - [x] overview, highlights, included_items, gallery (is_hero/focal) — child tables + `TripTranslation`
-- [ ] short_description, what_to_bring, know_before_you_go, not_suitable_for, local_tip, category_display
-- [ ] excluded_items typed `{item, type, price_text?}` — ⚠️ `TourExclusion` is label-only
+- [x] short_description, what_to_bring, know_before_you_go, not_suitable_for, local_tip, meeting_point_text — `TourTranslation` + trip-children translation DTO/service
+- [ ] category_display (plural noun phrase for "More {x} in {destination}")
+- [x] excluded_items typed `{item, type, price_text?}` — `TourExclusion.type`/`priceText` (LD18) + create/update DTO + service
 
 ### E.3 tours — pricing & party
 
@@ -341,15 +342,16 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### E.3 tours — booking logic
 
-- [x] booking_cutoff_minutes, pickup_model, duration_minutes — `trips.prisma`
-- [ ] cancellation_hours enum default 48 — ⚠️ int default 24
-- [ ] free_cancellation derivable (drop standalone field at migration)
-- [ ] deposit_pct, payment_model, start_times[], instant_confirmation, booking_type, duration_minutes_max
-- [ ] meeting_point / meeting_point_lat / meeting_point_lng
+- [x] booking_cutoff_minutes, pickup_model, pickup_required, duration_minutes — `trips.prisma` + trip DTO/service
+- [x] cancellation_hours enum [24,48,72,168] default 48 — DTO `@IsIn`, service default 48 (master rule #20)
+- [x] free_cancellation derivable (cancellation_hours NOT NULL — no standalone field)
+- [x] payment_model, instant_confirmation, booking_type, duration_minutes_max(durationMinutesTo) — trip create/update DTO + service; deposit_pct surfaced read-only (tier-driven)
+- [ ] start_times[] — deferred to availability phase (schedules slot template)
+- [x] meeting_point_lat / meeting_point_lng (+ departure_city; localized meeting_point_text on `TourTranslation`)
 
 ### E.3 tours — flags & accessibility
 
-- [ ] min_age_years, fitness_level, weather_dependent, wheelchair_accessible, family_friendly, suitable_for_beginners, is_locals_favourite
+- [x] min_age_years, fitness_level, weather_dependent, wheelchair_accessible, family_friendly, suitable_for_beginners, is_locals_favourite — Tour columns + trip create/update DTO + service + response
 - [x] guide_languages[] — `TourLanguage`
 
 ### E.3 tours — computed

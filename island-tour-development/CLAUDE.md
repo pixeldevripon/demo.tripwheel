@@ -69,7 +69,7 @@ backend/
 │   ├── categories/              ✓ (gating → ≥3; remove slot seeding)
 │   ├── hubs/                    ✓
 │   ├── collections/             ✓
-│   ├── trips/ + trips-children/ ✓ (add tier columns + E.3 fields + payment_model)
+│   ├── tours/ + tours-children/ ✓ (OCTO product; routes /tours; tier columns + E.3 fields + payment_model)
 │   ├── attributes/              ✓ dictionary + per-tour values + filters
 │   ├── slug-registry/           ✓ (add 301 redirects + 90-day cooldown)
 │   ├── search/                  ⚠️ basic; faceted/two-stage ranking pending

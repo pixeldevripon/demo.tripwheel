@@ -30,8 +30,8 @@ import {
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
-  UpsertTripTranslationDto,
-} from './dto/trip-children.dto';
+  UpsertTourTranslationDto,
+} from './dto/tour-children.dto';
 import {
   ApiAddAddOnDocs,
   ApiAddHighlightDocs,
@@ -40,14 +40,14 @@ import {
   ApiAddLanguageDocs,
   ApiDeleteHighlightTranslationDocs,
   ApiDeleteInclusionTranslationDocs,
-  ApiDeleteTripTranslationDocs,
+  ApiDeleteTourTranslationDocs,
   ApiGetAddOnsDocs,
-  ApiGetAllTripTranslationsDocs,
+  ApiGetAllTourTranslationsDocs,
   ApiGetHighlightsDocs,
   ApiGetImagesDocs,
   ApiGetInclusionsDocs,
   ApiGetLanguagesDocs,
-  ApiGetTripTranslationByLocaleDocs,
+  ApiGetTourTranslationByLocaleDocs,
   ApiRemoveAddOnDocs,
   ApiRemoveHighlightDocs,
   ApiRemoveImageDocs,
@@ -59,14 +59,14 @@ import {
   ApiUpdateInclusionDocs,
   ApiUpsertHighlightTranslationDocs,
   ApiUpsertInclusionTranslationDocs,
-  ApiUpsertTripTranslationDocs,
-} from './trips-children.swagger';
-import { TripChildrenService } from './trips-children.service';
+  ApiUpsertTourTranslationDocs,
+} from './tours-children.swagger';
+import { TourChildrenService } from './tours-children.service';
 
-@ApiTags('Trip Children')
-@Controller('trips/:tripId')
+@ApiTags('Tour Children')
+@Controller('tours/:tourId')
 /**
- * TripChildrenController — manages all child models nested under a trip.
+ * TourChildrenController — manages all child models nested under a tour.
  *
  * ## Route ordering
  * Static segments (translations, schedules) MUST appear before dynamic
@@ -76,50 +76,50 @@ import { TripChildrenService } from './trips-children.service';
  * GET /schedules is @Public() — travelers need availability data.
  * All other endpoints require EDIT_TRIP permission.
  */
-export class TripChildrenController {
-  constructor(private readonly tripChildrenService: TripChildrenService) {}
+export class TourChildrenController {
+  constructor(private readonly tourChildrenService: TourChildrenService) {}
 
   // ── Images ────────────────────────────────────────────────────────────────────
 
   @Get('images')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetImagesDocs()
-  getImages(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getImages(tripId, user.id, user.role);
+  getImages(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getImages(tourId, user.id, user.role);
   }
 
   @Post('images')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiAddImageDocs()
   addImage(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: AddTourImageDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addImage(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addImage(tourId, dto, user.id, user.role);
   }
 
   @Patch('images/:imageId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpdateImageDocs()
   updateImage(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('imageId') imageId: string,
     @Body() dto: UpdateTourImageDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.updateImage(tripId, imageId, dto, user.id, user.role);
+    return this.tourChildrenService.updateImage(tourId, imageId, dto, user.id, user.role);
   }
 
   @Delete('images/:imageId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiRemoveImageDocs()
   removeImage(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('imageId') imageId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeImage(tripId, imageId, user.id, user.role);
+    return this.tourChildrenService.removeImage(tourId, imageId, user.id, user.role);
   }
 
   // ── Add-Ons ───────────────────────────────────────────────────────────────────
@@ -127,42 +127,42 @@ export class TripChildrenController {
   @Get('addons')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetAddOnsDocs()
-  getAddOns(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getAddOns(tripId, user.id, user.role);
+  getAddOns(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getAddOns(tourId, user.id, user.role);
   }
 
   @Post('addons')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiAddAddOnDocs()
   addAddOn(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: CreateTourAddOnDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addAddOn(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addAddOn(tourId, dto, user.id, user.role);
   }
 
   @Patch('addons/:addonId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpdateAddOnDocs()
   updateAddOn(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('addonId') addonId: string,
     @Body() dto: UpdateTourAddOnDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.updateAddOn(tripId, addonId, dto, user.id, user.role);
+    return this.tourChildrenService.updateAddOn(tourId, addonId, dto, user.id, user.role);
   }
 
   @Delete('addons/:addonId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiRemoveAddOnDocs()
   removeAddOn(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('addonId') addonId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeAddOn(tripId, addonId, user.id, user.role);
+    return this.tourChildrenService.removeAddOn(tourId, addonId, user.id, user.role);
   }
 
   // ── Languages ─────────────────────────────────────────────────────────────────
@@ -170,30 +170,30 @@ export class TripChildrenController {
   @Get('languages')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetLanguagesDocs()
-  getLanguages(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getLanguages(tripId, user.id, user.role);
+  getLanguages(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getLanguages(tourId, user.id, user.role);
   }
 
   @Post('languages')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiAddLanguageDocs()
   addLanguage(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: AddTourLanguageDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addLanguage(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addLanguage(tourId, dto, user.id, user.role);
   }
 
   @Delete('languages/:languageId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiRemoveLanguageDocs()
   removeLanguage(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('languageId') languageId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeLanguage(tripId, languageId, user.id, user.role);
+    return this.tourChildrenService.removeLanguage(tourId, languageId, user.id, user.role);
   }
 
   // ── Highlights ────────────────────────────────────────────────────────────────
@@ -201,67 +201,67 @@ export class TripChildrenController {
   @Get('highlights')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetHighlightsDocs()
-  getHighlights(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getHighlights(tripId, user.id, user.role);
+  getHighlights(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getHighlights(tourId, user.id, user.role);
   }
 
   @Post('highlights')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiAddHighlightDocs()
   addHighlight(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: CreateTourHighlightDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addHighlight(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addHighlight(tourId, dto, user.id, user.role);
   }
 
   @Patch('highlights/:highlightId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpdateHighlightDocs()
   updateHighlight(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('highlightId') highlightId: string,
     @Body() dto: UpdateTourHighlightDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.updateHighlight(tripId, highlightId, dto, user.id, user.role);
+    return this.tourChildrenService.updateHighlight(tourId, highlightId, dto, user.id, user.role);
   }
 
   @Delete('highlights/:highlightId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiRemoveHighlightDocs()
   removeHighlight(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('highlightId') highlightId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeHighlight(tripId, highlightId, user.id, user.role);
+    return this.tourChildrenService.removeHighlight(tourId, highlightId, user.id, user.role);
   }
 
   @Patch('highlights/:highlightId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpsertHighlightTranslationDocs()
   upsertHighlightTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('highlightId') highlightId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertHighlightTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.upsertHighlightTranslation(tripId, highlightId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertHighlightTranslation(tourId, highlightId, locale, dto, user.id, user.role);
   }
 
   @Delete('highlights/:highlightId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiDeleteHighlightTranslationDocs()
   deleteHighlightTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('highlightId') highlightId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.deleteHighlightTranslation(tripId, highlightId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteHighlightTranslation(tourId, highlightId, locale, user.id, user.role);
   }
 
   // ── Inclusions ────────────────────────────────────────────────────────────────
@@ -269,178 +269,178 @@ export class TripChildrenController {
   @Get('inclusions')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetInclusionsDocs()
-  getInclusions(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getInclusions(tripId, user.id, user.role);
+  getInclusions(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getInclusions(tourId, user.id, user.role);
   }
 
   @Post('inclusions')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiAddInclusionDocs()
   addInclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: CreateTourInclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addInclusion(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addInclusion(tourId, dto, user.id, user.role);
   }
 
   @Patch('inclusions/:inclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpdateInclusionDocs()
   updateInclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('inclusionId') inclusionId: string,
     @Body() dto: UpdateTourInclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.updateInclusion(tripId, inclusionId, dto, user.id, user.role);
+    return this.tourChildrenService.updateInclusion(tourId, inclusionId, dto, user.id, user.role);
   }
 
   @Delete('inclusions/:inclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiRemoveInclusionDocs()
   removeInclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('inclusionId') inclusionId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeInclusion(tripId, inclusionId, user.id, user.role);
+    return this.tourChildrenService.removeInclusion(tourId, inclusionId, user.id, user.role);
   }
 
   @Patch('inclusions/:inclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiUpsertInclusionTranslationDocs()
   upsertInclusionTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('inclusionId') inclusionId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertInclusionTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.upsertInclusionTranslation(tripId, inclusionId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertInclusionTranslation(tourId, inclusionId, locale, dto, user.id, user.role);
   }
 
   @Delete('inclusions/:inclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiDeleteInclusionTranslationDocs()
   deleteInclusionTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('inclusionId') inclusionId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.deleteInclusionTranslation(tripId, inclusionId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteInclusionTranslation(tourId, inclusionId, locale, user.id, user.role);
   }
 
   // ── Exclusions ────────────────────────────────────────────────────────────────
 
   @Get('exclusions')
   @RequirePermissions(Permission.VIEW_TRIPS)
-  @ApiOperation({ summary: "List a trip's exclusions (what's NOT included)" })
-  getExclusions(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getExclusions(tripId, user.id, user.role);
+  @ApiOperation({ summary: "List a tour's exclusions (what's NOT included)" })
+  getExclusions(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getExclusions(tourId, user.id, user.role);
   }
 
   @Post('exclusions')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Add an exclusion to a trip (creates the English label)' })
+  @ApiOperation({ summary: 'Add an exclusion to a tour (creates the English label)' })
   addExclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: CreateTourExclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.addExclusion(tripId, dto, user.id, user.role);
+    return this.tourChildrenService.addExclusion(tourId, dto, user.id, user.role);
   }
 
   @Patch('exclusions/:exclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiOperation({ summary: 'Update an exclusion (icon / order / image)' })
   updateExclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
     @Body() dto: UpdateTourExclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.updateExclusion(tripId, exclusionId, dto, user.id, user.role);
+    return this.tourChildrenService.updateExclusion(tourId, exclusionId, dto, user.id, user.role);
   }
 
   @Delete('exclusions/:exclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Remove an exclusion from a trip' })
+  @ApiOperation({ summary: 'Remove an exclusion from a tour' })
   removeExclusion(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.removeExclusion(tripId, exclusionId, user.id, user.role);
+    return this.tourChildrenService.removeExclusion(tourId, exclusionId, user.id, user.role);
   }
 
   @Patch('exclusions/:exclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiOperation({ summary: 'Upsert an exclusion label translation for a locale' })
   upsertExclusionTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Body() dto: UpsertExclusionTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.upsertExclusionTranslation(tripId, exclusionId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertExclusionTranslation(tourId, exclusionId, locale, dto, user.id, user.role);
   }
 
   @Delete('exclusions/:exclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiOperation({ summary: 'Delete a non-English exclusion translation' })
   deleteExclusionTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.deleteExclusionTranslation(tripId, exclusionId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteExclusionTranslation(tourId, exclusionId, locale, user.id, user.role);
   }
 
-  // ── Trip Translations — static routes before :locale ─────────────────────────
+  // ── Tour Translations — static routes before :locale ─────────────────────────
 
   @Get('translations')
   @RequirePermissions(Permission.VIEW_TRIPS)
-  @ApiGetAllTripTranslationsDocs()
-  getAllTranslations(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getAllTranslations(tripId, user.id, user.role);
+  @ApiGetAllTourTranslationsDocs()
+  getAllTranslations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getAllTranslations(tourId, user.id, user.role);
   }
 
   @Get('translations/:locale')
   @RequirePermissions(Permission.VIEW_TRIPS)
-  @ApiGetTripTranslationByLocaleDocs()
+  @ApiGetTourTranslationByLocaleDocs()
   getTranslationByLocale(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.getTranslationByLocale(tripId, locale, user.id, user.role);
+    return this.tourChildrenService.getTranslationByLocale(tourId, locale, user.id, user.role);
   }
 
   @Patch('translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiUpsertTripTranslationDocs()
+  @ApiUpsertTourTranslationDocs()
   upsertTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
-    @Body() dto: UpsertTripTranslationDto,
+    @Body() dto: UpsertTourTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.upsertTranslation(tripId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertTranslation(tourId, locale, dto, user.id, user.role);
   }
 
   @Delete('translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiDeleteTripTranslationDocs()
+  @ApiDeleteTourTranslationDocs()
   deleteTranslation(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tripChildrenService.deleteTranslation(tripId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteTranslation(tourId, locale, user.id, user.role);
   }
 
 }

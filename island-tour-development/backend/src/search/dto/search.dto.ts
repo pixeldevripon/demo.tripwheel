@@ -2,7 +2,7 @@ import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-import { TripResponseDto } from '@/trips/dto/trip.dto';
+import { TourResponseDto } from '@/tours/dto/tour.dto';
 
 export class SearchQueryDto {
   @ApiProperty({ example: 'catamaran', description: 'Search term (min 2 chars). Matches tour title/description/highlights + category & hub names.' })
@@ -33,5 +33,5 @@ export class SearchResultsResponseDto {
   @ApiProperty({ example: 1 }) page!: number;
   @ApiProperty({ example: 20 }) limit!: number;
   @ApiProperty({ example: 'catamaran' }) query!: string;
-  @ApiProperty({ type: [TripResponseDto] }) data!: TripResponseDto[];
+  @ApiProperty({ type: [TourResponseDto] }) data!: TourResponseDto[];
 }

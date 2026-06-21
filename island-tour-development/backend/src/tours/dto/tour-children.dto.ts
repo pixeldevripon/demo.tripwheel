@@ -1,6 +1,6 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AddOnUnit } from '@prisma/client';
+import { AddOnUnit, ExclusionType } from '@prisma/client';
 import {
   IsBoolean,
   IsDecimal,
@@ -364,6 +364,9 @@ export class TourExclusionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty() icon!: string;
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — paid_advance | paid_onsite | unavailable | not_permitted' })
+  type?: ExclusionType | null;
+  @ApiPropertyOptional({ example: '$15 per person' }) priceText?: string | null;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
   @ApiProperty({ type: [TourExclusionTranslationDto] }) translations!: TourExclusionTranslationDto[];
@@ -381,6 +384,17 @@ export class CreateTourExclusionDto {
   @IsString()
   @MaxLength(50)
   icon?: string;
+
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — how the excluded item is handled' })
+  @IsOptional()
+  @IsEnum(ExclusionType)
+  type?: ExclusionType;
+
+  @ApiPropertyOptional({ example: '$15 per person', description: 'Shown when type is PAID_*' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  priceText?: string;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
@@ -400,6 +414,17 @@ export class UpdateTourExclusionDto {
   @IsString()
   @MaxLength(50)
   icon?: string;
+
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — how the excluded item is handled' })
+  @IsOptional()
+  @IsEnum(ExclusionType)
+  type?: ExclusionType;
+
+  @ApiPropertyOptional({ example: '$15 per person', description: 'Shown when type is PAID_*' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  priceText?: string | null;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -426,18 +451,25 @@ export class UpsertExclusionTranslationDto {
   isMachineTranslated?: boolean;
 }
 
-// ── Trip Translation DTOs ─────────────────────────────────────────────────────
+// ── Tour Translation DTOs ─────────────────────────────────────────────────────
 
-export class TripTranslationResponseDto {
+export class TourTranslationResponseDto {
   @ApiProperty({ example: 'en' }) locale!: string;
   @ApiPropertyOptional() title!: string | null;
   @ApiPropertyOptional() overview!: string | null;
   @ApiPropertyOptional() description!: string | null;
+  // Marketing / info content (master E.3, LD19/LD22/LD23)
+  @ApiPropertyOptional() shortDescription!: string | null;
+  @ApiPropertyOptional() whatToBring!: string | null;
+  @ApiPropertyOptional() knowBeforeYouGo!: string | null;
+  @ApiPropertyOptional() notSuitableFor!: string | null;
+  @ApiPropertyOptional() localTip!: string | null;
+  @ApiPropertyOptional() meetingPointText!: string | null;
   @ApiProperty() isMachineTranslated!: boolean;
   @ApiProperty() updatedAt!: Date;
 }
 
-export class UpsertTripTranslationDto {
+export class UpsertTourTranslationDto {
   @ApiPropertyOptional({ example: 'Sunset Catamaran Cruise' })
   @IsOptional()
   @IsString()
@@ -455,6 +487,42 @@ export class UpsertTripTranslationDto {
   @IsString()
   @MaxLength(10000)
   description?: string;
+
+  @ApiPropertyOptional({ example: 'Sunset sailing with open bar and snorkelling.', description: 'One-line teaser for cards (LD19)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  shortDescription?: string;
+
+  @ApiPropertyOptional({ example: 'Swimwear, towel, sunscreen, a light jacket.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  whatToBring?: string;
+
+  @ApiPropertyOptional({ example: 'Bring a valid photo ID. Tour runs rain or shine.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  knowBeforeYouGo?: string;
+
+  @ApiPropertyOptional({ example: 'Travellers with back problems or who are pregnant.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notSuitableFor?: string;
+
+  @ApiPropertyOptional({ example: 'Ask the crew about the hidden cove on the west side.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  localTip?: string;
+
+  @ApiPropertyOptional({ example: 'Meet at the main dock, Pier 3, 15 minutes before departure.', description: 'Localized meeting-point text (geo lives on the Tour)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  meetingPointText?: string;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

@@ -64,11 +64,12 @@ function createMockPrismaService() {
       create: jest.fn(),
       createMany: jest.fn(),
       updateMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     category: {
       findMany: jest.fn(),
     },
-    trip: {
+    tour: {
       count: jest.fn(),
     },
     $transaction: jest.fn(),
@@ -556,9 +557,9 @@ describe('DestinationService', () => {
       );
     });
 
-    it('throws ConflictException when destination has active non-draft trips', async () => {
+    it('throws ConflictException when destination has active non-draft tours', async () => {
       prisma.destination.findUnique.mockResolvedValue(makeDestination());
-      prisma.trip.count.mockResolvedValue(3);
+      prisma.tour.count.mockResolvedValue(3);
 
       await expect(service.remove('dest-1', adminId)).rejects.toThrow(
         ConflictException,
@@ -568,7 +569,7 @@ describe('DestinationService', () => {
     it('soft-deletes the destination and deactivates all its slugRegistry rows on success', async () => {
       const dest = makeDestination({ slug: 'curacao' });
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.destination.update.mockResolvedValue({ ...dest, isActive: false });
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 5 });
 
@@ -588,7 +589,7 @@ describe('DestinationService', () => {
     it('runs the entire remove flow inside a single $transaction', async () => {
       const dest = makeDestination();
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.destination.update.mockResolvedValue({ ...dest, isActive: false });
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 0 });
 
@@ -597,9 +598,9 @@ describe('DestinationService', () => {
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
-    it('includes the trip count in the ConflictException message', async () => {
+    it('includes the tour count in the ConflictException message', async () => {
       prisma.destination.findUnique.mockResolvedValue(makeDestination());
-      prisma.trip.count.mockResolvedValue(2);
+      prisma.tour.count.mockResolvedValue(2);
 
       await expect(service.remove('dest-1', adminId)).rejects.toThrow('2');
     });

@@ -1,10 +1,10 @@
-import { TripsModule } from '@/trips/trips.module';
+import { ToursModule } from '@/tours/tours.module';
 import { Module } from '@nestjs/common';
 import { CollectionsController } from './collections.controller';
 import { CollectionsService } from './collections.service';
 
 @Module({
-  imports: [TripsModule], // for TripsService (manual tour resolution + dynamic filter listing)
+  imports: [ToursModule], // for ToursService (manual tour resolution + dynamic filter listing)
   controllers: [CollectionsController],
   providers: [CollectionsService],
   exports: [CollectionsService],

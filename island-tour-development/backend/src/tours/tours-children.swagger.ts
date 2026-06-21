@@ -17,8 +17,8 @@ import {
   TourInclusionResponseDto,
   TourInclusionTranslationDto,
   TourLanguageResponseDto,
-  TripTranslationResponseDto,
-} from './dto/trip-children.dto';
+  TourTranslationResponseDto,
+} from './dto/tour-children.dto';
 
 // ── Shared error sets ─────────────────────────────────────────────────────────
 
@@ -36,14 +36,14 @@ const operatorErrors = [
   ApiResponse({ status: 404, description: 'Not Found', type: NotFoundErrorDto }),
 ];
 
-const tripIdParam = ApiParam({ name: 'tripId', description: 'Trip UUID' });
+const tourIdParam = ApiParam({ name: 'tourId', description: 'Tour UUID' });
 
 // ── Images ────────────────────────────────────────────────────────────────────
 
 export function ApiGetImagesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all images for a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'List all images for a tour' }),
+    tourIdParam,
     ApiResponse({ status: 200, type: [TourImageResponseDto] }),
     ...operatorErrors,
   );
@@ -52,10 +52,10 @@ export function ApiGetImagesDocs() {
 export function ApiAddImageDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Add an image to a trip',
+      summary: 'Add an image to a tour',
       description: 'If isHero=true, clears existing hero and sets this image as hero in a transaction.',
     }),
-    tripIdParam,
+    tourIdParam,
     ApiResponse({ status: 201, type: TourImageResponseDto }),
     ...operatorErrors,
   );
@@ -67,7 +67,7 @@ export function ApiUpdateImageDocs() {
       summary: 'Update an image (hero, focal point, alt text, order)',
       description: 'Setting isHero=true clears the previous hero image atomically.',
     }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'imageId', description: 'Image UUID' }),
     ApiResponse({ status: 200, type: TourImageResponseDto }),
     ...operatorErrors,
@@ -76,8 +76,8 @@ export function ApiUpdateImageDocs() {
 
 export function ApiRemoveImageDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Remove an image from a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Remove an image from a tour' }),
+    tourIdParam,
     ApiParam({ name: 'imageId', description: 'Image UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
@@ -88,8 +88,8 @@ export function ApiRemoveImageDocs() {
 
 export function ApiGetAddOnsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List add-ons for a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'List add-ons for a tour' }),
+    tourIdParam,
     ApiResponse({ status: 200, type: [TourAddOnResponseDto] }),
     ...operatorErrors,
   );
@@ -97,8 +97,8 @@ export function ApiGetAddOnsDocs() {
 
 export function ApiAddAddOnDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Add an add-on to a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Add an add-on to a tour' }),
+    tourIdParam,
     ApiResponse({ status: 201, type: TourAddOnResponseDto }),
     ...operatorErrors,
   );
@@ -107,7 +107,7 @@ export function ApiAddAddOnDocs() {
 export function ApiUpdateAddOnDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Update an add-on' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'addonId', description: 'Add-on UUID' }),
     ApiResponse({ status: 200, type: TourAddOnResponseDto }),
     ...operatorErrors,
@@ -116,8 +116,8 @@ export function ApiUpdateAddOnDocs() {
 
 export function ApiRemoveAddOnDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Remove an add-on from a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Remove an add-on from a tour' }),
+    tourIdParam,
     ApiParam({ name: 'addonId', description: 'Add-on UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
@@ -128,8 +128,8 @@ export function ApiRemoveAddOnDocs() {
 
 export function ApiGetLanguagesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List languages for a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'List languages for a tour' }),
+    tourIdParam,
     ApiResponse({ status: 200, type: [TourLanguageResponseDto] }),
     ...operatorErrors,
   );
@@ -137,8 +137,8 @@ export function ApiGetLanguagesDocs() {
 
 export function ApiAddLanguageDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Add a language to a trip (ISO 639-1 code)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Add a language to a tour (ISO 639-1 code)' }),
+    tourIdParam,
     ApiResponse({ status: 201, type: TourLanguageResponseDto }),
     ...operatorErrors,
   );
@@ -146,8 +146,8 @@ export function ApiAddLanguageDocs() {
 
 export function ApiRemoveLanguageDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Remove a language from a trip' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Remove a language from a tour' }),
+    tourIdParam,
     ApiParam({ name: 'languageId', description: 'Language UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
@@ -158,8 +158,8 @@ export function ApiRemoveLanguageDocs() {
 
 export function ApiGetHighlightsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List highlights for a trip (all translations)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'List highlights for a tour (all translations)' }),
+    tourIdParam,
     ApiResponse({ status: 200, type: [TourHighlightResponseDto] }),
     ...operatorErrors,
   );
@@ -167,8 +167,8 @@ export function ApiGetHighlightsDocs() {
 
 export function ApiAddHighlightDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Add a highlight to a trip (creates EN translation atomically)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Add a highlight to a tour (creates EN translation atomically)' }),
+    tourIdParam,
     ApiResponse({ status: 201, type: TourHighlightResponseDto }),
     ...operatorErrors,
   );
@@ -177,7 +177,7 @@ export function ApiAddHighlightDocs() {
 export function ApiUpdateHighlightDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Update a highlight display order' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
     ApiResponse({ status: 200, type: TourHighlightResponseDto }),
     ...operatorErrors,
@@ -187,7 +187,7 @@ export function ApiUpdateHighlightDocs() {
 export function ApiRemoveHighlightDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Remove a highlight and all its translations' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
@@ -197,7 +197,7 @@ export function ApiRemoveHighlightDocs() {
 export function ApiUpsertHighlightTranslationDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Upsert a highlight translation for a locale' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: TourHighlightTranslationDto }),
@@ -208,7 +208,7 @@ export function ApiUpsertHighlightTranslationDocs() {
 export function ApiDeleteHighlightTranslationDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Delete a highlight translation (non-EN locales only)' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
@@ -220,8 +220,8 @@ export function ApiDeleteHighlightTranslationDocs() {
 
 export function ApiGetInclusionsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List inclusions for a trip (all translations)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'List inclusions for a tour (all translations)' }),
+    tourIdParam,
     ApiResponse({ status: 200, type: [TourInclusionResponseDto] }),
     ...operatorErrors,
   );
@@ -229,8 +229,8 @@ export function ApiGetInclusionsDocs() {
 
 export function ApiAddInclusionDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Add an inclusion to a trip (creates EN translation atomically)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Add an inclusion to a tour (creates EN translation atomically)' }),
+    tourIdParam,
     ApiResponse({ status: 201, type: TourInclusionResponseDto }),
     ...operatorErrors,
   );
@@ -239,7 +239,7 @@ export function ApiAddInclusionDocs() {
 export function ApiUpdateInclusionDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Update an inclusion icon or display order' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'inclusionId', description: 'Inclusion UUID' }),
     ApiResponse({ status: 200, type: TourInclusionResponseDto }),
     ...operatorErrors,
@@ -249,7 +249,7 @@ export function ApiUpdateInclusionDocs() {
 export function ApiRemoveInclusionDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Remove an inclusion and all its translations' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'inclusionId', description: 'Inclusion UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
@@ -259,7 +259,7 @@ export function ApiRemoveInclusionDocs() {
 export function ApiUpsertInclusionTranslationDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Upsert an inclusion translation for a locale' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'inclusionId', description: 'Inclusion UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: TourInclusionTranslationDto }),
@@ -270,7 +270,7 @@ export function ApiUpsertInclusionTranslationDocs() {
 export function ApiDeleteInclusionTranslationDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Delete an inclusion translation (non-EN locales only)' }),
-    tripIdParam,
+    tourIdParam,
     ApiParam({ name: 'inclusionId', description: 'Inclusion UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
@@ -278,41 +278,41 @@ export function ApiDeleteInclusionTranslationDocs() {
   );
 }
 
-// ── Trip Translations ─────────────────────────────────────────────────────────
+// ── Tour Translations ─────────────────────────────────────────────────────────
 
-export function ApiGetAllTripTranslationsDocs() {
+export function ApiGetAllTourTranslationsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get all translations for a trip' }),
-    tripIdParam,
-    ApiResponse({ status: 200, type: [TripTranslationResponseDto] }),
+    ApiOperation({ summary: 'Get all translations for a tour' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourTranslationResponseDto] }),
     ...operatorErrors,
   );
 }
 
-export function ApiGetTripTranslationByLocaleDocs() {
+export function ApiGetTourTranslationByLocaleDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get trip translation for a specific locale' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Get tour translation for a specific locale' }),
+    tourIdParam,
     ApiParam({ name: 'locale', enum: Locale, example: 'en' }),
-    ApiResponse({ status: 200, type: TripTranslationResponseDto }),
+    ApiResponse({ status: 200, type: TourTranslationResponseDto }),
     ...operatorErrors,
   );
 }
 
-export function ApiUpsertTripTranslationDocs() {
+export function ApiUpsertTourTranslationDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Upsert trip translation for a locale (title, overview, description)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Upsert tour translation for a locale (title, overview, description)' }),
+    tourIdParam,
     ApiParam({ name: 'locale', enum: Locale, example: 'en' }),
-    ApiResponse({ status: 200, type: TripTranslationResponseDto }),
+    ApiResponse({ status: 200, type: TourTranslationResponseDto }),
     ...operatorErrors,
   );
 }
 
-export function ApiDeleteTripTranslationDocs() {
+export function ApiDeleteTourTranslationDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Delete trip translation for a locale (non-EN only)' }),
-    tripIdParam,
+    ApiOperation({ summary: 'Delete tour translation for a locale (non-EN only)' }),
+    tourIdParam,
     ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,

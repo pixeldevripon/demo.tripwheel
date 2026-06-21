@@ -26,16 +26,17 @@ Its canonical URL is flat: `/{locale}/{destination}/{tour-slug}/`. The model ent
 
 ### Identity & routing — built
 `id`, `title`, `slug` (unique per destination), `destinationId`, `operatorId`, `categories[]`,
-`hubs[]`, `h1Override`, `breadcrumbLabel`. **To add:** `departureCity` (drives the meta-row location
-label; empty → island only).
+`hubs[]`, `h1Override`, `breadcrumbLabel`, `departureCity` (drives the meta-row location label;
+empty → island only).
 
-### Localized content
-Built: `overview`/`description` (via `TripTranslation`), highlights, inclusions, exclusions (via
-child tables + translations). **To add:** `shortDescription` (160, card/preview), `whatToBring[]`,
-`knowBeforeYouGo[]`, `notSuitableFor[]` (hidden when empty), `localTip`, `categoryDisplay` (plural
-noun phrase for "More {x} in {destination}"). **To change:** `TourExclusion` from label-only to the
-master shape `{item, type: paid_advance|paid_onsite|unavailable|not_permitted, priceText?}` (LD18).
-Highlights merge into the Overview rendering (LD22) — a frontend render rule.
+### Localized content — built
+Built: `overview`/`description` (via `TourTranslation`), highlights, inclusions, exclusions (via
+child tables + translations). `shortDescription` (200, card/preview), `whatToBring`,
+`knowBeforeYouGo`, `notSuitableFor`, `localTip`, `meetingPointText` are on `TourTranslation` and
+upsertable via the trip-children translation endpoint. `TourExclusion` carries the master shape
+`{label, type: paid_advance|paid_onsite|unavailable|not_permitted, priceText?}` (LD18). **To add:**
+`categoryDisplay` (plural noun phrase for "More {x} in {destination}"). Highlights merge into the
+Overview rendering (LD22) — a frontend render rule.
 
 ### Pricing & party — mostly built
 Built: `pricingModel` (`per_person`/`unit`), `unitType` (`group`/`boat`/`vehicle`/`aircraft`/
@@ -43,20 +44,22 @@ Built: `pricingModel` (`per_person`/`unit`), `unitType` (`group`/`boat`/`vehicle
 `minPartySize` (default 1). **Reconcile naming** with master `price_adult`/`price_child`/
 `price_infant` (document the mapping in DATA-MODEL.md). All party bands count toward capacity.
 
-### Booking logic
+### Booking logic — built
 Built: `bookingCutoffMinutes` (default 120, 0–10080), `pickupModel` (`included`/`paid_addon`/
-`none`), `durationMinutes`. **To change:** `cancellationHours` → enum-bound `[24,48,72,168]`,
-**default 48** (CMS NOT NULL / enum-validated; was plain int default 24). **To add:** `paymentModel`
-(`operator_link`/`on_arrival`/`paid_in_full`/`operator_full`), `depositPct` (20–30 in 2.5 steps,
-tier-driven), `startTimes[]` (slot template feeding availability), `instantConfirmation`,
-`bookingType` (private/shared), `durationMinutesMax`, `meetingPoint`/`meetingPointLat`/
-`meetingPointLng`. See [../02-architecture/BOOKING-AND-PAYMENTS.md](../02-architecture/BOOKING-AND-PAYMENTS.md).
+`none`), `pickupRequired`, `durationMinutesFrom`/`durationMinutesTo`. `cancellationHours` is
+enum-bound `[24,48,72,168]`, **default 48**, NOT NULL (DTO `@IsIn`, service default 48 — master
+rule #20). `paymentModel` (`operator_link`/`on_arrival`/`paid_in_full`/`operator_full`),
+`instantConfirmation`, `bookingType` (private/shared), `meetingPointLat`/`meetingPointLng`,
+`departureCity` are operator-writable on trip create/update; localized `meetingPointText` lives on
+`TourTranslation`. `depositPct` is surfaced read-only (tier-driven). **To add:** `startTimes[]`
+(slot template — deferred to the availability phase). See
+[../02-architecture/BOOKING-AND-PAYMENTS.md](../02-architecture/BOOKING-AND-PAYMENTS.md).
 
-### Flags & accessibility — to add
-`minAgeYears`, `fitnessLevel` (easy default/moderate/challenging), `weatherDependent` (default
-false), `wheelchairAccessible` (default true; false → "Not suitable for"), `familyFriendly`,
-`suitableForBeginners`, `guideLanguages[]` (built via `TourLanguage`), `isLocalsFavourite` (manual
-editorial flag, single source for every Locals' favorite surface, ~30% target, never tier-linked).
+### Flags & accessibility — built
+`minAgeYears`, `fitnessLevel` (easy default/moderate/challenging), `weatherDependent`,
+`wheelchairAccessible`, `familyFriendly`, `suitableForBeginners` are operator-writable on trip
+create/update; `isLocalsFavourite` (manual editorial flag, single source for every Locals' favorite
+surface, ~30% target, never tier-linked) is update-only. `guideLanguages[]` built via `TourLanguage`.
 
 ### Commercial tier — to add (master §7)
 `commissionTier`, `tierKey`, `tierRank`, `tierLockedUntil`, `qualityScore`, `firstPublishedAt`,

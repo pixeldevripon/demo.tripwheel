@@ -70,6 +70,14 @@ function createMockPrismaService() {
     slugRegistry: {
       createMany: jest.fn(),
       updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    slugRedirect: {
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+      upsert: jest.fn(),
     },
     tour: {
       count: jest.fn(),
@@ -548,6 +556,46 @@ describe('CategoryService', () => {
 
   describe('update', () => {
     const adminId = 'admin-1';
+
+    it('renames the global slug: re-points registry rows in every destination + writes 301s', async () => {
+      // 1st findUnique → current (by id); 2nd findUnique → clash check (by slug, none).
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ slug: 'old-slug' })
+        .mockResolvedValueOnce(null);
+      // 1st findMany → pre-validation "others" (none); 2nd findMany → renameEntitySlug destinations.
+      prisma.slugRegistry.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ destinationSlug: 'curacao' }, { destinationSlug: 'aruba' }]);
+      prisma.category.update.mockResolvedValue(makeCategoryRecord({ slug: 'new-slug' }));
+
+      await service.update('cat-1', { slug: 'new-slug' }, adminId);
+
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: 'CATEGORY', entityId: 'cat-1' },
+        data: { slug: 'new-slug' },
+      });
+      // One 301 redirect per destination the category lives in.
+      expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
+        }),
+      );
+      expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationSlug_fromSlug: { destinationSlug: 'aruba', fromSlug: 'old-slug' } },
+        }),
+      );
+      expect(prisma.category.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+      );
+    });
+
+    it('rejects a rename onto an existing category slug', async () => {
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ slug: 'old-slug' })
+        .mockResolvedValueOnce({ id: 'cat-other' }); // 'boat-tours' already exists
+      await expect(service.update('cat-1', { slug: 'boat-tours' }, adminId)).rejects.toThrow(ConflictException);
+    });
 
     it('updates category name inside a $transaction', async () => {
       const updated = makeCategoryRecord({ name: 'Sunset Cruises' });

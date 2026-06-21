@@ -1,9 +1,9 @@
 /**
  * Unit tests for AttributesService — dictionary CRUD + validated per-tour assignment (V2 §7).
- * PrismaService and TripsService are mocked.
+ * PrismaService and ToursService are mocked.
  */
 import { PrismaService } from '@/prisma/prisma.service';
-import { TripsService } from '@/trips/trips.service';
+import { ToursService } from '@/tours/tours.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AttributeDataType, Role } from '@prisma/client';
@@ -24,7 +24,7 @@ function createMockPrisma() {
     },
     destination: { findUnique: jest.fn() },
     category: { findUnique: jest.fn() },
-    trip: { findMany: jest.fn() },
+    tour: { findMany: jest.fn() },
     $transaction: jest.fn(),
   };
   // service uses the array form: $transaction([...upserts])
@@ -32,7 +32,7 @@ function createMockPrisma() {
   return mock;
 }
 
-const trips = { findTripOrThrow: jest.fn(), assertOwnership: jest.fn() };
+const tours = { findTourOrThrow: jest.fn(), assertOwnership: jest.fn() };
 
 describe('AttributesService', () => {
   let service: AttributesService;
@@ -44,13 +44,13 @@ describe('AttributesService', () => {
       providers: [
         AttributesService,
         { provide: PrismaService, useValue: prisma },
-        { provide: TripsService, useValue: trips },
+        { provide: ToursService, useValue: tours },
       ],
     }).compile();
     service = module.get(AttributesService);
     jest.clearAllMocks();
-    trips.findTripOrThrow.mockResolvedValue({ id: 'trip-1', operatorId: 'op-1' });
-    trips.assertOwnership.mockResolvedValue(undefined);
+    tours.findTourOrThrow.mockResolvedValue({ id: 'tour-1', operatorId: 'op-1' });
+    tours.assertOwnership.mockResolvedValue(undefined);
   });
 
   // ── Dictionary ────────────────────────────────────────────────────────────────
@@ -123,30 +123,31 @@ describe('AttributesService', () => {
     it('rejects an unknown attribute key', async () => {
       mockDefs([]); // dictionary lookup returns nothing
       await expect(
-        service.setTourAttributes('trip-1', { attributes: [{ key: 'nope', value: 'x' }] }, 'u', Role.ADMIN),
+        service.setTourAttributes('tour-1', { attributes: [{ key: 'nope', value: 'x' }] }, 'u', Role.ADMIN),
       ).rejects.toThrow(/Unknown attribute/);
     });
 
     it('rejects a bad BOOLEAN value', async () => {
       mockDefs([{ key: 'free_cancellation', dataType: AttributeDataType.BOOLEAN, allowedValues: null }]);
       await expect(
-        service.setTourAttributes('trip-1', { attributes: [{ key: 'free_cancellation', value: 'maybe' }] }, 'u', Role.ADMIN),
+        service.setTourAttributes('tour-1', { attributes: [{ key: 'free_cancellation', value: 'maybe' }] }, 'u', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects an ENUM value not in allowedValues', async () => {
       mockDefs([{ key: 'boat_type', dataType: AttributeDataType.ENUM, allowedValues: ['catamaran', 'yacht'] }]);
       await expect(
-        service.setTourAttributes('trip-1', { attributes: [{ key: 'boat_type', value: 'banana' }] }, 'u', Role.ADMIN),
+        service.setTourAttributes('tour-1', { attributes: [{ key: 'boat_type', value: 'banana' }] }, 'u', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('normalizes ENUM_MULTI (comma list) to a JSON array and upserts', async () => {
       mockDefs([{ key: 'wildlife_type', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['turtles', 'coral', 'rays'] }]);
-      await service.setTourAttributes('trip-1', { attributes: [{ key: 'wildlife_type', value: 'turtles, coral' }] }, 'u', Role.ADMIN);
+      await service.setTourAttributes('tour-1', { attributes: [{ key: 'wildlife_type', value: 'turtles, coral' }] }, 'u', Role.ADMIN);
       expect(prisma.tourAttribute.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          create: { tripId: 'trip-1', attributeKey: 'wildlife_type', attributeValue: '["turtles","coral"]' },
+          where: { tourId_attributeKey: { tourId: 'tour-1', attributeKey: 'wildlife_type' } },
+          create: { tourId: 'tour-1', attributeKey: 'wildlife_type', attributeValue: '["turtles","coral"]' },
           update: { attributeValue: '["turtles","coral"]' },
         }),
       );
@@ -155,21 +156,21 @@ describe('AttributesService', () => {
     it('rejects ENUM_MULTI with an invalid member', async () => {
       mockDefs([{ key: 'wildlife_type', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['turtles'] }]);
       await expect(
-        service.setTourAttributes('trip-1', { attributes: [{ key: 'wildlife_type', value: 'turtles,sharks' }] }, 'u', Role.ADMIN),
+        service.setTourAttributes('tour-1', { attributes: [{ key: 'wildlife_type', value: 'turtles,sharks' }] }, 'u', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects an INTEGER that is not an integer', async () => {
       mockDefs([{ key: 'minimum_age', dataType: AttributeDataType.INTEGER, allowedValues: null }]);
       await expect(
-        service.setTourAttributes('trip-1', { attributes: [{ key: 'minimum_age', value: '12.5' }] }, 'u', Role.ADMIN),
+        service.setTourAttributes('tour-1', { attributes: [{ key: 'minimum_age', value: '12.5' }] }, 'u', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects duplicate keys in the payload', async () => {
       await expect(
         service.setTourAttributes(
-          'trip-1',
+          'tour-1',
           { attributes: [{ key: 'free_cancellation', value: 'true' }, { key: 'free_cancellation', value: 'false' }] },
           'u',
           Role.ADMIN,
@@ -179,9 +180,9 @@ describe('AttributesService', () => {
 
     it('enforces ownership before writing', async () => {
       mockDefs([{ key: 'free_cancellation', dataType: AttributeDataType.BOOLEAN, allowedValues: null }]);
-      await service.setTourAttributes('trip-1', { attributes: [{ key: 'free_cancellation', value: 'true' }] }, 'u', Role.TOUR_OPERATOR);
-      expect(trips.findTripOrThrow).toHaveBeenCalledWith('trip-1');
-      expect(trips.assertOwnership).toHaveBeenCalledWith({ id: 'trip-1', operatorId: 'op-1' }, 'u', Role.TOUR_OPERATOR);
+      await service.setTourAttributes('tour-1', { attributes: [{ key: 'free_cancellation', value: 'true' }] }, 'u', Role.TOUR_OPERATOR);
+      expect(tours.findTourOrThrow).toHaveBeenCalledWith('tour-1');
+      expect(tours.assertOwnership).toHaveBeenCalledWith({ id: 'tour-1', operatorId: 'op-1' }, 'u', Role.TOUR_OPERATOR);
     });
   });
 
@@ -199,9 +200,9 @@ describe('AttributesService', () => {
         { key: 'boat_type', displayName: 'Boat Type', dataType: AttributeDataType.ENUM, filterDisplayType: 'RADIO', isSortable: false, sortOrder: 1 },
         { key: 'wildlife_type', displayName: 'Wildlife', dataType: AttributeDataType.ENUM_MULTI, filterDisplayType: 'CHECKBOX', isSortable: false, sortOrder: 2 },
       ]);
-      prisma.trip.findMany.mockResolvedValue([
-        { id: 't1', basePrice: 75, durationMinutes: 180 },
-        { id: 't2', basePrice: 120, durationMinutes: 480 },
+      prisma.tour.findMany.mockResolvedValue([
+        { id: 't1', basePrice: 75, durationMinutesFrom: 180 },
+        { id: 't2', basePrice: 120, durationMinutesFrom: 480 },
       ]);
       prisma.tourAttribute.findMany.mockResolvedValue([
         { attributeKey: 'boat_type', attributeValue: 'catamaran' },
@@ -231,7 +232,7 @@ describe('AttributesService', () => {
   describe('deleteTourAttribute', () => {
     it('maps a missing row to 404', async () => {
       prisma.tourAttribute.delete.mockRejectedValue({ code: 'P2025' });
-      await expect(service.deleteTourAttribute('trip-1', 'boat_type', 'u', Role.ADMIN)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteTourAttribute('tour-1', 'boat_type', 'u', Role.ADMIN)).rejects.toThrow(NotFoundException);
     });
   });
 });

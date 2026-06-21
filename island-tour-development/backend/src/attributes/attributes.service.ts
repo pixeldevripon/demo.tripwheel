@@ -1,5 +1,5 @@
 import { PrismaService } from '@/prisma/prisma.service';
-import { TripsService } from '@/trips/trips.service';
+import { ToursService } from '@/tours/tours.service';
 import {
   BadRequestException,
   ConflictException,
@@ -21,7 +21,7 @@ export class AttributesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tripsService: TripsService,
+    private readonly toursService: ToursService,
   ) {}
 
   private readonly definitionSelect = {
@@ -145,7 +145,7 @@ export class AttributesService {
       orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
     });
 
-    const trips = await this.prisma.tour.findMany({
+    const tours = await this.prisma.tour.findMany({
       where: {
         destinationId: destination.id,
         status: TourStatus.LIVE,
@@ -154,20 +154,20 @@ export class AttributesService {
       },
       select: { id: true, basePrice: true, durationMinutesFrom: true },
     });
-    const tripIds = trips.map((t) => t.id);
+    const tourIds = tours.map((t) => t.id);
 
     // Price / duration ranges (from Tour columns).
-    const prices = trips.map((t) => (t.basePrice == null ? null : Number(t.basePrice))).filter((n): n is number => n != null);
-    const durations = trips.map((t) => t.durationMinutesFrom).filter((n): n is number => n != null);
+    const prices = tours.map((t) => (t.basePrice == null ? null : Number(t.basePrice))).filter((n): n is number => n != null);
+    const durations = tours.map((t) => t.durationMinutesFrom).filter((n): n is number => n != null);
     const priceRange = prices.length ? { min: Math.min(...prices), max: Math.max(...prices) } : null;
     const durationRange = durations.length ? { min: Math.min(...durations), max: Math.max(...durations) } : null;
 
     // Value counts from tour_attributes (ENUM_MULTI rows are JSON arrays → count members).
     const defByKey = new Map(defs.map((d) => [d.key, d]));
     const counts = new Map<string, Map<string, number>>();
-    if (tripIds.length) {
+    if (tourIds.length) {
       const rows = await this.prisma.tourAttribute.findMany({
-        where: { tourId: { in: tripIds }, attributeKey: { in: defs.map((d) => d.key) } },
+        where: { tourId: { in: tourIds }, attributeKey: { in: defs.map((d) => d.key) } },
         select: { attributeKey: true, attributeValue: true },
       });
       for (const row of rows) {
@@ -208,16 +208,16 @@ export class AttributesService {
         : [],
     }));
 
-    return { destination: destinationSlug, category: categorySlug, total: trips.length, priceRange, durationRange, filters };
+    return { destination: destinationSlug, category: categorySlug, total: tours.length, priceRange, durationRange, filters };
   }
 
   // ── Per-tour assignment ─────────────────────────────────────────────────────
 
-  async getTourAttributes(tripId: string) {
-    await this.tripsService.findTripOrThrow(tripId);
+  async getTourAttributes(tourId: string) {
+    await this.toursService.findTourOrThrow(tourId);
     const [rows, defs] = await Promise.all([
       this.prisma.tourAttribute.findMany({
-        where: { tourId: tripId },
+        where: { tourId: tourId },
         select: { attributeKey: true, attributeValue: true },
       }),
       this.prisma.attributeDefinition.findMany({ select: { key: true, displayName: true, dataType: true } }),
@@ -236,9 +236,9 @@ export class AttributesService {
    * (active) dictionary and every value is validated/normalized against its dataType +
    * allowedValues. Unknown keys or invalid values are rejected (V2 §7).
    */
-  async setTourAttributes(tripId: string, dto: SetTourAttributesDto, userId: string, role: Role) {
-    const trip = await this.tripsService.findTripOrThrow(tripId);
-    await this.tripsService.assertOwnership(trip, userId, role);
+  async setTourAttributes(tourId: string, dto: SetTourAttributesDto, userId: string, role: Role) {
+    const tour = await this.toursService.findTourOrThrow(tourId);
+    await this.toursService.assertOwnership(tour, userId, role);
 
     const keys = dto.attributes.map((a) => a.key);
     if (new Set(keys).size !== keys.length) {
@@ -261,27 +261,27 @@ export class AttributesService {
     await this.prisma.$transaction(
       normalized.map((n) =>
         this.prisma.tourAttribute.upsert({
-          where: { tourId_attributeKey: { tourId: tripId, attributeKey: n.key } },
-          create: { tourId: tripId, attributeKey: n.key, attributeValue: n.value },
+          where: { tourId_attributeKey: { tourId: tourId, attributeKey: n.key } },
+          create: { tourId: tourId, attributeKey: n.key, attributeValue: n.value },
           update: { attributeValue: n.value },
         }),
       ),
     );
 
-    this.logger.log(`User ${userId} set ${normalized.length} attribute(s) on trip ${tripId}`);
-    return this.getTourAttributes(tripId);
+    this.logger.log(`User ${userId} set ${normalized.length} attribute(s) on tour ${tourId}`);
+    return this.getTourAttributes(tourId);
   }
 
-  async deleteTourAttribute(tripId: string, key: string, userId: string, role: Role) {
-    const trip = await this.tripsService.findTripOrThrow(tripId);
-    await this.tripsService.assertOwnership(trip, userId, role);
+  async deleteTourAttribute(tourId: string, key: string, userId: string, role: Role) {
+    const tour = await this.toursService.findTourOrThrow(tourId);
+    await this.toursService.assertOwnership(tour, userId, role);
     await this.prisma.tourAttribute
-      .delete({ where: { tourId_attributeKey: { tourId: tripId, attributeKey: key } } })
+      .delete({ where: { tourId_attributeKey: { tourId: tourId, attributeKey: key } } })
       .catch((err: any) => {
-        if (err?.code === 'P2025') throw new NotFoundException(`Attribute "${key}" not set on this trip`);
+        if (err?.code === 'P2025') throw new NotFoundException(`Attribute "${key}" not set on this tour`);
         throw err;
       });
-    return { message: `Attribute "${key}" removed from trip` };
+    return { message: `Attribute "${key}" removed from tour` };
   }
 
   // ── Validation helpers ────────────────────────────────────────────────────────

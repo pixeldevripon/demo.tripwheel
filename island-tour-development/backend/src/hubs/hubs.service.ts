@@ -2,6 +2,7 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { clearCooledDownSlugs, isSlugTaken, renameEntitySlug } from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -226,6 +227,9 @@ export class HubService {
           throw err;
         });
 
+      // Clear any cooled-down ghost so a previously deleted hub slug can be reused.
+      await clearCooledDownSlugs(tx, [{ destinationSlug: destination.slug, slug }]);
+
       await tx.slugRegistry
         .create({
           data: {
@@ -266,11 +270,40 @@ export class HubService {
   }
 
   async update(id: string, dto: UpdateHubDto, adminId: string) {
+    // Resolve a slug rename up-front (cooldown-aware, master slug-registry rules).
+    let renameFrom: string | undefined;
+    let renameTo: string | undefined;
+    if (dto.slug !== undefined) {
+      const current = await this.prisma.hub.findUnique({
+        where: { id },
+        select: { slug: true, destination: { select: { slug: true } } },
+      });
+      if (!current) throw new NotFoundException(`Hub ${id} not found`);
+      const normalized = generateSlug(dto.slug);
+      if (normalized !== current.slug) {
+        if (await isSlugTaken(this.prisma, current.destination.slug, normalized, id)) {
+          throw new ConflictException(`Slug "${normalized}" is already taken for this destination`);
+        }
+        renameFrom = current.slug;
+        renameTo = normalized;
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      if (renameTo && renameFrom) {
+        await renameEntitySlug(tx, {
+          entityType: SlugEntityType.HUB,
+          entityId: id,
+          fromSlug: renameFrom,
+          toSlug: renameTo,
+        });
+      }
+
       const updated = await tx.hub
         .update({
           where: { id },
           data: {
+            ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.description !== undefined && { description: dto.description }),
             ...(dto.hubType !== undefined && { hubType: dto.hubType }),

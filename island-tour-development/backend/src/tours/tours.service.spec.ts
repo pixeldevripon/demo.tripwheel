@@ -1,5 +1,5 @@
 /**
- * Unit tests for TripsService (V2 §4/§5: multi-category, multi-hub, flat tour URLs).
+ * Unit tests for ToursService (V2 §4/§5: multi-category, multi-hub, flat tour URLs).
  *
  * PrismaService is fully mocked. $transaction invokes its callback with the same
  * mock so transactional and non-transactional calls hit the same jest.fn() stubs.
@@ -19,8 +19,8 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PickupModel, PricingModel, Role, SlugEntityType, TourStatus } from '@prisma/client';
-import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
-import { TripsService } from './trips.service';
+import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
+import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ function createMockPrismaService() {
     hub: { findUnique: jest.fn() },
     hubAllowedCategory: { findUnique: jest.fn(), count: jest.fn() },
     attributeDefinition: { findMany: jest.fn() },
-    trip: {
+    tour: {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       findFirst: jest.fn(),
@@ -54,9 +54,15 @@ function createMockPrismaService() {
     tourAgeBand: { findMany: jest.fn() },
     slugRegistry: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       updateMany: jest.fn(),
       deleteMany: jest.fn(),
+    },
+    slugRedirect: {
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+      upsert: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -66,9 +72,9 @@ function createMockPrismaService() {
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-function makeTrip(overrides: Partial<Record<string, unknown>> = {}) {
+function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 'trip-1',
+    id: 'tour-1',
     name: 'Sunset Catamaran Cruise',
     slug: 'sunset-catamaran-cruise',
     status: TourStatus.DRAFT,
@@ -99,7 +105,7 @@ function makeTrip(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-const baseCreateDto: CreateTripDto = {
+const baseCreateDto: CreateTourDto = {
   name: 'Sunset Catamaran Cruise',
   destinationId: 'dest-1',
   categoryIds: ['cat-1'],
@@ -107,20 +113,20 @@ const baseCreateDto: CreateTripDto = {
   pickupModel: PickupModel.NONE,
 };
 
-describe('TripsService', () => {
-  let service: TripsService;
+describe('ToursService', () => {
+  let service: ToursService;
   let prisma: ReturnType<typeof createMockPrismaService>;
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TripsService, { provide: PrismaService, useValue: prisma }],
+      providers: [ToursService, { provide: PrismaService, useValue: prisma }],
     }).compile();
-    service = module.get(TripsService);
+    service = module.get(ToursService);
     jest.clearAllMocks();
   });
 
-  // ── resolveOperatorId (exercised via create / findMyTrips) ────────────────────
+  // ── resolveOperatorId (exercised via create / findMyTours) ────────────────────
 
   describe('resolveOperatorId', () => {
     it('throws 400 when a TOUR_OPERATOR has no operator profile', async () => {
@@ -135,9 +141,9 @@ describe('TripsService', () => {
       prisma.operator.create.mockResolvedValue({ id: 'op-admin' });
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', slug: 'curacao', isActive: true });
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
-      prisma.trip.findFirst.mockResolvedValue(null);
+      prisma.tour.findFirst.mockResolvedValue(null);
       prisma.slugRegistry.findUnique.mockResolvedValue(null);
-      prisma.trip.create.mockResolvedValue(makeTrip({ operatorId: 'op-admin' }));
+      prisma.tour.create.mockResolvedValue(makeTour({ operatorId: 'op-admin' }));
       prisma.slugRegistry.create.mockResolvedValue({});
 
       await service.create(baseCreateDto, 'admin-user', Role.ADMIN);
@@ -152,26 +158,26 @@ describe('TripsService', () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', slug: 'curacao', isActive: true });
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
-      prisma.trip.create.mockResolvedValue(makeTrip());
+      prisma.tour.create.mockResolvedValue(makeTour());
       prisma.slugRegistry.create.mockResolvedValue({});
     });
 
     it('uses the base slug when nothing conflicts', async () => {
-      prisma.trip.findFirst.mockResolvedValue(null);
+      prisma.tour.findFirst.mockResolvedValue(null);
       prisma.slugRegistry.findUnique.mockResolvedValue(null);
 
       await service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR);
-      expect(prisma.trip.create).toHaveBeenCalledWith(
+      expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ slug: 'sunset-catamaran-cruise' }) }),
       );
     });
 
     it('appends the operator name when the slug is taken by another entity', async () => {
       // own-conflict check (false), then base conflict via registry, then candidate free
-      prisma.trip.findFirst
+      prisma.tour.findFirst
         .mockResolvedValueOnce(null) // ownConflict
-        .mockResolvedValueOnce(null) // base trip conflict
-        .mockResolvedValueOnce(null); // candidate trip
+        .mockResolvedValueOnce(null) // base tour conflict
+        .mockResolvedValueOnce(null); // candidate tour
       prisma.slugRegistry.findUnique
         .mockResolvedValueOnce({ id: 'reg-1' }) // base registry conflict
         .mockResolvedValueOnce(null); // candidate registry free
@@ -182,21 +188,21 @@ describe('TripsService', () => {
       });
 
       await service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR);
-      expect(prisma.trip.create).toHaveBeenCalledWith(
+      expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ slug: 'sunset-catamaran-cruise-bluefin-charters' }) }),
       );
     });
 
     it('throws 409 when the same operator already owns the slug', async () => {
-      prisma.trip.findFirst.mockResolvedValueOnce({ id: 'existing' }); // ownConflict
+      prisma.tour.findFirst.mockResolvedValueOnce({ id: 'existing' }); // ownConflict
       await expect(service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(ConflictException);
     });
 
     it('throws 409 (never appends a number) when both base and operator-name slug are taken', async () => {
-      prisma.trip.findFirst
+      prisma.tour.findFirst
         .mockResolvedValueOnce(null) // ownConflict
-        .mockResolvedValueOnce(null) // base trip conflict
-        .mockResolvedValueOnce(null); // candidate trip
+        .mockResolvedValueOnce(null) // base tour conflict
+        .mockResolvedValueOnce(null); // candidate tour
       prisma.slugRegistry.findUnique
         .mockResolvedValueOnce({ id: 'reg-1' }) // base registry conflict
         .mockResolvedValueOnce({ id: 'reg-2' }); // candidate registry also taken
@@ -207,7 +213,7 @@ describe('TripsService', () => {
       });
 
       await expect(service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(ConflictException);
-      expect(prisma.trip.create).not.toHaveBeenCalled();
+      expect(prisma.tour.create).not.toHaveBeenCalled();
     });
   });
 
@@ -217,9 +223,9 @@ describe('TripsService', () => {
     beforeEach(() => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', slug: 'curacao', isActive: true });
-      prisma.trip.findFirst.mockResolvedValue(null);
+      prisma.tour.findFirst.mockResolvedValue(null);
       prisma.slugRegistry.findUnique.mockResolvedValue(null);
-      prisma.trip.create.mockResolvedValue(makeTrip());
+      prisma.tour.create.mockResolvedValue(makeTour());
       prisma.slugRegistry.create.mockResolvedValue({});
     });
 
@@ -250,7 +256,7 @@ describe('TripsService', () => {
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }, { id: 'cat-2' }]);
       await service.create({ ...baseCreateDto, categoryIds: ['cat-1', 'cat-2'] }, 'user-1', Role.TOUR_OPERATOR);
 
-      expect(prisma.trip.create).toHaveBeenCalledWith(
+      expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             categories: { create: [
@@ -273,7 +279,7 @@ describe('TripsService', () => {
         'user-1',
         Role.TOUR_OPERATOR,
       );
-      expect(prisma.trip.create).toHaveBeenCalledWith(
+      expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             categories: { create: [
@@ -294,7 +300,7 @@ describe('TripsService', () => {
       expect(prisma.hubAllowedCategory.count).toHaveBeenCalledWith({
         where: { hubId: 'hub-1', categoryId: { in: ['cat-1'] } },
       });
-      expect(prisma.trip.create).toHaveBeenCalledWith(
+      expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ hubs: { create: [{ hubId: 'hub-1' }] } }) }),
       );
     });
@@ -318,8 +324,8 @@ describe('TripsService', () => {
 
     it('flattens the response to categoryIds / primaryCategoryId / hubIds', async () => {
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
-      prisma.trip.create.mockResolvedValue(
-        makeTrip({ categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [{ hubId: 'hub-1' }] }),
+      prisma.tour.create.mockResolvedValue(
+        makeTour({ categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [{ hubId: 'hub-1' }] }),
       );
       const result: any = await service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR);
       expect(result.categoryIds).toEqual(['cat-1']);
@@ -333,11 +339,11 @@ describe('TripsService', () => {
 
   describe('findAll', () => {
     it('filters category/hub via the join relations and flattens results', async () => {
-      prisma.trip.count.mockResolvedValue(1);
-      prisma.trip.findMany.mockResolvedValue([makeTrip({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
+      prisma.tour.count.mockResolvedValue(1);
+      prisma.tour.findMany.mockResolvedValue([makeTour({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
 
       const result = await service.findAll({ categoryId: 'cat-1', hubId: 'hub-1', page: 1, limit: 20 } as any);
-      expect(prisma.trip.findMany).toHaveBeenCalledWith(
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             categories: { some: { categoryId: 'cat-1' } },
@@ -351,29 +357,29 @@ describe('TripsService', () => {
     });
 
     it('applies duration/rating filters and the requested sort', async () => {
-      prisma.trip.count.mockResolvedValue(0);
-      prisma.trip.findMany.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
       await service.findAll({ durationMin: 60, durationMax: 480, ratingMin: 4, sort: 'price_asc', page: 1, limit: 20 } as any);
-      const call = prisma.trip.findMany.mock.calls[0][0];
+      const call = prisma.tour.findMany.mock.calls[0][0];
       expect(call.where.durationMinutesFrom).toEqual({ gte: 60, lte: 480 });
       expect(call.where.aggregateRating).toEqual({ gte: 4 });
       expect(call.orderBy).toEqual([{ basePrice: { sort: 'asc', nulls: 'last' } }]);
     });
 
     it('defaults to the Recommended sort (sponsored → rating → reviews → recency)', async () => {
-      prisma.trip.count.mockResolvedValue(0);
-      prisma.trip.findMany.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
       await service.findAll({ page: 1, limit: 20 } as any);
-      const call = prisma.trip.findMany.mock.calls[0][0];
+      const call = prisma.tour.findMany.mock.calls[0][0];
       expect(call.orderBy[0]).toEqual({ isSponsored: 'desc' });
     });
 
     it('builds AND-ed attribute filters from raw query params (dictionary keys only)', async () => {
-      prisma.trip.count.mockResolvedValue(0);
-      prisma.trip.findMany.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
       prisma.attributeDefinition.findMany.mockResolvedValue([{ key: 'boat_type' }]); // 'nope' not in dict
       await service.findAll({ page: 1, limit: 20 } as any, { boat_type: 'catamaran,yacht', nope: 'x' });
-      const call = prisma.trip.findMany.mock.calls[0][0];
+      const call = prisma.tour.findMany.mock.calls[0][0];
       expect(call.where.AND).toEqual([
         {
           attributes: {
@@ -399,14 +405,14 @@ describe('TripsService', () => {
       const res = await service.search({ q: 'a' });
       expect(res.data).toEqual([]);
       expect(res.total).toBe(0);
-      expect(prisma.trip.findMany).not.toHaveBeenCalled();
+      expect(prisma.tour.findMany).not.toHaveBeenCalled();
     });
 
     it('searches across name/translations/category/hub/highlights and flattens results', async () => {
-      prisma.trip.count.mockResolvedValue(1);
-      prisma.trip.findMany.mockResolvedValue([makeTrip({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
+      prisma.tour.count.mockResolvedValue(1);
+      prisma.tour.findMany.mockResolvedValue([makeTour({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
       const res = await service.search({ q: 'catamaran', destinationSlug: 'curacao' });
-      const where = prisma.trip.findMany.mock.calls[0][0].where;
+      const where = prisma.tour.findMany.mock.calls[0][0].where;
       expect(where.destination).toEqual({ slug: 'curacao' });
       expect(where.status).toBe(TourStatus.LIVE);
       expect(Array.isArray(where.OR)).toBe(true);
@@ -420,11 +426,11 @@ describe('TripsService', () => {
 
   describe('findBySlug', () => {
     it('resolves purely by destination + slug (no hub condition)', async () => {
-      prisma.trip.findFirst.mockResolvedValue(
-        makeTrip({ images: [], translations: [], highlights: [], inclusions: [], exclusions: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
+      prisma.tour.findFirst.mockResolvedValue(
+        makeTour({ images: [], translations: [], highlights: [], inclusions: [], exclusions: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
       );
       const result: any = await service.findBySlug('sunset-catamaran-cruise', { destinationSlug: 'curacao' } as any);
-      const whereArg = prisma.trip.findFirst.mock.calls[0][0].where;
+      const whereArg = prisma.tour.findFirst.mock.calls[0][0].where;
       expect(whereArg).not.toHaveProperty('hub');
       expect(whereArg).not.toHaveProperty('hubId');
       expect(whereArg.destination).toEqual({ slug: 'curacao' });
@@ -432,7 +438,7 @@ describe('TripsService', () => {
     });
 
     it('throws 404 when not found', async () => {
-      prisma.trip.findFirst.mockResolvedValue(null);
+      prisma.tour.findFirst.mockResolvedValue(null);
       await expect(service.findBySlug('x', { destinationSlug: 'curacao' } as any)).rejects.toThrow(NotFoundException);
     });
   });
@@ -441,19 +447,19 @@ describe('TripsService', () => {
 
   describe('publish', () => {
     const ready = () =>
-      makeTrip({
+      makeTour({
         images: [{ id: 'i1', isHero: true }, { id: 'i2', isHero: false }, { id: 'i3' }, { id: 'i4' }, { id: 'i5' }],
         highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
         translations: [{ overview: 'A lovely cruise overview.' }],
       });
 
-    it('publishes a ready DRAFT trip and flattens the result', async () => {
+    it('publishes a ready DRAFT tour and flattens the result', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(ready());
-      prisma.trip.update.mockResolvedValue(makeTrip({ status: TourStatus.LIVE }));
+      prisma.tour.findUnique.mockResolvedValue(ready());
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
 
-      const result: any = await service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR);
-      expect(prisma.trip.update).toHaveBeenCalledWith(
+      const result: any = await service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      expect(prisma.tour.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: TourStatus.LIVE, publishedAt: expect.any(Date) } }),
       );
       expect(result.categoryIds).toEqual(['cat-1']);
@@ -461,41 +467,40 @@ describe('TripsService', () => {
 
     it('collects all readiness errors', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ images: [], highlights: [], translations: [], ageBands: [] }));
-      await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ images: [], highlights: [], translations: [], ageBands: [] }));
+      await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
     });
 
     it('requires a price (no basePrice and no age bands → blocked)', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [] });
-      await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toMatchObject({
+      prisma.tour.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [] });
+      await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toMatchObject({
         response: { message: expect.arrayContaining([expect.stringMatching(/price is required/i)]) },
       });
     });
 
-    it('allows publish when an age band provides the price (no basePrice)', async () => {
+    it('allows publish when a base price is set', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [{ id: 'b1' }] });
-      prisma.trip.update.mockResolvedValue(makeTrip({ status: TourStatus.LIVE }));
-      await expect(service.publish('trip-1', 'user-1', Role.TOUR_OPERATOR)).resolves.toBeDefined();
+      prisma.tour.findUnique.mockResolvedValue({ ...ready(), basePrice: 150 });
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
+      await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).resolves.toBeDefined();
     });
   });
 
   describe('recomputePriceFrom', () => {
-    it('uses the cheapest age-band price when bands exist', async () => {
-      prisma.trip.findUnique.mockResolvedValue({ basePrice: 200 });
-      prisma.tourAgeBand.findMany.mockResolvedValue([{ price: 120 }, { price: 75 }, { price: 90 }]);
-      prisma.trip.update.mockResolvedValue({});
-      const pf = await service.recomputePriceFrom('trip-1');
-      expect(pf).toBe(75);
-      expect(prisma.trip.update).toHaveBeenCalledWith({ where: { id: 'trip-1' }, data: { priceFrom: 75 } });
+    // priceFrom anchors off basePrice until the OCTO unit catalog (TourUnit) lands.
+    it('anchors priceFrom to basePrice', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
+      expect(pf).toBe(200);
+      expect(prisma.tour.update).toHaveBeenCalledWith({ where: { id: 'tour-1' }, data: { priceFrom: 200 } });
     });
 
-    it('falls back to basePrice when there are no age bands', async () => {
-      prisma.trip.findUnique.mockResolvedValue({ basePrice: 99 });
-      prisma.tourAgeBand.findMany.mockResolvedValue([]);
-      prisma.trip.update.mockResolvedValue({});
-      const pf = await service.recomputePriceFrom('trip-1');
+    it('persists basePrice as priceFrom', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ basePrice: 99 });
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
       expect(pf).toBe(99);
     });
   });
@@ -503,24 +508,24 @@ describe('TripsService', () => {
   // ── pause / unpause ───────────────────────────────────────────────────────────
 
   describe('pause / unpause', () => {
-    it('pauses a LIVE trip (owner)', async () => {
+    it('pauses a LIVE tour (owner)', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.LIVE }));
-      prisma.trip.update.mockResolvedValue(makeTrip({ status: TourStatus.PAUSED }));
-      const result: any = await service.pause('trip-1', 'user-1', Role.TOUR_OPERATOR);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.PAUSED }));
+      const result: any = await service.pause('tour-1', 'user-1', Role.TOUR_OPERATOR);
       expect(result.status).toBe(TourStatus.PAUSED);
     });
 
     it('rejects pause when not LIVE', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.DRAFT }));
-      await expect(service.pause('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.DRAFT }));
+      await expect(service.pause('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
     });
 
     it('throws 403 for a non-owner operator', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-OTHER' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.LIVE, operatorId: 'op-1' }));
-      await expect(service.pause('trip-1', 'user-2', Role.TOUR_OPERATOR)).rejects.toThrow(ForbiddenException);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.LIVE, operatorId: 'op-1' }));
+      await expect(service.pause('tour-1', 'user-2', Role.TOUR_OPERATOR)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -528,39 +533,41 @@ describe('TripsService', () => {
 
   describe('archive / restore / remove', () => {
     it('archive deactivates the TOUR slug_registry row (always)', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.LIVE }));
-      prisma.trip.update.mockResolvedValue(makeTrip({ status: TourStatus.ARCHIVED, isActive: false }));
-      await service.archive('trip-1', 'admin', Role.ADMIN);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.ARCHIVED, isActive: false }));
+      await service.archive('tour-1', 'admin', Role.ADMIN);
       expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
-        where: { entityType: SlugEntityType.TOUR, entityId: 'trip-1' },
+        where: { entityType: SlugEntityType.TOUR, entityId: 'tour-1' },
         data: { isActive: false },
       });
     });
 
     it('restore re-activates the slug_registry row', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.ARCHIVED }));
-      prisma.trip.update.mockResolvedValue(makeTrip({ status: TourStatus.DRAFT }));
-      await service.restore('trip-1', 'admin', Role.ADMIN);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.ARCHIVED }));
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.DRAFT }));
+      await service.restore('tour-1', 'admin', Role.ADMIN);
       expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
-        where: { entityType: SlugEntityType.TOUR, entityId: 'trip-1' },
+        where: { entityType: SlugEntityType.TOUR, entityId: 'tour-1' },
         data: { isActive: true },
       });
     });
 
-    it('operator can only delete ARCHIVED trips', async () => {
+    it('operator can only delete ARCHIVED tours', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.LIVE }));
-      await expect(service.remove('trip-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
+      await expect(service.remove('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
     });
 
-    it('remove deletes the trip and its slug_registry row', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.ARCHIVED }));
-      prisma.trip.delete.mockResolvedValue(makeTrip());
-      await service.remove('trip-1', 'admin', Role.ADMIN);
-      expect(prisma.slugRegistry.deleteMany).toHaveBeenCalledWith({
-        where: { entityType: SlugEntityType.TOUR, entityId: 'trip-1' },
+    it('remove deletes the tour and starts the 90-day slug cooldown (keeps the registry row)', async () => {
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.ARCHIVED }));
+      prisma.tour.delete.mockResolvedValue(makeTour());
+      await service.remove('tour-1', 'admin', Role.ADMIN);
+      // Cooldown stamp: row is kept (isActive=false, deletedAt set), not deleted.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: SlugEntityType.TOUR, entityId: 'tour-1' },
+        data: expect.objectContaining({ isActive: false, deletedAt: expect.any(Date) }),
       });
-      expect(prisma.trip.delete).toHaveBeenCalledWith({ where: { id: 'trip-1' } });
+      expect(prisma.tour.delete).toHaveBeenCalledWith({ where: { id: 'tour-1' } });
     });
   });
 
@@ -568,40 +575,82 @@ describe('TripsService', () => {
 
   describe('update', () => {
     it('replaces the category set and re-points the primary', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.DRAFT }));
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.DRAFT }));
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }, { id: 'cat-2' }]);
-      prisma.trip.update.mockResolvedValue({});
-      prisma.trip.findUniqueOrThrow.mockResolvedValue(
-        makeTrip({ categories: [{ categoryId: 'cat-1', isPrimary: false }, { categoryId: 'cat-2', isPrimary: true }] }),
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({ categories: [{ categoryId: 'cat-1', isPrimary: false }, { categoryId: 'cat-2', isPrimary: true }] }),
       );
 
-      const dto: UpdateTripDto = { categoryIds: ['cat-1', 'cat-2'], primaryCategoryId: 'cat-2' };
-      const result = await service.update('trip-1', dto, 'admin', Role.ADMIN);
+      const dto: UpdateTourDto = { categoryIds: ['cat-1', 'cat-2'], primaryCategoryId: 'cat-2' };
+      const result = await service.update('tour-1', dto, 'admin', Role.ADMIN);
 
-      expect(prisma.tourCategory.deleteMany).toHaveBeenCalledWith({ where: { tripId: 'trip-1' } });
+      expect(prisma.tourCategory.deleteMany).toHaveBeenCalledWith({ where: { tourId: 'tour-1' } });
       expect(prisma.tourCategory.createMany).toHaveBeenCalledWith({
         data: [
-          { tripId: 'trip-1', categoryId: 'cat-1', isPrimary: false },
-          { tripId: 'trip-1', categoryId: 'cat-2', isPrimary: true },
+          { tourId: 'tour-1', categoryId: 'cat-1', isPrimary: false },
+          { tourId: 'tour-1', categoryId: 'cat-2', isPrimary: true },
         ],
       });
-      expect(result.trip.primaryCategoryId).toBe('cat-2');
+      expect(result.tour.primaryCategoryId).toBe('cat-2');
     });
 
     it('re-points the primary among existing categories when only primaryCategoryId is given', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.DRAFT }));
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.DRAFT }));
       prisma.tourCategory.findUnique.mockResolvedValue({ id: 'tc-2' });
-      prisma.trip.update.mockResolvedValue({});
-      prisma.trip.findUniqueOrThrow.mockResolvedValue(makeTrip());
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
 
-      await service.update('trip-1', { primaryCategoryId: 'cat-2' }, 'admin', Role.ADMIN);
-      expect(prisma.tourCategory.updateMany).toHaveBeenCalledWith({ where: { tripId: 'trip-1' }, data: { isPrimary: false } });
+      await service.update('tour-1', { primaryCategoryId: 'cat-2' }, 'admin', Role.ADMIN);
+      expect(prisma.tourCategory.updateMany).toHaveBeenCalledWith({ where: { tourId: 'tour-1' }, data: { isPrimary: false } });
       expect(prisma.tourCategory.update).toHaveBeenCalledWith({ where: { id: 'tc-2' }, data: { isPrimary: true } });
     });
 
-    it('rejects updating an archived trip', async () => {
-      prisma.trip.findUnique.mockResolvedValue(makeTrip({ status: TourStatus.ARCHIVED }));
-      await expect(service.update('trip-1', { name: 'x' }, 'admin', Role.ADMIN)).rejects.toThrow(BadRequestException);
+    it('rejects updating an archived tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.ARCHIVED }));
+      await expect(service.update('tour-1', { name: 'x' }, 'admin', Role.ADMIN)).rejects.toThrow(BadRequestException);
+    });
+
+    // ── Slug rename → auto 301 + cooldown (master slug-registry rules) ──
+    it('renames the slug: re-points the registry row and writes a 301 redirect', async () => {
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.DRAFT, slug: 'old-slug' }));
+      prisma.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
+      prisma.tour.findFirst.mockResolvedValue(null); // no other tour holds the new slug
+      prisma.slugRegistry.findUnique.mockResolvedValue(null); // isSlugTaken → free
+      prisma.slugRegistry.findMany.mockResolvedValue([{ destinationSlug: 'curacao' }]);
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour({ slug: 'new-slug' }));
+
+      await service.update('tour-1', { slug: 'new-slug' }, 'admin', Role.ADMIN);
+
+      // Registry row re-pointed to the new slug.
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: SlugEntityType.TOUR, entityId: 'tour-1' },
+        data: { slug: 'new-slug' },
+      });
+      // Auto-301 from the old slug → new slug.
+      expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
+          create: expect.objectContaining({ fromSlug: 'old-slug', toSlug: 'new-slug', statusCode: 301 }),
+        }),
+      );
+      // The new slug is persisted on the tour.
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+      );
+    });
+
+    it('rejects a rename onto a slug already taken by another entity', async () => {
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ status: TourStatus.DRAFT, slug: 'old-slug' }));
+      prisma.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
+      prisma.tour.findFirst.mockResolvedValue(null);
+      // isSlugTaken → a protected row owned by a different entity holds the target slug.
+      prisma.slugRegistry.findUnique.mockResolvedValue({ entityId: 'other', deletedAt: null });
+
+      await expect(
+        service.update('tour-1', { slug: 'taken-slug' }, 'admin', Role.ADMIN),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

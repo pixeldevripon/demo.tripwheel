@@ -94,40 +94,40 @@ export class FiltersController {
 }
 
 /**
- * TourAttributesController — per-tour attribute values (nested under a trip).
+ * TourAttributesController — per-tour attribute values (nested under a tour).
  * Operators manage their own tour's attributes; admins manage any.
  */
 @ApiTags('Attributes')
-@Controller('trips/:tripId/attributes')
+@Controller('tours/:tourId/attributes')
 export class TourAttributesController {
   constructor(private readonly attributesService: AttributesService) {}
 
   @Get()
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetTourAttributesDocs()
-  getForTrip(@Param('tripId') tripId: string) {
-    return this.attributesService.getTourAttributes(tripId);
+  getForTour(@Param('tourId') tourId: string) {
+    return this.attributesService.getTourAttributes(tourId);
   }
 
   @Post()
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiSetTourAttributesDocs()
   set(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Body() dto: SetTourAttributesDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.attributesService.setTourAttributes(tripId, dto, user.id, user.role);
+    return this.attributesService.setTourAttributes(tourId, dto, user.id, user.role);
   }
 
   @Delete(':key')
   @RequirePermissions(Permission.EDIT_TRIP)
   @ApiDeleteTourAttributeDocs()
   remove(
-    @Param('tripId') tripId: string,
+    @Param('tourId') tourId: string,
     @Param('key') key: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.attributesService.deleteTourAttribute(tripId, key, user.id, user.role);
+    return this.attributesService.deleteTourAttribute(tourId, key, user.id, user.role);
   }
 }

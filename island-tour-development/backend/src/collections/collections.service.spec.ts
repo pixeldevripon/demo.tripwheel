@@ -1,9 +1,9 @@
 /**
  * Unit tests for CollectionsService — create (cannibalization guard + slug_registry),
- * manual/dynamic tour resolution, soft delete. PrismaService and TripsService mocked.
+ * manual/dynamic tour resolution, soft delete. PrismaService and ToursService mocked.
  */
 import { PrismaService } from '@/prisma/prisma.service';
-import { TripsService } from '@/trips/trips.service';
+import { ToursService } from '@/tours/tours.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CollectionType, SlugEntityType } from '@prisma/client';
@@ -14,7 +14,8 @@ function createMockPrisma() {
     collection: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
     destination: { findUnique: jest.fn() },
     category: { findUnique: jest.fn() },
-    slugRegistry: { create: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn() },
+    slugRegistry: { create: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn(), findMany: jest.fn(), findUnique: jest.fn() },
+    slugRedirect: { updateMany: jest.fn(), deleteMany: jest.fn(), upsert: jest.fn() },
     collectionTranslation: { findMany: jest.fn(), findUnique: jest.fn(), upsert: jest.fn(), delete: jest.fn() },
     collectionPageContent: { findUnique: jest.fn(), upsert: jest.fn() },
     faq: { findMany: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
@@ -24,7 +25,7 @@ function createMockPrisma() {
   return mock;
 }
 
-const trips = { findPublicByIds: jest.fn(), findAll: jest.fn() };
+const tours = { findPublicByIds: jest.fn(), findAll: jest.fn() };
 
 describe('CollectionsService', () => {
   let service: CollectionsService;
@@ -36,7 +37,7 @@ describe('CollectionsService', () => {
       providers: [
         CollectionsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: TripsService, useValue: trips },
+        { provide: ToursService, useValue: tours },
       ],
     }).compile();
     service = module.get(CollectionsService);
@@ -96,10 +97,10 @@ describe('CollectionsService', () => {
         isActive: true, isSeeded: false, heroImage: null, createdAt: new Date(), updatedAt: new Date(),
         translations: [],
       });
-      trips.findPublicByIds.mockResolvedValue([{ id: 't2' }, { id: 't1' }]);
+      tours.findPublicByIds.mockResolvedValue([{ id: 't2' }, { id: 't1' }]);
 
       const res = await service.getBySlug('curacao', 'top-10-tours');
-      expect(trips.findPublicByIds).toHaveBeenCalledWith(['t2', 't1']);
+      expect(tours.findPublicByIds).toHaveBeenCalledWith(['t2', 't1']);
       expect(res.tours).toEqual([{ id: 't2' }, { id: 't1' }]);
     });
 
@@ -111,10 +112,10 @@ describe('CollectionsService', () => {
         isActive: true, isSeeded: false, heroImage: null, createdAt: new Date(), updatedAt: new Date(),
         translations: [],
       });
-      trips.findAll.mockResolvedValue({ data: [{ id: 't9' }] });
+      tours.findAll.mockResolvedValue({ data: [{ id: 't9' }] });
 
       const res = await service.getBySlug('curacao', 'private-boat-tours');
-      expect(trips.findAll).toHaveBeenCalledWith(
+      expect(tours.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ destinationId: 'dest-1', categoryId: 'cat-boat', sort: 'rating' }),
         { booking_type: 'private', boat_type: 'catamaran,yacht' },
       );
@@ -157,6 +158,38 @@ describe('CollectionsService', () => {
     it('throws 404 when the destination is missing', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
       await expect(service.getAllByDestinationAdmin('nope')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('update — slug rename', () => {
+    it('renames the slug: re-points the registry row and writes a 301 redirect', async () => {
+      prisma.collection.findUnique.mockResolvedValue({ slug: 'old-slug', destination: { slug: 'curacao' } });
+      prisma.category.findUnique.mockResolvedValue(null); // no category-slug clash
+      prisma.slugRegistry.findUnique.mockResolvedValue(null); // isSlugTaken → free
+      prisma.slugRegistry.findMany.mockResolvedValue([{ destinationSlug: 'curacao' }]);
+      prisma.collection.update.mockResolvedValue({ id: 'col-1', slug: 'new-slug' });
+
+      await service.update('col-1', { slug: 'new-slug' }, 'admin');
+
+      expect(prisma.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: 'COLLECTION', entityId: 'col-1' },
+        data: { slug: 'new-slug' },
+      });
+      expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
+          create: expect.objectContaining({ fromSlug: 'old-slug', toSlug: 'new-slug', statusCode: 301 }),
+        }),
+      );
+      expect(prisma.collection.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+      );
+    });
+
+    it('rejects a rename that collides with a category slug', async () => {
+      prisma.collection.findUnique.mockResolvedValue({ slug: 'old-slug', destination: { slug: 'curacao' } });
+      prisma.category.findUnique.mockResolvedValue({ id: 'cat-1' }); // 'boat-tours' is a category
+      await expect(service.update('col-1', { slug: 'boat-tours' }, 'admin')).rejects.toThrow(ConflictException);
     });
   });
 

@@ -1,9 +1,15 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { generateSlug } from '@/common/utils/slug.util';
+import {
+  clearCooledDownSlugs,
+  isSlugTaken,
+  markSlugsDeleted,
+  renameEntitySlug,
+} from '@/common/utils/slug-registry.util';
 import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
-import { TripsService } from '@/trips/trips.service';
+import { ToursService } from '@/tours/tours.service';
 import {
   BadRequestException,
   ConflictException,
@@ -13,7 +19,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CollectionType, Prisma, SlugEntityType } from '@prisma/client';
-import { TripQueryDto, TripSort } from '@/trips/dto/trip.dto';
+import { TourQueryDto, TourSort } from '@/tours/dto/tour.dto';
 import {
   CreateCollectionDto,
   CreateFaqDto,
@@ -30,7 +36,7 @@ export class CollectionsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tripsService: TripsService,
+    private readonly toursService: ToursService,
   ) {}
 
   private readonly collectionSelect = {
@@ -132,10 +138,10 @@ export class CollectionsService {
     sortOrder: string;
   }) {
     if (collection.collectionType === CollectionType.MANUAL) {
-      return this.tripsService.findPublicByIds(collection.tourIds);
+      return this.toursService.findPublicByIds(collection.tourIds);
     }
     const fq = (collection.filterQuery ?? {}) as Record<string, any>;
-    const query: TripQueryDto = {
+    const query: TourQueryDto = {
       destinationId: collection.destinationId,
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : undefined,
       minPrice: typeof fq.minPrice === 'number' ? fq.minPrice : undefined,
@@ -143,7 +149,7 @@ export class CollectionsService {
       durationMin: typeof fq.durationMin === 'number' ? fq.durationMin : undefined,
       durationMax: typeof fq.durationMax === 'number' ? fq.durationMax : undefined,
       ratingMin: typeof fq.ratingMin === 'number' ? fq.ratingMin : undefined,
-      sort: this.toTripSort(collection.sortOrder),
+      sort: this.toTourSort(collection.sortOrder),
       page: 1,
       limit: 100,
     };
@@ -155,12 +161,12 @@ export class CollectionsService {
         rawAttrs[k] = Array.isArray(v) ? v.join(',') : String(v);
       }
     }
-    const result = await this.tripsService.findAll(query, rawAttrs);
+    const result = await this.toursService.findAll(query, rawAttrs);
     return result.data;
   }
 
-  private toTripSort(value: string): TripSort {
-    return (Object.values(TripSort) as string[]).includes(value) ? (value as TripSort) : TripSort.recommended;
+  private toTourSort(value: string): TourSort {
+    return (Object.values(TourSort) as string[]).includes(value) ? (value as TourSort) : TourSort.recommended;
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -208,6 +214,9 @@ export class CollectionsService {
           throw err;
         });
 
+      // Clear any cooled-down ghost so a previously force-deleted collection slug can be reused.
+      await clearCooledDownSlugs(tx, [{ destinationSlug: destination.slug, slug }]);
+
       await tx.slugRegistry
         .create({
           data: {
@@ -228,11 +237,45 @@ export class CollectionsService {
   }
 
   async update(id: string, dto: UpdateCollectionDto, adminId: string) {
+    // Resolve a slug rename up-front (cooldown-aware, master slug-registry rules).
+    let renameFrom: string | undefined;
+    let renameTo: string | undefined;
+    if (dto.slug !== undefined) {
+      const current = await this.prisma.collection.findUnique({
+        where: { id },
+        select: { slug: true, destination: { select: { slug: true } } },
+      });
+      if (!current) throw new NotFoundException(`Collection ${id} not found`);
+      const normalized = generateSlug(dto.slug);
+      if (normalized !== current.slug) {
+        // Cannibalization guard (V2 §6): a collection slug must not equal a category slug.
+        const categoryClash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
+        if (categoryClash) {
+          throw new ConflictException(`Slug "${normalized}" collides with a category slug — choose a distinct collection slug`);
+        }
+        if (await isSlugTaken(this.prisma, current.destination.slug, normalized, id)) {
+          throw new ConflictException(`Slug "${normalized}" is already taken at this destination`);
+        }
+        renameFrom = current.slug;
+        renameTo = normalized;
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      if (renameTo && renameFrom) {
+        await renameEntitySlug(tx, {
+          entityType: SlugEntityType.COLLECTION,
+          entityId: id,
+          fromSlug: renameFrom,
+          toSlug: renameTo,
+        });
+      }
+
       const updated = await tx.collection
         .update({
           where: { id },
           data: {
+            ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.tourIds !== undefined && { tourIds: dto.tourIds }),
             ...(dto.filterQuery !== undefined && { filterQuery: dto.filterQuery as Prisma.InputJsonValue }),
@@ -278,7 +321,8 @@ export class CollectionsService {
     if (collection.isSeeded) throw new ForbiddenException('Seeded collections cannot be permanently deleted');
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.slugRegistry.deleteMany({ where: { entityType: SlugEntityType.COLLECTION, entityId: id } });
+      // Master slug-registry rule: hard delete starts the 90-day reuse cooldown.
+      await markSlugsDeleted(tx, SlugEntityType.COLLECTION, id);
       await tx.collection.delete({ where: { id } });
     });
     this.logger.log(`Admin ${adminId} permanently deleted collection ${id}`);

@@ -1,5 +1,12 @@
 import { Locale } from '@/common/constants/locales';
 import { generateSlug } from '@/common/utils/slug.util';
+import {
+  clearCooledDownSlugs,
+  isSlugTaken,
+  markSlugsDeleted,
+  renameEntitySlug,
+  slugRowBlocks,
+} from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -11,15 +18,15 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { Role, SlugEntityType, TourStatus } from '@prisma/client';
-import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, TripSort, UpdateTripDto } from './dto/trip.dto';
+import { AdminToursQueryDto, CreateTourDto, MyToursQueryDto, TourBySlugQueryDto, TourQueryDto, TourSort, UpdateTourDto } from './dto/tour.dto';
 
 @Injectable()
-export class TripsService {
-  private readonly logger = new Logger(TripsService.name);
+export class ToursService {
+  private readonly logger = new Logger(ToursService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly tripSelect = {
+  private readonly tourSelect = {
     id: true,
     name: true,
     slug: true,
@@ -28,14 +35,43 @@ export class TripsService {
     destinationId: true,
     pricingModel: true,
     wholeUnitType: true,
+    defaultCurrency: true,
     basePrice: true,
     priceFrom: true,
     durationMinutesFrom: true,
+    durationMinutesTo: true,
     pickupModel: true,
+    pickupRequired: true,
     maxPartySize: true,
     minPartySize: true,
     bookingCutoffMinutes: true,
     cancellationHours: true,
+    instantConfirmation: true,
+    // Booking / payment (master E.3)
+    paymentModel: true,
+    depositPct: true,
+    bookingType: true,
+    // Meeting point / departure (master E.3)
+    meetingPointLat: true,
+    meetingPointLng: true,
+    departureCity: true,
+    // Audience / accessibility flags (master E.3)
+    minAgeYears: true,
+    fitnessLevel: true,
+    weatherDependent: true,
+    wheelchairAccessible: true,
+    familyFriendly: true,
+    suitableForBeginners: true,
+    isLocalsFavourite: true,
+    // Commercial tier (master §7) — read-only
+    commissionTier: true,
+    tierKey: true,
+    tierRank: true,
+    tierLockedUntil: true,
+    qualityScore: true,
+    eligibilityState: true,
+    isBookable: true,
+    firstPublishedAt: true,
     h1Override: true,
     breadcrumbLabel: true,
     aggregateRating: true,
@@ -49,7 +85,7 @@ export class TripsService {
     publishedAt: true,
     createdAt: true,
     updatedAt: true,
-    // V2 §4 many-to-many — flattened by flattenTrip() into categoryIds/primaryCategoryId/hubIds.
+    // V2 §4 many-to-many — flattened by flattenTour() into categoryIds/primaryCategoryId/hubIds.
     categories: { select: { categoryId: true, isPrimary: true } },
     hubs: { select: { hubId: true } },
   } as const;
@@ -58,11 +94,11 @@ export class TripsService {
    * Flattens the TourCategory/TourHub relation arrays into the response-friendly
    * `categoryIds` / `primaryCategoryId` / `hubIds` shape.
    */
-  private flattenTrip<T extends {
+  private flattenTour<T extends {
     categories?: { categoryId: string; isPrimary: boolean }[];
     hubs?: { hubId: string }[];
-  }>(trip: T) {
-    const { categories, hubs, ...rest } = trip;
+  }>(tour: T) {
+    const { categories, hubs, ...rest } = tour;
     return {
       ...rest,
       categoryIds: categories?.map((c) => c.categoryId) ?? [],
@@ -85,13 +121,13 @@ export class TripsService {
 
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
-  async findTripOrThrow(id: string) {
-    const trip = await this.prisma.tour.findUnique({
+  async findTourOrThrow(id: string) {
+    const tour = await this.prisma.tour.findUnique({
       where: { id },
-      select: { ...this.tripSelect },
+      select: { ...this.tourSelect },
     });
-    if (!trip) throw new NotFoundException(`Trip ${id} not found`);
-    return trip;
+    if (!tour) throw new NotFoundException(`Tour ${id} not found`);
+    return tour;
   }
 
   private async resolveOperatorId(userId: string, role?: Role): Promise<string> {
@@ -115,19 +151,19 @@ export class TripsService {
   }
 
   async assertOwnership(
-    trip: { operatorId: string },
+    tour: { operatorId: string },
     userId: string,
     requesterRole: Role,
   ) {
     if (requesterRole === Role.ADMIN) return;
     const operatorId = await this.resolveOperatorId(userId);
-    if (trip.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to modify this trip');
+    if (tour.operatorId !== operatorId) {
+      throw new ForbiddenException('You do not have permission to modify this tour');
     }
   }
 
   /**
-   * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a trip:
+   * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a tour:
    * the cheapest age-band price, or `basePrice` when there are no age bands.
    * Call after any change to basePrice or age bands. Returns the new value.
    *
@@ -140,28 +176,28 @@ export class TripsService {
     tx?: Prisma.TransactionClient,
   ): Promise<Prisma.Decimal | null> {
     const client = tx ?? this.prisma;
-    const trip = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
-    if (!trip) return null;
+    const tour = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
+    if (!tour) return null;
 
     // priceFrom anchors off basePrice. Once the OCTO unit catalog (TourUnit) lands, this
     // recomputes from the cheapest unit price.
-    const priceFrom: Prisma.Decimal | null = trip.basePrice ?? null;
+    const priceFrom: Prisma.Decimal | null = tour.basePrice ?? null;
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
   }
 
   /**
-   * Resolves an ordered list of tour ids to flattened LIVE trips, preserving the input
+   * Resolves an ordered list of tour ids to flattened LIVE tours, preserving the input
    * order and dropping any that are missing/not live. Used by manual Collections.
    */
   async findPublicByIds(ids: string[]) {
     if (!ids.length) return [];
-    const trips = await this.prisma.tour.findMany({
+    const tours = await this.prisma.tour.findMany({
       where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
-      select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+      select: { ...this.tourSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
     });
-    const byId = new Map(trips.map((t) => [t.id, this.flattenTrip(t)]));
+    const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
     return ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => Boolean(t));
   }
 
@@ -175,7 +211,7 @@ export class TripsService {
     const { destinationSlug, page = 1, limit = 20 } = params;
     const term = params.q?.trim();
     if (!term || term.length < 2) {
-      return { total: 0, page, limit, query: term ?? '', data: [] as ReturnType<typeof this.flattenTrip>[] };
+      return { total: 0, page, limit, query: term ?? '', data: [] as ReturnType<typeof this.flattenTour>[] };
     }
     const ci = { contains: term, mode: 'insensitive' as const };
     const where: Prisma.TourWhereInput = {
@@ -195,13 +231,13 @@ export class TripsService {
       this.prisma.tour.count({ where }),
       this.prisma.tour.findMany({
         where,
-        select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
-        orderBy: this.buildOrderBy(TripSort.recommended),
+        select: { ...this.tourSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+        orderBy: this.buildOrderBy(TourSort.recommended),
         skip,
         take: limit,
       }),
     ]);
-    return { total, page, limit, query: term, data: data.map((t) => this.flattenTrip(t)) };
+    return { total, page, limit, query: term, data: data.map((t) => this.flattenTour(t)) };
   }
 
   // ── Public list ───────────────────────────────────────────────────────────────
@@ -213,11 +249,11 @@ export class TripsService {
     'locale', 'page', 'limit', 'sort',
   ]);
 
-  async findAll(query: TripQueryDto, rawQuery: Record<string, unknown> = {}) {
+  async findAll(query: TourQueryDto, rawQuery: Record<string, unknown> = {}) {
     const {
       search, destinationId, categoryId, hubId, pricingModel,
       minPrice, maxPrice, durationMin, durationMax, ratingMin,
-      sort = TripSort.recommended, page = 1, limit = 20,
+      sort = TourSort.recommended, page = 1, limit = 20,
     } = query;
 
     const where: Prisma.TourWhereInput = { status: TourStatus.LIVE, isActive: true };
@@ -251,7 +287,7 @@ export class TripsService {
       this.prisma.tour.findMany({
         where,
         select: {
-          ...this.tripSelect,
+          ...this.tourSelect,
           images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 },
         },
         orderBy,
@@ -260,21 +296,21 @@ export class TripsService {
       }),
     ]);
 
-    return { total, page, limit, sort, data: data.map((t) => this.flattenTrip(t)) };
+    return { total, page, limit, sort, data: data.map((t) => this.flattenTour(t)) };
   }
 
   /** Maps the requested sort to a Prisma orderBy. */
-  private buildOrderBy(sort: TripSort): Prisma.TourOrderByWithRelationInput[] {
+  private buildOrderBy(sort: TourSort): Prisma.TourOrderByWithRelationInput[] {
     switch (sort) {
-      case TripSort.price_asc:
+      case TourSort.price_asc:
         return [{ basePrice: { sort: 'asc', nulls: 'last' } }];
-      case TripSort.price_desc:
+      case TourSort.price_desc:
         return [{ basePrice: { sort: 'desc', nulls: 'last' } }];
-      case TripSort.rating:
+      case TourSort.rating:
         return [{ aggregateRating: { sort: 'desc', nulls: 'last' } }, { aggregateReviewCount: 'desc' }];
-      case TripSort.newest:
+      case TourSort.newest:
         return [{ publishedAt: 'desc' }];
-      case TripSort.recommended:
+      case TourSort.recommended:
       default:
         // V2 weighted "Recommended" (bookings×0.4 + rating×0.3 + recency×0.2 + reviews×0.1).
         // Prisma can't order by a computed expression, so we approximate with a multi-key
@@ -296,7 +332,7 @@ export class TripsService {
    */
   private async buildAttributeFilters(rawQuery: Record<string, unknown>): Promise<Prisma.TourWhereInput[]> {
     const candidates = Object.keys(rawQuery).filter(
-      (k) => !TripsService.RESERVED_QUERY_KEYS.has(k) && typeof rawQuery[k] === 'string' && rawQuery[k] !== '',
+      (k) => !ToursService.RESERVED_QUERY_KEYS.has(k) && typeof rawQuery[k] === 'string' && rawQuery[k] !== '',
     );
     if (candidates.length === 0) return [];
 
@@ -321,9 +357,9 @@ export class TripsService {
     return filters;
   }
 
-  // ── Admin all trips ───────────────────────────────────────────────────────────
+  // ── Admin all tours ───────────────────────────────────────────────────────────
 
-  async findAllAdmin(query: AdminTripsQueryDto) {
+  async findAllAdmin(query: AdminToursQueryDto) {
     const { search, status, operatorId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
@@ -337,7 +373,7 @@ export class TripsService {
       this.prisma.tour.findMany({
         where,
         select: {
-          ...this.tripSelect,
+          ...this.tourSelect,
           images: {
             where: { isHero: true },
             select: this.heroImageSelect,
@@ -366,9 +402,9 @@ export class TripsService {
     return { total, page, limit, data: data.map((t) => this.flattenCounts(t)) };
   }
 
-  // ── Operator "my trips" ───────────────────────────────────────────────────────
+  // ── Operator "my tours" ───────────────────────────────────────────────────────
 
-  async findMyTrips(userId: string, userRole: Role, query: MyTripsQueryDto) {
+  async findMyTours(userId: string, userRole: Role, query: MyToursQueryDto) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
     const { search, status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
@@ -382,7 +418,7 @@ export class TripsService {
       this.prisma.tour.findMany({
         where,
         select: {
-          ...this.tripSelect,
+          ...this.tourSelect,
           images: {
             where: { isHero: true },
             select: this.heroImageSelect,
@@ -404,10 +440,10 @@ export class TripsService {
     return { total, page, limit, data: data.map((t) => this.flattenCounts(t)) };
   }
 
-  // ── Single trip ───────────────────────────────────────────────────────────────
+  // ── Single tour ───────────────────────────────────────────────────────────────
 
-  private flattenCounts(trip: any) {
-    const { _count, images, operator, destination, categories, hubs, ...rest } = trip;
+  private flattenCounts(tour: any) {
+    const { _count, images, operator, destination, categories, hubs, ...rest } = tour;
     const cats = categories ?? [];
     const tourHubs = hubs ?? [];
     const primary = cats.find((c: any) => c.isPrimary);
@@ -437,10 +473,10 @@ export class TripsService {
   }
 
   async findOne(id: string, requesterId: string | null, requesterRole: Role | null) {
-    const trip = await this.prisma.tour.findUnique({
+    const tour = await this.prisma.tour.findUnique({
       where: { id },
       select: {
-        ...this.tripSelect,
+        ...this.tourSelect,
         images: {
           where: { isHero: true },
           select: { id: true, url: true, altText: true },
@@ -455,30 +491,30 @@ export class TripsService {
       },
     });
 
-    if (!trip) throw new NotFoundException(`Trip ${id} not found`);
+    if (!tour) throw new NotFoundException(`Tour ${id} not found`);
 
-    if (trip.status !== TourStatus.LIVE) {
-      if (!requesterId) throw new NotFoundException(`Trip ${id} not found`);
+    if (tour.status !== TourStatus.LIVE) {
+      if (!requesterId) throw new NotFoundException(`Tour ${id} not found`);
       if (requesterRole !== Role.ADMIN) {
-        // trip.operatorId is from the operators table; requesterId is user.id — must resolve
+        // tour.operatorId is from the operators table; requesterId is user.id — must resolve
         const operatorId = await this.resolveOperatorId(requesterId);
-        if (trip.operatorId !== operatorId) {
-          throw new ForbiddenException('You do not have permission to view this trip');
+        if (tour.operatorId !== operatorId) {
+          throw new ForbiddenException('You do not have permission to view this tour');
         }
       }
     }
 
-    return this.flattenCounts(trip);
+    return this.flattenCounts(tour);
   }
 
-  // ── Public slug-based lookup (trip detail page) ───────────────────────────────
+  // ── Public slug-based lookup (tour detail page) ───────────────────────────────
 
-  async findBySlug(slug: string, query: TripBySlugQueryDto) {
+  async findBySlug(slug: string, query: TourBySlugQueryDto) {
     const { destinationSlug, locale = Locale.en } = query;
 
     // V2 §4/§5: every tour has one flat canonical URL /{destination}/{tour-slug}/.
     // Hubs are a discovery tag, not part of the URL — resolve purely by destination + slug.
-    const trip = await this.prisma.tour.findFirst({
+    const tour = await this.prisma.tour.findFirst({
       where: {
         slug,
         status: TourStatus.LIVE,
@@ -486,7 +522,7 @@ export class TripsService {
         destination: { slug: destinationSlug },
       },
       select: {
-        ...this.tripSelect,
+        ...this.tourSelect,
         images: {
           select: {
             id: true,
@@ -561,10 +597,10 @@ export class TripsService {
       },
     });
 
-    if (!trip) throw new NotFoundException('Trip not found');
+    if (!tour) throw new NotFoundException('Tour not found');
 
     // Apply locale → EN fallback for translated child models
-    const { translations, highlights, inclusions, exclusions, languages, ...rest } = trip;
+    const { translations, highlights, inclusions, exclusions, languages, ...rest } = tour;
 
     const resolvedTranslation =
       translations.find((t) => t.locale === locale) ??
@@ -598,7 +634,7 @@ export class TripsService {
     }));
 
     return {
-      ...this.flattenTrip(rest),
+      ...this.flattenTour(rest),
       translation: resolvedTranslation,
       highlights: resolvedHighlights,
       inclusions: resolvedInclusions,
@@ -612,9 +648,10 @@ export class TripsService {
   /**
    * Returns a slug that is unique for (destinationId, destinationSlug).
    *
-   * - Same operator already owns the slug → ConflictException (duplicate trip).
+   * - Same operator already owns the slug → ConflictException (duplicate tour).
    * - Different operator or slug_registry occupies it → append the operator's
    *   company/user name as a suffix, then try -2, -3 … until a free slot is found.
+   * - A slug whose registry row was hard-deleted more than 90 days ago is free again.
    */
   private async resolveUniqueSlug(
     baseSlug: string,
@@ -628,19 +665,20 @@ export class TripsService {
       select: { id: true },
     });
     if (ownConflict) {
-      throw new ConflictException(`You already have a trip with slug "${baseSlug}" at this destination`);
+      throw new ConflictException(`You already have a tour with slug "${baseSlug}" at this destination`);
     }
 
     // V2 §5: every tour is flat /{destination}/{tour-slug}/, so ALWAYS check the slug registry.
-    const [tripConflict, registryConflict] = await Promise.all([
+    const [tourConflict, registryRow] = await Promise.all([
       this.prisma.tour.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
-        select: { id: true },
+        select: { id: true, deletedAt: true },
       }),
     ]);
+    const registryConflict = slugRowBlocks(registryRow);
 
-    if (!tripConflict && !registryConflict) return baseSlug;
+    if (!tourConflict && !registryConflict) return baseSlug;
 
     // Slug is occupied by another entity — append the operator name (V2 pages 11–15).
     // NEVER append a number (-2, -3): confusing for users and bad for SEO.
@@ -658,18 +696,18 @@ export class TripsService {
     const suffix = generateSlug(rawName);
     const candidate = `${baseSlug}-${suffix}`;
 
-    const [candidateTrip, candidateRegistry] = await Promise.all([
+    const [candidateTour, candidateRegistryRow] = await Promise.all([
       this.prisma.tour.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
-        select: { id: true },
+        select: { id: true, deletedAt: true },
       }),
     ]);
 
-    if (candidateTrip?.operatorId === operatorId) {
-      throw new ConflictException(`You already have a trip with slug "${candidate}" at this destination`);
+    if (candidateTour?.operatorId === operatorId) {
+      throw new ConflictException(`You already have a tour with slug "${candidate}" at this destination`);
     }
-    if (!candidateTrip && !candidateRegistry) return candidate;
+    if (!candidateTour && !slugRowBlocks(candidateRegistryRow)) return candidate;
 
     // The operator-name suffix is also taken. We do NOT fall back to numeric suffixes,
     // so the operator must pick a different tour name or slug.
@@ -681,7 +719,7 @@ export class TripsService {
 
   // ── Create ────────────────────────────────────────────────────────────────────
 
-  async create(dto: CreateTripDto, userId: string, userRole: Role) {
+  async create(dto: CreateTourDto, userId: string, userRole: Role) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
 
     const baseSlug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
@@ -739,7 +777,7 @@ export class TripsService {
         }
       }
 
-      const trip = await tx.tour
+      const tour = await tx.tour
         .create({
           data: {
             name: dto.name,
@@ -748,14 +786,31 @@ export class TripsService {
             destinationId: dto.destinationId,
             pricingModel: dto.pricingModel,
             wholeUnitType: dto.wholeUnitType ?? null,
+            ...(dto.defaultCurrency !== undefined && { defaultCurrency: dto.defaultCurrency }),
             basePrice: dto.basePrice ?? null,
             priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
             durationMinutesFrom: dto.durationMinutesFrom ?? null,
+            durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
+            pickupRequired: dto.pickupRequired ?? false,
             maxPartySize: dto.maxPartySize ?? null,
             minPartySize: dto.minPartySize ?? 1,
             bookingCutoffMinutes: dto.bookingCutoffMinutes ?? 120,
-            cancellationHours: dto.cancellationHours ?? 24,
+            // Master rule #20 / §6.2 — free-cancellation window, enum-bound, default 48.
+            cancellationHours: dto.cancellationHours ?? 48,
+            ...(dto.instantConfirmation !== undefined && { instantConfirmation: dto.instantConfirmation }),
+            ...(dto.paymentModel !== undefined && { paymentModel: dto.paymentModel }),
+            bookingType: dto.bookingType ?? null,
+            meetingPointLat: dto.meetingPointLat ?? null,
+            meetingPointLng: dto.meetingPointLng ?? null,
+            departureCity: dto.departureCity ?? null,
+            minAgeYears: dto.minAgeYears ?? null,
+            fitnessLevel: dto.fitnessLevel ?? null,
+            ...(dto.weatherDependent !== undefined && { weatherDependent: dto.weatherDependent }),
+            ...(dto.wheelchairAccessible !== undefined && { wheelchairAccessible: dto.wheelchairAccessible }),
+            ...(dto.familyFriendly !== undefined && { familyFriendly: dto.familyFriendly }),
+            ...(dto.suitableForBeginners !== undefined && { suitableForBeginners: dto.suitableForBeginners }),
+            reference: dto.reference ?? null,
             h1Override: dto.h1Override ?? null,
             breadcrumbLabel: dto.breadcrumbLabel ?? null,
             categories: {
@@ -766,7 +821,7 @@ export class TripsService {
             },
             hubs: { create: hubIds.map((hubId) => ({ hubId })) },
           },
-          select: this.tripSelect,
+          select: this.tourSelect,
         })
         .catch((err: any) => {
           if (err?.code === 'P2002') {
@@ -776,14 +831,17 @@ export class TripsService {
           throw err;
         });
 
+      // Clear any cooled-down ghost row occupying this slug (reusable after the 90-day cooldown).
+      await clearCooledDownSlugs(tx, [{ destinationSlug: destination.slug, slug: tour.slug }]);
+
       // V2 §5: every tour gets a flat /{destination}/{tour-slug}/ slug_registry TOUR row.
       await tx.slugRegistry
         .create({
           data: {
             destinationSlug: destination.slug,
-            slug: trip.slug,
+            slug: tour.slug,
             entityType: SlugEntityType.TOUR,
-            entityId: trip.id,
+            entityId: tour.id,
             isActive: true,
           },
         })
@@ -794,19 +852,19 @@ export class TripsService {
           throw err;
         });
 
-      this.logger.log(`Operator ${operatorId} created trip "${dto.name}" (${trip.id})`);
-      return this.flattenTrip(trip);
+      this.logger.log(`Operator ${operatorId} created tour "${dto.name}" (${tour.id})`);
+      return this.flattenTour(tour);
     });
   }
 
   // ── Update ────────────────────────────────────────────────────────────────────
 
-  async update(id: string, dto: UpdateTripDto, requesterId: string, requesterRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, requesterId, requesterRole);
+  async update(id: string, dto: UpdateTourDto, requesterId: string, requesterRole: Role) {
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, requesterId, requesterRole);
 
-    if (trip.status === TourStatus.ARCHIVED) {
-      throw new BadRequestException('Cannot update an archived trip');
+    if (tour.status === TourStatus.ARCHIVED) {
+      throw new BadRequestException('Cannot update an archived tour');
     }
 
     const warnings: string[] = [];
@@ -831,20 +889,75 @@ export class TripsService {
     }
     const hubIds = dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
 
+    // ── Slug rename → 301 redirect + 90-day cooldown (master slug-registry rules) ──
+    // Resolve the rename target up-front (cooldown-aware, excluding this tour's own row).
+    let renameFrom: string | undefined;
+    let renameTo: string | undefined;
+    if (dto.slug !== undefined) {
+      const normalized = generateSlug(dto.slug);
+      if (normalized !== tour.slug) {
+        const dest = await this.prisma.destination.findUnique({
+          where: { id: tour.destinationId },
+          select: { slug: true },
+        });
+        if (!dest) throw new BadRequestException('Tour destination not found');
+
+        const slugTourConflict = await this.prisma.tour.findFirst({
+          where: { destinationId: tour.destinationId, slug: normalized, id: { not: id } },
+          select: { id: true },
+        });
+        const registryTaken = await isSlugTaken(this.prisma, dest.slug, normalized, id);
+        if (slugTourConflict || registryTaken) {
+          throw new ConflictException(`Slug "${normalized}" is already taken at this destination`);
+        }
+        renameFrom = tour.slug;
+        renameTo = normalized;
+      }
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Apply the slug rename inside the transaction: re-point the TOUR registry row,
+      // record the 301, and collapse chains (master slug-registry rules).
+      if (renameTo && renameFrom) {
+        await renameEntitySlug(tx, {
+          entityType: SlugEntityType.TOUR,
+          entityId: id,
+          fromSlug: renameFrom,
+          toSlug: renameTo,
+        });
+      }
+
       await tx.tour.update({
         where: { id },
         data: {
+          ...(renameTo && { slug: renameTo }),
           ...(dto.name !== undefined && { name: dto.name }),
           ...(dto.pricingModel !== undefined && { pricingModel: dto.pricingModel }),
           ...(dto.wholeUnitType !== undefined && { wholeUnitType: dto.wholeUnitType }),
+          ...(dto.defaultCurrency !== undefined && { defaultCurrency: dto.defaultCurrency }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
           ...(dto.durationMinutesFrom !== undefined && { durationMinutesFrom: dto.durationMinutesFrom }),
+          ...(dto.durationMinutesTo !== undefined && { durationMinutesTo: dto.durationMinutesTo }),
           ...(dto.pickupModel !== undefined && { pickupModel: dto.pickupModel }),
+          ...(dto.pickupRequired !== undefined && { pickupRequired: dto.pickupRequired }),
           ...(dto.maxPartySize !== undefined && { maxPartySize: dto.maxPartySize }),
           ...(dto.minPartySize !== undefined && { minPartySize: dto.minPartySize }),
           ...(dto.bookingCutoffMinutes !== undefined && { bookingCutoffMinutes: dto.bookingCutoffMinutes }),
           ...(dto.cancellationHours !== undefined && { cancellationHours: dto.cancellationHours }),
+          ...(dto.paymentModel !== undefined && { paymentModel: dto.paymentModel }),
+          ...(dto.instantConfirmation !== undefined && { instantConfirmation: dto.instantConfirmation }),
+          ...(dto.bookingType !== undefined && { bookingType: dto.bookingType }),
+          ...(dto.meetingPointLat !== undefined && { meetingPointLat: dto.meetingPointLat }),
+          ...(dto.meetingPointLng !== undefined && { meetingPointLng: dto.meetingPointLng }),
+          ...(dto.departureCity !== undefined && { departureCity: dto.departureCity }),
+          ...(dto.minAgeYears !== undefined && { minAgeYears: dto.minAgeYears }),
+          ...(dto.fitnessLevel !== undefined && { fitnessLevel: dto.fitnessLevel }),
+          ...(dto.weatherDependent !== undefined && { weatherDependent: dto.weatherDependent }),
+          ...(dto.wheelchairAccessible !== undefined && { wheelchairAccessible: dto.wheelchairAccessible }),
+          ...(dto.familyFriendly !== undefined && { familyFriendly: dto.familyFriendly }),
+          ...(dto.suitableForBeginners !== undefined && { suitableForBeginners: dto.suitableForBeginners }),
+          ...(dto.isLocalsFavourite !== undefined && { isLocalsFavourite: dto.isLocalsFavourite }),
+          ...(dto.reference !== undefined && { reference: dto.reference }),
           ...(dto.h1Override !== undefined && { h1Override: dto.h1Override }),
           ...(dto.breadcrumbLabel !== undefined && { breadcrumbLabel: dto.breadcrumbLabel }),
           ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -884,7 +997,7 @@ export class TripsService {
             select: { id: true, destinationId: true, isActive: true },
           });
           if (!hub || !hub.isActive) throw new BadRequestException(`Hub ${hubId} not found or is not active`);
-          if (hub.destinationId !== trip.destinationId) {
+          if (hub.destinationId !== tour.destinationId) {
             throw new BadRequestException(`Hub ${hubId} does not belong to the destination`);
           }
           const allowedCount = await tx.hubAllowedCategory.count({
@@ -898,7 +1011,7 @@ export class TripsService {
         await tx.tourHub.createMany({ data: hubIds.map((hubId) => ({ tourId: id, hubId })) });
       }
 
-      return tx.tour.findUniqueOrThrow({ where: { id }, select: this.tripSelect });
+      return tx.tour.findUniqueOrThrow({ where: { id }, select: this.tourSelect });
     });
 
     // Keep the "From $X" anchor in sync if basePrice changed.
@@ -906,39 +1019,39 @@ export class TripsService {
       updated.priceFrom = await this.recomputePriceFrom(id);
     }
 
-    this.logger.log(`User ${requesterId} updated trip ${id}`);
-    return { trip: this.flattenTrip(updated), warnings };
+    this.logger.log(`User ${requesterId} updated tour ${id}`);
+    return { tour: this.flattenTour(updated), warnings };
   }
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
 
   async publish(id: string, userId: string, userRole: Role) {
-    const trip = await this.prisma.tour.findUnique({
+    const tour = await this.prisma.tour.findUnique({
       where: { id },
       select: {
-        ...this.tripSelect,
+        ...this.tourSelect,
         images: { select: { id: true, isHero: true } },
         highlights: { select: { id: true } },
         translations: { where: { locale: Locale.en }, select: { overview: true } },
       },
     });
-    if (!trip) throw new NotFoundException(`Trip ${id} not found`);
-    await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TourStatus.DRAFT) {
-      throw new BadRequestException('Trip must be in DRAFT status to publish');
+    if (!tour) throw new NotFoundException(`Tour ${id} not found`);
+    await this.assertOwnership(tour, userId, userRole);
+    if (tour.status !== TourStatus.DRAFT) {
+      throw new BadRequestException('Tour must be in DRAFT status to publish');
     }
 
     const errors: string[] = [];
-    if (trip.images.length < 5) errors.push('At least 5 images are required to publish');
-    if (!trip.images.some((img) => img.isHero)) errors.push('A hero image must be set before publishing');
+    if (tour.images.length < 5) errors.push('At least 5 images are required to publish');
+    if (!tour.images.some((img) => img.isHero)) errors.push('A hero image must be set before publishing');
 
-    const enTranslation = trip.translations[0];
+    const enTranslation = tour.translations[0];
     if (!enTranslation?.overview?.trim()) errors.push('An English overview is required to publish');
 
-    if (trip.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
+    if (tour.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
 
     // Price required: a flat basePrice (the OCTO unit catalog will extend this later).
-    if (trip.basePrice == null) {
+    if (tour.basePrice == null) {
       errors.push('A price is required to publish (set a base price)');
     }
 
@@ -947,64 +1060,64 @@ export class TripsService {
     const updated = await this.prisma.tour.update({
       where: { id },
       data: { status: TourStatus.LIVE, publishedAt: new Date() },
-      select: this.tripSelect,
+      select: this.tourSelect,
     });
 
-    this.logger.log(`User ${userId} published trip ${id}`);
-    return this.flattenTrip(updated);
+    this.logger.log(`User ${userId} published tour ${id}`);
+    return this.flattenTour(updated);
   }
 
   async pause(id: string, userId: string, userRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TourStatus.LIVE) {
-      throw new BadRequestException('Trip must be LIVE to pause');
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, userId, userRole);
+    if (tour.status !== TourStatus.LIVE) {
+      throw new BadRequestException('Tour must be LIVE to pause');
     }
 
-    // Phase 5 hook: if trip holds a featured slot → SlotsService.releaseSlot()
+    // Phase 5 hook: if tour holds a featured slot → SlotsService.releaseSlot()
 
     const updated = await this.prisma.tour.update({
       where: { id },
       data: { status: TourStatus.PAUSED },
-      select: this.tripSelect,
+      select: this.tourSelect,
     });
 
-    this.logger.log(`User ${userId} paused trip ${id}`);
-    return this.flattenTrip(updated);
+    this.logger.log(`User ${userId} paused tour ${id}`);
+    return this.flattenTour(updated);
   }
 
   async unpause(id: string, userId: string, userRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TourStatus.PAUSED) {
-      throw new BadRequestException('Trip must be PAUSED to unpause');
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, userId, userRole);
+    if (tour.status !== TourStatus.PAUSED) {
+      throw new BadRequestException('Tour must be PAUSED to unpause');
     }
 
     const updated = await this.prisma.tour.update({
       where: { id },
       data: { status: TourStatus.LIVE },
-      select: this.tripSelect,
+      select: this.tourSelect,
     });
 
-    this.logger.log(`User ${userId} unpaused trip ${id}`);
-    return this.flattenTrip(updated);
+    this.logger.log(`User ${userId} unpaused tour ${id}`);
+    return this.flattenTour(updated);
   }
 
   async archive(id: string, requesterId: string, requesterRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, requesterId, requesterRole);
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, requesterId, requesterRole);
 
-    if (trip.status === TourStatus.ARCHIVED) {
-      throw new BadRequestException('Trip is already archived');
+    if (tour.status === TourStatus.ARCHIVED) {
+      throw new BadRequestException('Tour is already archived');
     }
 
-    // Phase 5 hook: if trip holds a featured slot → SlotsService.releaseSlot()
+    // Phase 5 hook: if tour holds a featured slot → SlotsService.releaseSlot()
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.tour.update({
         where: { id },
         data: { status: TourStatus.ARCHIVED, isActive: false },
-        select: this.tripSelect,
+        select: this.tourSelect,
       });
 
       // Every tour has a flat TOUR slug_registry row → deactivate it (keeps the slug reserved).
@@ -1013,24 +1126,24 @@ export class TripsService {
         data: { isActive: false },
       });
 
-      this.logger.log(`User ${requesterId} archived trip ${id}`);
-      return this.flattenTrip(updated);
+      this.logger.log(`User ${requesterId} archived tour ${id}`);
+      return this.flattenTour(updated);
     });
   }
 
   async restore(id: string, requesterId: string, requesterRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, requesterId, requesterRole);
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, requesterId, requesterRole);
 
-    if (trip.status !== TourStatus.ARCHIVED) {
-      throw new BadRequestException('Only ARCHIVED trips can be restored');
+    if (tour.status !== TourStatus.ARCHIVED) {
+      throw new BadRequestException('Only ARCHIVED tours can be restored');
     }
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.tour.update({
         where: { id },
         data: { status: TourStatus.DRAFT, isActive: true },
-        select: this.tripSelect,
+        select: this.tourSelect,
       });
 
       // Re-activate the flat TOUR slug_registry row.
@@ -1039,28 +1152,28 @@ export class TripsService {
         data: { isActive: true },
       });
 
-      this.logger.log(`User ${requesterId} restored trip ${id} to DRAFT`);
-      return this.flattenTrip(updated);
+      this.logger.log(`User ${requesterId} restored tour ${id} to DRAFT`);
+      return this.flattenTour(updated);
     });
   }
 
   async remove(id: string, userId: string, userRole: Role) {
-    const trip = await this.findTripOrThrow(id);
-    await this.assertOwnership(trip, userId, userRole);
-    if (userRole !== Role.ADMIN && trip.status !== TourStatus.ARCHIVED) {
-      throw new BadRequestException('Only ARCHIVED trips can be permanently deleted. Archive the trip first.');
+    const tour = await this.findTourOrThrow(id);
+    await this.assertOwnership(tour, userId, userRole);
+    if (userRole !== Role.ADMIN && tour.status !== TourStatus.ARCHIVED) {
+      throw new BadRequestException('Only ARCHIVED tours can be permanently deleted. Archive the tour first.');
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // Every tour has a flat TOUR slug_registry row → remove it.
-      await tx.slugRegistry.deleteMany({
-        where: { entityType: SlugEntityType.TOUR, entityId: id },
-      });
+      // Master slug-registry rule: hard delete starts the 90-day reuse cooldown. The TOUR
+      // slug_registry row is kept (isActive=false, deletedAt=now) so the slug stays protected
+      // and 404s until the cooldown elapses, after which create() can reuse it.
+      await markSlugsDeleted(tx, SlugEntityType.TOUR, id);
       // Cascade deletes all child models (incl. TourCategory/TourHub) via onDelete: Cascade
       await tx.tour.delete({ where: { id } });
     });
 
-    this.logger.log(`User ${userId} permanently deleted trip ${id}`);
-    return { message: 'Trip permanently deleted' };
+    this.logger.log(`User ${userId} permanently deleted tour ${id}`);
+    return { message: 'Tour permanently deleted' };
   }
 }

@@ -2,6 +2,10 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import {
+  clearCooledDownDestinationSlugs,
+  markDestinationSlugsDeleted,
+} from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -178,6 +182,9 @@ export class DestinationService {
           throw err;
         });
 
+      // Clear any cooled-down ghosts if this destination slug was force-deleted < 90 days ago.
+      await clearCooledDownDestinationSlugs(tx, destination.slug);
+
       await tx.slugRegistry.create({
         data: {
           destinationSlug: destination.slug,
@@ -262,12 +269,12 @@ export class DestinationService {
         throw new ForbiddenException('Seeded destinations cannot be deactivated');
       }
 
-      const tripCount = await tx.tour.count({
+      const tourCount = await tx.tour.count({
         where: { destinationId: id, isActive: true, status: { not: TourStatus.DRAFT } },
       });
-      if (tripCount > 0) {
+      if (tourCount > 0) {
         throw new ConflictException(
-          `Cannot deactivate destination: ${tripCount} active trip(s) are still assigned to it`,
+          `Cannot deactivate destination: ${tourCount} active tour(s) are still assigned to it`,
         );
       }
 
@@ -295,8 +302,10 @@ export class DestinationService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // Delete all slug registry rows for this destination (categories, hubs, tours, reserved)
-      await tx.slugRegistry.deleteMany({ where: { destinationSlug: destination.slug } });
+      // Master slug-registry rule: hard delete starts the 90-day reuse cooldown across the
+      // whole destination namespace (categories, hubs, tours, reserved) — rows are kept,
+      // marked isActive=false + deletedAt=now, and cleared on re-seed after the cooldown.
+      await markDestinationSlugsDeleted(tx, destination.slug);
       // Cascade via Prisma schema handles: hubs, translations, FAQs, page content, featured experiences
       await tx.destination.delete({ where: { id } });
     });

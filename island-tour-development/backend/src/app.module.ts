@@ -12,7 +12,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { DestinationsModule } from './destinations/destinations.module';
 import { HubsModule } from './hubs/hubs.module';
 import { SlugRegistryModule } from './slug-registry/slug-registry.module';
-import { TripsModule } from '@/trips/trips.module';
+import { ToursModule } from '@/tours/tours.module';
 import { AttributesModule } from '@/attributes/attributes.module';
 import { CollectionsModule } from '@/collections/collections.module';
 import { SearchModule } from '@/search/search.module';
@@ -33,7 +33,7 @@ import { SearchModule } from '@/search/search.module';
     DestinationsModule,
     HubsModule,
     SlugRegistryModule,
-    TripsModule,
+    ToursModule,
     AttributesModule,
     CollectionsModule,
     SearchModule,

@@ -5,6 +5,13 @@
  * guard logic (self-modification checks, admin-protection checks).
  */
 
+// Mock the Better Auth instance — the real module pulls in the ESM-only
+// `better-auth` package, which ts-jest does not transform (node_modules).
+// UserService only ever calls `auth.api.setPassword`.
+jest.mock('@/auth/auth.instance', () => ({
+  auth: { api: { setPassword: jest.fn() } },
+}));
+
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,

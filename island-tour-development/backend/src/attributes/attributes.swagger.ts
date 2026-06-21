@@ -107,7 +107,7 @@ export function ApiGetFiltersDocs() {
 export function ApiGetTourAttributesDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'List a tour’s attribute values (Operator/Admin)' }),
-    ApiParam({ name: 'tripId', description: 'Trip UUID' }),
+    ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiResponse({ status: 200, type: [TourAttributeResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...commonErrors,
@@ -122,7 +122,7 @@ export function ApiSetTourAttributesDocs() {
         'Each key must exist in the dictionary; each value is validated against its dataType + allowedValues ' +
         '(ENUM_MULTI accepts a comma-separated list). Unknown keys / invalid values are rejected.',
     }),
-    ApiParam({ name: 'tripId', description: 'Trip UUID' }),
+    ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiResponse({ status: 200, type: [TourAttributeResponseDto] }),
     ApiResponse({ status: 400, description: 'Unknown key or invalid value', type: BadRequestErrorDto }),
     ...adminErrors,
@@ -132,7 +132,7 @@ export function ApiSetTourAttributesDocs() {
 export function ApiDeleteTourAttributeDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Remove one attribute from a tour (Operator owner / Admin)' }),
-    ApiParam({ name: 'tripId', description: 'Trip UUID' }),
+    ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiParam({ name: 'key', example: 'boat_type' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),

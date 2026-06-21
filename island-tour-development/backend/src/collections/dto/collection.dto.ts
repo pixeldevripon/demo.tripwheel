@@ -142,6 +142,13 @@ export class UpdateCollectionDto {
   @ApiPropertyOptional({ example: 'Top 10 Tours' })
   @IsOptional() @IsString() @MinLength(2) name?: string;
 
+  @ApiPropertyOptional({
+    example: 'top-10-tours',
+    description:
+      'Renaming issues an automatic 301 redirect; the old slug is protected by a 90-day reuse cooldown. Must not equal a category slug.',
+  })
+  @IsOptional() @IsString() @MinLength(2) slug?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional() @IsArray() @IsUUID('4', { each: true }) tourIds?: string[];
 

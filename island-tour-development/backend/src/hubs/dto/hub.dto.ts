@@ -228,6 +228,16 @@ export class UpdateHubDto {
   @MinLength(2)
   name?: string;
 
+  @ApiPropertyOptional({
+    example: 'klein-curacao',
+    description:
+      'Renaming issues an automatic 301 redirect; the old slug is protected by a 90-day reuse cooldown.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  slug?: string;
+
   @ApiPropertyOptional({ example: 'Updated description.' })
   @IsOptional()
   @IsString()

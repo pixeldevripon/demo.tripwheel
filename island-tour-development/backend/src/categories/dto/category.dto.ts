@@ -373,6 +373,16 @@ export class UpdateCategoryDto {
   @MinLength(2)
   name?: string;
 
+  @ApiPropertyOptional({
+    example: 'sunset-cruises',
+    description:
+      'Renaming issues an automatic 301 redirect in every destination the category is seeded into; the old slug is protected by a 90-day reuse cooldown.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  slug?: string;
+
   @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
   @IsOptional()
   @IsString()

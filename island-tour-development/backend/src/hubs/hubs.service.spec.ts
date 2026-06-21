@@ -49,6 +49,14 @@ function createMockPrismaService() {
     slugRegistry: {
       create: jest.fn(),
       updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    slugRedirect: {
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+      upsert: jest.fn(),
     },
     hubAllowedCategory: {
       createMany: jest.fn(),
@@ -617,6 +625,30 @@ describe('HubService', () => {
   // ── update ────────────────────────────────────────────────────────────────────
 
   describe('update', () => {
+    it('renames the slug: re-points the registry row and writes a 301 redirect', async () => {
+      const { _tx } = prisma;
+      prisma.hub.findUnique.mockResolvedValue({ slug: 'old-slug', destination: { slug: 'curacao' } });
+      prisma.slugRegistry.findUnique.mockResolvedValue(null); // isSlugTaken → free
+      prisma.slugRegistry.findMany.mockResolvedValue([{ destinationSlug: 'curacao' }]);
+      _tx.hub.update.mockResolvedValue(makeHubDetail({ slug: 'new-slug' }));
+
+      await service.update('hub-1', { slug: 'new-slug' }, 'admin-1');
+
+      expect(_tx.slugRegistry.updateMany).toHaveBeenCalledWith({
+        where: { entityType: 'HUB', entityId: 'hub-1' },
+        data: { slug: 'new-slug' },
+      });
+      expect(_tx.slugRedirect.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
+          create: expect.objectContaining({ fromSlug: 'old-slug', toSlug: 'new-slug', statusCode: 301 }),
+        }),
+      );
+      expect(_tx.hub.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+      );
+    });
+
     it('updates hub fields inside a transaction and returns updated hub', async () => {
       const { _tx } = prisma;
       const updatedHub = makeHubDetail({ name: 'Updated Name' });
