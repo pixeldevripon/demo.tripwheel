@@ -21,7 +21,6 @@ const DEFAULT_HORIZON_DAYS = 90;
 const MS_PER_DAY = 86_400_000;
 
 interface DesiredDeparture {
-  optionId: string;
   localDateTimeStart: Date;
   localDateTimeEnd: Date | null;
   capacity: number;
@@ -58,18 +57,9 @@ export class AvailabilityMaterializerService {
         timeZone: true,
         bookingCutoffMinutes: true,
         durationMinutesFrom: true,
-        options: {
-          where: { isActive: true },
-          select: { id: true, isDefault: true },
-        },
       },
     });
     if (!tour) throw new BadRequestException('Tour not found');
-    const defaultOptionId =
-      tour.options.find((o) => o.isDefault)?.id ?? tour.options[0]?.id;
-    if (!defaultOptionId) {
-      throw new BadRequestException('Tour has no active option to schedule against');
-    }
 
     // Everything is destination-local time: "now" is the island's wall-clock now.
     const now = localNow(tour.timeZone);
@@ -101,7 +91,6 @@ export class AvailabilityMaterializerService {
       this.buildDayDepartures(
         d,
         tour,
-        defaultOptionId,
         schedules,
         exceptionsByDate.get(dateKey(d)) ?? [],
         desired,
@@ -136,7 +125,6 @@ export class AvailabilityMaterializerService {
       bookingCutoffMinutes: number;
       durationMinutesFrom: number | null;
     },
-    defaultOptionId: string,
     schedules: AvailabilitySchedule[],
     dayExceptions: AvailabilityException[],
     desired: Map<string, DesiredDeparture>,
@@ -146,24 +134,14 @@ export class AvailabilityMaterializerService {
     const dom = day.getUTCDate();
     const weekday = day.getUTCDay();
 
-    const optionOf = (scheduleOptionId: string | null) =>
-      scheduleOptionId ?? defaultOptionId;
-    const appliesTo = (exOptionId: string | null, optionId: string) =>
-      exOptionId === null || exOptionId === optionId;
-
     // Recurring schedules
     for (const schedule of schedules) {
       if (!schedule.weekdays.includes(weekday)) continue;
       if (schedule.seasonStart && day < schedule.seasonStart) continue;
       if (schedule.seasonEnd && day > schedule.seasonEnd) continue;
 
-      const optionId = optionOf(schedule.optionId);
-
       const wholeDayBlackout = dayExceptions.some(
-        (e) =>
-          e.type === AvailabilityExceptionType.BLACKOUT &&
-          !e.startTime &&
-          appliesTo(e.optionId, optionId),
+        (e) => e.type === AvailabilityExceptionType.BLACKOUT && !e.startTime,
       );
       if (wholeDayBlackout) continue;
 
@@ -171,14 +149,12 @@ export class AvailabilityMaterializerService {
         this.overrideValue(
           dayExceptions,
           AvailabilityExceptionType.CAPACITY_OVERRIDE,
-          optionId,
           (e) => e.capacity,
         ) ?? schedule.capacity;
       const price =
         this.overrideValue(
           dayExceptions,
           AvailabilityExceptionType.PRICE_OVERRIDE,
-          optionId,
           (e) => e.priceOverride,
         ) ?? schedule.priceOverride;
 
@@ -186,13 +162,11 @@ export class AvailabilityMaterializerService {
         const timeBlackout = dayExceptions.some(
           (e) =>
             e.type === AvailabilityExceptionType.BLACKOUT &&
-            e.startTime === startTime &&
-            appliesTo(e.optionId, optionId),
+            e.startTime === startTime,
         );
         if (timeBlackout) continue;
 
         this.addDesired(desired, tour, {
-          optionId,
           year,
           month,
           dom,
@@ -217,7 +191,6 @@ export class AvailabilityMaterializerService {
         continue;
       }
       this.addDesired(desired, tour, {
-        optionId: optionOf(ex.optionId),
         year,
         month,
         dom,
@@ -230,19 +203,13 @@ export class AvailabilityMaterializerService {
     }
   }
 
-  /** Most-specific override (option-specific beats all-options) of a given type. */
+  /** First non-null override of a given type for the day. */
   private overrideValue<T>(
     exceptions: AvailabilityException[],
     type: AvailabilityExceptionType,
-    optionId: string,
     read: (e: AvailabilityException) => T | null,
   ): T | null {
-    const matches = exceptions.filter(
-      (e) => e.type === type && (e.optionId === null || e.optionId === optionId),
-    );
-    if (!matches.length) return null;
-    matches.sort((a, b) => (a.optionId ? -1 : 1) - (b.optionId ? -1 : 1));
-    for (const m of matches) {
+    for (const m of exceptions.filter((e) => e.type === type)) {
       const v = read(m);
       if (v !== null && v !== undefined) return v;
     }
@@ -257,7 +224,6 @@ export class AvailabilityMaterializerService {
       durationMinutesFrom: number | null;
     },
     p: {
-      optionId: string;
       year: number;
       month: number;
       dom: number;
@@ -270,7 +236,7 @@ export class AvailabilityMaterializerService {
   ): void {
     const { hour, minute } = parseHhMm(p.startTime);
     const start = localWallTime(p.year, p.month, p.dom, hour, minute);
-    const key = `${p.optionId}|${start.toISOString()}`;
+    const key = start.toISOString();
     if (desired.has(key) && !p.overwrite) return;
 
     const end = tour.durationMinutesFrom
@@ -279,7 +245,6 @@ export class AvailabilityMaterializerService {
     const utcCutoffAt = new Date(start.getTime() - tour.bookingCutoffMinutes * 60_000);
 
     desired.set(key, {
-      optionId: p.optionId,
       localDateTimeStart: start,
       localDateTimeEnd: end,
       capacity: p.capacity,
@@ -307,7 +272,6 @@ export class AvailabilityMaterializerService {
       },
       select: {
         id: true,
-        optionId: true,
         localDateTimeStart: true,
         capacity: true,
         vacancies: true,
@@ -315,10 +279,7 @@ export class AvailabilityMaterializerService {
       },
     });
     const existingByKey = new Map(
-      existing.map((e) => [
-        `${e.optionId}|${e.localDateTimeStart.toISOString()}`,
-        e,
-      ]),
+      existing.map((e) => [e.localDateTimeStart.toISOString(), e]),
     );
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
@@ -337,7 +298,6 @@ export class AvailabilityMaterializerService {
         });
         creates.push({
           tourId,
-          optionId: want.optionId,
           localDateTimeStart: want.localDateTimeStart,
           localDateTimeEnd: want.localDateTimeEnd,
           capacity: want.capacity,
@@ -381,7 +341,7 @@ export class AvailabilityMaterializerService {
     const orphanIds = existing
       .filter(
         (e) =>
-          !desired.has(`${e.optionId}|${e.localDateTimeStart.toISOString()}`) &&
+          !desired.has(e.localDateTimeStart.toISOString()) &&
           e.localDateTimeStart >= fromDate &&
           e.localDateTimeStart <= upperBound &&
           e.capacity === e.vacancies &&

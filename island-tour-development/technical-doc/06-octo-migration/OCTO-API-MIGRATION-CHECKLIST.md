@@ -149,11 +149,11 @@ The migration is **complete only when every row below is checked.** Each maps to
 | Cancel Booking | `POST` | `/bookings/{uuid}/cancel` | §5.4 | [ ] |
 | Extend Booking | `POST` | `/bookings/{uuid}/extend` | §5.5 | [ ] |
 | Get Pickup Locations | `GET` | `/bookings/{uuid}/pickupLocations` | §5C | [ ] |
-| Create Notification Subscription | `POST` | `/notifications/subscriptions` | §5D | [ ] |
-| Get Notification Subscription | `GET` | `/notifications/subscriptions/{id}` | §5D | [ ] |
-| List Notification Subscriptions | `GET` | `/notifications/subscriptions` | §5D | [ ] |
-| Update Notification Subscription | `PATCH` | `/notifications/subscriptions/{id}` | §5D | [ ] |
-| Delete Notification Subscription | `DELETE` | `/notifications/subscriptions/{id}` | §5D | [ ] |
+| Create Notification Subscription | `POST` | `/notifications/subscriptions` | §5D | [x] |
+| Get Notification Subscription | `GET` | `/notifications/subscriptions/{id}` | §5D | [x] |
+| List Notification Subscriptions | `GET` | `/notifications/subscriptions` | §5D | [x] |
+| Update Notification Subscription | `PATCH` | `/notifications/subscriptions/{id}` | §5D | [x] |
+| Delete Notification Subscription | `DELETE` | `/notifications/subscriptions/{id}` | §5D | [x] |
 | Outbound webhook delivery (POST to subscriber) | `POST` | subscriber `url` | §5D | [ ] |
 
 ### Capabilities
@@ -164,7 +164,7 @@ The migration is **complete only when every row below is checked.** Each maps to
 | `octo/pricing` | §5B | [x] |
 | `octo/pickups` | §5C | [ ] |
 | `octo/dropoffs` | §5C | [ ] |
-| `octo/notifications` (webhooks incl. `AVAILABILITY_UPDATE`) | §5D | [ ] |
+| `octo/notifications` (webhooks incl. `AVAILABILITY_UPDATE`) | §5D | [x] |
 | `octo/promotions` *(draft — defer)* | §5E | [ ] |
 | Core conventions (headers, capabilities negotiation, money, errors) | §2, §6 | [x] |
 
@@ -376,33 +376,35 @@ Gated content fields on Tour/Option/Unit, localized.
 
 ### Subscription endpoints
 
-- [ ] `POST /notifications/subscriptions` — create. Body: `url`, `notificationTypes[]`, `headers?`
-  (custom headers echoed on delivery). Returns the subscription with its `id`.
-- [ ] `GET /notifications/subscriptions` — list (scoped to the caller).
-- [ ] `GET /notifications/subscriptions/{id}` — retrieve one.
-- [ ] `PATCH /notifications/subscriptions/{id}` — update (`url`/`notificationTypes`/`headers`/active).
-- [ ] `DELETE /notifications/subscriptions/{id}` — delete.
-- [ ] Only active when `octo/notifications` is in `Octo-Capabilities`.
+- [x] `POST /notifications/subscriptions` — create. Body: `url`, `notificationTypes[]`, `headers?`
+  (custom headers echoed on delivery). Returns the subscription with its `id` + signing `secret` (once).
+- [x] `GET /notifications/subscriptions` — list (scoped to the caller; operator=own, admin=all).
+- [x] `GET /notifications/subscriptions/{id}` — retrieve one (+ `:id/deliveries` delivery log).
+- [x] `PATCH /notifications/subscriptions/{id}` — update (`url`/`notificationTypes`/`headers`/active).
+- [x] `DELETE /notifications/subscriptions/{id}` — delete.
+- [x] `OctoCapabilitiesMiddleware` applied so `octo/notifications` is echoed in `Octo-Capabilities`.
 
 ### Event types (OCTO `notificationType`)
 
-- [ ] `PRODUCT_UPDATE` — emit when a tour's catalog/content/pricing changes. `data.productId` (=tourId).
-- [ ] `AVAILABILITY_UPDATE` — **emit when departures/inventory change** (booking, cancel, expiry,
-  materialization, capacity edit). `data` carries Availability-Check-compatible params (tourId/optionId/
-  date) so the subscriber re-fetches `POST /availability/`.
-- [ ] `BOOKING_UPDATE` — emit on every booking status transition (ON_HOLD→CONFIRMED/CANCELLED/EXPIRED/
-  REDEEMED). `data.uuid`.
+- [x] `PRODUCT_UPDATE` — type + `emitProductUpdate` supported; `data.productId` (=tourId). ⚠️ Tour
+  publish/edit emit hook deferred to the tours module (Phase 9 frontend alignment).
+- [x] `AVAILABILITY_UPDATE` — **emitted when departures/inventory change** (reserve, cancel, expiry,
+  materialize, schedule/exception/departure edits). `data` carries Availability-Check-compatible params
+  (productId/optionId/localDate) so the subscriber re-fetches `POST /availability/`.
+- [x] `BOOKING_UPDATE` — emitted on booking status transitions (reserve, confirm, payment-confirm,
+  cancel, expire). `data.uuid` = booking `publicRef`.
 
 ### Delivery payload & worker
 
-- [ ] Payload: `{ id, subscriptionId, notificationType, utcCreatedAt, data }`.
-- [ ] BullMQ **delivery worker**: POST to each matching subscription `url` with its custom `headers`;
-  retries with backoff; record `NotificationDelivery` (status/attempts/lastError); dead-letter after N.
-- [ ] **Signing/verification & retry policy** — not specified in the captured docs (open item); add
-  HMAC signature header + documented retry schedule as our convention. **⚠️ D13.**
-- [ ] **Emit hooks**: availability mutations (reserve/cancel/expire/materialize) enqueue
-  `AVAILABILITY_UPDATE`; booking transitions enqueue `BOOKING_UPDATE`; tour publish/edit enqueue
-  `PRODUCT_UPDATE`.
+- [x] Payload: `{ id, subscriptionId, notificationType, utcCreatedAt, data }` (delivery id = notification id).
+- [x] BullMQ **delivery worker** (`notification-delivery` queue): POST to each matching subscription `url`
+  with its custom `headers`; exponential backoff (5 attempts); records `NotificationDelivery`
+  (status/attempts/lastError/deliveredAt); marks `DEAD` on the final failed attempt.
+- [x] **Signing/verification** — `Octo-Signature: sha256=<hmac>` over the raw body with the per-subscription
+  `secret` (stored encrypted at rest); `Octo-Notification-Id` header; `verifyNotification` helper. **D13.**
+- [x] **Emit hooks**: availability mutations (reserve/cancel/expire/materialize/schedule/exception/departure)
+  enqueue `AVAILABILITY_UPDATE`; booking transitions enqueue `BOOKING_UPDATE`. (Tour publish/edit
+  `PRODUCT_UPDATE` hook deferred — see above.)
 
 > Schema: `NotificationSubscription` / `NotificationDelivery` with `notificationTypes` = the three OCTO
 > types — see [`OCTO-PRISMA-SCHEMA-DESIGN.md`](./OCTO-PRISMA-SCHEMA-DESIGN.md) §10.

@@ -4,11 +4,10 @@
 
 // Recurring availability rule (operator-authored)
 model AvailabilitySchedule {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   tourId        String
-  optionId      String? // null = applies to all options
-  weekdays      Int[]    @default([]) // 0=Sun … 6=Sat
-  startTimes    String[] @default([]) // ["09:00","13:00"]
+  weekdays      Int[]     @default([]) // 0=Sun … 6=Sat
+  startTimes    String[]  @default([]) // ["09:00","13:00"]
   capacity      Int
   seasonStart   DateTime? @db.Date
   seasonEnd     DateTime? @db.Date
@@ -18,8 +17,7 @@ model AvailabilitySchedule {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour   Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  option TourOption? @relation(fields: [optionId], references: [id])
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
   @@index([tourId])
   @@map("availability_schedules")
@@ -29,7 +27,6 @@ model AvailabilitySchedule {
 model AvailabilityException {
   id            String                    @id @default(uuid())
   tourId        String
-  optionId      String?
   date          DateTime                  @db.Date
   type          AvailabilityExceptionType
   startTime     String? // for EXTRA_DEPARTURE / TIME_OVERRIDE
@@ -46,9 +43,8 @@ model AvailabilityException {
 // Materialized bookable slot (= OCTO Availability). Inventory source of truth.
 // vacancies is the atomic counter; a DB CHECK (vacancies >= 0) is the overbooking backstop.
 model Departure {
-  id       String @id @default(uuid())
-  tourId   String
-  optionId String
+  id     String @id @default(uuid())
+  tourId String
 
   localDateTimeStart DateTime
   localDateTimeEnd   DateTime?
@@ -68,11 +64,10 @@ model Departure {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour     Tour       @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  option   TourOption @relation(fields: [optionId], references: [id])
+  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
-  @@unique([tourId, optionId, localDateTimeStart])
+  @@unique([tourId, localDateTimeStart])
   @@index([tourId, localDateTimeStart])
   @@index([status])
   @@map("departures")

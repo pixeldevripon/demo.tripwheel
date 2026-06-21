@@ -178,7 +178,7 @@ enum PricingModel {
 }
 
 // Whole-unit (asset-priced) tour types — used when pricingModel = UNIT.
-// (Renamed from the old `UnitType`; `UnitType` now means the OCTO participant unit.)
+// Asset-priced tour types (when pricingModel = UNIT — whole boat/vehicle/package).
 enum WholeUnitType {
   GROUP
   BOAT
@@ -223,19 +223,6 @@ enum TourBookingType {
 enum OctoAvailabilityType {
   START_TIME
   OPENING_HOURS
-}
-
-// OCTO participant unit type (one ticket buyer category).
-enum UnitType {
-  ADULT
-  YOUTH
-  CHILD
-  INFANT
-  FAMILY
-  SENIOR
-  STUDENT
-  MILITARY
-  OTHER
 }
 
 enum DeliveryFormat {

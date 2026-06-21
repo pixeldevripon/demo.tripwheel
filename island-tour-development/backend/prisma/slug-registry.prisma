@@ -22,13 +22,13 @@ model SlugRegistry {
 // 301 redirect table — a slug rename writes a row here (master SLUG-REGISTRY §2.3).
 // Resolution checks redirects when a slug 404s; chains are collapsed to the final target.
 model SlugRedirect {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   destinationSlug String
   fromSlug        String
   toSlug          String
   entityType      SlugEntityType
-  statusCode      Int      @default(301)
-  createdAt       DateTime @default(now())
+  statusCode      Int            @default(301)
+  createdAt       DateTime       @default(now())
 
   @@unique([destinationSlug, fromSlug])
   @@index([destinationSlug, fromSlug])

@@ -21,6 +21,8 @@ import { AvailabilityModule } from '@/availability/availability.module';
 import { BookingsModule } from '@/bookings/bookings.module';
 import { PaymentsModule } from '@/payments/payments.module';
 import { TrackingModule } from '@/tracking/tracking.module';
+import { ReviewsModule } from '@/reviews/reviews.module';
+import { NotificationsModule } from '@/notifications/notifications.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -47,6 +49,8 @@ import { TrackingModule } from '@/tracking/tracking.module';
     BookingsModule,
     PaymentsModule,
     TrackingModule,
+    ReviewsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

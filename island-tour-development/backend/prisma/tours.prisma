@@ -1,6 +1,7 @@
-// Tours domain — Tour (= OCTO product) and all related child models.
-// Operators create tours; admins can moderate. OCTO hierarchy: Tour → TourOption → TourUnit.
-// Publish blocks: <5 images, no hero, overview empty, highlights <3.
+// Tours domain — Tour and all related child models.
+// Operators create tours; admins can moderate. Per-traveler pricing is a flat list of
+// TourAgeBand rows on the Tour (Adult / Child / Infant …). Publish blocks: <5 images,
+// no hero, overview empty, highlights <3.
 
 model Tour {
   id            String @id @default(uuid())
@@ -36,25 +37,25 @@ model Tour {
   durationMinutesTo    Int?
   pickupModel          PickupModel  @default(NONE)
   pickupRequired       Boolean      @default(false) // → OCTO option.pickupRequired
-  minPartySize         Int          @default(1) // → option.restrictions.minUnits
-  maxPartySize         Int? // → option.restrictions.maxUnits
+  minPartySize         Int          @default(1) // minimum travelers per booking
+  maxPartySize         Int? // maximum travelers per booking
   bookingCutoffMinutes Int          @default(120) // → availability.utcCutoffAt
   cancellationHours    Int          @default(48) // enum-bound [24,48,72,168]
   paymentModel         PaymentModel @default(OPERATOR_LINK)
   depositPct           Decimal      @default(20.0) @db.Decimal(4, 1) // 20–30 in 2.5 steps (tier-driven)
 
   // ── Commercial engine (master) ──
-  commissionTier   Decimal          @default(20.0) @db.Decimal(4, 1) // 20/22.5/25/27.5/30 (+35 spotlight)
-  tierKey          TierKey          @default(standard)
-  tierRank         Int              @default(5) @db.SmallInt // denormalized; never client-written
-  tierLockedUntil  DateTime?
-  qualityScore     Decimal          @default(0) @db.Decimal(6, 2) // nightly job
-  eligibilityState EligibilityState @default(LOCKED)
-  graceStartedAt   DateTime? // G7 — when the 30-day eligibility grace began
-  graceMetric      String? // which metric failed (rating | review_count | cancellation_rate)
-  isBookable       Boolean          @default(false) // ≥1 AVAILABLE departure ≤30d (nightly)
+  commissionTier          Decimal          @default(20.0) @db.Decimal(4, 1) // 20/22.5/25/27.5/30 (+35 spotlight)
+  tierKey                 TierKey          @default(standard)
+  tierRank                Int              @default(5) @db.SmallInt // denormalized; never client-written
+  tierLockedUntil         DateTime?
+  qualityScore            Decimal          @default(0) @db.Decimal(6, 2) // nightly job
+  eligibilityState        EligibilityState @default(LOCKED)
+  graceStartedAt          DateTime? // G7 — when the 30-day eligibility grace began
+  graceMetric             String? // which metric failed (rating | review_count | cancellation_rate)
+  isBookable              Boolean          @default(false) // ≥1 AVAILABLE departure ≤30d (nightly)
   availabilityConfirmedAt DateTime? // G8 — operator "availability is current" freshness nudge
-  firstPublishedAt DateTime?
+  firstPublishedAt        DateTime?
 
   // ── SEO / Content overrides ──
   h1Override      String?
@@ -66,7 +67,7 @@ model Tour {
   departureCity   String?
 
   // ── Audience / accessibility flags (master E.3 — power filters, badges, JSON-LD) ──
-  minAgeYears          Int? // tour-level minimum age (distinct from per-unit TourUnit.minAge)
+  minAgeYears          Int? // tour-level minimum age (distinct from per-band TourAgeBand.minAge)
   fitnessLevel         FitnessLevel?
   bookingType          TourBookingType? // private | shared
   weatherDependent     Boolean          @default(false)
@@ -95,9 +96,9 @@ model Tour {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  operator           Operator               @relation(fields: [operatorId], references: [id])
-  destination        Destination            @relation(fields: [destinationId], references: [id])
-  options            TourOption[] // ≥1 (one DEFAULT)
+  operator           Operator                @relation(fields: [operatorId], references: [id])
+  destination        Destination             @relation(fields: [destinationId], references: [id])
+  ageBands           TourAgeBand[] // flat per-traveler pricing (Adult / Child / Infant …)
   categories         TourCategory[] // 1+ categories, exactly one isPrimary
   hubs               TourHub[] // 0–n hubs
   attributes         TourAttribute[] // V2 §7 — filterable key-value properties
@@ -130,67 +131,34 @@ model Tour {
   @@map("tours")
 }
 
-// ── TourOption (= OCTO option) ────────────────────────────────────────────────
-// Every tour has ≥1 option; one is the DEFAULT. Units belong to an option.
-model TourOption {
-  id           String  @id @default(uuid())
-  tourId       String
-  isDefault    Boolean @default(false) // OCTO option.default
-  internalName String  @default("Standard")
-  reference    String?
+// ── TourAgeBand — flat per-traveler pricing ───────────────────────────────────
+// A simple priced age band (Adult / Child (4-12) / Infant …). One booking line item
+// per traveler references the band it was sold at. Replaces the OCTO option/unit
+// hierarchy — no options, no per-unit restrictions, one seat per traveler.
+model TourAgeBand {
+  id     String @id @default(uuid())
+  tourId String
 
-  // OCTO option fields (some derived from Tour, persisted for multi-option futures)
-  availabilityLocalStartTimes String[] @default([]) // ["09:00","13:00"]
-  cancellationCutoffAmount    Int      @default(48)
-  cancellationCutoffUnit      String   @default("hour") // hour|minute|day
-  requiredContactFields       String[] @default(["firstName", "lastName", "emailAddress"])
-  minUnits                    Int? // restrictions.minUnits (default from tour.minPartySize)
-  maxUnits                    Int? // restrictions.maxUnits
+  label  String // 'Adult', 'Child (4-12)', 'Infant'
+  minAge Int? // inclusive lower bound (null = no lower bound)
+  maxAge Int? // inclusive upper bound (null = no upper bound)
 
-  isActive  Boolean  @default(true)
+  // Pricing (Decimal in DB)
+  price         Decimal  @db.Decimal(10, 2) // retail price per traveler
+  priceOriginal Decimal? @db.Decimal(10, 2) // optional pre-discount/strikethrough
+  priceNet      Decimal? @db.Decimal(10, 2) // optional operator net
+
+  isDefault    Boolean @default(false) // the band the UI/booking defaults to (e.g. Adult)
+  displayOrder Int     @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour       Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  units      TourUnit[]
-  schedules  AvailabilitySchedule[]
-  departures Departure[]
-  bookings   Booking[]
+  tour         Tour              @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookingItems BookingUnitItem[]
 
   @@index([tourId])
-  @@map("tour_options")
-}
-
-// ── TourUnit (= OCTO unit; replaces TourAgeBand) ──────────────────────────────
-model TourUnit {
-  id           String   @id @default(uuid())
-  optionId     String
-  type         UnitType // ADULT | CHILD | INFANT | … (OCTO)
-  internalName String // 'Adult', 'Child (4-12)'
-  reference    String?
-
-  // OCTO unit.restrictions
-  minAge        Int?
-  maxAge        Int?
-  idRequired    Boolean  @default(false)
-  minQuantity   Int?
-  maxQuantity   Int?
-  paxCount      Int      @default(1) // headcount consumed toward capacity
-  accompaniedBy String[] @default([]) // unit types that must accompany (e.g. ["ADULT"])
-
-  // Pricing (Decimal in DB → OCTO Pricing at boundary)
-  priceRetail   Decimal  @db.Decimal(10, 2)
-  priceOriginal Decimal? @db.Decimal(10, 2) // pre-discount (OCTO original)
-  priceNet      Decimal? @db.Decimal(10, 2) // operator net
-  taxes         Json?    @default("[]") // [{ name, retail, original?, net? }]
-
-  displayOrder Int @default(0)
-
-  option    TourOption        @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  unitItems BookingUnitItem[]
-
-  @@index([optionId])
-  @@map("tour_units")
+  @@map("tour_age_bands")
 }
 
 // ── Tour ↔ Category (many-to-many, V2 §4) ─────────────────────────────────────

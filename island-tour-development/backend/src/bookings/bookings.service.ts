@@ -21,6 +21,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { TrackingService } from '@/tracking/tracking.service';
+import { NotificationsService } from '@/notifications/notifications.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { dateKey, localNow } from '@/common/utils/timezone.util';
 import { eurFxRate } from '@/common/utils/fx.util';
@@ -56,7 +57,38 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly tracking: TrackingService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /** Fire the inventory + booking-status webhooks for a booking (fire-and-forget). */
+  private emitBookingEvents(
+    booking: Pick<
+      Booking,
+      'tourId' | 'optionId' | 'localDate' | 'operatorId' | 'publicRef'
+    >,
+    opts: { availability: boolean } = { availability: true },
+  ): void {
+    // A side-effect must never break the originating write — never let it throw.
+    try {
+      if (opts.availability) {
+        this.notifications.emitAvailabilityUpdate({
+          tourId: booking.tourId,
+          optionId: booking.optionId,
+          localDate: dateKey(booking.localDate),
+          operatorId: booking.operatorId,
+        });
+      }
+      this.notifications.emitBookingUpdate({
+        uuid: booking.publicRef,
+        operatorId: booking.operatorId,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to emit booking events for ${booking.publicRef}`,
+        err as Error,
+      );
+    }
+  }
 
   // ════════════════════════════════════════════════════════════════════════
   // Reserve (OCTO step 1) — atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL)
@@ -168,6 +200,9 @@ export class BookingsService {
       `Booking ${created.displayRef} reserved (${created.status}, ${seats} seats) tour ${dto.tourId}`,
     );
 
+    // Seats were claimed → inventory changed; the booking now exists.
+    this.emitBookingEvents(created);
+
     // OPERATOR_FULL is born CONFIRMED with no charge (rule #21) → fire conversion now.
     if (operatorFull) {
       const finalized = await this.finalizeConfirmation(created);
@@ -216,6 +251,8 @@ export class BookingsService {
     });
     this.logger.log(`Booking ${updated.displayRef} confirmed`);
     const finalized = await this.finalizeConfirmation(updated);
+    // Status changed; seats unchanged (already held at reserve).
+    this.emitBookingEvents(finalized, { availability: false });
     return mapBooking(finalized);
   }
 
@@ -249,6 +286,7 @@ export class BookingsService {
     }
 
     let current = booking;
+    const transitioned = booking.status === BookingStatus.ON_HOLD;
     if (booking.status === BookingStatus.ON_HOLD) {
       current = await this.prisma.booking.update({
         where: { id: booking.id },
@@ -278,7 +316,11 @@ export class BookingsService {
       });
     }
 
-    await this.finalizeConfirmation(current);
+    const finalized = await this.finalizeConfirmation(current);
+    if (transitioned) {
+      // Status changed via payment; seats unchanged (already held at reserve).
+      this.emitBookingEvents(finalized, { availability: false });
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -434,6 +476,8 @@ export class BookingsService {
       });
     });
     this.logger.log(`Booking ${updated.displayRef} cancelled (refund ${refund})`);
+    // Seats released back to inventory + booking status changed.
+    this.emitBookingEvents(updated, { availability: !!booking.departureId });
     return mapBooking(updated);
   }
 
@@ -509,6 +553,10 @@ export class BookingsService {
         id: true,
         departureId: true,
         tourId: true,
+        optionId: true,
+        localDate: true,
+        operatorId: true,
+        publicRef: true,
         _count: { select: { unitItems: true } },
       },
     });
@@ -535,6 +583,8 @@ export class BookingsService {
           });
         });
         expired++;
+        // Seats released back to inventory + booking expired.
+        this.emitBookingEvents(b, { availability: !!b.departureId });
       } catch (err) {
         this.logger.error(`Failed to expire booking ${b.id}`, err as Error);
       }

@@ -1,13 +1,12 @@
 // Bookings domain — OCTO reserve → confirm lifecycle.
 // Booking holds inventory (ON_HOLD + utcExpiresAt); confirm commits; expiry/cancel release.
-// One BookingUnitItem per traveler (= OCTO unit item).
+// One BookingUnitItem per traveler, each priced at the TourAgeBand it was sold at.
 
 model Booking {
   id   String @id @default(uuid())
   uuid String @unique @default(uuid()) // OCTO uuid (client-supplied; idempotency key)
 
   tourId      String
-  optionId    String
   departureId String? // null when freesale
   operatorId  String
   userId      String? // guest auto-created; null until known
@@ -94,7 +93,6 @@ model Booking {
   updatedAt DateTime @updatedAt
 
   tour           Tour              @relation(fields: [tourId], references: [id])
-  option         TourOption        @relation(fields: [optionId], references: [id])
   departure      Departure?        @relation(fields: [departureId], references: [id])
   operator       Operator          @relation(fields: [operatorId], references: [id])
   user           User?             @relation(fields: [userId], references: [id])
@@ -113,12 +111,12 @@ model Booking {
   @@map("bookings")
 }
 
-// OCTO UnitItem — one per traveler/ticket
+// One per traveler/ticket, priced at the age band it was sold at.
 model BookingUnitItem {
   id        String @id @default(uuid())
   uuid      String @unique @default(uuid())
   bookingId String
-  unitId    String
+  ageBandId String
 
   status        BookingStatus @default(ON_HOLD)
   utcRedeemedAt DateTime?
@@ -136,8 +134,8 @@ model BookingUnitItem {
   ticketDeliveryFormat DeliveryFormat?
   ticketUrl            String?
 
-  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  unit    TourUnit @relation(fields: [unitId], references: [id])
+  booking Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ageBand TourAgeBand @relation(fields: [ageBandId], references: [id])
 
   @@index([bookingId])
   @@map("booking_unit_items")

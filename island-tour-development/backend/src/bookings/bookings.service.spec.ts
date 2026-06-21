@@ -138,6 +138,7 @@ describe('BookingsService', () => {
   let m: any;
   let mail: any;
   let tracking: any;
+  let notifications: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -145,7 +146,11 @@ describe('BookingsService', () => {
     m = prisma;
     mail = { sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined) };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
-    svc = new BookingsService(prisma, mail, tracking);
+    notifications = {
+      emitAvailabilityUpdate: jest.fn(),
+      emitBookingUpdate: jest.fn(),
+    };
+    svc = new BookingsService(prisma, mail, tracking, notifications);
   });
 
   describe('reserve', () => {
@@ -314,7 +319,16 @@ describe('BookingsService', () => {
   describe('expireStaleHolds', () => {
     it('expires lapsed holds and restores their seats', async () => {
       m.booking.findMany.mockResolvedValue([
-        { id: 'b1', departureId: 'dep1', tourId: 't1', _count: { unitItems: 2 } },
+        {
+          id: 'b1',
+          departureId: 'dep1',
+          tourId: 't1',
+          optionId: 'opt1',
+          localDate: new Date('2030-06-05T00:00:00.000Z'),
+          operatorId: 'op1',
+          publicRef: 'p1',
+          _count: { unitItems: 2 },
+        },
       ]);
       m.tour.findUnique.mockResolvedValue({ timeZone: 'America/Curacao' });
       m.departure.findUnique.mockResolvedValue({

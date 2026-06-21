@@ -51,12 +51,18 @@ function departureRow(over: Record<string, unknown> = {}) {
 describe('AvailabilityService', () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let materializer: { materializeTour: jest.Mock };
+  let notifications: { emitAvailabilityUpdate: jest.Mock };
   let svc: AvailabilityService;
 
   beforeEach(() => {
     prisma = mockPrisma();
     materializer = { materializeTour: jest.fn() };
-    svc = new AvailabilityService(prisma as never, materializer as never);
+    notifications = { emitAvailabilityUpdate: jest.fn() };
+    svc = new AvailabilityService(
+      prisma as never,
+      materializer as never,
+      notifications as never,
+    );
   });
 
   const createDto = {

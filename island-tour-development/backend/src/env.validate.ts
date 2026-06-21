@@ -46,6 +46,14 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   SMTP_USER: () => null,
   SMTP_PASS: () => null,
   MAIL_FROM: () => null,
+  // Payments & tracking (Phase 6). Stripe keys live in the DB, not here.
+  FX_USD_TO_EUR: (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? null : 'must be a positive number (e.g. 0.92)';
+  },
+  META_PIXEL_ID: () => null,
+  META_CAPI_TOKEN: () => null,
+  META_CAPI_TEST_CODE: () => null,
 };
 
 // SMTP vars that must all be present together or all absent

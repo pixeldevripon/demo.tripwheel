@@ -286,7 +286,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [ ] LD8 Mobile breadcrumbs on tour pages, hidden on destination
 - [ ] LD9 Banned words list, platform-wide
 - [x] LD10 Real operator names in spec examples only — N/A code
-- [ ] LD11 Provider Rating cold-start (<3 native AND operator ≥10 @ ≥4.0) — ⚠️ operator aggregates exist; fallback logic not built
+- [x] LD11 Provider Rating cold-start (<3 native AND operator ≥10 @ ≥4.0) — `reviews/review-display.util.resolveRatingSource` + `GET /reviews/summary`
 - [ ] LD12 Total price before checkout, fees itemized
 - [ ] LD13 Meta row rating · badge · location; `is_locals_favourite` boolean — field not present
 - [ ] LD14 Operator visibility "Supplied by {operator}" only
@@ -304,10 +304,10 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [ ] LD26 Payment methods equal radio list, card default; no payment section on operator_full
 - [x] LD27 Critical-constraints callout — dropped (no action)
 - [x] LD28 AI review summary — deferred to V2 (no action)
-- [ ] LD29 Review preview module, Tier 1+2 at launch
-- [ ] LD30 Reviews sort hidden <10, filters hidden <20, newest first
-- [ ] LD31 Star distribution chart, renders at ≥3 reviews
-- [ ] LD32 Review translation (Google Translate API + show-original)
+- [ ] LD29 Review preview module, Tier 1+2 at launch — frontend
+- [ ] LD30 Reviews sort hidden <10, filters hidden <20, newest first — backend: sort modes + newest default + counts (`GET /reviews`); hide-thresholds are frontend
+- [ ] LD31 Star distribution chart, renders at ≥3 reviews — backend: `distribution[]` in `GET /reviews/summary`; chart render is frontend
+- [ ] LD32 Review translation (Google Translate API + show-original) — backend: per-locale `ReviewTranslation` store + locale-aware read; auto-translate worker deferred to Phase 9
 - [ ] LD33 Related Tours two rows, dynamic titles, `related_tour_click` event
 
 ---
@@ -357,7 +357,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### E.3 tours — computed
 
 - [x] aggregate_rating, review_count, booking_count(+today), spots_remaining, last_booked_at — cached fields
-- [ ] rating_distribution[], photo_review_count
+- [ ] rating_distribution[], photo_review_count — rating_distribution computed live in `GET /reviews/summary`; `photo_review_count` not yet exposed
 - [ ] quality_score (nightly)
 
 ### E.3 tours — commercial tier
@@ -379,8 +379,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### E.7 reviews
 
-- [x] booking-gated FK, rating, comment, is_approved, tour/operator/user — `reviews.prisma`
-- [ ] reviewer first+last initial display, reviewer_type, travel month/year, per-locale text + translation cache, photos[], helpful_count, operator_response, moderation_status
+- [x] booking-gated FK, rating, comment, is_approved, tour/operator/user — `reviews.prisma` + `reviews.service` (ownership + completed-experience gate, one per booking)
+- [x] reviewer first+last initial display, reviewer_type, travel month/year, per-locale text + translation cache, photos[], helpful_count, operator_response, moderation_status — `reviews.service.create`/`respond`/`markHelpful` + `ReviewTranslation` (reviewer_type implicit: all isVerified)
 
 ### E.8 bookings
 
