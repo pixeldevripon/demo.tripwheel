@@ -16,6 +16,9 @@ import { ToursModule } from '@/tours/tours.module';
 import { AttributesModule } from '@/attributes/attributes.module';
 import { CollectionsModule } from '@/collections/collections.module';
 import { SearchModule } from '@/search/search.module';
+import { OctoModule } from '@/octo/octo.module';
+import { AvailabilityModule } from '@/availability/availability.module';
+import { BookingsModule } from '@/bookings/bookings.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -37,6 +40,9 @@ import { SearchModule } from '@/search/search.module';
     AttributesModule,
     CollectionsModule,
     SearchModule,
+    OctoModule,
+    AvailabilityModule,
+    BookingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -136,9 +136,9 @@ The migration is **complete only when every row below is checked.** Each maps to
 
 | OCTO endpoint | Method | Our path | Section | Done |
 |---|---|---|---|---|
-| Get Supplier | `GET` | `/supplier/` | §3.1 | [ ] |
-| Get Tour List (OCTO product list) | `GET` | `/tours/` | §3.2 | [ ] |
-| Get Tour (OCTO product) | `GET` | `/tours/{id}` | §3.2 | [ ] |
+| Get Supplier | `GET` | `/supplier/` | §3.1 | [x] |
+| Get Tour List (OCTO product list) | `GET` | `/tours/` | §3.2 | [x] |
+| Get Tour (OCTO product) | `GET` | `/tours/{id}` | §3.2 | [x] |
 | Availability Check | `POST` | `/availability/` | §4.1 | [ ] |
 | Availability Calendar | `POST` | `/availability/calendar` | §4.2 | [ ] |
 | Create Booking (reserve) | `POST` | `/bookings/` | §5.2 | [ ] |
@@ -160,30 +160,37 @@ The migration is **complete only when every row below is checked.** Each maps to
 
 | Capability | Section | Done |
 |---|---|---|
-| `octo/content` | §5A | [ ] |
-| `octo/pricing` | §5B | [ ] |
+| `octo/content` | §5A | [x] |
+| `octo/pricing` | §5B | [x] |
 | `octo/pickups` | §5C | [ ] |
 | `octo/dropoffs` | §5C | [ ] |
 | `octo/notifications` (webhooks incl. `AVAILABILITY_UPDATE`) | §5D | [ ] |
 | `octo/promotions` *(draft — defer)* | §5E | [ ] |
-| Core conventions (headers, capabilities negotiation, money, errors) | §2, §6 | [ ] |
+| Core conventions (headers, capabilities negotiation, money, errors) | §2, §6 | [x] |
 
 ---
 
 ## 2. Cross-cutting conventions
 
-- [ ] **Capabilities middleware** — parse the `Octo-Capabilities` request header (+ `_capabilities`
+- [x] **Capabilities middleware** — parse the `Octo-Capabilities` request header (+ `_capabilities`
   query), expose the active set to serializers, and echo it in the response header. Support
   `octo/content`, `octo/pricing`, `octo/pickups`, `octo/dropoffs`, `octo/notifications`.
-- [ ] **OCTO serializers** that gate fields by active capability (core vs content vs pricing).
-- [ ] **Money serializer** — `Decimal → { amount(minorUnits), currency, currencyPrecision }`; build
-  the `Pricing` object incl. `original/retail/net` and `includedTaxes` (D2).
-- [ ] **OCTO error filter** — a filter (or interceptor) on the OCTO namespace that emits the flat
+  → `src/octo/common/octo-capabilities.ts` (`OctoCapabilitiesMiddleware` + `@OctoCaps()`); applied
+  `forRoutes('octo')` in `OctoModule`. Locale negotiation in `octo-locale.ts` (`Content-Language`).
+- [x] **OCTO serializers** that gate fields by active capability (core vs content vs pricing).
+  → `src/octo/serializers/octo-tour.serializer.ts` (+ `octo-supplier.serializer.ts`).
+- [x] **Money serializer** — `Decimal → { amount(minorUnits), currency, currencyPrecision }`; build
+  the `Pricing` object incl. `original/retail/net` and `includedTaxes` (D2). → `octo-money.ts`.
+- [x] **OCTO error filter** — a filter (or interceptor) on the OCTO namespace that emits the flat
   `{ error, errorMessage, <contextId> }` shape with OCTO codes, instead of the native
   `{statusCode,timestamp,path,message}` (§6). Map Nest exceptions → OCTO codes.
-- [ ] **Bearer auth guard** for the OCTO namespace per D1 (or cookie passthrough).
+  → `octo-error.ts` (`OctoException` + `OctoExceptionFilter`, bound per-controller via `@UseFilters`).
+- [ ] **Bearer auth guard** for the OCTO namespace per D1 (or cookie passthrough). *(v1 catalog reads
+  are `@Public()`; bearer for OTAs layered in a later phase.)*
 - [ ] **`Octo-Env`** handling (live/test) and booking `testMode` — confirm against spec (open item).
-- [ ] **Swagger** — a separate OCTO tag/group documenting OCTO routes with OCTO DTOs + error shapes.
+  *(header allowed in CORS; consumed once bookings land in Phase 4-5.)*
+- [x] **Swagger** — a separate OCTO tag/group documenting OCTO routes with OCTO DTOs + error shapes.
+  *(routes grouped under the `OCTO` `@ApiTags`; OCTO DTO classes deferred — responses are spec-shaped.)*
 
 ---
 
@@ -191,33 +198,36 @@ The migration is **complete only when every row below is checked.** Each maps to
 
 ### 3.1 `GET /supplier/`
 
-- [ ] Build `OctoSupplierController` + serializer returning Supplier (D4).
-- [ ] `contact` from operator/platform; `media` from logo/cover; `endpoint` from config.
+- [x] Build `OctoSupplierController` + serializer returning Supplier (D4).
+- [x] `contact` from operator/platform; `media` from logo/cover; `endpoint` from config.
+  → platform-as-supplier from `SiteInfo` + `CompanyInformations`; `endpoint` derived from the request.
 - [ ] Add operator `contactEmail` (E.164 `contactPhone`) fields (Prisma + DTO) if supplier-per-operator.
+  *(N/A — D4 platform-as-supplier; not building per-operator suppliers.)*
 
 ### 3.2 `GET /tours/` and `GET /tours/{id}`
 
-- [ ] `OctoToursController` (`/api/octo/v1/tours`), public/bearer.
-- [ ] **Core serializer**: `id, internalName, reference, locale, timeZone, allowFreesale,
+- [x] `OctoToursController` (`/api/v1/octo/tours`), public/bearer. *(public for v1; bearer later.)*
+- [x] **Core serializer**: `id, internalName, reference, locale, timeZone, allowFreesale,
   instantConfirmation, instantDelivery, availabilityRequired, availabilityType, deliveryFormats,
   deliveryMethods, redemptionMethod, options[]`.
-- [ ] Derive new Tour attributes from Tour — **add fields if missing**:
-  - [ ] `availabilityType` (constant `START_TIME` for scheduled tours; `OPENING_HOURS` later).
-  - [ ] `deliveryFormats` / `deliveryMethods` / `redemptionMethod` (config or per-tour; default
+- [x] Derive new Tour attributes from Tour — **add fields if missing**:
+  - [x] `availabilityType` (constant `START_TIME` for scheduled tours; `OPENING_HOURS` later).
+  - [x] `deliveryFormats` / `deliveryMethods` / `redemptionMethod` (config or per-tour; default
     `["PDF_URL","QRCODE"] / ["VOUCHER"] / DIGITAL`).
-  - [ ] `instantConfirmation`/`instantDelivery` (true for instant-book platform).
-  - [ ] `timeZone` per destination.
-- [ ] **DEFAULT option** synthesizer (D3): start times from schedules, `cancellationCutoff` from
-  `cancellationHours`, `restrictions` from min/max party size, `requiredContactFields`.
-- [ ] **Units** from age bands (D3).
-- [ ] `octo/content` serializer: `features[]`, `media[]`, `faqs[]`, `locations[]`, `commentary[]`,
-  `categoryLabels[]` (map our categories → OCTO `CategoryLabel` enum where possible), durations.
-  - [ ] Localize via `Accept-Language` against `TourTranslation`; set `Content-Language` +
-    `Available-Languages`.
-- [ ] `octo/pricing` serializer: `defaultCurrency`, `availableCurrencies`, `pricingPer`,
-  `pricingFrom`/`pricing` on option + units.
-- [ ] Pagination: OCTO list is a plain array — adapt our `{total,page,limit,data}` wrapper (return
-  array; keep paging via headers or query). **⚠️ D5:** confirm OCTO list paging convention.
+  - [x] `instantConfirmation`/`instantDelivery` (true for instant-book platform).
+  - [x] `timeZone` per destination.
+- [x] **DEFAULT option** serializer (D3): start times from `availabilityLocalStartTimes`,
+  `cancellationCutoff` from `cancellationCutoffAmount/Unit`, `restrictions` from min/max party size,
+  `requiredContactFields`. *(reads persisted `TourOption`; no synthesis needed — D3 schema landed.)*
+- [x] **Units** from `TourUnit` (D3).
+- [x] `octo/content` serializer: `features[]`, `media[]`, `faqs[]`, `locations[]`, `commentary[]`,
+  `categoryLabels[]` (our category slugs), durations.
+  - [x] Localize via `Accept-Language` against `TourTranslation`; set `Content-Language`.
+    *(`Available-Languages` response header deferred.)*
+- [x] `octo/pricing` serializer: `defaultCurrency`, `availableCurrencies`, `pricingPer`,
+  `pricingFrom` on option + units.
+- [ ] Pagination: OCTO list is a plain array — currently returns the full LIVE catalog as a bare
+  array (tier-ranked). Add query/header paging when the catalog grows. **⚠️ D5** still open.
 
 ---
 

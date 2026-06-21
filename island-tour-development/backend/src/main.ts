@@ -54,7 +54,16 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    // Octo-* + Accept-Language: OCTO capability negotiation and localization.
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Octo-Capabilities',
+      'Octo-Env',
+      'Accept-Language',
+    ],
+    // Let OTAs read the echoed capability set + negotiated content locale.
+    exposedHeaders: ['Octo-Capabilities', 'Content-Language'],
   });
 
   // ── Global pipes & filters ──────────────────────────────────────────────────
