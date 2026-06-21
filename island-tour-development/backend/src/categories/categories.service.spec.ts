@@ -17,7 +17,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale, SlugEntityType, TripStatus } from '@prisma/client';
+import { Locale, SlugEntityType, TourStatus } from '@prisma/client';
 import { CategoryService } from './categories.service';
 import {
   CategoryQueryDto,
@@ -71,7 +71,7 @@ function createMockPrismaService() {
       createMany: jest.fn(),
       updateMany: jest.fn(),
     },
-    trip: {
+    tour: {
       count: jest.fn(),
     },
     $transaction: jest.fn(),
@@ -635,14 +635,14 @@ describe('CategoryService', () => {
 
     it('throws ConflictException when active non-draft trips are assigned to the category', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
-      prisma.trip.count.mockResolvedValue(2);
+      prisma.tour.count.mockResolvedValue(2);
 
       await expect(service.remove('cat-1', adminId)).rejects.toThrow(ConflictException);
     });
 
     it('soft-deletes category (sets isActive = false) when no trips', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
@@ -658,7 +658,7 @@ describe('CategoryService', () => {
 
     it('sets all slug_registry rows for the category to isActive = false', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
@@ -672,7 +672,7 @@ describe('CategoryService', () => {
 
     it('returns success message on happy path', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
@@ -681,19 +681,19 @@ describe('CategoryService', () => {
       expect(result).toEqual({ message: 'Category deactivated successfully' });
     });
 
-    it('checks trip count using correct TripStatus filter (not: DRAFT, isActive: true)', async () => {
+    it('checks trip count using correct TourStatus filter (not: DRAFT, isActive: true)', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
-      prisma.trip.count.mockResolvedValue(0);
+      prisma.tour.count.mockResolvedValue(0);
       prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('cat-1', adminId);
 
-      expect(prisma.trip.count).toHaveBeenCalledWith({
+      expect(prisma.tour.count).toHaveBeenCalledWith({
         where: {
           categories: { some: { categoryId: 'cat-1' } },
           isActive: true,
-          status: { not: TripStatus.DRAFT },
+          status: { not: TourStatus.DRAFT },
         },
       });
     });

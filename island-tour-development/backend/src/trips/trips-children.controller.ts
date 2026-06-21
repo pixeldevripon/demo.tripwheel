@@ -19,18 +19,14 @@ import {
   AddTourImageDto,
   AddTourLanguageDto,
   CreateTourAddOnDto,
-  CreateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
-  CreateTourScheduleDto,
   UpdateTourAddOnDto,
-  UpdateTourAgeBandDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
-  UpdateTourScheduleDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
@@ -38,37 +34,29 @@ import {
 } from './dto/trip-children.dto';
 import {
   ApiAddAddOnDocs,
-  ApiAddAgeBandDocs,
   ApiAddHighlightDocs,
   ApiAddImageDocs,
   ApiAddInclusionDocs,
   ApiAddLanguageDocs,
-  ApiCreateScheduleDocs,
   ApiDeleteHighlightTranslationDocs,
   ApiDeleteInclusionTranslationDocs,
   ApiDeleteTripTranslationDocs,
   ApiGetAddOnsDocs,
-  ApiGetAgeBandsDocs,
   ApiGetAllTripTranslationsDocs,
   ApiGetHighlightsDocs,
   ApiGetImagesDocs,
   ApiGetInclusionsDocs,
   ApiGetLanguagesDocs,
-  ApiGetSchedulesDocs,
   ApiGetTripTranslationByLocaleDocs,
   ApiRemoveAddOnDocs,
-  ApiRemoveAgeBandDocs,
   ApiRemoveHighlightDocs,
   ApiRemoveImageDocs,
   ApiRemoveInclusionDocs,
   ApiRemoveLanguageDocs,
-  ApiRemoveScheduleDocs,
   ApiUpdateAddOnDocs,
-  ApiUpdateAgeBandDocs,
   ApiUpdateHighlightDocs,
   ApiUpdateImageDocs,
   ApiUpdateInclusionDocs,
-  ApiUpdateScheduleDocs,
   ApiUpsertHighlightTranslationDocs,
   ApiUpsertInclusionTranslationDocs,
   ApiUpsertTripTranslationDocs,
@@ -132,49 +120,6 @@ export class TripChildrenController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.tripChildrenService.removeImage(tripId, imageId, user.id, user.role);
-  }
-
-  // ── Age Bands ─────────────────────────────────────────────────────────────────
-
-  @Get('age-bands')
-  @RequirePermissions(Permission.VIEW_TRIPS)
-  @ApiGetAgeBandsDocs()
-  getAgeBands(@Param('tripId') tripId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tripChildrenService.getAgeBands(tripId, user.id, user.role);
-  }
-
-  @Post('age-bands')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiAddAgeBandDocs()
-  addAgeBand(
-    @Param('tripId') tripId: string,
-    @Body() dto: CreateTourAgeBandDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.addAgeBand(tripId, dto, user.id, user.role);
-  }
-
-  @Patch('age-bands/:bandId')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiUpdateAgeBandDocs()
-  updateAgeBand(
-    @Param('tripId') tripId: string,
-    @Param('bandId') bandId: string,
-    @Body() dto: UpdateTourAgeBandDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.updateAgeBand(tripId, bandId, dto, user.id, user.role);
-  }
-
-  @Delete('age-bands/:bandId')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiRemoveAgeBandDocs()
-  removeAgeBand(
-    @Param('tripId') tripId: string,
-    @Param('bandId') bandId: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.removeAgeBand(tripId, bandId, user.id, user.role);
   }
 
   // ── Add-Ons ───────────────────────────────────────────────────────────────────
@@ -498,48 +443,4 @@ export class TripChildrenController {
     return this.tripChildrenService.deleteTranslation(tripId, locale, user.id, user.role);
   }
 
-  // ── Schedules — @Public GET ───────────────────────────────────────────────────
-
-  @Get('schedules')
-  @Public()
-  @ApiGetSchedulesDocs()
-  getSchedules(@Param('tripId') tripId: string, @Req() req: AuthenticatedRequest) {
-    const requesterId = req.user?.id ?? null;
-    const requesterRole = (req.user?.role ?? null) as Role | null;
-    return this.tripChildrenService.getSchedules(tripId, requesterId, requesterRole);
-  }
-
-  @Post('schedules')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiCreateScheduleDocs()
-  createSchedule(
-    @Param('tripId') tripId: string,
-    @Body() dto: CreateTourScheduleDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.createSchedule(tripId, dto, user.id, user.role);
-  }
-
-  @Patch('schedules/:scheduleId')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiUpdateScheduleDocs()
-  updateSchedule(
-    @Param('tripId') tripId: string,
-    @Param('scheduleId') scheduleId: string,
-    @Body() dto: UpdateTourScheduleDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.updateSchedule(tripId, scheduleId, dto, user.id, user.role);
-  }
-
-  @Delete('schedules/:scheduleId')
-  @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiRemoveScheduleDocs()
-  removeSchedule(
-    @Param('tripId') tripId: string,
-    @Param('scheduleId') scheduleId: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.tripChildrenService.removeSchedule(tripId, scheduleId, user.id, user.role);
-  }
 }

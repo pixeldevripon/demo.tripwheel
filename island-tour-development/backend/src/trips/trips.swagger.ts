@@ -8,7 +8,7 @@ import {
 } from '@/common/dto/error-responses.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { Locale, PricingModel, TripStatus } from '@prisma/client';
+import { Locale, PricingModel, TourStatus } from '@prisma/client';
 import {
   PaginatedTripsResponseDto,
   TripDetailResponseDto,
@@ -105,7 +105,7 @@ export function ApiGetAllTripsDocs() {
 export function ApiGetMyTripsDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Get all trips for the authenticated operator (all statuses)' }),
-    ApiQuery({ name: 'status', required: false, enum: TripStatus }),
+    ApiQuery({ name: 'status', required: false, enum: TourStatus }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     ApiResponse({ status: 200, type: PaginatedTripsResponseDto }),
@@ -252,7 +252,7 @@ export function ApiAdminListTripsDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'List all trips across all operators (admin only)' }),
     ApiQuery({ name: 'search', required: false, type: String }),
-    ApiQuery({ name: 'status', required: false, enum: TripStatus }),
+    ApiQuery({ name: 'status', required: false, enum: TourStatus }),
     ApiQuery({ name: 'operatorId', required: false, type: String }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),

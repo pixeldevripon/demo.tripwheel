@@ -1,6 +1,6 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AddOnUnit, AgeBandType, PickupModel, PricingModel, ScheduleStatus, TripStatus, UnitType } from '@prisma/client';
+import { AddOnUnit, PickupModel, PricingModel, TourStatus, WholeUnitType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -26,7 +26,7 @@ export class TripResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ example: 'Sunset Catamaran Cruise' }) name!: string;
   @ApiProperty({ example: 'sunset-catamaran-cruise' }) slug!: string;
-  @ApiProperty({ enum: TripStatus }) status!: TripStatus;
+  @ApiProperty({ enum: TourStatus }) status!: TourStatus;
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) operatorId!: string;
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) destinationId!: string;
   @ApiProperty({ type: [String], example: ['3fa85f64-…', 'a1b2c3d4-…'], description: 'All category ids (V2 §4)' })
@@ -36,10 +36,10 @@ export class TripResponseDto {
   @ApiProperty({ type: [String], example: [], description: '0–n activity hub ids (discovery tag, no URL impact)' })
   hubIds!: string[];
   @ApiProperty({ enum: PricingModel }) pricingModel!: PricingModel;
-  @ApiPropertyOptional({ enum: UnitType }) unitType!: UnitType | null;
+  @ApiPropertyOptional({ enum: WholeUnitType }) wholeUnitType!: WholeUnitType | null;
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
   @ApiPropertyOptional({ example: '75.00' }) priceFrom!: string | null;
-  @ApiPropertyOptional({ example: 180 }) durationMinutes!: number | null;
+  @ApiPropertyOptional({ example: 180 }) durationMinutesFrom!: number | null;
   @ApiProperty({ enum: PickupModel }) pickupModel!: PickupModel;
   @ApiPropertyOptional({ example: 20 }) maxPartySize!: number | null;
   @ApiProperty({ example: 1 }) minPartySize!: number;
@@ -75,7 +75,6 @@ export class TripHeroImageDto {
 export class TripDetailResponseDto extends TripResponseDto {
   @ApiPropertyOptional({ type: TripHeroImageDto, nullable: true }) heroImage!: TripHeroImageDto | null;
   @ApiProperty({ example: 0 }) imageCount!: number;
-  @ApiProperty({ example: 0 }) scheduleCount!: number;
   @ApiProperty({ example: 0 }) highlightCount!: number;
   @ApiProperty({ example: 0 }) inclusionCount!: number;
   @ApiProperty({ example: 0 }) exclusionCount!: number;
@@ -135,18 +134,6 @@ export class TripExclusionInlineDto {
   @ApiProperty({ example: 'Gratuities' }) label!: string;
 }
 
-export class TripAgeBandInlineDto {
-  @ApiProperty() id!: string;
-  @ApiProperty({ enum: AgeBandType }) bandType!: AgeBandType;
-  @ApiProperty({ example: 'Adults (13+)' }) label!: string;
-  @ApiPropertyOptional({ example: 13 }) minAge!: number | null;
-  @ApiPropertyOptional({ example: 99 }) maxAge!: number | null;
-  @ApiProperty({ example: '75.00' }) price!: string;
-  @ApiProperty({ example: 1 }) minCount!: number;
-  @ApiPropertyOptional({ example: 10 }) maxCount!: number | null;
-  @ApiProperty() displayOrder!: number;
-}
-
 export class TripAddOnInlineDto {
   @ApiProperty() id!: string;
   @ApiProperty({ example: 'Hotel pickup' }) name!: string;
@@ -157,15 +144,6 @@ export class TripAddOnInlineDto {
   @ApiProperty() displayOrder!: number;
 }
 
-export class TripScheduleInlineDto {
-  @ApiProperty() id!: string;
-  @ApiProperty({ example: '2026-07-15' }) startDate!: Date;
-  @ApiPropertyOptional({ example: null }) endDate!: Date | null;
-  @ApiProperty({ example: '09:00' }) startTime!: string;
-  @ApiProperty({ example: 18 }) availableSpots!: number;
-  @ApiProperty({ enum: ScheduleStatus }) status!: ScheduleStatus;
-}
-
 export class TripPublicDetailResponseDto extends TripResponseDto {
   @ApiProperty({ type: TripTranslationInlineDto, nullable: true })
   translation!: TripTranslationInlineDto | null;
@@ -174,10 +152,8 @@ export class TripPublicDetailResponseDto extends TripResponseDto {
   @ApiProperty({ type: [TripHighlightInlineDto] }) highlights!: TripHighlightInlineDto[];
   @ApiProperty({ type: [TripInclusionInlineDto] }) inclusions!: TripInclusionInlineDto[];
   @ApiProperty({ type: [TripExclusionInlineDto] }) exclusions!: TripExclusionInlineDto[];
-  @ApiProperty({ type: [TripAgeBandInlineDto] }) ageBands!: TripAgeBandInlineDto[];
   @ApiProperty({ type: [TripAddOnInlineDto] }) addOns!: TripAddOnInlineDto[];
   @ApiProperty({ type: [String], example: ['en', 'nl'] }) languages!: string[];
-  @ApiProperty({ type: [TripScheduleInlineDto] }) schedules!: TripScheduleInlineDto[];
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
@@ -286,10 +262,10 @@ export class MyTripsQueryDto {
   @MaxLength(100)
   search?: string;
 
-  @ApiPropertyOptional({ enum: TripStatus })
+  @ApiPropertyOptional({ enum: TourStatus })
   @IsOptional()
-  @IsEnum(TripStatus)
-  status?: TripStatus;
+  @IsEnum(TourStatus)
+  status?: TourStatus;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
@@ -314,10 +290,10 @@ export class AdminTripsQueryDto {
   @MaxLength(100)
   search?: string;
 
-  @ApiPropertyOptional({ enum: TripStatus })
+  @ApiPropertyOptional({ enum: TourStatus })
   @IsOptional()
-  @IsEnum(TripStatus)
-  status?: TripStatus;
+  @IsEnum(TourStatus)
+  status?: TourStatus;
 
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Filter by operator ID' })
   @IsOptional()
@@ -382,10 +358,10 @@ export class CreateTripDto {
   @IsEnum(PricingModel)
   pricingModel?: PricingModel;
 
-  @ApiPropertyOptional({ enum: UnitType })
+  @ApiPropertyOptional({ enum: WholeUnitType })
   @IsOptional()
-  @IsEnum(UnitType)
-  unitType?: UnitType;
+  @IsEnum(WholeUnitType)
+  wholeUnitType?: WholeUnitType;
 
   @ApiPropertyOptional({ example: '75.00' })
   @IsOptional()
@@ -397,7 +373,7 @@ export class CreateTripDto {
   @IsInt()
   @Min(1)
   @Max(10080)
-  durationMinutes?: number;
+  durationMinutesFrom?: number;
 
   @ApiPropertyOptional({ enum: PickupModel, default: PickupModel.NONE })
   @IsOptional()
@@ -475,10 +451,10 @@ export class UpdateTripDto {
   @IsEnum(PricingModel)
   pricingModel?: PricingModel;
 
-  @ApiPropertyOptional({ enum: UnitType })
+  @ApiPropertyOptional({ enum: WholeUnitType })
   @IsOptional()
-  @IsEnum(UnitType)
-  unitType?: UnitType;
+  @IsEnum(WholeUnitType)
+  wholeUnitType?: WholeUnitType;
 
   @ApiPropertyOptional({ example: '75.00' })
   @IsOptional()
@@ -490,7 +466,7 @@ export class UpdateTripDto {
   @IsInt()
   @Min(1)
   @Max(10080)
-  durationMinutes?: number;
+  durationMinutesFrom?: number;
 
   @ApiPropertyOptional({ enum: PickupModel })
   @IsOptional()

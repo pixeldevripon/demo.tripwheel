@@ -16,7 +16,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { HubType, Locale, SlugEntityType, TripStatus } from '@prisma/client';
+import { HubType, Locale, SlugEntityType, TourStatus } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -77,7 +77,7 @@ function createMockPrismaService() {
     category: {
       findUnique: jest.fn(),
     },
-    trip: {
+    tour: {
       count: jest.fn(),
     },
   };
@@ -699,7 +699,7 @@ describe('HubService', () => {
     it('throws ConflictException inside transaction when active non-draft trips exist', async () => {
       const { _tx } = prisma;
       prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
-      _tx.trip.count.mockResolvedValue(3);
+      _tx.tour.count.mockResolvedValue(3);
 
       await expect(service.remove('hub-1', 'admin-1')).rejects.toThrow(ConflictException);
     });
@@ -707,7 +707,7 @@ describe('HubService', () => {
     it('soft-deletes hub and updates slugRegistry when no active trips exist', async () => {
       const { _tx } = prisma;
       prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
-      _tx.trip.count.mockResolvedValue(0);
+      _tx.tour.count.mockResolvedValue(0);
       _tx.hub.update.mockResolvedValue({});
       _tx.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
@@ -728,18 +728,18 @@ describe('HubService', () => {
     it('queries trips with correct active non-draft filter inside transaction', async () => {
       const { _tx } = prisma;
       prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
-      _tx.trip.count.mockResolvedValue(0);
+      _tx.tour.count.mockResolvedValue(0);
       _tx.hub.update.mockResolvedValue({});
       _tx.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('hub-1', 'admin-1');
 
-      expect(_tx.trip.count).toHaveBeenCalledWith(
+      expect(_tx.tour.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             hubs: { some: { hubId: 'hub-1' } },
             isActive: true,
-            status: { not: TripStatus.DRAFT },
+            status: { not: TourStatus.DRAFT },
           },
         }),
       );

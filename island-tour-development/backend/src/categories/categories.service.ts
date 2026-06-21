@@ -11,7 +11,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType, TripStatus } from '@prisma/client';
+import { SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
@@ -151,11 +151,11 @@ export class CategoryService {
    * this to count via the `TourCategory` join.
    */
   async getPublishedTourCount(categoryId: string, destinationId: string): Promise<number> {
-    return this.prisma.trip.count({
+    return this.prisma.tour.count({
       where: {
         categories: { some: { categoryId } },
         destinationId,
-        status: TripStatus.LIVE,
+        status: TourStatus.LIVE,
         isActive: true,
       },
     });
@@ -177,7 +177,7 @@ export class CategoryService {
 
     const grouped = await this.prisma.tourCategory.groupBy({
       by: ['categoryId'],
-      where: { trip: { destinationId: destination.id, status: TripStatus.LIVE, isActive: true } },
+      where: { tour: { destinationId: destination.id, status: TourStatus.LIVE, isActive: true } },
       _count: { _all: true },
     });
     const countByCategory = new Map(grouped.map((g) => [g.categoryId, g._count._all]));
@@ -341,8 +341,8 @@ export class CategoryService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      const tripCount = await tx.trip.count({
-        where: { categories: { some: { categoryId: id } }, isActive: true, status: { not: TripStatus.DRAFT } },
+      const tripCount = await tx.tour.count({
+        where: { categories: { some: { categoryId: id } }, isActive: true, status: { not: TourStatus.DRAFT } },
       });
       if (tripCount > 0) {
         throw new ConflictException(

@@ -9,23 +9,19 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale, Role, TripStatus } from '@prisma/client';
+import { Locale, Role, TourStatus } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
   CreateTourAddOnDto,
-  CreateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
-  CreateTourScheduleDto,
   UpdateTourAddOnDto,
-  UpdateTourAgeBandDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
-  UpdateTourScheduleDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
@@ -43,8 +39,8 @@ export class TripChildrenService {
 
   // ── Common helper ─────────────────────────────────────────────────────────────
 
-  private async assertTripAccess(tripId: string, requesterId: string, requesterRole: Role) {
-    const trip = await this.tripsService.findTripOrThrow(tripId);
+  private async assertTripAccess(tourId: string, requesterId: string, requesterRole: Role) {
+    const trip = await this.tripsService.findTripOrThrow(tourId);
     await this.tripsService.assertOwnership(trip, requesterId, requesterRole);
     return trip;
   }
@@ -53,7 +49,7 @@ export class TripChildrenService {
 
   private readonly imageSelect = {
     id: true,
-    tripId: true,
+    tourId: true,
     url: true,
     isHero: true,
     focalX: true,
@@ -64,24 +60,24 @@ export class TripChildrenService {
     height: true,
   } as const;
 
-  async getImages(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getImages(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourImage.findMany({
-      where: { tripId },
+      where: { tourId },
       select: this.imageSelect,
       orderBy: { displayOrder: 'asc' },
     });
   }
 
-  async addImage(tripId: string, dto: AddTourImageDto, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async addImage(tourId: string, dto: AddTourImageDto, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     if (dto.isHero) {
       return this.prisma.$transaction(async (tx) => {
-        await tx.tourImage.updateMany({ where: { tripId }, data: { isHero: false } });
+        await tx.tourImage.updateMany({ where: { tourId }, data: { isHero: false } });
         const image = await tx.tourImage.create({
           data: {
-            tripId,
+            tourId,
             url: dto.url,
             isHero: true,
             focalX: dto.focalX ?? 0.5,
@@ -93,14 +89,14 @@ export class TripChildrenService {
           },
           select: this.imageSelect,
         });
-        this.logger.log(`User ${requesterId} added hero image to trip ${tripId}`);
+        this.logger.log(`User ${requesterId} added hero image to trip ${tourId}`);
         return image;
       });
     }
 
     const image = await this.prisma.tourImage.create({
       data: {
-        tripId,
+        tourId,
         url: dto.url,
         isHero: false,
         focalX: dto.focalX ?? 0.5,
@@ -113,28 +109,28 @@ export class TripChildrenService {
       select: this.imageSelect,
     });
 
-    this.logger.log(`User ${requesterId} added image to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added image to trip ${tourId}`);
     return image;
   }
 
   async updateImage(
-    tripId: string,
+    tourId: string,
     imageId: string,
     dto: UpdateTourImageDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourImage.findFirst({
-      where: { id: imageId, tripId },
+      where: { id: imageId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Image ${imageId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Image ${imageId} not found on trip ${tourId}`);
 
     if (dto.isHero === true) {
       return this.prisma.$transaction(async (tx) => {
-        await tx.tourImage.updateMany({ where: { tripId }, data: { isHero: false } });
+        await tx.tourImage.updateMany({ where: { tourId }, data: { isHero: false } });
         const updated = await tx.tourImage.update({
           where: { id: imageId },
           data: {
@@ -146,7 +142,7 @@ export class TripChildrenService {
           },
           select: this.imageSelect,
         });
-        this.logger.log(`User ${requesterId} set image ${imageId} as hero on trip ${tripId}`);
+        this.logger.log(`User ${requesterId} set image ${imageId} as hero on trip ${tourId}`);
         return updated;
       });
     }
@@ -163,135 +159,29 @@ export class TripChildrenService {
       select: this.imageSelect,
     });
 
-    this.logger.log(`User ${requesterId} updated image ${imageId} on trip ${tripId}`);
+    this.logger.log(`User ${requesterId} updated image ${imageId} on trip ${tourId}`);
     return updated;
   }
 
-  async removeImage(tripId: string, imageId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeImage(tourId: string, imageId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourImage.findFirst({
-      where: { id: imageId, tripId },
+      where: { id: imageId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Image ${imageId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Image ${imageId} not found on trip ${tourId}`);
 
     await this.prisma.tourImage.delete({ where: { id: imageId } });
-    this.logger.log(`User ${requesterId} removed image ${imageId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed image ${imageId} from trip ${tourId}`);
     return { message: 'Image removed successfully' };
-  }
-
-  // ── Age Bands ─────────────────────────────────────────────────────────────────
-
-  private readonly ageBandSelect = {
-    id: true,
-    tripId: true,
-    bandType: true,
-    label: true,
-    minAge: true,
-    maxAge: true,
-    price: true,
-    minCount: true,
-    maxCount: true,
-    displayOrder: true,
-  } as const;
-
-  async getAgeBands(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-    return this.prisma.tourAgeBand.findMany({
-      where: { tripId },
-      select: this.ageBandSelect,
-      orderBy: { displayOrder: 'asc' },
-    });
-  }
-
-  async addAgeBand(tripId: string, dto: CreateTourAgeBandDto, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const band = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.tourAgeBand.create({
-        data: {
-          tripId,
-          bandType: dto.bandType,
-          label: dto.label,
-          minAge: dto.minAge ?? null,
-          maxAge: dto.maxAge ?? null,
-          price: dto.price,
-          minCount: dto.minCount ?? 0,
-          maxCount: dto.maxCount ?? null,
-          displayOrder: dto.displayOrder ?? 0,
-        },
-        select: this.ageBandSelect,
-      });
-      await this.tripsService.recomputePriceFrom(tripId, tx);
-      return created;
-    });
-
-    this.logger.log(`User ${requesterId} added age band to trip ${tripId}`);
-    return band;
-  }
-
-  async updateAgeBand(
-    tripId: string,
-    bandId: string,
-    dto: UpdateTourAgeBandDto,
-    requesterId: string,
-    requesterRole: Role,
-  ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const existing = await this.prisma.tourAgeBand.findFirst({
-      where: { id: bandId, tripId },
-      select: { id: true },
-    });
-    if (!existing) throw new NotFoundException(`Age band ${bandId} not found on trip ${tripId}`);
-
-    const data = {
-      ...(dto.label !== undefined && { label: dto.label }),
-      ...(dto.minAge !== undefined && { minAge: dto.minAge }),
-      ...(dto.maxAge !== undefined && { maxAge: dto.maxAge }),
-      ...(dto.price !== undefined && { price: dto.price }),
-      ...(dto.minCount !== undefined && { minCount: dto.minCount }),
-      ...(dto.maxCount !== undefined && { maxCount: dto.maxCount }),
-      ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
-    };
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const result = await tx.tourAgeBand.update({
-        where: { id: bandId },
-        data,
-        select: this.ageBandSelect,
-      });
-      if (dto.price !== undefined) await this.tripsService.recomputePriceFrom(tripId, tx);
-      return result;
-    });
-
-    this.logger.log(`User ${requesterId} updated age band ${bandId} on trip ${tripId}`);
-    return updated;
-  }
-
-  async removeAgeBand(tripId: string, bandId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const existing = await this.prisma.tourAgeBand.findFirst({
-      where: { id: bandId, tripId },
-      select: { id: true },
-    });
-    if (!existing) throw new NotFoundException(`Age band ${bandId} not found on trip ${tripId}`);
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.tourAgeBand.delete({ where: { id: bandId } });
-      await this.tripsService.recomputePriceFrom(tripId, tx);
-    });
-    this.logger.log(`User ${requesterId} removed age band ${bandId} from trip ${tripId}`);
-    return { message: 'Age band removed successfully' };
   }
 
   // ── Add-Ons ───────────────────────────────────────────────────────────────────
 
   private readonly addOnSelect = {
     id: true,
-    tripId: true,
+    tourId: true,
     name: true,
     description: true,
     price: true,
@@ -301,21 +191,21 @@ export class TripChildrenService {
     isActive: true,
   } as const;
 
-  async getAddOns(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getAddOns(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourAddOn.findMany({
-      where: { tripId },
+      where: { tourId },
       select: this.addOnSelect,
       orderBy: { displayOrder: 'asc' },
     });
   }
 
-  async addAddOn(tripId: string, dto: CreateTourAddOnDto, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async addAddOn(tourId: string, dto: CreateTourAddOnDto, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const addOn = await this.prisma.tourAddOn.create({
       data: {
-        tripId,
+        tourId,
         name: dto.name,
         description: dto.description ?? null,
         price: dto.price,
@@ -326,24 +216,24 @@ export class TripChildrenService {
       select: this.addOnSelect,
     });
 
-    this.logger.log(`User ${requesterId} added add-on to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added add-on to trip ${tourId}`);
     return addOn;
   }
 
   async updateAddOn(
-    tripId: string,
+    tourId: string,
     addonId: string,
     dto: UpdateTourAddOnDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourAddOn.findFirst({
-      where: { id: addonId, tripId },
+      where: { id: addonId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Add-on ${addonId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Add-on ${addonId} not found on trip ${tourId}`);
 
     const updated = await this.prisma.tourAddOn.update({
       where: { id: addonId },
@@ -359,42 +249,42 @@ export class TripChildrenService {
       select: this.addOnSelect,
     });
 
-    this.logger.log(`User ${requesterId} updated add-on ${addonId} on trip ${tripId}`);
+    this.logger.log(`User ${requesterId} updated add-on ${addonId} on trip ${tourId}`);
     return updated;
   }
 
-  async removeAddOn(tripId: string, addonId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeAddOn(tourId: string, addonId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourAddOn.findFirst({
-      where: { id: addonId, tripId },
+      where: { id: addonId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Add-on ${addonId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Add-on ${addonId} not found on trip ${tourId}`);
 
     await this.prisma.tourAddOn.delete({ where: { id: addonId } });
-    this.logger.log(`User ${requesterId} removed add-on ${addonId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed add-on ${addonId} from trip ${tourId}`);
     return { message: 'Add-on removed successfully' };
   }
 
   // ── Languages ─────────────────────────────────────────────────────────────────
 
-  async getLanguages(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getLanguages(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourLanguage.findMany({
-      where: { tripId },
-      select: { id: true, tripId: true, language: true },
+      where: { tourId },
+      select: { id: true, tourId: true, language: true },
       orderBy: { language: 'asc' },
     });
   }
 
-  async addLanguage(tripId: string, dto: AddTourLanguageDto, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async addLanguage(tourId: string, dto: AddTourLanguageDto, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const lang = await this.prisma.tourLanguage
       .create({
-        data: { tripId, language: dto.language },
-        select: { id: true, tripId: true, language: true },
+        data: { tourId, language: dto.language },
+        select: { id: true, tourId: true, language: true },
       })
       .catch((err: any) => {
         if (err?.code === 'P2002') {
@@ -403,21 +293,21 @@ export class TripChildrenService {
         throw err;
       });
 
-    this.logger.log(`User ${requesterId} added language "${dto.language}" to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added language "${dto.language}" to trip ${tourId}`);
     return lang;
   }
 
-  async removeLanguage(tripId: string, languageId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeLanguage(tourId: string, languageId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourLanguage.findFirst({
-      where: { id: languageId, tripId },
+      where: { id: languageId, tourId },
       select: { id: true, language: true },
     });
-    if (!existing) throw new NotFoundException(`Language ${languageId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Language ${languageId} not found on trip ${tourId}`);
 
     await this.prisma.tourLanguage.delete({ where: { id: languageId } });
-    this.logger.log(`User ${requesterId} removed language ${languageId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed language ${languageId} from trip ${tourId}`);
     return { message: 'Language removed successfully' };
   }
 
@@ -425,33 +315,33 @@ export class TripChildrenService {
 
   private readonly highlightSelect = {
     id: true,
-    tripId: true,
+    tourId: true,
     displayOrder: true,
     imageUrl: true,
     translations: { select: { locale: true, text: true, isMachineTranslated: true } },
   } as const;
 
-  async getHighlights(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getHighlights(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourHighlight.findMany({
-      where: { tripId },
+      where: { tourId },
       select: this.highlightSelect,
       orderBy: { displayOrder: 'asc' },
     });
   }
 
   async addHighlight(
-    tripId: string,
+    tourId: string,
     dto: CreateTourHighlightDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const highlight = await tx.tourHighlight.create({
-        data: { tripId, displayOrder: dto.displayOrder ?? 0, imageUrl: dto.imageUrl ?? null },
-        select: { id: true, tripId: true, displayOrder: true, imageUrl: true },
+        data: { tourId, displayOrder: dto.displayOrder ?? 0, imageUrl: dto.imageUrl ?? null },
+        select: { id: true, tourId: true, displayOrder: true, imageUrl: true },
       });
       await tx.tourHighlightTranslation.create({
         data: { highlightId: highlight.id, locale: LocaleEnum.en, text: dto.text },
@@ -462,24 +352,24 @@ export class TripChildrenService {
       });
     });
 
-    this.logger.log(`User ${requesterId} added highlight to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added highlight to trip ${tourId}`);
     return result;
   }
 
   async updateHighlight(
-    tripId: string,
+    tourId: string,
     highlightId: string,
     dto: UpdateTourHighlightDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourHighlight.findFirst({
-      where: { id: highlightId, tripId },
+      where: { id: highlightId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tourId}`);
 
     const updated = await this.prisma.tourHighlight.update({
       where: { id: highlightId },
@@ -490,39 +380,39 @@ export class TripChildrenService {
       select: this.highlightSelect,
     });
 
-    this.logger.log(`User ${requesterId} updated highlight ${highlightId} on trip ${tripId}`);
+    this.logger.log(`User ${requesterId} updated highlight ${highlightId} on trip ${tourId}`);
     return updated;
   }
 
-  async removeHighlight(tripId: string, highlightId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeHighlight(tourId: string, highlightId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourHighlight.findFirst({
-      where: { id: highlightId, tripId },
+      where: { id: highlightId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tourId}`);
 
     await this.prisma.tourHighlight.delete({ where: { id: highlightId } });
-    this.logger.log(`User ${requesterId} removed highlight ${highlightId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed highlight ${highlightId} from trip ${tourId}`);
     return { message: 'Highlight removed successfully' };
   }
 
   async upsertHighlightTranslation(
-    tripId: string,
+    tourId: string,
     highlightId: string,
     locale: Locale,
     dto: UpsertHighlightTranslationDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const highlight = await this.prisma.tourHighlight.findFirst({
-      where: { id: highlightId, tripId },
+      where: { id: highlightId, tourId },
       select: { id: true },
     });
-    if (!highlight) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tripId}`);
+    if (!highlight) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tourId}`);
 
     const result = await this.prisma.tourHighlightTranslation.upsert({
       where: { highlightId_locale: { highlightId, locale } },
@@ -536,23 +426,23 @@ export class TripChildrenService {
   }
 
   async deleteHighlightTranslation(
-    tripId: string,
+    tourId: string,
     highlightId: string,
     locale: Locale,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException('English highlight text cannot be deleted. Update the text instead.');
     }
 
     const highlight = await this.prisma.tourHighlight.findFirst({
-      where: { id: highlightId, tripId },
+      where: { id: highlightId, tourId },
       select: { id: true },
     });
-    if (!highlight) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tripId}`);
+    if (!highlight) throw new NotFoundException(`Highlight ${highlightId} not found on trip ${tourId}`);
 
     await this.prisma.tourHighlightTranslation
       .delete({ where: { highlightId_locale: { highlightId, locale } } })
@@ -571,34 +461,34 @@ export class TripChildrenService {
 
   private readonly inclusionSelect = {
     id: true,
-    tripId: true,
+    tourId: true,
     icon: true,
     displayOrder: true,
     imageUrl: true,
     translations: { select: { locale: true, label: true, isMachineTranslated: true } },
   } as const;
 
-  async getInclusions(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getInclusions(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourInclusion.findMany({
-      where: { tripId },
+      where: { tourId },
       select: this.inclusionSelect,
       orderBy: { displayOrder: 'asc' },
     });
   }
 
   async addInclusion(
-    tripId: string,
+    tourId: string,
     dto: CreateTourInclusionDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const inclusion = await tx.tourInclusion.create({
         data: {
-          tripId,
+          tourId,
           icon: dto.icon ?? 'check',
           displayOrder: dto.displayOrder ?? 0,
           imageUrl: dto.imageUrl ?? null,
@@ -614,24 +504,24 @@ export class TripChildrenService {
       });
     });
 
-    this.logger.log(`User ${requesterId} added inclusion to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added inclusion to trip ${tourId}`);
     return result;
   }
 
   async updateInclusion(
-    tripId: string,
+    tourId: string,
     inclusionId: string,
     dto: UpdateTourInclusionDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourInclusion.findFirst({
-      where: { id: inclusionId, tripId },
+      where: { id: inclusionId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tourId}`);
 
     const updated = await this.prisma.tourInclusion.update({
       where: { id: inclusionId },
@@ -643,39 +533,39 @@ export class TripChildrenService {
       select: this.inclusionSelect,
     });
 
-    this.logger.log(`User ${requesterId} updated inclusion ${inclusionId} on trip ${tripId}`);
+    this.logger.log(`User ${requesterId} updated inclusion ${inclusionId} on trip ${tourId}`);
     return updated;
   }
 
-  async removeInclusion(tripId: string, inclusionId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeInclusion(tourId: string, inclusionId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourInclusion.findFirst({
-      where: { id: inclusionId, tripId },
+      where: { id: inclusionId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tourId}`);
 
     await this.prisma.tourInclusion.delete({ where: { id: inclusionId } });
-    this.logger.log(`User ${requesterId} removed inclusion ${inclusionId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed inclusion ${inclusionId} from trip ${tourId}`);
     return { message: 'Inclusion removed successfully' };
   }
 
   async upsertInclusionTranslation(
-    tripId: string,
+    tourId: string,
     inclusionId: string,
     locale: Locale,
     dto: UpsertInclusionTranslationDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const inclusion = await this.prisma.tourInclusion.findFirst({
-      where: { id: inclusionId, tripId },
+      where: { id: inclusionId, tourId },
       select: { id: true },
     });
-    if (!inclusion) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tripId}`);
+    if (!inclusion) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tourId}`);
 
     const result = await this.prisma.tourInclusionTranslation.upsert({
       where: { inclusionId_locale: { inclusionId, locale } },
@@ -689,23 +579,23 @@ export class TripChildrenService {
   }
 
   async deleteInclusionTranslation(
-    tripId: string,
+    tourId: string,
     inclusionId: string,
     locale: Locale,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException('English inclusion text cannot be deleted. Update the label instead.');
     }
 
     const inclusion = await this.prisma.tourInclusion.findFirst({
-      where: { id: inclusionId, tripId },
+      where: { id: inclusionId, tourId },
       select: { id: true },
     });
-    if (!inclusion) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tripId}`);
+    if (!inclusion) throw new NotFoundException(`Inclusion ${inclusionId} not found on trip ${tourId}`);
 
     await this.prisma.tourInclusionTranslation
       .delete({ where: { inclusionId_locale: { inclusionId, locale } } })
@@ -724,34 +614,34 @@ export class TripChildrenService {
 
   private readonly exclusionSelect = {
     id: true,
-    tripId: true,
+    tourId: true,
     icon: true,
     displayOrder: true,
     imageUrl: true,
     translations: { select: { locale: true, label: true, isMachineTranslated: true } },
   } as const;
 
-  async getExclusions(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getExclusions(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourExclusion.findMany({
-      where: { tripId },
+      where: { tourId },
       select: this.exclusionSelect,
       orderBy: { displayOrder: 'asc' },
     });
   }
 
   async addExclusion(
-    tripId: string,
+    tourId: string,
     dto: CreateTourExclusionDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const exclusion = await tx.tourExclusion.create({
         data: {
-          tripId,
+          tourId,
           icon: dto.icon ?? 'x',
           displayOrder: dto.displayOrder ?? 0,
           imageUrl: dto.imageUrl ?? null,
@@ -767,24 +657,24 @@ export class TripChildrenService {
       });
     });
 
-    this.logger.log(`User ${requesterId} added exclusion to trip ${tripId}`);
+    this.logger.log(`User ${requesterId} added exclusion to trip ${tourId}`);
     return result;
   }
 
   async updateExclusion(
-    tripId: string,
+    tourId: string,
     exclusionId: string,
     dto: UpdateTourExclusionDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourExclusion.findFirst({
-      where: { id: exclusionId, tripId },
+      where: { id: exclusionId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tourId}`);
 
     const updated = await this.prisma.tourExclusion.update({
       where: { id: exclusionId },
@@ -796,39 +686,39 @@ export class TripChildrenService {
       select: this.exclusionSelect,
     });
 
-    this.logger.log(`User ${requesterId} updated exclusion ${exclusionId} on trip ${tripId}`);
+    this.logger.log(`User ${requesterId} updated exclusion ${exclusionId} on trip ${tourId}`);
     return updated;
   }
 
-  async removeExclusion(tripId: string, exclusionId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async removeExclusion(tourId: string, exclusionId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const existing = await this.prisma.tourExclusion.findFirst({
-      where: { id: exclusionId, tripId },
+      where: { id: exclusionId, tourId },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+    if (!existing) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tourId}`);
 
     await this.prisma.tourExclusion.delete({ where: { id: exclusionId } });
-    this.logger.log(`User ${requesterId} removed exclusion ${exclusionId} from trip ${tripId}`);
+    this.logger.log(`User ${requesterId} removed exclusion ${exclusionId} from trip ${tourId}`);
     return { message: 'Exclusion removed successfully' };
   }
 
   async upsertExclusionTranslation(
-    tripId: string,
+    tourId: string,
     exclusionId: string,
     locale: Locale,
     dto: UpsertExclusionTranslationDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     const exclusion = await this.prisma.tourExclusion.findFirst({
-      where: { id: exclusionId, tripId },
+      where: { id: exclusionId, tourId },
       select: { id: true },
     });
-    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tourId}`);
 
     const result = await this.prisma.tourExclusionTranslation.upsert({
       where: { exclusionId_locale: { exclusionId, locale } },
@@ -842,23 +732,23 @@ export class TripChildrenService {
   }
 
   async deleteExclusionTranslation(
-    tripId: string,
+    tourId: string,
     exclusionId: string,
     locale: Locale,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException('English exclusion text cannot be deleted. Update the label instead.');
     }
 
     const exclusion = await this.prisma.tourExclusion.findFirst({
-      where: { id: exclusionId, tripId },
+      where: { id: exclusionId, tourId },
       select: { id: true },
     });
-    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tripId}`);
+    if (!exclusion) throw new NotFoundException(`Exclusion ${exclusionId} not found on trip ${tourId}`);
 
     await this.prisma.tourExclusionTranslation
       .delete({ where: { exclusionId_locale: { exclusionId, locale } } })
@@ -884,20 +774,20 @@ export class TripChildrenService {
     updatedAt: true,
   } as const;
 
-  async getAllTranslations(tripId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-    return this.prisma.tripTranslation.findMany({
-      where: { tripId },
+  async getAllTranslations(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
+    return this.prisma.tourTranslation.findMany({
+      where: { tourId },
       select: this.tripTranslationSelect,
       orderBy: { locale: 'asc' },
     });
   }
 
-  async getTranslationByLocale(tripId: string, locale: Locale, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async getTranslationByLocale(tourId: string, locale: Locale, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
-    const translation = await this.prisma.tripTranslation.findUnique({
-      where: { tripId_locale: { tripId, locale } },
+    const translation = await this.prisma.tourTranslation.findUnique({
+      where: { tourId_locale: { tourId, locale } },
       select: this.tripTranslationSelect,
     });
 
@@ -914,18 +804,18 @@ export class TripChildrenService {
   }
 
   async upsertTranslation(
-    tripId: string,
+    tourId: string,
     locale: Locale,
     dto: UpsertTripTranslationDto,
     requesterId: string,
     requesterRole: Role,
   ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
-    const result = await this.prisma.tripTranslation.upsert({
-      where: { tripId_locale: { tripId, locale } },
+    const result = await this.prisma.tourTranslation.upsert({
+      where: { tourId_locale: { tourId, locale } },
       create: {
-        tripId,
+        tourId,
         locale,
         title: dto.title ?? null,
         overview: dto.overview ?? null,
@@ -941,12 +831,12 @@ export class TripChildrenService {
       select: this.tripTranslationSelect,
     });
 
-    this.logger.log(`User ${requesterId} upserted translation [${locale}] for trip ${tripId}`);
+    this.logger.log(`User ${requesterId} upserted translation [${locale}] for trip ${tourId}`);
     return result;
   }
 
-  async deleteTranslation(tripId: string, locale: Locale, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
+  async deleteTranslation(tourId: string, locale: Locale, requesterId: string, requesterRole: Role) {
+    await this.assertTripAccess(tourId, requesterId, requesterRole);
 
     if (locale === Locale.en) {
       throw new BadRequestException(
@@ -954,8 +844,8 @@ export class TripChildrenService {
       );
     }
 
-    await this.prisma.tripTranslation
-      .delete({ where: { tripId_locale: { tripId, locale } } })
+    await this.prisma.tourTranslation
+      .delete({ where: { tourId_locale: { tourId, locale } } })
       .catch((err: any) => {
         if (err?.code === 'P2025') {
           throw new NotFoundException(`No translation found for locale "${locale}"`);
@@ -963,118 +853,8 @@ export class TripChildrenService {
         throw err;
       });
 
-    this.logger.log(`User ${requesterId} deleted translation [${locale}] for trip ${tripId}`);
+    this.logger.log(`User ${requesterId} deleted translation [${locale}] for trip ${tourId}`);
     return { message: `Translation for locale "${locale}" deleted` };
   }
 
-  // ── Schedules ─────────────────────────────────────────────────────────────────
-
-  private readonly scheduleSelect = {
-    id: true,
-    tripId: true,
-    startDate: true,
-    endDate: true,
-    startTime: true,
-    totalSpots: true,
-    availableSpots: true,
-    status: true,
-    createdAt: true,
-    updatedAt: true,
-  } as const;
-
-  async getSchedules(tripId: string, requesterId?: string | null, requesterRole?: Role | null) {
-    const trip = await this.prisma.trip.findUnique({
-      where: { id: tripId },
-      select: { id: true, status: true, operatorId: true },
-    });
-    if (!trip) throw new NotFoundException(`Trip ${tripId} not found`);
-
-    if (trip.status !== TripStatus.LIVE) {
-      if (!requesterId) throw new NotFoundException(`Trip ${tripId} not found`);
-      if (requesterRole !== Role.ADMIN) {
-        const operator = await this.prisma.operator.findUnique({
-          where: { userId: requesterId },
-          select: { id: true },
-        });
-        if (!operator || trip.operatorId !== operator.id) {
-          throw new NotFoundException(`Trip ${tripId} not found`);
-        }
-      }
-    }
-
-    return this.prisma.tourSchedule.findMany({
-      where: { tripId },
-      select: this.scheduleSelect,
-      orderBy: { startDate: 'asc' },
-    });
-  }
-
-  async createSchedule(
-    tripId: string,
-    dto: CreateTourScheduleDto,
-    requesterId: string,
-    requesterRole: Role,
-  ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const schedule = await this.prisma.tourSchedule.create({
-      data: {
-        tripId,
-        startDate: new Date(dto.startDate),
-        endDate: dto.endDate ? new Date(dto.endDate) : null,
-        startTime: dto.startTime,
-        totalSpots: dto.totalSpots,
-        availableSpots: dto.totalSpots,
-      },
-      select: this.scheduleSelect,
-    });
-
-    // Phase 5 hook: schedule BullMQ pre-booking job at (startDate - 24h)
-
-    this.logger.log(`User ${requesterId} created schedule for trip ${tripId}`);
-    return schedule;
-  }
-
-  async updateSchedule(
-    tripId: string,
-    scheduleId: string,
-    dto: UpdateTourScheduleDto,
-    requesterId: string,
-    requesterRole: Role,
-  ) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const existing = await this.prisma.tourSchedule.findFirst({
-      where: { id: scheduleId, tripId },
-      select: { id: true },
-    });
-    if (!existing) throw new NotFoundException(`Schedule ${scheduleId} not found on trip ${tripId}`);
-
-    const updated = await this.prisma.tourSchedule.update({
-      where: { id: scheduleId },
-      data: {
-        ...(dto.totalSpots !== undefined && { totalSpots: dto.totalSpots }),
-        ...(dto.availableSpots !== undefined && { availableSpots: dto.availableSpots }),
-        ...(dto.status !== undefined && { status: dto.status }),
-      },
-      select: this.scheduleSelect,
-    });
-
-    this.logger.log(`User ${requesterId} updated schedule ${scheduleId} on trip ${tripId}`);
-    return updated;
-  }
-
-  async removeSchedule(tripId: string, scheduleId: string, requesterId: string, requesterRole: Role) {
-    await this.assertTripAccess(tripId, requesterId, requesterRole);
-
-    const existing = await this.prisma.tourSchedule.findFirst({
-      where: { id: scheduleId, tripId },
-      select: { id: true },
-    });
-    if (!existing) throw new NotFoundException(`Schedule ${scheduleId} not found on trip ${tripId}`);
-
-    await this.prisma.tourSchedule.delete({ where: { id: scheduleId } });
-    this.logger.log(`User ${requesterId} removed schedule ${scheduleId} from trip ${tripId}`);
-    return { message: 'Schedule removed successfully' };
-  }
 }

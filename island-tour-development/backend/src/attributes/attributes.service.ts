@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { AttributeDataType, Prisma, Role, TripStatus } from '@prisma/client';
+import { AttributeDataType, Prisma, Role, TourStatus } from '@prisma/client';
 import {
   AttributeDefinitionQueryDto,
   CreateAttributeDefinitionDto,
@@ -145,20 +145,20 @@ export class AttributesService {
       orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
     });
 
-    const trips = await this.prisma.trip.findMany({
+    const trips = await this.prisma.tour.findMany({
       where: {
         destinationId: destination.id,
-        status: TripStatus.LIVE,
+        status: TourStatus.LIVE,
         isActive: true,
         categories: { some: { categoryId: category.id } },
       },
-      select: { id: true, basePrice: true, durationMinutes: true },
+      select: { id: true, basePrice: true, durationMinutesFrom: true },
     });
     const tripIds = trips.map((t) => t.id);
 
-    // Price / duration ranges (from Trip columns).
+    // Price / duration ranges (from Tour columns).
     const prices = trips.map((t) => (t.basePrice == null ? null : Number(t.basePrice))).filter((n): n is number => n != null);
-    const durations = trips.map((t) => t.durationMinutes).filter((n): n is number => n != null);
+    const durations = trips.map((t) => t.durationMinutesFrom).filter((n): n is number => n != null);
     const priceRange = prices.length ? { min: Math.min(...prices), max: Math.max(...prices) } : null;
     const durationRange = durations.length ? { min: Math.min(...durations), max: Math.max(...durations) } : null;
 
@@ -167,7 +167,7 @@ export class AttributesService {
     const counts = new Map<string, Map<string, number>>();
     if (tripIds.length) {
       const rows = await this.prisma.tourAttribute.findMany({
-        where: { tripId: { in: tripIds }, attributeKey: { in: defs.map((d) => d.key) } },
+        where: { tourId: { in: tripIds }, attributeKey: { in: defs.map((d) => d.key) } },
         select: { attributeKey: true, attributeValue: true },
       });
       for (const row of rows) {
@@ -217,7 +217,7 @@ export class AttributesService {
     await this.tripsService.findTripOrThrow(tripId);
     const [rows, defs] = await Promise.all([
       this.prisma.tourAttribute.findMany({
-        where: { tripId },
+        where: { tourId: tripId },
         select: { attributeKey: true, attributeValue: true },
       }),
       this.prisma.attributeDefinition.findMany({ select: { key: true, displayName: true, dataType: true } }),
@@ -261,8 +261,8 @@ export class AttributesService {
     await this.prisma.$transaction(
       normalized.map((n) =>
         this.prisma.tourAttribute.upsert({
-          where: { tripId_attributeKey: { tripId, attributeKey: n.key } },
-          create: { tripId, attributeKey: n.key, attributeValue: n.value },
+          where: { tourId_attributeKey: { tourId: tripId, attributeKey: n.key } },
+          create: { tourId: tripId, attributeKey: n.key, attributeValue: n.value },
           update: { attributeValue: n.value },
         }),
       ),
@@ -276,7 +276,7 @@ export class AttributesService {
     const trip = await this.tripsService.findTripOrThrow(tripId);
     await this.tripsService.assertOwnership(trip, userId, role);
     await this.prisma.tourAttribute
-      .delete({ where: { tripId_attributeKey: { tripId, attributeKey: key } } })
+      .delete({ where: { tourId_attributeKey: { tourId: tripId, attributeKey: key } } })
       .catch((err: any) => {
         if (err?.code === 'P2025') throw new NotFoundException(`Attribute "${key}" not set on this trip`);
         throw err;

@@ -29,13 +29,11 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
-  AgeBandType,
   Locale,
   PickupModel,
   PricingModel,
   Role,
-  ScheduleStatus,
-  TripStatus,
+  TourStatus,
 } from '@prisma/client';
 import { TripChildrenService } from './trips-children.service';
 import { TripsService } from './trips.service';
@@ -58,13 +56,6 @@ function createMockPrismaService() {
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
-      delete: jest.fn(),
-    },
-    tourAgeBand: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
       delete: jest.fn(),
     },
     tourAddOn: {
@@ -119,20 +110,13 @@ function createMockPrismaService() {
       upsert: jest.fn(),
       delete: jest.fn(),
     },
-    tripTranslation: {
+    tourTranslation: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
     },
-    tourSchedule: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    trip: {
+    tour: {
       findUnique: jest.fn(),
     },
     operator: {
@@ -149,7 +133,7 @@ function makeTrip(overrides: Partial<Record<string, unknown>> = {}) {
     id: 'trip-1',
     name: 'Sunset Catamaran Cruise',
     slug: 'sunset-catamaran-cruise',
-    status: TripStatus.DRAFT,
+    status: TourStatus.DRAFT,
     operatorId: 'op-1',
     destinationId: 'dest-1',
     categoryId: 'cat-1',
@@ -193,21 +177,6 @@ function makeImage(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makeSchedule(overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 'sched-1',
-    tripId: 'trip-1',
-    startDate: new Date('2026-07-15'),
-    endDate: null,
-    startTime: '09:00',
-    totalSpots: 20,
-    availableSpots: 20,
-    status: ScheduleStatus.AVAILABLE,
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-06-01'),
-    ...overrides,
-  };
-}
 
 function makeHighlight(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -244,21 +213,6 @@ function makeExclusion(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makeAgeBand(overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 'band-1',
-    tripId: 'trip-1',
-    bandType: AgeBandType.ADULT,
-    label: 'Adults (13+)',
-    minAge: 13,
-    maxAge: null,
-    price: '75.00',
-    minCount: 1,
-    maxCount: null,
-    displayOrder: 0,
-    ...overrides,
-  };
-}
 
 function makeAddOn(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -364,101 +318,6 @@ describe('TripChildrenService', () => {
       expect(tripsService.findTripOrThrow).toHaveBeenCalledWith('trip-abc');
     });
   });
-
-  // ── getSchedules ──────────────────────────────────────────────────────────────
-
-  describe('getSchedules', () => {
-    it('returns schedules for a LIVE trip without authentication', async () => {
-      const liveTrip = { id: 'trip-1', status: TripStatus.LIVE, operatorId: 'op-1' };
-      prisma.trip.findUnique.mockResolvedValue(liveTrip);
-      const schedules = [makeSchedule()];
-      prisma.tourSchedule.findMany.mockResolvedValue(schedules);
-
-      const result = await service.getSchedules('trip-1', null, null);
-
-      expect(result).toEqual(schedules);
-      expect(prisma.tourSchedule.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { tripId: 'trip-1' } }),
-      );
-    });
-
-    it('throws NotFoundException for non-LIVE trip when caller is unauthenticated (requesterId null)', async () => {
-      const draftTrip = { id: 'trip-1', status: TripStatus.DRAFT, operatorId: 'op-1' };
-      prisma.trip.findUnique.mockResolvedValue(draftTrip);
-
-      await expect(
-        service.getSchedules('trip-1', null, null),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('throws NotFoundException when the trip itself does not exist', async () => {
-      prisma.trip.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.getSchedules('ghost', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('returns schedules for a non-LIVE trip when the caller is the owner operator', async () => {
-      const draftTrip = { id: 'trip-1', status: TripStatus.DRAFT, operatorId: 'op-1' };
-      prisma.trip.findUnique.mockResolvedValue(draftTrip);
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      const schedules = [makeSchedule()];
-      prisma.tourSchedule.findMany.mockResolvedValue(schedules);
-
-      const result = await service.getSchedules('trip-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual(schedules);
-    });
-
-    it('throws NotFoundException for non-LIVE trip when caller is a TOUR_OPERATOR who does not own it', async () => {
-      const draftTrip = { id: 'trip-1', status: TripStatus.DRAFT, operatorId: 'op-other' };
-      prisma.trip.findUnique.mockResolvedValue(draftTrip);
-      // caller's operator id is op-1, but trip belongs to op-other
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-
-      await expect(
-        service.getSchedules('trip-1', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('returns schedules for a non-LIVE trip when caller is ADMIN regardless of ownership', async () => {
-      const draftTrip = { id: 'trip-1', status: TripStatus.DRAFT, operatorId: 'op-other' };
-      prisma.trip.findUnique.mockResolvedValue(draftTrip);
-      const schedules = [makeSchedule()];
-      prisma.tourSchedule.findMany.mockResolvedValue(schedules);
-
-      const result = await service.getSchedules('trip-1', 'admin-user', Role.ADMIN);
-
-      expect(result).toEqual(schedules);
-      // ADMIN path skips operator lookup
-      expect(prisma.operator.findUnique).not.toHaveBeenCalled();
-    });
-
-    it('throws NotFoundException for non-LIVE trip when caller TOUR_OPERATOR has no operator record', async () => {
-      const draftTrip = { id: 'trip-1', status: TripStatus.DRAFT, operatorId: 'op-1' };
-      prisma.trip.findUnique.mockResolvedValue(draftTrip);
-      prisma.operator.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.getSchedules('trip-1', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('orders schedules by startDate ascending', async () => {
-      const liveTrip = { id: 'trip-1', status: TripStatus.LIVE, operatorId: 'op-1' };
-      prisma.trip.findUnique.mockResolvedValue(liveTrip);
-      prisma.tourSchedule.findMany.mockResolvedValue([]);
-
-      await service.getSchedules('trip-1', null, null);
-
-      expect(prisma.tourSchedule.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { startDate: 'asc' } }),
-      );
-    });
-  });
-
-  // ── Images ────────────────────────────────────────────────────────────────────
 
   describe('getImages', () => {
     it('returns all images for the trip ordered by displayOrder', async () => {
@@ -614,109 +473,6 @@ describe('TripChildrenService', () => {
   });
 
   // ── Age Bands ─────────────────────────────────────────────────────────────────
-
-  describe('getAgeBands', () => {
-    it('returns all age bands ordered by displayOrder', async () => {
-      const bands = [makeAgeBand()];
-      prisma.tourAgeBand.findMany.mockResolvedValue(bands);
-
-      const result = await service.getAgeBands('trip-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual(bands);
-      expect(prisma.tourAgeBand.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { tripId: 'trip-1' },
-          orderBy: { displayOrder: 'asc' },
-        }),
-      );
-    });
-  });
-
-  describe('addAgeBand', () => {
-    it('creates an age band with the provided fields and returns it', async () => {
-      const band = makeAgeBand();
-      prisma.tourAgeBand.create.mockResolvedValue(band);
-
-      const result = await service.addAgeBand(
-        'trip-1',
-        { bandType: AgeBandType.ADULT, label: 'Adults (13+)', price: '75.00' },
-        'user-1',
-        Role.TOUR_OPERATOR,
-      );
-
-      expect(result).toEqual(band);
-      expect(prisma.tourAgeBand.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            tripId: 'trip-1',
-            bandType: AgeBandType.ADULT,
-            label: 'Adults (13+)',
-            price: '75.00',
-          }),
-        }),
-      );
-    });
-
-    it('propagates ForbiddenException from assertTripAccess for non-owner', async () => {
-      tripsService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this trip'),
-      );
-
-      await expect(
-        service.addAgeBand(
-          'trip-1',
-          { bandType: AgeBandType.ADULT, label: 'Adults', price: '75.00' },
-          'user-other',
-          Role.TOUR_OPERATOR,
-        ),
-      ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('updateAgeBand', () => {
-    it('updates age band fields and returns the updated record', async () => {
-      const existing = makeAgeBand();
-      const updated = { ...existing, label: 'Seniors (65+)' };
-      prisma.tourAgeBand.findFirst.mockResolvedValue(existing);
-      prisma.tourAgeBand.update.mockResolvedValue(updated);
-
-      const result = await service.updateAgeBand(
-        'trip-1', 'band-1', { label: 'Seniors (65+)' }, 'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(result.label).toBe('Seniors (65+)');
-    });
-
-    it('throws NotFoundException when age band does not belong to the trip', async () => {
-      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.updateAgeBand('trip-1', 'band-99', { label: 'X' }, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('removeAgeBand', () => {
-    it('deletes the age band and returns success message', async () => {
-      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand());
-      prisma.tourAgeBand.delete.mockResolvedValue({});
-
-      const result = await service.removeAgeBand('trip-1', 'band-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual({ message: 'Age band removed successfully' });
-      expect(prisma.tourAgeBand.delete).toHaveBeenCalledWith({ where: { id: 'band-1' } });
-    });
-
-    it('throws NotFoundException when age band does not exist on the trip', async () => {
-      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.removeAgeBand('trip-1', 'band-99', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  // ── Add-Ons ───────────────────────────────────────────────────────────────────
 
   describe('getAddOns', () => {
     it('returns all add-ons ordered by displayOrder', async () => {
@@ -1255,12 +1011,12 @@ describe('TripChildrenService', () => {
         { locale: Locale.en, title: null, overview: 'Overview', description: null, isMachineTranslated: false, updatedAt: new Date() },
         { locale: Locale.nl, title: null, overview: 'Overzicht', description: null, isMachineTranslated: true, updatedAt: new Date() },
       ];
-      prisma.tripTranslation.findMany.mockResolvedValue(translations);
+      prisma.tourTranslation.findMany.mockResolvedValue(translations);
 
       const result = await service.getAllTranslations('trip-1', 'user-1', Role.TOUR_OPERATOR);
 
       expect(result).toEqual(translations);
-      expect(prisma.tripTranslation.findMany).toHaveBeenCalledWith(
+      expect(prisma.tourTranslation.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { tripId: 'trip-1' },
           orderBy: { locale: 'asc' },
@@ -1279,7 +1035,7 @@ describe('TripChildrenService', () => {
         isMachineTranslated: false,
         updatedAt: new Date(),
       };
-      prisma.tripTranslation.findUnique.mockResolvedValue(translation);
+      prisma.tourTranslation.findUnique.mockResolvedValue(translation);
 
       const result = await service.getTranslationByLocale('trip-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
 
@@ -1287,7 +1043,7 @@ describe('TripChildrenService', () => {
     });
 
     it('returns a null-filled placeholder when no translation row exists for that locale', async () => {
-      prisma.tripTranslation.findUnique.mockResolvedValue(null);
+      prisma.tourTranslation.findUnique.mockResolvedValue(null);
 
       const result = await service.getTranslationByLocale('trip-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
 
@@ -1312,7 +1068,7 @@ describe('TripChildrenService', () => {
         isMachineTranslated: false,
         updatedAt: new Date(),
       };
-      prisma.tripTranslation.upsert.mockResolvedValue(upserted);
+      prisma.tourTranslation.upsert.mockResolvedValue(upserted);
 
       const result = await service.upsertTranslation(
         'trip-1', Locale.en,
@@ -1321,7 +1077,7 @@ describe('TripChildrenService', () => {
       );
 
       expect(result).toEqual(upserted);
-      expect(prisma.tripTranslation.upsert).toHaveBeenCalledWith(
+      expect(prisma.tourTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { tripId_locale: { tripId: 'trip-1', locale: Locale.en } },
           create: expect.objectContaining({
@@ -1334,7 +1090,7 @@ describe('TripChildrenService', () => {
     });
 
     it('defaults isMachineTranslated to false when not provided', async () => {
-      prisma.tripTranslation.upsert.mockResolvedValue({});
+      prisma.tourTranslation.upsert.mockResolvedValue({});
 
       await service.upsertTranslation(
         'trip-1', Locale.nl,
@@ -1342,7 +1098,7 @@ describe('TripChildrenService', () => {
         'user-1', Role.TOUR_OPERATOR,
       );
 
-      expect(prisma.tripTranslation.upsert).toHaveBeenCalledWith(
+      expect(prisma.tourTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           create: expect.objectContaining({ isMachineTranslated: false }),
         }),
@@ -1369,23 +1125,23 @@ describe('TripChildrenService', () => {
       ).rejects.toThrow(BadRequestException);
 
       // Should not proceed to any Prisma call
-      expect(prisma.tripTranslation.delete).not.toHaveBeenCalled();
+      expect(prisma.tourTranslation.delete).not.toHaveBeenCalled();
     });
 
     it('deletes a non-English translation and returns success message', async () => {
-      prisma.tripTranslation.delete.mockResolvedValue({});
+      prisma.tourTranslation.delete.mockResolvedValue({});
 
       const result = await service.deleteTranslation('trip-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
 
       expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
-      expect(prisma.tripTranslation.delete).toHaveBeenCalledWith({
+      expect(prisma.tourTranslation.delete).toHaveBeenCalledWith({
         where: { tripId_locale: { tripId: 'trip-1', locale: Locale.nl } },
       });
     });
 
     it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
       const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
-      prisma.tripTranslation.delete.mockRejectedValue(p2025);
+      prisma.tourTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
         service.deleteTranslation('trip-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
@@ -1393,7 +1149,7 @@ describe('TripChildrenService', () => {
     });
 
     it('re-throws unknown errors from tripTranslation.delete unchanged', async () => {
-      prisma.tripTranslation.delete.mockRejectedValue(new Error('Fatal DB error'));
+      prisma.tourTranslation.delete.mockRejectedValue(new Error('Fatal DB error'));
 
       await expect(
         service.deleteTranslation('trip-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
@@ -1402,119 +1158,6 @@ describe('TripChildrenService', () => {
   });
 
   // ── Schedules ─────────────────────────────────────────────────────────────────
-
-  describe('createSchedule', () => {
-    it('creates a schedule with the provided data and returns it', async () => {
-      const schedule = makeSchedule();
-      prisma.tourSchedule.create.mockResolvedValue(schedule);
-
-      const result = await service.createSchedule(
-        'trip-1',
-        { startDate: '2026-07-15', startTime: '09:00', totalSpots: 20 },
-        'user-1',
-        Role.TOUR_OPERATOR,
-      );
-
-      expect(result).toEqual(schedule);
-      expect(prisma.tourSchedule.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            tripId: 'trip-1',
-            startTime: '09:00',
-            totalSpots: 20,
-            availableSpots: 20, // must equal totalSpots on creation
-          }),
-        }),
-      );
-    });
-
-    it('sets availableSpots equal to totalSpots on creation', async () => {
-      prisma.tourSchedule.create.mockResolvedValue(makeSchedule({ totalSpots: 30, availableSpots: 30 }));
-
-      await service.createSchedule(
-        'trip-1',
-        { startDate: '2026-07-15', startTime: '09:00', totalSpots: 30 },
-        'user-1',
-        Role.TOUR_OPERATOR,
-      );
-
-      expect(prisma.tourSchedule.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ totalSpots: 30, availableSpots: 30 }),
-        }),
-      );
-    });
-
-    it('propagates NotFoundException from assertTripAccess when trip does not exist', async () => {
-      tripsService.findTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
-
-      await expect(
-        service.createSchedule(
-          'trip-99',
-          { startDate: '2026-07-15', startTime: '09:00', totalSpots: 20 },
-          'user-1',
-          Role.TOUR_OPERATOR,
-        ),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('updateSchedule', () => {
-    it('updates schedule fields and returns the updated record', async () => {
-      const existing = makeSchedule();
-      const updated = { ...existing, status: ScheduleStatus.CANCELLED };
-      prisma.tourSchedule.findFirst.mockResolvedValue(existing);
-      prisma.tourSchedule.update.mockResolvedValue(updated);
-
-      const result = await service.updateSchedule(
-        'trip-1', 'sched-1', { status: ScheduleStatus.CANCELLED }, 'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(result.status).toBe(ScheduleStatus.CANCELLED);
-    });
-
-    it('throws NotFoundException when schedule does not belong to the trip', async () => {
-      prisma.tourSchedule.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.updateSchedule(
-          'trip-1', 'sched-99', { status: ScheduleStatus.CANCELLED }, 'user-1', Role.TOUR_OPERATOR,
-        ),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('removeSchedule', () => {
-    it('deletes the schedule and returns success message', async () => {
-      prisma.tourSchedule.findFirst.mockResolvedValue(makeSchedule());
-      prisma.tourSchedule.delete.mockResolvedValue({});
-
-      const result = await service.removeSchedule('trip-1', 'sched-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual({ message: 'Schedule removed successfully' });
-      expect(prisma.tourSchedule.delete).toHaveBeenCalledWith({ where: { id: 'sched-1' } });
-    });
-
-    it('throws NotFoundException when schedule is not found on the trip', async () => {
-      prisma.tourSchedule.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.removeSchedule('trip-1', 'sched-99', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('propagates ForbiddenException for non-owner operators', async () => {
-      tripsService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this trip'),
-      );
-
-      await expect(
-        service.removeSchedule('trip-1', 'sched-1', 'user-other', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  // ── Exclusions ────────────────────────────────────────────────────────────────
 
   describe('getExclusions', () => {
     it('calls assertTripAccess then returns all exclusions ordered by displayOrder', async () => {
@@ -1813,23 +1456,6 @@ describe('TripChildrenService', () => {
       prisma.tourHighlight.findMany.mockResolvedValue([makeHighlight()]);
 
       await service.getHighlights('trip-1', 'admin-user', Role.ADMIN);
-
-      expect(tripsService.assertOwnership).toHaveBeenCalledWith(
-        expect.anything(),
-        'admin-user',
-        Role.ADMIN,
-      );
-    });
-
-    it('ADMIN can create a schedule on any trip', async () => {
-      prisma.tourSchedule.create.mockResolvedValue(makeSchedule());
-
-      await service.createSchedule(
-        'trip-1',
-        { startDate: '2026-07-15', startTime: '09:00', totalSpots: 20 },
-        'admin-user',
-        Role.ADMIN,
-      );
 
       expect(tripsService.assertOwnership).toHaveBeenCalledWith(
         expect.anything(),

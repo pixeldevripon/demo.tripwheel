@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { Role, ScheduleStatus, SlugEntityType, TripStatus } from '@prisma/client';
+import { Role, SlugEntityType, TourStatus } from '@prisma/client';
 import { AdminTripsQueryDto, CreateTripDto, MyTripsQueryDto, TripBySlugQueryDto, TripQueryDto, TripSort, UpdateTripDto } from './dto/trip.dto';
 
 @Injectable()
@@ -27,10 +27,10 @@ export class TripsService {
     operatorId: true,
     destinationId: true,
     pricingModel: true,
-    unitType: true,
+    wholeUnitType: true,
     basePrice: true,
     priceFrom: true,
-    durationMinutes: true,
+    durationMinutesFrom: true,
     pickupModel: true,
     maxPartySize: true,
     minPartySize: true,
@@ -86,7 +86,7 @@ export class TripsService {
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   async findTripOrThrow(id: string) {
-    const trip = await this.prisma.trip.findUnique({
+    const trip = await this.prisma.tour.findUnique({
       where: { id },
       select: { ...this.tripSelect },
     });
@@ -136,23 +136,18 @@ export class TripsService {
    * (otherwise a concurrent band change can produce a stale `priceFrom`).
    */
   async recomputePriceFrom(
-    tripId: string,
+    tourId: string,
     tx?: Prisma.TransactionClient,
   ): Promise<Prisma.Decimal | null> {
     const client = tx ?? this.prisma;
-    const [trip, bands] = await Promise.all([
-      client.trip.findUnique({ where: { id: tripId }, select: { basePrice: true } }),
-      client.tourAgeBand.findMany({ where: { tripId }, select: { price: true } }),
-    ]);
+    const trip = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
     if (!trip) return null;
 
-    const candidates = bands.length > 0 ? bands.map((b) => b.price) : trip.basePrice ? [trip.basePrice] : [];
-    let priceFrom: Prisma.Decimal | null = null;
-    for (const c of candidates) {
-      if (priceFrom === null || Number(c) < Number(priceFrom)) priceFrom = c;
-    }
+    // priceFrom anchors off basePrice. Once the OCTO unit catalog (TourUnit) lands, this
+    // recomputes from the cheapest unit price.
+    const priceFrom: Prisma.Decimal | null = trip.basePrice ?? null;
 
-    await client.trip.update({ where: { id: tripId }, data: { priceFrom } });
+    await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
   }
 
@@ -162,8 +157,8 @@ export class TripsService {
    */
   async findPublicByIds(ids: string[]) {
     if (!ids.length) return [];
-    const trips = await this.prisma.trip.findMany({
-      where: { id: { in: ids }, status: TripStatus.LIVE, isActive: true },
+    const trips = await this.prisma.tour.findMany({
+      where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
       select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
     });
     const byId = new Map(trips.map((t) => [t.id, this.flattenTrip(t)]));
@@ -183,8 +178,8 @@ export class TripsService {
       return { total: 0, page, limit, query: term ?? '', data: [] as ReturnType<typeof this.flattenTrip>[] };
     }
     const ci = { contains: term, mode: 'insensitive' as const };
-    const where: Prisma.TripWhereInput = {
-      status: TripStatus.LIVE,
+    const where: Prisma.TourWhereInput = {
+      status: TourStatus.LIVE,
       isActive: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
       OR: [
@@ -197,8 +192,8 @@ export class TripsService {
     };
     const skip = (page - 1) * limit;
     const [total, data] = await Promise.all([
-      this.prisma.trip.count({ where }),
-      this.prisma.trip.findMany({
+      this.prisma.tour.count({ where }),
+      this.prisma.tour.findMany({
         where,
         select: { ...this.tripSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
         orderBy: this.buildOrderBy(TripSort.recommended),
@@ -225,7 +220,7 @@ export class TripsService {
       sort = TripSort.recommended, page = 1, limit = 20,
     } = query;
 
-    const where: Prisma.TripWhereInput = { status: TripStatus.LIVE, isActive: true };
+    const where: Prisma.TourWhereInput = { status: TourStatus.LIVE, isActive: true };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categories = { some: { categoryId } };
@@ -237,9 +232,9 @@ export class TripsService {
       if (maxPrice !== undefined) where.basePrice.lte = maxPrice;
     }
     if (durationMin !== undefined || durationMax !== undefined) {
-      where.durationMinutes = {};
-      if (durationMin !== undefined) where.durationMinutes.gte = durationMin;
-      if (durationMax !== undefined) where.durationMinutes.lte = durationMax;
+      where.durationMinutesFrom = {};
+      if (durationMin !== undefined) where.durationMinutesFrom.gte = durationMin;
+      if (durationMax !== undefined) where.durationMinutesFrom.lte = durationMax;
     }
     if (ratingMin !== undefined) where.aggregateRating = { gte: ratingMin };
 
@@ -252,8 +247,8 @@ export class TripsService {
     const skip = (page - 1) * limit;
 
     const [total, data] = await Promise.all([
-      this.prisma.trip.count({ where }),
-      this.prisma.trip.findMany({
+      this.prisma.tour.count({ where }),
+      this.prisma.tour.findMany({
         where,
         select: {
           ...this.tripSelect,
@@ -269,7 +264,7 @@ export class TripsService {
   }
 
   /** Maps the requested sort to a Prisma orderBy. */
-  private buildOrderBy(sort: TripSort): Prisma.TripOrderByWithRelationInput[] {
+  private buildOrderBy(sort: TripSort): Prisma.TourOrderByWithRelationInput[] {
     switch (sort) {
       case TripSort.price_asc:
         return [{ basePrice: { sort: 'asc', nulls: 'last' } }];
@@ -299,7 +294,7 @@ export class TripsService {
    * Turns raw attribute query params into AND-ed `attributes.some` conditions.
    * Only keys present (and filterable) in the dictionary are honored; others are ignored.
    */
-  private async buildAttributeFilters(rawQuery: Record<string, unknown>): Promise<Prisma.TripWhereInput[]> {
+  private async buildAttributeFilters(rawQuery: Record<string, unknown>): Promise<Prisma.TourWhereInput[]> {
     const candidates = Object.keys(rawQuery).filter(
       (k) => !TripsService.RESERVED_QUERY_KEYS.has(k) && typeof rawQuery[k] === 'string' && rawQuery[k] !== '',
     );
@@ -311,7 +306,7 @@ export class TripsService {
     });
     const validKeys = new Set(defs.map((d) => d.key));
 
-    const filters: Prisma.TripWhereInput[] = [];
+    const filters: Prisma.TourWhereInput[] = [];
     for (const key of candidates) {
       if (!validKeys.has(key)) continue;
       const values = String(rawQuery[key]).split(',').map((v) => v.trim()).filter(Boolean);
@@ -332,14 +327,14 @@ export class TripsService {
     const { search, status, operatorId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.TripWhereInput = {};
+    const where: Prisma.TourWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
     if (operatorId) where.operatorId = operatorId;
 
     const [total, data] = await Promise.all([
-      this.prisma.trip.count({ where }),
-      this.prisma.trip.findMany({
+      this.prisma.tour.count({ where }),
+      this.prisma.tour.findMany({
         where,
         select: {
           ...this.tripSelect,
@@ -359,7 +354,7 @@ export class TripsService {
             },
           },
           _count: {
-            select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
+            select: { images: true, highlights: true, inclusions: true, exclusions: true },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -378,13 +373,13 @@ export class TripsService {
     const { search, status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.TripWhereInput = { operatorId };
+    const where: Prisma.TourWhereInput = { operatorId };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
 
     const [total, data] = await Promise.all([
-      this.prisma.trip.count({ where }),
-      this.prisma.trip.findMany({
+      this.prisma.tour.count({ where }),
+      this.prisma.tour.findMany({
         where,
         select: {
           ...this.tripSelect,
@@ -397,7 +392,7 @@ export class TripsService {
           categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
           hubs: { select: { hubId: true, hub: { select: { name: true } } } },
           _count: {
-            select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
+            select: { images: true, highlights: true, inclusions: true, exclusions: true },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -420,7 +415,6 @@ export class TripsService {
       ...rest,
       heroImage: images?.[0] ?? null,
       imageCount: _count?.images ?? 0,
-      scheduleCount: _count?.schedules ?? 0,
       highlightCount: _count?.highlights ?? 0,
       inclusionCount: _count?.inclusions ?? 0,
       exclusionCount: _count?.exclusions ?? 0,
@@ -443,7 +437,7 @@ export class TripsService {
   }
 
   async findOne(id: string, requesterId: string | null, requesterRole: Role | null) {
-    const trip = await this.prisma.trip.findUnique({
+    const trip = await this.prisma.tour.findUnique({
       where: { id },
       select: {
         ...this.tripSelect,
@@ -456,14 +450,14 @@ export class TripsService {
         categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
         hubs: { select: { hubId: true, hub: { select: { name: true } } } },
         _count: {
-          select: { images: true, schedules: true, highlights: true, inclusions: true, exclusions: true },
+          select: { images: true, highlights: true, inclusions: true, exclusions: true },
         },
       },
     });
 
     if (!trip) throw new NotFoundException(`Trip ${id} not found`);
 
-    if (trip.status !== TripStatus.LIVE) {
+    if (trip.status !== TourStatus.LIVE) {
       if (!requesterId) throw new NotFoundException(`Trip ${id} not found`);
       if (requesterRole !== Role.ADMIN) {
         // trip.operatorId is from the operators table; requesterId is user.id — must resolve
@@ -484,10 +478,10 @@ export class TripsService {
 
     // V2 §4/§5: every tour has one flat canonical URL /{destination}/{tour-slug}/.
     // Hubs are a discovery tag, not part of the URL — resolve purely by destination + slug.
-    const trip = await this.prisma.trip.findFirst({
+    const trip = await this.prisma.tour.findFirst({
       where: {
         slug,
-        status: TripStatus.LIVE,
+        status: TourStatus.LIVE,
         isActive: true,
         destination: { slug: destinationSlug },
       },
@@ -547,20 +541,6 @@ export class TripsService {
           },
           orderBy: { displayOrder: 'asc' },
         },
-        ageBands: {
-          select: {
-            id: true,
-            bandType: true,
-            label: true,
-            minAge: true,
-            maxAge: true,
-            price: true,
-            minCount: true,
-            maxCount: true,
-            displayOrder: true,
-          },
-          orderBy: { displayOrder: 'asc' },
-        },
         addOns: {
           where: { isActive: true },
           select: {
@@ -577,22 +557,6 @@ export class TripsService {
         languages: {
           select: { id: true, language: true },
           orderBy: { language: 'asc' },
-        },
-        schedules: {
-          where: {
-            status: ScheduleStatus.AVAILABLE,
-            startDate: { gte: new Date() },
-          },
-          select: {
-            id: true,
-            startDate: true,
-            endDate: true,
-            startTime: true,
-            availableSpots: true,
-            status: true,
-          },
-          orderBy: { startDate: 'asc' },
-          take: 30,
         },
       },
     });
@@ -659,7 +623,7 @@ export class TripsService {
     operatorId: string,
   ): Promise<string> {
     // If this operator already has this exact slug → hard conflict, no auto-fix.
-    const ownConflict = await this.prisma.trip.findFirst({
+    const ownConflict = await this.prisma.tour.findFirst({
       where: { destinationId, slug: baseSlug, operatorId },
       select: { id: true },
     });
@@ -669,7 +633,7 @@ export class TripsService {
 
     // V2 §5: every tour is flat /{destination}/{tour-slug}/, so ALWAYS check the slug registry.
     const [tripConflict, registryConflict] = await Promise.all([
-      this.prisma.trip.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
+      this.prisma.tour.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
         select: { id: true },
@@ -695,7 +659,7 @@ export class TripsService {
     const candidate = `${baseSlug}-${suffix}`;
 
     const [candidateTrip, candidateRegistry] = await Promise.all([
-      this.prisma.trip.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
+      this.prisma.tour.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
         select: { id: true },
@@ -775,7 +739,7 @@ export class TripsService {
         }
       }
 
-      const trip = await tx.trip
+      const trip = await tx.tour
         .create({
           data: {
             name: dto.name,
@@ -783,10 +747,10 @@ export class TripsService {
             operatorId,
             destinationId: dto.destinationId,
             pricingModel: dto.pricingModel,
-            unitType: dto.unitType ?? null,
+            wholeUnitType: dto.wholeUnitType ?? null,
             basePrice: dto.basePrice ?? null,
-            priceFrom: dto.basePrice ?? null, // no age bands at create → from = base; recomputed on age-band changes
-            durationMinutes: dto.durationMinutes ?? null,
+            priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
+            durationMinutesFrom: dto.durationMinutesFrom ?? null,
             pickupModel: dto.pickupModel,
             maxPartySize: dto.maxPartySize ?? null,
             minPartySize: dto.minPartySize ?? 1,
@@ -841,7 +805,7 @@ export class TripsService {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, requesterId, requesterRole);
 
-    if (trip.status === TripStatus.ARCHIVED) {
+    if (trip.status === TourStatus.ARCHIVED) {
       throw new BadRequestException('Cannot update an archived trip');
     }
 
@@ -868,14 +832,14 @@ export class TripsService {
     const hubIds = dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.trip.update({
+      await tx.tour.update({
         where: { id },
         data: {
           ...(dto.name !== undefined && { name: dto.name }),
           ...(dto.pricingModel !== undefined && { pricingModel: dto.pricingModel }),
-          ...(dto.unitType !== undefined && { unitType: dto.unitType }),
+          ...(dto.wholeUnitType !== undefined && { wholeUnitType: dto.wholeUnitType }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
-          ...(dto.durationMinutes !== undefined && { durationMinutes: dto.durationMinutes }),
+          ...(dto.durationMinutesFrom !== undefined && { durationMinutesFrom: dto.durationMinutesFrom }),
           ...(dto.pickupModel !== undefined && { pickupModel: dto.pickupModel }),
           ...(dto.maxPartySize !== undefined && { maxPartySize: dto.maxPartySize }),
           ...(dto.minPartySize !== undefined && { minPartySize: dto.minPartySize }),
@@ -889,21 +853,21 @@ export class TripsService {
 
       // Replace the full category set, or just re-point the primary among existing.
       if (categoryIds) {
-        await tx.tourCategory.deleteMany({ where: { tripId: id } });
+        await tx.tourCategory.deleteMany({ where: { tourId: id } });
         await tx.tourCategory.createMany({
           data: categoryIds.map((categoryId) => ({
-            tripId: id,
+            tourId: id,
             categoryId,
             isPrimary: categoryId === primaryCategoryId,
           })),
         });
       } else if (dto.primaryCategoryId !== undefined) {
         const existing = await tx.tourCategory.findUnique({
-          where: { tripId_categoryId: { tripId: id, categoryId: dto.primaryCategoryId } },
+          where: { tourId_categoryId: { tourId: id, categoryId: dto.primaryCategoryId } },
           select: { id: true },
         });
         if (!existing) throw new BadRequestException('primaryCategoryId must be one of the tour categories');
-        await tx.tourCategory.updateMany({ where: { tripId: id }, data: { isPrimary: false } });
+        await tx.tourCategory.updateMany({ where: { tourId: id }, data: { isPrimary: false } });
         await tx.tourCategory.update({ where: { id: existing.id }, data: { isPrimary: true } });
       }
 
@@ -911,7 +875,7 @@ export class TripsService {
       if (hubIds) {
         const effectiveCategoryIds =
           categoryIds ??
-          (await tx.tourCategory.findMany({ where: { tripId: id }, select: { categoryId: true } })).map(
+          (await tx.tourCategory.findMany({ where: { tourId: id }, select: { categoryId: true } })).map(
             (c) => c.categoryId,
           );
         for (const hubId of hubIds) {
@@ -930,11 +894,11 @@ export class TripsService {
             throw new BadRequestException(`None of the tour's categories are allowed in hub ${hubId}`);
           }
         }
-        await tx.tourHub.deleteMany({ where: { tripId: id } });
-        await tx.tourHub.createMany({ data: hubIds.map((hubId) => ({ tripId: id, hubId })) });
+        await tx.tourHub.deleteMany({ where: { tourId: id } });
+        await tx.tourHub.createMany({ data: hubIds.map((hubId) => ({ tourId: id, hubId })) });
       }
 
-      return tx.trip.findUniqueOrThrow({ where: { id }, select: this.tripSelect });
+      return tx.tour.findUniqueOrThrow({ where: { id }, select: this.tripSelect });
     });
 
     // Keep the "From $X" anchor in sync if basePrice changed.
@@ -949,19 +913,18 @@ export class TripsService {
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
 
   async publish(id: string, userId: string, userRole: Role) {
-    const trip = await this.prisma.trip.findUnique({
+    const trip = await this.prisma.tour.findUnique({
       where: { id },
       select: {
         ...this.tripSelect,
         images: { select: { id: true, isHero: true } },
         highlights: { select: { id: true } },
         translations: { where: { locale: Locale.en }, select: { overview: true } },
-        ageBands: { select: { id: true } },
       },
     });
     if (!trip) throw new NotFoundException(`Trip ${id} not found`);
     await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TripStatus.DRAFT) {
+    if (trip.status !== TourStatus.DRAFT) {
       throw new BadRequestException('Trip must be in DRAFT status to publish');
     }
 
@@ -974,16 +937,16 @@ export class TripsService {
 
     if (trip.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
 
-    // Price required: a flat basePrice OR at least one age band (V2 §4).
-    if (trip.basePrice == null && trip.ageBands.length === 0) {
-      errors.push('A price is required to publish (set a base price or at least one age band)');
+    // Price required: a flat basePrice (the OCTO unit catalog will extend this later).
+    if (trip.basePrice == null) {
+      errors.push('A price is required to publish (set a base price)');
     }
 
     if (errors.length > 0) throw new BadRequestException(errors);
 
-    const updated = await this.prisma.trip.update({
+    const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TripStatus.LIVE, publishedAt: new Date() },
+      data: { status: TourStatus.LIVE, publishedAt: new Date() },
       select: this.tripSelect,
     });
 
@@ -994,15 +957,15 @@ export class TripsService {
   async pause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TripStatus.LIVE) {
+    if (trip.status !== TourStatus.LIVE) {
       throw new BadRequestException('Trip must be LIVE to pause');
     }
 
     // Phase 5 hook: if trip holds a featured slot → SlotsService.releaseSlot()
 
-    const updated = await this.prisma.trip.update({
+    const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TripStatus.PAUSED },
+      data: { status: TourStatus.PAUSED },
       select: this.tripSelect,
     });
 
@@ -1013,13 +976,13 @@ export class TripsService {
   async unpause(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, userId, userRole);
-    if (trip.status !== TripStatus.PAUSED) {
+    if (trip.status !== TourStatus.PAUSED) {
       throw new BadRequestException('Trip must be PAUSED to unpause');
     }
 
-    const updated = await this.prisma.trip.update({
+    const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TripStatus.LIVE },
+      data: { status: TourStatus.LIVE },
       select: this.tripSelect,
     });
 
@@ -1031,16 +994,16 @@ export class TripsService {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, requesterId, requesterRole);
 
-    if (trip.status === TripStatus.ARCHIVED) {
+    if (trip.status === TourStatus.ARCHIVED) {
       throw new BadRequestException('Trip is already archived');
     }
 
     // Phase 5 hook: if trip holds a featured slot → SlotsService.releaseSlot()
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.trip.update({
+      const updated = await tx.tour.update({
         where: { id },
-        data: { status: TripStatus.ARCHIVED, isActive: false },
+        data: { status: TourStatus.ARCHIVED, isActive: false },
         select: this.tripSelect,
       });
 
@@ -1059,14 +1022,14 @@ export class TripsService {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, requesterId, requesterRole);
 
-    if (trip.status !== TripStatus.ARCHIVED) {
+    if (trip.status !== TourStatus.ARCHIVED) {
       throw new BadRequestException('Only ARCHIVED trips can be restored');
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.trip.update({
+      const updated = await tx.tour.update({
         where: { id },
-        data: { status: TripStatus.DRAFT, isActive: true },
+        data: { status: TourStatus.DRAFT, isActive: true },
         select: this.tripSelect,
       });
 
@@ -1084,7 +1047,7 @@ export class TripsService {
   async remove(id: string, userId: string, userRole: Role) {
     const trip = await this.findTripOrThrow(id);
     await this.assertOwnership(trip, userId, userRole);
-    if (userRole !== Role.ADMIN && trip.status !== TripStatus.ARCHIVED) {
+    if (userRole !== Role.ADMIN && trip.status !== TourStatus.ARCHIVED) {
       throw new BadRequestException('Only ARCHIVED trips can be permanently deleted. Archive the trip first.');
     }
 
@@ -1094,7 +1057,7 @@ export class TripsService {
         where: { entityType: SlugEntityType.TOUR, entityId: id },
       });
       // Cascade deletes all child models (incl. TourCategory/TourHub) via onDelete: Cascade
-      await tx.trip.delete({ where: { id } });
+      await tx.tour.delete({ where: { id } });
     });
 
     this.logger.log(`User ${userId} permanently deleted trip ${id}`);

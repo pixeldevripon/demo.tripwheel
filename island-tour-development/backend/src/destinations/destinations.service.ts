@@ -11,7 +11,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType, TripStatus } from '@prisma/client';
+import { SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CreateDestinationDto,
   CreateFaqDto,
@@ -262,8 +262,8 @@ export class DestinationService {
         throw new ForbiddenException('Seeded destinations cannot be deactivated');
       }
 
-      const tripCount = await tx.trip.count({
-        where: { destinationId: id, isActive: true, status: { not: TripStatus.DRAFT } },
+      const tripCount = await tx.tour.count({
+        where: { destinationId: id, isActive: true, status: { not: TourStatus.DRAFT } },
       });
       if (tripCount > 0) {
         throw new ConflictException(

@@ -11,14 +11,12 @@ import { Locale } from '@prisma/client';
 import {
   DeleteMessageResponseDto,
   TourAddOnResponseDto,
-  TourAgeBandResponseDto,
   TourHighlightResponseDto,
   TourHighlightTranslationDto,
   TourImageResponseDto,
   TourInclusionResponseDto,
   TourInclusionTranslationDto,
   TourLanguageResponseDto,
-  TourScheduleResponseDto,
   TripTranslationResponseDto,
 } from './dto/trip-children.dto';
 
@@ -81,46 +79,6 @@ export function ApiRemoveImageDocs() {
     ApiOperation({ summary: 'Remove an image from a trip' }),
     tripIdParam,
     ApiParam({ name: 'imageId', description: 'Image UUID' }),
-    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
-    ...operatorErrors,
-  );
-}
-
-// ── Age Bands ─────────────────────────────────────────────────────────────────
-
-export function ApiGetAgeBandsDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'List age bands for a trip' }),
-    tripIdParam,
-    ApiResponse({ status: 200, type: [TourAgeBandResponseDto] }),
-    ...operatorErrors,
-  );
-}
-
-export function ApiAddAgeBandDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Add an age band to a trip' }),
-    tripIdParam,
-    ApiResponse({ status: 201, type: TourAgeBandResponseDto }),
-    ...operatorErrors,
-  );
-}
-
-export function ApiUpdateAgeBandDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Update an age band' }),
-    tripIdParam,
-    ApiParam({ name: 'bandId', description: 'Age band UUID' }),
-    ApiResponse({ status: 200, type: TourAgeBandResponseDto }),
-    ...operatorErrors,
-  );
-}
-
-export function ApiRemoveAgeBandDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Remove an age band from a trip' }),
-    tripIdParam,
-    ApiParam({ name: 'bandId', description: 'Age band UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
   );
@@ -361,43 +319,3 @@ export function ApiDeleteTripTranslationDocs() {
   );
 }
 
-// ── Schedules ─────────────────────────────────────────────────────────────────
-
-export function ApiGetSchedulesDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'List schedules for a trip (public)' }),
-    tripIdParam,
-    ApiResponse({ status: 200, type: [TourScheduleResponseDto] }),
-    ApiResponse({ status: 404, description: 'Trip not found', type: NotFoundErrorDto }),
-    ApiResponse({ status: 500, type: InternalServerErrorDto }),
-  );
-}
-
-export function ApiCreateScheduleDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Add a schedule (departure date/time + capacity) to a trip' }),
-    tripIdParam,
-    ApiResponse({ status: 201, type: TourScheduleResponseDto }),
-    ...operatorErrors,
-  );
-}
-
-export function ApiUpdateScheduleDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Update schedule capacity or status' }),
-    tripIdParam,
-    ApiParam({ name: 'scheduleId', description: 'Schedule UUID' }),
-    ApiResponse({ status: 200, type: TourScheduleResponseDto }),
-    ...operatorErrors,
-  );
-}
-
-export function ApiRemoveScheduleDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Remove a schedule from a trip' }),
-    tripIdParam,
-    ApiParam({ name: 'scheduleId', description: 'Schedule UUID' }),
-    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
-    ...operatorErrors,
-  );
-}

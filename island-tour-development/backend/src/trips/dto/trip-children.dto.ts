@@ -1,9 +1,8 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AddOnUnit, AgeBandType, ScheduleStatus } from '@prisma/client';
+import { AddOnUnit } from '@prisma/client';
 import {
   IsBoolean,
-  IsDateString,
   IsDecimal,
   IsEnum,
   IsInt,
@@ -22,7 +21,7 @@ import {
 
 export class TourImageResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img' }) url!: string;
   @ApiProperty() isHero!: boolean;
   @ApiPropertyOptional({ example: 0.5 }) focalX!: number;
@@ -114,114 +113,11 @@ export class UpdateTourImageDto {
   displayOrder?: number;
 }
 
-// ── Age Band DTOs ─────────────────────────────────────────────────────────────
-
-export class TourAgeBandResponseDto {
-  @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
-  @ApiProperty({ enum: AgeBandType }) bandType!: AgeBandType;
-  @ApiProperty() label!: string;
-  @ApiPropertyOptional() minAge!: number | null;
-  @ApiPropertyOptional() maxAge!: number | null;
-  @ApiProperty() price!: string;
-  @ApiProperty() minCount!: number;
-  @ApiPropertyOptional() maxCount!: number | null;
-  @ApiProperty() displayOrder!: number;
-}
-
-export class CreateTourAgeBandDto {
-  @ApiProperty({ enum: AgeBandType })
-  @IsEnum(AgeBandType)
-  bandType!: AgeBandType;
-
-  @ApiProperty({ example: 'Adults (13+)' })
-  @IsString()
-  @MaxLength(60)
-  label!: string;
-
-  @ApiPropertyOptional({ example: 13 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  minAge?: number;
-
-  @ApiPropertyOptional({ example: 99 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxAge?: number;
-
-  @ApiProperty({ example: '75.00' })
-  @IsDecimal({}, { message: 'price must be a valid decimal number' })
-  price!: string;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  minCount?: number;
-
-  @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  maxCount?: number;
-
-  @ApiPropertyOptional({ example: 0 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  displayOrder?: number;
-}
-
-export class UpdateTourAgeBandDto {
-  @ApiPropertyOptional({ example: 'Adults (13+)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  label?: string;
-
-  @ApiPropertyOptional({ example: 13 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  minAge?: number;
-
-  @ApiPropertyOptional({ example: 99 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxAge?: number;
-
-  @ApiPropertyOptional({ example: '75.00' })
-  @IsOptional()
-  @IsDecimal({}, { message: 'price must be a valid decimal number' })
-  price?: string;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  minCount?: number;
-
-  @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  maxCount?: number;
-
-  @ApiPropertyOptional({ example: 0 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  displayOrder?: number;
-}
-
 // ── Add-On DTOs ───────────────────────────────────────────────────────────────
 
 export class TourAddOnResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty() name!: string;
   @ApiPropertyOptional() description!: string | null;
   @ApiProperty() price!: string;
@@ -310,7 +206,7 @@ export class UpdateTourAddOnDto {
 
 export class TourLanguageResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty({ example: 'en' }) language!: string;
 }
 
@@ -331,7 +227,7 @@ export class TourHighlightTranslationDto {
 
 export class TourHighlightResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
   @ApiProperty({ type: [TourHighlightTranslationDto] }) translations!: TourHighlightTranslationDto[];
@@ -392,7 +288,7 @@ export class TourInclusionTranslationDto {
 
 export class TourInclusionResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty() icon!: string;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
@@ -466,7 +362,7 @@ export class TourExclusionTranslationDto {
 
 export class TourExclusionResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
+  @ApiProperty() tourId!: string;
   @ApiProperty() icon!: string;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
@@ -564,61 +460,6 @@ export class UpsertTripTranslationDto {
   @IsOptional()
   @IsBoolean()
   isMachineTranslated?: boolean;
-}
-
-// ── Schedule DTOs ─────────────────────────────────────────────────────────────
-
-export class TourScheduleResponseDto {
-  @ApiProperty() id!: string;
-  @ApiProperty() tripId!: string;
-  @ApiProperty({ example: '2026-07-15' }) startDate!: Date;
-  @ApiPropertyOptional({ example: '2026-07-16' }) endDate!: Date | null;
-  @ApiProperty({ example: '09:00' }) startTime!: string;
-  @ApiProperty({ example: 20 }) totalSpots!: number;
-  @ApiProperty({ example: 20 }) availableSpots!: number;
-  @ApiProperty({ enum: ScheduleStatus }) status!: ScheduleStatus;
-  @ApiProperty() createdAt!: Date;
-  @ApiProperty() updatedAt!: Date;
-}
-
-export class CreateTourScheduleDto {
-  @ApiProperty({ example: '2026-07-15' })
-  @IsDateString()
-  startDate!: string;
-
-  @ApiPropertyOptional({ example: '2026-07-16' })
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @ApiProperty({ example: '09:00' })
-  @IsString()
-  @Matches(/^\d{2}:\d{2}$/, { message: 'startTime must be in HH:MM format' })
-  startTime!: string;
-
-  @ApiProperty({ example: 20 })
-  @IsInt()
-  @Min(1)
-  totalSpots!: number;
-}
-
-export class UpdateTourScheduleDto {
-  @ApiPropertyOptional({ example: 25 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  totalSpots?: number;
-
-  @ApiPropertyOptional({ example: 15 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  availableSpots?: number;
-
-  @ApiPropertyOptional({ enum: ScheduleStatus })
-  @IsOptional()
-  @IsEnum(ScheduleStatus)
-  status?: ScheduleStatus;
 }
 
 // ── Shared message response ───────────────────────────────────────────────────

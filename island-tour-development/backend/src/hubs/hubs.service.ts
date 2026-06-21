@@ -11,7 +11,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType, TripStatus } from '@prisma/client';
+import { SlugEntityType, TourStatus } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -306,8 +306,8 @@ export class HubService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      const tripCount = await tx.trip.count({
-        where: { hubs: { some: { hubId: id } }, isActive: true, status: { not: TripStatus.DRAFT } },
+      const tripCount = await tx.tour.count({
+        where: { hubs: { some: { hubId: id } }, isActive: true, status: { not: TourStatus.DRAFT } },
       });
       if (tripCount > 0) {
         throw new ConflictException(
