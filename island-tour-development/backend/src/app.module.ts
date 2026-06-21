@@ -19,6 +19,8 @@ import { SearchModule } from '@/search/search.module';
 import { OctoModule } from '@/octo/octo.module';
 import { AvailabilityModule } from '@/availability/availability.module';
 import { BookingsModule } from '@/bookings/bookings.module';
+import { PaymentsModule } from '@/payments/payments.module';
+import { TrackingModule } from '@/tracking/tracking.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -43,6 +45,8 @@ import { BookingsModule } from '@/bookings/bookings.module';
     OctoModule,
     AvailabilityModule,
     BookingsModule,
+    PaymentsModule,
+    TrackingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

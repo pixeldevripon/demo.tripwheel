@@ -19,8 +19,11 @@ import {
   type BookingUnitItem,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { MailService } from '@/mail/mail.service';
+import { TrackingService } from '@/tracking/tracking.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { dateKey, localNow } from '@/common/utils/timezone.util';
+import { eurFxRate } from '@/common/utils/fx.util';
 import { computeAvailabilityStatus } from '@/availability/availability-status.util';
 import {
   computeBookingPricing,
@@ -49,7 +52,11 @@ type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+    private readonly tracking: TrackingService,
+  ) {}
 
   // ════════════════════════════════════════════════════════════════════════
   // Reserve (OCTO step 1) — atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL)
@@ -118,6 +125,7 @@ export class BookingsService {
           currency: ctx.tour.defaultCurrency,
           localDate: new Date(`${dateKey(localStart)}T00:00:00.000Z`),
           startTime: hhmm(localStart),
+          island: ctx.tour.destination?.slug ?? null,
           utcExpiresAt: operatorFull
             ? null
             : new Date(Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000),
@@ -159,6 +167,12 @@ export class BookingsService {
     this.logger.log(
       `Booking ${created.displayRef} reserved (${created.status}, ${seats} seats) tour ${dto.tourId}`,
     );
+
+    // OPERATOR_FULL is born CONFIRMED with no charge (rule #21) → fire conversion now.
+    if (operatorFull) {
+      const finalized = await this.finalizeConfirmation(created);
+      return mapBooking(finalized);
+    }
     return mapBooking(created);
   }
 
@@ -201,7 +215,180 @@ export class BookingsService {
       });
     });
     this.logger.log(`Booking ${updated.displayRef} confirmed`);
-    return mapBooking(updated);
+    const finalized = await this.finalizeConfirmation(updated);
+    return mapBooking(finalized);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Payment-driven confirmation — called by the Stripe webhook on success
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Settle a booking once its platform charge has succeeded. Transitions an
+   * on-hold booking to CONFIRMED (a no-op if already confirmed), snapshots the
+   * payment-method billing details (master G5), and finalizes the conversion.
+   * Idempotent — safe for webhook redelivery.
+   */
+  async confirmFromPayment(
+    bookingId: string,
+    billing?: {
+      country?: string | null;
+      postalCode?: string | null;
+      city?: string | null;
+      last4?: string | null;
+      brand?: string | null;
+    },
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) {
+      this.logger.error(`confirmFromPayment: booking ${bookingId} not found`);
+      return;
+    }
+
+    let current = booking;
+    if (booking.status === BookingStatus.ON_HOLD) {
+      current = await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: BookingStatus.CONFIRMED,
+          utcConfirmedAt: booking.utcConfirmedAt ?? new Date(),
+          billingCountry: billing?.country ?? booking.billingCountry,
+          billingPostalCode: billing?.postalCode ?? booking.billingPostalCode,
+          billingCity: billing?.city ?? booking.billingCity,
+          paymentMethodLast4: billing?.last4 ?? booking.paymentMethodLast4,
+          paymentMethodBrand: billing?.brand ?? booking.paymentMethodBrand,
+        },
+        include: { unitItems: true },
+      });
+      this.logger.log(`Booking ${current.displayRef} confirmed via payment`);
+    } else if (billing) {
+      current = await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          billingCountry: billing.country ?? booking.billingCountry,
+          billingPostalCode: billing.postalCode ?? booking.billingPostalCode,
+          billingCity: billing.city ?? booking.billingCity,
+          paymentMethodLast4: billing.last4 ?? booking.paymentMethodLast4,
+          paymentMethodBrand: billing.brand ?? booking.paymentMethodBrand,
+        },
+        include: { unitItems: true },
+      });
+    }
+
+    await this.finalizeConfirmation(current);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Conversion finalization — EUR commission backfill + email + CAPI (fire once)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Run the post-confirmation side effects exactly once per booking: normalize the
+   * commission to EUR (rule #22), stamp `conversionFiredAt`, send the confirmation
+   * email, and fire the `booking_complete` conversion. Guarded by `conversionFiredAt`
+   * so it is idempotent across the confirm endpoint, the payment webhook, and retries.
+   */
+  private async finalizeConfirmation(
+    booking: BookingWithItems,
+  ): Promise<BookingWithItems> {
+    if (booking.conversionFiredAt) return booking; // already fired — idempotent
+
+    // EUR-normalize the commission snapshot (rule #22 / master G3).
+    const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
+    const totalEur =
+      booking.totalEur ??
+      booking.totalRetail.mul(fxRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+    const commissionAmount =
+      booking.commissionAmount ??
+      (booking.commissionRate
+        ? totalEur.mul(booking.commissionRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+        : null);
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        fxRateToEur: fxRate,
+        totalEur,
+        commissionAmount,
+        conversionFiredAt: new Date(),
+      },
+      include: { unitItems: true },
+    });
+
+    // Conversion value MUST be a non-null EUR commission (rule #22). Otherwise it is
+    // data corruption — log loudly and do NOT fire a conversion with a bad value.
+    if (commissionAmount == null) {
+      this.logger.error(
+        `Booking ${updated.displayRef} confirmed with null commissionAmount — conversion NOT fired (data corruption)`,
+      );
+    }
+
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: updated.tourId },
+      select: { name: true, destination: { select: { slug: true } } },
+    });
+
+    await this.sendConfirmationEmail(updated, tour?.name ?? 'Your tour');
+    if (commissionAmount != null) {
+      await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
+    }
+    return updated;
+  }
+
+  private async sendConfirmationEmail(
+    booking: BookingWithItems,
+    tourTitle: string,
+  ): Promise<void> {
+    if (!booking.contactEmail) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
+    const manageUrl =
+      process.env.FRONTEND_URL && booking.island
+        ? `${process.env.FRONTEND_URL}/${booking.island}/thank-you/${booking.publicRef}`
+        : null;
+    try {
+      await this.mail.sendBookingConfirmationEmail(booking.contactEmail, {
+        customerName: booking.contactFirstName,
+        displayRef: booking.displayRef,
+        tourTitle,
+        localDate: dateKey(booking.localDate),
+        startTime: booking.startTime,
+        partySize: booking.unitItems.length,
+        currency: booking.currency,
+        totalRetail: booking.totalRetail.toString(),
+        depositPaid:
+          booking.paymentModel === PaymentModel.ON_ARRIVAL ||
+          booking.paymentModel === PaymentModel.OPERATOR_FULL
+            ? null
+            : booking.depositAmount.toString(),
+        balanceDue: booking.balanceAmount.toString(),
+        manageUrl,
+      });
+    } catch (err) {
+      this.logger.error(`Confirmation email failed for ${booking.displayRef}`, err as Error);
+    }
+  }
+
+  private async fireConversion(
+    booking: BookingWithItems,
+    tourName: string | null,
+    commissionEur: Prisma.Decimal,
+  ): Promise<void> {
+    await this.tracking.fireBookingComplete({
+      eventId: booking.publicRef,
+      commissionEur: commissionEur.toNumber(),
+      contentId: booking.tourId,
+      contentName: tourName,
+      email: booking.contactEmail,
+      phone: booking.contactPhone,
+      firstName: booking.contactFirstName,
+      lastName: booking.contactLastName,
+      country: booking.contactCountry,
+      postalCode: booking.contactPostalCode,
+      clickId: booking.fbclid,
+      eventTimeSec: Math.floor((booking.utcConfirmedAt ?? new Date()).getTime() / 1000),
+    });
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -366,6 +553,58 @@ export class BookingsService {
     return mapBooking(booking);
   }
 
+  /**
+   * Thank-you-page payload, keyed on the unguessable `publicRef` (the TYP token, so
+   * this is public). Emits the `booking_complete` conversion object **only** for a
+   * confirmed booking with a non-null EUR commission — otherwise `conversion: null`
+   * so the frontend renders an error and fires nothing (rule #22).
+   */
+  async getThankYou(publicRef: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      include: {
+        unitItems: { select: { id: true } },
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const confirmed = booking.status === BookingStatus.CONFIRMED;
+    const conversion =
+      confirmed && booking.commissionAmount != null
+        ? {
+            event: 'Purchase',
+            eventId: booking.publicRef,
+            currency: 'EUR',
+            value: booking.commissionAmount.toString(),
+            contentId: booking.tourId,
+            contentName: booking.tour?.name ?? null,
+          }
+        : null;
+
+    if (confirmed && conversion == null) {
+      this.logger.error(
+        `TYP for ${booking.displayRef}: confirmed booking has null commissionAmount — no conversion`,
+      );
+    }
+
+    return {
+      publicRef: booking.publicRef,
+      displayRef: booking.displayRef,
+      status: booking.status,
+      tourId: booking.tourId,
+      tourName: booking.tour?.name ?? 'Your tour',
+      island: booking.island,
+      localDate: dateKey(booking.localDate),
+      startTime: booking.startTime,
+      partySize: booking.unitItems.length,
+      currency: booking.currency,
+      totalRetail: booking.totalRetail.toString(),
+      contactEmail: booking.contactEmail,
+      conversion,
+    };
+  }
+
   async list(query: ListBookingsQueryDto, actor: { id: string; role: Role }) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -436,6 +675,7 @@ export class BookingsService {
         commissionTier: true,
         minPartySize: true,
         maxPartySize: true,
+        destination: { select: { slug: true } },
       },
     });
     if (!tour) throw new NotFoundException('Tour not found');

@@ -65,10 +65,10 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [ ] Commission tiers (premium 30 / featured 27.5 / boosted 25 / organic 22.5 / standard 20)
 - [ ] Destination Spotlight 35% (separate block, max 3/destination, manual approval)
-- [ ] `commission_rate` + `commission_amount` snapshot on booking, never retroactive
+- [x] `commission_rate` + `commission_amount` snapshot on booking, never retroactive — `bookings.service` (computed at reserve, EUR-normalized at confirm)
 - [ ] `deposit_pct` 20–30 in 2.5 steps, tier-driven
-- [ ] 4 payment models (operator_link / on_arrival / paid_in_full / operator_full)
-- [ ] Deposit/balance split (deposit to Island Tours via Stripe; balance is operator's)
+- [x] 4 payment models (operator_link / on_arrival / paid_in_full / operator_full) — snapshot + charge selection in `bookings.service` / `payments.service`
+- [x] Deposit/balance split (deposit to Island Tours via Stripe; balance is operator's) — `payments.service.chargeFor`
 - [ ] Two-phase operator visibility (pre-payment agentless, post-booking named)
 
 ### 1.5 Infrastructure
@@ -76,9 +76,9 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] NestJS backend, Prisma, PostgreSQL — `backend/`
 - [x] Better Auth backend-only — `auth/`
 - [ ] next-intl wired end-to-end on the public site — frontend
-- [ ] Stripe payments integration — config models only
-- [ ] Resend transactional email (SPF/DKIM/DMARC), Postmark fallback — SMTP settings only
-- [ ] GTM / Google Ads / GA4 / Meta Pixel + server-side Meta CAPI — none
+- [x] Stripe payments integration — `payments/` (intent per booking, signature-verified idempotent webhook); keys from `stripe_configuration`
+- [ ] Resend transactional email (SPF/DKIM/DMARC), Postmark fallback — booking-confirmation email wired over existing SMTP/nodemailer; Resend provider swap still TODO
+- [ ] GTM / Google Ads / GA4 / Meta Pixel + server-side Meta CAPI — server-side Meta CAPI done (`tracking/`); GTM/Pixel/Ads/GA4 are frontend
 
 ---
 
@@ -250,19 +250,19 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### 8.1 Principles
 
-- [ ] Conversion value = `commission_amount` (EUR), never GMV
-- [ ] One `booking_complete` event → 4 GTM tags (Conversion Linker, Google Ads, GA4, Meta Pixel)
-- [ ] Enhanced Conversions / Advanced Matching with hashed PII
-- [ ] Server-side Meta CAPI in parallel, event-id dedup
-- [ ] Mark-first idempotency via `conversion_fired_at`
+- [x] Conversion value = `commission_amount` (EUR), never GMV — `bookings.service.finalizeConfirmation` / TYP payload
+- [ ] One `booking_complete` event → 4 GTM tags (Conversion Linker, Google Ads, GA4, Meta Pixel) — frontend GTM
+- [x] Enhanced Conversions / Advanced Matching with hashed PII — `tracking.service` (SHA-256 em/ph/fn/ln/zp/country)
+- [x] Server-side Meta CAPI in parallel, event-id dedup — `tracking.service` (`event_id` = publicRef, shared with the Pixel)
+- [x] Mark-first idempotency via `conversion_fired_at` — `bookings.service.finalizeConfirmation` (fires once)
 - [ ] Click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at booking creation
 - [ ] Consent Mode v2 (EEA denied default, US/CA granted)
 
 ### 8.2 Flow
 
-- [ ] `/payment/processing` → Stripe webhook (idempotent via `stripe_webhook_events`) → TYP → push once
-- [ ] TYP route `/{destination}/thank-you/{public_ref}`, no locale prefix, noindex
-- [ ] operator_full bypasses charge/webhook, created confirmed at commit
+- [x] `/payment/processing` → Stripe webhook (idempotent via `stripe_webhook_events`) → TYP → push once — backend: webhook + idempotency + `confirmFromPayment`; `/payment/processing` page is frontend
+- [x] TYP route `/{destination}/thank-you/{public_ref}`, no locale prefix, noindex — backend data at `GET /bookings/typ/:publicRef` (conversion gated on confirmed + EUR commission); page render is frontend
+- [x] operator_full bypasses charge/webhook, created confirmed at commit — `bookings.service.reserve` (no charge in `payments.service`)
 
 ### 8.3 Data contract
 
@@ -385,12 +385,12 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### E.8 bookings
 
 - [x] tour_id, user_id, operator_id, schedule_id, date, time, party_size, total/deposit amount, status, confirmation_code, add-ons — `bookings.prisma` (thin)
-- [ ] public_ref (uuid), display_ref (IT-2026-XXXXX), island (denormalized)
-- [ ] original_currency/amount, booking_total_eur, fx_rate_to_eur
-- [ ] commission_rate, commission_amount, payment_model, deposit_amount, payment_method_last4/brand
-- [ ] conversion_fired_at, gclid/gbraid/wbraid/fbclid, utm_*
-- [ ] customer_first/last_name (split), customer_email/phone (E.164), customer_id (hash), customer_locale
-- [ ] billing_country/postal_code/city (from Stripe)
+- [x] public_ref (uuid), display_ref (IT-2026-XXXXX), island (denormalized) — populated at reserve (`bookings.service`)
+- [x] original_currency/amount, booking_total_eur, fx_rate_to_eur — `fx.util` + `finalizeConfirmation` (EUR-normalized at confirm)
+- [x] commission_rate, commission_amount, payment_model, deposit_amount, payment_method_last4/brand — reserve snapshot + webhook billing snapshot
+- [ ] conversion_fired_at, gclid/gbraid/wbraid/fbclid, utm_* — `conversion_fired_at` set; click-id/UTM capture at booking creation still TODO (needs reserve DTO fields + frontend)
+- [x] customer_first/last_name (split), customer_email/phone (E.164), customer_id (hash), customer_locale — captured at confirm (`customer_id` hash deferred)
+- [x] billing_country/postal_code/city (from Stripe) — `confirmFromPayment` (webhook charge billing_details)
 
 ### E.9 availability & departures
 

@@ -14,7 +14,9 @@ import helmet from 'helmet';
 async function bootstrap() {
   validateEnv();
 
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true keeps the unparsed request body available for Stripe webhook
+  // signature verification (PaymentsController reads req.rawBody).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const isProd = process.env.NODE_ENV === 'production';
 
   // Trust one proxy hop (nginx / Cloudflare) so ThrottlerGuard reads the real

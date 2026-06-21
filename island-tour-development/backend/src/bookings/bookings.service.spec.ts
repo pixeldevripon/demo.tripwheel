@@ -120,6 +120,10 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
   m.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
   );
+  // finalizeConfirmation re-reads via booking.update (conversion backfill).
+  m.booking.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+    fakeBooking(data),
+  );
 }
 
 const reserveDto = {
@@ -132,12 +136,16 @@ const reserveDto = {
 describe('BookingsService', () => {
   let prisma: any;
   let m: any;
+  let mail: any;
+  let tracking: any;
   let svc: BookingsService;
 
   beforeEach(() => {
     prisma = mockPrisma();
     m = prisma;
-    svc = new BookingsService(prisma);
+    mail = { sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined) };
+    tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
+    svc = new BookingsService(prisma, mail, tracking);
   });
 
   describe('reserve', () => {

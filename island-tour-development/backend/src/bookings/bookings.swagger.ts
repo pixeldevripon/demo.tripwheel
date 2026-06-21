@@ -13,7 +13,7 @@ import {
   ConflictErrorDto,
   NotFoundErrorDto,
 } from '@/common/dto/error-responses.dto';
-import { BookingResponseDto } from './dto/booking.dto';
+import { BookingResponseDto, ThankYouResponseDto } from './dto/booking.dto';
 
 export const ApiReserveDocs = () =>
   applyDecorators(
@@ -59,6 +59,18 @@ export const ApiUpdateBookingDocs = () =>
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiThankYouDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Thank-you-page payload by publicRef (public TYP token)',
+      description:
+        'Drives the noindex TYP route. Returns the `booking_complete` conversion object only for a ' +
+        'confirmed booking with a valid EUR commission (conversion value = commission_amount EUR).',
+    }),
+    ApiOkResponse({ type: ThankYouResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 
 export const ApiGetBookingDocs = () =>

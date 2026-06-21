@@ -29,6 +29,41 @@ export class BookingUnitItemResponseDto {
   @ApiProperty({ example: '79.99' }) priceRetail!: string;
 }
 
+/** Conversion payload for the browser Pixel (master booking_complete contract). */
+export class BookingConversionDto {
+  @ApiProperty({ example: 'Purchase' }) event!: string;
+  @ApiProperty({ example: 'b1a2…', description: 'Dedupe id shared with the server CAPI event.' })
+  eventId!: string;
+  @ApiProperty({ example: 'EUR', description: 'Conversion value is always EUR (rule #22).' })
+  currency!: string;
+  @ApiProperty({ example: '57.74', description: 'Conversion value = commission_amount in EUR.' })
+  value!: string;
+  @ApiProperty() contentId!: string;
+  @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
+}
+
+/** Thank-you-page payload (TYP route — noindex, no locale prefix). */
+export class ThankYouResponseDto {
+  @ApiProperty() publicRef!: string;
+  @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
+  @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+  @ApiProperty() tourId!: string;
+  @ApiProperty({ example: 'Sunset Catamaran Cruise' }) tourName!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!: string | null;
+  @ApiProperty({ example: '2026-07-01' }) localDate!: string;
+  @ApiPropertyOptional({ nullable: true, example: '09:00' }) startTime!: string | null;
+  @ApiProperty({ example: 2 }) partySize!: number;
+  @ApiProperty({ example: 'EUR' }) currency!: string;
+  @ApiProperty({ example: '209.97' }) totalRetail!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'ada@x.io' }) contactEmail!: string | null;
+  @ApiPropertyOptional({
+    type: BookingConversionDto,
+    nullable: true,
+    description: 'Present only for a confirmed booking with a valid EUR commission; null otherwise.',
+  })
+  conversion!: BookingConversionDto | null;
+}
+
 export class BookingResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;

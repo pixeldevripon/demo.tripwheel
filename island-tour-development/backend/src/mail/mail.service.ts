@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { emailVerificationTemplate, passwordResetTemplate } from './templates';
+import {
+  bookingConfirmationTemplate,
+  emailVerificationTemplate,
+  passwordResetTemplate,
+  type BookingConfirmationTemplateProps,
+} from './templates';
 
 export interface SendMailOptions {
   to: string;
@@ -84,6 +89,20 @@ export class MailService {
     await this.sendMail({
       to,
       subject: 'Verify your Island Tours email address',
+      html,
+      text,
+    });
+  }
+
+  // ── Booking confirmation ────────────────────────────────────────────────────
+  async sendBookingConfirmationEmail(
+    to: string,
+    props: BookingConfirmationTemplateProps,
+  ): Promise<void> {
+    const { html, text } = bookingConfirmationTemplate(props);
+    await this.sendMail({
+      to,
+      subject: `Booking confirmed — ${props.displayRef}`,
       html,
       text,
     });

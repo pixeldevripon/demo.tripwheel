@@ -27,6 +27,7 @@ import {
   ApiGetBookingDocs,
   ApiListBookingsDocs,
   ApiReserveDocs,
+  ApiThankYouDocs,
   ApiUpdateBookingDocs,
 } from './bookings.swagger';
 
@@ -88,6 +89,13 @@ export class BookingsController {
   @ApiUpdateBookingDocs()
   update(@Param('id') id: string, @Body() dto: UpdateBookingDto) {
     return this.bookings.update(id, dto);
+  }
+
+  @Get('typ/:publicRef')
+  @Public()
+  @ApiThankYouDocs()
+  thankYou(@Param('publicRef') publicRef: string) {
+    return this.bookings.getThankYou(publicRef);
   }
 
   @Get()

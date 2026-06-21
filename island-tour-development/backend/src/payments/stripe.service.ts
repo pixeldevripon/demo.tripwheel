@@ -32,6 +32,21 @@ export class StripeService {
     return cfg.webhookSecret || null;
   }
 
+  /** The publishable key (public — safe to return to the browser). */
+  async publishableKey(): Promise<string | null> {
+    const row = await this.prisma.stripeConfiguration.findUnique({
+      where: { id: 'default' },
+      select: { publishableKey: true },
+    });
+    return row?.publishableKey || null;
+  }
+
+  /** Configured payment-method types (empty → Stripe automatic methods). */
+  async paymentMethods(): Promise<string[]> {
+    const cfg = await this.config();
+    return cfg.methods;
+  }
+
   /** A Stripe client bound to the current secret key, or null if unconfigured. */
   private async getClient(): Promise<Stripe | null> {
     const cfg = await this.config();
