@@ -20,7 +20,7 @@ export const ApiReserveDocs = () =>
     ApiOperation({
       summary: 'Reserve a booking (OCTO step 1)',
       description:
-        'Atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL). Idempotent by uuid.',
+        'Atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL). Idempotent by id.',
     }),
     ApiCreatedResponse({ type: BookingResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),

@@ -654,7 +654,7 @@ function mapBooking(b: BookingWithItems) {
     paymentModel: b.paymentModel,
     cancellationRefund: b.cancellationRefund,
     unitItems: b.unitItems.map((u) => ({
-      uuid: u.uuid,
+      id: u.id,
       unitId: u.unitId,
       status: u.status,
       priceRetail: u.priceRetail.toString(),
