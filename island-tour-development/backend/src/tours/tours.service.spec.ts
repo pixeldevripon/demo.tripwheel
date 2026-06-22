@@ -153,7 +153,7 @@ describe('ToursService', () => {
 
   // ── resolveUniqueSlug (via create) ────────────────────────────────────────────
 
-  describe('create — slug resolution', () => {
+  describe('create - slug resolution', () => {
     beforeEach(() => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', slug: 'curacao', isActive: true });
@@ -217,9 +217,9 @@ describe('ToursService', () => {
     });
   });
 
-  // ── create — validation + many-to-many ────────────────────────────────────────
+  // ── create - validation + many-to-many ────────────────────────────────────────
 
-  describe('create — categories & hubs', () => {
+  describe('create - categories & hubs', () => {
     beforeEach(() => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', slug: 'curacao', isActive: true });
@@ -335,7 +335,7 @@ describe('ToursService', () => {
     });
   });
 
-  // ── findAll — join filters ─────────────────────────────────────────────────────
+  // ── findAll - join filters ─────────────────────────────────────────────────────
 
   describe('findAll', () => {
     it('filters category/hub via the join relations and flattens results', async () => {
@@ -422,7 +422,7 @@ describe('ToursService', () => {
     });
   });
 
-  // ── findBySlug — flat URL (no hub nesting) ─────────────────────────────────────
+  // ── findBySlug - flat URL (no hub nesting) ─────────────────────────────────────
 
   describe('findBySlug', () => {
     it('resolves purely by destination + slug (no hub condition)', async () => {
@@ -529,7 +529,7 @@ describe('ToursService', () => {
     });
   });
 
-  // ── archive / restore / remove — always-flat slug_registry ─────────────────────
+  // ── archive / restore / remove - always-flat slug_registry ─────────────────────
 
   describe('archive / restore / remove', () => {
     it('archive deactivates the TOUR slug_registry row (always)', async () => {
@@ -571,7 +571,7 @@ describe('ToursService', () => {
     });
   });
 
-  // ── update — category/hub replacement + primary re-point ───────────────────────
+  // ── update - category/hub replacement + primary re-point ───────────────────────
 
   describe('update', () => {
     it('replaces the category set and re-points the primary', async () => {

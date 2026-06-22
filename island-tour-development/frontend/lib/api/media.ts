@@ -45,7 +45,7 @@ export const mediaApi = {
   upload(files: File[]): Promise<MediaItem[]> {
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
-    // No Content-Type header — browser sets multipart/form-data boundary automatically
+    // No Content-Type header - browser sets multipart/form-data boundary automatically
     return apiFetch<MediaItem[]>('/media-gallery/upload', {
       method: 'POST',
       headers: {},

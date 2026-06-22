@@ -121,7 +121,7 @@ export function TripForm() {
   const primaryCategoryId = watch('primaryCategoryId');
 
   // Hubs available for the chosen destination (only those whose allowed categories
-  // intersect the selected categories are valid — the backend enforces this).
+  // intersect the selected categories are valid - the backend enforces this).
   const { data: hubs } = useActiveHubs(destinationId || undefined);
 
   useEffect(() => {

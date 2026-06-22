@@ -1,7 +1,7 @@
 /**
  * Unit tests for DestinationController.
  *
- * The controller is a thin routing layer — these tests verify that each handler
+ * The controller is a thin routing layer - these tests verify that each handler
  * delegates to the correct DestinationService method with the exact arguments
  * received from NestJS (params, query, body, authenticated user).
  *

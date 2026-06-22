@@ -128,7 +128,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       header: 'Operator',
       cell: ({ row }) => {
         const info = row.original.operatorInfo;
-        if (!info) return <span className="text-xs text-muted-foreground">—</span>;
+        if (!info) return <span className="text-xs text-muted-foreground">-</span>;
         const displayName = info.companyName ?? info.userName;
         const isMe = currentUserEmail && info.userEmail === currentUserEmail;
         return (
@@ -183,7 +183,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       header: 'Slot',
       cell: ({ row }) => {
         const slotNum = row.original.featuredSlotNumber;
-        if (!slotNum) return <span className="text-xs text-muted-foreground">—</span>;
+        if (!slotNum) return <span className="text-xs text-muted-foreground">-</span>;
         return (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -206,7 +206,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
         const all = row.original.categoryNames ?? [];
         const extra = all.length > 1 ? all.length - 1 : 0;
         const label = primary ?? all[0];
-        if (!label) return <span className="text-xs text-muted-foreground">—</span>;
+        if (!label) return <span className="text-xs text-muted-foreground">-</span>;
         return (
           <div className="flex items-center gap-1.5">
             <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
@@ -226,7 +226,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
         const trip = row.original;
         const dest = trip.destinationName;
         const hubs = trip.hubNames ?? [];
-        if (!dest) return <span className="text-xs text-muted-foreground">—</span>;
+        if (!dest) return <span className="text-xs text-muted-foreground">-</span>;
         return (
           <div className="flex items-start gap-1.5">
             <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />

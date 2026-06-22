@@ -30,7 +30,7 @@ interface DesiredDeparture {
 }
 
 /**
- * Materialization engine — expands recurring `AvailabilitySchedule` rules plus
+ * Materialization engine - expands recurring `AvailabilitySchedule` rules plus
  * date-specific `AvailabilityException` overrides into concrete `Departure` rows
  * (the inventory source of truth) for a rolling window.
  *
@@ -183,11 +183,11 @@ export class AvailabilityMaterializerService {
     for (const ex of dayExceptions) {
       if (ex.type !== AvailabilityExceptionType.EXTRA_DEPARTURE) continue;
       if (!ex.startTime) {
-        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no startTime — skipped`);
+        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no startTime - skipped`);
         continue;
       }
       if (ex.capacity === null) {
-        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no capacity — skipped`);
+        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no capacity - skipped`);
         continue;
       }
       this.addDesired(desired, tour, {

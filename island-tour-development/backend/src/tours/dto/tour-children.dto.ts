@@ -364,7 +364,7 @@ export class TourExclusionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty() icon!: string;
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — paid_advance | paid_onsite | unavailable | not_permitted' })
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - paid_advance | paid_onsite | unavailable | not_permitted' })
   type?: ExclusionType | null;
   @ApiPropertyOptional({ example: '$15 per person' }) priceText?: string | null;
   @ApiProperty() displayOrder!: number;
@@ -385,7 +385,7 @@ export class CreateTourExclusionDto {
   @MaxLength(50)
   icon?: string;
 
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — how the excluded item is handled' })
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - how the excluded item is handled' })
   @IsOptional()
   @IsEnum(ExclusionType)
   type?: ExclusionType;
@@ -415,7 +415,7 @@ export class UpdateTourExclusionDto {
   @MaxLength(50)
   icon?: string;
 
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 — how the excluded item is handled' })
+  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - how the excluded item is handled' })
   @IsOptional()
   @IsEnum(ExclusionType)
   type?: ExclusionType;

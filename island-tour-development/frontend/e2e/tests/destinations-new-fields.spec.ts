@@ -1,5 +1,5 @@
 /**
- * Destinations — new fields E2E tests
+ * Destinations - new fields E2E tests
  *
  * Covers the fields and behaviour added/changed since the original
  * destinations.spec.ts was written:
@@ -12,7 +12,7 @@
  *  - Happy path: filling Region unblocks the create button (no region error)
  *  - Slug auto-generates from name (unchanged regression check)
  *
- * API calls are intercepted with page.route() — no live backend required.
+ * API calls are intercepted with page.route() - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -43,7 +43,7 @@ async function mockActiveDestinations(page: import('@playwright/test').Page) {
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe('Destinations — new fields on create form', () => {
+test.describe('Destinations - new fields on create form', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await page.goto('/dashboard/destinations/new');
@@ -51,7 +51,7 @@ test.describe('Destinations — new fields on create form', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 1. Region — required Select
+  // 1. Region - required Select
   // -------------------------------------------------------------------------
   test('Region select is rendered on the create form', async ({ page }) => {
     // The Region select trigger text is "Select a region"
@@ -62,7 +62,7 @@ test.describe('Destinations — new fields on create form', () => {
 
   test('submitting without Region shows "Region is required" validation error', async ({ page }) => {
     await page.locator('input[name="name"]').fill('New Island');
-    // Do NOT pick a region — submit immediately
+    // Do NOT pick a region - submit immediately
     await page.getByRole('button', { name: /create destination/i }).click();
     await expect(page.getByText(/region is required/i)).toBeVisible();
   });
@@ -86,7 +86,7 @@ test.describe('Destinations — new fields on create form', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 2. Currency — optional Select
+  // 2. Currency - optional Select
   // -------------------------------------------------------------------------
   test('Currency select is rendered on the create form', async ({ page }) => {
     // The Currency label uses uppercase text "CURRENCY"

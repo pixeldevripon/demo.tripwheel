@@ -3,6 +3,7 @@ import * as nodemailer from 'nodemailer';
 import {
   bookingConfirmationTemplate,
   emailVerificationTemplate,
+  operatorInviteTemplate,
   passwordResetTemplate,
   type BookingConfirmationTemplateProps,
 } from './templates';
@@ -48,6 +49,13 @@ export class MailService {
       process.env.MAIL_FROM ?? '"Island Tours" <noreply@islandtours.com>';
   }
 
+  /** Redacts a recipient for logs: keeps first char + domain (e.g. j***@host.com). */
+  private redact(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain) return '***';
+    return `${local.slice(0, 1)}***@${domain}`;
+  }
+
   // ── Core send method ──────────────────────────────────────────────────────────
   async sendMail(opts: SendMailOptions): Promise<void> {
     try {
@@ -60,10 +68,10 @@ export class MailService {
       });
 
       this.logger.log(
-        `Email sent to ${opts.to} | messageId: ${(info as any)?.messageId ?? 'n/a'}`,
+        `Email sent to ${this.redact(opts.to)} | messageId: ${(info as any)?.messageId ?? 'n/a'}`,
       );
     } catch (err) {
-      this.logger.error(`Failed to send email to ${opts.to}`, err);
+      this.logger.error(`Failed to send email to ${this.redact(opts.to)}`, err);
       throw err;
     }
   }
@@ -74,6 +82,21 @@ export class MailService {
     await this.sendMail({
       to,
       subject: 'Reset your Island Tours password',
+      html,
+      text,
+    });
+  }
+
+  // ── Operator invite (set-password link) ──────────────────────────────────────
+  async sendOperatorInviteEmail(
+    to: string,
+    inviteUrl: string,
+    name?: string,
+  ): Promise<void> {
+    const { html, text } = operatorInviteTemplate({ inviteUrl, name });
+    await this.sendMail({
+      to,
+      subject: "You've been invited to Island Tours - set your password",
       html,
       text,
     });
@@ -102,7 +125,7 @@ export class MailService {
     const { html, text } = bookingConfirmationTemplate(props);
     await this.sendMail({
       to,
-      subject: `Booking confirmed — ${props.displayRef}`,
+      subject: `Booking confirmed - ${props.displayRef}`,
       html,
       text,
     });

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Shared tour card primitives — reusable across Destination Listings,
+ * Shared tour card primitives - reusable across Destination Listings,
  * Search Results, Home Page carousels, and any future tour grid/list.
  *
  * Usage:
@@ -141,7 +141,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
             }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={[
-                // @container: the card adapts its own typography to its width —
+                // @container: the card adapts its own typography to its width -
                 // compact at ~172px (mobile carousel), full size in wide grid cells.
                 '@container group flex flex-col rounded-[16px] @[220px]:rounded-[24px] overflow-hidden',
                 className,
@@ -281,7 +281,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                 animate={{ paddingLeft: isHovered ? 16 : 0, paddingRight: isHovered ? 16 : 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
-                {/* Star rating row — always rendered to keep card heights consistent */}
+                {/* Star rating row - always rendered to keep card heights consistent */}
                 <div className="flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]" aria-hidden={tour.rating === undefined}>
                     {tour.rating !== undefined ? (
                         <>
@@ -301,7 +301,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                             </span>
                         </>
                     ) : (
-                        /* invisible spacer — same line-height, no content */
+                        /* invisible spacer - same line-height, no content */
                         <span className="invisible select-none text-[14px] leading-[1.6]">&nbsp;</span>
                     )}
                 </div>

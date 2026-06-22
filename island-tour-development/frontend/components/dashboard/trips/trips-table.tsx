@@ -166,7 +166,7 @@ export function TripsTable({
 
   return (
       <div className='space-y-4'>
-          {/* Single toolbar row — on ≥400px everything fits in one line;
+          {/* Single toolbar row - on ≥400px everything fits in one line;
               on <400px the actions group wraps to its own right-aligned row */}
           <div className='flex flex-wrap items-center gap-2'>
               {/* search grows to fill available space */}
@@ -202,7 +202,7 @@ export function TripsTable({
                   />
               )}
 
-              {/* actions — on <400px: own full-width row, right-aligned */}
+              {/* actions - on <400px: own full-width row, right-aligned */}
               <div className='flex items-center gap-2 ml-auto max-[400px]:w-full max-[400px]:ml-0 max-[400px]:justify-end'>
                   <DropdownMenu>
                       <DropdownMenuTrigger asChild>

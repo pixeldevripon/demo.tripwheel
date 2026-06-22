@@ -2,7 +2,7 @@
  * Build BullMQ Redis connection options (shared by every queue + worker).
  *
  * ## Upstash Redis (recommended for production)
- * Upstash provides a `rediss://` URL (note the double 's' — TLS).
+ * Upstash provides a `rediss://` URL (note the double 's' - TLS).
  * Set UPSTASH_REDIS_URL in your .env:
  *   UPSTASH_REDIS_URL=rediss://default:<token>@<host>.upstash.io:6379
  *
@@ -23,7 +23,7 @@ export function buildRedisConnection() {
       host: url.hostname,
       port: Number(url.port) || 6379,
       password: url.password || undefined,
-      // Upstash requires TLS — the protocol is rediss://
+      // Upstash requires TLS - the protocol is rediss://
       tls: url.protocol === 'rediss:' ? {} : undefined,
       /**
        * BullMQ worker requirements:

@@ -149,7 +149,7 @@ export function useSchedules(tripId: string) {
   });
 }
 
-// Mutations — Core
+// Mutations - Core
 export function useCreateTrip() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -238,7 +238,7 @@ export function useRemoveTrip() {
   });
 }
 
-// Mutations — Images
+// Mutations - Images
 export function useAddImage() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -275,7 +275,7 @@ export function useRemoveImage() {
   });
 }
 
-// Mutations — Age Bands
+// Mutations - Age Bands
 export function useCreateAgeBand() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -309,7 +309,7 @@ export function useRemoveAgeBand() {
   });
 }
 
-// Mutations — Add-Ons
+// Mutations - Add-Ons
 export function useCreateAddOn() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -343,7 +343,7 @@ export function useRemoveAddOn() {
   });
 }
 
-// Mutations — Languages
+// Mutations - Languages
 export function useAddLanguage() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -366,7 +366,7 @@ export function useRemoveLanguage() {
   });
 }
 
-// Mutations — Highlights
+// Mutations - Highlights
 export function useAddHighlight() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -433,7 +433,7 @@ export function useDeleteHighlightTranslation() {
   });
 }
 
-// Mutations — Inclusions
+// Mutations - Inclusions
 export function useAddInclusion() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -500,7 +500,7 @@ export function useDeleteInclusionTranslation() {
   });
 }
 
-// Mutations — Exclusions
+// Mutations - Exclusions
 export function useAddExclusion() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -567,7 +567,7 @@ export function useDeleteExclusionTranslation() {
   });
 }
 
-// Mutations — Translations
+// Mutations - Translations
 export function useUpsertTripTranslation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -599,7 +599,7 @@ export function useDeleteTripTranslation() {
   });
 }
 
-// Mutations — Schedules
+// Mutations - Schedules
 export function useCreateSchedule() {
   const queryClient = useQueryClient();
   return useMutation({

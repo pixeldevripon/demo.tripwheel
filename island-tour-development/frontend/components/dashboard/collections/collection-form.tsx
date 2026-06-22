@@ -112,7 +112,7 @@ export function CollectionForm({ collection }: CollectionFormProps) {
     if (!isEditMode && !slugTouched) setValue('slug', toSlug(nameValue), { shouldValidate: !!nameValue });
   }, [nameValue, isEditMode, slugTouched, setValue]);
 
-  // Clear selected tours when the destination changes (create mode) — tours are destination-scoped.
+  // Clear selected tours when the destination changes (create mode) - tours are destination-scoped.
   useEffect(() => {
     if (!isEditMode) setValue('tourIds', []);
   }, [destinationId, isEditMode, setValue]);
@@ -253,7 +253,7 @@ export function CollectionForm({ collection }: CollectionFormProps) {
             {!isEditMode && slugClashesCategory && (
               <div className="flex items-center gap-1.5 text-xs text-amber-600">
                 <AlertTriangleIcon className="size-3.5 shrink-0" />
-                This slug matches a category slug — the server will reject it (409). Pick a different slug.
+                This slug matches a category slug - the server will reject it (409). Pick a different slug.
               </div>
             )}
             <FieldDescription>
@@ -294,8 +294,8 @@ export function CollectionForm({ collection }: CollectionFormProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MANUAL">Manual — hand-pick &amp; order tours</SelectItem>
-                  <SelectItem value="DYNAMIC">Dynamic — filter query</SelectItem>
+                  <SelectItem value="MANUAL">Manual - hand-pick &amp; order tours</SelectItem>
+                  <SelectItem value="DYNAMIC">Dynamic - filter query</SelectItem>
                 </SelectContent>
               </Select>
             )}

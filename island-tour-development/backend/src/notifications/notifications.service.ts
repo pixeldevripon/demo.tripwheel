@@ -61,11 +61,11 @@ export class NotificationsService {
   ) {}
 
   // ════════════════════════════════════════════════════════════════════════
-  // Emit — fan a change event out to matching subscriptions (fire-and-forget)
+  // Emit - fan a change event out to matching subscriptions (fire-and-forget)
   // ════════════════════════════════════════════════════════════════════════
 
   /**
-   * `AVAILABILITY_UPDATE` (spec §5.4) — fired whenever inventory for a tour changes
+   * `AVAILABILITY_UPDATE` (spec §5.4) - fired whenever inventory for a tour changes
    * (materialization, manual departure edits, exception edits, seat claims/releases).
    * `data` is Availability-Check compatible so the subscriber re-fetches `POST /availability/`.
    */
@@ -83,7 +83,7 @@ export class NotificationsService {
     });
   }
 
-  /** `PRODUCT_UPDATE` — fired when a tour's catalog data changes. */
+  /** `PRODUCT_UPDATE` - fired when a tour's catalog data changes. */
   emitProductUpdate(params: { tourId: string; operatorId?: string | null }): void {
     void this.emit(
       NotificationType.PRODUCT_UPDATE,
@@ -92,7 +92,7 @@ export class NotificationsService {
     );
   }
 
-  /** `BOOKING_UPDATE` — fired when a booking's status changes. `uuid` = booking public ref. */
+  /** `BOOKING_UPDATE` - fired when a booking's status changes. `uuid` = booking public ref. */
   emitBookingUpdate(params: { uuid: string; operatorId?: string | null }): void {
     void this.emit(
       NotificationType.BOOKING_UPDATE,
@@ -103,7 +103,7 @@ export class NotificationsService {
 
   /**
    * Resolve matching subscriptions, persist one delivery row each, and enqueue a job.
-   * Never throws into the caller — emission failures must not break the originating write.
+   * Never throws into the caller - emission failures must not break the originating write.
    */
   async emit(
     notificationType: NotificationType,

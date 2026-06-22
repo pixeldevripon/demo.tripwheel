@@ -11,9 +11,9 @@ import { IS_PUBLIC_KEY } from '@/auth/decorators/public.decorator';
 import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
 
 /**
- * Global auth guard — validates the Better Auth session cookie (or Bearer token).
+ * Global auth guard - validates the Better Auth session cookie (or Bearer token).
  *
- * Registered as APP_GUARD in AuthModule — runs on every route automatically.
+ * Registered as APP_GUARD in AuthModule - runs on every route automatically.
  * Routes decorated with @Public() skip this check entirely.
  * On success, attaches `request.user` (TypedAuthUser) and `request.session`.
  *
@@ -27,7 +27,7 @@ import type { AuthenticatedRequest, TypedAuthUser } from '@/auth/auth.types';
  *     @Get('/me')
  *     getMe(@AuthenticatedUser() user: TypedAuthUser) { return user; }
  *
- *   Webhook endpoints must also add @SkipThrottle() — see Critical Rule #11.
+ *   Webhook endpoints must also add @SkipThrottle() - see Critical Rule #11.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {

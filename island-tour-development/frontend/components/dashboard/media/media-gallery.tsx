@@ -34,7 +34,7 @@ interface MediaGalleryProps {
     currentSelection?: MediaItem[];
     multiple?: boolean;
     maxFiles?: number;
-    /** Called after upload — parent inserts items into TQ cache */
+    /** Called after upload - parent inserts items into TQ cache */
     onUploadSuccess: (items: MediaItem[]) => void;
 }
 
@@ -60,7 +60,7 @@ export default function MediaGallery({
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
-    // Upload state comes from Zustand — persists across tab switches
+    // Upload state comes from Zustand - persists across tab switches
     const { uploadingFiles, uploadProgress, previewUrls } = useUploadStore();
 
     // TanStack Query delete mutations
@@ -115,7 +115,7 @@ export default function MediaGallery({
         }
     };
 
-    /* ─── Delete — optimistic update + server confirm ───────────────── */
+    /* ─── Delete - optimistic update + server confirm ───────────────── */
     const handleDeleteItem = (id: string) => {
         setIsShowConfirm(true);
         setItemToDelete(id);
@@ -270,7 +270,7 @@ export default function MediaGallery({
                     )}
                 </div>
 
-                {/* Hidden uploader — triggered by Upload button in toolbar */}
+                {/* Hidden uploader - triggered by Upload button in toolbar */}
                 <MediaUploader
                     folder='users/media'
                     multiple

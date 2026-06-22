@@ -27,7 +27,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
     const tabBarRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
-    // Scrollspy — the active tab is the last section whose top has scrolled
+    // Scrollspy - the active tab is the last section whose top has scrolled
     // above the bottom edge of the sticky bar.
     useEffect(() => {
         const onScroll = () => {
@@ -51,14 +51,14 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                {/* Sticky scroll-nav — sits below the fixed navbar. */}
+                {/* Sticky scroll-nav - sits below the fixed navbar. */}
                 <div
                     ref={tabBarRef}
                     className='sticky top-18 z-40 bg-it-white md:top-20'>
                     <HubTripsTabs tabs={dict.tabs} active={active} onChange={goTo} />
                 </div>
 
-                {/* Stacked sections — each is a scroll target. */}
+                {/* Stacked sections - each is a scroll target. */}
                 <div className='flex flex-col gap-16 pt-6 md:gap-25 md:pt-10'>
                     {dict.panels.map((panel, i) =>
                         panel ? (

@@ -110,7 +110,7 @@ test.describe('Destinations module', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Form validation — empty submit
+  // 3. Form validation - empty submit
   // -------------------------------------------------------------------------
   test('shows validation error when form is submitted empty', async ({ page }) => {
     await page.goto('/dashboard/destinations/new');

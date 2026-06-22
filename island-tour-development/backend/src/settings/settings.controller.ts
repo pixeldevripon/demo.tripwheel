@@ -30,7 +30,7 @@ import {
 @ApiTags('Settings')
 @Controller('settings')
 /**
- * SettingsController — manages platform-wide configurations.
+ * SettingsController - manages platform-wide configurations.
  *
  * ## Access-Control Strategy
  * This controller follows the permission-based RBAC pattern:

@@ -45,7 +45,7 @@ const localeParam = ApiQuery({
   required: false,
   enum: Locale,
   example: 'en',
-  description: 'Content locale — falls back to English when translation is missing',
+  description: 'Content locale - falls back to English when translation is missing',
 });
 
 // ── Public list / lookup ──────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export function ApiGetAllCategoriesDocs() {
 
 export function ApiGetActiveCategoriesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all active categories (public — used by tour-creation selectors)' }),
+    ApiOperation({ summary: 'List all active categories (public - used by tour-creation selectors)' }),
     localeParam,
     ApiResponse({ status: 200, type: [CategoryLocalizedResponseDto] }),
     ...publicErrors,
@@ -92,7 +92,7 @@ export function ApiGetCategoryByDestinationSlugDocs() {
     ApiOperation({
       summary: 'Get a category page for a destination (public, tour-gated)',
       description:
-        'V2 §3: returns 404 when the (category, destination) pair has zero published tours — empty category ' +
+        'V2 §3: returns 404 when the (category, destination) pair has zero published tours - empty category ' +
         'pages must not render. The slug stays reserved in slug_registry; only the page is gated.',
     }),
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
@@ -219,7 +219,7 @@ export function ApiUpsertTranslationsDocs() {
     ApiOperation({
       summary: 'Patch translations for a locale (Admin/Editor)',
       description:
-        'Creates or updates translated fields for the given locale. Only supplied fields are written — omitted fields are left unchanged.',
+        'Creates or updates translated fields for the given locale. Only supplied fields are written - omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -233,7 +233,7 @@ export function ApiDeleteTranslationsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Delete all translations for a locale (Admin/Editor)',
-      description: 'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint — update the category name field instead.',
+      description: 'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint - update the category name field instead.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -263,7 +263,7 @@ export function ApiUpsertPageContentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Patch editorial page content for a locale (Admin/Editor)',
-      description: 'Creates or updates about text, meta title, and meta description. Only supplied fields are written — omitted fields are left unchanged.',
+      description: 'Creates or updates about text, meta title, and meta description. Only supplied fields are written - omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),

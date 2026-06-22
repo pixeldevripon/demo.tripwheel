@@ -2,7 +2,7 @@ import MediaGalleryManager from '@/components/dashboard/media/media-gallery-mana
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Media & Files — Island Tours',
+    title: 'Media & Files - Island Tours',
     description: 'Organize and manage your uploaded media and files',
 };
 

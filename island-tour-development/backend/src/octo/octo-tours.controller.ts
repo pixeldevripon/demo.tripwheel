@@ -33,7 +33,7 @@ export class OctoToursController {
   constructor(private readonly octoService: OctoService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get Tour List (OCTO §3 — Get Product List)' })
+  @ApiOperation({ summary: 'Get Tour List (OCTO §3 - Get Product List)' })
   @ApiOkResponse({ description: 'Array of OCTO Tour (Product) objects.' })
   async listTours(
     @OctoCaps() caps: OctoCapabilitySet,
@@ -46,7 +46,7 @@ export class OctoToursController {
   }
 
   @Get(':tourId')
-  @ApiOperation({ summary: 'Get Tour (OCTO §4.2 — Get Product)' })
+  @ApiOperation({ summary: 'Get Tour (OCTO §4.2 - Get Product)' })
   @ApiParam({ name: 'tourId', description: 'Tour (product) id.' })
   @ApiOkResponse({ description: 'Single OCTO Tour (Product) object.' })
   async getTour(

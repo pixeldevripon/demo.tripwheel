@@ -15,7 +15,7 @@ const icons = [
 
 type TrustItem = { title: string; body: string };
 
-/** Single trust item — shared by the desktop row and the mobile carousel. */
+/** Single trust item - shared by the desktop row and the mobile carousel. */
 function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
     return (
         <div className='flex flex-col items-center gap-6 text-center'>
@@ -38,7 +38,7 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
     );
 }
 
-/** Mobile only — one item at a time, swipeable + autoplay, with 3 progress segments. */
+/** Mobile only - one item at a time, swipeable + autoplay, with 3 progress segments. */
 function MobileCarousel({ items }: { items: TrustItem[] }) {
     const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' }, [
         Autoplay({ delay: 4000, stopOnInteraction: false, stopOnMouseEnter: true }),
@@ -90,7 +90,7 @@ export function TrustStrip({ items }: { items: TrustItem[] }) {
     return (
         <section className='bg-it-white pt-8 pb-2 md:pt-32.5 md:pb-0'>
             <div className='it-container'>
-                {/* Desktop — 3 in a row */}
+                {/* Desktop - 3 in a row */}
                 <div className='hidden md:flex md:flex-row md:items-start gap-6'>
                     {items.map((item, i) => (
                         <Reveal
@@ -102,7 +102,7 @@ export function TrustStrip({ items }: { items: TrustItem[] }) {
                     ))}
                 </div>
 
-                {/* Mobile — single-item carousel */}
+                {/* Mobile - single-item carousel */}
                 <div className='md:hidden'>
                     <MobileCarousel items={items} />
                 </div>

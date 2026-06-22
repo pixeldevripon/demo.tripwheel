@@ -109,12 +109,12 @@ export class CollectionsService {
 
   // ── Admin read ──────────────────────────────────────────────────────────────
 
-  /** Raw collection by id (active or inactive) — for the admin edit form. */
+  /** Raw collection by id (active or inactive) - for the admin edit form. */
   async getByIdAdmin(id: string) {
     return this.findCollectionOrThrow(id);
   }
 
-  /** All collections (active + inactive) for a destination — for the admin list. */
+  /** All collections (active + inactive) for a destination - for the admin list. */
   async getAllByDestinationAdmin(destinationSlug: string) {
     const destination = await this.prisma.destination.findUnique({
       where: { slug: destinationSlug },
@@ -183,7 +183,7 @@ export class CollectionsService {
     // Cannibalization guard (V2 §6): a collection slug must not equal a (global) category slug.
     const categoryClash = await this.prisma.category.findUnique({ where: { slug }, select: { id: true } });
     if (categoryClash) {
-      throw new ConflictException(`Slug "${slug}" collides with a category slug — choose a distinct collection slug`);
+      throw new ConflictException(`Slug "${slug}" collides with a category slug - choose a distinct collection slug`);
     }
 
     if (dto.collectionType === CollectionType.MANUAL && (!dto.tourIds || dto.tourIds.length === 0)) {
@@ -251,7 +251,7 @@ export class CollectionsService {
         // Cannibalization guard (V2 §6): a collection slug must not equal a category slug.
         const categoryClash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
         if (categoryClash) {
-          throw new ConflictException(`Slug "${normalized}" collides with a category slug — choose a distinct collection slug`);
+          throw new ConflictException(`Slug "${normalized}" collides with a category slug - choose a distinct collection slug`);
         }
         if (await isSlugTaken(this.prisma, current.destination.slug, normalized, id)) {
           throw new ConflictException(`Slug "${normalized}" is already taken at this destination`);

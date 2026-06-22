@@ -1,5 +1,6 @@
 import {
   BadRequestErrorDto,
+  ConflictErrorDto,
   ForbiddenErrorDto,
   InternalServerErrorDto,
   NotFoundErrorDto,
@@ -78,11 +79,21 @@ export function ApiGetOperatorByIdDocs() {
 
 export function ApiCreateOperatorDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Create a new operator (Admin only)' }),
+    ApiOperation({
+      summary: 'Create a new operator (Admin only)',
+      description:
+        'Provisions a TOUR_OPERATOR account and emails a set-password invite link. ' +
+        'The operator sets their own password via the link, then logs in to onboard.',
+    }),
     ApiResponse({
       status: 201,
-      description: 'Operator created successfully',
+      description: 'Operator created and invite email sent',
       type: OperatorResponseDto,
+    }),
+    ApiResponse({
+      status: 409,
+      description: 'A user with this email already exists',
+      type: ConflictErrorDto,
     }),
     ...adminErrors,
   );

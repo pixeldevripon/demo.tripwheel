@@ -26,7 +26,6 @@ export function LoginForm() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,19 +48,6 @@ export function LoginForm() {
             setError(err?.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleGoogleSignIn = async () => {
-        setIsGoogleLoading(true);
-        try {
-            await signIn.social({
-                provider: 'google',
-                callbackURL: `${window.location.origin}/dashboard`,
-            });
-        } catch (err: any) {
-            setError(err?.message || 'Failed to sign in with Google');
-            setIsGoogleLoading(false);
         }
     };
 
@@ -117,35 +103,9 @@ export function LoginForm() {
                     <Button
                         type='submit'
                         className='w-full'
-                        disabled={loading || isGoogleLoading}>
+                        disabled={loading}>
                         {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
-
-                    <div className='relative w-full text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border'>
-                        <span className='relative z-10 bg-card px-2 text-muted-foreground'>
-                            Or continue with
-                        </span>
-                    </div>
-
-                    <Button
-                        type='button'
-                        variant='outline'
-                        className='w-full'
-                        onClick={handleGoogleSignIn}
-                        disabled={loading || isGoogleLoading}>
-                        {isGoogleLoading
-                            ? 'Connecting...'
-                            : 'Sign in with Google'}
-                    </Button>
-
-                    <div className='text-sm text-center text-muted-foreground mt-2'>
-                        Don&apos;t have an account?{' '}
-                        <a
-                            href='/signup'
-                            className='underline hover:text-primary'>
-                            Sign up
-                        </a>
-                    </div>
                 </CardFooter>
             </form>
         </Card>

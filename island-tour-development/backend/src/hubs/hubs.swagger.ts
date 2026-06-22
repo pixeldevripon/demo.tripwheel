@@ -44,7 +44,7 @@ const localeParam = ApiQuery({
   required: false,
   enum: Locale,
   example: 'en',
-  description: 'Content locale — falls back to English when translation is missing',
+  description: 'Content locale - falls back to English when translation is missing',
 });
 
 // ── Public list / lookup ──────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export function ApiCreateHubDocs() {
       summary: 'Create a new hub (Admin/Editor)',
       description:
         'Atomically creates the hub and seeds one slug_registry row for its destination. ' +
-        'Requires `hubType` (location | highlight | area — V2 §5) and accepts latitude/longitude. ' +
+        'Requires `hubType` (location | highlight | area - V2 §5) and accepts latitude/longitude. ' +
         'Optionally seeds allowed categories in the same transaction.',
     }),
     ApiResponse({ status: 201, type: HubDetailLocalizedResponseDto }),
@@ -224,8 +224,8 @@ export function ApiUpsertTranslationsDocs() {
     ApiOperation({
       summary: 'Patch translations for a locale (Admin/Editor)',
       description:
-        'Creates or updates translated fields for the given locale. Only supplied fields are written — omitted fields are left unchanged. ' +
-        'Hub names are proper nouns — set isMachineTranslated to false.',
+        'Creates or updates translated fields for the given locale. Only supplied fields are written - omitted fields are left unchanged. ' +
+        'Hub names are proper nouns - set isMachineTranslated to false.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -240,7 +240,7 @@ export function ApiDeleteTranslationsDocs() {
     ApiOperation({
       summary: 'Delete all translations for a locale (Admin/Editor)',
       description:
-        'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint — update the hub name field instead.',
+        'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint - update the hub name field instead.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -271,7 +271,7 @@ export function ApiUpsertPageContentDocs() {
     ApiOperation({
       summary: 'Patch editorial page content for a locale (Admin/Editor)',
       description:
-        'Creates or updates about text, meta title, and meta description. Only supplied fields are written — omitted fields are left unchanged.',
+        'Creates or updates about text, meta title, and meta description. Only supplied fields are written - omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),

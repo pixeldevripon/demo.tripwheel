@@ -30,7 +30,7 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          // unsafe-inline needed only for Swagger UI — tightened in production
+          // unsafe-inline needed only for Swagger UI - tightened in production
           scriptSrc: isProd ? ["'self'"] : ["'self'", "'unsafe-inline'"],
           styleSrc: isProd ? ["'self'"] : ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:'],
@@ -76,7 +76,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      // enableImplicitConversion removed — use explicit @Type() decorators on DTOs
+      // enableImplicitConversion removed - use explicit @Type() decorators on DTOs
     }),
   );
 
@@ -89,7 +89,7 @@ async function bootstrap() {
   if (!isProd) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Island Tours API')
-      .setDescription('Tour marketplace — operators, slots, bookings')
+      .setDescription('Tour marketplace - operators, slots, bookings')
       .setVersion('1.0')
       .addCookieAuth('better-auth.session_token')
       .build();

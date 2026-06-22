@@ -109,14 +109,14 @@ export class DeleteMessageResponseDto {
 // ── Query DTOs ─────────────────────────────────────────────────────────────────
 
 export class LocaleQueryDto {
-  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale - falls back to English when translation is missing' })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 }
 
 export class FaqLocaleQueryDto {
-  @ApiPropertyOptional({ enum: Locale, example: Locale.en, description: 'Filter FAQs by locale — omit to return all locales' })
+  @ApiPropertyOptional({ enum: Locale, example: Locale.en, description: 'Filter FAQs by locale - omit to return all locales' })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale;
@@ -153,7 +153,7 @@ export class HubQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale - falls back to English when translation is missing' })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
@@ -165,18 +165,18 @@ export class ActiveHubsQueryDto {
   @IsUUID()
   destinationId?: string;
 
-  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale - falls back to English when translation is missing' })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 }
 
 export class HubBySlugQueryDto {
-  @ApiProperty({ example: 'curacao', description: 'Destination slug — required because hub slugs are unique per destination' })
+  @ApiProperty({ example: 'curacao', description: 'Destination slug - required because hub slugs are unique per destination' })
   @IsString()
   destinationSlug!: string;
 
-  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale — falls back to English when translation is missing' })
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale - falls back to English when translation is missing' })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
@@ -305,7 +305,7 @@ export class UpsertHubPageContentDto {
   @IsString()
   aboutText?: string;
 
-  @ApiPropertyOptional({ example: 'Klein Curaçao Day Trips — Island Tours' })
+  @ApiPropertyOptional({ example: 'Klein Curaçao Day Trips - Island Tours' })
   @IsOptional()
   @IsString()
   metaTitle?: string;

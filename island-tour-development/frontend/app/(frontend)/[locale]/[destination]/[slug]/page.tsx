@@ -17,7 +17,7 @@ import { resolveSlug } from '@/lib/api/slug-registry';
 /**
  * Localized destination display name from the backend. A successful slug resolve
  * already implies the destination is active (deactivating an island tombstones
- * all its registry rows — §5.10), so on any fetch error we fall back to a
+ * all its registry rows - §5.10), so on any fetch error we fall back to a
  * prettified slug rather than 404.
  */
 async function resolveDestinationName(
@@ -72,7 +72,7 @@ export async function generateStaticParams() {
             if (flat.length > 0) return flat;
         }
     } catch {
-        // backend unavailable at build — fall through to launch combos
+        // backend unavailable at build - fall through to launch combos
     }
     return LAUNCH_DESTINATION_SLUGS.flatMap((destination) =>
         FALLBACK_CATEGORY_SLUGS.map((slug) => ({ destination, slug })),
@@ -80,8 +80,8 @@ export async function generateStaticParams() {
 }
 
 /**
- * Localized SEO metadata + hreflang. Slugs are identical across locales — only
- * the locale prefix changes — so every entity page emits an alternate for all 7
+ * Localized SEO metadata + hreflang. Slugs are identical across locales - only
+ * the locale prefix changes - so every entity page emits an alternate for all 7
  * locales plus `x-default → English` (ROUTING-AND-RESOLUTION.md §9.2).
  */
 export async function generateMetadata({
@@ -123,7 +123,7 @@ export async function generateMetadata({
 }
 
 /**
- * Polymorphic entity route — `/{locale}/{destination}/{slug}/`.
+ * Polymorphic entity route - `/{locale}/{destination}/{slug}/`.
  *
  * The `{slug}` segment is ambiguous (category | hub | collection | tour |
  * reserved). It is resolved via the slug registry, then dispatched to the

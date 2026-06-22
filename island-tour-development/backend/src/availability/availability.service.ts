@@ -390,7 +390,7 @@ export class AvailabilityService {
 
   /**
    * Whether the tour has ≥1 bookable departure within {@link BOOKABLE_HORIZON_DAYS}.
-   * Feeds the nightly `isBookable` flag (ranking/search) — Phase 9.
+   * Feeds the nightly `isBookable` flag (ranking/search) - Phase 9.
    */
   async computeIsBookable(tourId: string): Promise<boolean> {
     const tz = await this.tourTimeZone(tourId).catch(() => null);

@@ -35,15 +35,27 @@ async function main() {
   } else {
     console.log(`Creating admin user ${email}...`);
 
-    // Step 1: Create user via Better Auth so the password is properly hashed.
-    // role is not sent — role.input=false means it's ignored anyway. User is
-    // created with the default TOUR_OPERATOR role.
-    await auth.api.signUpEmail({
-      body: { email, password, name: 'System Admin' },
+    // Public sign-up is disabled, so create the account through Better Auth's
+    // internal adapter (which still hashes the password correctly). The user is
+    // created with the default non-admin role - the ADMIN database hook only
+    // blocks ADMIN being set at creation time.
+    const authCtx = await auth.$context;
+    const hashedPassword = await authCtx.password.hash(password);
+
+    const user = await authCtx.internalAdapter.createUser({
+      email,
+      name: 'System Admin',
+      emailVerified: true,
     });
 
-    // Step 2: Elevate to ADMIN directly via Prisma. This bypasses the public
-    // sign-up hook which only blocks ADMIN creation through self-registration.
+    await authCtx.internalAdapter.linkAccount({
+      userId: user.id,
+      providerId: 'credential',
+      accountId: user.id,
+      password: hashedPassword,
+    });
+
+    // Elevate to ADMIN directly via Prisma (user.update carries no auth hook).
     await prisma.user.update({
       where: { email },
       data: { role: Role.ADMIN, emailVerified: true, hasPassword: true },
@@ -52,7 +64,7 @@ async function main() {
     console.log(`Successfully created admin user ${email}!`);
   }
 
-  // Seeding is always run — all functions are idempotent (skip existing records).
+  // Seeding is always run - all functions are idempotent (skip existing records).
   // Order matters: categories → destinations (needs categories for slug_registry) → hubs.
   await seedCategories();
   await seedDestinations();
@@ -62,12 +74,12 @@ async function main() {
 
 // ── Pre-seeded categories ──────────────────────────────────────────────────────
 // isSeeded = true means the service blocks deletion of these records.
-// slug_registry rows are NOT seeded here — they are created in seedDestinations(),
+// slug_registry rows are NOT seeded here - they are created in seedDestinations(),
 // because slug_registry requires a destination slug.
 // NOTE: Klein Curaçao is a Hub, not a category. Do not add it here.
 // The canonical 19 global categories (Platform Architecture V2 §3). Order = sortOrder.
 // "Catamaran Trip" is a boat_type attribute, "Private Charters" a booking_type attribute,
-// "Dolphin Encounters" a hub/wildlife theme — none are categories.
+// "Dolphin Encounters" a hub/wildlife theme - none are categories.
 const SEED_CATEGORIES = [
   { name: 'Boat Tours & Cruises',      slug: 'boat-tours' },
   { name: 'Snorkeling Tours',          slug: 'snorkeling' },
@@ -105,7 +117,7 @@ async function seedCategories() {
         data: { name: cat.name, slug: cat.slug, isSeeded: true, sortOrder: idx + 1 },
       });
 
-      // slug_registry rows are deferred — created in seedDestinations()
+      // slug_registry rows are deferred - created in seedDestinations()
       console.log(`  Created category "${cat.name}" (${category.id})`);
     });
   }
@@ -140,7 +152,7 @@ async function seedDestinations() {
         data: { name: dest.name, slug: dest.slug, region: dest.region, isSeeded: true },
       });
 
-      // Seed the 'tours' RESERVED slug — protects the /curacao/tours/ URL
+      // Seed the 'tours' RESERVED slug - protects the /curacao/tours/ URL
       await tx.slugRegistry.create({
         data: {
           destinationSlug: dest.slug,
@@ -203,7 +215,7 @@ async function seedHubs() {
     });
 
     if (!destination) {
-      console.warn(`  Destination "${hub.destinationSlug}" not found — skipping hub "${hub.name}"`);
+      console.warn(`  Destination "${hub.destinationSlug}" not found - skipping hub "${hub.name}"`);
       continue;
     }
 

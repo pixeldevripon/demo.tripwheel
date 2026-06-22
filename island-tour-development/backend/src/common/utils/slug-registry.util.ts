@@ -3,7 +3,7 @@ import { Prisma, SlugEntityType } from '@prisma/client';
 /**
  * Shared slug-registry mechanics (master SLUG-REGISTRY rules), transaction-aware so
  * every slug-bearing entity service (tours, categories, hubs, collections, destinations)
- * reuses one implementation. All functions take a Prisma client — pass the `$transaction`
+ * reuses one implementation. All functions take a Prisma client - pass the `$transaction`
  * `tx` client so the writes commit atomically with the entity mutation (rule #4).
  *
  * Two master guarantees:
@@ -25,7 +25,7 @@ export function slugCooldownCutoff(): Date {
 
 /**
  * Whether an existing slug_registry row blocks (re)use of its slug. A row blocks unless
- * it was hard-deleted (`deletedAt` set) more than the cooldown ago — those ghosts are
+ * it was hard-deleted (`deletedAt` set) more than the cooldown ago - those ghosts are
  * reusable and should be cleared with {@link clearCooledDownSlugs} before a new row is written.
  */
 export function slugRowBlocks(row: { deletedAt: Date | null } | null | undefined): boolean {
@@ -140,7 +140,7 @@ export async function renameEntitySlug(
       where: { destinationSlug, toSlug: fromSlug },
       data: { toSlug },
     });
-    // The target slug is live again — drop any stale redirect leaving it.
+    // The target slug is live again - drop any stale redirect leaving it.
     await tx.slugRedirect.deleteMany({ where: { destinationSlug, fromSlug: toSlug } });
     // Auto-301 old → new.
     await tx.slugRedirect.upsert({

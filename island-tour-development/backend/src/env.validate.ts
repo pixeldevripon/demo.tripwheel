@@ -3,7 +3,7 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
   BETTER_AUTH_SECRET: (v) => {
     if (v.length < 32) return 'must be at least 32 characters';
     if (v.includes('change-me'))
-      return 'placeholder detected — generate a real secret: openssl rand -base64 32';
+      return 'placeholder detected - generate a real secret: openssl rand -base64 32';
     return null;
   },
   BETTER_AUTH_URL: () => null,
@@ -36,7 +36,7 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
       v.startsWith('REPLACE_ME') ||
       v.includes('change-me')
     )
-      return 'placeholder detected — set a strong password before running the seed';
+      return 'placeholder detected - set a strong password before running the seed';
     if (v.length < 12) return 'must be at least 12 characters';
     return null;
   },
@@ -81,21 +81,21 @@ export function validateEnv(): void {
   }
 
   // ── SMTP group check ────────────────────────────────────────────────────────
-  // All core SMTP vars must be set together — partial config will cause
+  // All core SMTP vars must be set together - partial config will cause
   // silent send failures at runtime
   const smtpPresent = SMTP_GROUP.filter((k) => !!process.env[k]);
   const smtpMissing = SMTP_GROUP.filter((k) => !process.env[k]);
 
   if (smtpPresent.length > 0 && smtpMissing.length > 0) {
     errors.push(
-      `Incomplete SMTP config — if any SMTP var is set, all are required. Missing: ${smtpMissing.join(', ')}`,
+      `Incomplete SMTP config - if any SMTP var is set, all are required. Missing: ${smtpMissing.join(', ')}`,
     );
   }
 
   if (smtpPresent.length === 0) {
-    // Warn but don't fail — email features will be disabled
+    // Warn but don't fail - email features will be disabled
     console.warn(
-      '⚠  No SMTP config found — email sending (verification, password reset) will be disabled.',
+      '⚠  No SMTP config found - email sending (verification, password reset) will be disabled.',
     );
   }
 
@@ -106,7 +106,7 @@ export function validateEnv(): void {
 
   if (!upstashUrl && (!redisHost || !redisPort)) {
     errors.push(
-      'Redis config missing — provide either UPSTASH_REDIS_URL or both REDIS_HOST and REDIS_PORT.',
+      'Redis config missing - provide either UPSTASH_REDIS_URL or both REDIS_HOST and REDIS_PORT.',
     );
   } else if (upstashUrl && upstashUrl.startsWith('https://')) {
     errors.push(

@@ -236,7 +236,7 @@ export function DestinationTranslationForm({
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle>Translations — {destinationName}</CardTitle>
+        <CardTitle>Translations - {destinationName}</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
         <Tabs defaultValue="en">
@@ -254,7 +254,7 @@ export function DestinationTranslationForm({
           <TabsContent value="en">
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                English is the base locale. Name is read-only — edit it in the Details tab.
+                English is the base locale. Name is read-only - edit it in the Details tab.
               </div>
               <LocaleTab destinationId={destinationId} locale="en" disableNameField />
             </div>

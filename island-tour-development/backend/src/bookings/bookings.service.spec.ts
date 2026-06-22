@@ -161,7 +161,7 @@ describe('BookingsService', () => {
       expect(res.status).toBe(BookingStatus.ON_HOLD);
     });
 
-    it('is idempotent — a prior booking with the same id is returned', async () => {
+    it('is idempotent - a prior booking with the same id is returned', async () => {
       setupReserveContext(prisma);
       m.booking.findUnique.mockResolvedValue(fakeBooking());
       const res = await svc.reserve({ ...reserveDto, id: 'b1' });

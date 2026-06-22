@@ -50,7 +50,7 @@ export class DestinationLocalizedResponseDto extends DestinationResponseDto {
   isMachineTranslated!: boolean;
 }
 
-// Returned by getById / getBySlug — includes all translated fields
+// Returned by getById / getBySlug - includes all translated fields
 export class DestinationDetailResponseDto extends DestinationLocalizedResponseDto {
   @ApiPropertyOptional({ example: 'Curaçao is a sun-drenched island in the southern Caribbean.', nullable: true })
   overview!: string | null;
@@ -111,7 +111,7 @@ export class UpsertDestinationTranslationsDto {
   @ApiPropertyOptional({
     example: false,
     default: false,
-    description: 'Destination names are proper nouns — always keep false for destinations.',
+    description: 'Destination names are proper nouns - always keep false for destinations.',
   })
   @IsOptional()
   @IsBoolean()
@@ -313,14 +313,14 @@ export class CreateDestinationDto {
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/aruba-hero.jpg',
-    description: 'Hero image URL — set after upload via the media module.',
+    description: 'Hero image URL - set after upload via the media module.',
   })
   @IsOptional()
   @IsString()
   heroImage?: string;
 
   // ── V2 fields ──────────────────────────────────────────────────────────────
-  @ApiProperty({ enum: Region, example: Region.CARIBBEAN, description: 'Geographic region (required — V2 §2). No URL impact.' })
+  @ApiProperty({ enum: Region, example: Region.CARIBBEAN, description: 'Geographic region (required - V2 §2). No URL impact.' })
   @IsEnum(Region)
   region!: Region;
 

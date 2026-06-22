@@ -1,5 +1,5 @@
 /**
- * Hubs — new fields E2E tests
+ * Hubs - new fields E2E tests
  *
  * Covers the fields and behaviour added/changed since the original
  * hubs.spec.ts was written:
@@ -11,7 +11,7 @@
  *  - Destination is read-only on edit form
  *  - Regression: name validation still works
  *
- * API calls are intercepted with page.route() — no live backend required.
+ * API calls are intercepted with page.route() - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -71,7 +71,7 @@ async function mockActiveDestinations(page: import('@playwright/test').Page) {
 // Tests: Create form
 // ---------------------------------------------------------------------------
 
-test.describe('Hubs — Hub Type Select on create form', () => {
+test.describe('Hubs - Hub Type Select on create form', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await page.goto('/dashboard/hubs/new');
@@ -188,10 +188,10 @@ test.describe('Hubs — Hub Type Select on create form', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: Edit form — destination is read-only
+// Tests: Edit form - destination is read-only
 // ---------------------------------------------------------------------------
 
-test.describe('Hubs — destination read-only on edit form', () => {
+test.describe('Hubs - destination read-only on edit form', () => {
   const HUB_ID = 'hub-existing-id';
 
   test.beforeEach(async ({ page }) => {

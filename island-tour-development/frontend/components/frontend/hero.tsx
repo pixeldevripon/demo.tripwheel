@@ -12,7 +12,7 @@ type HeroDict = {
     popular: string;
 };
 
-// Popular destinations — island names are proper nouns; only the URL is localized.
+// Popular destinations - island names are proper nouns; only the URL is localized.
 const popularIslands = [
     { name: 'Curaçao', slug: 'curacao' },
     { name: 'Aruba', slug: 'aruba' },
@@ -22,7 +22,7 @@ const popularIslands = [
 export function Hero({ dict, locale }: { dict: HeroDict; locale: Locale }) {
     return (
         <section className='relative h-136.75 md:h-150 flex items-end justify-center overflow-hidden bg-it-hero-bg [background-image:var(--it-hero-gradient)] pb-12 md:items-center md:pb-0'>
-            {/* Centered content — 841px max */}
+            {/* Centered content - 841px max */}
             <div className='it-container w-full flex justify-center'>
                 <div className='flex flex-col items-center gap-10 w-full max-w-220.25'>
 
@@ -80,7 +80,7 @@ export function Hero({ dict, locale }: { dict: HeroDict; locale: Locale }) {
                             </motion.button>
                         </div>
 
-                        {/* Popular — clickable destinations */}
+                        {/* Popular - clickable destinations */}
                         <p className='m-0 text-sm md:text-base tracking-[-0.012em] text-center'>
                             <span className='text-it-hero-text'>{dict.popular}: </span>
                             {popularIslands.map((island, i) => (

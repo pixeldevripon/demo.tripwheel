@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * Server-side conversion tracking — the `booking_complete` event (master tracking E.8).
+ * Server-side conversion tracking - the `booking_complete` event (master tracking E.8).
  *
  * The **conversion value is `commission_amount` in EUR**, never GMV (rule #22). This
  * service fires Meta's Conversions API (CAPI) server-side so conversions survive
@@ -32,13 +32,13 @@ export class TrackingService {
   private readonly logger = new Logger(TrackingService.name);
   private warnedUnconfigured = false;
 
-  /** Fire `booking_complete` to Meta CAPI. Never throws — tracking must not break a booking. */
+  /** Fire `booking_complete` to Meta CAPI. Never throws - tracking must not break a booking. */
   async fireBookingComplete(payload: BookingCompletePayload): Promise<void> {
     const pixelId = process.env.META_PIXEL_ID;
     const token = process.env.META_CAPI_TOKEN;
     if (!pixelId || !token) {
       if (!this.warnedUnconfigured) {
-        this.logger.warn('Meta CAPI not configured (META_PIXEL_ID/META_CAPI_TOKEN) — skipping conversions');
+        this.logger.warn('Meta CAPI not configured (META_PIXEL_ID/META_CAPI_TOKEN) - skipping conversions');
         this.warnedUnconfigured = true;
       }
       return;

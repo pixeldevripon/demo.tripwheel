@@ -29,7 +29,7 @@ import {
 } from './notifications.swagger';
 
 /**
- * OCTO `octo/notifications` capability — webhook subscription CRUD (spec §5.4).
+ * OCTO `octo/notifications` capability - webhook subscription CRUD (spec §5.4).
  *
  * Authenticated (session cookie) for v1; bearer for external OTAs is layered later (D1).
  * Operators manage their own subscriptions; admins manage platform-level ones. The OCTO

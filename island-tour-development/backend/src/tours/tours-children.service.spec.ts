@@ -1,7 +1,7 @@
 /**
  * Unit tests for TourChildrenService.
  *
- * PrismaService and ToursService are both fully mocked — no real database
+ * PrismaService and ToursService are both fully mocked - no real database
  * connection is made and no slug / ownership logic is re-executed here.
  *
  * Strategy:

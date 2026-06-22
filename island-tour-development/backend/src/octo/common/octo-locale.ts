@@ -1,7 +1,7 @@
 import { Locale } from '@prisma/client';
 
 /**
- * Negotiates the OCTO content locale (spec §5.1 — `Accept-Language`).
+ * Negotiates the OCTO content locale (spec §5.1 - `Accept-Language`).
  *
  * ## What it does
  * Parses an `Accept-Language` header (e.g. `"nl-NL,nl;q=0.9,en;q=0.8"`) and resolves

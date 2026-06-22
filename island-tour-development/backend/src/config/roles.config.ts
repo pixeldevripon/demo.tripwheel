@@ -2,13 +2,13 @@ import { Permission, Role } from '@prisma/client';
 
 /**
  * Maps every Role to the set of Permissions it is allowed to exercise.
- * Used by PermissionsGuard — do not access these checks in business logic directly;
+ * Used by PermissionsGuard - do not access these checks in business logic directly;
  * use @RequirePermissions() on the controller handler instead.
  *
  * Hierarchy:
- *   ADMIN        — full platform access
- *   TOUR_OPERATOR — own-content + booking visibility
- *   USER         — traveler browsing and self-management only
+ *   ADMIN        - full platform access
+ *   TOUR_OPERATOR - own-content + booking visibility
+ *   USER         - traveler browsing and self-management only
  */
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.ADMIN]: [
@@ -18,6 +18,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_OPERATOR_PROFILE,
     Permission.EDIT_OPERATOR_PROFILE,
     Permission.MANAGE_OPERATOR_PAYMENTS,
+    Permission.DELETE_OPERATOR,
     Permission.MANAGE_SYSTEM,
     Permission.MANAGE_TRIPS,
     Permission.CREATE_CONTENT,
@@ -77,10 +78,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.EDIT_REVIEW,
     Permission.DELETE_REVIEW,
     Permission.APPROVE_REVIEW,
-    Permission.CREATE_PARTNER,
-    Permission.VIEW_PARTNERS,
-    Permission.EDIT_PARTNER,
-    Permission.DELETE_PARTNER,
+
     Permission.UPLOAD_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,
@@ -138,10 +136,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.EDIT_REVIEW,
     Permission.DELETE_REVIEW,
     Permission.APPROVE_REVIEW,
-    Permission.CREATE_PARTNER,
-    Permission.VIEW_PARTNERS,
-    Permission.EDIT_PARTNER,
-    Permission.DELETE_PARTNER,
+
     Permission.UPLOAD_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,
@@ -172,10 +167,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.EDIT_REVIEW,
     Permission.DELETE_REVIEW,
     Permission.APPROVE_REVIEW,
-    Permission.CREATE_PARTNER,
-    Permission.VIEW_PARTNERS,
-    Permission.EDIT_PARTNER,
-    Permission.DELETE_PARTNER,
     Permission.UPLOAD_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,
@@ -192,7 +183,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 
   [Role.TOUR_OPERATOR]: [
-    Permission.CREATE_OPERATOR,
     Permission.VIEW_OPERATOR_PROFILE,
     Permission.EDIT_OPERATOR_PROFILE,
     Permission.MANAGE_OPERATOR_PAYMENTS,

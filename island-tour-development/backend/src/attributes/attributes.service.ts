@@ -114,7 +114,7 @@ export class AttributesService {
 
   async removeDefinition(key: string, adminId: string) {
     await this.getDefinition(key);
-    // Soft-deactivate — keeps existing tour_attributes rows intact and the key reserved.
+    // Soft-deactivate - keeps existing tour_attributes rows intact and the key reserved.
     await this.prisma.attributeDefinition.update({ where: { key }, data: { isActive: false } });
     this.logger.log(`Admin ${adminId} deactivated attribute definition "${key}"`);
     return { message: `Attribute "${key}" deactivated` };
@@ -254,7 +254,7 @@ export class AttributesService {
     // Validate + normalize every value before writing anything.
     const normalized = dto.attributes.map((item) => {
       const def = defByKey.get(item.key);
-      if (!def) throw new BadRequestException(`Unknown attribute "${item.key}" — not in the dictionary`);
+      if (!def) throw new BadRequestException(`Unknown attribute "${item.key}" - not in the dictionary`);
       return { key: item.key, value: this.normalizeValue(def.dataType, def.allowedValues, item.key, item.value) };
     });
 

@@ -15,7 +15,7 @@ export type HubType = 'LOCATION' | 'HIGHLIGHT' | 'AREA';
 
 export const HUB_TYPE_VALUES: HubType[] = ['LOCATION', 'HIGHLIGHT', 'AREA'];
 
-// Supported currencies (ISO 4217) — must match the backend Prisma `Currency` enum.
+// Supported currencies (ISO 4217) - must match the backend Prisma `Currency` enum.
 export type Currency =
   | 'USD'
   | 'EUR';

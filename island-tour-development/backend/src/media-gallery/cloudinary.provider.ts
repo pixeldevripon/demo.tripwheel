@@ -2,7 +2,7 @@ import { Provider } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 
 /**
- * CloudinaryProvider — configures the Cloudinary SDK singleton at NestJS
+ * CloudinaryProvider - configures the Cloudinary SDK singleton at NestJS
  * bootstrap time using environment variables.
  *
  * Registered as a plain value provider so other services can inject

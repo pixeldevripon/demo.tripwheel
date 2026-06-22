@@ -2,7 +2,6 @@ import {
     Activity,
     BarChart3,
     BookOpen,
-    Building2,
     Calendar,
     CircleUser,
     CreditCard,
@@ -16,6 +15,7 @@ import {
     Settings,
     SlidersHorizontal,
     Star,
+    Store,
     Tag,
     Layers,
     Users,
@@ -29,7 +29,7 @@ import type { NavItem } from '@/lib/rbac-utils';
  * Dashboard navigation definitions.
  *
  * `permissions` values must exactly match the `Permission` keys declared in
- * /frontend/lib/config/rbac.ts — these are what the AppSidebar filter compares
+ * /frontend/lib/config/rbac.ts - these are what the AppSidebar filter compares
  * against. Role→Permission mapping is also in lib/config/rbac.ts, whose role
  * strings (ADMIN, TOUR_OPERATOR, USER…) come from the backend.
  */
@@ -205,21 +205,21 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.VIEW_REVIEWS],
     },
 
-    // ─── Partners ──────────────────────────────────────────────────────────────
+    // ─── Tour Operators ──────────────────────────────────────────────────────
     {
-        title: 'Partners',
-        icon: Building2,
-        permissions: [Permission.VIEW_PARTNERS, Permission.CREATE_PARTNER],
+        title: 'Tour Operators',
+        icon: Store,
+        permissions: [Permission.MANAGE_OPERATORS],
         items: [
             {
-                title: 'All Partners',
-                url: 'partners',
-                permissions: [Permission.VIEW_PARTNERS],
+                title: 'All Tour Operators',
+                url: 'tour-operators',
+                permissions: [Permission.MANAGE_OPERATORS],
             },
             {
-                title: 'Add Partner',
-                url: 'partners/new',
-                permissions: [Permission.CREATE_PARTNER],
+                title: 'Add Tour Operator',
+                url: 'tour-operators/new',
+                permissions: [Permission.MANAGE_OPERATORS],
             },
         ],
     },

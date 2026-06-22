@@ -94,7 +94,7 @@ export const MediaUploader = ({
         return { valid, invalid };
     };
 
-    /* ── XHR upload for a single file — progress tracked in Zustand ── */
+    /* ── XHR upload for a single file - progress tracked in Zustand ── */
     const uploadOne = useCallback(
         (file: File, id: string): Promise<any> =>
             new Promise((resolve, reject) => {

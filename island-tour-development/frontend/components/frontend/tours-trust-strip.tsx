@@ -10,7 +10,7 @@ export type ToursTrustDict = {
     pay: TrustItem;
 };
 
-// Fixed display order — icon paired with its dictionary key (icons exported from Figma).
+// Fixed display order - icon paired with its dictionary key (icons exported from Figma).
 const ITEMS: { key: keyof ToursTrustDict; icon: string }[] = [
     { key: 'builtByLocals', icon: '/icons/trust-strip/built-by-locals.svg' },
     { key: 'freeCancellation', icon: '/icons/trust-strip/free-cancellation.svg' },

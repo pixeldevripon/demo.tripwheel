@@ -107,7 +107,7 @@ function UploadZone({
         )}
       </div>
 
-      {/* CTA — only in full (non-compact) mode */}
+      {/* CTA - only in full (non-compact) mode */}
       {!compact && (
         <Button
           type="button"
@@ -142,7 +142,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
 
     return (
       <div className={cn('space-y-3', className)}>
-        {/* Upload zone — always visible, shrinks to compact when images exist */}
+        {/* Upload zone - always visible, shrinks to compact when images exist */}
         {canAddMore && (
           <UploadZone
             onClick={() => setOpen(true)}

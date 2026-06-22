@@ -106,7 +106,7 @@ export class SettingsService {
       ...dto,
       ...(dto.secretKey && { secretKey: encrypt(dto.secretKey) }),
       ...(dto.webhookSecret && { webhookSecret: encrypt(dto.webhookSecret) }),
-      // publishableKey is public — no encryption needed
+      // publishableKey is public - no encryption needed
     };
     const result = await this.prisma.stripeConfiguration.upsert({
       where: { id: 'default' },

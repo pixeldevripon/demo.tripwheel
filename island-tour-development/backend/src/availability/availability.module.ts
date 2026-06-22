@@ -5,7 +5,7 @@ import { AvailabilityMaterializerService } from './availability-materializer.ser
 import { AvailabilityService } from './availability.service';
 
 /**
- * Availability module — recurring schedules + date exceptions materialize into
+ * Availability module - recurring schedules + date exceptions materialize into
  * `Departure` inventory, exposed via operator management routes and public real-time
  * availability reads. `PrismaService` is `@Global()`, so it is not imported here.
  * The materializer is exported for the nightly BullMQ job (Phase 9).

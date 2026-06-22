@@ -220,7 +220,7 @@ prisma/
 | Role | Created by | Key capability |
 |---|---|---|
 | USER | Auto on first booking | Browse, book, review, wishlist |
-| TOUR_OPERATOR | Self-registration | Create tours, choose commission tier, manage availability |
+| TOUR_OPERATOR | Admin-invited (set-password email) | Create tours, choose commission tier, manage availability |
 | ADMIN | Database seed only | Full platform management + Spotlight approval + force-majeure pardons |
 
 Operators inherit USER; admins inherit USER + OPERATOR. `EDITOR`/`STAFF`/`GUIDE` are modeled but

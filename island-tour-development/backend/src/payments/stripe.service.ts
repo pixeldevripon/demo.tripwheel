@@ -6,7 +6,7 @@ import { decrypt } from '@/common/utils/crypto.util';
 
 /**
  * Thin wrapper over the Stripe SDK. Credentials live (encrypted) in the
- * `stripe_configuration` row managed via Settings — never in env. The client is
+ * `stripe_configuration` row managed via Settings - never in env. The client is
  * lazily built from the decrypted secret key and re-built if the key rotates.
  *
  * All money crosses the Stripe boundary in **integer minor units** (cents). The
@@ -32,7 +32,7 @@ export class StripeService {
     return cfg.webhookSecret || null;
   }
 
-  /** The publishable key (public — safe to return to the browser). */
+  /** The publishable key (public - safe to return to the browser). */
   async publishableKey(): Promise<string | null> {
     const row = await this.prisma.stripeConfiguration.findUnique({
       where: { id: 'default' },
@@ -60,7 +60,7 @@ export class StripeService {
 
   /**
    * Create a PaymentIntent for `amount` (minor units). `idempotencyKey` makes the
-   * call safe to retry — the same key returns the same intent.
+   * call safe to retry - the same key returns the same intent.
    */
   async createPaymentIntent(params: {
     amount: number;
@@ -134,7 +134,7 @@ function safeDecrypt(value: string, logger: Logger): string {
   try {
     return decrypt(value);
   } catch {
-    logger.error('Failed to decrypt a Stripe credential — check ENCRYPTION_KEY');
+    logger.error('Failed to decrypt a Stripe credential - check ENCRYPTION_KEY');
     return '';
   }
 }

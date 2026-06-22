@@ -1,5 +1,5 @@
 /**
- * Unit tests for AttributesService — dictionary CRUD + validated per-tour assignment (V2 §7).
+ * Unit tests for AttributesService - dictionary CRUD + validated per-tour assignment (V2 §7).
  * PrismaService and ToursService are mocked.
  */
 import { PrismaService } from '@/prisma/prisma.service';

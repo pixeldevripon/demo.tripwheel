@@ -68,7 +68,7 @@ export class BookingsService {
     >,
     opts: { availability: boolean } = { availability: true },
   ): void {
-    // A side-effect must never break the originating write — never let it throw.
+    // A side-effect must never break the originating write - never let it throw.
     try {
       if (opts.availability) {
         this.notifications.emitAvailabilityUpdate({
@@ -90,7 +90,7 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Reserve (OCTO step 1) — atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL)
+  // Reserve (OCTO step 1) - atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL)
   // ════════════════════════════════════════════════════════════════════════
 
   async reserve(dto: ReserveBookingDto, userId?: string) {
@@ -125,7 +125,7 @@ export class BookingsService {
     const localStart = ctx.departure.localDateTimeStart;
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Atomic conditional decrement — the overbooking guard (master A1).
+      // Atomic conditional decrement - the overbooking guard (master A1).
       const claim = await tx.departure.updateMany({
         where: {
           id: dto.departureId,
@@ -209,7 +209,7 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Confirm (OCTO step 2) — ON_HOLD → CONFIRMED (payment lands in Phase 6)
+  // Confirm (OCTO step 2) - ON_HOLD → CONFIRMED (payment lands in Phase 6)
   // ════════════════════════════════════════════════════════════════════════
 
   async confirm(id: string, dto: ConfirmBookingDto) {
@@ -254,14 +254,14 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Payment-driven confirmation — called by the Stripe webhook on success
+  // Payment-driven confirmation - called by the Stripe webhook on success
   // ════════════════════════════════════════════════════════════════════════
 
   /**
    * Settle a booking once its platform charge has succeeded. Transitions an
    * on-hold booking to CONFIRMED (a no-op if already confirmed), snapshots the
    * payment-method billing details (master G5), and finalizes the conversion.
-   * Idempotent — safe for webhook redelivery.
+   * Idempotent - safe for webhook redelivery.
    */
   async confirmFromPayment(
     bookingId: string,
@@ -321,7 +321,7 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Conversion finalization — EUR commission backfill + email + CAPI (fire once)
+  // Conversion finalization - EUR commission backfill + email + CAPI (fire once)
   // ════════════════════════════════════════════════════════════════════════
 
   /**
@@ -333,7 +333,7 @@ export class BookingsService {
   private async finalizeConfirmation(
     booking: BookingWithItems,
   ): Promise<BookingWithItems> {
-    if (booking.conversionFiredAt) return booking; // already fired — idempotent
+    if (booking.conversionFiredAt) return booking; // already fired - idempotent
 
     // EUR-normalize the commission snapshot (rule #22 / master G3).
     const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
@@ -358,10 +358,10 @@ export class BookingsService {
     });
 
     // Conversion value MUST be a non-null EUR commission (rule #22). Otherwise it is
-    // data corruption — log loudly and do NOT fire a conversion with a bad value.
+    // data corruption - log loudly and do NOT fire a conversion with a bad value.
     if (commissionAmount == null) {
       this.logger.error(
-        `Booking ${updated.displayRef} confirmed with null commissionAmount — conversion NOT fired (data corruption)`,
+        `Booking ${updated.displayRef} confirmed with null commissionAmount - conversion NOT fired (data corruption)`,
       );
     }
 
@@ -431,7 +431,7 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Cancel — release seats atomically + compute refund from the cancellation window
+  // Cancel - release seats atomically + compute refund from the cancellation window
   // ════════════════════════════════════════════════════════════════════════
 
   async cancel(id: string, dto: CancelBookingDto, actor?: { id: string; role: Role }) {
@@ -534,7 +534,7 @@ export class BookingsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Hold-expiry sweeper — releases seats for lapsed ON_HOLD reservations
+  // Hold-expiry sweeper - releases seats for lapsed ON_HOLD reservations
   // ════════════════════════════════════════════════════════════════════════
 
   /**
@@ -602,7 +602,7 @@ export class BookingsService {
   /**
    * Thank-you-page payload, keyed on the unguessable `publicRef` (the TYP token, so
    * this is public). Emits the `booking_complete` conversion object **only** for a
-   * confirmed booking with a non-null EUR commission — otherwise `conversion: null`
+   * confirmed booking with a non-null EUR commission - otherwise `conversion: null`
    * so the frontend renders an error and fires nothing (rule #22).
    */
   async getThankYou(publicRef: string) {
@@ -630,7 +630,7 @@ export class BookingsService {
 
     if (confirmed && conversion == null) {
       this.logger.error(
-        `TYP for ${booking.displayRef}: confirmed booking has null commissionAmount — no conversion`,
+        `TYP for ${booking.displayRef}: confirmed booking has null commissionAmount - no conversion`,
       );
     }
 

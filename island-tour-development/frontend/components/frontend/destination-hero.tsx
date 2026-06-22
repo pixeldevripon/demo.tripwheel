@@ -31,7 +31,7 @@ export function DestinationHero({
     dict: HeroDict;
     locale: Locale;
     popular: PopularItem[];
-    /** Optional background photo — falls back to the shared home-hero gradient. */
+    /** Optional background photo - falls back to the shared home-hero gradient. */
     image?: string;
 }) {
     const router = useRouter();
@@ -62,7 +62,7 @@ export function DestinationHero({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
                     className='relative z-10 flex w-full max-w-170.75 flex-col items-center gap-10'>
-                    {/* Heading group — title + subtitle, gap 4 */}
+                    {/* Heading group - title + subtitle, gap 4 */}
                     <div className='flex flex-col items-center gap-1 text-center'>
                         <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
                             {destinationName} {dict.toursActivities}
@@ -72,13 +72,13 @@ export function DestinationHero({
                         </p>
                     </div>
 
-                    {/* Search group — pill + popular, gap 16 */}
+                    {/* Search group - pill + popular, gap 16 */}
                     <div className='flex w-full flex-col items-center gap-4'>
                         <form
                             onSubmit={submitSearch}
                             role='search'
                             className='flex h-15 w-full items-center gap-2 rounded-it-full border border-it-search-border bg-it-white pl-5 pr-2 md:h-20 md:gap-0 md:pl-9 md:pr-5'>
-                            {/* Search field — fills the left region */}
+                            {/* Search field - fills the left region */}
                             <input
                                 type='search'
                                 value={query}
@@ -88,10 +88,10 @@ export function DestinationHero({
                                 className='min-w-0 flex-1 bg-transparent border-none outline-none text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
 
-                            {/* Vertical divider — between search field and date (mobile + desktop) */}
+                            {/* Vertical divider - between search field and date (mobile + desktop) */}
                             <span className='mx-4 h-8.5 w-px shrink-0 bg-it-heading md:mx-8' />
 
-                            {/* Date picker — "Select date" text on both mobile and desktop */}
+                            {/* Date picker - "Select date" text on both mobile and desktop */}
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
                                 <PopoverTrigger asChild>
                                     <button
@@ -101,7 +101,7 @@ export function DestinationHero({
                                         {date ? format(date, 'd MMM yyyy') : dict.selectDate}
                                     </button>
                                 </PopoverTrigger>
-                                {/* Light theme + 8px radius applied via props for this instance —
+                                {/* Light theme + 8px radius applied via props for this instance -
                                     the shared Calendar/Popover defaults are left unchanged. */}
                                 <PopoverContent
                                     align='start'
@@ -121,7 +121,7 @@ export function DestinationHero({
                                 </PopoverContent>
                             </Popover>
 
-                            {/* Flexible gap — pushes the action button to the right (desktop) */}
+                            {/* Flexible gap - pushes the action button to the right (desktop) */}
                             <div className='hidden flex-1 md:block' />
 
                             {/* Orange action button */}
@@ -142,7 +142,7 @@ export function DestinationHero({
                             </motion.button>
                         </form>
 
-                        {/* Popular — label muted, names dark links, dots muted */}
+                        {/* Popular - label muted, names dark links, dots muted */}
                         <p className='m-0 text-center text-sm md:text-base leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
                             {dict.popularLabel}:{' '}
                             {popular.map((item, i) => (

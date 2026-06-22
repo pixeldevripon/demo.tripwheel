@@ -88,9 +88,9 @@ export class CalendarDayResponseDto {
 export class MaterializeResultDto {
   @ApiProperty({ example: 90 }) created!: number;
   @ApiProperty({ example: 12 }) updated!: number;
-  @ApiProperty({ example: 3, description: 'Protected (manuallyEdited) — left as-is.' })
+  @ApiProperty({ example: 3, description: 'Protected (manuallyEdited) - left as-is.' })
   skipped!: number;
-  @ApiProperty({ example: 5, description: 'Orphaned (schedule changed) — removed.' })
+  @ApiProperty({ example: 5, description: 'Orphaned (schedule changed) - removed.' })
   removed!: number;
 }
 
@@ -358,7 +358,7 @@ export class AvailabilityCheckDto {
 
   @ApiPropertyOptional({
     type: [PartySizeDto],
-    description: 'Optional capacity filter — only slots with enough vacancies.',
+    description: 'Optional capacity filter - only slots with enough vacancies.',
   })
   @IsOptional()
   @IsArray()

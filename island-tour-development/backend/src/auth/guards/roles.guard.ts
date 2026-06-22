@@ -10,13 +10,13 @@ import { ROLES_KEY } from '@/auth/decorators/roles.decorator';
 import type { AuthenticatedRequest } from '@/auth/auth.types';
 
 /**
- * Coarse-grained role guard — checks that the authenticated user holds at
+ * Coarse-grained role guard - checks that the authenticated user holds at
  * least one of the roles listed in `@Roles()`.
  *
  * ## Guard execution order (all registered as APP_GUARD in AuthModule)
- *   1. `AuthGuard`        — validates the session, attaches `request.user`
- *   2. `RolesGuard`       — optional coarse-grained role check  ← this guard
- *   3. `PermissionsGuard` — fine-grained permission check
+ *   1. `AuthGuard`        - validates the session, attaches `request.user`
+ *   2. `RolesGuard`       - optional coarse-grained role check  ← this guard
+ *   3. `PermissionsGuard` - fine-grained permission check
  *
  * ## When to use `@Roles()` vs `@RequirePermissions()`
  *
@@ -26,7 +26,7 @@ import type { AuthenticatedRequest } from '@/auth/auth.types';
  * | Express the *intent* of a single route clearly    | `@RequirePermissions()` |
  * | Both coarse gate + fine-grained action check      | Both decorators together|
  *
- * **UserController does not use `@Roles()` at all** — `@RequirePermissions()`
+ * **UserController does not use `@Roles()` at all** - `@RequirePermissions()`
  * alone is expressive enough for that controller and avoids redundancy.
  * `@Roles()` is most useful for locking whole controllers or groups of routes
  * where you want a hard role boundary regardless of the permission map.

@@ -92,7 +92,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
           <ul className="space-y-1.5 text-xs text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
-              <span>Lists the spoken languages your guide conducts the tour in — not the website's UI language.</span>
+              <span>Lists the spoken languages your guide conducts the tour in - not the website's UI language.</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
@@ -100,7 +100,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
-              <span>Not required to publish, but helps Caribbean travelers — many speak Dutch, Spanish, or Papiamentu — choose the right tour.</span>
+              <span>Not required to publish, but helps Caribbean travelers - many speak Dutch, Spanish, or Papiamentu - choose the right tour.</span>
             </li>
           </ul>
         </div>
@@ -499,7 +499,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             <Label className="text-xs font-semibold uppercase">H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
             <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
             <FieldDescription>
-              English-only SEO tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages — those use the Display Title from the Translations tab.
+              English-only SEO tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
             </FieldDescription>
           </Field>
 

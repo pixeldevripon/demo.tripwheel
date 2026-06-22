@@ -32,10 +32,10 @@ import {
 } from './bookings.swagger';
 
 /**
- * BookingsController — OCTO reserve → confirm lifecycle (native source of truth).
+ * BookingsController - OCTO reserve → confirm lifecycle (native source of truth).
  *
  * ## Access
- * - Reserve / confirm / cancel / extend / update are `@Public()` — keyed on the
+ * - Reserve / confirm / cancel / extend / update are `@Public()` - keyed on the
  *   unguessable booking `id` (travellers + guests, no account required). When a
  *   session is present it's used for attribution (userId) and `cancelledBy`.
  * - Reads (`GET`) require auth and are scoped in the service: admin → all,

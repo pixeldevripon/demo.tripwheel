@@ -45,7 +45,7 @@ export function computeAvailabilityStatus({
 }
 
 /**
- * Whether a departure can currently take a booking. LIMITED is "few seats left" —
+ * Whether a departure can currently take a booking. LIMITED is "few seats left" -
  * still bookable; only SOLD_OUT and CLOSED are not.
  */
 export function isDepartureBookable(status: AvailabilityStatus): boolean {

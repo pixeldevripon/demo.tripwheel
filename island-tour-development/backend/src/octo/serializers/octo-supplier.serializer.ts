@@ -4,12 +4,12 @@ import type { CompanyInformations, SiteInfo } from '@prisma/client';
  * Supplier serializer (spec §4.1).
  *
  * ## What it does
- * Per OCTO, the platform itself is the single Supplier (decision D4) — we are a
+ * Per OCTO, the platform itself is the single Supplier (decision D4) - we are a
  * reseller exposing one aggregated catalog, not per-operator suppliers. This maps
  * our `SiteInfo` + `CompanyInformations` settings onto the OCTO Supplier shape.
  *
  * ## Usage
- * `serializeSupplier(siteInfo, company, endpoint)` — `endpoint` is the OCTO base URL
+ * `serializeSupplier(siteInfo, company, endpoint)` - `endpoint` is the OCTO base URL
  * (no trailing slash) the supplier advertises.
  */
 export function serializeSupplier(

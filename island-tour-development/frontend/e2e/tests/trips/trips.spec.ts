@@ -16,33 +16,33 @@
  *     - Validation: name required (min 3 chars), destination required
  *     - Successful submit navigates to edit page
  *
- *  3. Edit Trip — Details Tab
+ *  3. Edit Trip - Details Tab
  *     - Loads trip data into form fields
  *     - Slug field is read-only with "cannot be changed" note
  *     - Status badge visible
  *     - Save Changes triggers PATCH and shows success toast
  *     - Publish button visible for DRAFT trip
  *
- *  4. Edit Trip — Highlights Tab
+ *  4. Edit Trip - Highlights Tab
  *     - Renders highlights list from API
  *     - "Add Highlight" form visible with text input
  *     - Submitting form POSTs to API and shows toast
  *     - Chevron button expands translation panel
  *     - Delete button sends DELETE and shows toast
  *
- *  5. Edit Trip — Inclusions Tab
+ *  5. Edit Trip - Inclusions Tab
  *     - Renders inclusions list from API
  *     - "Add Inclusion" form visible with label input and icon select
  *     - Submitting form POSTs to API and shows toast
  *     - Delete button sends DELETE and shows toast
  *
- *  6. Edit Trip — Schedules Tab
+ *  6. Edit Trip - Schedules Tab
  *     - "Select start date" button opens calendar popover
  *     - Selecting a date populates the start date field
  *     - Add Schedule form submits and shows toast
  *     - Delete schedule button sends DELETE and shows toast
  *
- *  7. Edit Trip — Translations Tab
+ *  7. Edit Trip - Translations Tab
  *     - English tab is active by default
  *     - Display Title field pre-filled with trip name
  *     - Info banner about English being base locale visible
@@ -55,7 +55,7 @@
  *     - LIVE trip: Pause button sends POST /pause and shows toast
  *     - ARCHIVED trip: Restore to Draft action available in row actions
  *
- * All API calls are intercepted with page.route() — no live backend required.
+ * All API calls are intercepted with page.route() - no live backend required.
  * Auth is provided by global storageState from e2e/auth.setup.ts.
  */
 
@@ -252,7 +252,7 @@ async function mockSupportingData(page: PlaywrightPage) {
       route.continue();
     }
   });
-  // Hub match check — return null (no hub match) so hub prompt doesn't block tests
+  // Hub match check - return null (no hub match) so hub prompt doesn't block tests
   await page.route('**/api/v1/hubs/match**', (route) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) });
   });
@@ -428,7 +428,7 @@ test.describe('Trip List Page (/dashboard/trips)', () => {
   test('"New Trip" button is visible and navigates to /dashboard/trips/new', async ({ page }) => {
     // Mock supporting data so the new-trip form page doesn't hit unmocked API endpoints
     await mockSupportingData(page);
-    // Sidebar also has "Add New Trip" which matches /new trip/i — use exact match for the header button
+    // Sidebar also has "Add New Trip" which matches /new trip/i - use exact match for the header button
     await page.getByRole('link', { name: 'New Trip', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard\/trips\/new/, { timeout: 5_000 });
   });
@@ -564,7 +564,7 @@ test.describe('Create Trip (/dashboard/trips/new)', () => {
     // Manually change the slug
     await page.locator('input[name="slug"]').fill('my-custom-slug');
 
-    // Now change the name — slug should NOT change
+    // Now change the name - slug should NOT change
     await page.locator('input[name="name"]').fill('Different Name');
     await expect(page.locator('input[name="slug"]')).toHaveValue('my-custom-slug');
   });
@@ -639,10 +639,10 @@ test.describe('Create Trip (/dashboard/trips/new)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Edit Trip — Details Tab
+// 3. Edit Trip - Details Tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Details Tab', () => {
+test.describe('Edit Trip - Details Tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllTripTabEndpoints(page);
     await page.goto(`/dashboard/trips/${TRIP_ID}/edit?tab=details`);
@@ -655,7 +655,7 @@ test.describe('Edit Trip — Details Tab', () => {
   });
 
   test('slug field is read-only with "cannot be changed" note', async ({ page }) => {
-    // The slug input has readOnly prop — locate by the readonly attribute on the first
+    // The slug input has readOnly prop - locate by the readonly attribute on the first
     // readonly input in the read-only fields grid (before the name field)
     const slugInput = page.locator('input[readonly]').first();
     await expect(slugInput).toBeVisible();
@@ -761,10 +761,10 @@ test.describe('Edit Trip — Details Tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Edit Trip — Highlights Tab
+// 4. Edit Trip - Highlights Tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Highlights Tab', () => {
+test.describe('Edit Trip - Highlights Tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockTripDetail(page);
     await mockTranslationsEndpoints(page);
@@ -784,7 +784,7 @@ test.describe('Edit Trip — Highlights Tab', () => {
   });
 
   test('"Add Highlight" form section is visible with text input', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button — use .first() for the heading
+    // getByText matches both the <p> heading and the submit button - use .first() for the heading
     await expect(page.getByText(/add highlight/i).first()).toBeVisible({ timeout: 8_000 });
     await expect(page.locator('input[name="text"]')).toBeVisible({ timeout: 8_000 });
   });
@@ -845,7 +845,7 @@ test.describe('Edit Trip — Highlights Tab', () => {
       }
     });
 
-    // Delete buttons are ghost icon buttons — click the first trash icon
+    // Delete buttons are ghost icon buttons - click the first trash icon
     const deleteButtons = page.getByRole('button').filter({ has: page.locator('svg') }).filter({ hasNot: page.locator('text') });
     // Use the title/aria approach for the destructive trash button on the first highlight row
     const firstRow = page.locator('.ring-1.ring-foreground\\/10').first();
@@ -858,10 +858,10 @@ test.describe('Edit Trip — Highlights Tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Edit Trip — Inclusions Tab
+// 5. Edit Trip - Inclusions Tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Inclusions Tab', () => {
+test.describe('Edit Trip - Inclusions Tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockTripDetail(page);
     await mockTranslationsEndpoints(page);
@@ -879,7 +879,7 @@ test.describe('Edit Trip — Inclusions Tab', () => {
   });
 
   test('"Add Inclusion" form section is visible with label input', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button — use .first() for the heading
+    // getByText matches both the <p> heading and the submit button - use .first() for the heading
     await expect(page.getByText(/add inclusion/i).first()).toBeVisible();
     await expect(page.locator('input[name="label"]')).toBeVisible();
   });
@@ -951,10 +951,10 @@ test.describe('Edit Trip — Inclusions Tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Edit Trip — Schedules Tab
+// 6. Edit Trip - Schedules Tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Schedules Tab', () => {
+test.describe('Edit Trip - Schedules Tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockTripDetail(page);
     await mockTranslationsEndpoints(page);
@@ -969,13 +969,13 @@ test.describe('Edit Trip — Schedules Tab', () => {
 
   test('renders existing schedule from the API', async ({ page }) => {
     // formatDate uses Intl.DateTimeFormat('en-US', { year:'numeric', month:'short', day:'numeric' })
-    // which produces "Dec 1, 2025" — not "01 Dec 2025"
+    // which produces "Dec 1, 2025" - not "01 Dec 2025"
     await expect(page.getByText(/Dec 1, 2025/)).toBeVisible();
     await expect(page.getByText('09:00')).toBeVisible();
   });
 
   test('"Add Schedule" form section is visible', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button — use .first() for the heading
+    // getByText matches both the <p> heading and the submit button - use .first() for the heading
     await expect(page.getByText(/add schedule/i).first()).toBeVisible();
   });
 
@@ -991,7 +991,7 @@ test.describe('Edit Trip — Schedules Tab', () => {
     const startDateBtn = page.getByRole('button', { name: /select start date/i });
     await startDateBtn.click();
 
-    // Wait for calendar to open — react-day-picker v10 uses data-day on the button
+    // Wait for calendar to open - react-day-picker v10 uses data-day on the button
     await page.waitForSelector('[role="gridcell"]:not([data-disabled]) button[type="button"]', { timeout: 5_000 });
     // Click the first enabled day
     const dayButton = page.locator('[role="gridcell"]:not([data-disabled]) button[type="button"]').first();
@@ -1068,10 +1068,10 @@ test.describe('Edit Trip — Schedules Tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Edit Trip — Translations Tab
+// 7. Edit Trip - Translations Tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Translations Tab', () => {
+test.describe('Edit Trip - Translations Tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllTripTabEndpoints(page);
     await mockTranslationsEndpoints(page);
@@ -1090,7 +1090,7 @@ test.describe('Edit Trip — Translations Tab', () => {
   });
 
   test('Translations card heading shows trip name', async ({ page }) => {
-    await expect(page.getByText(/translations — sunset catamaran cruise/i)).toBeVisible();
+    await expect(page.getByText(/translations - sunset catamaran cruise/i)).toBeVisible();
   });
 
   test('English tab is the default active tab', async ({ page }) => {

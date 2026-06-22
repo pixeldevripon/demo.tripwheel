@@ -89,9 +89,9 @@ export const categoriesApi = {
   },
 
   /**
-   * Destination-scoped, tour-gated category detail — the public category PAGE
+   * Destination-scoped, tour-gated category detail - the public category PAGE
    * fetch. Returns `publishedTourCount`; the backend 404s when the category has
-   * **zero** published tours at this destination (Stage-3 gating —
+   * **zero** published tours at this destination (Stage-3 gating -
    * ROUTING-AND-RESOLUTION.md §7). Maps a 404 to `null` so the page can render
    * `notFound()`; other failures throw.
    */

@@ -1,7 +1,7 @@
 /**
  * Unit tests for HubService.
  *
- * PrismaService is fully mocked — no real database connection is made.
+ * PrismaService is fully mocked - no real database connection is made.
  * Tests cover every public method including all error paths, P2002/P2025 handling,
  * seeded-hub guards, transaction logic, slug registry writes, FAQ management,
  * allowed-category management, translation upserts, and page-content upserts.

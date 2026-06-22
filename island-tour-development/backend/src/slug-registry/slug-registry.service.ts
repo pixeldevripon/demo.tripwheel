@@ -21,7 +21,7 @@ export class SlugRegistryService {
       };
     }
 
-    // No active row — a renamed slug leaves a 301 redirect behind (master slug-registry rule).
+    // No active row - a renamed slug leaves a 301 redirect behind (master slug-registry rule).
     const redirect = await this.prisma.slugRedirect.findUnique({
       where: { destinationSlug_fromSlug: { destinationSlug, fromSlug: slug } },
       select: { toSlug: true, statusCode: true, entityType: true },

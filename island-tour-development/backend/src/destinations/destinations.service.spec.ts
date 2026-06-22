@@ -1,7 +1,7 @@
 /**
  * Unit tests for DestinationService.
  *
- * PrismaService is fully mocked — no real database connection is made.
+ * PrismaService is fully mocked - no real database connection is made.
  * $transaction is mocked to invoke the callback with the same mocked client,
  * so transactional and non-transactional Prisma calls use the same mock object.
  *

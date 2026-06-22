@@ -1,4 +1,5 @@
 export { passwordResetTemplate } from './password-reset.template';
+export { operatorInviteTemplate } from './operator-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
 export {
   bookingConfirmationTemplate,

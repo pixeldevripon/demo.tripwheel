@@ -30,7 +30,7 @@ const reviews: Review[] = [
     },
 ];
 
-// Figma star — fill inherits from text colour (currentColor) so it can be green or coral
+// Figma star - fill inherits from text colour (currentColor) so it can be green or coral
 function Star({ className }: { className?: string }) {
     return (
         <svg
@@ -75,7 +75,7 @@ export function Testimonials() {
                         </p>
                     </div>
 
-                    {/* Review cards — peek scroll on mobile, 3-col grid on desktop */}
+                    {/* Review cards - peek scroll on mobile, 3-col grid on desktop */}
                     <div className='flex w-full snap-x gap-4 overflow-x-auto pb-1 -mr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mr-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0'>
                         {reviews.map((r, i) => (
                             <article

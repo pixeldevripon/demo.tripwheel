@@ -1,13 +1,13 @@
 import type { SlugResolution } from '@/types/slug-registry';
 
 /**
- * Slug-registry resolver — the single lookup that disambiguates the polymorphic
+ * Slug-registry resolver - the single lookup that disambiguates the polymorphic
  * `/{locale}/{destination}/{slug}/` segment into a concrete entity type + id.
  *
  * Contract (ROUTING-AND-RESOLUTION.md §5):
  *   GET /api/v1/slug-registry/resolve?destinationSlug={dest}&slug={slug}
  *     200 → { destinationSlug, slug, entityType, entityId }
- *     404 → slug is unknown OR inactive (tombstoned) — treat as not-found
+ *     404 → slug is unknown OR inactive (tombstoned) - treat as not-found
  *
  * The endpoint is `@Public()` and locale-independent: one resolution serves all
  * 7 locales for a given `(destination, slug)` pair.

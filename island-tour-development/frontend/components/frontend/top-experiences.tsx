@@ -46,11 +46,11 @@ const cards: Card[] = [
 ];
 
 const REAL = cards.length;
-// Repeat the set so the track overflows the viewport — required for a seamless infinite loop
+// Repeat the set so the track overflows the viewport - required for a seamless infinite loop
 const SLIDES = [...cards, ...cards, ...cards];
 const START = REAL + 2; // centre the middle card (Buggy) of the middle set
 
-// Figma arc — tallest card in the centre, shrinking toward the edges
+// Figma arc - tallest card in the centre, shrinking toward the edges
 const SLIDE_W = 220;
 const GAP = 24;
 const H_MAX = 403;
@@ -104,7 +104,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
         autoplay.current.stop();
     };
 
-    // 3 dots — left / centre / right
+    // 3 dots - left / centre / right
     const realIndex = ((selected % REAL) + REAL) % REAL;
     const activeDot = realIndex <= 1 ? 0 : realIndex === 2 ? 1 : 2;
     const goToDot = (dot: number) => {
@@ -192,7 +192,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                         </div>
                     </div>
 
-                    {/* Pagination — 3 dots: left / centre / right */}
+                    {/* Pagination - 3 dots: left / centre / right */}
                     <div className='flex items-center gap-2'>
                         {[0, 1, 2].map((dot) => (
                             <button

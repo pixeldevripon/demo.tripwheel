@@ -35,7 +35,7 @@ export function ExploreIslands({
                         {dict.title}
                     </h2>
 
-                    {/* Peek scroller — bleeds to the right container edge */}
+                    {/* Peek scroller - bleeds to the right container edge */}
                     <div className='it-scroll-x gap-4 md:gap-6 pb-1 -mr-4 md:-mr-8 xl:-mr-30'>
                         {islands.map((island) => (
                             <motion.a
@@ -52,7 +52,7 @@ export function ExploreIslands({
                                     className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
                                 />
 
-                                {/* Bottom gradient scrim — transparent → #1a1a1a */}
+                                {/* Bottom gradient scrim - transparent → #1a1a1a */}
                                 <div className='pointer-events-none absolute inset-x-0 bottom-0 h-28.25 bg-linear-to-b from-transparent to-it-ink md:h-61.75' />
 
                                 <div className='absolute bottom-4 left-4 flex flex-col gap-0.5 md:bottom-6 md:left-6 md:gap-2'>
@@ -67,7 +67,7 @@ export function ExploreIslands({
                         ))}
                     </div>
 
-                    {/* Mobile — "See more" button */}
+                    {/* Mobile - "See more" button */}
                     <Link
                         href={localizeHref(locale, '/destinations')}
                         className='flex w-full items-center justify-center rounded-it-full border border-it-primary px-10 py-3 no-underline transition-colors hover:bg-it-primary/5 md:hidden'>

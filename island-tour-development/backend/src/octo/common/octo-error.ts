@@ -12,7 +12,7 @@ import type { Response } from 'express';
  * OCTO error envelope (spec §9).
  *
  * ## What it does
- * OCTO returns a **flat** error object `{ error, errorMessage, <context…> }` — NOT
+ * OCTO returns a **flat** error object `{ error, errorMessage, <context…> }` - NOT
  * the native NestJS `{ statusCode, timestamp, path, message }` shape produced by
  * `AllExceptionsFilter`. `OctoException` carries the OCTO code + HTTP status +
  * optional context (tourId/optionId/unitId/availabilityId/uuid). `OctoExceptionFilter`
@@ -25,7 +25,7 @@ import type { Response } from 'express';
  * decorate every OCTO controller with `@UseFilters(OctoExceptionFilter)`.
  */
 
-/** OCTO error codes (spec §9) — `tour` substituted for `product` per our naming. */
+/** OCTO error codes (spec §9) - `tour` substituted for `product` per our naming. */
 export const OCTO_ERROR = {
   INVALID_TOUR_ID: 'INVALID_TOUR_ID',
   INVALID_OPTION_ID: 'INVALID_OPTION_ID',

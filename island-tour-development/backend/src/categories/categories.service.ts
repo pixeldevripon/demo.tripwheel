@@ -207,7 +207,7 @@ export class CategoryService {
 
   /**
    * V2 §3: category detail for a specific destination. Returns 404 when the
-   * (category, destination) pair has zero published tours — the slug_registry row
+   * (category, destination) pair has zero published tours - the slug_registry row
    * stays active so the slug remains reserved, but the page must not render.
    */
   async getBySlugForDestination(
@@ -322,7 +322,7 @@ export class CategoryService {
         // Category slugs are globally unique.
         const clash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
         if (clash && clash.id !== id) throw new ConflictException(`Category slug "${normalized}" already exists`);
-        // The target must not be held (in any destination) by another page — cooldown-aware.
+        // The target must not be held (in any destination) by another page - cooldown-aware.
         const others = await this.prisma.slugRegistry.findMany({
           where: { slug: normalized, NOT: { entityType: SlugEntityType.CATEGORY, entityId: id } },
           select: { deletedAt: true },

@@ -1,7 +1,7 @@
 import { Currency, Prisma } from '@prisma/client';
 
 /**
- * FX normalization to EUR — the platform's conversion currency (master G3/rule #22).
+ * FX normalization to EUR - the platform's conversion currency (master G3/rule #22).
  *
  * Conversion value is always `commission_amount` in **EUR**. EUR bookings need no
  * conversion (rate = 1). USD bookings are normalized at confirmation time using a

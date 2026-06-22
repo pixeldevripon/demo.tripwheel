@@ -10,7 +10,7 @@ import { HubWhySection } from './hub-why-section';
 import { ToursBreadcrumb } from './tours-breadcrumb';
 
 /**
- * Activity Hub page — the HUB branch of the polymorphic `[slug]` route
+ * Activity Hub page - the HUB branch of the polymorphic `[slug]` route
  * (`/{locale}/{destination}/{activity-hub}/`).
  *
  * Built section-by-section to match Figma (node 48024:11145). Currently:
@@ -24,11 +24,11 @@ import { ToursBreadcrumb } from './tours-breadcrumb';
  * ROUTING-AND-RESOLUTION.md §5.2): localized detail fetched per `locale`, fields
  * fall back to canonical English on the backend; slugs are English at every
  * locale. A hub renders whenever its resolve succeeds and `isActive` (no
- * published-tour gating — that applies to categories only).
+ * published-tour gating - that applies to categories only).
  */
 
 // Representative "at a glance" meta pills (Figma hero). Hub-level summary of the
-// typical trip — placeholder until the per-tour attributes API is wired (mirrors
+// typical trip - placeholder until the per-tour attributes API is wired (mirrors
 // the MOCK convention on the category page). Icons are white Figma exports.
 const MOCK_HERO_META: HubHeroMeta[] = [
     { icon: '/icons/hub/meta-duration.svg', label: 'Full day (8–9h)' },
@@ -37,14 +37,14 @@ const MOCK_HERO_META: HubHeroMeta[] = [
     { icon: '/icons/hub/meta-frequency.svg', label: 'Daily' },
 ];
 
-// Representative "Why {hub}" body — placeholder until the hub overview /
+// Representative "Why {hub}" body - placeholder until the hub overview /
 // page-content is authored (mirrors the MOCK convention on the category page).
 const MOCK_WHY_PARAGRAPHS = [
-    "The best beach in Curaçao isn't on Curaçao. Klein Curaçao lies 10km offshore — a flat, uninhabited island where nothing stays except a lighthouse built in 1877 and sea turtles that return here to nest every year. No shops. No signal. Just one of the longest stretches of white sand in the Caribbean. A full day to disappear. We've been on every boat that makes the trip. We've never met anyone who regretted going.",
+    "The best beach in Curaçao isn't on Curaçao. Klein Curaçao lies 10km offshore - a flat, uninhabited island where nothing stays except a lighthouse built in 1877 and sea turtles that return here to nest every year. No shops. No signal. Just one of the longest stretches of white sand in the Caribbean. A full day to disappear. We've been on every boat that makes the trip. We've never met anyone who regretted going.",
     "The crossing sails against the trade winds. Some mornings it's glass-smooth. Others, the catamaran earns its way there. Worth it. All of it.",
 ];
 
-// Representative trips grid (Figma node 48024:11222) — placeholder until the
+// Representative trips grid (Figma node 48024:11222) - placeholder until the
 // hub-filtered trips API is wired (mirrors the MOCK convention on the category
 // page). First three carry the badges shown in the design.
 const MOCK_TRIP_ATTRS = ['8h', 'Yacht', 'Beach house', 'Breakfast', 'Family-friendly'];
@@ -62,7 +62,7 @@ const MOCK_TRIPS: HubTour[] = Array.from({ length: 9 }, (_, i) => ({
     freeCancellation: true,
 }));
 
-// Private-charters panel (Figma node 48024:11455) — grouped grids with a
+// Private-charters panel (Figma node 48024:11455) - grouped grids with a
 // per-person price note. Placeholder until the charters API is wired.
 const MOCK_CHARTER_ATTRS = ['8h', 'Up to 10', 'Yacht', 'Beach house', 'BBQ', 'Family'];
 const MOCK_DAY_CHARTERS: HubTour[] = Array.from({ length: 11 }, (_, i) => ({
@@ -97,7 +97,7 @@ const MOCK_NIGHT_CHARTERS: HubTour[] = [
     freeCancellation: true,
 }));
 
-// Editorial "We've been on every boat" top picks (Figma node 48024:11563) —
+// Editorial "We've been on every boat" top picks (Figma node 48024:11563) -
 // part of the Private charters panel. Placeholder copy until authored.
 const MOCK_PICK_CONTENT: Omit<HubPick, 'label' | 'labelText'>[] = [
     {
@@ -171,7 +171,7 @@ export async function HubPage({
     const title = hub.h1Override ?? hubDict.titlePattern.replace('{hub}', hub.name);
     const breadcrumbLabel = hub.breadcrumbLabel ?? hub.name;
 
-    // "Why {hub}" body — authored hub overview (split on blank lines) when
+    // "Why {hub}" body - authored hub overview (split on blank lines) when
     // present, else the representative placeholder.
     const whyTitle = hubDict.whyTitle.replace('{hub}', hub.name);
     const whyParagraphs = hub.overview?.trim()

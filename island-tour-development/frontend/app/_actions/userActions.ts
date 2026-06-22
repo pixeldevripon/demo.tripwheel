@@ -8,7 +8,7 @@ import { cache } from 'react';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
 
 // ─── Set password for OAuth-only users ───────────────────────────────────────
-// Better Auth's setPassword endpoint is server-only — it must be called with
+// Better Auth's setPassword endpoint is server-only - it must be called with
 // the session cookie forwarded from a server context, never from the browser.
 
 export async function setPasswordAction(newPassword: string): Promise<void> {

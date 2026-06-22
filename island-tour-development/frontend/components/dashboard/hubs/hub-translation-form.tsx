@@ -229,7 +229,7 @@ export function HubTranslationForm({ hubId, hubName }: HubTranslationFormProps) 
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle>Translations — {hubName}</CardTitle>
+        <CardTitle>Translations - {hubName}</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
         <Tabs defaultValue="en">
@@ -247,7 +247,7 @@ export function HubTranslationForm({ hubId, hubName }: HubTranslationFormProps) 
           <TabsContent value="en">
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                English is the base locale. Name is read-only — edit it in the Details tab.
+                English is the base locale. Name is read-only - edit it in the Details tab.
               </div>
               <LocaleTab hubId={hubId} locale="en" disableNameField />
             </div>

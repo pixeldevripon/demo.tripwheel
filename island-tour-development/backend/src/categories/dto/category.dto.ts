@@ -67,7 +67,7 @@ export class CategoryLocalizedResponseDto extends CategoryResponseDto {
   isMachineTranslated!: boolean;
 }
 
-// Returned by getById / getBySlug — includes all translated fields
+// Returned by getById / getBySlug - includes all translated fields
 export class CategoryDetailResponseDto extends CategoryLocalizedResponseDto {
   @ApiPropertyOptional({ example: 'Discover stunning boat tours around the island.', nullable: true })
   overview!: string | null;
@@ -79,7 +79,7 @@ export class CategoryDetailResponseDto extends CategoryLocalizedResponseDto {
   breadcrumbLabel!: string | null;
 }
 
-// Destination-scoped responses (V2 §3 tour-gating) — carry the published tour count.
+// Destination-scoped responses (V2 §3 tour-gating) - carry the published tour count.
 export class CategoryByDestinationResponseDto extends CategoryLocalizedResponseDto {
   @ApiProperty({ example: 7, description: 'Published (LIVE) tours for this category in the destination.' })
   publishedTourCount!: number;

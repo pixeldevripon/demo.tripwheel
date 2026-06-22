@@ -56,15 +56,15 @@ import {
 @ApiTags('Hubs')
 @Controller('hubs')
 /**
- * HubController — manages destination-specific activity hubs (e.g. Klein Curaçao).
+ * HubController - manages destination-specific activity hubs (e.g. Klein Curaçao).
  *
  * ## Access-Control Strategy
- * - GET endpoints are `@Public()` — needed for frontend SSR and tour-creation wizard.
+ * - GET endpoints are `@Public()` - needed for frontend SSR and tour-creation wizard.
  * - All mutating endpoints require `MANAGE_HUBS` permission (Admin + Editor only).
  *
  * ## Multilingual
  * - All public GET endpoints accept `?locale=` (default `en`).
- * - Hub names are proper nouns — translations are admin-managed, never AI-generated.
+ * - Hub names are proper nouns - translations are admin-managed, never AI-generated.
  * - Translation management, page content, and FAQs are admin-managed sub-resources.
  *
  * ## Slug lifecycle

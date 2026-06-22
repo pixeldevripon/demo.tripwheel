@@ -49,7 +49,7 @@ type FooterDict = {
     manageCookies: string;
 };
 
-// Social ring icons — each SVG bakes in the grey-ringed circle + white glyph.
+// Social ring icons - each SVG bakes in the grey-ringed circle + white glyph.
 const socials = [
     { src: '/footer/social/social-1.svg', alt: 'Instagram', href: '#' },
     { src: '/footer/social/social-2.svg', alt: 'Facebook', href: '#' },
@@ -57,7 +57,7 @@ const socials = [
     { src: '/footer/social/social-4.svg', alt: 'TikTok', href: '#' },
 ];
 
-// Payment marks — white Figma glyphs. `cls` carries the exact mobile + desktop
+// Payment marks - white Figma glyphs. `cls` carries the exact mobile + desktop
 // box from Figma (mobile renders ~1.6× larger than desktop).
 const paymentsRow1 = [
     { src: '/footer/payment/pay-1.svg', alt: 'Visa', w: 55, h: 20, cls: 'h-5 w-[55px] lg:h-3 lg:w-[34px]' },
@@ -72,7 +72,7 @@ const paymentsRow2 = [
     { src: '/footer/payment/pay-8.svg', alt: 'American Express', w: 58, h: 21, cls: 'h-[21px] w-[58px] lg:h-[13px] lg:w-[35px]' },
 ];
 
-/** White pill selector shared shell — icon + label on the left, rotating caret on the right. */
+/** White pill selector shared shell - icon + label on the left, rotating caret on the right. */
 function SelectorPill({
     icon,
     label,
@@ -130,7 +130,7 @@ function SelectorMenu({ children }: { children: React.ReactNode }) {
     );
 }
 
-/** Interactive currency selector — opens upward, defaults to USD. */
+/** Interactive currency selector - opens upward, defaults to USD. */
 function CurrencySelector({ label }: { label: string }) {
     const [open, setOpen] = useState(false);
     const [currency, setCurrency] = useState<Currency>('USD');
@@ -186,7 +186,7 @@ function CurrencySelector({ label }: { label: string }) {
     );
 }
 
-/** Interactive language selector — opens upward, switches locale (same behaviour as the navbar). */
+/** Interactive language selector - opens upward, switches locale (same behaviour as the navbar). */
 function LanguageSelector({ locale, label }: { locale: Locale; label: string }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -297,7 +297,7 @@ function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
 }
 
 export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
-    // Destination & tour names are proper nouns — not translated, only the URL is localized.
+    // Destination & tour names are proper nouns - not translated, only the URL is localized.
     const exploreLinks = [
         { label: 'Curaçao', href: '/curacao' },
         { label: dict.links.boatTours, href: '/curacao/boat-tours' },
@@ -330,7 +330,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         Figma gaps at 1440); only a small min-gap overrides the mobile
                         gap-16 so the row fits cleanly from 1024 up without shrinking. */}
                     <div className='flex flex-col gap-16 lg:flex-row lg:justify-between lg:gap-6'>
-                        {/* Brand + Explore — paired on mobile, flattened into the row on desktop */}
+                        {/* Brand + Explore - paired on mobile, flattened into the row on desktop */}
                         <div className='grid grid-cols-2 gap-x-6 lg:contents'>
                             <div className='flex flex-col gap-6 lg:w-52.5 lg:gap-8'>
                                 <div className='flex flex-col gap-4 lg:gap-6'>
@@ -388,7 +388,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                             />
                         </div>
 
-                        {/* Support + Work with us — same 2-col grid as Brand|Explore (so
+                        {/* Support + Work with us - same 2-col grid as Brand|Explore (so
                             "Work with us" lines up under "Explore"), stacked on desktop */}
                         <div className='grid grid-cols-2 gap-x-6 lg:flex lg:flex-col lg:justify-start lg:gap-9.5 lg:whitespace-nowrap'>
                             <LinkColumn locale={locale} title={dict.support} links={supportLinks} />

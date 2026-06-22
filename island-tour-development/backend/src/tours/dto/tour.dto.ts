@@ -35,7 +35,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-/** Master rule #20 / §6.2 — free-cancellation window is enum-bound, NOT NULL, default 48. */
+/** Master rule #20 / §6.2 - free-cancellation window is enum-bound, NOT NULL, default 48. */
 const CANCELLATION_HOURS = [24, 48, 72, 168] as const;
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export class TourResponseDto {
   @ApiProperty({ example: false }) suitableForBeginners!: boolean;
   @ApiProperty({ example: false, description: 'Manual editorial flag (never tier-linked)' }) isLocalsFavourite!: boolean;
 
-  // ── Commercial tier (master §7) — read-only, system-managed. Examples reflect the
+  // ── Commercial tier (master §7) - read-only, system-managed. Examples reflect the
   // default standard-tier tour: tierKey=standard → commissionTier 20.0, tierRank 5, depositPct 20.0. ──
   @ApiProperty({ example: '20.0', description: 'Commission %, derived from tierKey (standard = 20.0)' }) commissionTier!: string;
   @ApiProperty({ enum: TierKey, example: TierKey.standard }) tierKey!: TierKey;
@@ -300,7 +300,7 @@ export class TourBySlugQueryDto {
   @IsString()
   destinationSlug!: string;
 
-  // hubSlug removed in Stage 5 — every tour is flat /{destination}/{tour-slug}/ (no hub nesting).
+  // hubSlug removed in Stage 5 - every tour is flat /{destination}/{tour-slug}/ (no hub nesting).
 
   @ApiPropertyOptional({ enum: Locale, default: 'en' })
   @IsOptional()
@@ -395,7 +395,7 @@ export class CreateTourDto {
   @IsUUID('4', { each: true })
   categoryIds!: string[];
 
-  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category — must be one of categoryIds. Defaults to the first.' })
+  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category - must be one of categoryIds. Defaults to the first.' })
   @IsOptional()
   @IsUUID()
   primaryCategoryId?: string;

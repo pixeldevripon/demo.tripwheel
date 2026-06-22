@@ -35,7 +35,7 @@ function parseMulti(value: string | undefined): string[] {
 export function TripAttributesTab({ trip }: { trip: TripListItem }) {
   const { data: categories } = useActiveCategories();
 
-  // Slugs for ALL of the tour's categories (not just primary) — drives which attributes apply.
+  // Slugs for ALL of the tour's categories (not just primary) - drives which attributes apply.
   const tourCategorySlugs = useMemo(() => {
     const byId = new Map((categories ?? []).map(c => [c.id, c.slug]));
     return new Set(trip.categoryIds.map(id => byId.get(id)).filter(Boolean) as string[]);
@@ -157,7 +157,7 @@ function AttributeInput({
             <SelectValue placeholder="Select…" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">—</SelectItem>
+            <SelectItem value="__none__">-</SelectItem>
             {allowed.map(v => (
               <SelectItem key={v} value={v}>{v}</SelectItem>
             ))}

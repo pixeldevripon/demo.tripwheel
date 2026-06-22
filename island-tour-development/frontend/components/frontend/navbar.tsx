@@ -14,7 +14,7 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 
-// Pre-defined islands — explicit slugs (not generated at click time).
+// Pre-defined islands - explicit slugs (not generated at click time).
 const islands: { name: string; slug: string }[] = [
     { name: 'Curaçao', slug: 'curacao' },
     { name: 'Aruba', slug: 'aruba' },
@@ -23,7 +23,7 @@ const islands: { name: string; slug: string }[] = [
     { name: 'Bonaire', slug: 'bonaire' },
 ];
 
-// Global categories — explicit slugs (names are proper nouns, not translated here).
+// Global categories - explicit slugs (names are proper nouns, not translated here).
 const categories: { name: string; slug: string }[] = [
     { name: 'Boat Tours', slug: 'boat-tours' },
     { name: 'Snorkeling', slug: 'snorkeling' },
@@ -52,7 +52,7 @@ const dropdownMotion = {
     transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
 } as const;
 
-/** Globe icon — single language affordance shared by every locale. */
+/** Globe icon - single language affordance shared by every locale. */
 function Globe({ className = 'size-6' }: { className?: string }) {
     return (
         <Image
@@ -174,7 +174,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         />
                     </Link>
 
-                    {/* Island + Categories selectors — desktop only */}
+                    {/* Island + Categories selectors - desktop only */}
                     <div className='hidden md:flex items-center gap-4'>
                         {/* Island selector */}
                         <div ref={islandRef} className='relative'>
@@ -280,7 +280,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                     </div>
                 </div>
 
-                {/* ── Inner pages: search input (desktop, fills the middle — 1px #2c2c2c pill) ── */}
+                {/* ── Inner pages: search input (desktop, fills the middle - 1px #2c2c2c pill) ── */}
                 {!isHome && (
                     <form
                         onSubmit={submitSearch}
@@ -392,7 +392,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                         </button>
                     )}
 
-                    {/* Destination / island selector — location pin beside the globe */}
+                    {/* Destination / island selector - location pin beside the globe */}
                     <div ref={mobileIslandRef} className='relative'>
                         <button
                             onClick={() => {
@@ -495,7 +495,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
                 </div>
             </div>
 
-            {/* ── Mobile search — expands over the bar when the search icon is tapped ── */}
+            {/* ── Mobile search - expands over the bar when the search icon is tapped ── */}
             <AnimatePresence>
                 {mobileSearchOpen && (
                     <motion.div

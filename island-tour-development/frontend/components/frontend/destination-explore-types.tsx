@@ -74,7 +74,7 @@ export function DestinationExploreTypes({
                                                 className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
                                             />
                                         )}
-                                        {/* Bottom scrim — transparent → #1a1a1a over the lower 77% */}
+                                        {/* Bottom scrim - transparent → #1a1a1a over the lower 77% */}
                                         <div className='pointer-events-none absolute inset-x-0 bottom-0 h-[77%] bg-linear-to-b from-transparent to-it-ink' />
                                         <div className='absolute bottom-6 left-6 flex flex-col'>
                                             <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
@@ -89,7 +89,7 @@ export function DestinationExploreTypes({
                             </div>
                         </div>
 
-                        {/* Side arrows — gutter-outset on desktop; swipe on smaller screens */}
+                        {/* Side arrows - gutter-outset on desktop; swipe on smaller screens */}
                         <button
                             type='button'
                             aria-label='Previous'

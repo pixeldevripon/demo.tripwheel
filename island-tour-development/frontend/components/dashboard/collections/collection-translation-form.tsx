@@ -232,7 +232,7 @@ export function CollectionTranslationForm({
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle>Translations — {collectionName}</CardTitle>
+        <CardTitle>Translations - {collectionName}</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
         <Tabs defaultValue="en">
@@ -250,7 +250,7 @@ export function CollectionTranslationForm({
           <TabsContent value="en">
             <div className="space-y-4">
               <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                English is the base locale. Name is read-only — edit it in the Details tab.
+                English is the base locale. Name is read-only - edit it in the Details tab.
               </div>
               <LocaleTab collectionId={collectionId} locale="en" disableNameField />
             </div>

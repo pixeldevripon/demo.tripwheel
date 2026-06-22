@@ -292,7 +292,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <FieldDescription>Optional — for future sub-categories.</FieldDescription>
+              <FieldDescription>Optional - for future sub-categories.</FieldDescription>
             </Field>
 
             {isEditMode && (

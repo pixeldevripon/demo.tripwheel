@@ -114,7 +114,7 @@ export const ApiUpdateDepartureDocs = () =>
   applyDecorators(
     ApiOperation({
       summary: 'Manually edit a departure (capacity / status / price)',
-      description: 'Sets manuallyEdited — protected from re-materialization.',
+      description: 'Sets manuallyEdited - protected from re-materialization.',
     }),
     ApiOkResponse({ type: DepartureResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

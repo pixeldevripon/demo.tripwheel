@@ -39,7 +39,7 @@ export function DestinationDeleteDialog({
       onOpenChange={onOpenChange}
       title="Deactivate Destination"
       entityName={destination.name}
-      preservationNote='The record is preserved in the database — not permanently deleted. This protects its URL slug from being reused and keeps all booking history intact. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
+      preservationNote='The record is preserved in the database - not permanently deleted. This protects its URL slug from being reused and keeps all booking history intact. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
       onConfirm={handleConfirm}
       isPending={isPending}
     />

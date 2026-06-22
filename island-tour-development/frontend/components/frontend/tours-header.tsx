@@ -3,12 +3,12 @@ import { ToursDatePill } from '@/components/frontend/tours-date-pill';
 import { Reveal } from './reveal';
 
 export type ToursHeaderDict = {
-    /** Title template — e.g. "All {destination} tours & activities in {year}" */
+    /** Title template - e.g. "All {destination} tours & activities in {year}" */
     title: string;
     subtitle: string;
-    /** Count template — e.g. "{count} tours" (rendered emphasised) */
+    /** Count template - e.g. "{count} tours" (rendered emphasised) */
     availableCount: string;
-    /** Trailing muted word — e.g. "available" */
+    /** Trailing muted word - e.g. "available" */
     availableLabel: string;
 };
 
@@ -24,10 +24,10 @@ async function getCurrentYear(): Promise<number> {
 }
 
 /**
- * Tours listing heading — title, subtitle and total-count line. Shared by the
+ * Tours listing heading - title, subtitle and total-count line. Shared by the
  * All-Tours page (`{destination}` + `{year}` template) and the Category page
  * (pre-resolved `title`/`subtitle` overrides). Matches Figma nodes 47167:4025
- * (all-tours) and 47070:3468 (category) — identical layout, 48px H1, uniform
+ * (all-tours) and 47070:3468 (category) - identical layout, 48px H1, uniform
  * muted count.
  */
 export async function ToursHeader({
@@ -41,11 +41,11 @@ export async function ToursHeader({
     dict: ToursHeaderDict;
     destinationName: string;
     total: number;
-    /** "Select date" label — drives the mobile date pill beside the count line. */
+    /** "Select date" label - drives the mobile date pill beside the count line. */
     selectDateLabel: string;
-    /** Pre-resolved title — skips the `dict.title` template (category page). */
+    /** Pre-resolved title - skips the `dict.title` template (category page). */
     title?: string;
-    /** Pre-resolved subtitle — overrides `dict.subtitle` (category page). */
+    /** Pre-resolved subtitle - overrides `dict.subtitle` (category page). */
     subtitle?: string;
 }) {
     const title =
@@ -66,7 +66,7 @@ export async function ToursHeader({
                     {subtitle}
                 </p>
             </div>
-            {/* Count + date — date pill sits on this row on mobile (Figma), and
+            {/* Count + date - date pill sits on this row on mobile (Figma), and
                 lives in the toolbar on desktop. Count is one uniform muted line. */}
             <div className='flex items-center justify-between gap-2'>
                 <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>

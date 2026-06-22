@@ -11,10 +11,10 @@ export interface CloudinaryUploadResult {
 }
 
 /**
- * CloudinaryService — thin wrapper around the Cloudinary v2 SDK.
+ * CloudinaryService - thin wrapper around the Cloudinary v2 SDK.
  *
  * Configured by CloudinaryProvider (cloudinary.provider.ts) which calls
- * cloudinary.config() at bootstrap time — no constructor config needed here.
+ * cloudinary.config() at bootstrap time - no constructor config needed here.
  *
  * Responsibilities:
  *  - uploadFile(file, userId)          → server-side upload to users/<userId>
@@ -27,7 +27,7 @@ export class CloudinaryService {
 
   /**
    * Upload a single Multer file to Cloudinary under the users/<userId> folder.
-   * resource_type is 'auto' — Cloudinary infers image / video / raw.
+   * resource_type is 'auto' - Cloudinary infers image / video / raw.
    */
   async uploadFile(
     file: Express.Multer.File,
@@ -35,7 +35,7 @@ export class CloudinaryService {
   ): Promise<CloudinaryUploadResult> {
     const folder = `users/${userId}`;
 
-    // Convert buffer to base64 data URI — eliminates stream overhead
+    // Convert buffer to base64 data URI - eliminates stream overhead
     const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 
     const result = await cloudinary.uploader.upload(dataUri, {
@@ -64,7 +64,7 @@ export class CloudinaryService {
 
   /**
    * Delete a Cloudinary asset by its public_id.
-   * Uses resource_type 'image' by default — for video use deleteFileByType.
+   * Uses resource_type 'image' by default - for video use deleteFileByType.
    * Silently logs on failure rather than throwing, so callers can treat
    * Cloudinary cleanup as best-effort.
    */

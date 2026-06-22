@@ -1,5 +1,5 @@
 /**
- * DestinationListings — "Locals' favorites" section on the Destination page.
+ * DestinationListings - "Locals' favorites" section on the Destination page.
  *
  * Wraps the shared <TourCard> grid with a section heading and a "Browse all"
  * footer CTA that matches Figma node 47361:19645.
@@ -19,13 +19,13 @@ import { TourCard } from './tour-card';
 export type { TourCardDict, TourListing };
 
 /**
- * Below this many tours, the "See all" CTA hides the count — a low number
+ * Below this many tours, the "See all" CTA hides the count - a low number
  * (e.g. "See all 12 tours") signals scarcity and works against the CTA.
  */
 const COUNT_CTA_THRESHOLD = 20;
 
 export type DestinationListingsDict = TourCardDict & {
-    /** Section heading — e.g. "Locals' favorites" */
+    /** Section heading - e.g. "Locals' favorites" */
     title: string;
     /**
      * CTA when the tour count is high enough to be compelling (≥ 20).
@@ -34,7 +34,7 @@ export type DestinationListingsDict = TourCardDict & {
      */
     seeAllCount: string;
     /**
-     * CTA fallback when the count is low/unknown — no number.
+     * CTA fallback when the count is low/unknown - no number.
      * Placeholder: `{destination}`. e.g. "See all {destination} tours"
      */
     seeAll: string;
@@ -45,9 +45,9 @@ interface DestinationListingsProps {
     tours: TourListing[];
     destinationName: string;
     locale: Locale;
-    /** Destination slug — used to build the "All Tours" page href. */
+    /** Destination slug - used to build the "All Tours" page href. */
     destinationSlug: string;
-    /** Total published tours in this destination — drives the conditional count CTA. */
+    /** Total published tours in this destination - drives the conditional count CTA. */
     totalCount: number;
 }
 

@@ -22,7 +22,7 @@ import {
 export class OctoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** GET /supplier — platform-as-supplier (decision D4). */
+  /** GET /supplier - platform-as-supplier (decision D4). */
   async getSupplier(endpoint: string) {
     const [siteInfo, company] = await Promise.all([
       this.prisma.siteInfo.upsert({
@@ -35,7 +35,7 @@ export class OctoService {
     return serializeSupplier(siteInfo, company, endpoint);
   }
 
-  /** GET /tours — full catalog of LIVE + active tours. */
+  /** GET /tours - full catalog of LIVE + active tours. */
   async listTours(caps: OctoCapabilitySet, locale: Locale) {
     const tours = await this.prisma.tour.findMany({
       where: { status: TourStatus.LIVE, isActive: true },
@@ -54,7 +54,7 @@ export class OctoService {
     );
   }
 
-  /** GET /tours/{id} — single tour; same shape as a list item. */
+  /** GET /tours/{id} - single tour; same shape as a list item. */
   async getTour(tourId: string, caps: OctoCapabilitySet, locale: Locale) {
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },

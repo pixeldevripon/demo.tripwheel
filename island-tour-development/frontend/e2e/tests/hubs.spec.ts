@@ -149,7 +149,7 @@ test.describe('Hubs module', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Form validation — empty submit
+  // 3. Form validation - empty submit
   // -------------------------------------------------------------------------
   test('shows validation error when form submitted without destination', async ({ page }) => {
     await mockActiveDestinations(page);

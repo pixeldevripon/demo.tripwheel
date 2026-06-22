@@ -1,5 +1,5 @@
 /**
- * Categories — new fields E2E tests
+ * Categories - new fields E2E tests
  *
  * Covers the fields and behaviour added/changed since the original
  * categories.spec.ts was written:
@@ -12,7 +12,7 @@
  *  - Happy path: create with all new fields calls POST and navigates away
  *  - Regression: slug auto-generates from name
  *
- * API calls are intercepted with page.route() — no live backend required.
+ * API calls are intercepted with page.route() - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -44,7 +44,7 @@ async function mockActiveCategories(page: import('@playwright/test').Page) {
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe('Categories — new fields on create form', () => {
+test.describe('Categories - new fields on create form', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveCategories(page);
     await page.goto('/dashboard/categories/new');
@@ -73,7 +73,7 @@ test.describe('Categories — new fields on create form', () => {
   test('icon picker renders a grid of icon buttons inside the popover', async ({ page }) => {
     await page.getByRole('button', { name: /pick an icon/i }).click();
     await page.waitForSelector('[data-radix-popper-content-wrapper]', { timeout: 5_000 });
-    // The grid contains multiple icon buttons — verify at least 3 are present
+    // The grid contains multiple icon buttons - verify at least 3 are present
     const iconButtons = page
       .locator('[data-radix-popper-content-wrapper]')
       .getByRole('button');

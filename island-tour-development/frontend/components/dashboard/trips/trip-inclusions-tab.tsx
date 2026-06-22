@@ -105,7 +105,7 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
         <div className="flex items-center gap-2 min-w-0">
           <Badge variant="secondary" className="text-xs shrink-0">{inclusion.icon}</Badge>
 
-          {/* Avatar-size image thumbnail — stops propagation internally */}
+          {/* Avatar-size image thumbnail - stops propagation internally */}
           <div onClick={(e) => e.stopPropagation()}>
             <ImageThumb
               imageUrl={inclusion.imageUrl}

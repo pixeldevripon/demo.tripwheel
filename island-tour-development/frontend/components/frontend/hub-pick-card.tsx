@@ -37,7 +37,7 @@ const LABEL_ICON: Record<HubPickLabel, string> = {
 
 /**
  * Editorial "top pick" card (Figma node 48024:11563 desktop / 48539:15821
- * mobile): a split row — content (label chip · title · rating · description ·
+ * mobile): a split row - content (label chip · title · rating · description ·
  * price · Book this Trip) on the left, image on the right. Desktop shows the
  * full description; mobile clamps it with a "Learn More" / "Read Less" toggle.
  */
@@ -128,7 +128,7 @@ export function HubPickCard({
                     </div>
                 </div>
 
-                {/* Book this Trip — outlined orange */}
+                {/* Book this Trip - outlined orange */}
                 <button
                     type='button'
                     className='inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:min-w-85 md:text-[16px]'>

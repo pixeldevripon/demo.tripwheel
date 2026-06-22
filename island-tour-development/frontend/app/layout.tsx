@@ -46,9 +46,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-    title: 'Island Tours — Admin',
+    title: 'Island Tours - Admin',
     description:
-        'Island Tours admin dashboard — manage trips, bookings, and more.',
+        'Island Tours admin dashboard - manage trips, bookings, and more.',
 };
 
 export default function RootLayout({

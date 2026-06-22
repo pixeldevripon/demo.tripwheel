@@ -30,7 +30,7 @@
  *     - Data Type is pre-filled
  *     - Saving calls PATCH and shows success toast
  *
- * API calls are intercepted — no live backend required.
+ * API calls are intercepted - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -113,7 +113,7 @@ async function mockActiveCategories(page: PW) {
 // 1. List page
 // ---------------------------------------------------------------------------
 
-test.describe('Attributes — list page (/dashboard/attributes)', () => {
+test.describe('Attributes - list page (/dashboard/attributes)', () => {
   test.beforeEach(async ({ page }) => {
     await mockAttributesList(page);
     await page.goto('/dashboard/attributes');
@@ -135,7 +135,7 @@ test.describe('Attributes — list page (/dashboard/attributes)', () => {
   });
 
   test('renders data type badges', async ({ page }) => {
-    // Both are ENUM type — at least one ENUM badge should be present
+    // Both are ENUM type - at least one ENUM badge should be present
     await expect(page.getByText('ENUM').first()).toBeVisible();
   });
 
@@ -221,7 +221,7 @@ test.describe('Attributes — list page (/dashboard/attributes)', () => {
 // 2. Create form (/dashboard/attributes/new)
 // ---------------------------------------------------------------------------
 
-test.describe('Attributes — create form (/dashboard/attributes/new)', () => {
+test.describe('Attributes - create form (/dashboard/attributes/new)', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveCategories(page);
     await page.goto('/dashboard/attributes/new');
@@ -261,7 +261,7 @@ test.describe('Attributes — create form (/dashboard/attributes/new)', () => {
   });
 
   test('Allowed Values field appears when Data Type is ENUM (default)', async ({ page }) => {
-    // ENUM is the default data type — Allowed Values should already be visible
+    // ENUM is the default data type - Allowed Values should already be visible
     await expect(page.locator('input[name="allowedValues"]')).toBeVisible();
   });
 
@@ -338,7 +338,7 @@ test.describe('Attributes — create form (/dashboard/attributes/new)', () => {
 // 3. Edit form (/dashboard/attributes/:key/edit)
 // ---------------------------------------------------------------------------
 
-test.describe('Attributes — edit form (/dashboard/attributes/boat_type/edit)', () => {
+test.describe('Attributes - edit form (/dashboard/attributes/boat_type/edit)', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/v1/attributes/boat_type', (route) => {
       const method = route.request().method();

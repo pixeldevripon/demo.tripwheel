@@ -50,7 +50,7 @@ describe('TrackingService.fireBookingComplete', () => {
       event_id: 'p1',
       custom_data: { currency: 'EUR', value: 57.74, content_ids: ['t1'] },
     });
-    // email is SHA-256 hashed, lowercased+trimmed — never sent in the clear
+    // email is SHA-256 hashed, lowercased+trimmed - never sent in the clear
     expect(body.data[0].user_data.em[0]).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(body)).not.toContain('Ada@X.io');
   });

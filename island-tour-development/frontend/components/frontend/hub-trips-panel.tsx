@@ -9,10 +9,10 @@ import { HubTourCard, type HubTour, type HubTourCardDict } from './hub-tour-card
 import { HubPicks, type HubPicksData } from './hub-picks';
 import { Reveal } from './reveal';
 
-/** One card group inside a panel — an optional title (e.g. "Day charters (11)") + its tours. */
+/** One card group inside a panel - an optional title (e.g. "Day charters (11)") + its tours. */
 export type HubCardGroup = { title?: string; tours: HubTour[] };
 
-/** A scroll-nav section's content — heading, subtitle, card groups, and an optional picks block. */
+/** A scroll-nav section's content - heading, subtitle, card groups, and an optional picks block. */
 export type HubTripsPanelData = {
     title: string;
     subtitle: string;
@@ -25,7 +25,7 @@ const GRID =
     'grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10';
 
 /**
- * One panel of the hub trips/charters listing — a heading + its own date chip,
+ * One panel of the hub trips/charters listing - a heading + its own date chip,
  * then either a single ungrouped grid ("Trips", node 48024:11222) or titled
  * groups separated by dividers ("Private charters", node 48024:11455).
  */
@@ -109,7 +109,7 @@ export function HubTripsPanel({
                 </Popover>
             </Reveal>
 
-            {/* Card groups — single ungrouped grid, or titled groups separated by
+            {/* Card groups - single ungrouped grid, or titled groups separated by
                 dividers (Figma "Private charters"). */}
             {grouped
                 ? panel.groups.map((group, gi) => (

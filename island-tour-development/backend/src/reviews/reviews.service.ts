@@ -45,7 +45,7 @@ export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ════════════════════════════════════════════════════════════════════════
-  // Create — booking-gated, one per booking, starts PENDING
+  // Create - booking-gated, one per booking, starts PENDING
   // ════════════════════════════════════════════════════════════════════════
 
   async create(dto: CreateReviewDto, userId: string) {
@@ -115,7 +115,7 @@ export class ReviewsService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Public reads — approved only
+  // Public reads - approved only
   // ════════════════════════════════════════════════════════════════════════
 
   async list(query: ListReviewsQueryDto) {
@@ -233,7 +233,7 @@ export class ReviewsService {
       this.prisma.review.findMany({
         where,
         include: { translations: true },
-        orderBy: { createdAt: 'asc' }, // oldest first — clear the backlog
+        orderBy: { createdAt: 'asc' }, // oldest first - clear the backlog
         skip: (page - 1) * limit,
         take: limit,
       }),

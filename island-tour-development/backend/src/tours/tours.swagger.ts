@@ -42,7 +42,7 @@ const tourIdParam = ApiParam({ name: 'id', description: 'Tour UUID' });
 export function ApiGetTourBySlugDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Get a live tour by slug (public — used by the tour detail page)',
+      summary: 'Get a live tour by slug (public - used by the tour detail page)',
       description: [
         'Resolves a tour from the URL slug segments. Handles both URL patterns:',
         '- Destination-only: `?destinationSlug=curacao&slug=sunset-cruise`',
@@ -56,7 +56,7 @@ export function ApiGetTourBySlugDocs() {
     ApiParam({ name: 'slug', example: 'sunset-catamaran-cruise', description: 'Tour slug from the URL' }),
     ApiQuery({ name: 'destinationSlug', required: true, example: 'curacao' }),
     ApiQuery({ name: 'hubSlug', required: false, example: 'mambo-beach', description: 'Required for hub-anchored tour URLs' }),
-    ApiQuery({ name: 'locale', required: false, enum: Locale, description: 'Content locale — falls back to EN' }),
+    ApiQuery({ name: 'locale', required: false, enum: Locale, description: 'Content locale - falls back to EN' }),
     ApiResponse({ status: 200, type: TourPublicDetailResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
@@ -71,9 +71,9 @@ export function ApiGetAllToursDocs() {
       summary: 'List all live tours with filters, attribute facets & sorting (public)',
       description:
         'Live tour listing (V2 §7). Beyond the typed params below, you may pass **any filterable attribute key ' +
-        'from the dictionary as a query param** — e.g. `?boat_type=catamaran,yacht&booking_type=private&free_cancellation=true`. ' +
+        'from the dictionary as a query param** - e.g. `?boat_type=catamaran,yacht&booking_type=private&free_cancellation=true`. ' +
         'Comma-separated values are OR-ed within a key; multiple attribute keys are AND-ed. ' +
-        'These keys are **dynamic / data-driven**, so they are not enumerated as fixed fields here — the authoritative ' +
+        'These keys are **dynamic / data-driven**, so they are not enumerated as fixed fields here - the authoritative ' +
         'set of keys (and their allowed values) for a given page comes from `GET /filters/{dest}/{category}` ' +
         'or `GET /attributes?category={slug}`. A few common ones are shown below as examples. Unknown keys are ignored.',
     }),
@@ -91,7 +91,7 @@ export function ApiGetAllToursDocs() {
     ApiQuery({ name: 'sort', required: false, enum: TourSort, description: 'Default: recommended' }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
-    // Example dynamic attribute filters (representative — full list is dictionary-driven)
+    // Example dynamic attribute filters (representative - full list is dictionary-driven)
     ApiQuery({ name: 'booking_type', required: false, type: String, example: 'private', description: 'Example attribute filter (global). See GET /attributes.' }),
     ApiQuery({ name: 'free_cancellation', required: false, type: String, example: 'true', description: 'Example attribute filter (global).' }),
     ApiQuery({ name: 'boat_type', required: false, type: String, example: 'catamaran,yacht', description: 'Example category-specific attribute filter (boat-tours). Comma = OR.' }),

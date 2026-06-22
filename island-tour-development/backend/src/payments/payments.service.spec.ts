@@ -120,7 +120,7 @@ describe('PaymentsService', () => {
       );
     });
 
-    it('is idempotent — a redelivered event is skipped', async () => {
+    it('is idempotent - a redelivered event is skipped', async () => {
       stripe.constructEvent.mockResolvedValue({
         id: 'evt_1',
         type: 'payment_intent.succeeded',

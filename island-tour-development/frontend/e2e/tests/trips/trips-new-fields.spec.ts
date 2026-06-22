@@ -1,5 +1,5 @@
 /**
- * Trips — new fields E2E tests
+ * Trips - new fields E2E tests
  *
  * Covers the fields and tabs added/changed since the original trips.spec.ts
  * was written:
@@ -9,15 +9,15 @@
  *  - Primary category star indicator appears once a category is selected
  *  - Multi-select Activity Hubs (optional; disabled until destination chosen)
  *  - Hubs load scoped to the selected destination
- *  - At least 1 category required — validation error when none selected
+ *  - At least 1 category required - validation error when none selected
  *
- *  Edit view — Attributes tab:
+ *  Edit view - Attributes tab:
  *  - Attributes tab trigger is visible in the tab list
  *  - Attributes card heading renders
  *  - "Save Attributes" button is visible
  *  - Saving attributes calls POST /trips/:id/attributes and shows toast
  *
- *  Edit view — Exclusions tab:
+ *  Edit view - Exclusions tab:
  *  - Exclusions tab trigger is visible
  *  - Existing exclusion renders from the API
  *  - "Add Exclusion" form is visible with Label input and Icon select
@@ -25,7 +25,7 @@
  *  - Validation: label shorter than 2 characters shows error
  *  - Delete button calls DELETE and shows toast
  *
- * All API calls are intercepted — no live backend required.
+ * All API calls are intercepted - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -273,10 +273,10 @@ async function mockAllEditTabs(page: PW) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Create Trip — multi-select Categories + Hubs
+// 1. Create Trip - multi-select Categories + Hubs
 // ---------------------------------------------------------------------------
 
-test.describe('Create Trip — multi-select Categories and Hubs', () => {
+test.describe('Create Trip - multi-select Categories and Hubs', () => {
   test.beforeEach(async ({ page }) => {
     await mockSupportingData(page);
     await mockActiveHubs(page);
@@ -360,10 +360,10 @@ test.describe('Create Trip — multi-select Categories and Hubs', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Edit Trip — Attributes tab
+// 2. Edit Trip - Attributes tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Attributes tab', () => {
+test.describe('Edit Trip - Attributes tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllEditTabs(page);
     await page.goto(`/dashboard/trips/${TRIP_ID}/edit?tab=attributes`);
@@ -422,10 +422,10 @@ test.describe('Edit Trip — Attributes tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Edit Trip — Exclusions tab
+// 3. Edit Trip - Exclusions tab
 // ---------------------------------------------------------------------------
 
-test.describe('Edit Trip — Exclusions tab', () => {
+test.describe('Edit Trip - Exclusions tab', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllEditTabs(page);
     await page.goto(`/dashboard/trips/${TRIP_ID}/edit?tab=exclusions`);
@@ -449,7 +449,7 @@ test.describe('Edit Trip — Exclusions tab', () => {
   });
 
   test('Icon select is visible in Add Exclusion form', async ({ page }) => {
-    // The icon Select is inside the "Add Exclusion" form — find the last form's first combobox
+    // The icon Select is inside the "Add Exclusion" form - find the last form's first combobox
     const addForm = page.locator('form').last();
     await expect(addForm.getByRole('combobox').first()).toBeVisible();
   });

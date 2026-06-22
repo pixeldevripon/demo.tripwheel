@@ -48,7 +48,7 @@ interface UploadActions {
 
 export type UploadStore = UploadState & UploadActions;
 
-/* ─── XHR ref map (lives outside Zustand — no re-render needed) ───────────── */
+/* ─── XHR ref map (lives outside Zustand - no re-render needed) ───────────── */
 
 export const xhrMap = new Map<string, XMLHttpRequest>();
 
@@ -126,7 +126,7 @@ export const useUploadStore = create<UploadStore>()((set) => ({
         }),
 
     cancelUpload: (id) => {
-        // Abort the live XHR — this triggers xhr.onabort which does further cleanup
+        // Abort the live XHR - this triggers xhr.onabort which does further cleanup
         const xhr = xhrMap.get(id);
         xhr?.abort();
 

@@ -1,5 +1,5 @@
 /**
- * Slug-registry resolution types — mirror of the backend `SlugRegistry` row
+ * Slug-registry resolution types - mirror of the backend `SlugRegistry` row
  * returned by `GET /api/v1/slug-registry/resolve`.
  *
  * See `technical-doc/02-architecture/ROUTING-AND-RESOLUTION.md` §4–§5 and

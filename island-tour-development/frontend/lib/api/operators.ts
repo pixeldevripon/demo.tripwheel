@@ -1,40 +1,46 @@
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import type {
+  CreateOperatorPayload,
+  OperatorDetail,
+  OperatorListItem,
+  OperatorsQueryParams,
+  PaginatedOperators,
+  UpdateOperatorPayload,
+} from '@/types/operator';
+import { apiFetch, buildQuery } from './fetch';
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
-  if (!res.ok) {
-    let message = `Request failed with status ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-    } catch { /* ignore */ }
-    throw new Error(message);
-  }
-  return res.json() as Promise<T>;
-}
-
-export interface OperatorSearchItem {
-  id: string;
-  isActive: boolean;
-  user: { id: string; name: string; email: string };
-  companyInfo: { companyName: string | null } | null;
-}
-
-export interface PaginatedOperators {
-  total: number;
-  page: number;
-  limit: number;
-  data: OperatorSearchItem[];
-}
+/** Backwards-compatible alias - the trips operator filter imports this name. */
+export type OperatorSearchItem = OperatorListItem;
+export type { PaginatedOperators };
 
 export const operatorsApi = {
+  getAll(params: OperatorsQueryParams = {}): Promise<PaginatedOperators> {
+    const query = buildQuery(params as Record<string, string | number | boolean | undefined | null>);
+    return apiFetch<PaginatedOperators>(`/operators${query}`);
+  },
+
   search(search: string, limit = 20): Promise<PaginatedOperators> {
-    const qs = new URLSearchParams({ limit: String(limit) });
-    if (search) qs.set('search', search);
-    return apiFetch<PaginatedOperators>(`/operators?${qs.toString()}`);
+    return operatorsApi.getAll({ search, limit });
+  },
+
+  getById(id: string): Promise<OperatorDetail> {
+    return apiFetch<OperatorDetail>(`/operators/${id}`);
+  },
+
+  create(payload: CreateOperatorPayload): Promise<OperatorDetail> {
+    return apiFetch<OperatorDetail>('/operators', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  update(id: string, payload: UpdateOperatorPayload): Promise<OperatorDetail> {
+    return apiFetch<OperatorDetail>(`/operators/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  delete(id: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/operators/${id}`, { method: 'DELETE' });
   },
 };

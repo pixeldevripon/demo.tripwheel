@@ -1,7 +1,7 @@
 /**
  * Unit tests for CategoryService.
  *
- * PrismaService is fully mocked — no real database connection is made.
+ * PrismaService is fully mocked - no real database connection is made.
  * Tests cover every public method: happy paths, all error branches, pagination,
  * locale translation fallback, transaction semantics (slug_registry seeding on
  * create, soft-delete via remove), and the English-translation guard in

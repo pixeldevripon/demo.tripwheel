@@ -54,13 +54,13 @@ import { Throttle } from '@nestjs/throttler/dist/throttler.decorator';
 @ApiTags('Categories')
 @Controller('categories')
 /**
- * CategoryController — manages tour activity categories (Boat Tours, Sunset Cruises, etc.)
+ * CategoryController - manages tour activity categories (Boat Tours, Sunset Cruises, etc.)
  *
  * ## Access-Control Strategy
- * - GET endpoints are `@Public()` — categories are needed for frontend SSR and the
+ * - GET endpoints are `@Public()` - categories are needed for frontend SSR and the
  *   operator tour-creation wizard without requiring authentication.
  * - Mutating endpoints (POST/PATCH/DELETE) require the appropriate permission.
- * - `@Roles()` is deliberately NOT used — `@RequirePermissions()` alone is sufficient.
+ * - `@Roles()` is deliberately NOT used - `@RequirePermissions()` alone is sufficient.
  *
  * ## Multilingual
  * - All public GET endpoints accept `?locale=` (default `en`).

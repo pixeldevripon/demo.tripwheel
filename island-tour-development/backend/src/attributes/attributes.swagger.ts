@@ -76,7 +76,7 @@ export function ApiUpdateAttributeDefinitionDocs() {
 
 export function ApiDeleteAttributeDefinitionDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Deactivate an attribute definition (Admin)', description: 'Soft — existing tour values are preserved.' }),
+    ApiOperation({ summary: 'Deactivate an attribute definition (Admin)', description: 'Soft - existing tour values are preserved.' }),
     ApiParam({ name: 'key', example: 'boat_type' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),

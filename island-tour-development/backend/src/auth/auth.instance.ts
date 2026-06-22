@@ -27,15 +27,30 @@ export const auth = betterAuth({
   trustedOrigins,
 
   // ── Email & Password ───────────────────────────────────────────────────────
+  // Public self-registration is disabled. Operator accounts are created by an
+  // admin (see OperatorsService.create) and the operator sets their own password
+  // via the invite link below. There is no sign-up endpoint and no OAuth.
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true, // enforced — verification email sent on every sign-in until verified
+    disableSignUp: true,
+    requireEmailVerification: true, // enforced - verification email sent on every sign-in until verified
     minPasswordLength: 12,
     resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
     revokeSessionsOnPasswordReset: true,
 
-    sendResetPassword: async ({ user, url }) => {
-      void mailService.sendPasswordResetEmail(user.email, url);
+    sendResetPassword: async ({ user, url }, request) => {
+      // A reset triggered without an HTTP request is server-initiated - the only
+      // such caller is the admin operator-invite flow. Genuine "forgot password"
+      // requests always carry the originating HTTP request.
+      if (!request) {
+        void mailService.sendOperatorInviteEmail(
+          user.email,
+          url,
+          user.name ?? undefined,
+        );
+      } else {
+        void mailService.sendPasswordResetEmail(user.email, url);
+      }
     },
   },
 
@@ -48,17 +63,6 @@ export const auth = betterAuth({
         user.name ?? undefined,
       );
     },
-  },
-
-  // ── Social Providers ───────────────────────────────────────────────────────
-  socialProviders: {
-    ...(process.env.GOOGLE_CLIENT_ID &&
-      process.env.GOOGLE_CLIENT_SECRET && {
-        google: {
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        },
-      }),
   },
 
   // ── Session ────────────────────────────────────────────────────────────────
@@ -77,7 +81,6 @@ export const auth = betterAuth({
     max: 100,
     customRules: {
       '/sign-in/email': { window: 60, max: 5 },
-      '/sign-up/email': { window: 60, max: 5 },
       '/forget-password': { window: 60, max: 5 },
       '/reset-password': { window: 60, max: 5 },
     },
@@ -91,9 +94,9 @@ export const auth = betterAuth({
         type: 'string',
         defaultValue: Role.TOUR_OPERATOR,
         returned: true,
-        // input: true — allows selecting TOUR_OPERATOR during signup.
-        // The databaseHook below ensures no one can sign up as ADMIN.
-        input: true,
+        // Roles are assigned server-side only (operator creation / admin seed),
+        // never accepted from a request body.
+        input: false,
       },
       status: {
         type: 'string',
@@ -115,30 +118,17 @@ export const auth = betterAuth({
     },
   },
 
-  // ── Database hooks — defense-in-depth ADMIN guard ──────────────────────────
+  // ── Database hooks - defense-in-depth ADMIN guard ──────────────────────────
   databaseHooks: {
     user: {
       create: {
-        before: async (userData, ctx) => {
-          // ── Path 1: Email signup ───────────────────────────────
-          // role comes via userData directly (input: true)
-          let incomingRole = (userData as any).role ?? null;
+        before: async (userData) => {
+          const incomingRole = (userData as any).role ?? null;
 
-          // ── Path 2: OAuth signup (first time only) ────────────
-          // The hook only fires on CREATE — returning users never
-          // reach this point. So reading the cookie here is safe:
-          // it will only ever affect brand-new accounts.
-          if (!incomingRole && ctx?.request) {
-            const cookieHeader = ctx.request.headers.get('cookie') ?? '';
-            const match = cookieHeader.match(/(?:^|;\s*)pending_role=([^;]+)/);
-            incomingRole = match?.[1] ?? null;
-          }
-
-          // ── Security: block ADMIN self-registration ────────────
+          // ── Security: ADMIN accounts are seed-only ─────────────
+          // never created at runtime, regardless of caller.
           if (incomingRole === Role.ADMIN) {
-            throw new Error(
-              'ADMIN accounts cannot be created through self-registration.',
-            );
+            throw new Error('ADMIN accounts cannot be created at runtime.');
           }
 
           // ── Validate or fall back to safe default ─────────────
@@ -182,7 +172,7 @@ export const auth = betterAuth({
     },
   },
 
-  // openAPI plugin exposes the auth schema — dev only, never in production
+  // openAPI plugin exposes the auth schema - dev only, never in production
   plugins: [
     bearer(), // enables Authorization: Bearer <token> alongside cookie auth
     ...(process.env.NODE_ENV !== 'production' ? [openAPI()] : []),

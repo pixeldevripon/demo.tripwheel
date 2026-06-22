@@ -19,7 +19,7 @@ export interface NotificationDeliveryJob {
 const DELIVERY_TIMEOUT_MS = 10_000;
 
 /**
- * NotificationDeliveryProcessor — consumes the 'notification-delivery' queue and
+ * NotificationDeliveryProcessor - consumes the 'notification-delivery' queue and
  * POSTs each pending delivery to its subscriber `url` with an HMAC `Octo-Signature`
  * header (D13). BullMQ retries with exponential backoff; the final failed attempt
  * marks the row `DEAD`, intermediate failures `FAILED`, success `DELIVERED`.
@@ -40,7 +40,7 @@ export class NotificationDeliveryProcessor extends WorkerHost {
       include: { subscription: true },
     });
     if (!delivery) {
-      this.logger.warn(`Delivery ${deliveryId} not found — skipping`);
+      this.logger.warn(`Delivery ${deliveryId} not found - skipping`);
       return;
     }
     if (delivery.status === NotificationDeliveryStatus.DELIVERED) return;

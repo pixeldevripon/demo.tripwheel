@@ -77,7 +77,7 @@ export function ResetPasswordForm() {
                     'Failed to reset password. The link may have expired.'
             );
         } else {
-            // All existing sessions are revoked — redirect to login
+            // All existing sessions are revoked - redirect to login
             router.push('/login?reset=success');
         }
     };

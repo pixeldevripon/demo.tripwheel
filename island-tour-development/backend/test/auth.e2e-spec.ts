@@ -3,28 +3,28 @@
  *
  * Covers:
  *   - Sign-up via Better Auth (POST /api/auth/sign-up/email)
- *       • Happy path — valid credentials, role defaults to TOUR_OPERATOR
- *       • Password too short (< 12 chars) — error
- *       • Missing required fields — error
- *       • Duplicate email — error
- *       • Role injection blocked — sending role: 'ADMIN' is silently ignored
+ *       • Happy path - valid credentials, role defaults to TOUR_OPERATOR
+ *       • Password too short (< 12 chars) - error
+ *       • Missing required fields - error
+ *       • Duplicate email - error
+ *       • Role injection blocked - sending role: 'ADMIN' is silently ignored
  *
  *   - Sign-in via Better Auth (POST /api/auth/sign-in/email)
- *       • Happy path — valid credentials, session cookie set
- *       • Wrong password — error
- *       • Non-existent email — error
+ *       • Happy path - valid credentials, session cookie set
+ *       • Wrong password - error
+ *       • Non-existent email - error
  *
  *   - Session retrieval (GET /api/auth/get-session)
- *       • With valid session cookie — returns user object with correct role and email
- *       • Without cookie — returns null session body (Better Auth behavior)
+ *       • With valid session cookie - returns user object with correct role and email
+ *       • Without cookie - returns null session body (Better Auth behavior)
  *
  *   - Sign-out (POST /api/auth/sign-out)
- *       • With valid session — 200, cookie cleared in Set-Cookie header
- *       • Without session cookie — handled gracefully (no 5xx)
+ *       • With valid session - 200, cookie cleared in Set-Cookie header
+ *       • Without session cookie - handled gracefully (no 5xx)
  *
- *   - AuthGuard — public vs. protected routes
- *       • GET /api/v1/health (@Public + @SkipThrottle) — 200 without any cookie
- *       • Protected route without session — 401
+ *   - AuthGuard - public vs. protected routes
+ *       • GET /api/v1/health (@Public + @SkipThrottle) - 200 without any cookie
+ *       • Protected route without session - 401
  *
  *   - RolesGuard (unit-level integration via real middleware stack)
  *       • Authenticated user with TOUR_OPERATOR role hits a TOUR_OPERATOR-permitted
@@ -219,7 +219,7 @@ describe('Auth (e2e)', () => {
 
     it('rejects a password shorter than 12 characters', async () => {
       const email = uniqueEmail('signup-short-pwd');
-      // Do NOT push to createdEmails — this sign-up should fail, no user is created.
+      // Do NOT push to createdEmails - this sign-up should fail, no user is created.
 
       const res = await signUp(server, {
         name: 'Short Password User',
@@ -243,7 +243,7 @@ describe('Auth (e2e)', () => {
 
     it('rejects sign-up when name is missing', async () => {
       const email = uniqueEmail('signup-noname');
-      // Do not add to createdEmails — should fail.
+      // Do not add to createdEmails - should fail.
 
       const res = await request(server)
         .post('/api/auth/sign-up/email')
@@ -268,7 +268,7 @@ describe('Auth (e2e)', () => {
       const email = uniqueEmail('signup-dup');
       createdEmails.push(email);
 
-      // First registration — must succeed.
+      // First registration - must succeed.
       const first = await signUp(server, {
         name: 'Original User',
         email,
@@ -276,7 +276,7 @@ describe('Auth (e2e)', () => {
       });
       expect(first.status).toBe(200);
 
-      // Second registration with the same email — must fail.
+      // Second registration with the same email - must fail.
       const second = await signUp(server, {
         name: 'Duplicate User',
         email,
@@ -285,11 +285,11 @@ describe('Auth (e2e)', () => {
       expect(second.status).not.toBe(200);
     });
 
-    it('ignores role: ADMIN in the request body — user gets TOUR_OPERATOR', async () => {
+    it('ignores role: ADMIN in the request body - user gets TOUR_OPERATOR', async () => {
       const email = uniqueEmail('signup-role-injection');
       createdEmails.push(email);
 
-      // Critical Rule #9 — the role field must be stripped (input: false on
+      // Critical Rule #9 - the role field must be stripped (input: false on
       // the Better Auth user model). The database hook also throws if ADMIN is
       // somehow attempted at the DB level.
       const res = await signUp(server, {
@@ -305,7 +305,7 @@ describe('Auth (e2e)', () => {
       expect(res.body.user.role).not.toBe('ADMIN');
     });
 
-    it('ignores role: USER in the request body — user still gets TOUR_OPERATOR', async () => {
+    it('ignores role: USER in the request body - user still gets TOUR_OPERATOR', async () => {
       const email = uniqueEmail('signup-user-role');
       createdEmails.push(email);
 
@@ -357,7 +357,7 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/auth/sign-in/email', () => {
     /**
-     * Creates one shared user per describe block — all sign-in tests share it
+     * Creates one shared user per describe block - all sign-in tests share it
      * for efficiency since sign-in does not mutate state beyond session creation.
      */
     let sharedEmail: string;
@@ -516,7 +516,7 @@ describe('Auth (e2e)', () => {
 
     it('returns null session data (not 401) when no cookie is provided', async () => {
       // Better Auth returns { session: null, user: null } rather than throwing
-      // a 401 on GET /api/auth/get-session — this is handled outside the NestJS
+      // a 401 on GET /api/auth/get-session - this is handled outside the NestJS
       // AuthGuard pipeline (the AuthController is @Public()).
       const res = await request(server).get('/api/auth/get-session');
 
@@ -632,7 +632,7 @@ describe('Auth (e2e)', () => {
       expect(res.status).toBeLessThan(500);
     });
 
-    it('session is invalidated after sign-out — subsequent session fetch returns null', async () => {
+    it('session is invalidated after sign-out - subsequent session fetch returns null', async () => {
       const signInRes = await signIn(server, signOutEmail, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
@@ -644,7 +644,7 @@ describe('Auth (e2e)', () => {
         .post('/api/auth/sign-out')
         .set('Cookie', cookie!);
 
-      // Now verify the session is gone — GET /api/auth/get-session with the old
+      // Now verify the session is gone - GET /api/auth/get-session with the old
       // cookie should return null or an empty session.
       const sessionRes = await request(server)
         .get('/api/auth/get-session')
@@ -659,14 +659,14 @@ describe('Auth (e2e)', () => {
           (sessionRes.body.user === null && sessionRes.body.session === null);
         expect(hasNullSession).toBe(true);
       }
-      // A non-200 status (e.g. 401) is also acceptable — the important thing is
+      // A non-200 status (e.g. 401) is also acceptable - the important thing is
       // that the old token is no longer valid.
     });
   });
 
-  // ── AuthGuard — public vs. protected routes ────────────────────────────────
+  // ── AuthGuard - public vs. protected routes ────────────────────────────────
 
-  describe('AuthGuard — route protection', () => {
+  describe('AuthGuard - route protection', () => {
     it('GET /api/v1/health is accessible without any session cookie (@Public)', async () => {
       const res = await request(server).get('/api/v1/health');
 
@@ -679,7 +679,7 @@ describe('Auth (e2e)', () => {
         .get('/api/v1/health')
         .set('Cookie', 'better-auth.session_token=totally-invalid-token');
 
-      // @Public() + @SkipThrottle() — AuthGuard is bypassed entirely.
+      // @Public() + @SkipThrottle() - AuthGuard is bypassed entirely.
       expect(res.status).toBe(200);
     });
 
@@ -693,7 +693,7 @@ describe('Auth (e2e)', () => {
       //
       // In NestJS the guard chain fires before route resolution for matched
       // routes. For a non-matched route, the global exception filter returns 404.
-      // We test a path that matches the global prefix but has no handler —
+      // We test a path that matches the global prefix but has no handler -
       // NestJS finds no matching handler and AllExceptionsFilter produces a 404.
       //
       // To reliably test the 401 path without needing a real protected endpoint
@@ -705,7 +705,7 @@ describe('Auth (e2e)', () => {
       // Since only /api/v1/health is @Public() in the current route set, any
       // other /api/v1/* path that the router accepts will require auth. The
       // safest approach is to verify that when a valid user IS authenticated,
-      // the system works — and when they are NOT, the 401 is returned for routes
+      // the system works - and when they are NOT, the 401 is returned for routes
       // that do have handlers. We validate the 401 path using the session
       // endpoint indirectly: NestJS AuthGuard fires for all /api/v1/* routes.
       //
@@ -713,7 +713,7 @@ describe('Auth (e2e)', () => {
       // confirm the response is either 401 (guard ran) or 404 (no handler but
       // guard allowed it through because there's no route to protect).
       // Given only the health route exists right now, we observe a 404 for
-      // unknown paths — the guard still runs but throws UnauthorizedException
+      // unknown paths - the guard still runs but throws UnauthorizedException
       // which bubbles as 401 only if the route actually resolves to a handler.
       //
       // To keep the test deterministic, we use the fact that AuthGuard throws
@@ -722,7 +722,7 @@ describe('Auth (e2e)', () => {
 
       const res = await request(server).get('/api/v1/protected-route-that-requires-auth');
 
-      // NestJS evaluates guards even for routes that will ultimately 404 —
+      // NestJS evaluates guards even for routes that will ultimately 404 -
       // the guard runs in the middleware pipeline before route matching completes
       // for routes inside the application context. The result may be 401 or 404
       // depending on how NestJS resolves the pipeline for unknown paths.
@@ -732,7 +732,7 @@ describe('Auth (e2e)', () => {
       expect([401, 404]).toContain(res.status);
     });
 
-    it('authenticated request to session endpoint succeeds — AuthGuard accepts valid session', async () => {
+    it('authenticated request to session endpoint succeeds - AuthGuard accepts valid session', async () => {
       const email = uniqueEmail('authguard-test');
       createdEmails.push(email);
 
@@ -744,7 +744,7 @@ describe('Auth (e2e)', () => {
       expect(cookie).toBeDefined();
 
       // GET /api/auth/get-session is @Public() but it reads the session cookie via
-      // the Better Auth handler — confirms the cookie is valid end-to-end.
+      // the Better Auth handler - confirms the cookie is valid end-to-end.
       const sessionRes = await request(server)
         .get('/api/auth/get-session')
         .set('Cookie', cookie!);
@@ -754,9 +754,9 @@ describe('Auth (e2e)', () => {
     });
   });
 
-  // ── Role injection — defense-in-depth verification ────────────────────────
+  // ── Role injection - defense-in-depth verification ────────────────────────
 
-  describe('Role injection — defense-in-depth', () => {
+  describe('Role injection - defense-in-depth', () => {
     it('signing up with role: ADMIN does not elevate the user to ADMIN in the database', async () => {
       const email = uniqueEmail('role-injection-admin');
       createdEmails.push(email);
@@ -771,7 +771,7 @@ describe('Auth (e2e)', () => {
       // sign-up should succeed (role field silently ignored by input: false)
       expect(res.status).toBe(200);
 
-      // Verify directly in the database — the authoritative source.
+      // Verify directly in the database - the authoritative source.
       const dbUser = await prisma.user.findUnique({ where: { email } });
       expect(dbUser).not.toBeNull();
       expect(dbUser!.role).toBe('TOUR_OPERATOR');
@@ -793,7 +793,7 @@ describe('Auth (e2e)', () => {
 
       const dbUser = await prisma.user.findUnique({ where: { email } });
       expect(dbUser).not.toBeNull();
-      // status.input is also false — default is ACTIVE
+      // status.input is also false - default is ACTIVE
       expect(dbUser!.status).toBe('ACTIVE');
     });
 
@@ -826,7 +826,7 @@ describe('Auth (e2e)', () => {
 
   // ── Full round-trip flow ──────────────────────────────────────────────────
 
-  describe('Full auth round-trip — sign up, sign in, get session, sign out', () => {
+  describe('Full auth round-trip - sign up, sign in, get session, sign out', () => {
     it('completes the full auth lifecycle without error', async () => {
       const email = uniqueEmail('full-roundtrip');
       createdEmails.push(email);
@@ -845,7 +845,7 @@ describe('Auth (e2e)', () => {
       const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
       expect(cookie).toBeDefined();
 
-      // 3. Get session — should return the correct user
+      // 3. Get session - should return the correct user
       const sessionRes = await request(server)
         .get('/api/auth/get-session')
         .set('Cookie', cookie!);

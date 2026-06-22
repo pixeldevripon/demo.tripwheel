@@ -66,14 +66,14 @@ import { TourChildrenService } from './tours-children.service';
 @ApiTags('Tour Children')
 @Controller('tours/:tourId')
 /**
- * TourChildrenController — manages all child models nested under a tour.
+ * TourChildrenController - manages all child models nested under a tour.
  *
  * ## Route ordering
  * Static segments (translations, schedules) MUST appear before dynamic
  * (:locale, :scheduleId) routes in each sub-resource group.
  *
  * ## Access-Control
- * GET /schedules is @Public() — travelers need availability data.
+ * GET /schedules is @Public() - travelers need availability data.
  * All other endpoints require EDIT_TRIP permission.
  */
 export class TourChildrenController {
@@ -400,7 +400,7 @@ export class TourChildrenController {
     return this.tourChildrenService.deleteExclusionTranslation(tourId, exclusionId, locale, user.id, user.role);
   }
 
-  // ── Tour Translations — static routes before :locale ─────────────────────────
+  // ── Tour Translations - static routes before :locale ─────────────────────────
 
   @Get('translations')
   @RequirePermissions(Permission.VIEW_TRIPS)

@@ -97,7 +97,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-          {/* Navigation — hidden for archived trips */}
+          {/* Navigation - hidden for archived trips */}
           {!isArchived && (
             <>
               <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=details`)}>
@@ -149,7 +149,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                   Unpause
                 </DropdownMenuItem>
               )}
-              {/* Archive — available for any non-archived trip */}
+              {/* Archive - available for any non-archived trip */}
               {!isArchived && (
                 <DropdownMenuItem
                   onClick={() => setArchiveOpen(true)}
@@ -159,7 +159,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                   Archive
                 </DropdownMenuItem>
               )}
-              {/* Restore — only for archived trips */}
+              {/* Restore - only for archived trips */}
               {isArchived && (
                 <DropdownMenuItem onClick={handleRestore} disabled={isLifecyclePending}>
                   <RotateCcwIcon />
@@ -169,7 +169,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
             </>
           )}
 
-          {/* Destructive — permanently delete */}
+          {/* Destructive - permanently delete */}
           {can('DELETE_TRIP') && (isArchived || role === 'ADMIN') && (
             <>
               <DropdownMenuSeparator />

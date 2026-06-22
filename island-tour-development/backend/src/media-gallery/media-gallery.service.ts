@@ -10,7 +10,7 @@ import type {
 } from './dto/upload-media.dto';
 
 /**
- * MediaGalleryService — all database and Cloudinary orchestration logic.
+ * MediaGalleryService - all database and Cloudinary orchestration logic.
  *
  * ## Upload strategies supported
  * 1. Server-side sequential upload  (uploadFiles)
@@ -21,7 +21,7 @@ import type {
  * Each file is uploaded to Cloudinary, then immediately written to Prisma.
  * If the DB write fails, the just-uploaded Cloudinary asset is deleted so we
  * never have orphaned cloud assets.  Earlier successful records are kept
- * (partial success is acceptable — return only what was saved).
+ * (partial success is acceptable - return only what was saved).
  */
 @Injectable()
 export class MediaGalleryService {
@@ -68,7 +68,7 @@ export class MediaGalleryService {
       throw new Error(`All uploads failed: ${failed.join(', ')}`);
     }
 
-    // 2. Batch DB write in a transaction — returns records, no second query needed
+    // 2. Batch DB write in a transaction - returns records, no second query needed
     try {
       return await this.prisma.$transaction(
         succeeded.map((r) =>
@@ -173,7 +173,7 @@ export class MediaGalleryService {
       throw new NotFoundException(`Media ${id} not found`);
     }
 
-    // Delete from Cloudinary (best-effort — if it fails, still remove DB record)
+    // Delete from Cloudinary (best-effort - if it fails, still remove DB record)
     await this.cloudinaryService.deleteFile(media.publicId);
 
     await this.prisma.mediaGallery.delete({ where: { id } });
@@ -211,7 +211,7 @@ export class MediaGalleryService {
   /**
    * Bulk delete: removes each record from Cloudinary and then batch-deletes
    * all DB rows in a single Prisma call.  Per-file Cloudinary failures are
-   * logged but do NOT abort the batch — we always remove the DB record so the
+   * logged but do NOT abort the batch - we always remove the DB record so the
    * UI stays consistent.
    */
   async bulkDeleteMedia(

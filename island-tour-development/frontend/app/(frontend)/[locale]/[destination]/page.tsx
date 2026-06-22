@@ -14,7 +14,7 @@ import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
 
-// Destination display names (proper nouns — not translated, only resolved from the slug).
+// Destination display names (proper nouns - not translated, only resolved from the slug).
 const DESTINATION_NAMES: Record<string, string> = {
     curacao: 'Curaçao',
     aruba: 'Aruba',
@@ -23,7 +23,7 @@ const DESTINATION_NAMES: Record<string, string> = {
     bonaire: 'Bonaire',
 };
 
-// Total published tours per destination (placeholder — comes from the API later).
+// Total published tours per destination (placeholder - comes from the API later).
 // Drives the conditional "See all {count} tours" CTA (count shown only when ≥ 20).
 const DESTINATION_TOUR_COUNTS: Record<string, number> = {
     curacao: 87,
@@ -33,7 +33,7 @@ const DESTINATION_TOUR_COUNTS: Record<string, number> = {
     bonaire: 12,
 };
 
-// Popular searches per destination (placeholder — comes from the API later).
+// Popular searches per destination (placeholder - comes from the API later).
 const POPULAR: Record<string, { label: string; slug: string }[]> = {
     curacao: [
         { label: 'Klein Curaçao', slug: 'klein-curacao' },
@@ -48,7 +48,7 @@ const DEFAULT_POPULAR = [
     { label: 'Island Hopping', slug: 'island-hopping' },
 ];
 
-// "Explore by type" cards (placeholder — comes from the API later).
+// "Explore by type" cards (placeholder - comes from the API later).
 const EXPLORE_TYPES: ExploreType[] = [
     {
         name: 'Klein Curaçao',
@@ -88,7 +88,7 @@ const EXPLORE_TYPES: ExploreType[] = [
     },
 ];
 
-// ── Locals' Favorites mock data (6 cards — replace with API data later) ─────
+// ── Locals' Favorites mock data (6 cards - replace with API data later) ─────
 // Matches Figma node 47361:19645 exactly.
 const TOURS: TourListing[] = [
     {
@@ -199,7 +199,7 @@ export function generateStaticParams() {
 }
 
 /**
- * Destination page — `/[locale]/[destination]` (e.g. /en/curacao).
+ * Destination page - `/[locale]/[destination]` (e.g. /en/curacao).
  * Hero is built; the rest of the page follows section by section.
  */
 export default async function DestinationPage({

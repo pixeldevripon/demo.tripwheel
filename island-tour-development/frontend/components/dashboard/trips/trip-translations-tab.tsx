@@ -81,7 +81,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
 
   function handleDelete() {
     if (isEnglish) {
-      // Clear optional fields — backend blocks deleting EN
+      // Clear optional fields - backend blocks deleting EN
       upsert(
         {
           tripId,
@@ -234,7 +234,7 @@ export function TripTranslationsTab({ tripId, tripName }: TripTranslationsTabPro
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle>Translations — {tripName}</CardTitle>
+        <CardTitle>Translations - {tripName}</CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
         <Tabs defaultValue="en">

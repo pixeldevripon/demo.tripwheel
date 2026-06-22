@@ -13,7 +13,7 @@ export class PaymentIntentResponseDto {
 
   @ApiPropertyOptional({
     example: 'pi_3Q…_secret_abc',
-    description: 'Stripe PaymentIntent client secret — hand to Stripe.js to collect the card.',
+    description: 'Stripe PaymentIntent client secret - hand to Stripe.js to collect the card.',
   })
   clientSecret?: string;
 

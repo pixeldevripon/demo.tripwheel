@@ -50,17 +50,17 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 @ApiTags('Media Gallery')
 @Controller('media-gallery')
 /**
- * MediaGalleryController — manages media uploads and gallery for authenticated users.
+ * MediaGalleryController - manages media uploads and gallery for authenticated users.
  *
  * ## Upload strategies
- *  1. POST /upload         — server-side synchronous upload (files pass through NestJS)
- *  2. POST /upload/async   — server-side background upload via BullMQ + Upstash Redis
- *  3. GET  /sign           — get signed params for direct client → Cloudinary upload
- *  4. POST /confirm        — register a completed direct upload in the DB
+ *  1. POST /upload         - server-side synchronous upload (files pass through NestJS)
+ *  2. POST /upload/async   - server-side background upload via BullMQ + Upstash Redis
+ *  3. GET  /sign           - get signed params for direct client → Cloudinary upload
+ *  4. POST /confirm        - register a completed direct upload in the DB
  *
  * ## Access-control
  * All routes require an active Better Auth session (enforced by the global
- * AuthGuard in AuthModule). userId is always sourced from the validated session —
+ * AuthGuard in AuthModule). userId is always sourced from the validated session -
  * no IDOR risk from URL params.
  *
  * ## Route-ordering rule (NestJS)
@@ -117,7 +117,7 @@ export class MediaGalleryController {
    * POST /media-gallery/upload/async
    *
    * Accepts files and immediately enqueues a BullMQ job per file.
-   * Returns job IDs — the client can poll or use WebSockets for completion.
+   * Returns job IDs - the client can poll or use WebSockets for completion.
    * The file buffer is base64-encoded for JSON-serialisable job payloads.
    */
   @Post('upload/async')
@@ -237,7 +237,7 @@ export class MediaGalleryController {
    *
    * Bulk-deletes multiple media records owned by the authenticated user.
    * Cloudinary deletions run in parallel; a single Cloudinary failure does NOT
-   * abort the batch — all matched DB rows are always removed.
+   * abort the batch - all matched DB rows are always removed.
    * Returns { deleted, failed } counts.
    *
    * NOTE: This static route MUST come before the dynamic ':id' route so that

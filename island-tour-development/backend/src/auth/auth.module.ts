@@ -11,10 +11,10 @@ import { authPrismaClient } from '@/auth/auth.instance';
  * AuthModule wires Better Auth into NestJS.
  *
  * APP_GUARD providers are applied globally in registration order:
- *   1. ThrottlerGuard     — rate-limit before hitting the DB for session checks
- *   2. AuthGuard          — validates session cookie / Bearer token
- *   3. RolesGuard         — checks @Roles() decorator metadata
- *   4. PermissionsGuard   — checks @RequirePermissions() metadata
+ *   1. ThrottlerGuard     - rate-limit before hitting the DB for session checks
+ *   2. AuthGuard          - validates session cookie / Bearer token
+ *   3. RolesGuard         - checks @Roles() decorator metadata
+ *   4. PermissionsGuard   - checks @RequirePermissions() metadata
  *
  * ThrottlerModule lives here (not AppModule) so ThrottlerGuard is registered
  * before the auth guards and fires first on every request.

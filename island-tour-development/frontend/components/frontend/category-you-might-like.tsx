@@ -10,7 +10,7 @@ export type RelatedCategory = {
 };
 
 /**
- * "You might also like" — related-category grid shown after the tour listing on
+ * "You might also like" - related-category grid shown after the tour listing on
  * a category page (Figma node 47070:2238). Three large image cards (384×292,
  * 16px radius) with a bottom `#1a1a1a` scrim and a white category label; each
  * links to the sibling category page at the same destination.
@@ -57,7 +57,7 @@ export function CategoryYouMightLike({
                                         className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
                                     />
                                 )}
-                                {/* Bottom scrim — transparent → #1a1a1a over the lower 139px (Figma). */}
+                                {/* Bottom scrim - transparent → #1a1a1a over the lower 139px (Figma). */}
                                 <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
                                 <span className='absolute bottom-6 left-6 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
                                     {item.name}

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OperatorVerificationStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -9,10 +10,23 @@ import {
   IsString,
   IsUrl,
   Max,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
+
+export class OperatorUserSummaryDto {
+  @ApiProperty({ example: 'user-uuid-string' })
+  id!: string;
+
+  @ApiProperty({ example: 'John Smith' })
+  name!: string;
+
+  @ApiProperty({ example: 'operator@company.com' })
+  email!: string;
+}
 
 export class OperatorResponseDto {
   @ApiProperty({ example: 'uuid-string' })
@@ -23,6 +37,24 @@ export class OperatorResponseDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+
+  @ApiProperty({ enum: OperatorVerificationStatus, example: 'UNVERIFIED' })
+  verificationStatus!: OperatorVerificationStatus;
+
+  @ApiPropertyOptional({ example: 'support@company.com', nullable: true })
+  contactEmail?: string | null;
+
+  @ApiPropertyOptional({ example: '+5999123456', nullable: true })
+  contactPhone?: string | null;
+
+  @ApiPropertyOptional({ type: OperatorUserSummaryDto })
+  user?: OperatorUserSummaryDto;
+
+  @ApiPropertyOptional({
+    example: { companyName: 'Caribbean Adventures Ltd.' },
+    nullable: true,
+  })
+  companyInfo?: { companyName: string | null } | null;
 
   @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
   createdAt!: Date;
@@ -69,11 +101,11 @@ export class OperatorStripeConfigResponseDto {
   @ApiProperty({ example: 'pk_test_...' })
   publishableKey!: string;
 
-  @ApiProperty({ example: 'sk_test_...' })
-  secretKey!: string;
+  @ApiPropertyOptional({ example: '••••••••1234', nullable: true })
+  secretKey?: string | null;
 
-  @ApiProperty({ example: 'whsec_...' })
-  webhookSecret!: string;
+  @ApiPropertyOptional({ example: '••••••••5678', nullable: true })
+  webhookSecret?: string | null;
 
   @ApiProperty({ example: ['card', 'ideal'] })
   paymentMethods!: string[];
@@ -83,8 +115,8 @@ export class OperatorStripeConfigResponseDto {
 }
 
 export class OperatorMollieConfigResponseDto {
-  @ApiProperty({ example: 'live_...' })
-  apiKey!: string;
+  @ApiPropertyOptional({ example: '••••••••1234', nullable: true })
+  apiKey?: string | null;
 
   @ApiProperty({ example: ['ideal', 'creditcard'] })
   paymentMethods!: string[];
@@ -113,6 +145,7 @@ export class OperatorQueryDto {
   @ApiPropertyOptional({ example: 'island', description: 'Search by company name or user name/email' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ description: 'Filter by active status' })
@@ -138,9 +171,23 @@ export class OperatorQueryDto {
 }
 
 export class CreateOperatorDto {
-  @ApiProperty({ description: 'User UUID to link as operator' })
+  @ApiProperty({
+    example: 'John Smith',
+    description: 'Full name of the operator contact',
+  })
   @IsString()
-  userId!: string;
+  @MinLength(2)
+  @MaxLength(100)
+  name!: string;
+
+  @ApiProperty({
+    example: 'operator@company.com',
+    description:
+      'Login email. A set-password invite link is sent to this address.',
+  })
+  @IsEmail()
+  @MaxLength(255)
+  email!: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
@@ -153,27 +200,48 @@ export class UpdateOperatorDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ enum: OperatorVerificationStatus })
+  @IsOptional()
+  @IsEnum(OperatorVerificationStatus)
+  verificationStatus?: OperatorVerificationStatus;
+
+  @ApiPropertyOptional({ example: 'support@company.com' })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  contactEmail?: string;
+
+  @ApiPropertyOptional({ example: '+5999123456' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
 }
 
 export class UpdateOperatorCompanyInfoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   companyName?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   companyCountry?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   companyCity?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(30)
   companyPhone?: string;
 
   @ApiPropertyOptional()
@@ -219,24 +287,28 @@ export class OnboardOperatorDto {
 
 
 export class UpdateOperatorSocialMediaDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'https://facebook.com/travelco' })
   @IsOptional()
-  @IsString()
+  @IsUrl()
+  @MaxLength(255)
   facebookUrl?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'https://instagram.com/travelco' })
   @IsOptional()
-  @IsString()
+  @IsUrl()
+  @MaxLength(255)
   instagramUrl?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'https://x.com/travelco' })
   @IsOptional()
-  @IsString()
+  @IsUrl()
+  @MaxLength(255)
   twitterUrl?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'https://linkedin.com/company/travelco' })
   @IsOptional()
-  @IsString()
+  @IsUrl()
+  @MaxLength(255)
   linkedinUrl?: string;
 }
 

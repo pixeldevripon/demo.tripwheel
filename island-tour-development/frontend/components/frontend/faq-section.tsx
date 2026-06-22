@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Reveal } from './reveal';
 
-// Exact Figma caret (vuesax/linear arrow-down) — colour inherits via currentColor, rotates open
+// Exact Figma caret (vuesax/linear arrow-down) - colour inherits via currentColor, rotates open
 function Caret({ className }: { className?: string }) {
     return (
         <svg
@@ -60,7 +60,7 @@ export function FaqSection({ dict, minimal = false }: { dict: FaqDict; minimal?:
                             </h2>
                         </div>
                     ) : (
-                    /* Left — help, WhatsApp, guarantees, payments.
+                    /* Left - help, WhatsApp, guarantees, payments.
                         On mobile this block sits above the accordion (matches Figma). */
                     <div className='flex flex-col gap-8 lg:w-115 lg:gap-14'>
                         <div className='flex flex-col gap-12 lg:gap-14'>
@@ -123,7 +123,7 @@ export function FaqSection({ dict, minimal = false }: { dict: FaqDict; minimal?:
                             </div>
                         </div>
 
-                        {/* Payment badges — uniform 64×36 (mobile) / 73×40 (desktop) boxes, packed */}
+                        {/* Payment badges - uniform 64×36 (mobile) / 73×40 (desktop) boxes, packed */}
                         <div className='grid w-64 grid-cols-4 gap-y-2 lg:w-73'>
                             {payments.map((p) => (
                                 <span key={p.alt} className='flex items-center justify-center'>
@@ -140,7 +140,7 @@ export function FaqSection({ dict, minimal = false }: { dict: FaqDict; minimal?:
                     </div>
                     )}
 
-                    {/* Right — accordion */}
+                    {/* Right - accordion */}
                     <div className='flex flex-1 flex-col gap-3 lg:gap-4'>
                         {dict.items.map((faq, i) => {
                             const open = i === openIndex;

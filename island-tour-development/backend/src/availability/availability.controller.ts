@@ -45,7 +45,7 @@ import {
 } from './availability.swagger';
 
 /**
- * AvailabilityController — native availability surface (the inventory source of truth).
+ * AvailabilityController - native availability surface (the inventory source of truth).
  *
  * ## Access
  * - Operator management (schedules / exceptions / departures / materialize) requires

@@ -43,7 +43,7 @@ export function SecurityCard() {
                                             'Password set but date unknown'
                                         )
                                     ) : (
-                                        'Using Google login'
+                                        'No password set yet'
                                     )}
                                 </p>
                             </div>

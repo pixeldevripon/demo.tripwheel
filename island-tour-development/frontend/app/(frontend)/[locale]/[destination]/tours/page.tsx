@@ -23,7 +23,7 @@ const LAUNCH_DESTINATION_SLUGS = [
     'bahamas',
 ];
 
-// Category quick-filter pills (placeholder — comes from the API later).
+// Category quick-filter pills (placeholder - comes from the API later).
 export const FILTER_CATEGORIES: FilterCategory[] = [
     { label: 'Klein Curaçao', slug: 'klein-curacao' },
     { label: 'Boat Tours', slug: 'boat-tours' },
@@ -33,7 +33,7 @@ export const FILTER_CATEGORIES: FilterCategory[] = [
     { label: 'Under €100 (21)', slug: 'under-100' },
 ];
 
-// Tour grid mock — 6 base cards (replace with paginated API data later).
+// Tour grid mock - 6 base cards (replace with paginated API data later).
 const BASE_TOURS: TourListing[] = [
     {
         id: 'tour-1',
@@ -134,7 +134,7 @@ const BASE_TOURS: TourListing[] = [
     },
 ];
 
-// 18 cards (6 rows × 3) for the grid — cycle the base set with unique ids.
+// 18 cards (6 rows × 3) for the grid - cycle the base set with unique ids.
 const ALL_TOURS: TourListing[] = [0, 1, 2].flatMap(group =>
     BASE_TOURS.map(tour => ({ ...tour, id: `${tour.id}-${group}` }))
 );
@@ -147,13 +147,13 @@ export async function generateStaticParams() {
             return destinations.map(d => ({ destination: d.slug }));
         }
     } catch {
-        // backend unavailable at build — fall through to launch slugs
+        // backend unavailable at build - fall through to launch slugs
     }
     return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
 }
 
 /**
- * All Tours page — `/[locale]/[destination]/tours` (the RESERVED `tours` slug).
+ * All Tours page - `/[locale]/[destination]/tours` (the RESERVED `tours` slug).
  * Built section by section; the breadcrumb is first.
  */
 export default async function AllToursPage({
@@ -183,7 +183,7 @@ export default async function AllToursPage({
             />
             <section className='bg-it-white pb-8 md:pb-32.5'>
                 <div className='it-container'>
-                    {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
+                    {/* Content stack - 60px below the breadcrumb, 40px between blocks. */}
                     <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
                         <ToursHeader
                             dict={dict.destination.allTours.heading}
@@ -197,7 +197,7 @@ export default async function AllToursPage({
                             aria-hidden='true'
                         />
 
-                        {/* Toolbar + grid frame — 32px between toolbar and grid. */}
+                        {/* Toolbar + grid frame - 32px between toolbar and grid. */}
                         <div className='flex flex-col gap-8'>
                             <ToursFilterBar
                                 dict={dict.destination.allTours.toolbar}

@@ -31,7 +31,7 @@ const MediaGalleryManager = ({
     const [selectMode, setSelectMode] = useState(false);
     const [bulkSelectedItems, setBulkSelectedItems] = useState<MediaItem[]>([]);
 
-    // ── TanStack Query — replaces manual fetchMedia + useState ──────────────
+    // ── TanStack Query - replaces manual fetchMedia + useState ──────────────
     // refetchOnWindowFocus: true (set in QueryClient defaults + hook) means
     // the gallery automatically refreshes when the user returns to this tab.
     const { data: mediaItems = [], isLoading } = useMediaList('limit=100&page=1');
@@ -45,7 +45,7 @@ const MediaGalleryManager = ({
 
     /* ── Handle newly uploaded files ─────────────────────────────────── */
     function handleUploadSuccess(newItems: MediaItem[]) {
-        // Insert directly into TanStack Query cache — no extra network round-trip
+        // Insert directly into TanStack Query cache - no extra network round-trip
         prependMediaToCache(queryClient, newItems);
     }
 

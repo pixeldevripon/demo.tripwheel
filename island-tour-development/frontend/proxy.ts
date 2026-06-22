@@ -8,13 +8,12 @@ import {
 } from '@/lib/constants/locales';
 
 /**
- * Path prefixes that are NOT part of the localized public site — they must
+ * Path prefixes that are NOT part of the localized public site - they must
  * never receive a `/{locale}` prefix (admin panel, auth flows, API, onboarding).
  */
 const NON_LOCALIZED_PREFIXES = [
     '/dashboard',
     '/login',
-    '/signup',
     '/forgot-password',
     '/reset-password',
     '/onboarding',
@@ -50,7 +49,7 @@ function resolveLocale(request: NextRequest): string {
     return DEFAULT_LOCALE;
 }
 
-/** Protect dashboard routes — redirect to /login when there is no valid session. */
+/** Protect dashboard routes - redirect to /login when there is no valid session. */
 async function guardDashboard(request: NextRequest) {
     const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
@@ -79,7 +78,7 @@ export async function proxy(request: NextRequest) {
         return guardDashboard(request);
     }
 
-    // 2. Other non-localized sections (auth, api, onboarding) — pass through.
+    // 2. Other non-localized sections (auth, api, onboarding) - pass through.
     if (isNonLocalized(pathname)) {
         return NextResponse.next();
     }
@@ -99,6 +98,7 @@ export async function proxy(request: NextRequest) {
         path: '/',
         maxAge: 60 * 60 * 24 * 365, // 1 year
         sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
     });
     return response;
 }

@@ -1,11 +1,15 @@
+import { auth } from '@/auth/auth.instance';
 import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import {
   CreateOperatorDto,
   OnboardOperatorDto,
@@ -20,9 +24,32 @@ import {
 
 @Injectable()
 export class OperatorsService {
+  private readonly logger = new Logger(OperatorsService.name);
+  private readonly frontendUrl =
+    process.env.FRONTEND_URL ?? 'http://localhost:3000';
+
+  // Shared projection for operator detail responses - never return raw rows.
+  private readonly operatorSelect = {
+    id: true,
+    userId: true,
+    isActive: true,
+    verificationStatus: true,
+    contactEmail: true,
+    contactPhone: true,
+    aggregateRating: true,
+    aggregateReviewCount: true,
+    totalBookings: true,
+    cancellationRate90d: true,
+    forceMajeurePardons: true,
+    createdAt: true,
+    updatedAt: true,
+    user: { select: { id: true, name: true, email: true } },
+    companyInfo: { select: { companyName: true } },
+  } satisfies Prisma.OperatorSelect;
+
   constructor(private readonly prisma: PrismaService) {}
 
-  // ── Shared ownership guard ─────────────────────────────────────────────────
+  // ── Shared helpers ─────────────────────────────────────────────────────────
 
   private async resolveOperator(operatorId: string) {
     const operator = await this.prisma.operator.findUnique({
@@ -33,6 +60,15 @@ export class OperatorsService {
     if (!operator)
       throw new NotFoundException(`Operator ${operatorId} not found`);
     return operator;
+  }
+
+  private async ensureExists(operatorId: string) {
+    const operator = await this.prisma.operator.findUnique({
+      where: { id: operatorId },
+      select: { id: true },
+    });
+    if (!operator)
+      throw new NotFoundException(`Operator ${operatorId} not found`);
   }
 
   private assertOwnerOrAdmin(
@@ -48,20 +84,119 @@ export class OperatorsService {
     }
     if (operator.userId !== requestingUserId) {
       throw new ForbiddenException(
-        'You can only manage your own operator profile',
+        'You can only access your own operator profile',
       );
     }
   }
 
-  // ── Core Operator CRUD ─────────────────────────────────────────────────────
-
-  async create(dto: CreateOperatorDto) {
-    return this.prisma.operator.create({
-      data: dto,
-    });
+  /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
+  private maskSecret(encrypted: string | null): string | null {
+    if (!encrypted) return null;
+    return '••••••••' + decrypt(encrypted).slice(-4);
   }
 
+  // ── Core Operator CRUD ─────────────────────────────────────────────────────
+
+  /**
+   * Admin-initiated operator creation.
+   *
+   * Provisions a TOUR_OPERATOR auth account (no password the operator knows),
+   * links the Operator profile row, and emails a set-password invite link. The
+   * operator follows the link, sets their own password, logs in, and completes
+   * onboarding. There is no public sign-up - this is the only operator-creation path.
+   */
+  async create(dto: CreateOperatorDto) {
+    const email = dto.email.toLowerCase().trim();
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException(`A user with email ${email} already exists`);
+    }
+
+    const authCtx = await auth.$context;
+
+    // A credential account must exist so the invite's reset flow can set the
+    // real password. This throwaway secret is never transmitted anywhere.
+    const throwawayPassword = randomBytes(24).toString('base64url');
+    const hashedPassword = await authCtx.password.hash(throwawayPassword);
+
+    const user = await authCtx.internalAdapter.createUser({
+      email,
+      name: dto.name,
+      role: Role.TOUR_OPERATOR,
+      // Admin-vouched; ownership is re-proven when the operator uses the invite link.
+      emailVerified: true,
+    });
+
+    let operatorId: string | undefined;
+    try {
+      await authCtx.internalAdapter.linkAccount({
+        userId: user.id,
+        providerId: 'credential',
+        accountId: user.id,
+        password: hashedPassword,
+      });
+
+      const operator = await this.prisma.operator.create({
+        data: {
+          userId: user.id,
+          isActive: dto.isActive ?? true,
+          contactEmail: email,
+        },
+        select: {
+          id: true,
+          userId: true,
+          isActive: true,
+          verificationStatus: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      operatorId = operator.id;
+
+      // Server-initiated reset -> invite branch in auth.instance.ts sends the
+      // operator-invite email (set-password link) instead of a reset email.
+      await auth.api.requestPasswordReset({
+        body: {
+          email,
+          redirectTo: `${this.frontendUrl}/reset-password`,
+        },
+      });
+
+      this.logger.log(
+        `Operator account created and invited: ${email} (operator ${operator.id})`,
+      );
+      return operator;
+    } catch (err) {
+      // Roll back everything we created so a failure leaves no orphans.
+      if (operatorId) {
+        await this.prisma.operator
+          .delete({ where: { id: operatorId } })
+          .catch(() => undefined);
+      }
+      await authCtx.internalAdapter.deleteUser(user.id).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  /**
+   * Self-service onboarding - the operator account already exists (created by an
+   * admin via {@link create}); here the operator fills in their company profile.
+   */
   async onboard(userId: string, dto: OnboardOperatorDto) {
+    const operator = await this.prisma.operator.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!operator) {
+      throw new NotFoundException(
+        'No operator account found for this user. Please contact an administrator.',
+      );
+    }
+
     const {
       companyName,
       companyCountry,
@@ -71,42 +206,42 @@ export class OperatorsService {
       yearlySalesTarget,
     } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
-      const operator = await tx.operator.create({
-        data: {
-          userId,
-          isActive: true,
-        },
-      });
+    const data = {
+      companyName,
+      companyCountry,
+      companyCity,
+      companyPhone,
+      plannedTripCount,
+      yearlySalesTarget,
+    };
 
-      await tx.operatorCompanyInfo.create({
-        data: {
-          operatorId: operator.id,
-          companyName,
-          companyCountry,
-          companyCity,
-          companyPhone,
-          plannedTripCount,
-          yearlySalesTarget,
-        },
-      });
+    await this.prisma.operatorCompanyInfo.upsert({
+      where: { operatorId: operator.id },
+      update: data,
+      create: { operatorId: operator.id, ...data },
+    });
 
-      return operator;
+    return this.prisma.operator.findUnique({
+      where: { id: operator.id },
+      select: this.operatorSelect,
     });
   }
-
 
   async findAll(query: OperatorQueryDto) {
     const { search, isActive, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.OperatorWhereInput = {};
     if (isActive !== undefined) where.isActive = isActive;
     if (search) {
       where.OR = [
         { user: { name: { contains: search, mode: 'insensitive' } } },
         { user: { email: { contains: search, mode: 'insensitive' } } },
-        { companyInfo: { companyName: { contains: search, mode: 'insensitive' } } },
+        {
+          companyInfo: {
+            companyName: { contains: search, mode: 'insensitive' },
+          },
+        },
       ];
     }
 
@@ -131,37 +266,52 @@ export class OperatorsService {
 
     return { total, page, limit, data };
   }
-  async findOne(id: string) {
-    const operator = await this.prisma.operator.findUnique({
-      where: { id },
-    });
 
-    if (!operator) throw new NotFoundException(`Operator ${id} not found`);
-    return operator;
+  async findOne(
+    id: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(id);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
+    return this.prisma.operator.findUnique({
+      where: { id },
+      select: this.operatorSelect,
+    });
   }
 
   async update(id: string, dto: UpdateOperatorDto) {
-    await this.findOne(id);
+    await this.ensureExists(id);
     return this.prisma.operator.update({
       where: { id },
       data: dto,
+      select: this.operatorSelect,
     });
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.operator.delete({
+    await this.ensureExists(id);
+    await this.prisma.operator.delete({
       where: { id },
+      select: { id: true },
     });
+    return { message: 'Operator deleted successfully' };
   }
 
   // ── Company Information ────────────────────────────────────────────────────
 
-  async getCompanyInfo(operatorId: string) {
-    await this.findOne(operatorId); // ensure operator exists
+  async getCompanyInfo(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
     return this.prisma.operatorCompanyInfo.findUnique({
       where: { operatorId },
-    }); // returns null if not yet filled — frontend handles empty state
+    }); // returns null if not yet filled - frontend handles empty state
   }
 
   async updateCompanyInfo(
@@ -182,8 +332,14 @@ export class OperatorsService {
 
   // ── Social Media ───────────────────────────────────────────────────────────
 
-  async getSocialMedia(operatorId: string) {
-    await this.findOne(operatorId);
+  async getSocialMedia(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
     return this.prisma.operatorSocialMedia.findUnique({
       where: { operatorId },
     });
@@ -220,7 +376,7 @@ export class OperatorsService {
       ...dto,
       ...(dto.secretKey && { secretKey: encrypt(dto.secretKey) }),
       ...(dto.webhookSecret && { webhookSecret: encrypt(dto.webhookSecret) }),
-      // publishableKey is public — no encryption needed
+      // publishableKey is public - no encryption needed
     };
 
     const result = await this.prisma.operatorStripeConfig.upsert({
@@ -230,17 +386,19 @@ export class OperatorsService {
     });
     return {
       ...result,
-      secretKey: result.secretKey
-        ? '••••••••' + decrypt(result.secretKey).slice(-4)
-        : null,
-      webhookSecret: result.webhookSecret
-        ? '••••••••' + decrypt(result.webhookSecret).slice(-4)
-        : null,
+      secretKey: this.maskSecret(result.secretKey),
+      webhookSecret: this.maskSecret(result.webhookSecret),
     };
   }
 
-  async getStripeConfig(operatorId: string) {
-    await this.findOne(operatorId);
+  async getStripeConfig(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
     const config = await this.prisma.operatorStripeConfig.findUnique({
       where: { operatorId },
     });
@@ -249,12 +407,8 @@ export class OperatorsService {
 
     return {
       ...config,
-      secretKey: config.secretKey
-        ? '••••••••' + decrypt(config.secretKey).slice(-4)
-        : null,
-      webhookSecret: config.webhookSecret
-        ? '••••••••' + decrypt(config.webhookSecret).slice(-4)
-        : null,
+      secretKey: this.maskSecret(config.secretKey),
+      webhookSecret: this.maskSecret(config.webhookSecret),
     };
   }
 
@@ -281,14 +435,18 @@ export class OperatorsService {
     });
     return {
       ...result,
-      apiKey: result.apiKey
-        ? '••••••••' + decrypt(result.apiKey).slice(-4)
-        : null,
+      apiKey: this.maskSecret(result.apiKey),
     };
   }
 
-  async getMollieConfig(operatorId: string) {
-    await this.findOne(operatorId);
+  async getMollieConfig(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
     const config = await this.prisma.operatorMollieConfig.findUnique({
       where: { operatorId },
     });
@@ -297,9 +455,7 @@ export class OperatorsService {
 
     return {
       ...config,
-      apiKey: config.apiKey
-        ? '••••••••' + decrypt(config.apiKey).slice(-4)
-        : null,
+      apiKey: this.maskSecret(config.apiKey),
     };
   }
 }

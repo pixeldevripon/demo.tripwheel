@@ -42,7 +42,7 @@ export class BookingConversionDto {
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
 }
 
-/** Thank-you-page payload (TYP route — noindex, no locale prefix). */
+/** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
@@ -161,7 +161,7 @@ export class ContactDto {
 export class ReserveBookingDto {
   @ApiPropertyOptional({
     example: 'f8c3de3d-1fea-4d7c-a8b0-29f63c4c3454',
-    description: 'Client-supplied id — idempotency key. Generated if omitted.',
+    description: 'Client-supplied id - idempotency key. Generated if omitted.',
   })
   @IsOptional()
   @IsUUID()

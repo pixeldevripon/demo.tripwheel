@@ -37,14 +37,14 @@ import { ToursService } from './tours.service';
 @ApiTags('Tours')
 @Controller('tours')
 /**
- * ToursController — manages the tour listing lifecycle.
+ * ToursController - manages the tour listing lifecycle.
  *
  * ## Route ordering
  * Static segments (my-tours) MUST appear before the dynamic :id segment.
  *
  * ## Access-Control
- * - GET /tours is @Public() — live listing for travelers and SSR.
- * - GET /tours/:id is semi-public — LIVE tours open, DRAFT/PAUSED require auth.
+ * - GET /tours is @Public() - live listing for travelers and SSR.
+ * - GET /tours/:id is semi-public - LIVE tours open, DRAFT/PAUSED require auth.
  * - All mutations use @RequirePermissions().
  */
 export class ToursController {
@@ -65,7 +65,7 @@ export class ToursController {
     return this.toursService.findAll(query, req.query as Record<string, unknown>);
   }
 
-  // ── Public slug-based detail — static prefix before :id ──────────────────────
+  // ── Public slug-based detail - static prefix before :id ──────────────────────
 
   @Get('slug/:slug')
   @Public()
@@ -74,7 +74,7 @@ export class ToursController {
     return this.toursService.findBySlug(slug, query);
   }
 
-  // ── Operator "my tours" — static route before :id ─────────────────────────────
+  // ── Operator "my tours" - static route before :id ─────────────────────────────
 
   @Get('my-tours')
   @RequirePermissions(Permission.VIEW_TRIPS)
@@ -83,7 +83,7 @@ export class ToursController {
     return this.toursService.findMyTours(user.id, user.role, query);
   }
 
-  // ── Admin all tours — static route before :id ─────────────────────────────────
+  // ── Admin all tours - static route before :id ─────────────────────────────────
 
   @Get('admin/all')
   @RequirePermissions(Permission.MANAGE_TRIPS)

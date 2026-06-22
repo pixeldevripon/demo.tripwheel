@@ -19,7 +19,7 @@ import { ToursHeader } from './tours-header';
 import { ToursListing } from './tours-listing';
 
 /**
- * Category page — the CATEGORY branch of the polymorphic `[slug]` route
+ * Category page - the CATEGORY branch of the polymorphic `[slug]` route
  * (`/{locale}/{destination}/{category}/`).
  *
  * A category page is a destination-scoped, category-filtered tour listing, so it
@@ -32,10 +32,10 @@ import { ToursListing } from './tours-listing';
  *     the canonical English value on the backend (`name` always resolved).
  *   - The detail endpoint gates on `publishedTourCount > 0` (Stage-3 gating);
  *     a 404 here renders `notFound()`.
- *   - Slugs are English at every locale — the URL never changes per locale.
+ *   - Slugs are English at every locale - the URL never changes per locale.
  */
 
-// Tour grid mock — placeholder until the category-filtered trips API is wired
+// Tour grid mock - placeholder until the category-filtered trips API is wired
 // (matches the convention used by the destination + all-tours pages). The
 // backend gating guarantees ≥1 published tour, so the grid is never empty.
 const MOCK_TOURS: TourListing[] = [
@@ -140,7 +140,7 @@ const MOCK_TOURS: TourListing[] = [
 
 // "You might also like" card imagery. Used directly for the placeholder set
 // (when the backend returns no siblings) and as a per-card fallback when a real
-// sibling category has no `heroImage` yet — so every card always shows an image.
+// sibling category has no `heroImage` yet - so every card always shows an image.
 const RELATED_IMAGES = [
     '/images/home-page/categories/catamaran-trips.jpg',
     '/images/home-page/categories/snorkel-trips.jpg',
@@ -161,7 +161,7 @@ const FALLBACK_RELATED: RelatedCategory[] = [
 ];
 
 // Quick-filter pills for the secondary "active tours" listing block (Figma
-// 47171:1499) — distinct from the top listing's FILTER_CATEGORIES. Placeholder
+// 47171:1499) - distinct from the top listing's FILTER_CATEGORIES. Placeholder
 // until the per-attribute filter API is wired.
 const SECONDARY_FILTER_CATEGORIES: FilterCategory[] = [
     { label: 'Catamaran', slug: 'catamaran' },
@@ -195,7 +195,7 @@ export async function CategoryPage({
 }: CategoryPageProps) {
     // Fetch localized detail (gated), editorial content, FAQs, and the active
     // categories (for the localized quick-filter pills) in parallel. The detail
-    // gate is authoritative — a `null` means 0 published tours → notFound().
+    // gate is authoritative - a `null` means 0 published tours → notFound().
     const [category, pageContent, faqs, activeCategories] = await Promise.all([
         categoriesApi.getBySlugForDestination(
             destinationSlug,
@@ -228,7 +228,7 @@ export async function CategoryPage({
         slug: category.slug,
     };
 
-    // "You might also like" — sibling categories at this destination (current one
+    // "You might also like" - sibling categories at this destination (current one
     // excluded), up to 3. Falls back to the placeholder set until the backend
     // returns siblings.
     const relatedFromApi: RelatedCategory[] = activeCategories
@@ -275,9 +275,9 @@ export async function CategoryPage({
 
             <section className='bg-it-white pb-17.5 md:pb-32.5'>
                 <div className='it-container'>
-                    {/* Content stack — 60px below the breadcrumb, 40px between blocks. */}
+                    {/* Content stack - 60px below the breadcrumb, 40px between blocks. */}
                     <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
-                        {/* Category header — reuses the All-Tours heading with a
+                        {/* Category header - reuses the All-Tours heading with a
                             pre-resolved "{category} in {destination}" title and a
                             category-specific subtitle. */}
                         <ToursHeader
@@ -319,7 +319,7 @@ export async function CategoryPage({
                 </div>
             </section>
 
-            {/* "You might also like" — related sibling categories (Figma 47070:2238). */}
+            {/* "You might also like" - related sibling categories (Figma 47070:2238). */}
             <CategoryYouMightLike
                 title={dict.destination.youMightLike}
                 items={relatedCategories}
@@ -339,7 +339,7 @@ export async function CategoryPage({
                                 dict={dict.destination.categoryTrust}
                             />
 
-                            {/* Header + filter toolbar (Figma 2147227767) — 24px mobile / 40px md+. */}
+                            {/* Header + filter toolbar (Figma 2147227767) - 24px mobile / 40px md+. */}
                             <Reveal className='flex flex-col gap-6 md:gap-10'>
                                 <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     Boat tours active
@@ -352,7 +352,7 @@ export async function CategoryPage({
                             </Reveal>
                         </div>
 
-                        {/* Listing grid — 6 cards, no pagination (Figma 2147227769). */}
+                        {/* Listing grid - 6 cards, no pagination (Figma 2147227769). */}
                         <ToursListing
                             tours={MOCK_TOURS}
                             dict={dict.destination.listings}
@@ -370,7 +370,7 @@ export async function CategoryPage({
                 readLessLabel='Read Less'
             />
 
-            {/* Category FAQs — title + accordion only (Figma 47070:2456). */}
+            {/* Category FAQs - title + accordion only (Figma 47070:2456). */}
             <FaqSection dict={faqDict} minimal />
         </>
     );

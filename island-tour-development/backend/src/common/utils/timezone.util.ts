@@ -4,7 +4,7 @@
  * ## Model: everything is destination-local time
  * The platform operates in the destination's local time. A `Departure.localDateTimeStart`
  * stores the **local wall-clock** instant (e.g. 09:00 on the island), represented as a
- * `Z`-labelled `Date` so it round-trips byte-for-byte regardless of the server's clock —
+ * `Z`-labelled `Date` so it round-trips byte-for-byte regardless of the server's clock -
  * `2026-07-01T09:00` ⇒ `2026-07-01T09:00:00.000Z`. We do NOT convert departure times to
  * UTC. The only place the real timezone offset is needed is turning the server's "now"
  * into a local "now" so cutoff comparisons stay in the same frame.
@@ -41,7 +41,7 @@ export function timeZoneOffsetMs(timeZone: string, instant: Date): number {
 
 /**
  * A local wall-clock time as a `Z`-labelled `Date` (the storage form for departures).
- * No timezone conversion — the components are taken verbatim as local time.
+ * No timezone conversion - the components are taken verbatim as local time.
  */
 export function localWallTime(
   year: number,
@@ -54,7 +54,7 @@ export function localWallTime(
 }
 
 /**
- * "Now" expressed in `timeZone`'s local wall-clock, as a `Z`-labelled `Date` — so it
+ * "Now" expressed in `timeZone`'s local wall-clock, as a `Z`-labelled `Date` - so it
  * can be compared directly against stored local departure/cutoff times.
  */
 export function localNow(timeZone: string, instant: Date = new Date()): Date {

@@ -7,7 +7,7 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService, NOTIFICATION_QUEUE } from './notifications.service';
 
 /**
- * OCTO notifications module — subscription CRUD + outbound webhook delivery.
+ * OCTO notifications module - subscription CRUD + outbound webhook delivery.
  *
  * `NotificationsService` is exported so domain services (availability, bookings, …) can
  * fire change events. The `OctoCapabilitiesMiddleware` is applied so `@OctoCaps()` is

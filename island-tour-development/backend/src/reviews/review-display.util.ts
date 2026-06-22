@@ -1,5 +1,5 @@
 /**
- * Pure review helpers — privacy-safe display, banned-word screening (LD9), and the
+ * Pure review helpers - privacy-safe display, banned-word screening (LD9), and the
  * LD11 provider-rating cold-start resolution. No DB access; unit-tested in isolation.
  */
 
@@ -8,7 +8,7 @@ export const MIN_TOUR_REVIEWS = 3; // a tour shows its OWN rating at ≥3 approv
 export const OPERATOR_FALLBACK_MIN_REVIEWS = 10; // else fall back to the operator only if…
 export const OPERATOR_FALLBACK_MIN_RATING = 4.0; // …operator has ≥10 reviews AND ≥4.0 avg
 
-/** "Ada B." — first name + last initial. Falls back gracefully on missing parts. */
+/** "Ada B." - first name + last initial. Falls back gracefully on missing parts. */
 export function reviewerInitial(
   firstName?: string | null,
   lastName?: string | null,
@@ -49,7 +49,7 @@ export interface RatingResolution {
 
 /**
  * LD11: a tour displays its own rating once it has ≥3 approved reviews. Below that it
- * borrows the operator's rating — but only if the operator is well-established
+ * borrows the operator's rating - but only if the operator is well-established
  * (≥10 reviews AND ≥4.0 avg). Otherwise no rating is shown.
  */
 export function resolveRatingSource(input: {

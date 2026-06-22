@@ -1,5 +1,5 @@
 /**
- * Unit tests for CollectionsService — create (cannibalization guard + slug_registry),
+ * Unit tests for CollectionsService - create (cannibalization guard + slug_registry),
  * manual/dynamic tour resolution, soft delete. PrismaService and ToursService mocked.
  */
 import { PrismaService } from '@/prisma/prisma.service';
@@ -85,7 +85,7 @@ describe('CollectionsService', () => {
     });
   });
 
-  describe('getBySlug — tour resolution', () => {
+  describe('getBySlug - tour resolution', () => {
     beforeEach(() => {
       prisma.destination.findUnique.mockResolvedValue({ id: 'dest-1', isActive: true });
     });
@@ -161,7 +161,7 @@ describe('CollectionsService', () => {
     });
   });
 
-  describe('update — slug rename', () => {
+  describe('update - slug rename', () => {
     it('renames the slug: re-points the registry row and writes a 301 redirect', async () => {
       prisma.collection.findUnique.mockResolvedValue({ slug: 'old-slug', destination: { slug: 'curacao' } });
       prisma.category.findUnique.mockResolvedValue(null); // no category-slug clash

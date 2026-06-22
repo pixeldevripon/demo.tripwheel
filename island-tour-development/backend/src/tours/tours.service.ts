@@ -63,7 +63,7 @@ export class ToursService {
     familyFriendly: true,
     suitableForBeginners: true,
     isLocalsFavourite: true,
-    // Commercial tier (master §7) — read-only
+    // Commercial tier (master §7) - read-only
     commissionTier: true,
     tierKey: true,
     tierRank: true,
@@ -85,7 +85,7 @@ export class ToursService {
     publishedAt: true,
     createdAt: true,
     updatedAt: true,
-    // V2 §4 many-to-many — flattened by flattenTour() into categoryIds/primaryCategoryId/hubIds.
+    // V2 §4 many-to-many - flattened by flattenTour() into categoryIds/primaryCategoryId/hubIds.
     categories: { select: { categoryId: true, isPrimary: true } },
     hubs: { select: { hubId: true } },
   } as const;
@@ -167,7 +167,7 @@ export class ToursService {
    * the cheapest age-band price, or `basePrice` when there are no age bands.
    * Call after any change to basePrice or age bands. Returns the new value.
    *
-   * Pass `tx` to run inside the caller's transaction — required when called right
+   * Pass `tx` to run inside the caller's transaction - required when called right
    * after an age-band mutation so the read+update sees a consistent band set
    * (otherwise a concurrent band change can produce a stale `priceFrom`).
    */
@@ -242,7 +242,7 @@ export class ToursService {
 
   // ── Public list ───────────────────────────────────────────────────────────────
 
-  // Known/typed query params — everything else in the raw query is treated as an attribute filter.
+  // Known/typed query params - everything else in the raw query is treated as an attribute filter.
   private static readonly RESERVED_QUERY_KEYS = new Set([
     'search', 'destinationId', 'categoryId', 'hubId', 'pricingModel',
     'minPrice', 'maxPrice', 'durationMin', 'durationMax', 'ratingMin',
@@ -496,7 +496,7 @@ export class ToursService {
     if (tour.status !== TourStatus.LIVE) {
       if (!requesterId) throw new NotFoundException(`Tour ${id} not found`);
       if (requesterRole !== Role.ADMIN) {
-        // tour.operatorId is from the operators table; requesterId is user.id — must resolve
+        // tour.operatorId is from the operators table; requesterId is user.id - must resolve
         const operatorId = await this.resolveOperatorId(requesterId);
         if (tour.operatorId !== operatorId) {
           throw new ForbiddenException('You do not have permission to view this tour');
@@ -513,7 +513,7 @@ export class ToursService {
     const { destinationSlug, locale = Locale.en } = query;
 
     // V2 §4/§5: every tour has one flat canonical URL /{destination}/{tour-slug}/.
-    // Hubs are a discovery tag, not part of the URL — resolve purely by destination + slug.
+    // Hubs are a discovery tag, not part of the URL - resolve purely by destination + slug.
     const tour = await this.prisma.tour.findFirst({
       where: {
         slug,
@@ -680,7 +680,7 @@ export class ToursService {
 
     if (!tourConflict && !registryConflict) return baseSlug;
 
-    // Slug is occupied by another entity — append the operator name (V2 pages 11–15).
+    // Slug is occupied by another entity - append the operator name (V2 pages 11–15).
     // NEVER append a number (-2, -3): confusing for users and bad for SEO.
     const operator = await this.prisma.operator.findUnique({
       where: { id: operatorId },
@@ -752,7 +752,7 @@ export class ToursService {
 
     const hubIds = [...new Set(dto.hubIds ?? [])];
 
-    // Resolve a unique slug — always checks the slug registry (flat URLs, V2 §5).
+    // Resolve a unique slug - always checks the slug registry (flat URLs, V2 §5).
     const slug = await this.resolveUniqueSlug(baseSlug, dto.destinationId, destination.slug, operatorId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -796,7 +796,7 @@ export class ToursService {
             maxPartySize: dto.maxPartySize ?? null,
             minPartySize: dto.minPartySize ?? 1,
             bookingCutoffMinutes: dto.bookingCutoffMinutes ?? 120,
-            // Master rule #20 / §6.2 — free-cancellation window, enum-bound, default 48.
+            // Master rule #20 / §6.2 - free-cancellation window, enum-bound, default 48.
             cancellationHours: dto.cancellationHours ?? 48,
             ...(dto.instantConfirmation !== undefined && { instantConfirmation: dto.instantConfirmation }),
             ...(dto.paymentModel !== undefined && { paymentModel: dto.paymentModel }),

@@ -13,7 +13,7 @@ type HubHeroDict = {
     checkAvailability: string;
 };
 
-/** One representative meta chip — icon (white SVG) + short label. */
+/** One representative meta chip - icon (white SVG) + short label. */
 export type HubHeroMeta = { icon: string; label: string };
 
 /**
@@ -22,7 +22,7 @@ export type HubHeroMeta = { icon: string; label: string };
  * "meta pills" row summarising the typical trip (duration · price · inclusion ·
  * frequency), and a date + Check Availability bar.
  *
- * Differs from <DestinationHero>: no search field — the hub headlines a single
+ * Differs from <DestinationHero>: no search field - the hub headlines a single
  * experience, so the bar is date-first and the pills carry the at-a-glance facts.
  * Uses the deep-ocean `--it-hub-hero-gradient` (not the light hero gradient) so
  * the white text and white pill border stay legible.
@@ -39,7 +39,7 @@ export function HubHero({
     /** Hub-specific tagline; falls back to the dictionary line when empty. */
     tagline?: string | null;
     meta: HubHeroMeta[];
-    /** Background photo — falls back to the deep-ocean hero gradient. */
+    /** Background photo - falls back to the deep-ocean hero gradient. */
     image?: string | null;
     dict: HubHeroDict;
     onCheckAvailability?: (date: Date | undefined) => void;
@@ -49,7 +49,7 @@ export function HubHero({
 
     return (
         // Figma: 465px (mobile) / 533px (desktop) band. Content is bottom-anchored
-        // (not centered) — 49px bottom gap on mobile, 100px on desktop — which
+        // (not centered) - 49px bottom gap on mobile, 100px on desktop - which
         // reproduces the exact 152/154px top gaps at each breakpoint.
         <section className='relative flex min-h-116.25 md:min-h-133.25 items-end justify-center overflow-hidden bg-it-hub-hero-bg [background-image:var(--it-hub-hero-gradient)] pb-12.25 md:pb-25'>
             {image && (
@@ -62,7 +62,7 @@ export function HubHero({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
                     className='flex w-full max-w-172.25 flex-col items-center gap-10'>
-                    {/* Title + italic tagline — gap 4 */}
+                    {/* Title + italic tagline - gap 4 */}
                     <div className='flex flex-col items-center gap-1 text-center'>
                         <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-white'>
                             {title}
@@ -72,11 +72,11 @@ export function HubHero({
                         </p>
                     </div>
 
-                    {/* Search group — pills + date bar. Mobile gap 16, desktop gap 12. */}
+                    {/* Search group - pills + date bar. Mobile gap 16, desktop gap 12. */}
                     <div className='flex w-full flex-col items-center gap-4 md:gap-3'>
-                        {/* Meta pills — translucent, white 1px border, radius 10.
+                        {/* Meta pills - translucent, white 1px border, radius 10.
                             Mobile wraps to 2×2 (max-width forces the wrap, so the
-                            divider after pill #1 falls to the start of row 2 — exactly
+                            divider after pill #1 falls to the start of row 2 - exactly
                             the Figma mobile layout); desktop is a single row. */}
                         {meta.length > 0 && (
                             <ul className='m-0 flex w-fit max-w-66 flex-wrap items-center justify-center gap-2 rounded-[10px] border border-white px-3 py-2 md:max-w-none md:gap-x-4 md:px-5.5 md:py-3'>
@@ -105,7 +105,7 @@ export function HubHero({
                             </ul>
                         )}
 
-                        {/* Date + Check Availability bar — white, borderless, radius full */}
+                        {/* Date + Check Availability bar - white, borderless, radius full */}
                         <div className='flex w-full items-center justify-between gap-2 rounded-it-full bg-it-white py-2.5 pl-5 pr-2.5 md:py-3 md:pl-9 md:pr-2.5'>
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
                                 <PopoverTrigger asChild>

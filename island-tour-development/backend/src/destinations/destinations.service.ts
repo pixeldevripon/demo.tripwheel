@@ -303,7 +303,7 @@ export class DestinationService {
 
     await this.prisma.$transaction(async (tx) => {
       // Master slug-registry rule: hard delete starts the 90-day reuse cooldown across the
-      // whole destination namespace (categories, hubs, tours, reserved) — rows are kept,
+      // whole destination namespace (categories, hubs, tours, reserved) - rows are kept,
       // marked isActive=false + deletedAt=now, and cleared on re-seed after the cooldown.
       await markDestinationSlugsDeleted(tx, destination.slug);
       // Cascade via Prisma schema handles: hubs, translations, FAQs, page content, featured experiences

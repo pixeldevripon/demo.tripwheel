@@ -25,7 +25,7 @@ import { MediaUploadProcessor } from './media-upload.processor';
     CloudinaryProvider,
     CloudinaryService,
     MediaGalleryService,
-    // BullMQ worker — processes jobs from the 'media-upload' queue
+    // BullMQ worker - processes jobs from the 'media-upload' queue
     MediaUploadProcessor,
   ],
   exports: [CloudinaryService],

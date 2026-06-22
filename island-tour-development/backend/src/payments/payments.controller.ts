@@ -15,7 +15,7 @@ import { PaymentsService } from './payments.service';
 import { ApiCreateIntentDocs, ApiStripeWebhookDocs } from './payments.swagger';
 
 /**
- * PaymentsController — checkout intents + the Stripe webhook.
+ * PaymentsController - checkout intents + the Stripe webhook.
  *
  * - `POST /payments/bookings/:id/intent` is `@Public()` (traveller checkout, keyed on
  *   the unguessable booking id) and returns a client secret for Stripe.js.

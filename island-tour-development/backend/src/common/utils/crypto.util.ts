@@ -18,7 +18,7 @@ export function encrypt(plaintext: string): string {
 
   const authTag = cipher.getAuthTag(); // GCM integrity tag
 
-  // Store as iv:authTag:encrypted — all needed for decryption
+  // Store as iv:authTag:encrypted - all needed for decryption
   return [
     iv.toString('hex'),
     authTag.toString('hex'),

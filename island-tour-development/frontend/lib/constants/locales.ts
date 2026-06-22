@@ -1,9 +1,9 @@
 export type Locale = 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh';
 
-/** All supported locales — order matches the backend `Locale` enum. */
+/** All supported locales - order matches the backend `Locale` enum. */
 export const ALL_LOCALES: Locale[] = ['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh'];
 
-/** Primary locale — used as the fallback and the `x-default` hreflang target. */
+/** Primary locale - used as the fallback and the `x-default` hreflang target. */
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** English labels (admin UI). */
@@ -31,10 +31,10 @@ export const LOCALE_NATIVE_LABELS: Record<Locale, string> = {
 /** Supported display currencies. */
 export type Currency = 'EUR' | 'USD';
 
-/** All selectable currencies — order matches the footer currency switcher. */
+/** All selectable currencies - order matches the footer currency switcher. */
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 
-/** Currency per locale — EUR everywhere except Chinese (USD). */
+/** Currency per locale - EUR everywhere except Chinese (USD). */
 export const LOCALE_CURRENCY: Record<Locale, Currency> = {
   en: 'EUR',
   es: 'EUR',
@@ -63,7 +63,7 @@ export const LOCALE_COOKIE = 'NEXT_LOCALE';
 /** Cookie that remembers the visitor's chosen currency. */
 export const CURRENCY_COOKIE = 'NEXT_CURRENCY';
 
-/** Type guard — narrows an arbitrary string to a supported `Currency`. */
+/** Type guard - narrows an arbitrary string to a supported `Currency`. */
 export function isCurrency(value: string | undefined | null): value is Currency {
   return !!value && (ALL_CURRENCIES as string[]).includes(value);
 }
@@ -73,7 +73,7 @@ export function localeFlag(locale: Locale): string {
   return `/icons/flags/${locale}.svg`;
 }
 
-/** Type guard — narrows an arbitrary string to a supported `Locale`. */
+/** Type guard - narrows an arbitrary string to a supported `Locale`. */
 export function isLocale(value: string | undefined | null): value is Locale {
   return !!value && (ALL_LOCALES as string[]).includes(value);
 }

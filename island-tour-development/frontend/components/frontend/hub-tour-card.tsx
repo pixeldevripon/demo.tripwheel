@@ -13,7 +13,7 @@ export type HubTour = {
     rating: number;
     reviewCount: number;
     title: string;
-    /** Short attribute tags, dot-separated — e.g. ['8h','Yacht','Beach house']. */
+    /** Short attribute tags, dot-separated - e.g. ['8h','Yacht','Beach house']. */
     attributes: string[];
     price: number;
     /** e.g. "/per" or "/8 people". */
@@ -61,7 +61,7 @@ export function HubTourCard({
 
     return (
         <article className='flex flex-col gap-2 md:gap-4'>
-            {/* Image — single photo, badge top-left + wishlist top-right. */}
+            {/* Image - single photo, badge top-left + wishlist top-right. */}
             <div className='relative aspect-177/148 md:aspect-384/270 overflow-hidden rounded-[8px] bg-it-border md:rounded-[16px]'>
                 {tour.image && (
                     <Image
@@ -135,7 +135,7 @@ export function HubTourCard({
                     </ul>
                 </div>
 
-                {/* Price — "from $150 /per" (note wraps on narrow cards). Inline
+                {/* Price - "from $150 /per" (note wraps on narrow cards). Inline
                     text so the trailing unit/note wraps at word boundaries. */}
                 <p className='m-0 leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     <span className='text-[10px] text-it-heading/70 md:text-[12px]'>

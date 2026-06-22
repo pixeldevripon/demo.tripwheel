@@ -65,7 +65,7 @@ export class NotificationSubscriptionWithSecretDto extends NotificationSubscript
   @ApiProperty({
     example: 'a1b2c3…',
     description:
-      'HMAC signing secret — shown once on create. Use it to verify the `Octo-Signature` header.',
+      'HMAC signing secret - shown once on create. Use it to verify the `Octo-Signature` header.',
   })
   secret!: string;
 }

@@ -1,7 +1,7 @@
 import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
 
 /**
- * Pure booking-money computation (no I/O) — totals, deposit/balance split, and the
+ * Pure booking-money computation (no I/O) - totals, deposit/balance split, and the
  * EUR-normalized commission snapshot. Kept pure so the (correctness-critical) money
  * math is exhaustively unit-testable.
  *
@@ -114,7 +114,7 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     depositPct,
   );
 
-  // ── Commission snapshot (master rule #22 — EUR) ──
+  // ── Commission snapshot (master rule #22 - EUR) ──
   const commissionRate = commissionTier.dividedBy(100).toDecimalPlaces(4);
   const fxRateToEur = currency === Currency.EUR ? D(1) : null;
   const totalEur = fxRateToEur ? totalRetail : null;

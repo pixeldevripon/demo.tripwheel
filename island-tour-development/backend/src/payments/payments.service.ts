@@ -19,7 +19,7 @@ import { StripeService, toMinorUnits } from './stripe.service';
 import type { PaymentIntentResponseDto } from './dto/payment.dto';
 
 /**
- * Payments — Stripe charges per booking + idempotent webhook settlement.
+ * Payments - Stripe charges per booking + idempotent webhook settlement.
  *
  * The platform collects only its slice up front (master rule #21):
  * - OPERATOR_LINK → deposit (`depositAmount`); operator collects the balance.
@@ -128,14 +128,14 @@ export class PaymentsService {
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    // Idempotency ledger — a redelivered event id is recorded once and skipped.
+    // Idempotency ledger - a redelivered event id is recorded once and skipped.
     try {
       await this.prisma.stripeWebhookEvent.create({
         data: { id: event.id, type: event.type, payload: event as unknown as Prisma.InputJsonValue },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        this.logger.log(`Stripe event ${event.id} already processed — skipping`);
+        this.logger.log(`Stripe event ${event.id} already processed - skipping`);
         return;
       }
       throw err;

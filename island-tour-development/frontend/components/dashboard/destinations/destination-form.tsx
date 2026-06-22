@@ -392,7 +392,7 @@ export function DestinationForm({
                                 </SelectContent>
                             </Select>
                             <FieldDescription>
-                                Optional — for future sub-destinations.
+                                Optional - for future sub-destinations.
                             </FieldDescription>
                         </Field>
 

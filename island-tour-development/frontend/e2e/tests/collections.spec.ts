@@ -13,7 +13,7 @@
  *     - Deactivate button opens AlertDialog; confirming calls DELETE and shows toast
  *     - Deactivate dialog cancel closes without mutating
  *
- *  2. Create form — MANUAL (/dashboard/collections/new)
+ *  2. Create form - MANUAL (/dashboard/collections/new)
  *     - Destination Select is required: empty submit shows error
  *     - Name input is rendered
  *     - Slug auto-generates from name
@@ -25,7 +25,7 @@
  *     - MANUAL type with no tours selected shows toast error
  *     - Happy path: valid MANUAL form submits via POST and navigates to /collections
  *
- *  3. Create form — DYNAMIC
+ *  3. Create form - DYNAMIC
  *     - Switching type to DYNAMIC shows Filter Query section
  *     - Filter Query section has Category select, Min/Max Price, Duration, Rating
  *     - Happy path: valid DYNAMIC form submits via POST
@@ -35,7 +35,7 @@
  *     - Edit page renders Page Content tab
  *     - Edit page renders FAQ tab
  *
- * API calls are intercepted — no live backend required.
+ * API calls are intercepted - no live backend required.
  * Auth is provided by the global storageState from e2e/auth.setup.ts.
  */
 
@@ -161,7 +161,7 @@ async function mockCollectionDetail(page: PW) {
 // 1. List page
 // ---------------------------------------------------------------------------
 
-test.describe('Collections — list page (/dashboard/collections)', () => {
+test.describe('Collections - list page (/dashboard/collections)', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await mockCollectionsByDestination(page);
@@ -244,10 +244,10 @@ test.describe('Collections — list page (/dashboard/collections)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Create form — MANUAL type
+// 2. Create form - MANUAL type
 // ---------------------------------------------------------------------------
 
-test.describe('Collections — create form MANUAL type (/dashboard/collections/new)', () => {
+test.describe('Collections - create form MANUAL type (/dashboard/collections/new)', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await mockActiveCategories(page);
@@ -286,7 +286,7 @@ test.describe('Collections — create form MANUAL type (/dashboard/collections/n
   test('category-slug warning banner appears when slug matches a category slug', async ({ page }) => {
     // 'boat-tours' is a category slug in MOCK_CATEGORIES
     await page.locator('input[name="name"]').fill('Boat Tours');
-    // slug auto-generates to 'boat-tours' — matches a category slug
+    // slug auto-generates to 'boat-tours' - matches a category slug
     await expect(page.locator('input[name="slug"]')).toHaveValue('boat-tours');
     await expect(page.getByText(/this slug matches a category slug/i)).toBeVisible({ timeout: 5_000 });
   });
@@ -352,10 +352,10 @@ test.describe('Collections — create form MANUAL type (/dashboard/collections/n
 });
 
 // ---------------------------------------------------------------------------
-// 3. Create form — DYNAMIC type
+// 3. Create form - DYNAMIC type
 // ---------------------------------------------------------------------------
 
-test.describe('Collections — create form DYNAMIC type', () => {
+test.describe('Collections - create form DYNAMIC type', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await mockActiveCategories(page);
@@ -431,7 +431,7 @@ test.describe('Collections — create form DYNAMIC type', () => {
 // 4. Edit view sub-tabs
 // ---------------------------------------------------------------------------
 
-test.describe('Collections — edit view sub-tabs', () => {
+test.describe('Collections - edit view sub-tabs', () => {
   test.beforeEach(async ({ page }) => {
     await mockActiveDestinations(page);
     await mockActiveCategories(page);

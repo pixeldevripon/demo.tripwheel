@@ -176,7 +176,7 @@ export class CollectionsController {
     return this.collectionsService.deleteFaq(id, faqId, user.id);
   }
 
-  // ── Update / delete (dynamic :id — declared after sub-routes) ─────────────────
+  // ── Update / delete (dynamic :id - declared after sub-routes) ─────────────────
 
   @Patch(':id')
   @RequirePermissions(Permission.EDIT_COLLECTION)

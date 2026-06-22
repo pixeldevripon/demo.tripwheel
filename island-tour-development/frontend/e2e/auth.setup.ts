@@ -1,5 +1,5 @@
 /**
- * Global auth setup — runs once before the full test suite via globalSetup.
+ * Global auth setup - runs once before the full test suite via globalSetup.
  *
  * Uses Playwright's APIRequestContext to call the Better Auth sign-in endpoint
  * and captures the session cookie via storageState. The saved file is loaded by

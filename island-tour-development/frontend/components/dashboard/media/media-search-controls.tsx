@@ -63,7 +63,7 @@ const MediaSearchControls = ({
                     />
                 </div>
 
-                {/* View & Selection controls — hidden in selector mode */}
+                {/* View & Selection controls - hidden in selector mode */}
                 {!selector && (
                     <div className='flex items-center gap-2'>
                         <Button

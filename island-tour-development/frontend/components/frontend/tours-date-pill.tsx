@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  * Compact date pill used in the All-Tours header on mobile (the Figma frame
  * relocates the date control up beside the "{n} tours available" line). The
  * desktop layout keeps its own date pill inside the toolbar, so this instance
- * is rendered `md:hidden` — independent state is fine since only one shows per
+ * is rendered `md:hidden` - independent state is fine since only one shows per
  * breakpoint.
  */
 export function ToursDatePill({

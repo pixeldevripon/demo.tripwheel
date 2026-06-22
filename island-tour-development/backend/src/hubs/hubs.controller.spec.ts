@@ -1,7 +1,7 @@
 /**
  * Unit tests for HubController.
  *
- * The controller is kept intentionally thin — it does no business logic.
+ * The controller is kept intentionally thin - it does no business logic.
  * These tests confirm that each route handler:
  *   1. Calls the correct HubService method.
  *   2. Passes the params, query, and body values through unchanged.

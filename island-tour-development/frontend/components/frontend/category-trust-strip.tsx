@@ -9,7 +9,7 @@ export type CategoryTrustDict = {
 };
 
 // Fixed display order. All four items share the one orange check icon
-// (exported from Figma — fill #E8611A baked in).
+// (exported from Figma - fill #E8611A baked in).
 const ORDER: (keyof CategoryTrustDict)[] = [
     'builtByLocals',
     'freeCancellation',

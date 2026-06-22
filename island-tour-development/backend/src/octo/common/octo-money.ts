@@ -8,7 +8,7 @@ import type { Currency } from '@prisma/client';
  * OCTO transmits every monetary amount as an **integer in the currency's minor
  * units** with a sibling `currencyPrecision` (consumer recovers the real value
  * via `amount / 10^currencyPrecision`). Our DB stores money as `Decimal(10,2)`.
- * This module converts at the OCTO boundary — never leak floats/decimals.
+ * This module converts at the OCTO boundary - never leak floats/decimals.
  *
  * ## Usage
  * `toMinorUnits(decimal)` for a single amount; `buildPricing({...})` to assemble

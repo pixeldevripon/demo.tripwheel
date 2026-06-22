@@ -10,7 +10,7 @@ import {
 
 // Curated set of category-relevant Lucide icon names (PascalCase). The stored
 // category `icon` value is one of these names. Only these icons are bundled
-// (named imports — tree-shakeable), instead of the full lucide manifest.
+// (named imports - tree-shakeable), instead of the full lucide manifest.
 export const CATEGORY_ICON_COMPONENTS: Record<string, LucideIcon> = {
   Ship, Sailboat, Anchor, Waves, Fish, LifeBuoy, Turtle, Bird,
   Mountain, MountainSnow, TreePalm, Trees, Tent, Compass, Map, MapPin,

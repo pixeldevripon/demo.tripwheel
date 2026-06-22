@@ -65,7 +65,7 @@ export function TripDeleteDialog({
               </p>
               <p className="text-xs text-muted-foreground">
                 {isForce
-                  ? 'Admin force delete — the trip will be permanently removed regardless of its current status. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
+                  ? 'Admin force delete - the trip will be permanently removed regardless of its current status. All associated data (images, highlights, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
                   : 'This archived trip will be permanently removed along with all its data (images, highlights, inclusions, age bands, add-ons, schedules). This cannot be undone.'}
               </p>
               <p className="text-xs font-medium text-destructive">

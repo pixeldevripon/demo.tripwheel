@@ -156,7 +156,7 @@ export function ApiUpdateUserRoleDocs() {
 export function ApiUpdateUserStatusDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update user status — approve, suspend, or deactivate (Admin only)',
+      summary: 'Update user status - approve, suspend, or deactivate (Admin only)',
     }),
     ApiParam({ name: 'id', description: 'User UUID' }),
     ApiResponse({

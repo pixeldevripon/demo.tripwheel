@@ -121,11 +121,11 @@ export function CategoryFilterBar({
     return (
         // Toolbar → chips row: 16px mobile / 24px md+ (Figma).
         <div className='flex flex-col gap-4 md:gap-6'>
-            {/* Toolbar — mobile: two stacked scroll rows; md+: one scroll row. */}
+            {/* Toolbar - mobile: two stacked scroll rows; md+: one scroll row. */}
             <div className='flex flex-col gap-2 md:flex-row md:items-center md:gap-4 md:overflow-x-auto md:pb-1 md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden'>
-                {/* Dimension pills — own scroll row on mobile */}
+                {/* Dimension pills - own scroll row on mobile */}
                 <div className='flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-visible md:pb-0 md:shrink-0'>
-                    {/* Date — calendar popover (same control as the top filter bar). */}
+                    {/* Date - calendar popover (same control as the top filter bar). */}
                     <Popover open={dateOpen} onOpenChange={setDateOpen}>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${date ? PILL_ON : PILL_OFF}`}>
@@ -148,7 +148,7 @@ export function CategoryFilterBar({
                         </PopoverContent>
                     </Popover>
 
-                    {/* Duration — checkbox popover. */}
+                    {/* Duration - checkbox popover. */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${durations.length > 0 ? PILL_ON : PILL_OFF}`}>
@@ -173,7 +173,7 @@ export function CategoryFilterBar({
                         </PopoverContent>
                     </Popover>
 
-                    {/* Price — dual-handle range popover. */}
+                    {/* Price - dual-handle range popover. */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${priceActive ? PILL_ON : PILL_OFF}`}>
@@ -193,7 +193,7 @@ export function CategoryFilterBar({
                         </PopoverContent>
                     </Popover>
 
-                    {/* Group Size — travelers stepper popover. */}
+                    {/* Group Size - travelers stepper popover. */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${groupSize > 0 ? PILL_ON : PILL_OFF}`}>
@@ -236,7 +236,7 @@ export function CategoryFilterBar({
                         </PopoverContent>
                     </Popover>
 
-                    {/* Language — guide-language checkbox popover (not the site locale). */}
+                    {/* Language - guide-language checkbox popover (not the site locale). */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <button type='button' className={`${PILL} ${languages.length > 0 ? PILL_ON : PILL_OFF}`}>
@@ -262,13 +262,13 @@ export function CategoryFilterBar({
                     </Popover>
                 </div>
 
-                {/* Category group — divider + pills; own scroll row on mobile.
+                {/* Category group - divider + pills; own scroll row on mobile.
                     On mobile this wraps to a second row (the divider leads it). */}
                 <div className='flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-4 md:overflow-visible md:pb-0 md:shrink-0'>
-                    {/* Divider — 28px grey on mobile, 34px faint on md+. */}
+                    {/* Divider - 28px grey on mobile, 34px faint on md+. */}
                     <div className='h-7 w-px shrink-0 bg-it-text-muted md:h-8.5 md:bg-it-heading/10' aria-hidden='true' />
 
-                    {/* Category pills — single-select. */}
+                    {/* Category pills - single-select. */}
                     <div className='flex items-center gap-1 md:gap-2'>
                         {categories.map((cat) => {
                             const selected = cat.slug === selectedCat;
@@ -288,7 +288,7 @@ export function CategoryFilterBar({
                 </div>
             </div>
 
-            {/* Active Filters row — 32px between the chips group and Clear-all. */}
+            {/* Active Filters row - 32px between the chips group and Clear-all. */}
             {chips.length > 0 && (
                 <div className='flex flex-wrap items-center gap-x-8 gap-y-3'>
                     <div className='flex flex-wrap items-center gap-2 md:gap-4'>

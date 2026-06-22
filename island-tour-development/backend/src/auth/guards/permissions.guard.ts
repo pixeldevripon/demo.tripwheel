@@ -13,7 +13,7 @@ import type { AuthenticatedRequest } from '@/auth/auth.types';
 /**
  * Checks that the authenticated user's role grants all required permissions.
  *
- * Registered as APP_GUARD in AuthModule — runs after RolesGuard on every route.
+ * Registered as APP_GUARD in AuthModule - runs after RolesGuard on every route.
  * If no @RequirePermissions() are declared on the handler or class, all pass.
  * Permissions are looked up from ROLE_PERMISSIONS in roles.config.ts.
  *

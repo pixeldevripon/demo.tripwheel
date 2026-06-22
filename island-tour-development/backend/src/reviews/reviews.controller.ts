@@ -37,7 +37,7 @@ import {
 } from './reviews.swagger';
 
 /**
- * ReviewsController — per-tour, booking-gated reviews with moderation.
+ * ReviewsController - per-tour, booking-gated reviews with moderation.
  *
  * ## Access
  * - Public: list approved reviews, rating summary, get an approved review, helpful +1.

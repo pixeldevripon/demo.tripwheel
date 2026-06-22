@@ -51,16 +51,16 @@ import {
 @ApiTags('Destinations')
 @Controller('destinations')
 /**
- * DestinationController — manages Caribbean island destinations (Curaçao, Aruba, etc.)
+ * DestinationController - manages Caribbean island destinations (Curaçao, Aruba, etc.)
  *
  * ## Access-Control Strategy
- * - GET endpoints are `@Public()` — destinations are needed for frontend SSR.
+ * - GET endpoints are `@Public()` - destinations are needed for frontend SSR.
  * - Mutating endpoints require explicit destination permissions (Admin + Editor only).
- * - `@Roles()` is deliberately NOT used — `@RequirePermissions()` alone is sufficient.
+ * - `@Roles()` is deliberately NOT used - `@RequirePermissions()` alone is sufficient.
  *
  * ## Multilingual
  * - All public GET endpoints accept `?locale=` (default `en`).
- * - Destination names are proper nouns — translations are admin-managed, never AI-generated.
+ * - Destination names are proper nouns - translations are admin-managed, never AI-generated.
  * - Translation management, page content, and FAQs are admin-managed sub-resources.
  *
  * ## Route ordering

@@ -92,7 +92,7 @@ describe('CategoryController', () => {
       expect(result).toEqual(expected);
     });
 
-    // @Public() — no auth cookie required; verified by decorator presence (integration concern)
+    // @Public() - no auth cookie required; verified by decorator presence (integration concern)
   });
 
   // ── getActive ──────────────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ describe('CategoryController', () => {
       expect(service.getPageContent).toHaveBeenCalledWith('cat-1', Locale.nl);
     });
 
-    // @Public() — no auth required (integration concern)
+    // @Public() - no auth required (integration concern)
   });
 
   // ── upsertPageContent ──────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ describe('CategoryController', () => {
       expect(service.getFaqs).toHaveBeenCalledWith('cat-1', {});
     });
 
-    // @Public() — no auth required (integration concern)
+    // @Public() - no auth required (integration concern)
   });
 
   // ── createFaq ──────────────────────────────────────────────────────────────

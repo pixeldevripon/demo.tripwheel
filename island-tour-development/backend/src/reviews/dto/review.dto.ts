@@ -37,7 +37,7 @@ export class ReviewResponseDto {
   @ApiPropertyOptional({ nullable: true, example: 2026 }) travelYear!: number | null;
   @ApiProperty({ type: [String], example: [] }) photos!: string[];
   @ApiProperty({ example: 0 }) helpfulCount!: number;
-  @ApiProperty({ example: true, description: 'Always true — reviews are booking-gated.' })
+  @ApiProperty({ example: true, description: 'Always true - reviews are booking-gated.' })
   isVerified!: boolean;
   @ApiProperty({ enum: ReviewModerationStatus }) moderationStatus!: ReviewModerationStatus;
   @ApiPropertyOptional({ nullable: true }) operatorResponse!: string | null;

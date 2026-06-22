@@ -50,13 +50,14 @@ export class OperatorsController {
   // ── Core Operator CRUD ─────────────────────────────────────────────────────
 
   @Post()
-  @RequirePermissions(Permission.CREATE_OPERATOR)
+  @RequirePermissions(Permission.MANAGE_OPERATORS)
   @ApiCreateOperatorDocs()
   create(@Body() dto: CreateOperatorDto) {
     return this.operatorsService.create(dto);
   }
 
   @Post('onboarding')
+  @RequirePermissions(Permission.EDIT_OPERATOR_PROFILE)
   @ApiOnboardOperatorDocs()
   onboard(
     @Body() dto: OnboardOperatorDto,
@@ -76,8 +77,11 @@ export class OperatorsController {
   @Get(':id')
   @RequirePermissions(Permission.VIEW_OPERATOR_PROFILE)
   @ApiGetOperatorByIdDocs()
-  findOne(@Param('id') id: string) {
-    return this.operatorsService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.findOne(id, user.id, user.role as Role);
   }
 
   @Patch(':id')
@@ -99,8 +103,15 @@ export class OperatorsController {
   @Get(':id/company-info')
   @RequirePermissions(Permission.VIEW_OPERATOR_PROFILE)
   @ApiGetOperatorCompanyInfoDocs()
-  getCompanyInfo(@Param('id') id: string) {
-    return this.operatorsService.getCompanyInfo(id);
+  getCompanyInfo(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.getCompanyInfo(
+      id,
+      user.id,
+      user.role as Role,
+    );
   }
 
   @Patch(':id/company-info')
@@ -124,8 +135,15 @@ export class OperatorsController {
   @Get(':id/social-media')
   @RequirePermissions(Permission.VIEW_OPERATOR_PROFILE)
   @ApiGetOperatorSocialMediaDocs()
-  getSocialMedia(@Param('id') id: string) {
-    return this.operatorsService.getSocialMedia(id);
+  getSocialMedia(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.getSocialMedia(
+      id,
+      user.id,
+      user.role as Role,
+    );
   }
 
   @Patch(':id/social-media')
@@ -149,8 +167,15 @@ export class OperatorsController {
   @Get(':id/stripe-config')
   @RequirePermissions(Permission.MANAGE_OPERATOR_PAYMENTS)
   @ApiGetOperatorStripeConfigDocs()
-  getStripeConfig(@Param('id') id: string) {
-    return this.operatorsService.getStripeConfig(id);
+  getStripeConfig(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.getStripeConfig(
+      id,
+      user.id,
+      user.role as Role,
+    );
   }
 
   @Patch(':id/stripe-config')
@@ -174,8 +199,15 @@ export class OperatorsController {
   @Get(':id/mollie-config')
   @RequirePermissions(Permission.MANAGE_OPERATOR_PAYMENTS)
   @ApiGetOperatorMollieConfigDocs()
-  getMollieConfig(@Param('id') id: string) {
-    return this.operatorsService.getMollieConfig(id);
+  getMollieConfig(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.getMollieConfig(
+      id,
+      user.id,
+      user.role as Role,
+    );
   }
 
   @Patch(':id/mollie-config')

@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 
 /**
- * OCTO notification webhook signing (our convention; spec §5.4 leaves it to implementers — D13).
+ * OCTO notification webhook signing (our convention; spec §5.4 leaves it to implementers - D13).
  *
  * Each delivery body is signed with the subscription's per-subscriber `secret` using
  * HMAC-SHA256 over the EXACT JSON bytes we POST. The signature travels in the

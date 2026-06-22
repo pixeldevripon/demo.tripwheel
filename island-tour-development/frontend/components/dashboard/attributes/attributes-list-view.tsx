@@ -92,7 +92,7 @@ export function AttributesListView() {
                     : (attr.appliesToCategories ?? []).join(', ')}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {[attr.isFilterable && 'filter', attr.isSortable && 'sort'].filter(Boolean).join(' · ') || '—'}
+                  {[attr.isFilterable && 'filter', attr.isSortable && 'sort'].filter(Boolean).join(' · ') || '-'}
                 </TableCell>
                 <TableCell>
                   {canManage && (

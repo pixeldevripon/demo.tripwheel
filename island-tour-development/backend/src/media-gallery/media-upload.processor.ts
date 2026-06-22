@@ -15,7 +15,7 @@ export interface MediaUploadJobPayload {
 }
 
 /**
- * MediaUploadProcessor — consumes jobs from the 'media-upload' BullMQ queue.
+ * MediaUploadProcessor - consumes jobs from the 'media-upload' BullMQ queue.
  *
  * Each job:
  *  1. Decodes the base64 buffer back to a Buffer
@@ -39,7 +39,7 @@ export class MediaUploadProcessor extends WorkerHost {
     const { buffer: base64Buffer, mimetype, originalname, userId } = job.data;
 
     this.logger.log(
-      `Processing job ${job.id} — file: ${originalname}, user: ${userId}`,
+      `Processing job ${job.id} - file: ${originalname}, user: ${userId}`,
     );
 
     // Decode base64 → Buffer
@@ -70,7 +70,7 @@ export class MediaUploadProcessor extends WorkerHost {
       });
 
       this.logger.log(
-        `Job ${job.id} completed — saved media ${record.id} for user ${userId}`,
+        `Job ${job.id} completed - saved media ${record.id} for user ${userId}`,
       );
     } catch (err) {
       // If Cloudinary succeeded but DB write failed → rollback cloud asset

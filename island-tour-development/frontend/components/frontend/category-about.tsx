@@ -34,7 +34,7 @@ export function CategoryAbout({
 
     return (
         // Desktop: 130px top / 20px bottom (tight gap to the FAQ band).
-        // Mobile: 32px top / 0 bottom — the FAQ band's 64px top makes the gap.
+        // Mobile: 32px top / 0 bottom - the FAQ band's 64px top makes the gap.
         <section className='it-section md:pb-5! max-md:pt-8! max-md:pb-0! bg-it-surface'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4 md:gap-10'>

@@ -35,7 +35,7 @@ const MediaListUi = ({
     handleCopyUrl,
     selectMode,
 }: MediaListUiProps) => {
-    // Read upload state directly from Zustand — no prop drilling needed
+    // Read upload state directly from Zustand - no prop drilling needed
     const uploadingFiles = useUploadStore(s => s.uploadingFiles);
     const uploadProgress = useUploadStore(s => s.uploadProgress);
     const previewUrls = useUploadStore(s => s.previewUrls);

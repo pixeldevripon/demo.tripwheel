@@ -17,9 +17,9 @@ import {
 /* ── Dictionary shapes ─────────────────────────────────────────────── */
 
 export type ToursToolbarDict = {
-    /** Label on the filters control pill — e.g. "Filters" */
+    /** Label on the filters control pill - e.g. "Filters" */
     filters: string;
-    /** Date pill placeholder when no date is picked — e.g. "Select date" */
+    /** Date pill placeholder when no date is picked - e.g. "Select date" */
     selectDate: string;
     /**
      * Guest types: `label` + `hint` shown in the stepper rows, `word` used in the
@@ -30,9 +30,9 @@ export type ToursToolbarDict = {
         children: { label: string; hint: string; word: string };
         infants: { label: string; hint: string; word: string };
     };
-    /** Result counter template — e.g. "{shown} of {total}" */
+    /** Result counter template - e.g. "{shown} of {total}" */
     resultsCount: string;
-    /** Trailing word after the counter — e.g. "tours" */
+    /** Trailing word after the counter - e.g. "tours" */
     toursWord: string;
     /** Clear-all-filters action label */
     clearAll: string;
@@ -46,7 +46,7 @@ export type ToursSortDict = {
     localsFavorites: string;
     priceLowHigh: string;
     priceHighLow: string;
-    /** Suffix appended to the default option inside the dropdown — e.g. "(Default)". */
+    /** Suffix appended to the default option inside the dropdown - e.g. "(Default)". */
     defaultSuffix: string;
 };
 
@@ -63,7 +63,7 @@ interface ToursFilterBarProps {
     categories: FilterCategory[];
     /** Initial guest count on the adults pill (min 1). */
     guestCount: number;
-    /** Result counter — shown vs total. */
+    /** Result counter - shown vs total. */
     shown: number;
     total: number;
     /** Category slugs pre-selected (highlighted) on first render. */
@@ -78,7 +78,7 @@ const PILL_BASE =
     'flex h-9.5 md:h-12.5 shrink-0 items-center gap-2 rounded-it-full px-3 md:px-6 py-2 md:py-3 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors';
 
 /**
- * Tours filter & sort toolbar — matches Figma node 47167:4032.
+ * Tours filter & sort toolbar - matches Figma node 47167:4032.
  *
  * Row 1: date / guests / filters control pills + a divider + scrollable
  * category quick-filter pills. Row 2: result counter + applied-filter chips +
@@ -118,7 +118,7 @@ export function ToursFilterBar({
             [type]: Math.min(20, Math.max(type === 'adults' ? 1 : 0, g[type] + delta)),
         }));
 
-    // Chip summary — only non-zero types, e.g. "2 adults & 3 children".
+    // Chip summary - only non-zero types, e.g. "2 adults & 3 children".
     const guestParts = (['adults', 'children', 'infants'] as const)
         .filter((type) => guests[type] > 0)
         .map((type) => `${guests[type]} ${dict.guestTypes[type].word}`);
@@ -127,7 +127,7 @@ export function ToursFilterBar({
             ? guestParts[0]
             : `${guestParts.slice(0, -1).join(', ')} & ${guestParts.at(-1)}`;
 
-    // Filters modal state — the Filters pill opens it; applied filters drive the badge.
+    // Filters modal state - the Filters pill opens it; applied filters drive the badge.
     const [filterOpen, setFilterOpen] = useState(false);
     const [appliedFilters, setAppliedFilters] = useState<TourFilters>(EMPTY_FILTERS);
     const activeFilterCount = countActiveFilters(appliedFilters);
@@ -178,12 +178,12 @@ export function ToursFilterBar({
 
     return (
         <div className='flex flex-col gap-6'>
-            {/* ── Row 1 — controls + category pills (scrolls horizontally) ── */}
+            {/* ── Row 1 - controls + category pills (scrolls horizontally) ── */}
             <div className='flex items-center gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                {/* Left group — control pills + vertical divider */}
+                {/* Left group - control pills + vertical divider */}
                 <div className='flex shrink-0 items-center gap-4'>
                     <div className='flex items-center gap-2'>
-                        {/* Date — calendar popover */}
+                        {/* Date - calendar popover */}
                         <Popover open={dateOpen} onOpenChange={setDateOpen}>
                             <PopoverTrigger asChild>
                                 <button
@@ -221,7 +221,7 @@ export function ToursFilterBar({
                             </PopoverContent>
                         </Popover>
 
-                        {/* Guests — stepper popover */}
+                        {/* Guests - stepper popover */}
                         <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
                             <PopoverTrigger asChild>
                                 <button
@@ -285,7 +285,7 @@ export function ToursFilterBar({
                             </PopoverContent>
                         </Popover>
 
-                        {/* Filters — opens the Filters modal */}
+                        {/* Filters - opens the Filters modal */}
                         <button
                             type='button'
                             onClick={() => setFilterOpen(true)}
@@ -347,11 +347,11 @@ export function ToursFilterBar({
                 </div>
             </div>
 
-            {/* ── Row 2 — counter + chips + clear all · sort ──────────────────
+            {/* ── Row 2 - counter + chips + clear all · sort ──────────────────
                 Mobile: counter/chips/clear-all scroll horizontally (clear-all sits
                 off-screen, reachable by scroll); sort stays pinned right. */}
             <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4'>
-                {/* Left — counter, applied chips, clear all */}
+                {/* Left - counter, applied chips, clear all */}
                 <div className='flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:flex-auto md:flex-wrap md:overflow-visible md:gap-x-8 md:gap-y-3 md:pb-0 [&::-webkit-scrollbar]:hidden'>
                     <div className='flex shrink-0 items-center gap-2 md:flex-wrap md:gap-x-4 md:gap-y-2'>
                         <p className='m-0 shrink-0 whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em]'>
@@ -391,7 +391,7 @@ export function ToursFilterBar({
                     )}
                 </div>
 
-                {/* Right — sort dropdown (responsive text/spacing on mobile) */}
+                {/* Right - sort dropdown (responsive text/spacing on mobile) */}
                 <div className='flex max-md:hidden shrink-0 items-center gap-2 md:gap-3.5'>
                     <span className='whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
                         {dict.sortBy}

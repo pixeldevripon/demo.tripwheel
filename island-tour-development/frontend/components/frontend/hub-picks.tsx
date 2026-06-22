@@ -15,7 +15,7 @@ export type HubPicksData = {
 
 /**
  * "We've been on every boat" editorial top-picks block (Figma node 48024:11563 /
- * 48539:15821) — heading + a stack of split <HubPickCard>s + a footer note with
+ * 48539:15821) - heading + a stack of split <HubPickCard>s + a footer note with
  * a "See All Tours" link. Rendered inside the Private charters panel.
  */
 export function HubPicks({ data }: { data: HubPicksData }) {

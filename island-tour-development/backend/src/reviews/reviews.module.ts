@@ -3,7 +3,7 @@ import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
 
 /**
- * Reviews module — per-tour, booking-gated reviews + moderation + cached aggregates.
+ * Reviews module - per-tour, booking-gated reviews + moderation + cached aggregates.
  * `PrismaService` is `@Global()`. Aggregates write back to Tour/Operator on moderation.
  */
 @Module({

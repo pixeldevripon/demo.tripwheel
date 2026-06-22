@@ -5,7 +5,7 @@ export type InstagramDict = {
     viewMore: string;
 };
 
-// Placeholder grid photos — replace with real Instagram feed API data.
+// Placeholder grid photos - replace with real Instagram feed API data.
 const POSTS = [
     {
         src: '/images/home-page/islands/curacao.jpg',
@@ -44,7 +44,7 @@ export function DestinationInstagram({ dict }: { dict: InstagramDict }) {
         <section className='it-section pt-[32px]! bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-8 md:gap-10'>
-                    {/* Header row — @island.tours_  |  View more on Instagram */}
+                    {/* Header row - @island.tours_  |  View more on Instagram */}
                     <div className='flex items-center justify-between'>
                         <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             @island.tours_

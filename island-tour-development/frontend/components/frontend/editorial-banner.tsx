@@ -45,14 +45,14 @@ const categories: CategoryCard[] = [
 ];
 
 export function EditorialBanner({ dict }: { dict: EditorialDict }) {
-    // Index of the card lifted to the front — defaults to the middle card
+    // Index of the card lifted to the front - defaults to the middle card
     const [topIndex, setTopIndex] = useState(2);
 
     return (
         <section className='it-section bg-it-white overflow-x-clip'>
             <div className='it-container'>
                 <Reveal className='relative lg:h-[452px]'>
-                    {/* Backdrop — orange washing to white: downward on mobile, rightward on desktop. */}
+                    {/* Backdrop - orange washing to white: downward on mobile, rightward on desktop. */}
                     <div className='absolute inset-0 overflow-hidden rounded-[12px] bg-it-white [background-image:var(--it-editorial-gradient-v)] lg:rounded-3xl lg:[background-image:var(--it-editorial-gradient)]' />
 
                     {/* Mobile/tablet: stacked column · Desktop: full-height positioning context for the absolute copy + fan */}
@@ -92,7 +92,7 @@ export function EditorialBanner({ dict }: { dict: EditorialDict }) {
                             </motion.button>
                         </div>
 
-                        {/* Category cards — fanned deck (2nd row on mobile, right side on desktop). Click brings a card to the front. */}
+                        {/* Category cards - fanned deck (2nd row on mobile, right side on desktop). Click brings a card to the front. */}
                         <div className='relative -mx-6 h-78 sm:-mx-10 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-100 lg:w-130 lg:-translate-y-1/2'>
                             {categories.map((card, i) => {
                                 const isTop = i === topIndex;

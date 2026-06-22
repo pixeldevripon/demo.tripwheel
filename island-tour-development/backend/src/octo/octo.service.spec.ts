@@ -1,6 +1,6 @@
 /**
  * Unit tests for OctoService (Phase 0+1 catalog reads).
- * PrismaService is fully mocked — no DB. Serialization is exercised end-to-end
+ * PrismaService is fully mocked - no DB. Serialization is exercised end-to-end
  * (real serializers) so capability gating + error mapping are covered here too.
  */
 import { PrismaService } from '@/prisma/prisma.service';

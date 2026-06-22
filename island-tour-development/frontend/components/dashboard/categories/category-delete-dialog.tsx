@@ -39,7 +39,7 @@ export function CategoryDeleteDialog({
       onOpenChange={onOpenChange}
       title="Deactivate Category"
       entityName={category.name}
-      preservationNote='The record is preserved in the database — not permanently deleted. This protects its URL slug from being reused, keeps all booking history and featured slot data intact, and preserves all translations. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
+      preservationNote='The record is preserved in the database - not permanently deleted. This protects its URL slug from being reused, keeps all booking history and featured slot data intact, and preserves all translations. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
       onConfirm={handleConfirm}
       isPending={isPending}
     />

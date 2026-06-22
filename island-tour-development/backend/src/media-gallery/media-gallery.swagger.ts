@@ -26,12 +26,12 @@ import {
 const commonErrors = [
   ApiResponse({
     status: 400,
-    description: 'Bad Request — invalid input or disallowed file type',
+    description: 'Bad Request - invalid input or disallowed file type',
     type: BadRequestErrorDto,
   }),
   ApiResponse({
     status: 401,
-    description: 'Unauthorized — missing or invalid session',
+    description: 'Unauthorized - missing or invalid session',
     type: UnauthorizedErrorDto,
   }),
   ApiResponse({
@@ -86,7 +86,7 @@ export function ApiUploadMediaDocs() {
 
 /**
  * POST /media-gallery/upload/async
- * Background BullMQ upload — returns immediately with job IDs.
+ * Background BullMQ upload - returns immediately with job IDs.
  */
 export function ApiUploadMediaAsyncDocs() {
   return applyDecorators(
@@ -133,7 +133,7 @@ export function ApiGetSignedParamsDocs() {
     }),
     ApiResponse({
       status: 401,
-      description: 'Unauthorized — missing or invalid session',
+      description: 'Unauthorized - missing or invalid session',
       type: UnauthorizedErrorDto,
     }),
     ApiResponse({
@@ -236,7 +236,7 @@ export function ApiDeleteMediaDocs() {
       summary: 'Delete a media item',
       description:
         'Deletes the media record from the database **and** removes the asset from Cloudinary. ' +
-        'The Cloudinary deletion is best-effort — the DB record is removed regardless. ' +
+        'The Cloudinary deletion is best-effort - the DB record is removed regardless. ' +
         'Returns 404 if the record does not exist or does not belong to the caller.',
     }),
     ApiParam({ name: 'id', description: 'Media record UUID' }),

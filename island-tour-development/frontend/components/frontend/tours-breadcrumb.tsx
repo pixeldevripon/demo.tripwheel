@@ -8,7 +8,7 @@ type BreadcrumbDict = {
 };
 
 /**
- * All Tours breadcrumb bar — `Home › {Destination} › All Tours`.
+ * All Tours breadcrumb bar - `Home › {Destination} › All Tours`.
  * Matches Figma node 47167:4017. The trailing item (current page) is muted and
  * not a link; the full-width divider beneath bleeds to the 1440 container band.
  */

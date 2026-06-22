@@ -86,7 +86,7 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-muted-foreground shrink-0">#{highlight.displayOrder}</span>
 
-          {/* Avatar-size image thumbnail — stops propagation internally */}
+          {/* Avatar-size image thumbnail - stops propagation internally */}
           <div onClick={(e) => e.stopPropagation()}>
             <ImageThumb
               imageUrl={highlight.imageUrl}

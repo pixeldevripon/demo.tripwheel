@@ -8,7 +8,7 @@ import { Reveal } from './reveal';
  * 48539:15988 mobile). A heading + editorial body on the #f8f8f8 band.
  *
  * Desktop shows the full multi-paragraph body. Mobile clamps the body (~5 lines)
- * and reveals the rest with a "Learn More" / "Read Less" toggle — the toggle is
+ * and reveals the rest with a "Learn More" / "Read Less" toggle - the toggle is
  * mobile-only (`md:hidden`), matching the Figma where desktop has no expander.
  */
 export function HubWhySection({
@@ -46,7 +46,7 @@ export function HubWhySection({
                             </p>
                         ))}
 
-                        {/* Learn More — mobile only (desktop shows the full body). */}
+                        {/* Learn More - mobile only (desktop shows the full body). */}
                         <button
                             type='button'
                             onClick={() => setExpanded((v) => !v)}

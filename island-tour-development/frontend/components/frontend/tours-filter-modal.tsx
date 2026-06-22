@@ -45,7 +45,7 @@ export const EMPTY_FILTERS: TourFilters = {
     rating: null,
 };
 
-/** Count active filters — drives the toolbar badge. */
+/** Count active filters - drives the toolbar badge. */
 export function countActiveFilters(f: TourFilters): number {
     return (
         f.durations.length +
@@ -188,7 +188,7 @@ export function PriceRange({ value, onChange }: { value: [number, number]; onCha
     );
 }
 
-/** Section wrapper — title + content, with the Figma bottom divider. */
+/** Section wrapper - title + content, with the Figma bottom divider. */
 function Section({ title, children }: { title?: string; children: React.ReactNode }) {
     return (
         <div className='flex flex-col gap-4 border-b border-it-heading/10 py-8'>
@@ -398,7 +398,7 @@ export function ToursFilterModal({
                             </div>
                         </Section>
 
-                        {/* Ratings — hidden until tours in this catalogue have reviews */}
+                        {/* Ratings - hidden until tours in this catalogue have reviews */}
                         {hasReviews && (
                             <Section title={dict.ratings}>
                                 <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>

@@ -1,11 +1,11 @@
 /**
  * Unit tests for UserService.
- * PrismaService is fully mocked — no real database connection is made.
+ * PrismaService is fully mocked - no real database connection is made.
  * Tests cover every public method including all error paths and the role/status
  * guard logic (self-modification checks, admin-protection checks).
  */
 
-// Mock the Better Auth instance — the real module pulls in the ESM-only
+// Mock the Better Auth instance - the real module pulls in the ESM-only
 // `better-auth` package, which ts-jest does not transform (node_modules).
 // UserService only ever calls `auth.api.setPassword`.
 jest.mock('@/auth/auth.instance', () => ({
@@ -405,7 +405,7 @@ describe('UserService', () => {
     });
 
     it('throws ForbiddenException when trying to assign the ADMIN role', async () => {
-      // Target is a regular user — the blocked case is the new role being ADMIN
+      // Target is a regular user - the blocked case is the new role being ADMIN
       const regularUser = makeUserRecord({ id: 'user-3', role: Role.USER });
       prisma.user.findUnique.mockResolvedValue(regularUser);
 

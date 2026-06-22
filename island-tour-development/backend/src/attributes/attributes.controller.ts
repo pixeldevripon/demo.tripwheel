@@ -25,7 +25,7 @@ import {
 } from './dto/attribute.dto';
 
 /**
- * AttributeDictionaryController — the central attribute dictionary (V2 §7).
+ * AttributeDictionaryController - the central attribute dictionary (V2 §7).
  * GET endpoints are public (filter UI + tour-creation wizard need them).
  * Writes are admin-only via MANAGE_SYSTEM.
  */
@@ -75,7 +75,7 @@ export class AttributeDictionaryController {
 }
 
 /**
- * FiltersController — available filters for a destination + category page (public).
+ * FiltersController - available filters for a destination + category page (public).
  */
 @ApiTags('Attributes')
 @Controller('filters')
@@ -94,7 +94,7 @@ export class FiltersController {
 }
 
 /**
- * TourAttributesController — per-tour attribute values (nested under a tour).
+ * TourAttributesController - per-tour attribute values (nested under a tour).
  * Operators manage their own tour's attributes; admins manage any.
  */
 @ApiTags('Attributes')

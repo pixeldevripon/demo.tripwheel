@@ -5,9 +5,9 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 interface RevealProps {
     children: React.ReactNode;
-    /** Wrapper width — '100%' (default) or shrink to content */
+    /** Wrapper width - '100%' (default) or shrink to content */
     width?: 'fit-content' | '100%';
-    /** Delay before the reveal starts (seconds) — use for staggering siblings */
+    /** Delay before the reveal starts (seconds) - use for staggering siblings */
     delay?: number;
     /** Animation duration (seconds) */
     duration?: number;
@@ -17,7 +17,7 @@ interface RevealProps {
     once?: boolean;
     /** Fraction of the element that must be visible to trigger (0–1) */
     amount?: number;
-    /** IntersectionObserver root margin — negative values trigger a little earlier */
+    /** IntersectionObserver root margin - negative values trigger a little earlier */
     margin?: string;
     className?: string;
 }

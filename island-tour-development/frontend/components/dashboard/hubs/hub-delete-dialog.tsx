@@ -39,7 +39,7 @@ export function HubDeleteDialog({
       onOpenChange={onOpenChange}
       title="Deactivate Hub"
       entityName={hub.name}
-      preservationNote='The record is preserved in the database — not permanently deleted. This protects its URL slug from being reused and keeps all associated trip and booking data intact. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
+      preservationNote='The record is preserved in the database - not permanently deleted. This protects its URL slug from being reused and keeps all associated trip and booking data intact. You can restore it at any time by switching the Status filter to "Inactive" and activating it again.'
       onConfirm={handleConfirm}
       isPending={isPending}
     />
