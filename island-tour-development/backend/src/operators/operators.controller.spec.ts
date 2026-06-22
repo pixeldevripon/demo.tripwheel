@@ -1,3 +1,15 @@
+// Mock the Better Auth singleton so the ESM `better-auth` package is never
+// loaded in the unit test (it is not needed for these smoke tests).
+jest.mock('@/auth/auth.instance', () => ({
+  auth: {
+    $context: Promise.resolve({
+      password: { hash: jest.fn() },
+      internalAdapter: { createUser: jest.fn(), linkAccount: jest.fn(), deleteUser: jest.fn() },
+    }),
+    api: { requestPasswordReset: jest.fn() },
+  },
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { OperatorsController } from './operators.controller';
 import { OperatorsService } from './operators.service';
