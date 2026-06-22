@@ -47,6 +47,7 @@ model OperatorCompanyInfo {
 
   // Business identity
   companyName    String?
+  companyEmail   String?
   companyCountry String?
   companyCity    String?
   companyPhone   String?

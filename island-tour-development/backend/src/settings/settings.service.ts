@@ -3,9 +3,11 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import {
   UpdateCompanyInformationsDto,
+  UpdateMailchimpDto,
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
+  UpdateSMTPDto,
   UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
@@ -13,6 +15,12 @@ import {
 @Injectable()
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
+  private maskSecret(encrypted: string | null): string | null {
+    if (!encrypted) return null;
+    return '••••••••' + decrypt(encrypted).slice(-4);
+  }
 
   // ── Site Info ──────────────────────────────────────────────────────────────
 
@@ -174,5 +182,65 @@ export class SettingsService {
       update: dto,
       create: { id: 'default', ...dto },
     });
+  }
+
+  // ── SMTP Configuration ───────────────────────────────────────────────────--
+
+  async getSMTP() {
+    const config = await this.prisma.sMTP.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+    return {
+      ...config,
+      smtpPassword: this.maskSecret(config.smtpPassword),
+    };
+  }
+
+  async updateSMTP(dto: UpdateSMTPDto) {
+    const data = {
+      ...dto,
+      ...(dto.smtpPassword && { smtpPassword: encrypt(dto.smtpPassword) }),
+    };
+    const result = await this.prisma.sMTP.upsert({
+      where: { id: 'default' },
+      update: { ...data },
+      create: { id: 'default', ...data },
+    });
+    return {
+      ...result,
+      smtpPassword: this.maskSecret(result.smtpPassword),
+    };
+  }
+
+  // ── Mailchimp Configuration ────────────────────────────────────────────────
+
+  async getMailchimp() {
+    const config = await this.prisma.mailchimp.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+    return {
+      ...config,
+      apiKey: this.maskSecret(config.apiKey),
+    };
+  }
+
+  async updateMailchimp(dto: UpdateMailchimpDto) {
+    const data = {
+      ...dto,
+      ...(dto.apiKey && { apiKey: encrypt(dto.apiKey) }),
+    };
+    const result = await this.prisma.mailchimp.upsert({
+      where: { id: 'default' },
+      update: { ...data },
+      create: { id: 'default', ...data },
+    });
+    return {
+      ...result,
+      apiKey: this.maskSecret(result.apiKey),
+    };
   }
 }

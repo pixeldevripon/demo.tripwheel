@@ -42,14 +42,6 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.VIEW_ANALYTICS],
     },
 
-    // ─── Analytics ─────────────────────────────────────────────────────────────
-    {
-        title: 'Analytics',
-        url: 'analytics',
-        icon: BarChart3,
-        permissions: [Permission.VIEW_ANALYTICS],
-    },
-
     // ─── Trips ─────────────────────────────────────────────────────────────────
     {
         title: 'Trips',
@@ -86,65 +78,7 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.MANAGE_HUBS],
     },
 
-    // ─── Activities ────────────────────────────────────────────────────────────
-    {
-        title: 'Activities',
-        icon: Activity,
-        permissions: [Permission.VIEW_ACTIVITIES, Permission.CREATE_ACTIVITY],
-        items: [
-            {
-                title: 'All Activities',
-                url: 'activities',
-                permissions: [Permission.VIEW_ACTIVITIES],
-            },
-            {
-                title: 'Add Activity',
-                url: 'activities/new',
-                permissions: [Permission.CREATE_ACTIVITY],
-            },
-        ],
-    },
 
-    // ─── Pickup & Drop ─────────────────────────────────────────────────────────
-    {
-        title: 'Pickup & Drop',
-        icon: MapPin,
-        permissions: [
-            Permission.VIEW_PICKUP_DROPS,
-            Permission.CREATE_PICKUP_DROP,
-        ],
-        items: [
-            {
-                title: 'All Points',
-                url: 'pickup-drops',
-                permissions: [Permission.VIEW_PICKUP_DROPS],
-            },
-            {
-                title: 'Add Point',
-                url: 'pickup-drops/new',
-                permissions: [Permission.CREATE_PICKUP_DROP],
-            },
-        ],
-    },
-
-    // ─── Blog ──────────────────────────────────────────────────────────────────
-    {
-        title: 'Blog',
-        icon: BookOpen,
-        permissions: [Permission.VIEW_BLOGS, Permission.CREATE_BLOG],
-        items: [
-            {
-                title: 'All Posts',
-                url: 'blogs',
-                permissions: [Permission.VIEW_BLOGS],
-            },
-            {
-                title: 'New Post',
-                url: 'blogs/new',
-                permissions: [Permission.CREATE_BLOG],
-            },
-        ],
-    },
 
     // ─── Bookings ──────────────────────────────────────────────────────────────
     {
@@ -261,21 +195,16 @@ const dashboardNav: NavItem[] = [
     },
 
     // ─── Settings ──────────────────────────────────────────────────────────────
+    // Visible to admins (system settings) and operators (own company + payments).
     {
         title: 'Settings',
+        url: 'settings',
         icon: Settings,
-        permissions: [Permission.VIEW_SETTINGS, Permission.MANAGE_SETTINGS],
-        items: [
-            {
-                title: 'General',
-                url: 'settings',
-                permissions: [Permission.VIEW_SETTINGS],
-            },
-            {
-                title: 'System',
-                url: 'settings/system',
-                permissions: [Permission.MANAGE_SYSTEM],
-            },
+        permissions: [
+            Permission.VIEW_SETTINGS,
+            Permission.MANAGE_SETTINGS,
+            Permission.EDIT_OPERATOR_PROFILE,
+            Permission.MANAGE_OPERATOR_PAYMENTS,
         ],
     },
 ];

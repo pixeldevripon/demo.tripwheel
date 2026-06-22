@@ -67,6 +67,9 @@ export class OperatorCompanyInfoResponseDto {
   @ApiPropertyOptional({ example: 'Travel Co.' })
   companyName?: string;
 
+  @ApiPropertyOptional({ example: 'hello@travelco.com' })
+  companyEmail?: string;
+
   @ApiPropertyOptional({ example: 'USA' })
   companyCountry?: string;
 
@@ -225,6 +228,12 @@ export class UpdateOperatorCompanyInfoDto {
   @IsString()
   @MaxLength(200)
   companyName?: string;
+
+  @ApiPropertyOptional({ example: 'hello@travelco.com' })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  companyEmail?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

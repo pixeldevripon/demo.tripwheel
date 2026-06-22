@@ -5,12 +5,14 @@ import { Permission } from '@prisma/client';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { SettingsService } from './settings.service';
 import {
+  UpdateCompanyInformationsDto,
+  UpdateMailchimpDto,
+  UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
+  UpdateSMTPDto,
   UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
-  UpdateMollieConfigurationDto,
-  UpdateCompanyInformationsDto,
 } from './dto/settings.dto';
 import {
   ApiGetSiteInfoDocs,
@@ -25,6 +27,10 @@ import {
   ApiUpdateCompanyInformationsDocs,
   ApiGetSocialMediaDocs,
   ApiUpdateSocialMediaDocs,
+  ApiGetSMTPDocs,
+  ApiUpdateSMTPDocs,
+  ApiGetMailchimpDocs,
+  ApiUpdateMailchimpDocs,
 } from './settings.swagger';
 
 @ApiTags('Settings')
@@ -254,6 +260,64 @@ export class SettingsController {
   @ApiUpdateSocialMediaDocs()
   updateSocialMedia(@Body() dto: UpdateSocialMediaDto) {
     return this.settingsService.updateSocialMedia(dto);
+  }
+
+  // ── SMTP Configuration ───────────────────────────────────────────────────--
+
+  /**
+   * GET /settings/smtp
+   *
+   * Retrieves SMTP configuration (password masked).
+   * Security: requires MANAGE_SETTINGS (Admin only).
+   */
+  @Get('smtp')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiGetSMTPDocs()
+  getSMTP() {
+    return this.settingsService.getSMTP();
+  }
+
+  /**
+   * PATCH /settings/smtp
+   *
+   * Updates SMTP configuration. The password is encrypted at rest.
+   * Security: requires MANAGE_SETTINGS.
+   */
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Patch('smtp')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdateSMTPDocs()
+  updateSMTP(@Body() dto: UpdateSMTPDto) {
+    return this.settingsService.updateSMTP(dto);
+  }
+
+  // ── Mailchimp Configuration ────────────────────────────────────────────────
+
+  /**
+   * GET /settings/mailchimp
+   *
+   * Retrieves Mailchimp configuration (API key masked).
+   * Security: requires MANAGE_SETTINGS (Admin only).
+   */
+  @Get('mailchimp')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiGetMailchimpDocs()
+  getMailchimp() {
+    return this.settingsService.getMailchimp();
+  }
+
+  /**
+   * PATCH /settings/mailchimp
+   *
+   * Updates Mailchimp configuration. The API key is encrypted at rest.
+   * Security: requires MANAGE_SETTINGS.
+   */
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Patch('mailchimp')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdateMailchimpDocs()
+  updateMailchimp(@Body() dto: UpdateMailchimpDto) {
+    return this.settingsService.updateMailchimp(dto);
   }
 }
   

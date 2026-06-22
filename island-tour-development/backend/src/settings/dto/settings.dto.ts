@@ -158,6 +158,9 @@ export class SMTPResponseDto {
   @ApiProperty({ example: 'user@example.com', nullable: true })
   smtpUsername!: string | null;
 
+  @ApiPropertyOptional({ example: '••••••••cret', nullable: true })
+  smtpPassword?: string | null;
+
   @ApiProperty({ example: true })
   smtpSecure!: boolean;
 }
@@ -165,6 +168,9 @@ export class SMTPResponseDto {
 export class MailchimpResponseDto {
   @ApiProperty({ example: 'default' })
   id!: string;
+
+  @ApiPropertyOptional({ example: '••••••••1234', nullable: true })
+  apiKey?: string | null;
 
   @ApiProperty({ example: 'audience_id', nullable: true })
   audienceId!: string | null;
