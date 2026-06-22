@@ -63,11 +63,9 @@ export class AvailabilityService {
     dto: CreateScheduleDto,
   ): Promise<ScheduleResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
-    await this.assertOptionBelongs(dto.tourId, dto.optionId);
     const row = await this.prisma.availabilitySchedule.create({
       data: {
         tourId: dto.tourId,
-        optionId: dto.optionId ?? null,
         weekdays: dto.weekdays,
         startTimes: dto.startTimes,
         capacity: dto.capacity,
@@ -77,11 +75,7 @@ export class AvailabilityService {
       },
     });
     this.logger.log(`Schedule ${row.id} created for tour ${dto.tourId}`);
-    this.notifications.emitAvailabilityUpdate({
-      tourId: dto.tourId,
-      optionId: dto.optionId ?? null,
-      operatorId,
-    });
+    this.notifications.emitAvailabilityUpdate({ tourId: dto.tourId, operatorId });
     return mapSchedule(row);
   }
 
@@ -97,13 +91,9 @@ export class AvailabilityService {
     });
     if (!existing) throw new NotFoundException('Schedule not found');
     const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
-    if (dto.optionId !== undefined) {
-      await this.assertOptionBelongs(existing.tourId, dto.optionId);
-    }
     const row = await this.prisma.availabilitySchedule.update({
       where: { id },
       data: {
-        ...(dto.optionId !== undefined && { optionId: dto.optionId ?? null }),
         ...(dto.weekdays && { weekdays: dto.weekdays }),
         ...(dto.startTimes && { startTimes: dto.startTimes }),
         ...(dto.capacity !== undefined && { capacity: dto.capacity }),
@@ -121,7 +111,6 @@ export class AvailabilityService {
     });
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
-      optionId: row.optionId,
       operatorId,
     });
     return mapSchedule(row);
@@ -130,7 +119,7 @@ export class AvailabilityService {
   async deleteSchedule(userId: string, role: Role, id: string): Promise<void> {
     const existing = await this.prisma.availabilitySchedule.findUnique({
       where: { id },
-      select: { tourId: true, optionId: true },
+      select: { tourId: true },
     });
     if (!existing) throw new NotFoundException('Schedule not found');
     const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
@@ -138,7 +127,6 @@ export class AvailabilityService {
     this.logger.log(`Schedule ${id} deleted`);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
-      optionId: existing.optionId,
       operatorId,
     });
   }
@@ -166,11 +154,9 @@ export class AvailabilityService {
     dto: CreateExceptionDto,
   ): Promise<ExceptionResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
-    await this.assertOptionBelongs(dto.tourId, dto.optionId);
     const row = await this.prisma.availabilityException.create({
       data: {
         tourId: dto.tourId,
-        optionId: dto.optionId ?? null,
         date: toDate(dto.date),
         type: dto.type,
         startTime: dto.startTime ?? null,
@@ -181,7 +167,6 @@ export class AvailabilityService {
     });
     this.notifications.emitAvailabilityUpdate({
       tourId: dto.tourId,
-      optionId: dto.optionId ?? null,
       localDate: dto.date,
       operatorId,
     });
@@ -196,7 +181,7 @@ export class AvailabilityService {
   ): Promise<ExceptionResponseDto> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, optionId: true, date: true },
+      select: { tourId: true, date: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
     const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
@@ -214,7 +199,6 @@ export class AvailabilityService {
     });
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
-      optionId: existing.optionId,
       localDate: dateKey(existing.date),
       operatorId,
     });
@@ -224,14 +208,13 @@ export class AvailabilityService {
   async deleteException(userId: string, role: Role, id: string): Promise<void> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, optionId: true, date: true },
+      select: { tourId: true, date: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
     const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
     await this.prisma.availabilityException.delete({ where: { id } });
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
-      optionId: existing.optionId,
       localDate: dateKey(existing.date),
       operatorId,
     });
@@ -345,7 +328,6 @@ export class AvailabilityService {
     this.logger.log(`Departure ${id} manually edited`);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
-      optionId: existing.optionId,
       localDate: dateKey(existing.localDateTimeStart),
       operatorId,
     });
@@ -358,14 +340,12 @@ export class AvailabilityService {
 
   async checkAvailability(dto: AvailabilityCheckDto): Promise<DepartureResponseDto[]> {
     const tz = await this.publicTourTimeZone(dto.tourId);
-    if (dto.optionId) await this.assertOptionBelongs(dto.tourId, dto.optionId);
     const now = localNow(tz);
     const requiredSeats = (dto.units ?? []).reduce((s, u) => s + u.quantity, 0);
 
     const rows = await this.prisma.departure.findMany({
       where: {
         tourId: dto.tourId,
-        ...(dto.optionId && { optionId: dto.optionId }),
         localDateTimeStart: {
           gte: toDate(dto.dateFrom),
           lte: endOfDay(dto.dateTo),
@@ -381,13 +361,11 @@ export class AvailabilityService {
 
   async calendar(dto: AvailabilityCalendarDto): Promise<CalendarDayResponseDto[]> {
     const tz = await this.publicTourTimeZone(dto.tourId);
-    if (dto.optionId) await this.assertOptionBelongs(dto.tourId, dto.optionId);
     const now = localNow(tz);
 
     const rows = await this.prisma.departure.findMany({
       where: {
         tourId: dto.tourId,
-        ...(dto.optionId && { optionId: dto.optionId }),
         localDateTimeStart: {
           gte: toDate(dto.dateFrom),
           lte: endOfDay(dto.dateTo),
@@ -469,20 +447,6 @@ export class AvailabilityService {
     return tour.operatorId;
   }
 
-  private async assertOptionBelongs(
-    tourId: string,
-    optionId?: string | null,
-  ): Promise<void> {
-    if (!optionId) return;
-    const option = await this.prisma.tourOption.findFirst({
-      where: { id: optionId, tourId },
-      select: { id: true },
-    });
-    if (!option) {
-      throw new BadRequestException('optionId does not belong to this tour');
-    }
-  }
-
   private async tourTimeZone(tourId: string): Promise<string> {
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
@@ -545,7 +509,6 @@ function mapException(row: AvailabilityException): ExceptionResponseDto {
   return {
     id: row.id,
     tourId: row.tourId,
-    optionId: row.optionId,
     date: dateKey(row.date),
     type: row.type,
     startTime: row.startTime,
@@ -566,7 +529,6 @@ function mapDeparture(row: Departure, now: Date): DepartureResponseDto {
   return {
     id: row.id,
     tourId: row.tourId,
-    optionId: row.optionId,
     localDateTimeStart: row.localDateTimeStart.toISOString(),
     localDateTimeEnd: row.localDateTimeEnd
       ? row.localDateTimeEnd.toISOString()

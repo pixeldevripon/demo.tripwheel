@@ -488,7 +488,7 @@ describe('ToursService', () => {
   });
 
   describe('recomputePriceFrom', () => {
-    // priceFrom anchors off basePrice until the OCTO unit catalog (TourUnit) lands.
+    // priceFrom anchors off basePrice until age bands (TourAgeBand) are entered.
     it('anchors priceFrom to basePrice', async () => {
       prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
       prisma.tour.update.mockResolvedValue({});

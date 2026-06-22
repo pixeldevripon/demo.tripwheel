@@ -179,8 +179,8 @@ export class ToursService {
     const tour = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
     if (!tour) return null;
 
-    // priceFrom anchors off basePrice. Once the OCTO unit catalog (TourUnit) lands, this
-    // recomputes from the cheapest unit price.
+    // priceFrom anchors off basePrice. Once age bands are entered, this recomputes
+    // from the cheapest TourAgeBand price.
     const priceFrom: Prisma.Decimal | null = tour.basePrice ?? null;
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });

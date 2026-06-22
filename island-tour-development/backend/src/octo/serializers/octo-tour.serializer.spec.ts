@@ -5,7 +5,7 @@ import {
   type OctoTourPayload,
 } from './octo-tour.serializer';
 
-/** Minimal-but-complete OctoTourPayload fixture (one option, adult + child units). */
+/** Minimal-but-complete OctoTourPayload fixture (flat age bands: adult + child). */
 function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
   const base = {
     id: 'tour-1',
@@ -24,56 +24,31 @@ function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
     pricingModel: 'PER_PERSON',
     minPartySize: 1,
     maxPartySize: 12,
+    cancellationHours: 48,
     durationMinutesFrom: 240,
     durationMinutesTo: 240,
-    options: [
+    ageBands: [
       {
-        id: 'opt-default',
+        id: 'band-adult',
+        label: 'Adult',
+        minAge: 13,
+        maxAge: 99,
+        price: new Prisma.Decimal('79.99'),
+        priceOriginal: null,
+        priceNet: new Prisma.Decimal('63.99'),
         isDefault: true,
-        internalName: 'Standard',
-        reference: null,
-        availabilityLocalStartTimes: ['09:00', '13:00'],
-        cancellationCutoffAmount: 48,
-        cancellationCutoffUnit: 'hour',
-        requiredContactFields: ['firstName', 'lastName', 'emailAddress'],
-        minUnits: null,
-        maxUnits: null,
-        units: [
-          {
-            id: 'unit-adult',
-            internalName: 'Adult',
-            reference: null,
-            type: 'ADULT',
-            minAge: 13,
-            maxAge: 99,
-            idRequired: false,
-            minQuantity: null,
-            maxQuantity: null,
-            paxCount: 1,
-            accompaniedBy: [],
-            priceRetail: new Prisma.Decimal('79.99'),
-            priceOriginal: null,
-            priceNet: new Prisma.Decimal('63.99'),
-            taxes: [{ name: 'OB', retail: 7.27 }],
-          },
-          {
-            id: 'unit-child',
-            internalName: 'Child (4-12)',
-            reference: null,
-            type: 'CHILD',
-            minAge: 4,
-            maxAge: 12,
-            idRequired: false,
-            minQuantity: null,
-            maxQuantity: null,
-            paxCount: 1,
-            accompaniedBy: ['ADULT'],
-            priceRetail: new Prisma.Decimal('49.99'),
-            priceOriginal: null,
-            priceNet: null,
-            taxes: [],
-          },
-        ],
+        displayOrder: 0,
+      },
+      {
+        id: 'band-child',
+        label: 'Child (4-12)',
+        minAge: 4,
+        maxAge: 12,
+        price: new Prisma.Decimal('49.99'),
+        priceOriginal: null,
+        priceNet: null,
+        isDefault: false,
+        displayOrder: 1,
       },
     ],
     categories: [{ isPrimary: true, category: { slug: 'boat-tours' } }],
@@ -149,9 +124,12 @@ describe('serializeTour', () => {
     const units = opt.units as Record<string, unknown>[];
     expect(units).toHaveLength(2);
     expect(units[0].pricingFrom).toBeUndefined(); // pricing not requested
-    expect((units[1].restrictions as Record<string, unknown>).accompaniedBy).toEqual([
-      'ADULT',
-    ]);
+    expect(units[0].internalName).toBe('Adult');
+    expect((units[1].restrictions as Record<string, unknown>)).toMatchObject({
+      minAge: 4,
+      maxAge: 12,
+      paxCount: 1,
+    });
   });
 
   it('octo/pricing: adds currency + pricingPer + minor-unit pricingFrom', () => {
@@ -176,7 +154,7 @@ describe('serializeTour', () => {
       net: 6399,
       currency: 'USD',
       currencyPrecision: 2,
-      includedTaxes: [{ name: 'OB', retail: 727 }],
+      includedTaxes: [],
     });
   });
 

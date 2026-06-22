@@ -24,7 +24,7 @@ import { BookingStatus, CancelledBy, CancellationRefund } from '@prisma/client';
 
 export class BookingUnitItemResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() unitId!: string;
+  @ApiProperty() ageBandId!: string;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
   @ApiProperty({ example: '79.99' }) priceRetail!: string;
 }
@@ -69,7 +69,6 @@ export class BookingResponseDto {
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
   @ApiProperty() publicRef!: string;
   @ApiProperty() tourId!: string;
-  @ApiProperty() optionId!: string;
   @ApiPropertyOptional({ nullable: true }) departureId!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
   @ApiProperty({ example: false }) freesale!: boolean;
@@ -97,9 +96,9 @@ export class BookingResponseDto {
 // ════════════════════════════════════════════════════════════════════════════
 
 export class ReserveItemDto {
-  @ApiProperty({ example: 'unit-uuid' })
+  @ApiProperty({ example: 'age-band-uuid' })
   @IsString()
-  unitId!: string;
+  ageBandId!: string;
 
   @ApiProperty({ example: 2 })
   @IsInt()
@@ -171,10 +170,6 @@ export class ReserveBookingDto {
   @ApiProperty({ example: 'tour-uuid' })
   @IsString()
   tourId!: string;
-
-  @ApiProperty({ example: 'opt-uuid' })
-  @IsString()
-  optionId!: string;
 
   @ApiProperty({ example: 'departure-uuid' })
   @IsString()

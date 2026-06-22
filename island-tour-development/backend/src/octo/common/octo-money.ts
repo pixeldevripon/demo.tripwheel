@@ -68,7 +68,7 @@ interface BuildPricingInput {
   /** Supplier net; OCTO allows null. */
   net?: DecimalLike;
   currency: Currency;
-  /** Raw `taxes` JSON from `TourUnit.taxes` ([{ name, retail, original?, net? }]). */
+  /** Optional raw `taxes` JSON ([{ name, retail, original?, net? }]); omitted for age bands. */
   taxes?: unknown;
 }
 

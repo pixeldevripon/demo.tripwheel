@@ -17,7 +17,7 @@ const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
 const money = (v: Prisma.Decimal) => v.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
 export interface PriceLineInput {
-  unitId: string;
+  ageBandId: string;
   quantity: number;
   priceRetail: Prisma.Decimal;
   priceNet: Prisma.Decimal | null;
@@ -32,7 +32,7 @@ export interface AddOnLineInput {
 }
 
 export interface ExpandedUnitItem {
-  unitId: string;
+  ageBandId: string;
   priceRetail: Prisma.Decimal;
   priceNet: Prisma.Decimal | null;
 }
@@ -83,7 +83,11 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   let anyNetMissing = false;
   for (const l of lines) {
     for (let i = 0; i < l.quantity; i++) {
-      unitItems.push({ unitId: l.unitId, priceRetail: l.priceRetail, priceNet: l.priceNet });
+      unitItems.push({
+        ageBandId: l.ageBandId,
+        priceRetail: l.priceRetail,
+        priceNet: l.priceNet,
+      });
     }
     unitsRetail = unitsRetail.plus(l.priceRetail.times(l.quantity));
     if (l.priceNet === null) anyNetMissing = true;

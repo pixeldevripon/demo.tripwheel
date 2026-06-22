@@ -64,7 +64,7 @@ export class BookingsService {
   private emitBookingEvents(
     booking: Pick<
       Booking,
-      'tourId' | 'optionId' | 'localDate' | 'operatorId' | 'publicRef'
+      'tourId' | 'localDate' | 'operatorId' | 'publicRef'
     >,
     opts: { availability: boolean } = { availability: true },
   ): void {
@@ -73,7 +73,6 @@ export class BookingsService {
       if (opts.availability) {
         this.notifications.emitAvailabilityUpdate({
           tourId: booking.tourId,
-          optionId: booking.optionId,
           localDate: dateKey(booking.localDate),
           operatorId: booking.operatorId,
         });
@@ -131,7 +130,6 @@ export class BookingsService {
         where: {
           id: dto.departureId,
           tourId: dto.tourId,
-          optionId: dto.optionId,
           status: { in: BOOKABLE },
           vacancies: { gte: seats },
         },
@@ -147,7 +145,6 @@ export class BookingsService {
         data: {
           id,
           tourId: dto.tourId,
-          optionId: dto.optionId,
           departureId: dto.departureId,
           operatorId: ctx.tour.operatorId,
           userId: userId ?? null,
@@ -175,7 +172,7 @@ export class BookingsService {
           fxRateToEur: pricing.fxRateToEur,
           unitItems: {
             create: pricing.unitItems.map((u) => ({
-              unitId: u.unitId,
+              ageBandId: u.ageBandId,
               status,
               priceRetail: u.priceRetail,
               priceNet: u.priceNet,
@@ -553,7 +550,6 @@ export class BookingsService {
         id: true,
         departureId: true,
         tourId: true,
-        optionId: true,
         localDate: true,
         operatorId: true,
         publicRef: true,
@@ -730,46 +726,34 @@ export class BookingsService {
     });
     if (!tour) throw new NotFoundException('Tour not found');
 
-    const option = await this.prisma.tourOption.findFirst({
-      where: { id: dto.optionId, tourId: dto.tourId, isActive: true },
-      select: { id: true, minUnits: true, maxUnits: true },
-    });
-    if (!option) throw new UnprocessableEntityException('Invalid optionId for this tour');
-
     const departure = await this.prisma.departure.findFirst({
-      where: { id: dto.departureId, tourId: dto.tourId, optionId: dto.optionId },
+      where: { id: dto.departureId, tourId: dto.tourId },
       select: { id: true, localDateTimeStart: true, utcCutoffAt: true },
     });
     if (!departure) throw new UnprocessableEntityException('Invalid departureId');
 
-    const units = await this.prisma.tourUnit.findMany({
-      where: { optionId: dto.optionId },
-      select: {
-        id: true,
-        type: true,
-        minQuantity: true,
-        maxQuantity: true,
-        accompaniedBy: true,
-        priceRetail: true,
-        priceNet: true,
-      },
+    const ageBands = await this.prisma.tourAgeBand.findMany({
+      where: { tourId: dto.tourId },
+      select: { id: true, label: true, price: true, priceNet: true },
     });
-    const unitsById = new Map(units.map((u) => [u.id, u]));
+    const ageBandsById = new Map(ageBands.map((b) => [b.id, b]));
 
     const lines: PriceLineInput[] = dto.items.map((item) => {
-      const unit = unitsById.get(item.unitId);
-      if (!unit) throw new UnprocessableEntityException(`Invalid unitId ${item.unitId}`);
+      const band = ageBandsById.get(item.ageBandId);
+      if (!band) {
+        throw new UnprocessableEntityException(`Invalid ageBandId ${item.ageBandId}`);
+      }
       return {
-        unitId: unit.id,
+        ageBandId: band.id,
         quantity: item.quantity,
-        priceRetail: unit.priceRetail,
-        priceNet: unit.priceNet,
+        priceRetail: band.price,
+        priceNet: band.priceNet,
       };
     });
 
     const addOnLines = await this.loadAddOns(dto);
 
-    return { tour, option, departure, unitsById, lines, addOnLines };
+    return { tour, departure, ageBandsById, lines, addOnLines };
   }
 
   private async loadAddOns(dto: ReserveBookingDto): Promise<AddOnLineInput[]> {
@@ -798,38 +782,13 @@ export class BookingsService {
     dto: ReserveBookingDto,
   ): void {
     const seats = dto.items.reduce((s, i) => s + i.quantity, 0);
-    const minUnits = ctx.option.minUnits ?? ctx.tour.minPartySize;
-    const maxUnits = ctx.option.maxUnits ?? ctx.tour.maxPartySize;
+    const minUnits = ctx.tour.minPartySize;
+    const maxUnits = ctx.tour.maxPartySize;
     if (seats < minUnits) {
       throw new UnprocessableEntityException(`Minimum party size is ${minUnits}`);
     }
     if (maxUnits != null && seats > maxUnits) {
       throw new UnprocessableEntityException(`Maximum party size is ${maxUnits}`);
-    }
-
-    const presentTypes = new Set(
-      dto.items.map((i) => ctx.unitsById.get(i.unitId)?.type),
-    );
-    for (const item of dto.items) {
-      const unit = ctx.unitsById.get(item.unitId);
-      if (!unit) continue; // already validated in loadContext
-      if (unit.minQuantity != null && item.quantity < unit.minQuantity) {
-        throw new UnprocessableEntityException(
-          `${unit.type}: minimum quantity is ${unit.minQuantity}`,
-        );
-      }
-      if (unit.maxQuantity != null && item.quantity > unit.maxQuantity) {
-        throw new UnprocessableEntityException(
-          `${unit.type}: maximum quantity is ${unit.maxQuantity}`,
-        );
-      }
-      for (const required of unit.accompaniedBy) {
-        if (!presentTypes.has(required as never)) {
-          throw new UnprocessableEntityException(
-            `${unit.type} must be accompanied by ${required}`,
-          );
-        }
-      }
     }
   }
 
@@ -927,7 +886,6 @@ function mapBooking(b: BookingWithItems) {
     displayRef: b.displayRef,
     publicRef: b.publicRef,
     tourId: b.tourId,
-    optionId: b.optionId,
     departureId: b.departureId,
     status: b.status,
     freesale: b.freesale,
@@ -945,7 +903,7 @@ function mapBooking(b: BookingWithItems) {
     cancellationRefund: b.cancellationRefund,
     unitItems: b.unitItems.map((u) => ({
       id: u.id,
-      unitId: u.unitId,
+      ageBandId: u.ageBandId,
       status: u.status,
       priceRetail: u.priceRetail.toString(),
     })),

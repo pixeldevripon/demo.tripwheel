@@ -4,8 +4,8 @@ import { computeBookingPricing } from './booking-pricing.util';
 const D = (v: string | number) => new Prisma.Decimal(v);
 
 const lines = [
-  { unitId: 'adult', quantity: 2, priceRetail: D('79.99'), priceNet: D('63.99') },
-  { unitId: 'child', quantity: 1, priceRetail: D('49.99'), priceNet: D('39.99') },
+  { ageBandId: 'adult', quantity: 2, priceRetail: D('79.99'), priceNet: D('63.99') },
+  { ageBandId: 'child', quantity: 1, priceRetail: D('49.99'), priceNet: D('39.99') },
 ];
 // 79.99*2 + 49.99 = 209.97
 
@@ -80,7 +80,7 @@ describe('computeBookingPricing', () => {
 
   it('drops net when any line is missing a net price', () => {
     const p = compute({
-      lines: [{ unitId: 'adult', quantity: 1, priceRetail: D('79.99'), priceNet: null }],
+      lines: [{ ageBandId: 'adult', quantity: 1, priceRetail: D('79.99'), priceNet: null }],
     });
     expect(p.totalNet).toBeNull();
   });

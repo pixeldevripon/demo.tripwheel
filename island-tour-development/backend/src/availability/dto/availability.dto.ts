@@ -29,8 +29,6 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export class ScheduleResponseDto {
   @ApiProperty({ example: 'c1a2…' }) id!: string;
   @ApiProperty({ example: 'tour-uuid' }) tourId!: string;
-  @ApiPropertyOptional({ example: 'opt-uuid', nullable: true })
-  optionId!: string | null;
   @ApiProperty({ example: [1, 2, 3, 4, 5], description: '0=Sun … 6=Sat' })
   weekdays!: number[];
   @ApiProperty({ example: ['09:00', '13:00'] }) startTimes!: string[];
@@ -47,7 +45,6 @@ export class ScheduleResponseDto {
 export class ExceptionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
-  @ApiPropertyOptional({ nullable: true }) optionId!: string | null;
   @ApiProperty({ example: '2026-07-04' }) date!: string;
   @ApiProperty({ enum: AvailabilityExceptionType })
   type!: AvailabilityExceptionType;
@@ -63,7 +60,6 @@ export class ExceptionResponseDto {
 export class DepartureResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
-  @ApiProperty() optionId!: string;
   @ApiProperty({ example: '2026-07-04T13:00:00.000Z' })
   localDateTimeStart!: string;
   @ApiPropertyOptional({ nullable: true }) localDateTimeEnd!: string | null;
@@ -154,11 +150,6 @@ export class CreateScheduleDto {
   @IsString()
   tourId!: string;
 
-  @ApiPropertyOptional({ example: 'opt-uuid', description: 'Null = all options.' })
-  @IsOptional()
-  @IsString()
-  optionId?: string;
-
   @ApiProperty({ example: [1, 2, 3, 4, 5], description: '0=Sun … 6=Sat' })
   @IsArray()
   @ArrayMinSize(1)
@@ -197,11 +188,6 @@ export class CreateScheduleDto {
 }
 
 export class UpdateScheduleDto {
-  @ApiPropertyOptional({ example: 'opt-uuid' })
-  @IsOptional()
-  @IsString()
-  optionId?: string;
-
   @ApiPropertyOptional({ example: [0, 6] })
   @IsOptional()
   @IsArray()
@@ -251,11 +237,6 @@ export class CreateExceptionDto {
   @ApiProperty({ example: 'tour-uuid' })
   @IsString()
   tourId!: string;
-
-  @ApiPropertyOptional({ example: 'opt-uuid' })
-  @IsOptional()
-  @IsString()
-  optionId?: string;
 
   @ApiProperty({ example: '2026-07-04' })
   @IsDateString()
@@ -355,11 +336,7 @@ export class UpdateDepartureDto {
   priceOverride?: number;
 }
 
-class UnitQuantityDto {
-  @ApiProperty({ example: 'unit-uuid' })
-  @IsString()
-  unitId!: string;
-
+class PartySizeDto {
   @ApiProperty({ example: 2 })
   @IsInt()
   @Min(1)
@@ -371,11 +348,6 @@ export class AvailabilityCheckDto {
   @IsString()
   tourId!: string;
 
-  @ApiPropertyOptional({ example: 'opt-uuid', description: 'Null = all options.' })
-  @IsOptional()
-  @IsString()
-  optionId?: string;
-
   @ApiProperty({ example: '2026-07-01' })
   @IsDateString()
   dateFrom!: string;
@@ -385,25 +357,20 @@ export class AvailabilityCheckDto {
   dateTo!: string;
 
   @ApiPropertyOptional({
-    type: [UnitQuantityDto],
+    type: [PartySizeDto],
     description: 'Optional capacity filter — only slots with enough vacancies.',
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => UnitQuantityDto)
-  units?: UnitQuantityDto[];
+  @Type(() => PartySizeDto)
+  units?: PartySizeDto[];
 }
 
 export class AvailabilityCalendarDto {
   @ApiProperty({ example: 'tour-uuid' })
   @IsString()
   tourId!: string;
-
-  @ApiPropertyOptional({ example: 'opt-uuid' })
-  @IsOptional()
-  @IsString()
-  optionId?: string;
 
   @ApiProperty({ example: '2026-07-01' })
   @IsDateString()

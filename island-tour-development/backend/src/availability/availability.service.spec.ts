@@ -1,9 +1,9 @@
 /**
  * Unit tests for AvailabilityService. Prisma + the materializer are mocked.
- * Focus: ownership scoping, option validation, live status mapping (check/calendar),
+ * Focus: ownership scoping, live status mapping (check/calendar),
  * manual departure edits, and the isBookable helper.
  */
-import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AvailabilityService } from './availability.service';
 
@@ -13,7 +13,6 @@ function mockPrisma() {
   return {
     tour: { findUnique: jest.fn(), findFirst: jest.fn() },
     operator: { findUnique: jest.fn(), create: jest.fn() },
-    tourOption: { findFirst: jest.fn() },
     availabilitySchedule: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -79,7 +78,6 @@ describe('AvailabilityService', () => {
       prisma.availabilitySchedule.create.mockResolvedValue({
         id: 's1',
         tourId: 't1',
-        optionId: null,
         weekdays: [1, 2, 3],
         startTimes: ['09:00'],
         capacity: 10,
@@ -107,7 +105,6 @@ describe('AvailabilityService', () => {
       prisma.availabilitySchedule.create.mockResolvedValue({
         id: 's2',
         tourId: 't1',
-        optionId: null,
         weekdays: [1],
         startTimes: ['09:00'],
         capacity: 10,
@@ -129,20 +126,6 @@ describe('AvailabilityService', () => {
     });
   });
 
-  describe('option validation', () => {
-    it('rejects an optionId that does not belong to the tour', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ operatorId: 'op1' });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      prisma.tourOption.findFirst.mockResolvedValue(null);
-      await expect(
-        svc.createSchedule('u1', Role.TOUR_OPERATOR, {
-          ...createDto,
-          optionId: 'bad',
-        }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-  });
-
   describe('checkAvailability', () => {
     it('returns only live-bookable slots with enough vacancies', async () => {
       prisma.tour.findFirst.mockResolvedValue({ timeZone: 'America/Curacao' });
@@ -156,7 +139,7 @@ describe('AvailabilityService', () => {
         tourId: 't1',
         dateFrom: '2030-06-01',
         dateTo: '2030-06-30',
-        units: [{ unitId: 'u', quantity: 2 }],
+        units: [{ quantity: 2 }],
       });
 
       expect(res.map((d) => d.id)).toEqual(['ok']);

@@ -14,7 +14,7 @@ datasource db {
 //   destinations.prisma   ← Destination, Hub, HubAllowedCategory, HubOurPick, HubComparisonGroup, FeaturedExperience
 //   categories.prisma     ← Category
 //   collections.prisma    ← Collection (+ translation, page content)
-//   tours.prisma          ← Tour (= OCTO product) → TourOption → TourUnit + content children (images, add-ons,
+//   tours.prisma          ← Tour + TourAgeBand (flat per-traveler pricing) + content children (images, add-ons,
 //                            languages, highlights, inclusions, exclusions, features, locations, translations)
 //   availability.prisma   ← AvailabilitySchedule, AvailabilityException, Departure (= OCTO Availability)
 //   bookings.prisma       ← Booking (OCTO reserve→confirm) + BookingUnitItem (= OCTO unit item)

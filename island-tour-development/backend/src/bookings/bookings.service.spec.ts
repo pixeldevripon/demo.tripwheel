@@ -25,14 +25,13 @@ function mockPrisma() {
       findMany: jest.fn(),
     },
     tour: { findUnique: jest.fn() },
-    tourOption: { findFirst: jest.fn() },
     departure: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       updateMany: jest.fn(),
       update: jest.fn(),
     },
-    tourUnit: { findMany: jest.fn() },
+    tourAgeBand: { findMany: jest.fn() },
     tourAddOn: { findMany: jest.fn() },
     bookingUnitItem: { updateMany: jest.fn() },
     operator: { findUnique: jest.fn() },
@@ -50,7 +49,6 @@ function fakeBooking(over: Record<string, unknown> = {}) {
     displayRef: 'IT-2030-AAAA',
     publicRef: 'p1',
     tourId: 't1',
-    optionId: 'opt1',
     departureId: 'dep1',
     operatorId: 'op1',
     userId: null,
@@ -72,8 +70,8 @@ function fakeBooking(over: Record<string, unknown> = {}) {
     cancelledBy: null,
     cancellationReason: null,
     unitItems: [
-      { id: 'ui1', uuid: 'uui1', unitId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
-      { id: 'ui2', uuid: 'uui2', unitId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
+      { id: 'ui1', uuid: 'uui1', ageBandId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
+      { id: 'ui2', uuid: 'uui2', ageBandId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
     ],
     ...over,
   };
@@ -93,20 +91,16 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
     maxPartySize: 10,
     ...over,
   });
-  m.tourOption.findFirst.mockResolvedValue({ id: 'opt1', minUnits: null, maxUnits: null });
   m.departure.findFirst.mockResolvedValue({
     id: 'dep1',
     localDateTimeStart: new Date('2030-06-05T09:00:00.000Z'),
     utcCutoffAt: FUTURE,
   });
-  m.tourUnit.findMany.mockResolvedValue([
+  m.tourAgeBand.findMany.mockResolvedValue([
     {
       id: 'adult',
-      type: 'ADULT',
-      minQuantity: null,
-      maxQuantity: null,
-      accompaniedBy: [],
-      priceRetail: D('79.99'),
+      label: 'Adult',
+      price: D('79.99'),
       priceNet: D('63.99'),
     },
   ]);
@@ -128,9 +122,8 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
 
 const reserveDto = {
   tourId: 't1',
-  optionId: 'opt1',
   departureId: 'dep1',
-  items: [{ unitId: 'adult', quantity: 2 }],
+  items: [{ ageBandId: 'adult', quantity: 2 }],
 };
 
 describe('BookingsService', () => {
@@ -323,7 +316,6 @@ describe('BookingsService', () => {
           id: 'b1',
           departureId: 'dep1',
           tourId: 't1',
-          optionId: 'opt1',
           localDate: new Date('2030-06-05T00:00:00.000Z'),
           operatorId: 'op1',
           publicRef: 'p1',

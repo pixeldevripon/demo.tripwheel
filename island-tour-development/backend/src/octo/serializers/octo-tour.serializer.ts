@@ -27,13 +27,7 @@ const translationSelect = {
 } satisfies Prisma.TourTranslationSelect;
 
 export const octoTourInclude = {
-  options: {
-    where: { isActive: true },
-    orderBy: [{ isDefault: 'desc' }, { internalName: 'asc' }],
-    include: {
-      units: { orderBy: { displayOrder: 'asc' } },
-    },
-  },
+  ageBands: { orderBy: [{ isDefault: 'desc' }, { displayOrder: 'asc' }] },
   categories: { select: { isPrimary: true, category: { select: { slug: true } } } },
   images: { orderBy: { displayOrder: 'asc' } },
   highlights: {
@@ -102,35 +96,29 @@ function isoCutoff(amount: number, unit: string): string {
   }
 }
 
-// ── unit ──────────────────────────────────────────────────────────────────────
+// ── unit (= one age band) ───────────────────────────────────────────────────────
 function serializeUnit(
-  unit: OctoTourPayload['options'][number]['units'][number],
+  band: OctoTourPayload['ageBands'][number],
   currency: Currency,
   withPricing: boolean,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {
-    id: unit.id,
-    internalName: unit.internalName,
-    reference: unit.reference,
-    type: unit.type,
+    id: band.id,
+    internalName: band.label,
+    reference: null,
     restrictions: {
-      minAge: unit.minAge,
-      maxAge: unit.maxAge,
-      idRequired: unit.idRequired,
-      minQuantity: unit.minQuantity,
-      maxQuantity: unit.maxQuantity,
-      paxCount: unit.paxCount,
-      accompaniedBy: unit.accompaniedBy,
+      minAge: band.minAge,
+      maxAge: band.maxAge,
+      paxCount: 1,
     },
   };
 
   if (withPricing) {
     const pricing: OctoPricing = buildPricing({
-      retail: unit.priceRetail,
-      original: unit.priceOriginal,
-      net: unit.priceNet,
+      retail: band.price,
+      original: band.priceOriginal,
+      net: band.priceNet,
       currency,
-      taxes: unit.taxes,
     });
     out.pricingFrom = [pricing];
   }
@@ -138,43 +126,38 @@ function serializeUnit(
   return out;
 }
 
-// ── option ─────────────────────────────────────────────────────────────────────
+// ── option (synthesized single DEFAULT from tour-level fields) ────────────────────
 function serializeOption(
-  option: OctoTourPayload['options'][number],
   tour: OctoTourPayload,
   currency: Currency,
   withPricing: boolean,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {
-    id: option.id,
-    default: option.isDefault,
-    internalName: option.internalName,
-    reference: option.reference,
-    availabilityLocalStartTimes: option.availabilityLocalStartTimes,
-    cancellationCutoff: isoCutoff(
-      option.cancellationCutoffAmount,
-      option.cancellationCutoffUnit,
-    ),
-    cancellationCutoffAmount: option.cancellationCutoffAmount,
-    cancellationCutoffUnit: option.cancellationCutoffUnit,
-    requiredContactFields: option.requiredContactFields,
+    id: 'DEFAULT',
+    default: true,
+    internalName: 'Standard',
+    reference: null,
+    availabilityLocalStartTimes: [],
+    cancellationCutoff: isoCutoff(tour.cancellationHours, 'hour'),
+    cancellationCutoffAmount: tour.cancellationHours,
+    cancellationCutoffUnit: 'hour',
+    requiredContactFields: ['firstName', 'lastName', 'emailAddress'],
     restrictions: {
-      minUnits: option.minUnits ?? tour.minPartySize,
-      maxUnits: option.maxUnits ?? tour.maxPartySize,
+      minUnits: tour.minPartySize,
+      maxUnits: tour.maxPartySize,
     },
-    units: option.units.map((u) => serializeUnit(u, currency, withPricing)),
+    units: tour.ageBands.map((b) => serializeUnit(b, currency, withPricing)),
   };
 
   if (withPricing) {
-    // Option "from" price = cheapest unit's retail.
-    const cheapest = [...option.units]
-      .map((u) =>
+    // Option "from" price = cheapest age band's retail.
+    const cheapest = tour.ageBands
+      .map((b) =>
         buildPricing({
-          retail: u.priceRetail,
-          original: u.priceOriginal,
-          net: u.priceNet,
+          retail: b.price,
+          original: b.priceOriginal,
+          net: b.priceNet,
           currency,
-          taxes: u.taxes,
         }),
       )
       .sort((a, b) => a.retail - b.retail)[0];
@@ -289,9 +272,7 @@ export function serializeTour(
     deliveryFormats: tour.deliveryFormats,
     deliveryMethods: tour.deliveryMethods,
     redemptionMethod: tour.redemptionMethod,
-    options: tour.options.map((o) =>
-      serializeOption(o, tour, currency, withPricing),
-    ),
+    options: [serializeOption(tour, currency, withPricing)],
   };
 
   if (withPricing) {

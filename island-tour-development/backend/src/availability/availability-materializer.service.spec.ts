@@ -15,7 +15,6 @@ function schedule(over: Record<string, unknown> = {}) {
   return {
     id: 's1',
     tourId: 't1',
-    optionId: null,
     weekdays: ALL_WEEKDAYS,
     startTimes: ['09:00'],
     capacity: 10,
@@ -31,7 +30,6 @@ function exception(over: Record<string, unknown> = {}) {
   return {
     id: 'e1',
     tourId: 't1',
-    optionId: null,
     date: DAY_START,
     type: 'BLACKOUT',
     startTime: null,
@@ -50,7 +48,6 @@ function mockPrisma() {
         timeZone: 'America/Curacao',
         bookingCutoffMinutes: 120,
         durationMinutesFrom: 240,
-        options: [{ id: 'opt1', isDefault: true }],
       }),
     },
     availabilitySchedule: { findMany: jest.fn().mockResolvedValue([]) },
@@ -88,7 +85,6 @@ describe('AvailabilityMaterializerService', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       tourId: 't1',
-      optionId: 'opt1',
       capacity: 10,
       vacancies: 10,
       source: 'schedule',
@@ -145,7 +141,6 @@ describe('AvailabilityMaterializerService', () => {
     prisma.departure.findMany.mockResolvedValue([
       {
         id: 'd1',
-        optionId: 'opt1',
         localDateTimeStart: new Date(`${DAY}T09:00:00.000Z`),
         capacity: 10,
         vacancies: 7, // 3 booked
@@ -169,7 +164,6 @@ describe('AvailabilityMaterializerService', () => {
     prisma.departure.findMany.mockResolvedValue([
       {
         id: 'd1',
-        optionId: 'opt1',
         localDateTimeStart: new Date(`${DAY}T09:00:00.000Z`),
         capacity: 10,
         vacancies: 7,
@@ -186,7 +180,6 @@ describe('AvailabilityMaterializerService', () => {
     prisma.departure.findMany.mockResolvedValue([
       {
         id: 'd-orphan',
-        optionId: 'opt1',
         localDateTimeStart: new Date(`${DAY}T18:00:00.000Z`), // no longer scheduled
         capacity: 10,
         vacancies: 10, // unbooked
@@ -206,14 +199,8 @@ describe('AvailabilityMaterializerService', () => {
     ).rejects.toThrow(/horizon/i);
   });
 
-  it('throws when the tour has no active option', async () => {
-    prisma.tour.findUnique.mockResolvedValue({
-      id: 't1',
-      timeZone: 'America/Curacao',
-      bookingCutoffMinutes: 120,
-      durationMinutesFrom: null,
-      options: [],
-    });
-    await expect(svc.materializeTour('t1', DAY, DAY)).rejects.toThrow(/option/i);
+  it('throws when the tour does not exist', async () => {
+    prisma.tour.findUnique.mockResolvedValue(null);
+    await expect(svc.materializeTour('t1', DAY, DAY)).rejects.toThrow(/not found/i);
   });
 });
