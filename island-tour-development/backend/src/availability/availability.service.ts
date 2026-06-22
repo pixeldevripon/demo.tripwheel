@@ -531,7 +531,6 @@ function mapSchedule(row: AvailabilitySchedule): ScheduleResponseDto {
   return {
     id: row.id,
     tourId: row.tourId,
-    optionId: row.optionId,
     weekdays: row.weekdays,
     startTimes: row.startTimes,
     capacity: row.capacity,
