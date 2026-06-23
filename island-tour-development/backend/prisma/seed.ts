@@ -128,13 +128,18 @@ async function seedCategories() {
 // ── Pre-seeded destinations ────────────────────────────────────────────────────
 // isSeeded = true means the service blocks deletion of these records.
 // On create: seeds one 'tours' RESERVED slug_registry row + one row per active category.
-// V2 launch list = 5 Caribbean islands (Platform Architecture V2 §2).
+// V2 launch list = 5 Caribbean islands (Platform Architecture V2 §2):
+//   Curaçao (launch), Aruba, Sint Maarten are LIVE (isActive: true).
+//   Saint Lucia and Bahamas are pipeline rows — seeded but isActive: false. Their
+//   slug_registry rows are created inactive too (slug stays protected, page 404s)
+//   so the islands can be activated later without re-seeding. Flip isActive via the
+//   admin update endpoint, which cascades the flag onto the slug_registry rows.
 const SEED_DESTINATIONS = [
-  { name: 'Curaçao',      slug: 'curacao',      region: Region.CARIBBEAN },
-  { name: 'Aruba',        slug: 'aruba',        region: Region.CARIBBEAN },
-  { name: 'Sint Maarten', slug: 'sint-maarten', region: Region.CARIBBEAN },
-  { name: 'Saint Lucia',  slug: 'saint-lucia',  region: Region.CARIBBEAN },
-  { name: 'Bahamas',      slug: 'bahamas',      region: Region.CARIBBEAN },
+  { name: 'Curaçao',      slug: 'curacao',      region: Region.CARIBBEAN, isActive: true },
+  { name: 'Aruba',        slug: 'aruba',        region: Region.CARIBBEAN, isActive: true },
+  { name: 'Sint Maarten', slug: 'sint-maarten', region: Region.CARIBBEAN, isActive: true },
+  { name: 'Saint Lucia',  slug: 'saint-lucia',  region: Region.CARIBBEAN, isActive: false },
+  { name: 'Bahamas',      slug: 'bahamas',      region: Region.CARIBBEAN, isActive: false },
 ];
 
 async function seedDestinations() {
@@ -149,20 +154,29 @@ async function seedDestinations() {
 
     await prisma.$transaction(async (tx) => {
       const destination = await tx.destination.create({
-        data: { name: dest.name, slug: dest.slug, region: dest.region, isSeeded: true },
+        data: {
+          name: dest.name,
+          slug: dest.slug,
+          region: dest.region,
+          isSeeded: true,
+          isActive: dest.isActive,
+        },
       });
 
-      // Seed the 'tours' RESERVED slug - protects the /curacao/tours/ URL
+      // Seed the 'tours' RESERVED slug - protects the /curacao/tours/ URL.
+      // Inactive (pipeline) destinations keep the slug reserved but 404 the page.
       await tx.slugRegistry.create({
         data: {
           destinationSlug: dest.slug,
           slug: 'tours',
           entityType: SlugEntityType.RESERVED,
           entityId: null,
+          isActive: dest.isActive,
         },
       });
 
-      // Seed one slug_registry row per existing active category
+      // Seed one slug_registry row per existing active category, mirroring the
+      // destination's active state so a pipeline island's category pages 404 too.
       const categories = await tx.category.findMany({
         where: { isActive: true },
         select: { id: true, slug: true, name: true },
@@ -175,12 +189,13 @@ async function seedDestinations() {
             slug: cat.slug,
             entityType: SlugEntityType.CATEGORY,
             entityId: cat.id,
+            isActive: dest.isActive,
           })),
         });
       }
 
       console.log(
-        `  Created destination "${dest.name}" (${destination.id}), seeded ${categories.length} category slug(s) + 1 reserved`,
+        `  Created destination "${dest.name}" (${destination.id}, ${dest.isActive ? 'active' : 'inactive/pipeline'}), seeded ${categories.length} category slug(s) + 1 reserved`,
       );
     });
   }

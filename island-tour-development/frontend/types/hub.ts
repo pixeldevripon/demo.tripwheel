@@ -92,6 +92,12 @@ export interface CreateHubPayload {
 
 export interface UpdateHubPayload {
   name?: string;
+  /**
+   * Hub slug rename. The backend re-points the hub's slug_registry row, writes an
+   * automatic 301 redirect, and protects the old slug with a 90-day reuse cooldown.
+   * Omit to leave unchanged. (Hub create has no slug field - it is auto-generated.)
+   */
+  slug?: string;
   description?: string | null;
   hubType?: HubType;
   latitude?: number | null;

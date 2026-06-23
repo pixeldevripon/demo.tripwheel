@@ -124,6 +124,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           id: category.id,
           payload: {
             name: values.name,
+            slug: values.slug,
             heroImage: values.heroImage || null,
             description: values.description || null,
             icon: values.icon || null,
@@ -197,31 +198,23 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
 
             <Field>
               <Label className="text-xs font-semibold uppercase">
-                Slug {!isEditMode && <span className="text-destructive">*</span>}
+                Slug <span className="text-destructive">*</span>
               </Label>
-              {isEditMode ? (
-                <Input
-                  value={category?.slug ?? ''}
-                  readOnly
-                  className="opacity-60 cursor-not-allowed"
-                />
-              ) : (
-                <Input
-                  {...register('slug')}
-                  placeholder="e.g. boat-tours"
-                  aria-invalid={!!errors.slug}
-                  onChange={(e) => {
-                    setSlugTouched(true);
-                    setValue('slug', e.target.value, { shouldValidate: true });
-                  }}
-                />
-              )}
+              <Input
+                {...register('slug')}
+                placeholder="e.g. boat-tours"
+                aria-invalid={!!errors.slug}
+                onChange={(e) => {
+                  setSlugTouched(true);
+                  setValue('slug', e.target.value, { shouldValidate: true });
+                }}
+              />
               <FieldDescription>
                 {isEditMode
-                  ? 'Slug cannot be changed after creation.'
+                  ? 'Renaming the slug issues an automatic 301 redirect in every destination. The old slug is reserved for a 90-day cooldown before it can be reused.'
                   : 'Used in the URL. Auto-generated from the name, but you can customise it.'}
               </FieldDescription>
-              {!isEditMode && <FieldError>{errors.slug?.message}</FieldError>}
+              <FieldError>{errors.slug?.message}</FieldError>
             </Field>
 
             <Field>
@@ -341,7 +334,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 <p className="text-sm font-medium">Deactivate this category</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Hides this category from the public site. The record is preserved to protect
-                  its URL slug, featured slot data, and booking history.
+                  its URL slug (90-day reuse cooldown) and booking history.
                 </p>
                 {category.isSeeded && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-amber-600">

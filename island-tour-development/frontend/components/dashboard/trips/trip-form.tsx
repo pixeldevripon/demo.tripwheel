@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import {
@@ -49,18 +50,34 @@ const createTripSchema = z.object({
   categoryIds: z.array(z.string()).min(1, 'Select at least one category'),
   primaryCategoryId: z.string().optional(),
   hubIds: z.array(z.string()).optional(),
-  pricingModel: z.enum(['PER_PERSON', 'UNIT']).optional(),
+  pricingModel: z.enum(['PER_PERSON', 'UNIT']),
+  wholeUnitType: z.enum(['GROUP', 'BOAT', 'VEHICLE', 'AIRCRAFT', 'PACKAGE']).optional().or(z.literal('')),
+  defaultCurrency: z.enum(['USD', 'EUR']),
   basePrice: z
     .string()
     .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
     .optional()
     .or(z.literal('')),
-  durationMinutes: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
-  pickupModel: z.enum(['NONE', 'INCLUDED', 'OPTIONAL']).optional(),
+  durationMinutesFrom: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
+  durationMinutesTo: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
+  pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
+  pickupRequired: z.boolean(),
+  bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
+  paymentModel: z.enum(['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL']),
+  instantConfirmation: z.boolean(),
   minPartySize: z.coerce.number().int().min(1).optional(),
   maxPartySize: z.coerce.number().int().min(1).optional().or(z.literal('')),
   bookingCutoffMinutes: z.coerce.number().int().min(0).max(10080).optional(),
-  cancellationHours: z.coerce.number().int().min(0).optional(),
+  cancellationHours: z.enum(['24', '48', '72', '168']),
+  departureCity: z.string().max(120).optional().or(z.literal('')),
+  meetingPointLat: z.string().optional().or(z.literal('')),
+  meetingPointLng: z.string().optional().or(z.literal('')),
+  minAgeYears: z.coerce.number().int().min(0).max(120).optional().or(z.literal('')),
+  fitnessLevel: z.enum(['EASY', 'MODERATE', 'CHALLENGING']).optional().or(z.literal('')),
+  weatherDependent: z.boolean(),
+  wheelchairAccessible: z.boolean(),
+  familyFriendly: z.boolean(),
+  suitableForBeginners: z.boolean(),
 });
 
 type CreateTripFormValues = {
@@ -71,13 +88,29 @@ type CreateTripFormValues = {
   primaryCategoryId: string;
   hubIds: string[];
   pricingModel: 'PER_PERSON' | 'UNIT';
+  wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
+  defaultCurrency: 'USD' | 'EUR';
   basePrice: string;
-  durationMinutes: string;
-  pickupModel: 'NONE' | 'INCLUDED' | 'OPTIONAL';
+  durationMinutesFrom: string;
+  durationMinutesTo: string;
+  pickupModel: 'NONE' | 'INCLUDED' | 'PAID_ADDON';
+  pickupRequired: boolean;
+  bookingType: '' | 'PRIVATE' | 'SHARED';
+  paymentModel: 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+  instantConfirmation: boolean;
   minPartySize: string;
   maxPartySize: string;
   bookingCutoffMinutes: string;
-  cancellationHours: string;
+  cancellationHours: '24' | '48' | '72' | '168';
+  departureCity: string;
+  meetingPointLat: string;
+  meetingPointLng: string;
+  minAgeYears: string;
+  fitnessLevel: '' | 'EASY' | 'MODERATE' | 'CHALLENGING';
+  weatherDependent: boolean;
+  wheelchairAccessible: boolean;
+  familyFriendly: boolean;
+  suitableForBeginners: boolean;
 };
 
 export function TripForm() {
@@ -105,13 +138,29 @@ export function TripForm() {
       primaryCategoryId: '',
       hubIds: [],
       pricingModel: 'PER_PERSON',
+      wholeUnitType: '',
+      defaultCurrency: 'USD',
       basePrice: '',
-      durationMinutes: '',
+      durationMinutesFrom: '',
+      durationMinutesTo: '',
       pickupModel: 'NONE',
+      pickupRequired: false,
+      bookingType: '',
+      paymentModel: 'OPERATOR_LINK',
+      instantConfirmation: true,
       minPartySize: '1',
       maxPartySize: '',
       bookingCutoffMinutes: '0',
-      cancellationHours: '24',
+      cancellationHours: '48',
+      departureCity: '',
+      meetingPointLat: '',
+      meetingPointLng: '',
+      minAgeYears: '',
+      fitnessLevel: '',
+      weatherDependent: false,
+      wheelchairAccessible: false,
+      familyFriendly: false,
+      suitableForBeginners: false,
     },
   });
 
@@ -119,9 +168,14 @@ export function TripForm() {
   const destinationId = watch('destinationId');
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
+  const pricingModel = watch('pricingModel');
+  const pickupRequired = watch('pickupRequired');
+  const instantConfirmation = watch('instantConfirmation');
+  const weatherDependent = watch('weatherDependent');
+  const wheelchairAccessible = watch('wheelchairAccessible');
+  const familyFriendly = watch('familyFriendly');
+  const suitableForBeginners = watch('suitableForBeginners');
 
-  // Hubs available for the chosen destination (only those whose allowed categories
-  // intersect the selected categories are valid - the backend enforces this).
   const { data: hubs } = useActiveHubs(destinationId || undefined);
 
   useEffect(() => {
@@ -130,12 +184,10 @@ export function TripForm() {
     }
   }, [nameValue, slugTouched, setValue]);
 
-  // Clear selected hubs when the destination changes (hubs are destination-scoped).
   useEffect(() => {
     setValue('hubIds', []);
   }, [destinationId, setValue]);
 
-  // Keep primary valid: default to the first category, clear if it leaves the set.
   useEffect(() => {
     if (categoryIds.length === 0) {
       if (primaryCategoryId) setValue('primaryCategoryId', '');
@@ -154,13 +206,29 @@ export function TripForm() {
         primaryCategoryId: values.primaryCategoryId || values.categoryIds[0],
         hubIds: values.hubIds,
         pricingModel: values.pricingModel,
+        wholeUnitType: values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
+        defaultCurrency: values.defaultCurrency,
         basePrice: values.basePrice || undefined,
-        durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : undefined,
+        durationMinutesFrom: values.durationMinutesFrom ? Number(values.durationMinutesFrom) : undefined,
+        durationMinutesTo: values.durationMinutesTo ? Number(values.durationMinutesTo) : undefined,
         pickupModel: values.pickupModel,
+        pickupRequired: values.pickupRequired,
+        bookingType: values.bookingType || undefined,
+        paymentModel: values.paymentModel,
+        instantConfirmation: values.instantConfirmation,
         minPartySize: Number(values.minPartySize),
         maxPartySize: values.maxPartySize ? Number(values.maxPartySize) : undefined,
         bookingCutoffMinutes: Number(values.bookingCutoffMinutes),
         cancellationHours: Number(values.cancellationHours),
+        departureCity: values.departureCity || undefined,
+        meetingPointLat: values.meetingPointLat ? Number(values.meetingPointLat) : undefined,
+        meetingPointLng: values.meetingPointLng ? Number(values.meetingPointLng) : undefined,
+        minAgeYears: values.minAgeYears ? Number(values.minAgeYears) : undefined,
+        fitnessLevel: values.fitnessLevel || undefined,
+        weatherDependent: values.weatherDependent,
+        wheelchairAccessible: values.wheelchairAccessible,
+        familyFriendly: values.familyFriendly,
+        suitableForBeginners: values.suitableForBeginners,
       },
       {
         onSuccess: (created) => {
@@ -288,6 +356,7 @@ export function TripForm() {
             </FieldDescription>
           </Field>
 
+          {/* Pricing */}
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
@@ -295,19 +364,65 @@ export function TripForm() {
                 name="pricingModel"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PER_PERSON">Per Person</SelectItem>
-                      <SelectItem value="UNIT">Per Unit</SelectItem>
+                      <SelectItem value="UNIT">Per Unit (whole asset)</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
               />
             </Field>
 
+            {pricingModel === 'UNIT' ? (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
+                <Controller
+                  name="wholeUnitType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GROUP">Group</SelectItem>
+                        <SelectItem value="BOAT">Boat</SelectItem>
+                        <SelectItem value="VEHICLE">Vehicle</SelectItem>
+                        <SelectItem value="AIRCRAFT">Aircraft</SelectItem>
+                        <SelectItem value="PACKAGE">Package</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldDescription>The whole-asset type priced as one unit.</FieldDescription>
+              </Field>
+            ) : (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Currency</Label>
+                <Controller
+                  name="defaultCurrency"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label className="text-xs font-semibold uppercase">Base Price</Label>
               <Input
@@ -317,35 +432,88 @@ export function TripForm() {
               />
               <FieldError>{errors.basePrice?.message}</FieldError>
             </Field>
+            {pricingModel === 'UNIT' && (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Currency</Label>
+                <Controller
+                  name="defaultCurrency"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
           </div>
 
+          {/* Duration range */}
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Duration (minutes)</Label>
+              <Label className="text-xs font-semibold uppercase">Duration From (minutes)</Label>
               <Input
-                {...register('durationMinutes')}
+                {...register('durationMinutesFrom')}
                 type="number"
                 min={1}
                 placeholder="e.g. 180"
-                aria-invalid={!!errors.durationMinutes}
+                aria-invalid={!!errors.durationMinutesFrom}
               />
-              <FieldError>{errors.durationMinutes?.message}</FieldError>
+              <FieldError>{errors.durationMinutesFrom?.message}</FieldError>
             </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Duration To (minutes)</Label>
+              <Input
+                {...register('durationMinutesTo')}
+                type="number"
+                min={1}
+                placeholder="Optional - upper bound"
+                aria-invalid={!!errors.durationMinutesTo}
+              />
+              <FieldDescription>Leave empty for a fixed duration.</FieldDescription>
+            </Field>
+          </div>
 
+          {/* Booking */}
+          <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label className="text-xs font-semibold uppercase">Pickup Model</Label>
               <Controller
                 name="pickupModel"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="NONE">None</SelectItem>
                       <SelectItem value="INCLUDED">Included</SelectItem>
-                      <SelectItem value="OPTIONAL">Optional</SelectItem>
+                      <SelectItem value="PAID_ADDON">Paid add-on</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Booking Type</Label>
+              <Controller
+                name="bookingType"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PRIVATE">Private</SelectItem>
+                      <SelectItem value="SHARED">Shared</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -355,54 +523,178 @@ export function TripForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Min Party Size</Label>
-              <Input
-                {...register('minPartySize')}
-                type="number"
-                min={1}
-                placeholder="1"
+              <Label className="text-xs font-semibold uppercase">Payment Model</Label>
+              <Controller
+                name="paymentModel"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OPERATOR_LINK">Operator link (deposit)</SelectItem>
+                      <SelectItem value="ON_ARRIVAL">Pay on arrival</SelectItem>
+                      <SelectItem value="PAID_IN_FULL">Paid in full</SelectItem>
+                      <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               />
-              <FieldDescription>Minimum travelers per booking.</FieldDescription>
             </Field>
-
             <Field>
-              <Label className="text-xs font-semibold uppercase">Max Party Size</Label>
-              <Input
-                {...register('maxPartySize')}
-                type="number"
-                min={1}
-                placeholder="Optional"
+              <Label className="text-xs font-semibold uppercase">Cancellation Window</Label>
+              <Controller
+                name="cancellationHours"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="24">24 hours</SelectItem>
+                      <SelectItem value="48">48 hours</SelectItem>
+                      <SelectItem value="72">72 hours</SelectItem>
+                      <SelectItem value="168">7 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               />
-              <FieldDescription>Maximum travelers per booking. Leave empty for no limit.</FieldDescription>
+              <FieldDescription>Free-cancellation window before departure.</FieldDescription>
             </Field>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="instantConfirmation"
+                checked={instantConfirmation}
+                onCheckedChange={(c) => setValue('instantConfirmation', !!c)}
+              />
+              <Label htmlFor="instantConfirmation" className="text-xs font-semibold uppercase cursor-pointer">
+                Instant confirmation
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="pickupRequired"
+                checked={pickupRequired}
+                onCheckedChange={(c) => setValue('pickupRequired', !!c)}
+              />
+              <Label htmlFor="pickupRequired" className="text-xs font-semibold uppercase cursor-pointer">
+                Pickup required
+              </Label>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
-              <Input
-                {...register('bookingCutoffMinutes')}
-                type="number"
-                min={0}
-                placeholder="0"
-              />
-              <FieldDescription>How many minutes before departure bookings close.</FieldDescription>
+              <Label className="text-xs font-semibold uppercase">Min Party Size</Label>
+              <Input {...register('minPartySize')} type="number" min={1} placeholder="1" />
+              <FieldDescription>Minimum travelers per booking.</FieldDescription>
             </Field>
-
             <Field>
-              <Label className="text-xs font-semibold uppercase">Cancellation (hours)</Label>
-              <Input
-                {...register('cancellationHours')}
-                type="number"
-                min={0}
-                placeholder="24"
-              />
-              <FieldDescription>Hours before departure a guest can cancel.</FieldDescription>
+              <Label className="text-xs font-semibold uppercase">Max Party Size</Label>
+              <Input {...register('maxPartySize')} type="number" min={1} placeholder="Optional" />
+              <FieldDescription>Leave empty for no limit.</FieldDescription>
             </Field>
           </div>
 
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
+            <Input {...register('bookingCutoffMinutes')} type="number" min={0} placeholder="0" />
+            <FieldDescription>How many minutes before departure bookings close.</FieldDescription>
+          </Field>
+
+          {/* Meeting point */}
+          <div className="grid grid-cols-3 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Departure City</Label>
+              <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Meeting Lat</Label>
+              <Input {...register('meetingPointLat')} placeholder="e.g. 12.1091" />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Meeting Lng</Label>
+              <Input {...register('meetingPointLng')} placeholder="e.g. -68.9316" />
+            </Field>
+          </div>
+
+          {/* Audience */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Minimum Age</Label>
+              <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Fitness Level</Label>
+              <Controller
+                name="fitnessLevel"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EASY">Easy</SelectItem>
+                      <SelectItem value="MODERATE">Moderate</SelectItem>
+                      <SelectItem value="CHALLENGING">Challenging</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="weatherDependent"
+                checked={weatherDependent}
+                onCheckedChange={(c) => setValue('weatherDependent', !!c)}
+              />
+              <Label htmlFor="weatherDependent" className="text-xs font-semibold uppercase cursor-pointer">
+                Weather dependent
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="wheelchairAccessible"
+                checked={wheelchairAccessible}
+                onCheckedChange={(c) => setValue('wheelchairAccessible', !!c)}
+              />
+              <Label htmlFor="wheelchairAccessible" className="text-xs font-semibold uppercase cursor-pointer">
+                Wheelchair accessible
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="familyFriendly"
+                checked={familyFriendly}
+                onCheckedChange={(c) => setValue('familyFriendly', !!c)}
+              />
+              <Label htmlFor="familyFriendly" className="text-xs font-semibold uppercase cursor-pointer">
+                Family friendly
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="suitableForBeginners"
+                checked={suitableForBeginners}
+                onCheckedChange={(c) => setValue('suitableForBeginners', !!c)}
+              />
+              <Label htmlFor="suitableForBeginners" className="text-xs font-semibold uppercase cursor-pointer">
+                Suitable for beginners
+              </Label>
+            </div>
+          </div>
+
           <p className="text-xs text-muted-foreground">
-            These defaults can be changed any time from the trip&apos;s Details tab.
+            These can be changed any time from the trip&apos;s Details tab.
           </p>
 
           <div className="flex justify-end pt-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, TrophyIcon, BadgeCheckIcon, FolderIcon, NavigationIcon } from 'lucide-react';
+import { MapPinIcon, BadgeCheckIcon, FolderIcon, NavigationIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -22,12 +22,6 @@ const statusLabel: Record<TripStatus, string> = {
   LIVE: 'Live',
   PAUSED: 'Paused',
   ARCHIVED: 'Archived',
-};
-
-const slotColors: Record<number, string> = {
-  1: 'text-amber-500',
-  2: 'text-slate-400',
-  3: 'text-amber-700',
 };
 
 interface MakeColumnsOptions {
@@ -174,26 +168,6 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
               <span className="text-muted-foreground text-xs">No price set</span>
             )}
           </div>
-        );
-      },
-      enableSorting: false,
-    },
-    {
-      id: 'slot',
-      header: 'Slot',
-      cell: ({ row }) => {
-        const slotNum = row.original.featuredSlotNumber;
-        if (!slotNum) return <span className="text-xs text-muted-foreground">-</span>;
-        return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 cursor-default">
-                <TrophyIcon className={`size-3.5 ${slotColors[slotNum] ?? 'text-muted-foreground'}`} />
-                <span className="text-xs font-medium">#{slotNum}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Featured slot #{slotNum}</TooltipContent>
-          </Tooltip>
         );
       },
       enableSorting: false,

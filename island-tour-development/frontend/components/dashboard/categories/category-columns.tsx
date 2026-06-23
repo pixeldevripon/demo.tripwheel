@@ -1,5 +1,6 @@
 'use client';
 
+import { createElement } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { LockIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -11,8 +12,12 @@ import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
 function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
-  const Cmp = getCategoryIconComponent(getCategoryIconName(slug, icon));
-  return <Cmp className="size-4 text-muted-foreground" />;
+  // Stable module-level lookup (CATEGORY_ICON_COMPONENTS), not a render-created
+  // component. createElement avoids the static-components false positive that the
+  // JSX `<Cmp/>` form trips.
+  return createElement(getCategoryIconComponent(getCategoryIconName(slug, icon)), {
+    className: 'size-4 text-muted-foreground',
+  });
 }
 
 export const categoryColumns: ColumnDef<CategoryLocalized>[] = [

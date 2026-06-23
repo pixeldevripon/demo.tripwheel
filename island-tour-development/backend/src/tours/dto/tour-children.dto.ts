@@ -202,6 +202,117 @@ export class UpdateTourAddOnDto {
   isActive?: boolean;
 }
 
+// ── Age Band DTOs ───────────────────────────────────────────────────────────────
+
+export class TourAgeBandResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty({ example: 'Adult' }) label!: string;
+  @ApiPropertyOptional({ example: 13 }) minAge!: number | null;
+  @ApiPropertyOptional({ example: null }) maxAge!: number | null;
+  @ApiProperty({ example: '79.00' }) price!: string;
+  @ApiPropertyOptional({ example: '99.00' }) priceOriginal!: string | null;
+  @ApiPropertyOptional({ example: '60.00' }) priceNet!: string | null;
+  @ApiProperty() isDefault!: boolean;
+  @ApiProperty() displayOrder!: number;
+}
+
+export class CreateTourAgeBandDto {
+  @ApiProperty({ example: 'Adult' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  label!: string;
+
+  @ApiPropertyOptional({ example: 13, description: 'Inclusive lower age bound (null = no lower bound)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  minAge?: number;
+
+  @ApiPropertyOptional({ example: null, description: 'Inclusive upper age bound (null = no upper bound)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  maxAge?: number;
+
+  @ApiProperty({ example: '79.00', description: 'Retail price per traveler' })
+  @IsDecimal({}, { message: 'price must be a valid decimal number' })
+  price!: string;
+
+  @ApiPropertyOptional({ example: '99.00', description: 'Optional pre-discount/strikethrough price' })
+  @IsOptional()
+  @IsDecimal({}, { message: 'priceOriginal must be a valid decimal number' })
+  priceOriginal?: string;
+
+  @ApiPropertyOptional({ example: '60.00', description: 'Optional operator net price' })
+  @IsOptional()
+  @IsDecimal({}, { message: 'priceNet must be a valid decimal number' })
+  priceNet?: string;
+
+  @ApiPropertyOptional({ example: true, description: 'Marks the band the UI/booking defaults to (e.g. Adult)' })
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateTourAgeBandDto {
+  @ApiPropertyOptional({ example: 'Adult' })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  label?: string;
+
+  @ApiPropertyOptional({ example: 13, description: 'Inclusive lower age bound (null = no lower bound)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  minAge?: number;
+
+  @ApiPropertyOptional({ example: null, description: 'Inclusive upper age bound (null = no upper bound)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  maxAge?: number;
+
+  @ApiPropertyOptional({ example: '79.00' })
+  @IsOptional()
+  @IsDecimal({}, { message: 'price must be a valid decimal number' })
+  price?: string;
+
+  @ApiPropertyOptional({ example: '99.00' })
+  @IsOptional()
+  @IsDecimal({}, { message: 'priceOriginal must be a valid decimal number' })
+  priceOriginal?: string;
+
+  @ApiPropertyOptional({ example: '60.00' })
+  @IsOptional()
+  @IsDecimal({}, { message: 'priceNet must be a valid decimal number' })
+  priceNet?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
 // ── Language DTOs ─────────────────────────────────────────────────────────────
 
 export class TourLanguageResponseDto {

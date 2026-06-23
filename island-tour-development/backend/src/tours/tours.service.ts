@@ -179,9 +179,14 @@ export class ToursService {
     const tour = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
     if (!tour) return null;
 
-    // priceFrom anchors off basePrice. Once age bands are entered, this recomputes
-    // from the cheapest TourAgeBand price.
-    const priceFrom: Prisma.Decimal | null = tour.basePrice ?? null;
+    // priceFrom anchors off the cheapest TourAgeBand once bands are entered, and
+    // falls back to basePrice when none exist yet.
+    const cheapestBand = await client.tourAgeBand.findFirst({
+      where: { tourId },
+      orderBy: { price: 'asc' },
+      select: { price: true },
+    });
+    const priceFrom: Prisma.Decimal | null = cheapestBand?.price ?? tour.basePrice ?? null;
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
@@ -1033,6 +1038,7 @@ export class ToursService {
         images: { select: { id: true, isHero: true } },
         highlights: { select: { id: true } },
         translations: { where: { locale: Locale.en }, select: { overview: true } },
+        _count: { select: { ageBands: true } },
       },
     });
     if (!tour) throw new NotFoundException(`Tour ${id} not found`);
@@ -1050,9 +1056,9 @@ export class ToursService {
 
     if (tour.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
 
-    // Price required: a flat basePrice (the OCTO unit catalog will extend this later).
-    if (tour.basePrice == null) {
-      errors.push('A price is required to publish (set a base price)');
+    // Price required: either a flat basePrice or at least one priced age band.
+    if (tour.basePrice == null && tour._count.ageBands === 0) {
+      errors.push('A price is required to publish (set a base price or add an age band)');
     }
 
     if (errors.length > 0) throw new BadRequestException(errors);

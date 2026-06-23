@@ -44,9 +44,18 @@ const ICON_OPTIONS = [
   { value: 'money', label: 'Fees / Gratuities' },
 ];
 
+const EXCLUSION_TYPE_OPTIONS = [
+  { value: 'UNAVAILABLE', label: 'Not provided' },
+  { value: 'NOT_PERMITTED', label: 'Not permitted' },
+  { value: 'PAID_ADVANCE', label: 'Available - pay in advance' },
+  { value: 'PAID_ONSITE', label: 'Available - pay on site' },
+] as const;
+
 const addExclusionSchema = z.object({
   label: z.string().min(2, 'At least 2 characters').max(100),
   icon: z.string().optional(),
+  type: z.enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE']).optional().or(z.literal('')),
+  priceText: z.string().max(120).optional(),
   imageUrl: z.string().optional(),
   displayOrder: z.string().optional(),
 });
@@ -188,10 +197,12 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
     formState: { errors },
   } = useForm<AddExclusionFormValues>({
     resolver: zodResolver(addExclusionSchema),
-    defaultValues: { label: '', icon: 'x', imageUrl: '', displayOrder: String(count) },
+    defaultValues: { label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String(count) },
   });
 
   const imageUrlValue = watch('imageUrl');
+  const typeValue = watch('type');
+  const isPaidType = typeValue === 'PAID_ADVANCE' || typeValue === 'PAID_ONSITE';
 
   function onAdd(values: AddExclusionFormValues) {
     addExclusion(
@@ -200,6 +211,11 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
         payload: {
           label: values.label,
           icon: values.icon || 'x',
+          type: values.type || undefined,
+          priceText:
+            (values.type === 'PAID_ADVANCE' || values.type === 'PAID_ONSITE') && values.priceText
+              ? values.priceText
+              : undefined,
           imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
@@ -207,7 +223,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
       {
         onSuccess: () => {
           toast.success('Exclusion added.');
-          reset({ label: '', icon: 'x', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
+          reset({ label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add exclusion.'),
       }
@@ -262,6 +278,29 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
               </SelectContent>
             </Select>
           </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">
+                Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+              </Label>
+              <Select value={typeValue || ''} onValueChange={(val) => setValue('type', val as AddExclusionFormValues['type'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="How it's handled..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXCLUSION_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            {isPaidType && (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Price Text</Label>
+                <Input {...register('priceText')} placeholder="e.g. $15 per person" />
+              </Field>
+            )}
+          </div>
           <Field>
             <Label className="text-xs font-semibold uppercase">
               Image <span className="text-muted-foreground font-normal normal-case">(optional)</span>

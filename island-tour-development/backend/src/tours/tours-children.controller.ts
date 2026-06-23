@@ -19,6 +19,8 @@ import {
   AddTourImageDto,
   AddTourLanguageDto,
   CreateTourAddOnDto,
+  CreateTourAgeBandDto,
+  UpdateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
@@ -34,6 +36,10 @@ import {
 } from './dto/tour-children.dto';
 import {
   ApiAddAddOnDocs,
+  ApiGetAgeBandsDocs,
+  ApiAddAgeBandDocs,
+  ApiUpdateAgeBandDocs,
+  ApiRemoveAgeBandDocs,
   ApiAddHighlightDocs,
   ApiAddImageDocs,
   ApiAddInclusionDocs,
@@ -163,6 +169,49 @@ export class TourChildrenController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.tourChildrenService.removeAddOn(tourId, addonId, user.id, user.role);
+  }
+
+  // ── Age Bands ───────────────────────────────────────────────────────────────────
+
+  @Get('age-bands')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiGetAgeBandsDocs()
+  getAgeBands(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getAgeBands(tourId, user.id, user.role);
+  }
+
+  @Post('age-bands')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiAddAgeBandDocs()
+  addAgeBand(
+    @Param('tourId') tourId: string,
+    @Body() dto: CreateTourAgeBandDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.addAgeBand(tourId, dto, user.id, user.role);
+  }
+
+  @Patch('age-bands/:ageBandId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpdateAgeBandDocs()
+  updateAgeBand(
+    @Param('tourId') tourId: string,
+    @Param('ageBandId') ageBandId: string,
+    @Body() dto: UpdateTourAgeBandDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.updateAgeBand(tourId, ageBandId, dto, user.id, user.role);
+  }
+
+  @Delete('age-bands/:ageBandId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiRemoveAgeBandDocs()
+  removeAgeBand(
+    @Param('tourId') tourId: string,
+    @Param('ageBandId') ageBandId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.removeAgeBand(tourId, ageBandId, user.id, user.role);
   }
 
   // ── Languages ─────────────────────────────────────────────────────────────────

@@ -51,7 +51,7 @@ function createMockPrismaService() {
       updateMany: jest.fn(),
     },
     tourHub: { deleteMany: jest.fn(), createMany: jest.fn() },
-    tourAgeBand: { findMany: jest.fn() },
+    tourAgeBand: { findMany: jest.fn(), findFirst: jest.fn() },
     slugRegistry: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -473,7 +473,7 @@ describe('ToursService', () => {
 
     it('requires a price (no basePrice and no age bands → blocked)', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.tour.findUnique.mockResolvedValue({ ...ready(), basePrice: null, ageBands: [] });
+      prisma.tour.findUnique.mockResolvedValue({ ...ready(), basePrice: null, _count: { ageBands: 0 } });
       await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toMatchObject({
         response: { message: expect.arrayContaining([expect.stringMatching(/price is required/i)]) },
       });
@@ -485,23 +485,41 @@ describe('ToursService', () => {
       prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
       await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).resolves.toBeDefined();
     });
+
+    it('allows publish with age bands but no base price', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue({ ...ready(), basePrice: null, _count: { ageBands: 2 } });
+      prisma.tour.update.mockResolvedValue(makeTour({ status: TourStatus.LIVE }));
+      await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).resolves.toBeDefined();
+    });
   });
 
   describe('recomputePriceFrom', () => {
-    // priceFrom anchors off basePrice until age bands (TourAgeBand) are entered.
-    it('anchors priceFrom to basePrice', async () => {
+    // priceFrom falls back to basePrice until age bands (TourAgeBand) are entered.
+    it('anchors priceFrom to basePrice when no age bands exist', async () => {
       prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
       prisma.tour.update.mockResolvedValue({});
       const pf = await service.recomputePriceFrom('tour-1');
       expect(pf).toBe(200);
       expect(prisma.tour.update).toHaveBeenCalledWith({ where: { id: 'tour-1' }, data: { priceFrom: 200 } });
     });
 
-    it('persists basePrice as priceFrom', async () => {
+    it('persists basePrice as priceFrom when no age bands exist', async () => {
       prisma.tour.findUnique.mockResolvedValue({ basePrice: 99 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
       prisma.tour.update.mockResolvedValue({});
       const pf = await service.recomputePriceFrom('tour-1');
       expect(pf).toBe(99);
+    });
+
+    it('anchors priceFrom to the cheapest age band when bands exist', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 49 });
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
+      expect(pf).toBe(49);
+      expect(prisma.tour.update).toHaveBeenCalledWith({ where: { id: 'tour-1' }, data: { priceFrom: 49 } });
     });
   });
 

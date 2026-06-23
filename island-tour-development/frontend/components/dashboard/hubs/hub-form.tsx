@@ -33,6 +33,14 @@ import { HUB_TYPE_VALUES } from '@/types/enums';
 const hubSchema = z.object({
   destinationId: z.string().min(1, 'Destination is required'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
+  // Optional + empty-tolerant: hub create has no slug field (backend auto-generates
+  // it), so an empty value must pass. On edit the field is rendered and pre-filled,
+  // and the format/length checks apply to any non-empty value.
+  slug: z
+    .string()
+    .optional()
+    .refine(v => !v || /^[a-z0-9-]+$/.test(v), 'Slug may only contain lowercase letters, numbers, and hyphens')
+    .refine(v => !v || v.length >= 2, 'Slug must be at least 2 characters'),
   description: z.string().optional(),
   hubType: z.enum(HUB_TYPE_VALUES as [string, ...string[]], { message: 'Hub type is required' }),
   latitude: z
@@ -76,6 +84,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
     defaultValues: {
       destinationId: hub?.destinationId ?? '',
       name: hub?.name ?? '',
+      slug: hub?.slug ?? '',
       description: hub?.description ?? '',
       hubType: hub?.hubType ?? undefined,
       latitude: hub?.latitude?.toString() ?? '',
@@ -98,6 +107,8 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           id: hub.id,
           payload: {
             name: values.name,
+            // Omit when blank so the backend never attempts an empty rename.
+            slug: values.slug || undefined,
             description: values.description || null,
             hubType: values.hubType as HubDetail['hubType'] ?? undefined,
             latitude: num(values.latitude),
@@ -200,11 +211,15 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
               <Field>
                 <Label className="text-xs font-semibold uppercase">Slug</Label>
                 <Input
-                  value={hub?.slug ?? ''}
-                  readOnly
-                  className="opacity-60 cursor-not-allowed"
+                  {...register('slug')}
+                  placeholder="e.g. klein-curacao"
+                  aria-invalid={!!errors.slug}
                 />
-                <FieldDescription>Slug cannot be changed after creation.</FieldDescription>
+                <FieldDescription>
+                  Renaming the slug issues an automatic 301 redirect; the old slug is reserved
+                  for a 90-day cooldown before it can be reused.
+                </FieldDescription>
+                <FieldError>{errors.slug?.message}</FieldError>
               </Field>
             )}
 

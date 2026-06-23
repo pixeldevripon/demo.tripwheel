@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { createElement, useMemo, useState } from 'react';
 import { ChevronsUpDownIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,10 @@ import { CATEGORY_ICON_NAMES, getCategoryIconComponent } from '@/lib/constants/c
 export { CATEGORY_ICON_NAMES };
 
 function LucideByName({ name, className }: { name: string; className?: string }) {
-  const Cmp = getCategoryIconComponent(name);
-  return <Cmp className={className} />;
+  // Stable module-level lookup (CATEGORY_ICON_COMPONENTS), not a render-created
+  // component. createElement avoids the static-components false positive that the
+  // JSX `<Cmp/>` form trips.
+  return createElement(getCategoryIconComponent(name), { className });
 }
 
 interface CategoryIconPickerProps {

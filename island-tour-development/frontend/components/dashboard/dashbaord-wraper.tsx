@@ -5,7 +5,7 @@ import { SiteHeader } from '@/components/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 interface DashboardWrapperProps {
@@ -16,18 +16,15 @@ interface DashboardWrapperProps {
     userImage?: string | null;
 }
 
-// Animation variants for super smooth slide directions matching legacy project
-const slideVariants = {
-    slideUp: {
-        initial: { y: '0.5%', opacity: 0 },
-        animate: { y: 0, opacity: 1 },
-        exit: { y: '-0.5%', opacity: 0 },
-    },
-    fade: {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
-    },
+// Enter-only slide-up. We deliberately avoid AnimatePresence + mode="wait" here:
+// in the App Router the layout swaps `children` to the next page in lockstep with
+// `pathname`, so an exit-animating wrapper would briefly hold the previous keyed
+// subtree while it already contains the new page's tree - a hook-count mismatch
+// that throws "Rendered more hooks than during the previous render". A keyed
+// motion.div remounts on navigation and replays the entrance with no stale subtree.
+const slideUp = {
+    initial: { y: '0.5%', opacity: 0 },
+    animate: { y: 0, opacity: 1 },
 };
 
 export default function DashboardWrapper({
@@ -65,20 +62,17 @@ export default function DashboardWrapper({
                 <div className='flex flex-1 flex-col p-5 bg-[#F4F7FB] dark:bg-background'>
                     <div className='@container/main flex flex-1 flex-col gap-2'>
                         <div suppressHydrationWarning className={cn()}>
-                            <AnimatePresence mode='wait'>
-                                <motion.div
-                                    key={pathname}
-                                    initial={slideVariants.slideUp.initial}
-                                    animate={slideVariants.slideUp.animate}
-                                    exit={slideVariants.slideUp.exit}
-                                    transition={{
-                                        stiffness: 300,
-                                        duration: 0.2,
-                                    }}
-                                    className='lg:p-8 will-change-transform relative'>
-                                    {children}
-                                </motion.div>
-                            </AnimatePresence>
+                            <motion.div
+                                key={pathname}
+                                initial={slideUp.initial}
+                                animate={slideUp.animate}
+                                transition={{
+                                    stiffness: 300,
+                                    duration: 0.2,
+                                }}
+                                className='lg:p-8 will-change-transform relative'>
+                                {children}
+                            </motion.div>
                         </div>
                     </div>
                 </div>

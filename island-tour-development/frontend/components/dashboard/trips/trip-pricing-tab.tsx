@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon } from 'lucide-react';
+import { Trash2Icon, StarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,66 +21,77 @@ import {
 } from '@/components/ui/select';
 import type { Resolver } from 'react-hook-form';
 import {
-  useAgeBands,
-  useCreateAgeBand,
-  useRemoveAgeBand,
   useAddOns,
   useCreateAddOn,
   useUpdateAddOn,
   useRemoveAddOn,
+  useAgeBands,
+  useCreateAgeBand,
+  useUpdateAgeBand,
+  useRemoveAgeBand,
 } from '@/hooks/trips/use-trips';
 import type { TourAddOn, TourAgeBand } from '@/types/trip';
 
-const addAgeBandSchema = z.object({
-  bandType: z.enum(['ADULT', 'CHILD', 'INFANT']),
-  label: z.string().min(1, 'Label is required').max(60),
-  minAge: z.coerce.number().int().min(0).optional(),
-  maxAge: z.coerce.number().int().min(0).optional(),
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price'),
-  minCount: z.coerce.number().int().min(0).optional(),
-  maxCount: z.coerce.number().int().min(0).optional(),
-  displayOrder: z.coerce.number().int().min(0).optional(),
-});
+// ── Age Bands ─────────────────────────────────────────────────────────────────
 
-const addAddOnSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(80),
-  description: z.string().optional().or(z.literal('')),
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price'),
-  unit: z.enum(['PER_PERSON', 'FLAT']),
-  maxQuantity: z.coerce.number().int().min(1).optional(),
-  displayOrder: z.coerce.number().int().min(0).optional(),
-});
+const priceRegex = /^\d+(\.\d{1,2})?$/;
+
+const addAgeBandSchema = z
+  .object({
+    label: z.string().min(1, 'Label is required').max(60),
+    minAge: z.string().optional().or(z.literal('')),
+    maxAge: z.string().optional().or(z.literal('')),
+    price: z.string().regex(priceRegex, 'Must be a valid price'),
+    priceOriginal: z.string().regex(priceRegex, 'Must be a valid price').optional().or(z.literal('')),
+    isDefault: z.boolean(),
+    displayOrder: z.coerce.number().int().min(0).optional(),
+  })
+  .refine(
+    (v) => !v.minAge || !v.maxAge || Number(v.maxAge) >= Number(v.minAge),
+    { message: 'Max age must be greater than or equal to min age', path: ['maxAge'] }
+  );
 
 type AddAgeBandFormValues = {
-  bandType: 'ADULT' | 'CHILD' | 'INFANT';
   label: string;
   minAge: string;
   maxAge: string;
   price: string;
-  minCount: string;
-  maxCount: string;
-  displayOrder: string;
-};
-type AddAddOnFormValues = {
-  name: string;
-  description: string;
-  price: string;
-  unit: 'PER_PERSON' | 'FLAT';
-  maxQuantity: string;
+  priceOriginal: string;
+  isDefault: boolean;
   displayOrder: string;
 };
 
+/** Renders an age band's bounds as a human-readable range. */
+function formatAgeRange(minAge: number | null, maxAge: number | null): string {
+  if (minAge == null && maxAge == null) return 'All ages';
+  if (minAge != null && maxAge == null) return `${minAge}+`;
+  if (minAge == null && maxAge != null) return `Up to ${maxAge}`;
+  return `${minAge}-${maxAge}`;
+}
+
 interface AgeBandRowProps {
-  band: TourAgeBand;
+  ageBand: TourAgeBand;
   tripId: string;
 }
 
-function AgeBandRow({ band, tripId }: AgeBandRowProps) {
-  const { mutate: removeBand, isPending } = useRemoveAgeBand();
+function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
+  const { mutate: updateAgeBand, isPending: isUpdating } = useUpdateAgeBand();
+  const { mutate: removeAgeBand, isPending: isRemoving } = useRemoveAgeBand();
+
+  function handleSetDefault() {
+    if (ageBand.isDefault) return;
+    updateAgeBand(
+      { tripId, ageBandId: ageBand.id, payload: { isDefault: true } },
+      {
+        onSuccess: () => toast.success(`"${ageBand.label}" is now the default band.`),
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update.'),
+      }
+    );
+  }
 
   function handleDelete() {
-    removeBand(
-      { tripId, bandId: band.id },
+    removeAgeBand(
+      { tripId, ageBandId: ageBand.id },
       {
         onSuccess: () => toast.success('Age band removed.'),
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
@@ -91,27 +102,60 @@ function AgeBandRow({ band, tripId }: AgeBandRowProps) {
   return (
     <div className="flex items-center justify-between gap-2 ring-1 ring-foreground/10 px-3 py-2">
       <div className="flex items-center gap-3 min-w-0">
-        <Badge variant="secondary">{band.bandType}</Badge>
-        <span className="text-sm font-medium">{band.label}</span>
-        <span className="text-sm text-muted-foreground">${band.price}</span>
-        {band.minAge != null && band.maxAge != null && (
-          <span className="text-xs text-muted-foreground">
-            {band.minAge}–{band.maxAge} yrs
-          </span>
+        {ageBand.isDefault ? (
+          <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+        ) : (
+          <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground" />
+        )}
+        <span className="text-sm font-medium truncate">{ageBand.label}</span>
+        <Badge variant="outline" className="text-xs">{formatAgeRange(ageBand.minAge, ageBand.maxAge)}</Badge>
+        <span className="text-sm text-muted-foreground">${ageBand.price}</span>
+        {ageBand.priceOriginal && (
+          <span className="text-xs text-muted-foreground line-through">${ageBand.priceOriginal}</span>
         )}
       </div>
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        onClick={handleDelete}
-        disabled={isPending}
-        className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-      >
-        <Trash2Icon className="size-3.5" />
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={handleSetDefault}
+          disabled={isUpdating || ageBand.isDefault}
+        >
+          {ageBand.isDefault ? 'Default' : 'Set Default'}
+        </Button>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          onClick={handleDelete}
+          disabled={isRemoving}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2Icon className="size-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }
+
+// ── Add-Ons ───────────────────────────────────────────────────────────────────
+
+const addAddOnSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(80),
+  description: z.string().optional().or(z.literal('')),
+  price: z.string().regex(priceRegex, 'Must be a valid price'),
+  unit: z.enum(['PER_PERSON', 'FLAT']),
+  maxQuantity: z.coerce.number().int().min(1).optional(),
+  displayOrder: z.coerce.number().int().min(0).optional(),
+});
+
+type AddAddOnFormValues = {
+  name: string;
+  description: string;
+  price: string;
+  unit: 'PER_PERSON' | 'FLAT';
+  maxQuantity: string;
+  displayOrder: string;
+};
 
 interface AddOnRowProps {
   addOn: TourAddOn;
@@ -178,30 +222,64 @@ interface TripPricingTabProps {
 }
 
 export function TripPricingTab({ tripId }: TripPricingTabProps) {
-  const { data: ageBands, isLoading: isLoadingBands } = useAgeBands(tripId);
+  const { data: ageBands, isLoading: isLoadingAgeBands } = useAgeBands(tripId);
+  const { mutate: createAgeBand, isPending: isCreatingAgeBand } = useCreateAgeBand();
+
   const { data: addOns, isLoading: isLoadingAddOns } = useAddOns(tripId);
-  const { mutate: createAgeBand, isPending: isCreatingBand } = useCreateAgeBand();
   const { mutate: createAddOn, isPending: isCreatingAddOn } = useCreateAddOn();
 
   const {
-    register: registerBand,
-    handleSubmit: handleBandSubmit,
-    reset: resetBand,
-    control: bandControl,
-    formState: { errors: bandErrors },
+    register: registerAgeBand,
+    handleSubmit: handleAgeBandSubmit,
+    reset: resetAgeBand,
+    control: ageBandControl,
+    formState: { errors: ageBandErrors },
   } = useForm<AddAgeBandFormValues>({
     resolver: zodResolver(addAgeBandSchema) as unknown as Resolver<AddAgeBandFormValues>,
     defaultValues: {
-      bandType: 'ADULT',
       label: '',
       minAge: '',
       maxAge: '',
       price: '',
-      minCount: '',
-      maxCount: '',
+      priceOriginal: '',
+      isDefault: false,
       displayOrder: '0',
     },
   });
+
+  const ageBandDefaults: AddAgeBandFormValues = {
+    label: '',
+    minAge: '',
+    maxAge: '',
+    price: '',
+    priceOriginal: '',
+    isDefault: false,
+    displayOrder: '0',
+  };
+
+  function onAddAgeBand(values: AddAgeBandFormValues) {
+    createAgeBand(
+      {
+        tripId,
+        payload: {
+          label: values.label,
+          minAge: values.minAge !== '' ? Number(values.minAge) : undefined,
+          maxAge: values.maxAge !== '' ? Number(values.maxAge) : undefined,
+          price: values.price,
+          priceOriginal: values.priceOriginal || undefined,
+          isDefault: values.isDefault,
+          displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Age band added.');
+          resetAgeBand(ageBandDefaults);
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add age band.'),
+      }
+    );
+  }
 
   const {
     register: registerAddOn,
@@ -220,31 +298,6 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
       displayOrder: '0',
     },
   });
-
-  function onAddBand(values: AddAgeBandFormValues) {
-    createAgeBand(
-      {
-        tripId,
-        payload: {
-          bandType: values.bandType,
-          label: values.label,
-          price: values.price,
-          minAge: values.minAge ? Number(values.minAge) : undefined,
-          maxAge: values.maxAge ? Number(values.maxAge) : undefined,
-          minCount: values.minCount ? Number(values.minCount) : undefined,
-          maxCount: values.maxCount ? Number(values.maxCount) : undefined,
-          displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success('Age band added.');
-          resetBand({ bandType: 'ADULT', label: '', minAge: '', maxAge: '', price: '', minCount: '', maxCount: '', displayOrder: String(ageBands?.length ?? 0) });
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add age band.'),
-      }
-    );
-  }
 
   function onAddAddOn(values: AddAddOnFormValues) {
     createAddOn(
@@ -271,85 +324,111 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Age Bands */}
+      {/* Age Bands - flat per-traveler pricing (Adult / Child / Infant ...) */}
       <Card>
         <CardHeader className="border-b pb-4">
           <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Per-traveler price tiers. The tour&apos;s &ldquo;from&rdquo; price is the cheapest band.
+          </p>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          {isLoadingBands ? (
+          {isLoadingAgeBands ? (
             <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full rounded-none" />
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {(ageBands ?? []).map((band) => (
-                <AgeBandRow key={band.id} band={band} tripId={tripId} />
+                <AgeBandRow key={band.id} ageBand={band} tripId={tripId} />
               ))}
               {(ageBands?.length ?? 0) === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No age bands defined yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No age bands defined yet. Add at least one (e.g. Adult) to set pricing.
+                </p>
               )}
             </div>
           )}
 
-          <form onSubmit={handleBandSubmit(onAddBand)} className="space-y-4 pt-4 border-t">
+          <form onSubmit={handleAgeBandSubmit(onAddAgeBand)} className="space-y-4 pt-4 border-t">
             <p className="text-xs font-semibold uppercase text-muted-foreground">Add Age Band</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Band Type</Label>
-                <Controller
-                  name="bandType"
-                  control={bandControl}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ADULT">Adult</SelectItem>
-                        <SelectItem value="CHILD">Child</SelectItem>
-                        <SelectItem value="INFANT">Infant</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              <Field>
                 <Label className="text-xs font-semibold uppercase">Label</Label>
                 <Input
-                  {...registerBand('label')}
-                  placeholder="e.g. Adult (18+)"
-                  aria-invalid={!!bandErrors.label}
+                  {...registerAgeBand('label')}
+                  placeholder="e.g. Adult"
+                  aria-invalid={!!ageBandErrors.label}
                 />
-                <FieldError>{bandErrors.label?.message}</FieldError>
+                <FieldError>{ageBandErrors.label?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Price</Label>
+                <Input
+                  {...registerAgeBand('price')}
+                  placeholder="79.00"
+                  aria-invalid={!!ageBandErrors.price}
+                />
+                <FieldError>{ageBandErrors.price?.message}</FieldError>
               </Field>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Price</Label>
-                <Input
-                  {...registerBand('price')}
-                  placeholder="49.99"
-                  aria-invalid={!!bandErrors.price}
-                />
-                <FieldError>{bandErrors.price?.message}</FieldError>
-              </Field>
-              <Field>
                 <Label className="text-xs font-semibold uppercase">Min Age</Label>
-                <Input {...registerBand('minAge')} type="number" min={0} placeholder="Optional" />
+                <Input
+                  {...registerAgeBand('minAge')}
+                  type="number"
+                  min={0}
+                  max={120}
+                  placeholder="Any"
+                  aria-invalid={!!ageBandErrors.minAge}
+                />
+                <FieldError>{ageBandErrors.minAge?.message}</FieldError>
               </Field>
               <Field>
                 <Label className="text-xs font-semibold uppercase">Max Age</Label>
-                <Input {...registerBand('maxAge')} type="number" min={0} placeholder="Optional" />
+                <Input
+                  {...registerAgeBand('maxAge')}
+                  type="number"
+                  min={0}
+                  max={120}
+                  placeholder="Any"
+                  aria-invalid={!!ageBandErrors.maxAge}
+                />
+                <FieldError>{ageBandErrors.maxAge?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Original Price</Label>
+                <Input
+                  {...registerAgeBand('priceOriginal')}
+                  placeholder="Optional"
+                  aria-invalid={!!ageBandErrors.priceOriginal}
+                />
+                <FieldError>{ageBandErrors.priceOriginal?.message}</FieldError>
               </Field>
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit" size="sm" disabled={isCreatingBand}>
-                {isCreatingBand ? 'Adding...' : 'Add Band'}
+            <div className="flex items-center justify-between gap-4">
+              <Controller
+                name="isDefault"
+                control={ageBandControl}
+                render={({ field }) => (
+                  <label className="flex items-center gap-2 text-sm select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="size-4 accent-foreground"
+                    />
+                    Default band (pre-selected at booking)
+                  </label>
+                )}
+              />
+              <Button type="submit" size="sm" disabled={isCreatingAgeBand}>
+                {isCreatingAgeBand ? 'Adding...' : 'Add Age Band'}
               </Button>
             </div>
           </form>

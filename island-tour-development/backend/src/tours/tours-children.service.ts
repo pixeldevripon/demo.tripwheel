@@ -9,11 +9,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale, Role, TourStatus } from '@prisma/client';
+import { Locale, Prisma, Role, TourStatus } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
   CreateTourAddOnDto,
+  CreateTourAgeBandDto,
+  UpdateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
@@ -265,6 +267,149 @@ export class TourChildrenService {
     await this.prisma.tourAddOn.delete({ where: { id: addonId } });
     this.logger.log(`User ${requesterId} removed add-on ${addonId} from tour ${tourId}`);
     return { message: 'Add-on removed successfully' };
+  }
+
+  // ── Age Bands ───────────────────────────────────────────────────────────────────
+
+  private readonly ageBandSelect = {
+    id: true,
+    tourId: true,
+    label: true,
+    minAge: true,
+    maxAge: true,
+    price: true,
+    priceOriginal: true,
+    priceNet: true,
+    isDefault: true,
+    displayOrder: true,
+  } as const;
+
+  /** Rejects an age range where the upper bound sits below the lower bound. */
+  private assertValidAgeRange(minAge?: number | null, maxAge?: number | null) {
+    if (minAge != null && maxAge != null && maxAge < minAge) {
+      throw new BadRequestException('maxAge must be greater than or equal to minAge');
+    }
+  }
+
+  async getAgeBands(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    return this.prisma.tourAgeBand.findMany({
+      where: { tourId },
+      select: this.ageBandSelect,
+      orderBy: [{ isDefault: 'desc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  async addAgeBand(
+    tourId: string,
+    dto: CreateTourAgeBandDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    this.assertValidAgeRange(dto.minAge, dto.maxAge);
+
+    const band = await this.prisma.$transaction(async (tx) => {
+      // Only one default band per tour - clear the others when this one claims it.
+      if (dto.isDefault) {
+        await tx.tourAgeBand.updateMany({ where: { tourId }, data: { isDefault: false } });
+      }
+      const created = await tx.tourAgeBand.create({
+        data: {
+          tourId,
+          label: dto.label,
+          minAge: dto.minAge ?? null,
+          maxAge: dto.maxAge ?? null,
+          price: dto.price,
+          priceOriginal: dto.priceOriginal ?? null,
+          priceNet: dto.priceNet ?? null,
+          isDefault: dto.isDefault ?? false,
+          displayOrder: dto.displayOrder ?? 0,
+        },
+        select: this.ageBandSelect,
+      });
+      // priceFrom now anchors off the cheapest band - recompute inside the same tx.
+      await this.toursService.recomputePriceFrom(tourId, tx);
+      return created;
+    });
+
+    this.logger.log(`User ${requesterId} added age band ${band.id} to tour ${tourId}`);
+    return band;
+  }
+
+  async updateAgeBand(
+    tourId: string,
+    ageBandId: string,
+    dto: UpdateTourAgeBandDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourAgeBand.findFirst({
+      where: { id: ageBandId, tourId },
+      select: { id: true, minAge: true, maxAge: true },
+    });
+    if (!existing) throw new NotFoundException(`Age band ${ageBandId} not found on tour ${tourId}`);
+
+    // Validate the resulting range (incoming value, or the stored one when omitted).
+    this.assertValidAgeRange(
+      dto.minAge !== undefined ? dto.minAge : existing.minAge,
+      dto.maxAge !== undefined ? dto.maxAge : existing.maxAge,
+    );
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (dto.isDefault === true) {
+        await tx.tourAgeBand.updateMany({ where: { tourId }, data: { isDefault: false } });
+      }
+      const band = await tx.tourAgeBand.update({
+        where: { id: ageBandId },
+        data: {
+          ...(dto.label !== undefined && { label: dto.label }),
+          ...(dto.minAge !== undefined && { minAge: dto.minAge }),
+          ...(dto.maxAge !== undefined && { maxAge: dto.maxAge }),
+          ...(dto.price !== undefined && { price: dto.price }),
+          ...(dto.priceOriginal !== undefined && { priceOriginal: dto.priceOriginal }),
+          ...(dto.priceNet !== undefined && { priceNet: dto.priceNet }),
+          ...(dto.isDefault !== undefined && { isDefault: dto.isDefault }),
+          ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        },
+        select: this.ageBandSelect,
+      });
+      await this.toursService.recomputePriceFrom(tourId, tx);
+      return band;
+    });
+
+    this.logger.log(`User ${requesterId} updated age band ${ageBandId} on tour ${tourId}`);
+    return updated;
+  }
+
+  async removeAgeBand(tourId: string, ageBandId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourAgeBand.findFirst({
+      where: { id: ageBandId, tourId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException(`Age band ${ageBandId} not found on tour ${tourId}`);
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.tourAgeBand.delete({ where: { id: ageBandId } });
+        await this.toursService.recomputePriceFrom(tourId, tx);
+      });
+    } catch (err) {
+      // FK restrict: a booking line item was sold at this band - keep it for history.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+        throw new ConflictException(
+          'This age band cannot be deleted because it is referenced by existing bookings. Mark it inactive instead.',
+        );
+      }
+      throw err;
+    }
+
+    this.logger.log(`User ${requesterId} removed age band ${ageBandId} from tour ${tourId}`);
+    return { message: 'Age band removed successfully' };
   }
 
   // ── Languages ─────────────────────────────────────────────────────────────────

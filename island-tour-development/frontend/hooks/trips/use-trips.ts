@@ -33,8 +33,8 @@ export const tripKeys = {
   details: () => [...tripKeys.all, 'detail'] as const,
   detail: (id: string) => [...tripKeys.details(), id] as const,
   images: (tripId: string) => [...tripKeys.all, 'images', tripId] as const,
-  ageBands: (tripId: string) => [...tripKeys.all, 'age-bands', tripId] as const,
   addOns: (tripId: string) => [...tripKeys.all, 'addons', tripId] as const,
+  ageBands: (tripId: string) => [...tripKeys.all, 'age-bands', tripId] as const,
   languages: (tripId: string) => [...tripKeys.all, 'languages', tripId] as const,
   highlights: (tripId: string) => [...tripKeys.all, 'highlights', tripId] as const,
   inclusions: (tripId: string) => [...tripKeys.all, 'inclusions', tripId] as const,
@@ -77,18 +77,18 @@ export function useImages(tripId: string) {
   });
 }
 
-export function useAgeBands(tripId: string) {
-  return useQuery({
-    queryKey: tripKeys.ageBands(tripId),
-    queryFn: () => tripsApi.getAgeBands(tripId),
-    enabled: !!tripId,
-  });
-}
-
 export function useAddOns(tripId: string) {
   return useQuery({
     queryKey: tripKeys.addOns(tripId),
     queryFn: () => tripsApi.getAddOns(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function useAgeBands(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.ageBands(tripId),
+    queryFn: () => tripsApi.getAgeBands(tripId),
     enabled: !!tripId,
   });
 }
@@ -275,40 +275,6 @@ export function useRemoveImage() {
   });
 }
 
-// Mutations - Age Bands
-export function useCreateAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourAgeBandPayload }) =>
-      tripsApi.createAgeBand(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-    },
-  });
-}
-
-export function useUpdateAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, bandId, payload }: { tripId: string; bandId: string; payload: UpdateTourAgeBandPayload }) =>
-      tripsApi.updateAgeBand(tripId, bandId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-    },
-  });
-}
-
-export function useRemoveAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, bandId }: { tripId: string; bandId: string }) =>
-      tripsApi.removeAgeBand(tripId, bandId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-    },
-  });
-}
-
 // Mutations - Add-Ons
 export function useCreateAddOn() {
   const queryClient = useQueryClient();
@@ -339,6 +305,44 @@ export function useRemoveAddOn() {
       tripsApi.removeAddOn(tripId, addOnId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.addOns(variables.tripId) });
+    },
+  });
+}
+
+// Age band mutations also refresh the tour detail because priceFrom recomputes
+// from the cheapest band on every change.
+export function useCreateAgeBand() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourAgeBandPayload }) =>
+      tripsApi.createAgeBand(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateAgeBand() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, ageBandId, payload }: { tripId: string; ageBandId: string; payload: UpdateTourAgeBandPayload }) =>
+      tripsApi.updateAgeBand(tripId, ageBandId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveAgeBand() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, ageBandId }: { tripId: string; ageBandId: string }) =>
+      tripsApi.removeAgeBand(tripId, ageBandId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
 }
@@ -615,14 +619,13 @@ export function useUpdateSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      tripId,
       scheduleId,
       payload,
     }: {
       tripId: string;
       scheduleId: string;
       payload: UpdateTourSchedulePayload;
-    }) => tripsApi.updateSchedule(tripId, scheduleId, payload),
+    }) => tripsApi.updateSchedule(scheduleId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
     },
@@ -632,8 +635,8 @@ export function useUpdateSchedule() {
 export function useRemoveSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ tripId, scheduleId }: { tripId: string; scheduleId: string }) =>
-      tripsApi.removeSchedule(tripId, scheduleId),
+    mutationFn: ({ scheduleId }: { tripId: string; scheduleId: string }) =>
+      tripsApi.removeSchedule(scheduleId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
     },

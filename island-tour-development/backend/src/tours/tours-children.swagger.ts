@@ -11,6 +11,7 @@ import { Locale } from '@prisma/client';
 import {
   DeleteMessageResponseDto,
   TourAddOnResponseDto,
+  TourAgeBandResponseDto,
   TourHighlightResponseDto,
   TourHighlightTranslationDto,
   TourImageResponseDto,
@@ -119,6 +120,57 @@ export function ApiRemoveAddOnDocs() {
     ApiOperation({ summary: 'Remove an add-on from a tour' }),
     tourIdParam,
     ApiParam({ name: 'addonId', description: 'Add-on UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Age Bands ───────────────────────────────────────────────────────────────────
+
+export function ApiGetAgeBandsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List age bands (flat per-traveler pricing) for a tour' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourAgeBandResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddAgeBandDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Add an age band to a tour',
+      description:
+        'Setting isDefault=true clears the previous default band atomically. Recomputes the tour priceFrom from the cheapest band.',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: TourAgeBandResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdateAgeBandDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update an age band',
+      description:
+        'Setting isDefault=true clears the previous default band atomically. Recomputes the tour priceFrom from the cheapest band.',
+    }),
+    tourIdParam,
+    ApiParam({ name: 'ageBandId', description: 'Age band UUID' }),
+    ApiResponse({ status: 200, type: TourAgeBandResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemoveAgeBandDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Remove an age band from a tour',
+      description: 'Returns 409 if the band is referenced by existing bookings.',
+    }),
+    tourIdParam,
+    ApiParam({ name: 'ageBandId', description: 'Age band UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
   );

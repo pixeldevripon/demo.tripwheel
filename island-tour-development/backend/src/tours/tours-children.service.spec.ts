@@ -32,6 +32,7 @@ import {
   Locale,
   PickupModel,
   PricingModel,
+  Prisma,
   Role,
   TourStatus,
 } from '@prisma/client';
@@ -63,6 +64,14 @@ function createMockPrismaService() {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
+    },
+    tourAgeBand: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
     tourLanguage: {
@@ -225,6 +234,22 @@ function makeAddOn(overrides: Partial<Record<string, unknown>> = {}) {
     maxQuantity: 1,
     displayOrder: 0,
     isActive: true,
+    ...overrides,
+  };
+}
+
+function makeAgeBand(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'band-1',
+    tourId: 'tour-1',
+    label: 'Adult',
+    minAge: 13,
+    maxAge: null,
+    price: '79.00',
+    priceOriginal: null,
+    priceNet: null,
+    isDefault: true,
+    displayOrder: 0,
     ...overrides,
   };
 }
@@ -569,6 +594,156 @@ describe('TourChildrenService', () => {
       await expect(
         service.removeAddOn('tour-1', 'addon-99', 'user-1', Role.TOUR_OPERATOR),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── Age Bands ─────────────────────────────────────────────────────────────────
+
+  describe('getAgeBands', () => {
+    it('returns age bands ordered by default first, then displayOrder', async () => {
+      const bands = [makeAgeBand()];
+      prisma.tourAgeBand.findMany.mockResolvedValue(bands);
+
+      const result = await service.getAgeBands('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(result).toEqual(bands);
+      expect(prisma.tourAgeBand.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tourId: 'tour-1' },
+          orderBy: [{ isDefault: 'desc' }, { displayOrder: 'asc' }],
+        }),
+      );
+    });
+  });
+
+  describe('addAgeBand', () => {
+    it('creates a band and recomputes priceFrom inside the transaction', async () => {
+      const band = makeAgeBand({ isDefault: false });
+      prisma.tourAgeBand.create.mockResolvedValue(band);
+
+      const result = await service.addAgeBand(
+        'tour-1',
+        { label: 'Adult', price: '79.00' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(result).toEqual(band);
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.tourAgeBand.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ tourId: 'tour-1', label: 'Adult' }) }),
+      );
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+    });
+
+    it('clears other default bands when the new band is the default', async () => {
+      prisma.tourAgeBand.create.mockResolvedValue(makeAgeBand());
+      prisma.tourAgeBand.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.addAgeBand(
+        'tour-1',
+        { label: 'Adult', price: '79.00', isDefault: true },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tourAgeBand.updateMany).toHaveBeenCalledWith({
+        where: { tourId: 'tour-1' },
+        data: { isDefault: false },
+      });
+    });
+
+    it('rejects an age range where maxAge is below minAge', async () => {
+      await expect(
+        service.addAgeBand(
+          'tour-1',
+          { label: 'Child', price: '40.00', minAge: 12, maxAge: 4 },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.tourAgeBand.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateAgeBand', () => {
+    it('updates fields and recomputes priceFrom', async () => {
+      const existing = makeAgeBand();
+      const updated = { ...existing, price: '85.00' };
+      prisma.tourAgeBand.findFirst.mockResolvedValue(existing);
+      prisma.tourAgeBand.update.mockResolvedValue(updated);
+
+      const result = await service.updateAgeBand(
+        'tour-1', 'band-1', { price: '85.00' }, 'user-1', Role.TOUR_OPERATOR,
+      );
+
+      expect(result).toEqual(updated);
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+    });
+
+    it('throws NotFoundException when the band does not belong to the tour', async () => {
+      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateAgeBand('tour-1', 'band-99', { price: '85.00' }, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('validates the resulting range against the stored bound when one side is omitted', async () => {
+      // Stored minAge=13; incoming maxAge=4 → invalid range.
+      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand({ minAge: 13, maxAge: null }));
+
+      await expect(
+        service.updateAgeBand('tour-1', 'band-1', { maxAge: 4 }, 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('clears other defaults when isDefault is set to true', async () => {
+      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand({ isDefault: false }));
+      prisma.tourAgeBand.update.mockResolvedValue(makeAgeBand());
+      prisma.tourAgeBand.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.updateAgeBand('tour-1', 'band-1', { isDefault: true }, 'user-1', Role.TOUR_OPERATOR);
+
+      expect(prisma.tourAgeBand.updateMany).toHaveBeenCalledWith({
+        where: { tourId: 'tour-1' },
+        data: { isDefault: false },
+      });
+    });
+  });
+
+  describe('removeAgeBand', () => {
+    it('deletes the band, recomputes priceFrom, and returns a success message', async () => {
+      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand());
+      prisma.tourAgeBand.delete.mockResolvedValue({});
+
+      const result = await service.removeAgeBand('tour-1', 'band-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(result).toEqual({ message: 'Age band removed successfully' });
+      expect(prisma.tourAgeBand.delete).toHaveBeenCalledWith({ where: { id: 'band-1' } });
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+    });
+
+    it('throws NotFoundException when the band does not exist on the tour', async () => {
+      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.removeAgeBand('tour-1', 'band-99', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when the band is referenced by a booking (FK restrict)', async () => {
+      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand());
+      prisma.tourAgeBand.delete.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('FK violation', {
+          code: 'P2003',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(
+        service.removeAgeBand('tour-1', 'band-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

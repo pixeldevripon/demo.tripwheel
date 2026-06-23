@@ -91,6 +91,12 @@ export interface CreateCategoryPayload {
 
 export interface UpdateCategoryPayload {
   name?: string;
+  /**
+   * Renaming the slug is supported by the backend: it re-points the category's
+   * slug_registry row in every destination, writes an automatic 301 redirect, and
+   * protects the old slug with a 90-day reuse cooldown. Omit to leave unchanged.
+   */
+  slug?: string;
   heroImage?: string | null;
   description?: string | null;
   icon?: string | null;
