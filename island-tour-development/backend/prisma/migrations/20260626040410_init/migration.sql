@@ -35,6 +35,12 @@ CREATE TYPE "FitnessLevel" AS ENUM ('EASY', 'MODERATE', 'CHALLENGING');
 CREATE TYPE "TourBookingType" AS ENUM ('PRIVATE', 'SHARED');
 
 -- CreateEnum
+CREATE TYPE "AgeBandType" AS ENUM ('ADULT', 'CHILD', 'INFANT', 'YOUTH', 'SENIOR');
+
+-- CreateEnum
+CREATE TYPE "BandParticipation" AS ENUM ('PARTICIPANT', 'SPECTATOR');
+
+-- CreateEnum
 CREATE TYPE "OctoAvailabilityType" AS ENUM ('START_TIME', 'OPENING_HOURS');
 
 -- CreateEnum
@@ -50,10 +56,16 @@ CREATE TYPE "RedemptionMethod" AS ENUM ('DIGITAL', 'PRINT', 'MANIFEST');
 CREATE TYPE "FeatureType" AS ENUM ('INCLUSION', 'EXCLUSION', 'HIGHLIGHT', 'PREBOOKING_INFORMATION', 'PREARRIVAL_INFORMATION', 'REDEMPTION_INSTRUCTION', 'ACCESSIBILITY_INFORMATION', 'ADDITIONAL_INFORMATION', 'BOOKING_TERM', 'CANCELLATION_TERM');
 
 -- CreateEnum
-CREATE TYPE "AvailabilityStatus" AS ENUM ('AVAILABLE', 'FREESALE', 'SOLD_OUT', 'LIMITED', 'CLOSED');
+CREATE TYPE "availability_schedule_status" AS ENUM ('active', 'paused');
 
 -- CreateEnum
-CREATE TYPE "AvailabilityExceptionType" AS ENUM ('BLACKOUT', 'EXTRA_DEPARTURE', 'CAPACITY_OVERRIDE', 'PRICE_OVERRIDE', 'TIME_OVERRIDE');
+CREATE TYPE "availability_exception_type" AS ENUM ('close_date', 'close_slot', 'add_slot', 'set_capacity');
+
+-- CreateEnum
+CREATE TYPE "departure_status" AS ENUM ('open', 'closed', 'sold_out', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "departure_source" AS ENUM ('schedule', 'exception', 'api');
 
 -- CreateEnum
 CREATE TYPE "BookingStatus" AS ENUM ('ON_HOLD', 'CONFIRMED', 'EXPIRED', 'CANCELLED', 'REDEEMED', 'PENDING', 'REJECTED');
@@ -101,6 +113,12 @@ CREATE TYPE "Region" AS ENUM ('CARIBBEAN', 'ATLANTIC', 'MEDITERRANEAN', 'ASIA', 
 CREATE TYPE "HubType" AS ENUM ('LOCATION', 'HIGHLIGHT', 'AREA');
 
 -- CreateEnum
+CREATE TYPE "HubStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "HubSectionType" AS ENUM ('DISCOVER', 'LOCAL_TIP', 'FAST_FACT', 'EDITORIAL');
+
+-- CreateEnum
 CREATE TYPE "Currency" AS ENUM ('USD', 'EUR');
 
 -- CreateEnum
@@ -108,6 +126,12 @@ CREATE TYPE "SlugEntityType" AS ENUM ('TOUR', 'CATEGORY', 'HUB', 'COLLECTION', '
 
 -- CreateEnum
 CREATE TYPE "CollectionType" AS ENUM ('MANUAL', 'DYNAMIC');
+
+-- CreateEnum
+CREATE TYPE "CollectionStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "CollectionDisplayStyle" AS ENUM ('NUMBERED', 'PERSONA');
 
 -- CreateEnum
 CREATE TYPE "FeaturedEntityType" AS ENUM ('CATEGORY', 'HUB');
@@ -157,13 +181,12 @@ CREATE TABLE "tour_attributes" (
 CREATE TABLE "availability_schedules" (
     "id" TEXT NOT NULL,
     "tourId" TEXT NOT NULL,
-    "weekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    "startTimes" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "capacity" INTEGER NOT NULL,
-    "seasonStart" DATE,
-    "seasonEnd" DATE,
-    "priceOverride" DECIMAL(10,2),
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "weekday" SMALLINT NOT NULL,
+    "startTime" TIME(0) NOT NULL,
+    "capacityOverride" INTEGER,
+    "validFrom" DATE NOT NULL,
+    "validUntil" DATE,
+    "status" "availability_schedule_status" NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -175,11 +198,13 @@ CREATE TABLE "availability_exceptions" (
     "id" TEXT NOT NULL,
     "tourId" TEXT NOT NULL,
     "date" DATE NOT NULL,
-    "type" "AvailabilityExceptionType" NOT NULL,
-    "startTime" TEXT,
+    "startTime" TIME(0),
+    "type" "availability_exception_type" NOT NULL,
     "capacity" INTEGER,
-    "priceOverride" DECIMAL(10,2),
     "note" TEXT,
+    "createdBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "availability_exceptions_pkey" PRIMARY KEY ("id")
 );
@@ -188,18 +213,15 @@ CREATE TABLE "availability_exceptions" (
 CREATE TABLE "departures" (
     "id" TEXT NOT NULL,
     "tourId" TEXT NOT NULL,
-    "localDateTimeStart" TIMESTAMP(3) NOT NULL,
-    "localDateTimeEnd" TIMESTAMP(3),
-    "allDay" BOOLEAN NOT NULL DEFAULT false,
+    "date" DATE NOT NULL,
+    "startTime" TIME(0) NOT NULL,
     "capacity" INTEGER NOT NULL,
-    "vacancies" INTEGER NOT NULL,
-    "status" "AvailabilityStatus" NOT NULL DEFAULT 'AVAILABLE',
-    "utcCutoffAt" TIMESTAMP(3) NOT NULL,
-    "priceOverride" DECIMAL(10,2),
+    "bookedCount" INTEGER NOT NULL DEFAULT 0,
+    "status" "departure_status" NOT NULL DEFAULT 'open',
     "soldOutAt" TIMESTAMP(3),
-    "source" TEXT NOT NULL DEFAULT 'schedule',
-    "manuallyEdited" BOOLEAN NOT NULL DEFAULT false,
+    "source" "departure_source" NOT NULL DEFAULT 'schedule',
     "externalRef" TEXT,
+    "manuallyEdited" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -228,8 +250,11 @@ CREATE TABLE "bookings" (
     "currency" "Currency" NOT NULL,
     "localDate" DATE NOT NULL,
     "startTime" TEXT,
+    "tourStartDateTime" TIMESTAMP(3),
+    "tourEndDateTime" TIMESTAMP(3),
     "pickupRequested" BOOLEAN NOT NULL DEFAULT false,
     "pickupLocationId" TEXT,
+    "pickupAddress" TEXT,
     "totalRetail" DECIMAL(10,2) NOT NULL,
     "totalNet" DECIMAL(10,2),
     "commissionRate" DECIMAL(5,4),
@@ -237,6 +262,8 @@ CREATE TABLE "bookings" (
     "depositAmount" DECIMAL(10,2) NOT NULL,
     "balanceAmount" DECIMAL(10,2) NOT NULL,
     "taxes" JSONB DEFAULT '[]',
+    "couponCode" TEXT,
+    "discountAmount" DECIMAL(10,2),
     "totalEur" DECIMAL(10,2),
     "fxRateToEur" DECIMAL(12,6),
     "contactFirstName" TEXT,
@@ -248,6 +275,7 @@ CREATE TABLE "bookings" (
     "contactCountry" TEXT,
     "contactLocales" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "notes" TEXT,
+    "newsletterOptIn" BOOLEAN NOT NULL DEFAULT false,
     "utmSource" TEXT,
     "utmMedium" TEXT,
     "utmCampaign" TEXT,
@@ -258,7 +286,7 @@ CREATE TABLE "bookings" (
     "wbraid" TEXT,
     "fbclid" TEXT,
     "affiliateId" TEXT,
-    "island" TEXT,
+    "island" TEXT NOT NULL DEFAULT 'Curaçao',
     "customerLocale" TEXT,
     "customerId" TEXT,
     "conversionFiredAt" TIMESTAMP(3),
@@ -287,6 +315,7 @@ CREATE TABLE "booking_unit_items" (
     "utcRedeemedAt" TIMESTAMP(3),
     "contactFirstName" TEXT,
     "contactLastName" TEXT,
+    "travelerAge" INTEGER,
     "priceRetail" DECIMAL(10,2) NOT NULL,
     "priceNet" DECIMAL(10,2),
     "ticketCode" TEXT,
@@ -369,6 +398,8 @@ CREATE TABLE "collections" (
     "filterQuery" JSONB,
     "heroImage" TEXT,
     "sortOrder" TEXT NOT NULL DEFAULT 'recommended',
+    "status" "CollectionStatus" NOT NULL DEFAULT 'DRAFT',
+    "displayStyle" "CollectionDisplayStyle" NOT NULL DEFAULT 'PERSONA',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "isSeeded" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT,
@@ -385,6 +416,8 @@ CREATE TABLE "collection_translations" (
     "locale" "Locale" NOT NULL,
     "name" TEXT,
     "overview" TEXT,
+    "curationNote" TEXT,
+    "eyebrowLabel" TEXT,
     "h1Override" TEXT,
     "breadcrumbLabel" TEXT,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
@@ -403,6 +436,26 @@ CREATE TABLE "collection_page_content" (
     "metaDescription" TEXT,
 
     CONSTRAINT "collection_page_content_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "collection_tours" (
+    "id" TEXT NOT NULL,
+    "collectionId" TEXT NOT NULL,
+    "tourId" TEXT NOT NULL,
+    "position" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "collection_tours_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "collection_tour_rationales" (
+    "id" TEXT NOT NULL,
+    "collectionTourId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "rationale" TEXT NOT NULL,
+
+    CONSTRAINT "collection_tour_rationales_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -464,7 +517,10 @@ CREATE TABLE "hubs" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
+    "heroImage" TEXT,
+    "ogImage" TEXT,
     "hubType" "HubType",
+    "status" "HubStatus" NOT NULL DEFAULT 'DRAFT',
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
     "isSeeded" BOOLEAN NOT NULL DEFAULT false,
@@ -483,6 +539,7 @@ CREATE TABLE "hub_translations" (
     "locale" "Locale" NOT NULL,
     "name" TEXT,
     "overview" TEXT,
+    "heroTagline" TEXT,
     "h1Override" TEXT,
     "breadcrumbLabel" TEXT,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
@@ -525,6 +582,16 @@ CREATE TABLE "hub_our_picks" (
 );
 
 -- CreateTable
+CREATE TABLE "hub_our_pick_translations" (
+    "id" TEXT NOT NULL,
+    "ourPickId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "description" TEXT NOT NULL,
+
+    CONSTRAINT "hub_our_pick_translations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "hub_comparison_groups" (
     "id" TEXT NOT NULL,
     "hubId" TEXT NOT NULL,
@@ -535,13 +602,47 @@ CREATE TABLE "hub_comparison_groups" (
 );
 
 -- CreateTable
+CREATE TABLE "hub_comparison_group_translations" (
+    "id" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "groupName" TEXT NOT NULL,
+
+    CONSTRAINT "hub_comparison_group_translations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "hub_comparison_tours" (
     "id" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "tourId" TEXT NOT NULL,
+    "standoutNote" TEXT,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "hub_comparison_tours_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "hub_comparison_tour_translations" (
+    "id" TEXT NOT NULL,
+    "comparisonTourId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "standoutNote" TEXT NOT NULL,
+
+    CONSTRAINT "hub_comparison_tour_translations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "hub_content_sections" (
+    "id" TEXT NOT NULL,
+    "hubId" TEXT NOT NULL,
+    "locale" "Locale" NOT NULL,
+    "sectionType" "HubSectionType" NOT NULL,
+    "heading" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "hub_content_sections_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -640,6 +741,7 @@ CREATE TABLE "operator_company_info" (
     "id" TEXT NOT NULL,
     "operatorId" TEXT NOT NULL,
     "companyName" TEXT,
+    "companyEmail" TEXT,
     "companyCountry" TEXT,
     "companyCity" TEXT,
     "companyPhone" TEXT,
@@ -702,6 +804,7 @@ CREATE TABLE "payments" (
     "intentId" TEXT,
     "chargeId" TEXT,
     "refundId" TEXT,
+    "methodType" TEXT,
     "raw" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -718,6 +821,17 @@ CREATE TABLE "stripe_webhook_events" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "stripe_webhook_events_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "mollie_webhook_events" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'payment',
+    "processedAt" TIMESTAMP(3),
+    "payload" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "mollie_webhook_events_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -924,6 +1038,10 @@ CREATE TABLE "spotlight_requests" (
     "startsAt" TIMESTAMP(3),
     "endsAt" TIMESTAMP(3),
     "note" TEXT,
+    "requestedStartsAt" TIMESTAMP(3),
+    "requestedDurationDays" INTEGER,
+    "rejectionReason" TEXT,
+    "requestedBy" TEXT,
 
     CONSTRAINT "spotlight_requests_pkey" PRIMARY KEY ("id")
 );
@@ -972,6 +1090,7 @@ CREATE TABLE "tours" (
     "maxPartySize" INTEGER,
     "bookingCutoffMinutes" INTEGER NOT NULL DEFAULT 120,
     "cancellationHours" INTEGER NOT NULL DEFAULT 48,
+    "startTimes" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "paymentModel" "PaymentModel" NOT NULL DEFAULT 'OPERATOR_LINK',
     "depositPct" DECIMAL(4,1) NOT NULL DEFAULT 20.0,
     "commissionTier" DECIMAL(4,1) NOT NULL DEFAULT 20.0,
@@ -987,20 +1106,24 @@ CREATE TABLE "tours" (
     "firstPublishedAt" TIMESTAMP(3),
     "h1Override" TEXT,
     "breadcrumbLabel" TEXT,
+    "ogImage" TEXT,
     "meetingPointLat" DOUBLE PRECISION,
     "meetingPointLng" DOUBLE PRECISION,
     "departureCity" TEXT,
+    "checkInMinutesBefore" INTEGER DEFAULT 30,
     "minAgeYears" INTEGER,
     "fitnessLevel" "FitnessLevel",
     "bookingType" "TourBookingType",
     "weatherDependent" BOOLEAN NOT NULL DEFAULT false,
-    "wheelchairAccessible" BOOLEAN NOT NULL DEFAULT false,
+    "wheelchairAccessible" BOOLEAN NOT NULL DEFAULT true,
     "familyFriendly" BOOLEAN NOT NULL DEFAULT false,
     "suitableForBeginners" BOOLEAN NOT NULL DEFAULT false,
     "isLocalsFavourite" BOOLEAN NOT NULL DEFAULT false,
     "aggregateRating" DOUBLE PRECISION,
     "aggregateReviewCount" INTEGER NOT NULL DEFAULT 0,
     "aggregatesUpdatedAt" TIMESTAMP(3),
+    "ratingDistribution" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "photoReviewCount" INTEGER NOT NULL DEFAULT 0,
     "bookingCount" INTEGER NOT NULL DEFAULT 0,
     "bookingCountToday" INTEGER NOT NULL DEFAULT 0,
     "spotsRemaining" INTEGER,
@@ -1018,6 +1141,8 @@ CREATE TABLE "tours" (
 CREATE TABLE "tour_age_bands" (
     "id" TEXT NOT NULL,
     "tourId" TEXT NOT NULL,
+    "bandType" "AgeBandType" NOT NULL,
+    "participation" "BandParticipation" NOT NULL DEFAULT 'PARTICIPANT',
     "label" TEXT NOT NULL,
     "minAge" INTEGER,
     "maxAge" INTEGER,
@@ -1221,6 +1346,8 @@ CREATE TABLE "pickup_locations" (
     "longitude" DOUBLE PRECISION,
     "address" TEXT,
     "minutesPrior" INTEGER,
+    "windowStart" TEXT,
+    "windowEnd" TEXT,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
@@ -1248,11 +1375,15 @@ CREATE TABLE "tour_translations" (
     "overview" TEXT,
     "description" TEXT,
     "shortDescription" TEXT,
-    "whatToBring" TEXT,
-    "knowBeforeYouGo" TEXT,
-    "notSuitableFor" TEXT,
+    "whatToBring" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "knowBeforeYouGo" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "notSuitableFor" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "whatToExpectIntro" TEXT,
+    "categoryDisplay" TEXT,
     "localTip" TEXT,
     "meetingPointText" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
     "isMachineTranslated" BOOLEAN NOT NULL DEFAULT false,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -1369,19 +1500,25 @@ CREATE INDEX "tour_attributes_attributeKey_attributeValue_idx" ON "tour_attribut
 CREATE UNIQUE INDEX "tour_attributes_tourId_attributeKey_key" ON "tour_attributes"("tourId", "attributeKey");
 
 -- CreateIndex
-CREATE INDEX "availability_schedules_tourId_idx" ON "availability_schedules"("tourId");
+CREATE INDEX "availability_schedules_tourId_weekday_status_idx" ON "availability_schedules"("tourId", "weekday", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "availability_schedules_tourId_weekday_startTime_validFrom_key" ON "availability_schedules"("tourId", "weekday", "startTime", "validFrom");
 
 -- CreateIndex
 CREATE INDEX "availability_exceptions_tourId_date_idx" ON "availability_exceptions"("tourId", "date");
 
 -- CreateIndex
-CREATE INDEX "departures_tourId_localDateTimeStart_idx" ON "departures"("tourId", "localDateTimeStart");
+CREATE INDEX "availability_exceptions_tourId_date_startTime_idx" ON "availability_exceptions"("tourId", "date", "startTime");
 
 -- CreateIndex
-CREATE INDEX "departures_status_idx" ON "departures"("status");
+CREATE INDEX "departures_tourId_date_idx" ON "departures"("tourId", "date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "departures_tourId_localDateTimeStart_key" ON "departures"("tourId", "localDateTimeStart");
+CREATE INDEX "departures_tourId_status_date_idx" ON "departures"("tourId", "status", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "departures_tourId_date_startTime_key" ON "departures"("tourId", "date", "startTime");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "bookings_uuid_key" ON "bookings"("uuid");
@@ -1444,6 +1581,9 @@ CREATE UNIQUE INDEX "category_translations_categoryId_locale_key" ON "category_t
 CREATE INDEX "collections_destinationId_idx" ON "collections"("destinationId");
 
 -- CreateIndex
+CREATE INDEX "collections_destinationId_status_idx" ON "collections"("destinationId", "status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "collections_destinationId_slug_key" ON "collections"("destinationId", "slug");
 
 -- CreateIndex
@@ -1457,6 +1597,15 @@ CREATE INDEX "collection_page_content_collectionId_locale_idx" ON "collection_pa
 
 -- CreateIndex
 CREATE UNIQUE INDEX "collection_page_content_collectionId_locale_key" ON "collection_page_content"("collectionId", "locale");
+
+-- CreateIndex
+CREATE INDEX "collection_tours_collectionId_position_idx" ON "collection_tours"("collectionId", "position");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "collection_tours_collectionId_tourId_key" ON "collection_tours"("collectionId", "tourId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "collection_tour_rationales_collectionTourId_locale_key" ON "collection_tour_rationales"("collectionTourId", "locale");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "destinations_slug_key" ON "destinations"("slug");
@@ -1510,7 +1659,19 @@ CREATE UNIQUE INDEX "hub_allowed_categories_hubId_categoryId_key" ON "hub_allowe
 CREATE UNIQUE INDEX "hub_our_picks_hubId_tourId_key" ON "hub_our_picks"("hubId", "tourId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "hub_our_pick_translations_ourPickId_locale_key" ON "hub_our_pick_translations"("ourPickId", "locale");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "hub_comparison_group_translations_groupId_locale_key" ON "hub_comparison_group_translations"("groupId", "locale");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "hub_comparison_tours_groupId_tourId_key" ON "hub_comparison_tours"("groupId", "tourId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "hub_comparison_tour_translations_comparisonTourId_locale_key" ON "hub_comparison_tour_translations"("comparisonTourId", "locale");
+
+-- CreateIndex
+CREATE INDEX "hub_content_sections_hubId_locale_sectionType_displayOrder_idx" ON "hub_content_sections"("hubId", "locale", "sectionType", "displayOrder");
 
 -- CreateIndex
 CREATE INDEX "featured_experiences_entityType_entityId_idx" ON "featured_experiences"("entityType", "entityId");
@@ -1792,6 +1953,15 @@ ALTER TABLE "collection_translations" ADD CONSTRAINT "collection_translations_co
 ALTER TABLE "collection_page_content" ADD CONSTRAINT "collection_page_content_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "collections"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "collection_tours" ADD CONSTRAINT "collection_tours_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "collections"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "collection_tours" ADD CONSTRAINT "collection_tours_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "tours"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "collection_tour_rationales" ADD CONSTRAINT "collection_tour_rationales_collectionTourId_fkey" FOREIGN KEY ("collectionTourId") REFERENCES "collection_tours"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "destinations" ADD CONSTRAINT "destinations_parentDestinationId_fkey" FOREIGN KEY ("parentDestinationId") REFERENCES "destinations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1828,13 +1998,25 @@ ALTER TABLE "hub_our_picks" ADD CONSTRAINT "hub_our_picks_hubId_fkey" FOREIGN KE
 ALTER TABLE "hub_our_picks" ADD CONSTRAINT "hub_our_picks_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "tours"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "hub_our_pick_translations" ADD CONSTRAINT "hub_our_pick_translations_ourPickId_fkey" FOREIGN KEY ("ourPickId") REFERENCES "hub_our_picks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "hub_comparison_groups" ADD CONSTRAINT "hub_comparison_groups_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "hub_comparison_group_translations" ADD CONSTRAINT "hub_comparison_group_translations_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "hub_comparison_groups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hub_comparison_tours" ADD CONSTRAINT "hub_comparison_tours_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "hub_comparison_groups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hub_comparison_tours" ADD CONSTRAINT "hub_comparison_tours_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "tours"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "hub_comparison_tour_translations" ADD CONSTRAINT "hub_comparison_tour_translations_comparisonTourId_fkey" FOREIGN KEY ("comparisonTourId") REFERENCES "hub_comparison_tours"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "hub_content_sections" ADD CONSTRAINT "hub_content_sections_hubId_fkey" FOREIGN KEY ("hubId") REFERENCES "hubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "media_gallery" ADD CONSTRAINT "media_gallery_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

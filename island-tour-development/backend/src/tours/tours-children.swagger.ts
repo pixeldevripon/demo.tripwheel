@@ -12,13 +12,21 @@ import {
   DeleteMessageResponseDto,
   TourAddOnResponseDto,
   TourAgeBandResponseDto,
+  TourExclusionResponseDto,
+  TourExclusionTranslationDto,
+  TourFeatureResponseDto,
+  TourFeatureTranslationDto,
   TourHighlightResponseDto,
   TourHighlightTranslationDto,
   TourImageResponseDto,
   TourInclusionResponseDto,
   TourInclusionTranslationDto,
   TourLanguageResponseDto,
+  TourLocationResponseDto,
+  TourLocationTranslationDto,
   TourTranslationResponseDto,
+  PickupLocationResponseDto,
+  PickupLocationTranslationDto,
 } from './dto/tour-children.dto';
 
 // ── Shared error sets ─────────────────────────────────────────────────────────
@@ -371,3 +379,252 @@ export function ApiDeleteTourTranslationDocs() {
   );
 }
 
+// ── Exclusions ────────────────────────────────────────────────────────────────
+
+export function ApiGetExclusionsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: "List a tour's exclusions (what's NOT included)" }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourExclusionResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddExclusionDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Add an exclusion to a tour (creates EN label atomically)' }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: TourExclusionResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdateExclusionDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Update an exclusion (icon / type / priceText / order / image)' }),
+    tourIdParam,
+    ApiParam({ name: 'exclusionId', description: 'Exclusion UUID' }),
+    ApiResponse({ status: 200, type: TourExclusionResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemoveExclusionDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Remove an exclusion and all its translations' }),
+    tourIdParam,
+    ApiParam({ name: 'exclusionId', description: 'Exclusion UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpsertExclusionTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Upsert an exclusion label translation for a locale' }),
+    tourIdParam,
+    ApiParam({ name: 'exclusionId', description: 'Exclusion UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: TourExclusionTranslationDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiDeleteExclusionTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Delete an exclusion translation (non-EN locales only)' }),
+    tourIdParam,
+    ApiParam({ name: 'exclusionId', description: 'Exclusion UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Features ──────────────────────────────────────────────────────────────────
+
+export function ApiGetFeaturesDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List features for a tour (know before you go, safety, important info)' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourFeatureResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddFeatureDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Add a feature to a tour (creates EN text atomically)' }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: TourFeatureResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdateFeatureDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Update a feature type or display order' }),
+    tourIdParam,
+    ApiParam({ name: 'featureId', description: 'Feature UUID' }),
+    ApiResponse({ status: 200, type: TourFeatureResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemoveFeatureDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Remove a feature and all its translations' }),
+    tourIdParam,
+    ApiParam({ name: 'featureId', description: 'Feature UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpsertFeatureTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Upsert a feature text translation for a locale' }),
+    tourIdParam,
+    ApiParam({ name: 'featureId', description: 'Feature UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: TourFeatureTranslationDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiDeleteFeatureTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Delete a feature translation (non-EN locales only)' }),
+    tourIdParam,
+    ApiParam({ name: 'featureId', description: 'Feature UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Locations ─────────────────────────────────────────────────────────────────
+
+export function ApiGetLocationsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List itinerary / meeting-point locations for a tour (all translations)' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourLocationResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddLocationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Add a location to a tour (creates EN title atomically)' }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: TourLocationResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdateLocationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Update a location (coordinates, address, type flags, timing)' }),
+    tourIdParam,
+    ApiParam({ name: 'locationId', description: 'Location UUID' }),
+    ApiResponse({ status: 200, type: TourLocationResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemoveLocationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Remove a location and all its translations' }),
+    tourIdParam,
+    ApiParam({ name: 'locationId', description: 'Location UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpsertLocationTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Upsert a location title / short-description translation for a locale' }),
+    tourIdParam,
+    ApiParam({ name: 'locationId', description: 'Location UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: TourLocationTranslationDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiDeleteLocationTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Delete a location translation (non-EN locales only)' }),
+    tourIdParam,
+    ApiParam({ name: 'locationId', description: 'Location UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Pickup Locations ──────────────────────────────────────────────────────────
+
+export function ApiGetPickupLocationsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List pickup locations for a tour (all translations)' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [PickupLocationResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddPickupLocationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Add a pickup location to a tour (creates EN title atomically)' }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: PickupLocationResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdatePickupLocationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update a pickup location (coordinates, address, pickup window, active flag)',
+    }),
+    tourIdParam,
+    ApiParam({ name: 'pickupLocationId', description: 'Pickup location UUID' }),
+    ApiResponse({ status: 200, type: PickupLocationResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemovePickupLocationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Remove a pickup location and all its translations' }),
+    tourIdParam,
+    ApiParam({ name: 'pickupLocationId', description: 'Pickup location UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpsertPickupLocationTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Upsert a pickup location title / directions translation for a locale' }),
+    tourIdParam,
+    ApiParam({ name: 'pickupLocationId', description: 'Pickup location UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: PickupLocationTranslationDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiDeletePickupLocationTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Delete a pickup location translation (non-EN locales only)' }),
+    tourIdParam,
+    ApiParam({ name: 'pickupLocationId', description: 'Pickup location UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}

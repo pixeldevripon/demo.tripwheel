@@ -2,7 +2,7 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
-import { Body, Controller, Delete, Get, Param, ParseEnumPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseEnumPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import { CollectionsService } from './collections.service';
@@ -19,21 +19,29 @@ import {
   ApiGetCollectionPageContentDocs,
   ApiGetCollectionTranslationByLocaleDocs,
   ApiGetCollectionTranslationsDocs,
+  ApiRenderCollectionDocs,
+  ApiReplaceCollectionToursDocs,
   ApiUpdateCollectionDocs,
   ApiUpdateCollectionFaqDocs,
+  ApiUpdateCollectionStatusDocs,
   ApiUpsertCollectionPageContentDocs,
+  ApiUpsertCollectionTourRationaleDocs,
   ApiUpsertCollectionTranslationsDocs,
 } from './collections.swagger';
 import {
   ActiveCollectionsQueryDto,
   CollectionBySlugQueryDto,
+  CollectionRenderQueryDto,
   CreateCollectionDto,
   CreateFaqDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
+  ReplaceCollectionToursDto,
   UpdateCollectionDto,
+  UpdateCollectionStatusDto,
   UpdateFaqDto,
   UpsertCollectionPageContentDto,
+  UpsertCollectionTourRationaleDto,
   UpsertCollectionTranslationsDto,
 } from './dto/collection.dto';
 
@@ -56,6 +64,13 @@ export class CollectionsController {
   @ApiGetCollectionBySlugDocs()
   getBySlug(@Param('slug') slug: string, @Query() query: CollectionBySlugQueryDto) {
     return this.collectionsService.getBySlug(query.destinationSlug, slug, query.locale);
+  }
+
+  @Get('render/:slug')
+  @Public()
+  @ApiRenderCollectionDocs()
+  render(@Param('slug') slug: string, @Query() query: CollectionRenderQueryDto) {
+    return this.collectionsService.render(slug, query.destinationId, query.locale);
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -174,6 +189,43 @@ export class CollectionsController {
   @ApiDeleteCollectionFaqDocs()
   deleteFaq(@Param('id') id: string, @Param('faqId') faqId: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.collectionsService.deleteFaq(id, faqId, user.id);
+  }
+
+  // ── Membership + rationale + status (Admin) ──────────────────────────────────
+
+  @Put(':id/tours')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiReplaceCollectionToursDocs()
+  replaceTours(
+    @Param('id') id: string,
+    @Body() dto: ReplaceCollectionToursDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.replaceTours(id, dto, user.id);
+  }
+
+  @Put(':id/tours/:tourId/rationale/:locale')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiUpsertCollectionTourRationaleDocs()
+  upsertTourRationale(
+    @Param('id') id: string,
+    @Param('tourId') tourId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertCollectionTourRationaleDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.upsertTourRationale(id, tourId, locale, dto, user.id);
+  }
+
+  @Patch(':id/status')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiUpdateCollectionStatusDocs()
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateCollectionStatusDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.updateStatus(id, dto.status, user.id);
   }
 
   // ── Update / delete (dynamic :id - declared after sub-routes) ─────────────────

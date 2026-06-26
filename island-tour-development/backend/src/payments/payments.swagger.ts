@@ -32,3 +32,15 @@ export const ApiStripeWebhookDocs = () =>
     }),
     ApiOkResponse({ type: WebhookAckDto }),
   );
+
+export const ApiMollieWebhookDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Mollie webhook (idempotent ledger, reconciliation pending)',
+      description:
+        'Public + throttle-exempt. Mollie posts only a payment id; the event is recorded once ' +
+        'in `mollie_webhook_events` so redelivery is a no-op (mirrors the Stripe ledger). ' +
+        'Full status reconciliation lands with the Mollie checkout flow.',
+    }),
+    ApiOkResponse({ type: WebhookAckDto }),
+  );

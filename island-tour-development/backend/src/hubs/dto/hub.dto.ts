@@ -1,8 +1,9 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { HubType } from '@prisma/client';
+import { HubPickType, HubSectionType, HubStatus, HubType } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -10,6 +11,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Max,
   Min,
@@ -37,6 +39,11 @@ export class HubResponseDto {
   description!: string | null;
   @ApiPropertyOptional({ enum: HubType, example: HubType.LOCATION, nullable: true })
   hubType!: HubType | null;
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hubs/klein-curacao-hero.jpg', nullable: true })
+  heroImage!: string | null;
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hubs/klein-curacao-og.jpg', nullable: true })
+  ogImage!: string | null;
+  @ApiProperty({ enum: HubStatus, example: HubStatus.PUBLISHED }) status!: HubStatus;
   @ApiPropertyOptional({ example: 11.9833, nullable: true }) latitude!: number | null;
   @ApiPropertyOptional({ example: -68.6333, nullable: true }) longitude!: number | null;
   @ApiProperty({ example: true }) isSeeded!: boolean;
@@ -53,6 +60,7 @@ export class HubLocalizedResponseDto extends HubResponseDto {
 export class HubDetailLocalizedResponseDto extends HubLocalizedResponseDto {
   @ApiPropertyOptional({ nullable: true, example: null }) overview!: string | null;
   @ApiPropertyOptional({ nullable: true, example: null }) h1Override!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: null }) heroTagline!: string | null;
   @ApiPropertyOptional({ nullable: true, example: null }) breadcrumbLabel!: string | null;
   @ApiProperty({ type: [AllowedCategoryItemDto] }) allowedCategories!: AllowedCategoryItemDto[];
 }
@@ -68,6 +76,7 @@ export class HubTranslationEntryDto {
   @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
   @ApiPropertyOptional({ nullable: true }) name!: string | null;
   @ApiPropertyOptional({ nullable: true }) overview!: string | null;
+  @ApiPropertyOptional({ nullable: true }) heroTagline!: string | null;
   @ApiPropertyOptional({ nullable: true }) h1Override!: string | null;
   @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
   @ApiProperty({ example: false }) isMachineTranslated!: boolean;
@@ -87,6 +96,99 @@ export class FaqResponseDto {
   @ApiProperty({ example: 'Bring sunscreen, water, and a hat.' }) answer!: string;
   @ApiProperty({ example: 0 }) displayOrder!: number;
   @ApiProperty({ example: true }) isActive!: boolean;
+}
+
+// ── Content sections ────────────────────────────────────────────────────────
+
+export class HubContentSectionItemDto {
+  @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
+  @ApiProperty({ enum: HubSectionType, example: HubSectionType.DISCOVER }) sectionType!: HubSectionType;
+  @ApiProperty({ example: 'The White Beach' }) heading!: string;
+  @ApiProperty({ example: 'A two-kilometre stretch of powder-soft sand...' }) body!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+}
+
+export class ReplaceContentSectionsResponseDto {
+  @ApiProperty({ example: 6 }) count!: number;
+  @ApiProperty({ type: [HubContentSectionItemDto] }) sections!: HubContentSectionItemDto[];
+}
+
+// ── Our Picks ───────────────────────────────────────────────────────────────
+
+export class OurPickTourSummaryDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'klein-curacao-snorkel-cruise' }) slug!: string;
+  @ApiProperty({ example: 'Klein Curaçao Snorkel & BBQ Cruise' }) title!: string;
+}
+
+export class HubOurPickItemDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ enum: HubPickType, example: HubPickType.BEST_OVERALL }) pickType!: HubPickType;
+  @ApiProperty({ example: "We've been on every boat - this one wins on comfort." })
+  description!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ type: OurPickTourSummaryDto }) tour!: OurPickTourSummaryDto;
+}
+
+export class SetOurPicksResponseDto {
+  @ApiProperty({ example: 3 }) count!: number;
+  @ApiProperty({ type: [HubOurPickItemDto] }) ourPicks!: HubOurPickItemDto[];
+}
+
+// ── Comparison ──────────────────────────────────────────────────────────────
+
+export class ComparisonTourItemDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiPropertyOptional({ nullable: true, example: 'Dive school, massage with a view' })
+  standoutNote!: string | null;
+  @ApiProperty({ type: OurPickTourSummaryDto }) tour!: OurPickTourSummaryDto;
+}
+
+export class ComparisonGroupItemDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'Comfort trips' }) groupName!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ type: [ComparisonTourItemDto] }) tours!: ComparisonTourItemDto[];
+}
+
+export class SetComparisonResponseDto {
+  @ApiProperty({ example: 2 }) count!: number;
+  @ApiProperty({ type: [ComparisonGroupItemDto] }) groups!: ComparisonGroupItemDto[];
+}
+
+// ── Public render payload (§14) ───────────────────────────────────────────────
+
+export class HubRenderHeroDto {
+  @ApiPropertyOptional({ nullable: true }) heroImage!: string | null;
+  @ApiProperty({ example: 'Klein Curaçao day trips' }) h1!: string;
+  @ApiPropertyOptional({ nullable: true }) heroTagline!: string | null;
+  @ApiProperty({ type: [HubContentSectionItemDto] }) fastFacts!: HubContentSectionItemDto[];
+}
+
+export class RelatedHubItemDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'dolphin-academy' }) slug!: string;
+  @ApiProperty({ example: 'Dolphin Academy' }) name!: string;
+  @ApiPropertyOptional({ nullable: true }) heroImage!: string | null;
+}
+
+export class HubRenderResponseDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'klein-curacao' }) slug!: string;
+  @ApiProperty({ example: 'Klein Curaçao' }) name!: string;
+  @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
+  @ApiPropertyOptional({ enum: HubType, nullable: true }) hubType!: HubType | null;
+  @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
+  @ApiProperty({ type: HubRenderHeroDto }) hero!: HubRenderHeroDto;
+  @ApiPropertyOptional({ nullable: true, description: 'Editorial lead (overview, en fallback)' })
+  editorialLead!: string | null;
+  @ApiProperty({ type: [HubOurPickItemDto] }) ourPicks!: HubOurPickItemDto[];
+  @ApiProperty({ type: [ComparisonGroupItemDto] }) comparisonGroups!: ComparisonGroupItemDto[];
+  @ApiProperty({ type: [HubContentSectionItemDto] }) discover!: HubContentSectionItemDto[];
+  @ApiProperty({ type: [HubContentSectionItemDto] }) localTips!: HubContentSectionItemDto[];
+  @ApiProperty({ type: [FaqResponseDto] }) faqs!: FaqResponseDto[];
+  @ApiProperty({ type: [RelatedHubItemDto] }) relatedHubs!: RelatedHubItemDto[];
 }
 
 export class AddAllowedCategoryResponseDto {
@@ -182,6 +284,17 @@ export class HubBySlugQueryDto {
   locale?: Locale = Locale.en;
 }
 
+export class HubRenderQueryDto {
+  @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000001', description: 'Destination UUID - hub slugs are unique per destination' })
+  @IsUUID()
+  destinationId!: string;
+
+  @ApiPropertyOptional({ enum: Locale, default: 'en', description: 'Content locale - falls back to English when translation is missing' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+}
+
 // ── Request DTOs ───────────────────────────────────────────────────────────────
 
 export class CreateHubDto {
@@ -198,6 +311,24 @@ export class CreateHubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/hubs/klein-curacao-hero.jpg',
+    description: "Full-bleed hero image - the hub's defining element (HUB-DATA §2 G1).",
+  })
+  @IsOptional()
+  @IsUrl()
+  heroImage?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hubs/klein-curacao-og.jpg', description: 'Open Graph image (E.4).' })
+  @IsOptional()
+  @IsUrl()
+  ogImage?: string;
+
+  @ApiPropertyOptional({ enum: HubStatus, default: HubStatus.DRAFT, description: 'Publish lifecycle (G6). New hubs default to DRAFT; promote to PUBLISHED via PATCH once the publish guard passes.' })
+  @IsOptional()
+  @IsEnum(HubStatus)
+  status?: HubStatus;
 
   // ── V2 fields ──────────────────────────────────────────────────────────────
   @ApiProperty({ enum: HubType, example: HubType.LOCATION, description: 'location | highlight | area (V2 §5).' })
@@ -243,6 +374,25 @@ export class UpdateHubDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hubs/klein-curacao-hero.jpg' })
+  @IsOptional()
+  @IsUrl()
+  heroImage?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hubs/klein-curacao-og.jpg' })
+  @IsOptional()
+  @IsUrl()
+  ogImage?: string;
+
+  @ApiPropertyOptional({
+    enum: HubStatus,
+    example: HubStatus.PUBLISHED,
+    description: 'Publish lifecycle (G6). DRAFT -> PUBLISHED is gated by the publish guard (422 if requirements unmet).',
+  })
+  @IsOptional()
+  @IsEnum(HubStatus)
+  status?: HubStatus;
+
   @ApiPropertyOptional({ enum: HubType, example: HubType.LOCATION })
   @IsOptional() @IsEnum(HubType) hubType?: HubType;
 
@@ -275,6 +425,11 @@ export class HubTranslationFieldsDto {
   @IsOptional()
   @IsString()
   overview?: string;
+
+  @ApiPropertyOptional({ example: 'Where islanders send their visitors', description: 'Hero subtitle under the H1 (G5).' })
+  @IsOptional()
+  @IsString()
+  heroTagline?: string;
 
   @ApiPropertyOptional({ example: 'Day Trips to Klein Curaçao' })
   @IsOptional()
@@ -361,4 +516,175 @@ export class UpdateFaqDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+// ── Content sections (Discover / Local Tips / Fast Facts / Editorial) ─────────
+
+export class HubContentSectionInputDto {
+  @ApiProperty({ enum: Locale, example: Locale.en })
+  @IsEnum(Locale)
+  locale!: Locale;
+
+  @ApiProperty({ enum: HubSectionType, example: HubSectionType.DISCOVER })
+  @IsEnum(HubSectionType)
+  sectionType!: HubSectionType;
+
+  @ApiProperty({ example: 'The White Beach' })
+  @IsString()
+  @MinLength(1)
+  heading!: string;
+
+  @ApiProperty({ example: 'A two-kilometre stretch of powder-soft sand...' })
+  @IsString()
+  @MinLength(1)
+  body!: string;
+
+  @ApiPropertyOptional({ example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class ReplaceContentSectionsDto {
+  @ApiProperty({
+    type: [HubContentSectionInputDto],
+    description: 'Full replacement set of content sections for the hub (all locales/types). Existing rows are deleted and replaced.',
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HubContentSectionInputDto)
+  sections!: HubContentSectionInputDto[];
+}
+
+// ── Our Picks ─────────────────────────────────────────────────────────────────
+
+export class OurPickTranslationInputDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  @IsEnum(Locale)
+  locale!: Locale;
+
+  @ApiProperty({ example: 'De beste boot - comfort wint.' })
+  @IsString()
+  @MinLength(1)
+  description!: string;
+}
+
+export class HubOurPickInputDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  @IsUUID()
+  tourId!: string;
+
+  @ApiProperty({ enum: HubPickType, example: HubPickType.BEST_OVERALL })
+  @IsEnum(HubPickType)
+  pickType!: HubPickType;
+
+  @ApiProperty({ example: "We've been on every boat - this one wins on comfort.", description: 'Base-locale (en) editorial blurb fallback.' })
+  @IsString()
+  @MinLength(1)
+  description!: string;
+
+  @ApiPropertyOptional({ example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ type: [OurPickTranslationInputDto], description: 'Per-locale blurb translations (HubOurPickTranslation).' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OurPickTranslationInputDto)
+  translations?: OurPickTranslationInputDto[];
+}
+
+export class SetOurPicksDto {
+  @ApiProperty({ type: [HubOurPickInputDto], description: 'Full replacement set of Our Pick selections (typically 3).' })
+  @IsArray()
+  @ArrayMaxSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => HubOurPickInputDto)
+  picks!: HubOurPickInputDto[];
+}
+
+// ── Comparison ──────────────────────────────────────────────────────────────
+
+export class ComparisonGroupNameTranslationInputDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  @IsEnum(Locale)
+  locale!: Locale;
+
+  @ApiProperty({ example: 'Comforttrips' })
+  @IsString()
+  @MinLength(1)
+  groupName!: string;
+}
+
+export class ComparisonStandoutTranslationInputDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  @IsEnum(Locale)
+  locale!: Locale;
+
+  @ApiProperty({ example: 'Duikschool, massage met uitzicht' })
+  @IsString()
+  @MinLength(1)
+  standoutNote!: string;
+}
+
+export class ComparisonTourInputDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  @IsUUID()
+  tourId!: string;
+
+  @ApiPropertyOptional({ example: 'Dive school, massage with a view', description: 'Base-locale "what stands out" cell.' })
+  @IsOptional()
+  @IsString()
+  standoutNote?: string;
+
+  @ApiPropertyOptional({ example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ type: [ComparisonStandoutTranslationInputDto], description: 'Per-locale "what stands out" cell (HubComparisonTourTranslation).' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComparisonStandoutTranslationInputDto)
+  translations?: ComparisonStandoutTranslationInputDto[];
+}
+
+export class ComparisonGroupInputDto {
+  @ApiProperty({ example: 'Comfort trips', description: 'Base-locale group label.' })
+  @IsString()
+  @MinLength(1)
+  groupName!: string;
+
+  @ApiPropertyOptional({ example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ type: [ComparisonGroupNameTranslationInputDto], description: 'Per-locale group name (HubComparisonGroupTranslation).' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComparisonGroupNameTranslationInputDto)
+  translations?: ComparisonGroupNameTranslationInputDto[];
+
+  @ApiProperty({ type: [ComparisonTourInputDto], description: 'Tour columns within this group.' })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComparisonTourInputDto)
+  tours!: ComparisonTourInputDto[];
+}
+
+export class SetComparisonDto {
+  @ApiProperty({ type: [ComparisonGroupInputDto], description: 'Full replacement set of comparison groups + their tour columns.' })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComparisonGroupInputDto)
+  groups!: ComparisonGroupInputDto[];
 }

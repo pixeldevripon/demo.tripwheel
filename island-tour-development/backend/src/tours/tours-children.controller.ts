@@ -13,58 +13,91 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { Locale, Permission, Role } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
+  CreatePickupLocationDto,
   CreateTourAddOnDto,
   CreateTourAgeBandDto,
   UpdateTourAgeBandDto,
+  CreateTourFeatureDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
+  CreateTourLocationDto,
+  UpdatePickupLocationDto,
   UpdateTourAddOnDto,
+  UpdateTourFeatureDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
+  UpdateTourLocationDto,
+  UpsertFeatureTranslationDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
+  UpsertLocationTranslationDto,
+  UpsertPickupLocationTranslationDto,
   UpsertTourTranslationDto,
 } from './dto/tour-children.dto';
 import {
   ApiAddAddOnDocs,
-  ApiGetAgeBandsDocs,
-  ApiAddAgeBandDocs,
-  ApiUpdateAgeBandDocs,
-  ApiRemoveAgeBandDocs,
-  ApiAddHighlightDocs,
+  ApiAddExclusionDocs,
+  ApiAddFeatureDocs,
   ApiAddImageDocs,
   ApiAddInclusionDocs,
   ApiAddLanguageDocs,
+  ApiAddLocationDocs,
+  ApiAddPickupLocationDocs,
+  ApiAddAgeBandDocs,
+  ApiAddHighlightDocs,
+  ApiDeleteExclusionTranslationDocs,
+  ApiDeleteFeatureTranslationDocs,
   ApiDeleteHighlightTranslationDocs,
   ApiDeleteInclusionTranslationDocs,
+  ApiDeleteLocationTranslationDocs,
+  ApiDeletePickupLocationTranslationDocs,
   ApiDeleteTourTranslationDocs,
   ApiGetAddOnsDocs,
+  ApiGetAgeBandsDocs,
   ApiGetAllTourTranslationsDocs,
+  ApiGetExclusionsDocs,
+  ApiGetFeaturesDocs,
   ApiGetHighlightsDocs,
   ApiGetImagesDocs,
   ApiGetInclusionsDocs,
   ApiGetLanguagesDocs,
+  ApiGetLocationsDocs,
+  ApiGetPickupLocationsDocs,
   ApiGetTourTranslationByLocaleDocs,
   ApiRemoveAddOnDocs,
+  ApiRemoveAgeBandDocs,
+  ApiRemoveExclusionDocs,
+  ApiRemoveFeatureDocs,
   ApiRemoveHighlightDocs,
   ApiRemoveImageDocs,
   ApiRemoveInclusionDocs,
   ApiRemoveLanguageDocs,
+  ApiRemoveLocationDocs,
+  ApiRemovePickupLocationDocs,
   ApiUpdateAddOnDocs,
+  ApiUpdateAgeBandDocs,
+  ApiUpdateExclusionDocs,
+  ApiUpdateFeatureDocs,
   ApiUpdateHighlightDocs,
   ApiUpdateImageDocs,
   ApiUpdateInclusionDocs,
+  ApiUpdateLocationDocs,
+  ApiUpdatePickupLocationDocs,
+  ApiUpsertExclusionTranslationDocs,
+  ApiUpsertFeatureTranslationDocs,
   ApiUpsertHighlightTranslationDocs,
   ApiUpsertInclusionTranslationDocs,
+  ApiUpsertLocationTranslationDocs,
+  ApiUpsertPickupLocationTranslationDocs,
   ApiUpsertTourTranslationDocs,
 } from './tours-children.swagger';
 import { TourChildrenService } from './tours-children.service';
@@ -385,14 +418,14 @@ export class TourChildrenController {
 
   @Get('exclusions')
   @RequirePermissions(Permission.VIEW_TRIPS)
-  @ApiOperation({ summary: "List a tour's exclusions (what's NOT included)" })
+  @ApiGetExclusionsDocs()
   getExclusions(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.tourChildrenService.getExclusions(tourId, user.id, user.role);
   }
 
   @Post('exclusions')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Add an exclusion to a tour (creates the English label)' })
+  @ApiAddExclusionDocs()
   addExclusion(
     @Param('tourId') tourId: string,
     @Body() dto: CreateTourExclusionDto,
@@ -403,7 +436,7 @@ export class TourChildrenController {
 
   @Patch('exclusions/:exclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Update an exclusion (icon / order / image)' })
+  @ApiUpdateExclusionDocs()
   updateExclusion(
     @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
@@ -415,7 +448,7 @@ export class TourChildrenController {
 
   @Delete('exclusions/:exclusionId')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Remove an exclusion from a tour' })
+  @ApiRemoveExclusionDocs()
   removeExclusion(
     @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
@@ -426,7 +459,7 @@ export class TourChildrenController {
 
   @Patch('exclusions/:exclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Upsert an exclusion label translation for a locale' })
+  @ApiUpsertExclusionTranslationDocs()
   upsertExclusionTranslation(
     @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
@@ -439,7 +472,7 @@ export class TourChildrenController {
 
   @Delete('exclusions/:exclusionId/translations/:locale')
   @RequirePermissions(Permission.EDIT_TRIP)
-  @ApiOperation({ summary: 'Delete a non-English exclusion translation' })
+  @ApiDeleteExclusionTranslationDocs()
   deleteExclusionTranslation(
     @Param('tourId') tourId: string,
     @Param('exclusionId') exclusionId: string,
@@ -447,6 +480,210 @@ export class TourChildrenController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.tourChildrenService.deleteExclusionTranslation(tourId, exclusionId, locale, user.id, user.role);
+  }
+
+  // ── Features ──────────────────────────────────────────────────────────────────
+
+  @Get('features')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiGetFeaturesDocs()
+  getFeatures(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getFeatures(tourId, user.id, user.role);
+  }
+
+  @Post('features')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiAddFeatureDocs()
+  addFeature(
+    @Param('tourId') tourId: string,
+    @Body() dto: CreateTourFeatureDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.addFeature(tourId, dto, user.id, user.role);
+  }
+
+  @Patch('features/:featureId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpdateFeatureDocs()
+  updateFeature(
+    @Param('tourId') tourId: string,
+    @Param('featureId') featureId: string,
+    @Body() dto: UpdateTourFeatureDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.updateFeature(tourId, featureId, dto, user.id, user.role);
+  }
+
+  @Delete('features/:featureId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiRemoveFeatureDocs()
+  removeFeature(
+    @Param('tourId') tourId: string,
+    @Param('featureId') featureId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.removeFeature(tourId, featureId, user.id, user.role);
+  }
+
+  @Patch('features/:featureId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpsertFeatureTranslationDocs()
+  upsertFeatureTranslation(
+    @Param('tourId') tourId: string,
+    @Param('featureId') featureId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertFeatureTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.upsertFeatureTranslation(tourId, featureId, locale, dto, user.id, user.role);
+  }
+
+  @Delete('features/:featureId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiDeleteFeatureTranslationDocs()
+  deleteFeatureTranslation(
+    @Param('tourId') tourId: string,
+    @Param('featureId') featureId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.deleteFeatureTranslation(tourId, featureId, locale, user.id, user.role);
+  }
+
+  // ── Locations ─────────────────────────────────────────────────────────────────
+
+  @Get('locations')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiGetLocationsDocs()
+  getLocations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getLocations(tourId, user.id, user.role);
+  }
+
+  @Post('locations')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiAddLocationDocs()
+  addLocation(
+    @Param('tourId') tourId: string,
+    @Body() dto: CreateTourLocationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.addLocation(tourId, dto, user.id, user.role);
+  }
+
+  @Patch('locations/:locationId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpdateLocationDocs()
+  updateLocation(
+    @Param('tourId') tourId: string,
+    @Param('locationId') locationId: string,
+    @Body() dto: UpdateTourLocationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.updateLocation(tourId, locationId, dto, user.id, user.role);
+  }
+
+  @Delete('locations/:locationId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiRemoveLocationDocs()
+  removeLocation(
+    @Param('tourId') tourId: string,
+    @Param('locationId') locationId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.removeLocation(tourId, locationId, user.id, user.role);
+  }
+
+  @Patch('locations/:locationId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpsertLocationTranslationDocs()
+  upsertLocationTranslation(
+    @Param('tourId') tourId: string,
+    @Param('locationId') locationId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertLocationTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.upsertLocationTranslation(tourId, locationId, locale, dto, user.id, user.role);
+  }
+
+  @Delete('locations/:locationId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiDeleteLocationTranslationDocs()
+  deleteLocationTranslation(
+    @Param('tourId') tourId: string,
+    @Param('locationId') locationId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.deleteLocationTranslation(tourId, locationId, locale, user.id, user.role);
+  }
+
+  // ── Pickup Locations ──────────────────────────────────────────────────────────
+
+  @Get('pickup-locations')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiGetPickupLocationsDocs()
+  getPickupLocations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.tourChildrenService.getPickupLocations(tourId, user.id, user.role);
+  }
+
+  @Post('pickup-locations')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiAddPickupLocationDocs()
+  addPickupLocation(
+    @Param('tourId') tourId: string,
+    @Body() dto: CreatePickupLocationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.addPickupLocation(tourId, dto, user.id, user.role);
+  }
+
+  @Patch('pickup-locations/:pickupLocationId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpdatePickupLocationDocs()
+  updatePickupLocation(
+    @Param('tourId') tourId: string,
+    @Param('pickupLocationId') pickupLocationId: string,
+    @Body() dto: UpdatePickupLocationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.updatePickupLocation(tourId, pickupLocationId, dto, user.id, user.role);
+  }
+
+  @Delete('pickup-locations/:pickupLocationId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiRemovePickupLocationDocs()
+  removePickupLocation(
+    @Param('tourId') tourId: string,
+    @Param('pickupLocationId') pickupLocationId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.removePickupLocation(tourId, pickupLocationId, user.id, user.role);
+  }
+
+  @Patch('pickup-locations/:pickupLocationId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpsertPickupLocationTranslationDocs()
+  upsertPickupLocationTranslation(
+    @Param('tourId') tourId: string,
+    @Param('pickupLocationId') pickupLocationId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertPickupLocationTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.upsertPickupLocationTranslation(tourId, pickupLocationId, locale, dto, user.id, user.role);
+  }
+
+  @Delete('pickup-locations/:pickupLocationId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiDeletePickupLocationTranslationDocs()
+  deletePickupLocationTranslation(
+    @Param('tourId') tourId: string,
+    @Param('pickupLocationId') pickupLocationId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.deletePickupLocationTranslation(tourId, pickupLocationId, locale, user.id, user.role);
   }
 
   // ── Tour Translations - static routes before :locale ─────────────────────────

@@ -4,15 +4,16 @@ model Payment {
   id        String @id @default(uuid())
   bookingId String
 
-  provider PaymentProvider @default(STRIPE)
-  kind     PaymentKind // DEPOSIT | BALANCE | FULL | REFUND
-  status   PaymentStatus   @default(REQUIRES_PAYMENT)
-  amount   Decimal         @db.Decimal(10, 2)
-  currency Currency
-  intentId String? // Stripe PaymentIntent id
-  chargeId String?
-  refundId String?
-  raw      Json? // provider payload snapshot
+  provider   PaymentProvider @default(STRIPE)
+  kind       PaymentKind // DEPOSIT | BALANCE | FULL | REFUND
+  status     PaymentStatus   @default(REQUIRES_PAYMENT)
+  amount     Decimal         @db.Decimal(10, 2)
+  currency   Currency
+  intentId   String? // Stripe PaymentIntent id
+  chargeId   String?
+  refundId   String?
+  methodType String? // which method was used (card / paypal / apple_pay / google_pay) — Figma
+  raw        Json? // provider payload snapshot
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -25,7 +26,7 @@ model Payment {
   @@map("payments")
 }
 
-// Idempotent webhook ledger (Stripe etc.) — keyed by provider event id.
+// Idempotent webhook ledger (Stripe) — keyed by provider event id.
 model StripeWebhookEvent {
   id          String    @id // Stripe event id (idempotency)
   type        String
@@ -34,4 +35,17 @@ model StripeWebhookEvent {
   createdAt   DateTime  @default(now())
 
   @@map("stripe_webhook_events")
+}
+
+// Idempotent webhook ledger (Mollie) — keyed by the Mollie payment id delivered to the
+// webhook. Mollie posts only an id; we fetch + reconcile, recording it here so redelivery
+// is a no-op (mirrors the Stripe ledger).
+model MollieWebhookEvent {
+  id          String    @id // Mollie payment/object id (idempotency)
+  type        String    @default("payment")
+  processedAt DateTime?
+  payload     Json
+  createdAt   DateTime  @default(now())
+
+  @@map("mollie_webhook_events")
 }

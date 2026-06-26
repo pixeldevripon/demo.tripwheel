@@ -1,88 +1,68 @@
-import { AvailabilityStatus } from '@prisma/client';
+import { DepartureStatus } from '@prisma/client';
 import {
-  computeAvailabilityStatus,
+  discloseRemaining,
   isDepartureBookable,
+  liveDepartureStatus,
+  storedStatusForFill,
 } from './availability-status.util';
 
-const future = new Date('2030-01-01T12:00:00.000Z');
-const past = new Date('2020-01-01T12:00:00.000Z');
-const now = new Date('2026-06-21T12:00:00.000Z');
+describe('liveDepartureStatus', () => {
+  const base = { capacity: 10, bookedCount: 4, cutoffPassed: false };
 
-describe('computeAvailabilityStatus', () => {
-  it('CLOSED once past the cutoff', () => {
-    expect(
-      computeAvailabilityStatus({ vacancies: 5, capacity: 10, utcCutoffAt: past, now }),
-    ).toBe(AvailabilityStatus.CLOSED);
+  it('OPEN when there is room and the cutoff has not passed', () => {
+    expect(liveDepartureStatus({ ...base, status: DepartureStatus.OPEN })).toBe(
+      DepartureStatus.OPEN,
+    );
   });
 
-  it('SOLD_OUT at zero vacancies', () => {
+  it('SOLD_OUT when full, regardless of cutoff', () => {
     expect(
-      computeAvailabilityStatus({ vacancies: 0, capacity: 10, utcCutoffAt: future, now }),
-    ).toBe(AvailabilityStatus.SOLD_OUT);
+      liveDepartureStatus({ status: DepartureStatus.OPEN, capacity: 10, bookedCount: 10, cutoffPassed: false }),
+    ).toBe(DepartureStatus.SOLD_OUT);
   });
 
-  it('LIMITED at/below the low-vacancy threshold', () => {
+  it('CLOSED (live) once the cutoff has passed', () => {
     expect(
-      computeAvailabilityStatus({ vacancies: 2, capacity: 10, utcCutoffAt: future, now }),
-    ).toBe(AvailabilityStatus.LIMITED);
+      liveDepartureStatus({ ...base, status: DepartureStatus.OPEN, cutoffPassed: true }),
+    ).toBe(DepartureStatus.CLOSED);
   });
 
-  it('AVAILABLE with ample vacancies', () => {
-    expect(
-      computeAvailabilityStatus({ vacancies: 8, capacity: 10, utcCutoffAt: future, now }),
-    ).toBe(AvailabilityStatus.AVAILABLE);
+  it('keeps a sticky CLOSED even with room', () => {
+    expect(liveDepartureStatus({ ...base, status: DepartureStatus.CLOSED })).toBe(
+      DepartureStatus.CLOSED,
+    );
   });
 
-  it('honours a sticky manual CLOSED even with vacancies', () => {
+  it('keeps a sticky CANCELLED above everything', () => {
     expect(
-      computeAvailabilityStatus({
-        vacancies: 8,
-        capacity: 10,
-        utcCutoffAt: future,
-        now,
-        manualStatus: AvailabilityStatus.CLOSED,
-      }),
-    ).toBe(AvailabilityStatus.CLOSED);
+      liveDepartureStatus({ status: DepartureStatus.CANCELLED, capacity: 10, bookedCount: 0, cutoffPassed: true }),
+    ).toBe(DepartureStatus.CANCELLED);
   });
+});
 
-  it('keeps FREESALE open until the cutoff, then CLOSED', () => {
-    expect(
-      computeAvailabilityStatus({
-        vacancies: 0,
-        capacity: 10,
-        utcCutoffAt: future,
-        now,
-        manualStatus: AvailabilityStatus.FREESALE,
-      }),
-    ).toBe(AvailabilityStatus.FREESALE);
-    expect(
-      computeAvailabilityStatus({
-        vacancies: 0,
-        capacity: 10,
-        utcCutoffAt: past,
-        now,
-        manualStatus: AvailabilityStatus.FREESALE,
-      }),
-    ).toBe(AvailabilityStatus.CLOSED);
-  });
-
-  it('treats a small-capacity slot sensibly (capacity 2)', () => {
-    // threshold = min(3, max(1, capacity-1)) = 1
-    expect(
-      computeAvailabilityStatus({ vacancies: 2, capacity: 2, utcCutoffAt: future, now }),
-    ).toBe(AvailabilityStatus.AVAILABLE);
-    expect(
-      computeAvailabilityStatus({ vacancies: 1, capacity: 2, utcCutoffAt: future, now }),
-    ).toBe(AvailabilityStatus.LIMITED);
+describe('storedStatusForFill', () => {
+  it('is OPEN with room and SOLD_OUT when full', () => {
+    expect(storedStatusForFill(10, 9)).toBe(DepartureStatus.OPEN);
+    expect(storedStatusForFill(10, 10)).toBe(DepartureStatus.SOLD_OUT);
+    expect(storedStatusForFill(10, 11)).toBe(DepartureStatus.SOLD_OUT);
   });
 });
 
 describe('isDepartureBookable', () => {
-  it('is true for AVAILABLE, LIMITED and FREESALE; false for SOLD_OUT/CLOSED', () => {
-    expect(isDepartureBookable(AvailabilityStatus.AVAILABLE)).toBe(true);
-    expect(isDepartureBookable(AvailabilityStatus.FREESALE)).toBe(true);
-    expect(isDepartureBookable(AvailabilityStatus.LIMITED)).toBe(true);
-    expect(isDepartureBookable(AvailabilityStatus.SOLD_OUT)).toBe(false);
-    expect(isDepartureBookable(AvailabilityStatus.CLOSED)).toBe(false);
+  it('is true only for a live OPEN status', () => {
+    expect(isDepartureBookable(DepartureStatus.OPEN)).toBe(true);
+    expect(isDepartureBookable(DepartureStatus.SOLD_OUT)).toBe(false);
+    expect(isDepartureBookable(DepartureStatus.CLOSED)).toBe(false);
+    expect(isDepartureBookable(DepartureStatus.CANCELLED)).toBe(false);
+  });
+});
+
+describe('discloseRemaining', () => {
+  it('surfaces "Only N left" only below the threshold (anti-scarcity)', () => {
+    expect(discloseRemaining(0)).toBe(false); // sold out: nothing to disclose
+    expect(discloseRemaining(1)).toBe(true);
+    expect(discloseRemaining(4)).toBe(true);
+    expect(discloseRemaining(5)).toBe(false);
+    expect(discloseRemaining(20)).toBe(false);
   });
 });

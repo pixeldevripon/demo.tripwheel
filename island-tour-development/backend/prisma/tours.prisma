@@ -41,6 +41,7 @@ model Tour {
   maxPartySize         Int? // maximum travelers per booking
   bookingCutoffMinutes Int          @default(120) // → availability.utcCutoffAt
   cancellationHours    Int          @default(48) // enum-bound [24,48,72,168]
+  startTimes           String[]     @default([]) // the tour's slot set ('HH:MM'); availability schedules switch these on per weekday
   paymentModel         PaymentModel @default(OPERATOR_LINK)
   depositPct           Decimal      @default(20.0) @db.Decimal(4, 1) // 20–30 in 2.5 steps (tier-driven)
 
@@ -60,18 +61,20 @@ model Tour {
   // ── SEO / Content overrides ──
   h1Override      String?
   breadcrumbLabel String?
+  ogImage         String? // master E.3 SEO block — single Open Graph image (Tour-level; meta_title/description are per-locale on TourTranslation)
 
   // ── Meeting point / departure (master E.3; localized text in TourTranslation) ──
-  meetingPointLat Float?
-  meetingPointLng Float?
-  departureCity   String?
+  meetingPointLat      Float?
+  meetingPointLng      Float?
+  departureCity        String?
+  checkInMinutesBefore Int?    @default(30) // "Please arrive N minutes early for check-in" on the Meeting & Pickup block (Figma; master default 30)
 
   // ── Audience / accessibility flags (master E.3 — power filters, badges, JSON-LD) ──
   minAgeYears          Int? // tour-level minimum age (distinct from per-band TourAgeBand.minAge)
   fitnessLevel         FitnessLevel?
   bookingType          TourBookingType? // private | shared
   weatherDependent     Boolean          @default(false)
-  wheelchairAccessible Boolean          @default(false)
+  wheelchairAccessible Boolean          @default(true) // master E.3/LD23: most tours assumed accessible unless explicitly not
   familyFriendly       Boolean          @default(false)
   suitableForBeginners Boolean          @default(false)
   isLocalsFavourite    Boolean          @default(false)
@@ -80,6 +83,8 @@ model Tour {
   aggregateRating      Float?
   aggregateReviewCount Int       @default(0)
   aggregatesUpdatedAt  DateTime?
+  ratingDistribution   Int[]     @default([]) // [5★,4★,3★,2★,1★] counts — star chart (LD31)
+  photoReviewCount     Int       @default(0) // photo carousel activates at ≥3 photo reviews
 
   // ── CRO counters (V2 §10) ──
   bookingCount      Int       @default(0)
@@ -121,6 +126,7 @@ model Tour {
   spotlightRequests  SpotlightRequest[]
   hubOurPicks        HubOurPick[]
   hubComparisonTours HubComparisonTour[]
+  collectionTours    CollectionTour[]
 
   @@unique([destinationId, slug])
   @@index([operatorId])
@@ -131,17 +137,21 @@ model Tour {
   @@map("tours")
 }
 
-// ── TourAgeBand — flat per-traveler pricing ───────────────────────────────────
-// A simple priced age band (Adult / Child (4-12) / Infant …). One booking line item
-// per traveler references the band it was sold at. Replaces the OCTO option/unit
-// hierarchy — no options, no per-unit restrictions, one seat per traveler.
+// ── TourAgeBand — typed per-traveler pricing ──────────────────────────────────
+// One row per priced band, typed by bandType (Adult / Child / Infant / Youth / Senior).
+// The API composes a typed pricing object keyed by band (pricing.adult, pricing.child …).
+// participation=SPECTATOR bands are banded ride-alongs (count toward capacity, excluded
+// from the activity). One booking line item per traveler references the band it was sold
+// at. Replaces the OCTO option/unit hierarchy — one seat per traveler.
 model TourAgeBand {
   id     String @id @default(uuid())
   tourId String
 
-  label  String // 'Adult', 'Child (4-12)', 'Infant'
-  minAge Int? // inclusive lower bound (null = no lower bound)
-  maxAge Int? // inclusive upper bound (null = no upper bound)
+  bandType      AgeBandType // ADULT/CHILD/INFANT/YOUTH/SENIOR — lets the API compose pricing.adult etc.
+  participation BandParticipation @default(PARTICIPANT) // PARTICIPANT (default) | SPECTATOR (Figma "Bringing Spectators?")
+  label         String // 'Adult', 'Child (4-12)', 'Infant'
+  minAge        Int? // inclusive lower bound (null = no lower bound)
+  maxAge        Int? // inclusive upper bound (null = no upper bound)
 
   // Pricing (Decimal in DB)
   price         Decimal  @db.Decimal(10, 2) // retail price per traveler
@@ -408,6 +418,8 @@ model PickupLocation {
   longitude    Float?
   address      String?
   minutesPrior Int? // pickup happens N minutes before departure
+  windowStart  String? // pickup window start ('HH:MM') — Figma "7:45–8:15 AM window"
+  windowEnd    String? // pickup window end ('HH:MM')
   displayOrder Int     @default(0)
   isActive     Boolean @default(true)
 
@@ -441,14 +453,18 @@ model TourTranslation {
   locale              Locale
   title               String?
   overview            String? // 80–200 words, paragraph breaks only
-  description         String?
+  description         String? // long description, 350–500 words
   // ── Marketing / info content (master E.3, LD19/LD22/LD23) ──
-  shortDescription    String? // one-line teaser for cards
-  whatToBring         String?
-  knowBeforeYouGo     String?
-  notSuitableFor      String?
+  shortDescription    String? // card/preview teaser — 160 char cap (DTO @MaxLength(160))
+  whatToBring         String[] @default([]) // 3–8 bullets, ≤25 words each (master string[])
+  knowBeforeYouGo     String[] @default([]) // 3–10 bullets, ≤25 words each (master string[])
+  notSuitableFor      String[] @default([]) // 1–6 bullets when present; hidden when empty (master string[])
+  whatToExpectIntro   String? // intro paragraph above the numbered itinerary on the "What to Expect" tab (Figma)
+  categoryDisplay     String? // plural noun phrase for "More {x} in {destination}" (LD33); CMS validates plural
   localTip            String?
   meetingPointText    String? // localized meeting-point description (geo on Tour)
+  metaTitle           String? // SEO (master E.3 SEO block, localized)
+  metaDescription     String? // SEO (master E.3 SEO block, localized)
   isMachineTranslated Boolean  @default(false)
   updatedAt           DateTime @updatedAt
 

@@ -18,6 +18,7 @@ import { CollectionsModule } from '@/collections/collections.module';
 import { SearchModule } from '@/search/search.module';
 import { OctoModule } from '@/octo/octo.module';
 import { AvailabilityModule } from '@/availability/availability.module';
+import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsModule } from '@/bookings/bookings.module';
 import { PaymentsModule } from '@/payments/payments.module';
 import { TrackingModule } from '@/tracking/tracking.module';
@@ -46,6 +47,7 @@ import { NotificationsModule } from '@/notifications/notifications.module';
     SearchModule,
     OctoModule,
     AvailabilityModule,
+    TiersModule,
     BookingsModule,
     PaymentsModule,
     TrackingModule,

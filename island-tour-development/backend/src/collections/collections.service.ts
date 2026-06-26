@@ -17,16 +17,19 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { CollectionType, Prisma, SlugEntityType } from '@prisma/client';
+import { CollectionStatus, CollectionType, Prisma, SlugEntityType } from '@prisma/client';
 import { TourQueryDto, TourSort } from '@/tours/dto/tour.dto';
 import {
   CreateCollectionDto,
   CreateFaqDto,
   FaqLocaleQueryDto,
+  ReplaceCollectionToursDto,
   UpdateCollectionDto,
   UpdateFaqDto,
   UpsertCollectionPageContentDto,
+  UpsertCollectionTourRationaleDto,
   UpsertCollectionTranslationsDto,
 } from './dto/collection.dto';
 
@@ -45,6 +48,8 @@ export class CollectionsService {
     name: true,
     slug: true,
     collectionType: true,
+    status: true,
+    displayStyle: true,
     tourIds: true,
     filterQuery: true,
     heroImage: true,
@@ -53,6 +58,17 @@ export class CollectionsService {
     isSeeded: true,
     createdAt: true,
     updatedAt: true,
+  } as const;
+
+  /** Translation fields surfaced on the public render + the admin translation editor. */
+  private readonly collectionTranslationSelect = {
+    name: true,
+    overview: true,
+    curationNote: true,
+    eyebrowLabel: true,
+    h1Override: true,
+    breadcrumbLabel: true,
+    isMachineTranslated: true,
   } as const;
 
   private async findCollectionOrThrow(id: string) {
@@ -201,6 +217,8 @@ export class CollectionsService {
             name: dto.name,
             slug,
             collectionType: dto.collectionType,
+            ...(dto.status !== undefined && { status: dto.status }),
+            ...(dto.displayStyle !== undefined && { displayStyle: dto.displayStyle }),
             tourIds: dto.tourIds ?? [],
             filterQuery: (dto.filterQuery ?? undefined) as Prisma.InputJsonValue | undefined,
             heroImage: dto.heroImage ?? null,
@@ -230,6 +248,13 @@ export class CollectionsService {
           if (err?.code === 'P2002') throw new ConflictException(`Slug "${slug}" is already taken at destination "${destination.slug}"`);
           throw err;
         });
+
+      // Seed CollectionTour rows (authoritative MANUAL membership) from the initial tourIds.
+      if (dto.collectionType === CollectionType.MANUAL && dto.tourIds && dto.tourIds.length > 0) {
+        await tx.collectionTour.createMany({
+          data: dto.tourIds.map((tourId, index) => ({ collectionId: collection.id, tourId, position: index })),
+        });
+      }
 
       this.logger.log(`Admin ${adminId} created collection "${dto.name}" (${collection.id})`);
       return collection;
@@ -281,6 +306,7 @@ export class CollectionsService {
             ...(dto.filterQuery !== undefined && { filterQuery: dto.filterQuery as Prisma.InputJsonValue }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+            ...(dto.displayStyle !== undefined && { displayStyle: dto.displayStyle }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.collectionSelect,
@@ -335,7 +361,7 @@ export class CollectionsService {
     await this.findCollectionOrThrow(id);
     return this.prisma.collectionTranslation.findMany({
       where: { collectionId: id },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.collectionTranslationSelect },
       orderBy: { locale: 'asc' },
     });
   }
@@ -344,9 +370,20 @@ export class CollectionsService {
     await this.findCollectionOrThrow(id);
     const t = await this.prisma.collectionTranslation.findUnique({
       where: { collectionId_locale: { collectionId: id, locale } },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.collectionTranslationSelect },
     });
-    return t ?? { locale, name: null, overview: null, h1Override: null, breadcrumbLabel: null, isMachineTranslated: false };
+    return (
+      t ?? {
+        locale,
+        name: null,
+        overview: null,
+        curationNote: null,
+        eyebrowLabel: null,
+        h1Override: null,
+        breadcrumbLabel: null,
+        isMachineTranslated: false,
+      }
+    );
   }
 
   async upsertTranslations(id: string, locale: Locale, dto: UpsertCollectionTranslationsDto, adminId: string) {
@@ -360,6 +397,8 @@ export class CollectionsService {
         isMachineTranslated: isMachineTranslated ?? false,
         name: fields.name,
         overview: fields.overview,
+        curationNote: fields.curationNote,
+        eyebrowLabel: fields.eyebrowLabel,
         h1Override: fields.h1Override,
         breadcrumbLabel: fields.breadcrumbLabel,
       },
@@ -367,10 +406,12 @@ export class CollectionsService {
         isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
+        ...(fields.curationNote !== undefined && { curationNote: fields.curationNote }),
+        ...(fields.eyebrowLabel !== undefined && { eyebrowLabel: fields.eyebrowLabel }),
         ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
         ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
       },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.collectionTranslationSelect },
     });
     this.logger.log(`Admin ${adminId} upserted translation for collection ${id} [${locale}]`);
     return result;
@@ -469,5 +510,266 @@ export class CollectionsService {
     await this.prisma.faq.delete({ where: { id: faqId } });
     this.logger.log(`Admin ${adminId} deleted FAQ ${faqId} for collection ${id}`);
     return { message: 'FAQ deleted successfully' };
+  }
+
+  // ── Membership + rationale (MANUAL) ─────────────────────────────────────────────
+
+  private static readonly RATIONALE_MAX_WORDS = 20;
+
+  private static wordCount(text: string): number {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  /**
+   * Replace the ordered MANUAL membership. Writes CollectionTour rows (position normalized
+   * to a dense 0..n by the submitted order) and keeps the legacy `tourIds[]` mirror in the
+   * same order. Existing members not in the payload are removed (cascading their rationales).
+   */
+  async replaceTours(id: string, dto: ReplaceCollectionToursDto, adminId: string) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { id },
+      select: { id: true, collectionType: true, destinationId: true },
+    });
+    if (!collection) throw new NotFoundException(`Collection ${id} not found`);
+    if (collection.collectionType !== CollectionType.MANUAL) {
+      throw new BadRequestException('Membership can only be set on MANUAL collections');
+    }
+
+    // Order the payload by position, then re-normalize positions to a dense 0..n sequence.
+    const ordered = [...dto.tours].sort((a, b) => a.position - b.position);
+    const tourIds = ordered.map((t) => t.tourId);
+    if (new Set(tourIds).size !== tourIds.length) {
+      throw new BadRequestException('Duplicate tourId in membership payload');
+    }
+
+    // Validate every tour exists and belongs to this destination.
+    const found = await this.prisma.tour.findMany({
+      where: { id: { in: tourIds }, destinationId: collection.destinationId },
+      select: { id: true },
+    });
+    if (found.length !== tourIds.length) {
+      const foundSet = new Set(found.map((t) => t.id));
+      const missing = tourIds.filter((t) => !foundSet.has(t));
+      throw new BadRequestException(`Tour(s) not found in this destination: ${missing.join(', ')}`);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.collectionTour.deleteMany({ where: { collectionId: id } });
+      await tx.collectionTour.createMany({
+        data: ordered.map((t, index) => ({ collectionId: id, tourId: t.tourId, position: index })),
+      });
+      await tx.collection.update({ where: { id }, data: { tourIds } });
+    });
+
+    this.logger.log(`Admin ${adminId} replaced membership for collection ${id} (${tourIds.length} tours)`);
+    return this.prisma.collectionTour.findMany({
+      where: { collectionId: id },
+      orderBy: { position: 'asc' },
+      select: { id: true, tourId: true, position: true },
+    });
+  }
+
+  /** Upsert a per-tour, per-locale rationale (≤20 words; 400 otherwise). */
+  async upsertTourRationale(
+    id: string,
+    tourId: string,
+    locale: Locale,
+    dto: UpsertCollectionTourRationaleDto,
+    adminId: string,
+  ) {
+    if (CollectionsService.wordCount(dto.rationale) > CollectionsService.RATIONALE_MAX_WORDS) {
+      throw new BadRequestException(
+        `Collection rationale must be ${CollectionsService.RATIONALE_MAX_WORDS} words or fewer`,
+      );
+    }
+    const member = await this.prisma.collectionTour.findUnique({
+      where: { collectionId_tourId: { collectionId: id, tourId } },
+      select: { id: true },
+    });
+    if (!member) throw new NotFoundException(`Tour ${tourId} is not a member of collection ${id}`);
+
+    const result = await this.prisma.collectionTourRationale.upsert({
+      where: { collectionTourId_locale: { collectionTourId: member.id, locale } },
+      create: { collectionTourId: member.id, locale, rationale: dto.rationale },
+      update: { rationale: dto.rationale },
+      select: { id: true, locale: true, rationale: true },
+    });
+    this.logger.log(`Admin ${adminId} upserted rationale for collection ${id} tour ${tourId} [${locale}]`);
+    return { ...result, tourId };
+  }
+
+  // ── Status transition + publish guard (G5) ───────────────────────────────────────
+
+  /**
+   * Status transition with the publish guard. DRAFT→PUBLISHED is only allowed when the
+   * collection is publishable: heroImage set, base-locale (en) H1 + overview present, and
+   * (MANUAL only) every member tour carries a base-locale rationale (≤20 words). DYNAMIC
+   * collections skip the per-tour rationale requirement. Throws 422 listing what is missing.
+   */
+  async updateStatus(id: string, status: CollectionStatus, adminId: string) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { id },
+      select: { id: true, status: true, collectionType: true, heroImage: true },
+    });
+    if (!collection) throw new NotFoundException(`Collection ${id} not found`);
+
+    if (status === CollectionStatus.PUBLISHED && collection.status !== CollectionStatus.PUBLISHED) {
+      const missing = await this.collectPublishBlockers(collection);
+      if (missing.length > 0) {
+        throw new UnprocessableEntityException(`Cannot publish collection: ${missing.join('; ')}`);
+      }
+    }
+
+    const updated = await this.prisma.collection.update({
+      where: { id },
+      data: { status },
+      select: this.collectionSelect,
+    });
+    this.logger.log(`Admin ${adminId} set collection ${id} status → ${status}`);
+    return updated;
+  }
+
+  /** Returns human-readable reasons a collection cannot be published (empty = OK). */
+  private async collectPublishBlockers(collection: {
+    id: string;
+    collectionType: CollectionType;
+    heroImage: string | null;
+  }): Promise<string[]> {
+    const missing: string[] = [];
+    if (!collection.heroImage) missing.push('heroImage is not set');
+
+    const enTranslation = await this.prisma.collectionTranslation.findUnique({
+      where: { collectionId_locale: { collectionId: collection.id, locale: Locale.en } },
+      select: { h1Override: true, overview: true },
+    });
+    if (!enTranslation?.h1Override) missing.push('English H1 (h1Override) is missing');
+    if (!enTranslation?.overview) missing.push('English overview is missing');
+
+    if (collection.collectionType === CollectionType.MANUAL) {
+      const members = await this.prisma.collectionTour.findMany({
+        where: { collectionId: collection.id },
+        select: {
+          tourId: true,
+          translations: { where: { locale: Locale.en }, select: { rationale: true } },
+        },
+        orderBy: { position: 'asc' },
+      });
+      if (members.length === 0) {
+        missing.push('MANUAL collection has no member tours');
+      } else {
+        const withoutRationale = members.filter((m) => {
+          const r = m.translations[0]?.rationale;
+          return !r || CollectionsService.wordCount(r) > CollectionsService.RATIONALE_MAX_WORDS;
+        });
+        if (withoutRationale.length > 0) {
+          missing.push(
+            `${withoutRationale.length} member tour(s) missing a valid English rationale (≤${CollectionsService.RATIONALE_MAX_WORDS} words)`,
+          );
+        }
+      }
+    }
+    return missing;
+  }
+
+  // ── Public render (§10) ───────────────────────────────────────────────────────
+
+  /**
+   * Full collection page render. Only PUBLISHED + active collections render (404 otherwise).
+   * Resolves tours (MANUAL → CollectionTour ordered by position with each tour's rationale[locale],
+   * fallback en; DYNAMIC → filterQuery → tour listing with sortOrder), computes fast stats,
+   * loads FAQs, and lists up to 3 related PUBLISHED collections in the same destination.
+   */
+  async render(slug: string, destinationId: string, locale: Locale = Locale.en) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { destinationId_slug: { destinationId, slug } },
+      select: {
+        ...this.collectionSelect,
+        translations: { where: { locale }, select: this.collectionTranslationSelect },
+      },
+    });
+    if (!collection || !collection.isActive || collection.status !== CollectionStatus.PUBLISHED) {
+      throw new NotFoundException(`Collection "${slug}" not found`);
+    }
+
+    const { translations, ...c } = collection;
+    const t = translations[0];
+
+    // Resolve tours (+ per-tour rationale for MANUAL).
+    const tours: Array<Record<string, unknown>> =
+      collection.collectionType === CollectionType.MANUAL
+        ? await this.resolveManualToursWithRationale(collection.id, locale)
+        : ((await this.resolveTours(collection)) as Array<Record<string, unknown>>);
+
+    const fastStats = this.computeFastStats(tours);
+
+    const faqs = await this.prisma.faq.findMany({
+      where: { pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: collection.id, isActive: true, locale },
+      select: faqSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    const relatedCollections = await this.prisma.collection.findMany({
+      where: {
+        destinationId,
+        status: CollectionStatus.PUBLISHED,
+        isActive: true,
+        id: { not: collection.id },
+      },
+      select: { id: true, name: true, slug: true, heroImage: true },
+      orderBy: { name: 'asc' },
+      take: 3,
+    });
+
+    return {
+      ...applyTranslation(c, t, locale),
+      overview: t?.overview ?? null,
+      h1Override: t?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+      curationNote: t?.curationNote ?? null,
+      eyebrowLabel: t?.eyebrowLabel ?? null,
+      tours,
+      fastStats,
+      faqs,
+      relatedCollections,
+    };
+  }
+
+  /** MANUAL membership ordered by position, each card enriched with rationale[locale] (fallback en). */
+  private async resolveManualToursWithRationale(collectionId: string, locale: Locale) {
+    const members = await this.prisma.collectionTour.findMany({
+      where: { collectionId },
+      orderBy: { position: 'asc' },
+      select: {
+        tourId: true,
+        translations: {
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, rationale: true },
+        },
+      },
+    });
+    if (members.length === 0) return [];
+
+    const rationaleByTourId = new Map<string, string | null>();
+    for (const m of members) {
+      const exact = m.translations.find((r) => r.locale === locale)?.rationale;
+      const fallback = m.translations.find((r) => r.locale === Locale.en)?.rationale;
+      rationaleByTourId.set(m.tourId, exact ?? fallback ?? null);
+    }
+
+    const orderedIds = members.map((m) => m.tourId);
+    const cards = (await this.toursService.findPublicByIds(orderedIds)) as Array<{ id: string }>;
+    return cards.map((card) => ({ ...card, rationale: rationaleByTourId.get(card.id) ?? null }));
+  }
+
+  /** Fast stats: count of resolved tours + min(priceFrom) across them (master §7). */
+  private computeFastStats(tours: Array<Record<string, unknown>>) {
+    let min: number | null = null;
+    for (const tour of tours) {
+      const raw = tour['priceFrom'];
+      if (raw === null || raw === undefined) continue;
+      const value = typeof raw === 'number' ? raw : Number(raw);
+      if (Number.isFinite(value) && (min === null || value < min)) min = value;
+    }
+    return { tourCount: tours.length, fromPrice: min };
   }
 }

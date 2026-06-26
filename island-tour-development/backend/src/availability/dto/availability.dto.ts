@@ -1,10 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
-  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -17,7 +15,8 @@ import {
 } from 'class-validator';
 import {
   AvailabilityExceptionType,
-  AvailabilityStatus,
+  AvailabilityScheduleStatus,
+  DepartureStatus,
 } from '@prisma/client';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -29,58 +28,69 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export class ScheduleResponseDto {
   @ApiProperty({ example: 'c1a2…' }) id!: string;
   @ApiProperty({ example: 'tour-uuid' }) tourId!: string;
-  @ApiProperty({ example: [1, 2, 3, 4, 5], description: '0=Sun … 6=Sat' })
-  weekdays!: number[];
-  @ApiProperty({ example: ['09:00', '13:00'] }) startTimes!: string[];
-  @ApiProperty({ example: 12 }) capacity!: number;
-  @ApiPropertyOptional({ example: '2026-06-01', nullable: true })
-  seasonStart!: string | null;
+  @ApiProperty({ example: 1, description: 'Weekday, Monday=0 … Sunday=6' })
+  weekday!: number;
+  @ApiProperty({ example: '09:00' }) startTime!: string;
+  @ApiPropertyOptional({
+    example: 12,
+    nullable: true,
+    description: 'null = Tour.maxPartySize default',
+  })
+  capacityOverride!: number | null;
+  @ApiProperty({ example: '2026-06-01' }) validFrom!: string;
   @ApiPropertyOptional({ example: '2026-09-30', nullable: true })
-  seasonEnd!: string | null;
-  @ApiPropertyOptional({ example: '79.99', nullable: true })
-  priceOverride!: string | null;
-  @ApiProperty({ example: true }) isActive!: boolean;
+  validUntil!: string | null;
+  @ApiProperty({ enum: AvailabilityScheduleStatus }) status!: AvailabilityScheduleStatus;
 }
 
 export class ExceptionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty({ example: '2026-07-04' }) date!: string;
+  @ApiPropertyOptional({ example: '09:00', nullable: true, description: 'null = whole date' })
+  startTime!: string | null;
   @ApiProperty({ enum: AvailabilityExceptionType })
   type!: AvailabilityExceptionType;
-  @ApiPropertyOptional({ example: '09:00', nullable: true })
-  startTime!: string | null;
-  @ApiPropertyOptional({ example: 20, nullable: true })
+  @ApiPropertyOptional({ example: 20, nullable: true, description: 'add_slot / set_capacity' })
   capacity!: number | null;
-  @ApiPropertyOptional({ example: '99.00', nullable: true })
-  priceOverride!: string | null;
   @ApiPropertyOptional({ nullable: true }) note!: string | null;
 }
 
 export class DepartureResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
-  @ApiProperty({ example: '2026-07-04T13:00:00.000Z' })
-  localDateTimeStart!: string;
-  @ApiPropertyOptional({ nullable: true }) localDateTimeEnd!: string | null;
-  @ApiProperty({ example: false }) allDay!: boolean;
+  @ApiProperty({ example: '2026-07-04' }) date!: string;
+  @ApiProperty({ example: '13:00' }) startTime!: string;
   @ApiProperty({ example: 12 }) capacity!: number;
-  @ApiProperty({ example: 8 }) vacancies!: number;
-  @ApiProperty({ enum: AvailabilityStatus }) status!: AvailabilityStatus;
-  @ApiProperty({ example: true, description: 'Live bookability (status + cutoff).' })
+  @ApiProperty({ example: 4 }) bookedCount!: number;
+  @ApiPropertyOptional({
+    example: 2,
+    nullable: true,
+    description: 'Seats left — surfaced only when under 5 (anti-scarcity, master §4).',
+  })
+  remaining!: number | null;
+  @ApiProperty({
+    enum: DepartureStatus,
+    description: 'Live status (stored state folded with the read-time cutoff).',
+  })
+  status!: DepartureStatus;
+  @ApiProperty({ example: true, description: 'Live bookability (status OPEN, cutoff not passed).' })
   available!: boolean;
-  @ApiProperty({ example: '2026-07-02T17:00:00.000Z' }) utcCutoffAt!: string;
-  @ApiPropertyOptional({ nullable: true }) priceOverride!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '2026-07-02T17:00:00.000Z' })
+  soldOutAt!: string | null;
   @ApiProperty({ example: false }) manuallyEdited!: boolean;
 }
 
 export class CalendarDayResponseDto {
   @ApiProperty({ example: '2026-07-04' }) date!: string;
   @ApiProperty({ example: true }) available!: boolean;
-  @ApiProperty({ enum: AvailabilityStatus }) status!: AvailabilityStatus;
-  @ApiProperty({ example: 24, description: 'Sum of live vacancies across the day.' })
-  vacancies!: number;
-  @ApiProperty({ example: 36 }) capacity!: number;
+  @ApiProperty({ enum: DepartureStatus }) status!: DepartureStatus;
+  @ApiPropertyOptional({
+    example: 2,
+    nullable: true,
+    description: 'Lowest seats-left across open slots — surfaced only when under 5.',
+  })
+  remaining!: number | null;
   @ApiProperty({ example: 3, description: 'Number of departures on the day.' })
   departureCount!: number;
 }
@@ -88,7 +98,10 @@ export class CalendarDayResponseDto {
 export class MaterializeResultDto {
   @ApiProperty({ example: 90 }) created!: number;
   @ApiProperty({ example: 12 }) updated!: number;
-  @ApiProperty({ example: 3, description: 'Protected (manuallyEdited) - left as-is.' })
+  @ApiProperty({
+    example: 3,
+    description: 'Protected (booked / manuallyEdited / api) - left as-is.',
+  })
   skipped!: number;
   @ApiProperty({ example: 5, description: 'Orphaned (schedule changed) - removed.' })
   removed!: number;
@@ -135,10 +148,10 @@ export class ListDeparturesQueryDto {
   @IsDateString()
   to?: string;
 
-  @ApiPropertyOptional({ enum: AvailabilityStatus })
+  @ApiPropertyOptional({ enum: DepartureStatus })
   @IsOptional()
-  @IsEnum(AvailabilityStatus)
-  status?: AvailabilityStatus;
+  @IsEnum(DepartureStatus)
+  status?: DepartureStatus;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -150,87 +163,71 @@ export class CreateScheduleDto {
   @IsString()
   tourId!: string;
 
-  @ApiProperty({ example: [1, 2, 3, 4, 5], description: '0=Sun … 6=Sat' })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(7)
-  @IsInt({ each: true })
-  @Min(0, { each: true })
-  @Max(6, { each: true })
-  weekdays!: number[];
+  @ApiProperty({ example: 1, description: 'Weekday, Monday=0 … Sunday=6' })
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  weekday!: number;
 
-  @ApiProperty({ example: ['09:00', '13:00'] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @Matches(HHMM, { each: true, message: 'startTimes must be HH:MM (00:00–23:59)' })
-  startTimes!: string[];
+  @ApiProperty({ example: '09:00', description: 'Must exist in Tour.startTimes[]' })
+  @Matches(HHMM, { message: 'startTime must be HH:MM (00:00–23:59)' })
+  startTime!: string;
 
-  @ApiProperty({ example: 12 })
+  @ApiPropertyOptional({ example: 12, description: 'null/omitted = Tour.maxPartySize default' })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  capacity!: number;
+  capacityOverride?: number;
 
-  @ApiPropertyOptional({ example: '2026-06-01' })
+  @ApiPropertyOptional({ example: '2026-06-01', description: 'Defaults to today.' })
   @IsOptional()
   @IsDateString()
-  seasonStart?: string;
+  validFrom?: string;
 
-  @ApiPropertyOptional({ example: '2026-09-30' })
+  @ApiPropertyOptional({ example: '2026-09-30', description: 'null = open-ended.' })
   @IsOptional()
   @IsDateString()
-  seasonEnd?: string;
+  validUntil?: string;
 
-  @ApiPropertyOptional({ example: 79.99 })
+  @ApiPropertyOptional({ enum: AvailabilityScheduleStatus, default: AvailabilityScheduleStatus.ACTIVE })
   @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  priceOverride?: number;
+  @IsEnum(AvailabilityScheduleStatus)
+  status?: AvailabilityScheduleStatus;
 }
 
 export class UpdateScheduleDto {
-  @ApiPropertyOptional({ example: [0, 6] })
+  @ApiPropertyOptional({ example: 6, description: 'Weekday, Monday=0 … Sunday=6' })
   @IsOptional()
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(7)
-  @IsInt({ each: true })
-  @Min(0, { each: true })
-  @Max(6, { each: true })
-  weekdays?: number[];
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  weekday?: number;
 
-  @ApiPropertyOptional({ example: ['10:00'] })
+  @ApiPropertyOptional({ example: '10:00' })
   @IsOptional()
-  @IsArray()
-  @ArrayMinSize(1)
-  @Matches(HHMM, { each: true, message: 'startTimes must be HH:MM (00:00–23:59)' })
-  startTimes?: string[];
+  @Matches(HHMM, { message: 'startTime must be HH:MM (00:00–23:59)' })
+  startTime?: string;
 
   @ApiPropertyOptional({ example: 16 })
   @IsOptional()
   @IsInt()
   @Min(1)
-  capacity?: number;
+  capacityOverride?: number;
 
   @ApiPropertyOptional({ example: '2026-06-01' })
   @IsOptional()
   @IsDateString()
-  seasonStart?: string;
+  validFrom?: string;
 
   @ApiPropertyOptional({ example: '2026-09-30' })
   @IsOptional()
   @IsDateString()
-  seasonEnd?: string;
+  validUntil?: string;
 
-  @ApiPropertyOptional({ example: 89.99 })
+  @ApiPropertyOptional({ enum: AvailabilityScheduleStatus })
   @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  priceOverride?: number;
-
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  @IsEnum(AvailabilityScheduleStatus)
+  status?: AvailabilityScheduleStatus;
 }
 
 export class CreateExceptionDto {
@@ -242,28 +239,25 @@ export class CreateExceptionDto {
   @IsDateString()
   date!: string;
 
-  @ApiProperty({ enum: AvailabilityExceptionType })
+  @ApiProperty({
+    enum: AvailabilityExceptionType,
+    description: 'close_date / close_slot (stop-sell) · add_slot · set_capacity',
+  })
   @IsEnum(AvailabilityExceptionType)
   type!: AvailabilityExceptionType;
 
-  @ApiPropertyOptional({ example: '09:00', description: 'EXTRA_DEPARTURE / BLACKOUT one slot.' })
+  @ApiPropertyOptional({ example: '09:00', description: 'null = whole date (close_date / day-wide set_capacity)' })
   @IsOptional()
   @Matches(HHMM, { message: 'startTime must be HH:MM' })
   startTime?: string;
 
-  @ApiPropertyOptional({ example: 20, description: 'CAPACITY_OVERRIDE / EXTRA_DEPARTURE.' })
+  @ApiPropertyOptional({ example: 20, description: 'Required for add_slot / set_capacity.' })
   @IsOptional()
   @IsInt()
   @Min(0)
   capacity?: number;
 
-  @ApiPropertyOptional({ example: 99.0, description: 'PRICE_OVERRIDE / EXTRA_DEPARTURE.' })
-  @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  priceOverride?: number;
-
-  @ApiPropertyOptional({ example: 'Independence Day surcharge' })
+  @ApiPropertyOptional({ example: 'Independence Day closure' })
   @IsOptional()
   @IsString()
   note?: string;
@@ -285,12 +279,6 @@ export class UpdateExceptionDto {
   @IsInt()
   @Min(0)
   capacity?: number;
-
-  @ApiPropertyOptional({ example: 120.0 })
-  @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  priceOverride?: number;
 
   @ApiPropertyOptional({ example: 'Updated note' })
   @IsOptional()
@@ -324,16 +312,13 @@ export class UpdateDepartureDto {
   @Min(0)
   capacity?: number;
 
-  @ApiPropertyOptional({ enum: AvailabilityStatus })
+  @ApiPropertyOptional({
+    enum: DepartureStatus,
+    description: 'Manual override (e.g. CLOSED stop-sell, CANCELLED).',
+  })
   @IsOptional()
-  @IsEnum(AvailabilityStatus)
-  status?: AvailabilityStatus;
-
-  @ApiPropertyOptional({ example: 110.0 })
-  @IsOptional()
-  @Type(() => Number)
-  @Min(0)
-  priceOverride?: number;
+  @IsEnum(DepartureStatus)
+  status?: DepartureStatus;
 }
 
 class PartySizeDto {
@@ -358,10 +343,11 @@ export class AvailabilityCheckDto {
 
   @ApiPropertyOptional({
     type: [PartySizeDto],
-    description: 'Optional capacity filter - only slots with enough vacancies.',
+    description: 'Optional capacity filter - only slots with enough seats left.',
   })
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => PartySizeDto)
   units?: PartySizeDto[];

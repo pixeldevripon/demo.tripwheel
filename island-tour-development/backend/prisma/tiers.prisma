@@ -17,6 +17,12 @@ model SpotlightRequest {
   endsAt      DateTime?
   note        String?
 
+  // ── Operator-supplied request preferences + audit (SPOTLIGHT-DATA.md §2) ──
+  requestedStartsAt     DateTime? // operator's preferred start (admin still sets the final window)
+  requestedDurationDays Int? // operator's preferred length (alt: requestedEndsAt)
+  rejectionReason       String? // admin reason on REJECTED (cleaner than overloading `note`)
+  requestedBy           String? // submitting user id (operatorId is the org, this is the person) — audit
+
   tour        Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
   operator    Operator    @relation(fields: [operatorId], references: [id])
   destination Destination @relation(fields: [destinationId], references: [id])

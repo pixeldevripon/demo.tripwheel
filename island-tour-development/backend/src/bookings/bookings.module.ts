@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
+import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 
@@ -12,7 +13,7 @@ import { BookingsService } from './bookings.service';
  * supplies `AVAILABILITY_UPDATE` / `BOOKING_UPDATE` webhooks.
  */
 @Module({
-  imports: [TrackingModule, NotificationsModule],
+  imports: [TrackingModule, NotificationsModule, TiersModule],
   controllers: [BookingsController],
   providers: [BookingsService],
   exports: [BookingsService],

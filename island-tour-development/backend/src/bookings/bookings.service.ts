@@ -8,10 +8,10 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
-  AvailabilityStatus,
   BookingStatus,
   CancellationRefund,
   CancelledBy,
+  DepartureStatus,
   PaymentModel,
   Prisma,
   Role,
@@ -23,9 +23,10 @@ import { MailService } from '@/mail/mail.service';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
-import { dateKey, localNow } from '@/common/utils/timezone.util';
+import { combineDateTime, dateKey, localNow, timeOfDay } from '@/common/utils/timezone.util';
 import { eurFxRate } from '@/common/utils/fx.util';
-import { computeAvailabilityStatus } from '@/availability/availability-status.util';
+import { storedStatusForFill } from '@/availability/availability-status.util';
+import { TiersService } from '@/tiers/tiers.service';
 import {
   computeBookingPricing,
   type AddOnLineInput,
@@ -41,11 +42,6 @@ import type {
 } from './dto/booking.dto';
 
 const DEFAULT_HOLD_MINUTES = 30;
-const BOOKABLE = [
-  AvailabilityStatus.AVAILABLE,
-  AvailabilityStatus.LIMITED,
-  AvailabilityStatus.FREESALE,
-];
 
 type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
 
@@ -58,6 +54,7 @@ export class BookingsService {
     private readonly mail: MailService,
     private readonly tracking: TrackingService,
     private readonly notifications: NotificationsService,
+    private readonly tiers: TiersService,
   ) {}
 
   /** Fire the inventory + booking-status webhooks for a booking (fire-and-forget). */
@@ -107,9 +104,22 @@ export class BookingsService {
     this.validateRestrictions(ctx, dto);
 
     const now = localNow(ctx.tour.timeZone);
-    if (now >= ctx.departure.utcCutoffAt) {
+    // Cutoff is computed live (master §4): now >= start - bookingCutoffMinutes → closed.
+    const localStart = combineDateTime(ctx.departure.date, ctx.departure.startTime);
+    const cutoffAt = new Date(
+      localStart.getTime() - ctx.tour.bookingCutoffMinutes * 60_000,
+    );
+    if (now >= cutoffAt) {
       throw new UnprocessableEntityException('Booking cutoff has passed for this departure');
     }
+
+    // Effective commission: an ACTIVE Destination Spotlight overlays 35% over the tour's
+    // tier rate (SPOTLIGHT-DATA.md §3). effectiveCommissionRate returns a fraction; the
+    // pricing util expects a percentage. Snapshotted onto the booking, never retroactive.
+    const effectiveRate = await this.tiers.effectiveCommissionRate(dto.tourId, now);
+    const effectiveTier = new Prisma.Decimal(effectiveRate)
+      .mul(100)
+      .toDecimalPlaces(2);
 
     const pricing = computeBookingPricing({
       lines: ctx.lines,
@@ -117,28 +127,45 @@ export class BookingsService {
       currency: ctx.tour.defaultCurrency,
       paymentModel: ctx.tour.paymentModel,
       depositPct: ctx.tour.depositPct,
-      commissionTier: ctx.tour.commissionTier,
+      commissionTier: effectiveTier,
     });
     const seats = pricing.pax;
 
+    // Per-seat traveler ages, expanded in the same order as pricing.unitItems
+    // (one entry per seat, grouped by dto.items order). master child ages.
+    const seatAges: (number | null)[] = [];
+    for (const item of dto.items) {
+      for (let i = 0; i < item.quantity; i++) {
+        seatAges.push(item.travelerAge ?? null);
+      }
+    }
+
+    // Full local end instant = local start + tour duration (master E.8 TYP time range).
+    const tourEndDateTime =
+      ctx.tour.durationMinutesFrom != null
+        ? new Date(localStart.getTime() + ctx.tour.durationMinutesFrom * 60_000)
+        : null;
+
     const operatorFull = ctx.tour.paymentModel === PaymentModel.OPERATOR_FULL;
-    const localStart = ctx.departure.localDateTimeStart;
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Atomic conditional decrement - the overbooking guard (master A1).
-      const claim = await tx.departure.updateMany({
-        where: {
-          id: dto.departureId,
-          tourId: dto.tourId,
-          status: { in: BOOKABLE },
-          vacancies: { gte: seats },
-        },
-        data: { vacancies: { decrement: seats } },
-      });
-      if (claim.count === 0) {
+      // Atomic guarded count-up - the overbooking backstop (master §5). Claims only an
+      // OPEN departure with room, and flips it to SOLD_OUT (stamping soldOutAt) when full.
+      const claimed = await tx.$executeRaw`
+        UPDATE departures
+           SET booked_count = booked_count + ${seats},
+               status = CASE WHEN booked_count + ${seats} >= capacity
+                             THEN 'sold_out'::departure_status ELSE status END,
+               sold_out_at = CASE WHEN booked_count + ${seats} >= capacity AND sold_out_at IS NULL
+                                  THEN now() ELSE sold_out_at END,
+               updated_at = now()
+         WHERE id = ${dto.departureId}
+           AND tour_id = ${dto.tourId}
+           AND status = 'open'::departure_status
+           AND booked_count + ${seats} <= capacity`;
+      if (claimed === 0) {
         throw new UnprocessableEntityException('Not enough availability for this departure');
       }
-      await this.recomputeDepartureStatus(tx, dto.departureId, now);
 
       const status = operatorFull ? BookingStatus.CONFIRMED : BookingStatus.ON_HOLD;
       return tx.booking.create({
@@ -152,16 +179,22 @@ export class BookingsService {
           status,
           paymentModel: ctx.tour.paymentModel,
           currency: ctx.tour.defaultCurrency,
-          localDate: new Date(`${dateKey(localStart)}T00:00:00.000Z`),
-          startTime: hhmm(localStart),
-          island: ctx.tour.destination?.slug ?? null,
+          localDate: ctx.departure.date,
+          startTime: timeOfDay(ctx.departure.startTime),
+          tourStartDateTime: localStart,
+          tourEndDateTime,
+          island: ctx.tour.destination?.slug ?? 'Curaçao',
           utcExpiresAt: operatorFull
             ? null
             : new Date(Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000),
           utcConfirmedAt: operatorFull ? new Date() : null,
           pickupRequested: dto.pickupRequested ?? false,
           pickupLocationId: dto.pickupLocationId ?? null,
+          pickupAddress: ctx.pickupAddress,
           notes: dto.notes ?? null,
+          newsletterOptIn: dto.newsletterOptIn ?? false,
+          couponCode: dto.couponCode ?? null,
+          discountAmount: dto.discountAmount != null ? new Prisma.Decimal(dto.discountAmount) : null,
           totalRetail: pricing.totalRetail,
           totalNet: pricing.totalNet,
           depositAmount: pricing.depositAmount,
@@ -171,11 +204,12 @@ export class BookingsService {
           totalEur: pricing.totalEur,
           fxRateToEur: pricing.fxRateToEur,
           unitItems: {
-            create: pricing.unitItems.map((u) => ({
+            create: pricing.unitItems.map((u, idx) => ({
               ageBandId: u.ageBandId,
               status,
               priceRetail: u.priceRetail,
               priceNet: u.priceNet,
+              travelerAge: seatAges[idx] ?? null,
             })),
           },
           addOns: {
@@ -449,12 +483,7 @@ export class BookingsService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (booking.departureId) {
-        await tx.departure.updateMany({
-          where: { id: booking.departureId },
-          data: { vacancies: { increment: seats } },
-        });
-        const tz = await this.tourTimeZone(tx, booking.tourId);
-        await this.recomputeDepartureStatus(tx, booking.departureId, localNow(tz));
+        await this.releaseSeats(tx, booking.departureId, seats);
       }
       await tx.bookingUnitItem.updateMany({
         where: { bookingId: booking.id },
@@ -562,12 +591,7 @@ export class BookingsService {
       try {
         await this.prisma.$transaction(async (tx) => {
           if (b.departureId) {
-            await tx.departure.updateMany({
-              where: { id: b.departureId },
-              data: { vacancies: { increment: b._count.unitItems } },
-            });
-            const tz = await this.tourTimeZone(tx, b.tourId);
-            await this.recomputeDepartureStatus(tx, b.departureId, localNow(tz));
+            await this.releaseSeats(tx, b.departureId, b._count.unitItems);
           }
           await tx.bookingUnitItem.updateMany({
             where: { bookingId: b.id },
@@ -643,6 +667,13 @@ export class BookingsService {
       island: booking.island,
       localDate: dateKey(booking.localDate),
       startTime: booking.startTime,
+      tourStartDateTime: booking.tourStartDateTime
+        ? booking.tourStartDateTime.toISOString()
+        : null,
+      tourEndDateTime: booking.tourEndDateTime
+        ? booking.tourEndDateTime.toISOString()
+        : null,
+      pickupAddress: booking.pickupAddress,
       partySize: booking.unitItems.length,
       currency: booking.currency,
       totalRetail: booking.totalRetail.toString(),
@@ -715,12 +746,15 @@ export class BookingsService {
       select: {
         operatorId: true,
         timeZone: true,
+        bookingCutoffMinutes: true,
         defaultCurrency: true,
         paymentModel: true,
         depositPct: true,
         commissionTier: true,
         minPartySize: true,
         maxPartySize: true,
+        durationMinutesFrom: true,
+        minAgeYears: true,
         destination: { select: { slug: true } },
       },
     });
@@ -728,9 +762,23 @@ export class BookingsService {
 
     const departure = await this.prisma.departure.findFirst({
       where: { id: dto.departureId, tourId: dto.tourId },
-      select: { id: true, localDateTimeStart: true, utcCutoffAt: true },
+      select: { id: true, date: true, startTime: true },
     });
     if (!departure) throw new UnprocessableEntityException('Invalid departureId');
+
+    // Snapshot the selected pickup point address (booking immutability — the
+    // PickupLocation row can change after booking). master E.8 `pickup_address`.
+    let pickupAddress: string | null = null;
+    if (dto.pickupLocationId) {
+      const pickup = await this.prisma.pickupLocation.findUnique({
+        where: { id: dto.pickupLocationId },
+        select: { tourId: true, name: true, address: true },
+      });
+      if (!pickup || pickup.tourId !== dto.tourId) {
+        throw new UnprocessableEntityException('Invalid pickupLocationId');
+      }
+      pickupAddress = pickup.address ?? pickup.name;
+    }
 
     const ageBands = await this.prisma.tourAgeBand.findMany({
       where: { tourId: dto.tourId },
@@ -753,7 +801,7 @@ export class BookingsService {
 
     const addOnLines = await this.loadAddOns(dto);
 
-    return { tour, departure, ageBandsById, lines, addOnLines };
+    return { tour, departure, ageBandsById, lines, addOnLines, pickupAddress };
   }
 
   private async loadAddOns(dto: ReserveBookingDto): Promise<AddOnLineInput[]> {
@@ -790,36 +838,60 @@ export class BookingsService {
     if (maxUnits != null && seats > maxUnits) {
       throw new UnprocessableEntityException(`Maximum party size is ${maxUnits}`);
     }
+
+    // Min-age enforcement (master child ages): reject any supplied traveler age below
+    // the tour minimum. Ages are optional, so only enforced when both sides are present.
+    const minAge = ctx.tour.minAgeYears;
+    if (minAge != null) {
+      for (const item of dto.items) {
+        if (item.travelerAge != null && item.travelerAge < minAge) {
+          throw new UnprocessableEntityException(
+            `Travelers must be at least ${minAge} years old for this tour`,
+          );
+        }
+      }
+    }
   }
 
-  /** Recompute a departure's status after an inventory change (skip sticky overrides). */
-  private async recomputeDepartureStatus(
+  /**
+   * Release `seats` back to a departure (cancel / expiry) and re-derive its stored
+   * status. The count-down is clamped at zero; a SOLD_OUT departure with room reopens to
+   * OPEN, while CLOSED/CANCELLED stay sticky and `soldOutAt` history is preserved (§3).
+   */
+  private async releaseSeats(
     tx: Prisma.TransactionClient,
     departureId: string,
-    now: Date,
+    seats: number,
+  ): Promise<void> {
+    await tx.$executeRaw`
+      UPDATE departures
+         SET booked_count = GREATEST(0, booked_count - ${seats}), updated_at = now()
+       WHERE id = ${departureId}`;
+    await this.recomputeStoredStatus(tx, departureId);
+  }
+
+  /** Re-derive OPEN/SOLD_OUT from the fill; leave sticky CLOSED/CANCELLED untouched. */
+  private async recomputeStoredStatus(
+    tx: Prisma.TransactionClient,
+    departureId: string,
   ): Promise<void> {
     const dep = await tx.departure.findUnique({
       where: { id: departureId },
-      select: { vacancies: true, capacity: true, utcCutoffAt: true, status: true },
+      select: { capacity: true, bookedCount: true, status: true, soldOutAt: true },
     });
     if (!dep) return;
-    if (
-      dep.status === AvailabilityStatus.FREESALE ||
-      dep.status === AvailabilityStatus.CLOSED
-    ) {
-      return; // sticky operator overrides
+    if (dep.status === DepartureStatus.CLOSED || dep.status === DepartureStatus.CANCELLED) {
+      return; // sticky operator/admin states
     }
-    const status = computeAvailabilityStatus({
-      vacancies: dep.vacancies,
-      capacity: dep.capacity,
-      utcCutoffAt: dep.utcCutoffAt,
-      now,
-    });
+    const next = storedStatusForFill(dep.capacity, dep.bookedCount);
+    if (next === dep.status) return;
     await tx.departure.update({
       where: { id: departureId },
       data: {
-        status,
-        ...(status === AvailabilityStatus.SOLD_OUT && { soldOutAt: new Date() }),
+        status: next,
+        ...(next === DepartureStatus.SOLD_OUT && dep.soldOutAt == null && {
+          soldOutAt: new Date(),
+        }),
       },
     });
   }
@@ -847,17 +919,6 @@ export class BookingsService {
       ? CancellationRefund.FULL
       : CancellationRefund.NONE;
   }
-
-  private async tourTimeZone(
-    tx: Prisma.TransactionClient,
-    tourId: string,
-  ): Promise<string> {
-    const tour = await tx.tour.findUnique({
-      where: { id: tourId },
-      select: { timeZone: true },
-    });
-    return tour?.timeZone ?? 'America/Curacao';
-  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -866,9 +927,6 @@ export class BookingsService {
 
 function dec(value: Prisma.Decimal | null): string | null {
   return value ? value.toString() : null;
-}
-function hhmm(date: Date): string {
-  return date.toISOString().slice(11, 16);
 }
 function makeDisplayRef(id: string, localStart: Date): string {
   const year = dateKey(localStart).slice(0, 4);

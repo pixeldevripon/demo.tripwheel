@@ -13,20 +13,29 @@ import { Locale, Prisma, Role, TourStatus } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
+  CreatePickupLocationDto,
+  CreateTourFeatureDto,
   CreateTourAddOnDto,
   CreateTourAgeBandDto,
   UpdateTourAgeBandDto,
   CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
+  CreateTourLocationDto,
+  UpdatePickupLocationDto,
   UpdateTourAddOnDto,
+  UpdateTourFeatureDto,
   UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
+  UpdateTourLocationDto,
+  UpsertFeatureTranslationDto,
   UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
+  UpsertLocationTranslationDto,
+  UpsertPickupLocationTranslationDto,
   UpsertTourTranslationDto,
 } from './dto/tour-children.dto';
 
@@ -274,6 +283,8 @@ export class TourChildrenService {
   private readonly ageBandSelect = {
     id: true,
     tourId: true,
+    bandType: true,
+    participation: true,
     label: true,
     minAge: true,
     maxAge: true,
@@ -317,6 +328,8 @@ export class TourChildrenService {
       const created = await tx.tourAgeBand.create({
         data: {
           tourId,
+          bandType: dto.bandType,
+          participation: dto.participation ?? 'PARTICIPANT',
           label: dto.label,
           minAge: dto.minAge ?? null,
           maxAge: dto.maxAge ?? null,
@@ -366,6 +379,8 @@ export class TourChildrenService {
         where: { id: ageBandId },
         data: {
           ...(dto.label !== undefined && { label: dto.label }),
+          ...(dto.bandType !== undefined && { bandType: dto.bandType }),
+          ...(dto.participation !== undefined && { participation: dto.participation }),
           ...(dto.minAge !== undefined && { minAge: dto.minAge }),
           ...(dto.maxAge !== undefined && { maxAge: dto.maxAge }),
           ...(dto.price !== undefined && { price: dto.price }),
@@ -914,6 +929,352 @@ export class TourChildrenService {
     return { message: `Translation for locale "${locale}" deleted` };
   }
 
+  // ── Features ────────────────────────────────────────────────────────────────
+
+  private readonly featureSelect = {
+    id: true,
+    tourId: true,
+    type: true,
+    displayOrder: true,
+    translations: { select: { locale: true, text: true, isMachineTranslated: true } },
+  } as const;
+
+  async getFeatures(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    return this.prisma.tourFeature.findMany({
+      where: { tourId },
+      select: this.featureSelect,
+      orderBy: [{ type: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  async addFeature(tourId: string, dto: CreateTourFeatureDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const result = await this.prisma.$transaction(async (tx) => {
+      const feature = await tx.tourFeature.create({
+        data: { tourId, type: dto.type, displayOrder: dto.displayOrder ?? 0 },
+        select: { id: true },
+      });
+      await tx.tourFeatureTranslation.create({
+        data: { featureId: feature.id, locale: LocaleEnum.en, text: dto.text },
+      });
+      return tx.tourFeature.findUnique({ where: { id: feature.id }, select: this.featureSelect });
+    });
+    this.logger.log(`User ${requesterId} added feature to tour ${tourId}`);
+    return result;
+  }
+
+  async updateFeature(tourId: string, featureId: string, dto: UpdateTourFeatureDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.tourFeature.findFirst({ where: { id: featureId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Feature ${featureId} not found on tour ${tourId}`);
+    const updated = await this.prisma.tourFeature.update({
+      where: { id: featureId },
+      data: {
+        ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+      },
+      select: this.featureSelect,
+    });
+    this.logger.log(`User ${requesterId} updated feature ${featureId} on tour ${tourId}`);
+    return updated;
+  }
+
+  async removeFeature(tourId: string, featureId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.tourFeature.findFirst({ where: { id: featureId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Feature ${featureId} not found on tour ${tourId}`);
+    await this.prisma.tourFeature.delete({ where: { id: featureId } });
+    this.logger.log(`User ${requesterId} removed feature ${featureId} from tour ${tourId}`);
+    return { message: 'Feature removed successfully' };
+  }
+
+  async upsertFeatureTranslation(tourId: string, featureId: string, locale: Locale, dto: UpsertFeatureTranslationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const feature = await this.prisma.tourFeature.findFirst({ where: { id: featureId, tourId }, select: { id: true } });
+    if (!feature) throw new NotFoundException(`Feature ${featureId} not found on tour ${tourId}`);
+    const result = await this.prisma.tourFeatureTranslation.upsert({
+      where: { featureId_locale: { featureId, locale } },
+      create: { featureId, locale, text: dto.text, isMachineTranslated: dto.isMachineTranslated ?? false },
+      update: { text: dto.text, isMachineTranslated: dto.isMachineTranslated ?? false },
+      select: { locale: true, text: true, isMachineTranslated: true },
+    });
+    this.logger.log(`User ${requesterId} upserted feature translation [${locale}] for feature ${featureId}`);
+    return result;
+  }
+
+  async deleteFeatureTranslation(tourId: string, featureId: string, locale: Locale, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    if (locale === Locale.en) throw new BadRequestException('English feature text cannot be deleted. Update the text instead.');
+    const feature = await this.prisma.tourFeature.findFirst({ where: { id: featureId, tourId }, select: { id: true } });
+    if (!feature) throw new NotFoundException(`Feature ${featureId} not found on tour ${tourId}`);
+    await this.prisma.tourFeatureTranslation.delete({ where: { featureId_locale: { featureId, locale } } }).catch((err: any) => {
+      if (err?.code === 'P2025') throw new NotFoundException(`No translation found for locale "${locale}"`);
+      throw err;
+    });
+    this.logger.log(`User ${requesterId} deleted feature translation [${locale}] for feature ${featureId}`);
+    return { message: `Translation for locale "${locale}" deleted` };
+  }
+
+  // ── Locations ───────────────────────────────────────────────────────────────
+
+  private readonly locationSelect = {
+    id: true,
+    tourId: true,
+    types: true,
+    latitude: true,
+    longitude: true,
+    streetAddress: true,
+    addressLocality: true,
+    addressRegion: true,
+    postalCode: true,
+    addressCountry: true,
+    minutesTo: true,
+    minutesAt: true,
+    displayOrder: true,
+    translations: { select: { locale: true, title: true, shortDescription: true, isMachineTranslated: true } },
+  } as const;
+
+  async getLocations(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    return this.prisma.tourLocation.findMany({
+      where: { tourId },
+      select: this.locationSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  async addLocation(tourId: string, dto: CreateTourLocationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const result = await this.prisma.$transaction(async (tx) => {
+      const location = await tx.tourLocation.create({
+        data: {
+          tourId,
+          types: dto.types,
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
+          streetAddress: dto.streetAddress ?? null,
+          addressLocality: dto.addressLocality ?? null,
+          addressRegion: dto.addressRegion ?? null,
+          postalCode: dto.postalCode ?? null,
+          addressCountry: dto.addressCountry ?? null,
+          minutesTo: dto.minutesTo ?? null,
+          minutesAt: dto.minutesAt ?? null,
+          displayOrder: dto.displayOrder ?? 0,
+        },
+        select: { id: true },
+      });
+      await tx.tourLocationTranslation.create({
+        data: {
+          locationId: location.id,
+          locale: LocaleEnum.en,
+          title: dto.title,
+          shortDescription: dto.shortDescription ?? null,
+        },
+      });
+      return tx.tourLocation.findUnique({ where: { id: location.id }, select: this.locationSelect });
+    });
+    this.logger.log(`User ${requesterId} added location to tour ${tourId}`);
+    return result;
+  }
+
+  async updateLocation(tourId: string, locationId: string, dto: UpdateTourLocationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.tourLocation.findFirst({ where: { id: locationId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Location ${locationId} not found on tour ${tourId}`);
+    const updated = await this.prisma.tourLocation.update({
+      where: { id: locationId },
+      data: {
+        ...(dto.types !== undefined && { types: dto.types }),
+        ...('latitude' in dto && { latitude: dto.latitude ?? null }),
+        ...('longitude' in dto && { longitude: dto.longitude ?? null }),
+        ...('streetAddress' in dto && { streetAddress: dto.streetAddress ?? null }),
+        ...('addressLocality' in dto && { addressLocality: dto.addressLocality ?? null }),
+        ...('addressRegion' in dto && { addressRegion: dto.addressRegion ?? null }),
+        ...('postalCode' in dto && { postalCode: dto.postalCode ?? null }),
+        ...('addressCountry' in dto && { addressCountry: dto.addressCountry ?? null }),
+        ...('minutesTo' in dto && { minutesTo: dto.minutesTo ?? null }),
+        ...('minutesAt' in dto && { minutesAt: dto.minutesAt ?? null }),
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+      },
+      select: this.locationSelect,
+    });
+    this.logger.log(`User ${requesterId} updated location ${locationId} on tour ${tourId}`);
+    return updated;
+  }
+
+  async removeLocation(tourId: string, locationId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.tourLocation.findFirst({ where: { id: locationId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Location ${locationId} not found on tour ${tourId}`);
+    await this.prisma.tourLocation.delete({ where: { id: locationId } });
+    this.logger.log(`User ${requesterId} removed location ${locationId} from tour ${tourId}`);
+    return { message: 'Location removed successfully' };
+  }
+
+  async upsertLocationTranslation(tourId: string, locationId: string, locale: Locale, dto: UpsertLocationTranslationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const location = await this.prisma.tourLocation.findFirst({ where: { id: locationId, tourId }, select: { id: true } });
+    if (!location) throw new NotFoundException(`Location ${locationId} not found on tour ${tourId}`);
+    const result = await this.prisma.tourLocationTranslation.upsert({
+      where: { locationId_locale: { locationId, locale } },
+      create: {
+        locationId,
+        locale,
+        title: dto.title,
+        shortDescription: dto.shortDescription ?? null,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      update: {
+        title: dto.title,
+        shortDescription: dto.shortDescription ?? null,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      select: { locale: true, title: true, shortDescription: true, isMachineTranslated: true },
+    });
+    this.logger.log(`User ${requesterId} upserted location translation [${locale}] for location ${locationId}`);
+    return result;
+  }
+
+  async deleteLocationTranslation(tourId: string, locationId: string, locale: Locale, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    if (locale === Locale.en) throw new BadRequestException('English location text cannot be deleted. Update the text instead.');
+    const location = await this.prisma.tourLocation.findFirst({ where: { id: locationId, tourId }, select: { id: true } });
+    if (!location) throw new NotFoundException(`Location ${locationId} not found on tour ${tourId}`);
+    await this.prisma.tourLocationTranslation.delete({ where: { locationId_locale: { locationId, locale } } }).catch((err: any) => {
+      if (err?.code === 'P2025') throw new NotFoundException(`No translation found for locale "${locale}"`);
+      throw err;
+    });
+    this.logger.log(`User ${requesterId} deleted location translation [${locale}] for location ${locationId}`);
+    return { message: `Translation for locale "${locale}" deleted` };
+  }
+
+  // ── Pickup Locations ────────────────────────────────────────────────────────
+
+  private readonly pickupLocationSelect = {
+    id: true,
+    tourId: true,
+    name: true,
+    latitude: true,
+    longitude: true,
+    address: true,
+    minutesPrior: true,
+    windowStart: true,
+    windowEnd: true,
+    displayOrder: true,
+    isActive: true,
+    translations: { select: { locale: true, title: true, directions: true, isMachineTranslated: true } },
+  } as const;
+
+  async getPickupLocations(tourId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    return this.prisma.pickupLocation.findMany({
+      where: { tourId },
+      select: this.pickupLocationSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  async addPickupLocation(tourId: string, dto: CreatePickupLocationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const result = await this.prisma.$transaction(async (tx) => {
+      const pickup = await tx.pickupLocation.create({
+        data: {
+          tourId,
+          name: dto.name,
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
+          address: dto.address ?? null,
+          minutesPrior: dto.minutesPrior ?? null,
+          windowStart: dto.windowStart ?? null,
+          windowEnd: dto.windowEnd ?? null,
+          displayOrder: dto.displayOrder ?? 0,
+        },
+        select: { id: true },
+      });
+      await tx.pickupLocationTranslation.create({
+        data: {
+          pickupLocationId: pickup.id,
+          locale: LocaleEnum.en,
+          title: dto.title ?? dto.name,
+          directions: dto.directions ?? null,
+        },
+      });
+      return tx.pickupLocation.findUnique({ where: { id: pickup.id }, select: this.pickupLocationSelect });
+    });
+    this.logger.log(`User ${requesterId} added pickup location to tour ${tourId}`);
+    return result;
+  }
+
+  async updatePickupLocation(tourId: string, pickupLocationId: string, dto: UpdatePickupLocationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.pickupLocation.findFirst({ where: { id: pickupLocationId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Pickup location ${pickupLocationId} not found on tour ${tourId}`);
+    const updated = await this.prisma.pickupLocation.update({
+      where: { id: pickupLocationId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...('latitude' in dto && { latitude: dto.latitude ?? null }),
+        ...('longitude' in dto && { longitude: dto.longitude ?? null }),
+        ...('address' in dto && { address: dto.address ?? null }),
+        ...('minutesPrior' in dto && { minutesPrior: dto.minutesPrior ?? null }),
+        ...('windowStart' in dto && { windowStart: dto.windowStart ?? null }),
+        ...('windowEnd' in dto && { windowEnd: dto.windowEnd ?? null }),
+        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+      select: this.pickupLocationSelect,
+    });
+    this.logger.log(`User ${requesterId} updated pickup location ${pickupLocationId} on tour ${tourId}`);
+    return updated;
+  }
+
+  async removePickupLocation(tourId: string, pickupLocationId: string, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const existing = await this.prisma.pickupLocation.findFirst({ where: { id: pickupLocationId, tourId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Pickup location ${pickupLocationId} not found on tour ${tourId}`);
+    await this.prisma.pickupLocation.delete({ where: { id: pickupLocationId } });
+    this.logger.log(`User ${requesterId} removed pickup location ${pickupLocationId} from tour ${tourId}`);
+    return { message: 'Pickup location removed successfully' };
+  }
+
+  async upsertPickupLocationTranslation(tourId: string, pickupLocationId: string, locale: Locale, dto: UpsertPickupLocationTranslationDto, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    const pickup = await this.prisma.pickupLocation.findFirst({ where: { id: pickupLocationId, tourId }, select: { id: true } });
+    if (!pickup) throw new NotFoundException(`Pickup location ${pickupLocationId} not found on tour ${tourId}`);
+    const result = await this.prisma.pickupLocationTranslation.upsert({
+      where: { pickupLocationId_locale: { pickupLocationId, locale } },
+      create: {
+        pickupLocationId,
+        locale,
+        title: dto.title,
+        directions: dto.directions ?? null,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      update: {
+        title: dto.title,
+        directions: dto.directions ?? null,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      select: { locale: true, title: true, directions: true, isMachineTranslated: true },
+    });
+    this.logger.log(`User ${requesterId} upserted pickup translation [${locale}] for pickup ${pickupLocationId}`);
+    return result;
+  }
+
+  async deletePickupLocationTranslation(tourId: string, pickupLocationId: string, locale: Locale, requesterId: string, requesterRole: Role) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    if (locale === Locale.en) throw new BadRequestException('English pickup text cannot be deleted. Update the text instead.');
+    const pickup = await this.prisma.pickupLocation.findFirst({ where: { id: pickupLocationId, tourId }, select: { id: true } });
+    if (!pickup) throw new NotFoundException(`Pickup location ${pickupLocationId} not found on tour ${tourId}`);
+    await this.prisma.pickupLocationTranslation.delete({ where: { pickupLocationId_locale: { pickupLocationId, locale } } }).catch((err: any) => {
+      if (err?.code === 'P2025') throw new NotFoundException(`No translation found for locale "${locale}"`);
+      throw err;
+    });
+    this.logger.log(`User ${requesterId} deleted pickup translation [${locale}] for pickup ${pickupLocationId}`);
+    return { message: `Translation for locale "${locale}" deleted` };
+  }
+
   // ── Tour Translations ─────────────────────────────────────────────────────────
 
   private readonly tourTranslationSelect = {
@@ -925,8 +1286,12 @@ export class TourChildrenService {
     whatToBring: true,
     knowBeforeYouGo: true,
     notSuitableFor: true,
+    whatToExpectIntro: true,
+    categoryDisplay: true,
     localTip: true,
     meetingPointText: true,
+    metaTitle: true,
+    metaDescription: true,
     isMachineTranslated: true,
     updatedAt: true,
   } as const;
@@ -955,11 +1320,15 @@ export class TourChildrenService {
         overview: null,
         description: null,
         shortDescription: null,
-        whatToBring: null,
-        knowBeforeYouGo: null,
-        notSuitableFor: null,
+        whatToBring: [],
+        knowBeforeYouGo: [],
+        notSuitableFor: [],
+        whatToExpectIntro: null,
+        categoryDisplay: null,
         localTip: null,
         meetingPointText: null,
+        metaTitle: null,
+        metaDescription: null,
         isMachineTranslated: false,
         updatedAt: null,
       }
@@ -984,11 +1353,15 @@ export class TourChildrenService {
         overview: dto.overview ?? null,
         description: dto.description ?? null,
         shortDescription: dto.shortDescription ?? null,
-        whatToBring: dto.whatToBring ?? null,
-        knowBeforeYouGo: dto.knowBeforeYouGo ?? null,
-        notSuitableFor: dto.notSuitableFor ?? null,
+        whatToBring: dto.whatToBring ?? [],
+        knowBeforeYouGo: dto.knowBeforeYouGo ?? [],
+        notSuitableFor: dto.notSuitableFor ?? [],
+        whatToExpectIntro: dto.whatToExpectIntro ?? null,
+        categoryDisplay: dto.categoryDisplay ?? null,
         localTip: dto.localTip ?? null,
         meetingPointText: dto.meetingPointText ?? null,
+        metaTitle: dto.metaTitle ?? null,
+        metaDescription: dto.metaDescription ?? null,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
@@ -999,8 +1372,12 @@ export class TourChildrenService {
         ...(dto.whatToBring !== undefined && { whatToBring: dto.whatToBring }),
         ...(dto.knowBeforeYouGo !== undefined && { knowBeforeYouGo: dto.knowBeforeYouGo }),
         ...(dto.notSuitableFor !== undefined && { notSuitableFor: dto.notSuitableFor }),
+        ...(dto.whatToExpectIntro !== undefined && { whatToExpectIntro: dto.whatToExpectIntro }),
+        ...(dto.categoryDisplay !== undefined && { categoryDisplay: dto.categoryDisplay }),
         ...(dto.localTip !== undefined && { localTip: dto.localTip }),
         ...(dto.meetingPointText !== undefined && { meetingPointText: dto.meetingPointText }),
+        ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
+        ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
         ...(dto.isMachineTranslated !== undefined && { isMachineTranslated: dto.isMachineTranslated }),
       },
       select: this.tourTranslationSelect,

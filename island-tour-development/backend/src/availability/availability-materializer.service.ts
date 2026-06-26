@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   AvailabilityExceptionType,
+  DepartureSource,
+  DepartureStatus,
   Prisma,
   type AvailabilityException,
   type AvailabilitySchedule,
@@ -8,11 +10,13 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   dateKey,
+  dayDate,
+  hhmmToTime,
   localNow,
-  localWallTime,
-  parseHhMm,
+  mondayZeroWeekday,
+  timeOfDay,
 } from '@/common/utils/timezone.util';
-import { computeAvailabilityStatus } from './availability-status.util';
+import { storedStatusForFill } from './availability-status.util';
 import type { MaterializeResultDto } from './dto/availability.dto';
 
 /** Hard cap so a bad date range can't explode the departures table. */
@@ -21,23 +25,22 @@ const DEFAULT_HORIZON_DAYS = 90;
 const MS_PER_DAY = 86_400_000;
 
 interface DesiredDeparture {
-  localDateTimeStart: Date;
-  localDateTimeEnd: Date | null;
+  date: Date; // @db.Date storage form (midnight UTC)
+  startTime: string; // 'HH:MM'
   capacity: number;
-  utcCutoffAt: Date;
-  priceOverride: Prisma.Decimal | null;
-  source: string;
+  status: DepartureStatus; // OPEN, or CLOSED for a stop-sell exception
+  source: DepartureSource;
 }
 
 /**
- * Materialization engine - expands recurring `AvailabilitySchedule` rules plus
- * date-specific `AvailabilityException` overrides into concrete `Departure` rows
- * (the inventory source of truth) for a rolling window.
+ * Materialization engine - projects the recurring `AvailabilitySchedule` weekly pattern
+ * plus per-date `AvailabilityException` deviations into concrete `Departure` rows (the
+ * inventory source of truth) for a rolling window (master §E.9 §3).
  *
- * Idempotent: keyed on `(tourId, optionId, localDateTimeStart)`. Re-running adjusts
- * capacity (preserving already-booked seats), prunes orphaned future slots, and never
- * touches departures an operator has `manuallyEdited`. The nightly BullMQ job (Phase 9)
- * calls `materializeTour` to roll the window forward.
+ * All dates/times are destination-local. Capacity resolves exception -> schedule
+ * `capacityOverride` -> tour default (`maxPartySize`). The job NEVER touches a departure
+ * with bookings, a manual edit, or `source = api`. Idempotent and keyed on
+ * `(tourId, date, startTime)`. The nightly BullMQ job (Phase 9) calls `materializeTour`.
  */
 @Injectable()
 export class AvailabilityMaterializerService {
@@ -52,12 +55,7 @@ export class AvailabilityMaterializerService {
   ): Promise<MaterializeResultDto> {
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
-      select: {
-        id: true,
-        timeZone: true,
-        bookingCutoffMinutes: true,
-        durationMinutesFrom: true,
-      },
+      select: { id: true, timeZone: true, maxPartySize: true },
     });
     if (!tour) throw new BadRequestException('Tour not found');
 
@@ -67,7 +65,7 @@ export class AvailabilityMaterializerService {
 
     const [schedules, exceptions] = await Promise.all([
       this.prisma.availabilitySchedule.findMany({
-        where: { tourId, isActive: true },
+        where: { tourId, status: 'ACTIVE' },
       }),
       this.prisma.availabilityException.findMany({
         where: { tourId, date: { gte: fromDate, lte: toDate } },
@@ -90,23 +88,21 @@ export class AvailabilityMaterializerService {
     ) {
       this.buildDayDepartures(
         d,
-        tour,
+        tour.maxPartySize,
         schedules,
         exceptionsByDate.get(dateKey(d)) ?? [],
         desired,
       );
     }
 
-    return this.reconcile(tourId, fromDate, toDate, desired, now);
+    return this.reconcile(tourId, fromDate, toDate, desired);
   }
 
   // ── window resolution ──────────────────────────────────────────────────────
   private resolveWindow(from: string | undefined, to: string | undefined, now: Date) {
-    const fromDate = from
-      ? new Date(`${from}T00:00:00.000Z`)
-      : new Date(`${dateKey(now)}T00:00:00.000Z`);
+    const fromDate = from ? dayDate(from) : dayDate(dateKey(now));
     const toDate = to
-      ? new Date(`${to}T00:00:00.000Z`)
+      ? dayDate(to)
       : new Date(fromDate.getTime() + DEFAULT_HORIZON_DAYS * MS_PER_DAY);
     if (toDate < fromDate) {
       throw new BadRequestException('`to` must be on or after `from`');
@@ -120,138 +116,84 @@ export class AvailabilityMaterializerService {
   // ── one calendar day → desired departures ──────────────────────────────────
   private buildDayDepartures(
     day: Date,
-    tour: {
-      timeZone: string;
-      bookingCutoffMinutes: number;
-      durationMinutesFrom: number | null;
-    },
+    tourDefaultCapacity: number | null,
     schedules: AvailabilitySchedule[],
     dayExceptions: AvailabilityException[],
     desired: Map<string, DesiredDeparture>,
   ): void {
-    const year = day.getUTCFullYear();
-    const month = day.getUTCMonth() + 1;
-    const dom = day.getUTCDate();
-    const weekday = day.getUTCDay();
+    const date = dayDate(dateKey(day));
+    const weekday = mondayZeroWeekday(day); // Monday = 0 (master convention)
+    const keyOf = (startTime: string) => `${dateKey(day)}|${startTime}`;
 
-    // Recurring schedules
+    // 1. Recurring schedule slots active on this weekday + within the valid window.
     for (const schedule of schedules) {
-      if (!schedule.weekdays.includes(weekday)) continue;
-      if (schedule.seasonStart && day < schedule.seasonStart) continue;
-      if (schedule.seasonEnd && day > schedule.seasonEnd) continue;
+      if (schedule.weekday !== weekday) continue;
+      if (schedule.validFrom && day < schedule.validFrom) continue;
+      if (schedule.validUntil && day > schedule.validUntil) continue;
 
-      const wholeDayBlackout = dayExceptions.some(
-        (e) => e.type === AvailabilityExceptionType.BLACKOUT && !e.startTime,
-      );
-      if (wholeDayBlackout) continue;
-
-      const capacity =
-        this.overrideValue(
-          dayExceptions,
-          AvailabilityExceptionType.CAPACITY_OVERRIDE,
-          (e) => e.capacity,
-        ) ?? schedule.capacity;
-      const price =
-        this.overrideValue(
-          dayExceptions,
-          AvailabilityExceptionType.PRICE_OVERRIDE,
-          (e) => e.priceOverride,
-        ) ?? schedule.priceOverride;
-
-      for (const startTime of schedule.startTimes) {
-        const timeBlackout = dayExceptions.some(
-          (e) =>
-            e.type === AvailabilityExceptionType.BLACKOUT &&
-            e.startTime === startTime,
+      const capacity = schedule.capacityOverride ?? tourDefaultCapacity;
+      if (capacity == null) {
+        this.logger.warn(
+          `Schedule ${schedule.id} has no capacityOverride and tour has no maxPartySize - slot skipped`,
         );
-        if (timeBlackout) continue;
-
-        this.addDesired(desired, tour, {
-          year,
-          month,
-          dom,
-          startTime,
-          capacity,
-          price,
-          source: 'schedule',
-          overwrite: false,
-        });
-      }
-    }
-
-    // Extra departures (explicit one-offs win over schedule keys)
-    for (const ex of dayExceptions) {
-      if (ex.type !== AvailabilityExceptionType.EXTRA_DEPARTURE) continue;
-      if (!ex.startTime) {
-        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no startTime - skipped`);
         continue;
       }
-      if (ex.capacity === null) {
-        this.logger.warn(`EXTRA_DEPARTURE ${ex.id} has no capacity - skipped`);
-        continue;
-      }
-      this.addDesired(desired, tour, {
-        year,
-        month,
-        dom,
-        startTime: ex.startTime,
-        capacity: ex.capacity,
-        price: ex.priceOverride,
-        source: 'exception',
-        overwrite: true,
+      const startTime = timeOfDay(schedule.startTime);
+      desired.set(keyOf(startTime), {
+        date,
+        startTime,
+        capacity,
+        status: DepartureStatus.OPEN,
+        source: DepartureSource.SCHEDULE,
       });
     }
-  }
 
-  /** First non-null override of a given type for the day. */
-  private overrideValue<T>(
-    exceptions: AvailabilityException[],
-    type: AvailabilityExceptionType,
-    read: (e: AvailabilityException) => T | null,
-  ): T | null {
-    for (const m of exceptions.filter((e) => e.type === type)) {
-      const v = read(m);
-      if (v !== null && v !== undefined) return v;
+    // 2. add_slot — introduce a departure the weekly pattern does not produce.
+    for (const ex of dayExceptions) {
+      if (ex.type !== AvailabilityExceptionType.ADD_SLOT) continue;
+      if (!ex.startTime) {
+        this.logger.warn(`add_slot exception ${ex.id} has no startTime - skipped`);
+        continue;
+      }
+      const capacity = ex.capacity ?? tourDefaultCapacity;
+      if (capacity == null) {
+        this.logger.warn(`add_slot exception ${ex.id} has no resolvable capacity - skipped`);
+        continue;
+      }
+      const startTime = timeOfDay(ex.startTime);
+      desired.set(keyOf(startTime), {
+        date,
+        startTime,
+        capacity,
+        status: DepartureStatus.OPEN,
+        source: DepartureSource.EXCEPTION,
+      });
     }
-    return null;
-  }
 
-  private addDesired(
-    desired: Map<string, DesiredDeparture>,
-    tour: {
-      timeZone: string;
-      bookingCutoffMinutes: number;
-      durationMinutesFrom: number | null;
-    },
-    p: {
-      year: number;
-      month: number;
-      dom: number;
-      startTime: string;
-      capacity: number;
-      price: Prisma.Decimal | null;
-      source: string;
-      overwrite: boolean;
-    },
-  ): void {
-    const { hour, minute } = parseHhMm(p.startTime);
-    const start = localWallTime(p.year, p.month, p.dom, hour, minute);
-    const key = start.toISOString();
-    if (desired.has(key) && !p.overwrite) return;
+    // 3. set_capacity — override capacity for one slot (startTime set) or all (null).
+    for (const ex of dayExceptions) {
+      if (ex.type !== AvailabilityExceptionType.SET_CAPACITY || ex.capacity == null) continue;
+      if (ex.startTime) {
+        const row = desired.get(keyOf(timeOfDay(ex.startTime)));
+        if (row) row.capacity = ex.capacity;
+      } else {
+        for (const [k, row] of desired) {
+          if (k.startsWith(`${dateKey(day)}|`)) row.capacity = ex.capacity;
+        }
+      }
+    }
 
-    const end = tour.durationMinutesFrom
-      ? new Date(start.getTime() + tour.durationMinutesFrom * 60_000)
-      : null;
-    const utcCutoffAt = new Date(start.getTime() - tour.bookingCutoffMinutes * 60_000);
-
-    desired.set(key, {
-      localDateTimeStart: start,
-      localDateTimeEnd: end,
-      capacity: p.capacity,
-      utcCutoffAt,
-      priceOverride: p.price,
-      source: p.source,
-    });
+    // 4. close_date / close_slot — stop-sell: keep the departure but mark it CLOSED.
+    for (const ex of dayExceptions) {
+      if (ex.type === AvailabilityExceptionType.CLOSE_DATE && !ex.startTime) {
+        for (const [k, row] of desired) {
+          if (k.startsWith(`${dateKey(day)}|`)) row.status = DepartureStatus.CLOSED;
+        }
+      } else if (ex.type === AvailabilityExceptionType.CLOSE_SLOT && ex.startTime) {
+        const row = desired.get(keyOf(timeOfDay(ex.startTime)));
+        if (row) row.status = DepartureStatus.CLOSED;
+      }
+    }
   }
 
   // ── reconcile desired vs existing ──────────────────────────────────────────
@@ -260,27 +202,26 @@ export class AvailabilityMaterializerService {
     fromDate: Date,
     toDate: Date,
     desired: Map<string, DesiredDeparture>,
-    now: Date,
   ): Promise<MaterializeResultDto> {
-    // Load existing in a generous UTC instant window (covers tz offset at both ends).
-    const lowerBound = new Date(fromDate.getTime() - MS_PER_DAY);
-    const upperBound = new Date(toDate.getTime() + 2 * MS_PER_DAY);
     const existing = await this.prisma.departure.findMany({
-      where: {
-        tourId,
-        localDateTimeStart: { gte: lowerBound, lte: upperBound },
-      },
+      where: { tourId, date: { gte: fromDate, lte: toDate } },
       select: {
         id: true,
-        localDateTimeStart: true,
+        date: true,
+        startTime: true,
         capacity: true,
-        vacancies: true,
+        bookedCount: true,
         manuallyEdited: true,
+        source: true,
       },
     });
-    const existingByKey = new Map(
-      existing.map((e) => [e.localDateTimeStart.toISOString(), e]),
-    );
+    const keyOf = (date: Date, startTime: Date) =>
+      `${dateKey(date)}|${timeOfDay(startTime)}`;
+    const existingByKey = new Map(existing.map((e) => [keyOf(e.date, e.startTime), e]));
+
+    /** A departure is protected from re-materialization (master §3). */
+    const isProtected = (row: { bookedCount: number; manuallyEdited: boolean; source: DepartureSource }) =>
+      row.bookedCount > 0 || row.manuallyEdited || row.source === DepartureSource.API;
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     const creates: Prisma.DepartureCreateManyInput[] = [];
@@ -290,69 +231,41 @@ export class AvailabilityMaterializerService {
     for (const [key, want] of desired) {
       const row = existingByKey.get(key);
       if (!row) {
-        const status = computeAvailabilityStatus({
-          vacancies: want.capacity,
-          capacity: want.capacity,
-          utcCutoffAt: want.utcCutoffAt,
-          now,
-        });
         creates.push({
           tourId,
-          localDateTimeStart: want.localDateTimeStart,
-          localDateTimeEnd: want.localDateTimeEnd,
+          date: want.date,
+          startTime: hhmmToTime(want.startTime),
           capacity: want.capacity,
-          vacancies: want.capacity,
-          status,
-          utcCutoffAt: want.utcCutoffAt,
-          priceOverride: want.priceOverride,
+          bookedCount: 0,
+          status: want.status,
           source: want.source,
         });
         continue;
       }
-      if (row.manuallyEdited) {
+      if (isProtected(row)) {
         skipped++;
         continue;
       }
-      const booked = row.capacity - row.vacancies;
-      const vacancies = Math.max(0, want.capacity - booked);
-      const status = computeAvailabilityStatus({
-        vacancies,
-        capacity: want.capacity,
-        utcCutoffAt: want.utcCutoffAt,
-        now,
-      });
+      // Re-project capacity/status, preserving the (zero here) bookedCount.
+      const status =
+        want.status === DepartureStatus.CLOSED
+          ? DepartureStatus.CLOSED
+          : storedStatusForFill(want.capacity, row.bookedCount);
       ops.push(
         this.prisma.departure.update({
           where: { id: row.id },
-          data: {
-            capacity: want.capacity,
-            vacancies,
-            localDateTimeEnd: want.localDateTimeEnd,
-            utcCutoffAt: want.utcCutoffAt,
-            priceOverride: want.priceOverride,
-            status,
-          },
+          data: { capacity: want.capacity, status, source: want.source },
         }),
       );
       updated++;
     }
 
-    // Orphans: existing future slots no longer desired, with no bookings + not edited.
+    // Orphans: existing slots no longer desired, unbooked, not protected → remove.
     const orphanIds = existing
-      .filter(
-        (e) =>
-          !desired.has(e.localDateTimeStart.toISOString()) &&
-          e.localDateTimeStart >= fromDate &&
-          e.localDateTimeStart <= upperBound &&
-          e.capacity === e.vacancies &&
-          !e.manuallyEdited,
-      )
+      .filter((e) => !desired.has(keyOf(e.date, e.startTime)) && !isProtected(e))
       .map((e) => e.id);
-
     if (orphanIds.length) {
-      ops.push(
-        this.prisma.departure.deleteMany({ where: { id: { in: orphanIds } } }),
-      );
+      ops.push(this.prisma.departure.deleteMany({ where: { id: { in: orphanIds } } }));
     }
     if (creates.length) {
       ops.push(

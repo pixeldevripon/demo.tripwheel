@@ -139,7 +139,6 @@ enum Permission {
   DELETE_REVIEW
   APPROVE_REVIEW
 
-
   // Files & Media
   UPLOAD_MEDIA
   MANAGE_MEDIA
@@ -214,6 +213,25 @@ enum TourBookingType {
   SHARED
 }
 
+// Typed pricing bands (master E.3). ADULT/CHILD/INFANT cover the master's three base
+// band prices; YOUTH/SENIOR cover the optional age_bands[] extras. Lets the API compose
+// a typed pricing object keyed by band (pricing.adult, pricing.child, …).
+enum AgeBandType {
+  ADULT
+  CHILD
+  INFANT
+  YOUTH
+  SENIOR
+}
+
+// Whether a priced band takes part in the activity or only rides along (Figma booking
+// widget "Bringing Spectators?"). Spectators are banded (Adult $20 / Kid $10) and count
+// toward capacity but are excluded from the activity itself.
+enum BandParticipation {
+  PARTICIPANT
+  SPECTATOR
+}
+
 // ── OCTO catalog ──────────────────────────────────────────────────────────────
 
 enum OctoAvailabilityType {
@@ -256,20 +274,37 @@ enum FeatureType {
 
 // ── Availability ──────────────────────────────────────────────────────────────
 
-enum AvailabilityStatus {
-  AVAILABLE
-  FREESALE
-  SOLD_OUT
-  LIMITED
-  CLOSED
+enum AvailabilityScheduleStatus {
+  ACTIVE @map("active")
+  PAUSED @map("paused")
+
+  @@map("availability_schedule_status")
 }
 
 enum AvailabilityExceptionType {
-  BLACKOUT
-  EXTRA_DEPARTURE
-  CAPACITY_OVERRIDE
-  PRICE_OVERRIDE
-  TIME_OVERRIDE
+  CLOSE_DATE   @map("close_date")
+  CLOSE_SLOT   @map("close_slot")
+  ADD_SLOT     @map("add_slot")
+  SET_CAPACITY @map("set_capacity")
+
+  @@map("availability_exception_type")
+}
+
+enum DepartureStatus {
+  OPEN      @map("open")
+  CLOSED    @map("closed")
+  SOLD_OUT  @map("sold_out")
+  CANCELLED @map("cancelled")
+
+  @@map("departure_status")
+}
+
+enum DepartureSource {
+  SCHEDULE  @map("schedule")
+  EXCEPTION @map("exception")
+  API       @map("api")
+
+  @@map("departure_source")
 }
 
 // ── Bookings (OCTO lifecycle) ─────────────────────────────────────────────────
@@ -395,6 +430,23 @@ enum HubType {
   AREA
 }
 
+// Publish lifecycle for editorial pages (hubs/collections). DRAFT is the unpublished
+// working state; PUBLISHED is live; ARCHIVED is retired (slug protected).
+enum HubStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Hub editorial content blocks (HUB-DATA.md §5). Discover deep-dive subsections,
+// first-timer Local Tips, the hero fast-facts bar, and any extra editorial blocks.
+enum HubSectionType {
+  DISCOVER
+  LOCAL_TIP
+  FAST_FACT
+  EDITORIAL
+}
+
 // Supported currencies (ISO 4217). Launch set: Caribbean island currencies + major
 // tourist source currencies. Used wherever a currency is stored/displayed.
 enum Currency {
@@ -414,6 +466,20 @@ enum SlugEntityType {
 enum CollectionType {
   MANUAL
   DYNAMIC
+}
+
+// Collection publish lifecycle (COLLECTION-DATA.md §2 / G5).
+enum CollectionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Collection card display style (COLLECTION-DATA.md §8). NUMBERED draws 01..n badges
+// (Best Things to Do / Top 10); PERSONA marks card #1 with the peach highlight instead.
+enum CollectionDisplayStyle {
+  NUMBERED
+  PERSONA
 }
 
 enum FeaturedEntityType {

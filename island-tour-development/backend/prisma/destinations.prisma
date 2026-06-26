@@ -83,18 +83,21 @@ model DestinationPageContent {
 // Activity Hubs — destination-specific special locations (e.g. Klein Curaçao)
 // Admin-only create. Destination is mandatory.
 model Hub {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   destinationId String
   name          String
   slug          String // locale-independent English slug; unique per destination
-  description   String?
+  description   String? // master E.4 short_description (card/meta blurb)
+  heroImage     String? // full-bleed hero — the hub's defining element (HUB-DATA.md G1)
+  ogImage       String? // Open Graph image (E.4)
   // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
   // `hubType` nullable in Stage 1; backfilled in Stage 2.
   hubType       HubType? // location | highlight | area — V2 §5
+  status        HubStatus @default(DRAFT) // publish lifecycle (G6)
   latitude      Float? // for location-type hubs
   longitude     Float?
-  isSeeded      Boolean  @default(false) // true = seeded at launch; guard delete in service
-  isActive      Boolean  @default(true)
+  isSeeded      Boolean   @default(false) // true = seeded at launch; guard delete in service
+  isActive      Boolean   @default(true)
   createdBy     String?
 
   createdAt DateTime @default(now())
@@ -105,6 +108,7 @@ model Hub {
   allowedCategories HubAllowedCategory[]
   ourPicks          HubOurPick[]
   comparisonGroups  HubComparisonGroup[]
+  contentSections   HubContentSection[] // Discover / Local Tips / Fast Facts / Editorial
   translations      HubTranslation[]
   pageContents      HubPageContent[]
   tourHubs          TourHub[]
@@ -122,7 +126,8 @@ model HubTranslation {
   hub                 Hub      @relation(fields: [hubId], references: [id], onDelete: Cascade)
   locale              Locale
   name                String? // null falls back to Hub.name
-  overview            String?
+  overview            String? // editorial lead ("Why {hub}", ≤150 words, no visible header)
+  heroTagline         String? // hero subtitle under H1 ("Where islanders send their visitors") — G5
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean  @default(false)
@@ -168,40 +173,97 @@ model HubOurPick {
   hubId        String
   tourId       String
   pickType     HubPickType
-  description  String // admin-written editorial text
+  description  String // base-locale editorial blurb (fallback)
   displayOrder Int         @default(0)
 
-  hub  Hub  @relation(fields: [hubId], references: [id], onDelete: Cascade)
-  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  hub          Hub                     @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  tour         Tour                    @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations HubOurPickTranslation[]
 
   @@unique([hubId, tourId])
   @@map("hub_our_picks")
+}
+
+// Per-locale Our-Pick blurb (G8).
+model HubOurPickTranslation {
+  id          String     @id @default(uuid())
+  ourPickId   String
+  locale      Locale
+  description String
+  ourPick     HubOurPick @relation(fields: [ourPickId], references: [id], onDelete: Cascade)
+
+  @@unique([ourPickId, locale])
+  @@map("hub_our_pick_translations")
 }
 
 // Comparison groups for the hub's "Compare" tab (e.g. "Comfort trips" vs "Adventure trips").
 model HubComparisonGroup {
   id           String @id @default(uuid())
   hubId        String
-  groupName    String
+  groupName    String // base-locale label (fallback)
   displayOrder Int    @default(0)
 
-  hub             Hub                 @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  hub             Hub                             @relation(fields: [hubId], references: [id], onDelete: Cascade)
   comparisonTours HubComparisonTour[]
+  translations    HubComparisonGroupTranslation[]
 
   @@map("hub_comparison_groups")
 }
 
+// Per-locale comparison group name (G3).
+model HubComparisonGroupTranslation {
+  id        String             @id @default(uuid())
+  groupId   String
+  locale    Locale
+  groupName String
+  group     HubComparisonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, locale])
+  @@map("hub_comparison_group_translations")
+}
+
 model HubComparisonTour {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   groupId      String
   tourId       String
-  displayOrder Int    @default(0)
+  standoutNote String? // base-locale "what stands out" cell (curated; G3)
+  displayOrder Int     @default(0)
 
-  group HubComparisonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  tour  Tour               @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  group        HubComparisonGroup             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  tour         Tour                           @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations HubComparisonTourTranslation[]
 
   @@unique([groupId, tourId])
   @@map("hub_comparison_tours")
+}
+
+// Per-locale "what stands out" comparison cell (G3).
+model HubComparisonTourTranslation {
+  id               String            @id @default(uuid())
+  comparisonTourId String
+  locale           Locale
+  standoutNote     String
+  comparisonTour   HubComparisonTour @relation(fields: [comparisonTourId], references: [id], onDelete: Cascade)
+
+  @@unique([comparisonTourId, locale])
+  @@map("hub_comparison_tour_translations")
+}
+
+// Hub editorial content blocks (HUB-DATA.md §5): Discover deep-dive subsections, Local
+// Tips, the hero Fast Facts bar, and extra editorial blocks. Titled, ordered, per-locale.
+model HubContentSection {
+  id           String         @id @default(uuid())
+  hubId        String
+  locale       Locale
+  sectionType  HubSectionType
+  heading      String
+  body         String
+  displayOrder Int            @default(0)
+
+  hub Hub @relation(fields: [hubId], references: [id], onDelete: Cascade)
+
+  @@index([hubId, locale, sectionType, displayOrder])
+  @@map("hub_content_sections")
 }
 
 // "Top Island Experiences" section — categories and hubs only, never individual tours.

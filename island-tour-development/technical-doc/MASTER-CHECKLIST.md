@@ -15,7 +15,7 @@
 
 ## Overall progress
 
-**43 of 203 tracked master points implemented (~21%)**, 160 remaining (15 of which are partial —
+**46 of 203 tracked master points implemented (~23%)**, 157 remaining (15 of which are partial —
 built but diverging from the master). The discovery/content schema is largely done; the commercial
 tier engine, transactions, availability, tracking, and the public site are the open work.
 
@@ -30,9 +30,9 @@ tier engine, transactions, availability, tracking, and the public site are the o
 | §7 Commercial model | 0 | 15 | 0 |
 | §8 Tracking & analytics | 0 | 12 | 0 |
 | Appendix A — Locked decisions (LD1–LD33) | 5 | 28 | 3 |
-| Appendix E — Consolidated data model | 13 | 27 | 5 |
+| Appendix E — Consolidated data model | 16 | 24 | 5 |
 | Remove (was slot economy) | 0 | 5 | 0 |
-| **Total** | **43** | **160** | **15** |
+| **Total** | **46** | **157** | **15** |
 
 ---
 
@@ -64,7 +64,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### 1.4 Business model & money flow
 
 - [ ] Commission tiers (premium 30 / featured 27.5 / boosted 25 / organic 22.5 / standard 20)
-- [ ] Destination Spotlight 35% (separate block, max 3/destination, manual approval)
+- [x] Destination Spotlight 35% (separate block, max 3/destination, manual approval) — `src/tiers/` (request/approve/reject, transactional cap, eligibility gate, effective-commission overlay snapshotted on booking)
 - [x] `commission_rate` + `commission_amount` snapshot on booking, never retroactive — `bookings.service` (computed at reserve, EUR-normalized at confirm)
 - [ ] `deposit_pct` 20–30 in 2.5 steps, tier-driven
 - [x] 4 payment models (operator_link / on_arrival / paid_in_full / operator_full) — snapshot + charge selection in `bookings.service` / `payments.service`
@@ -222,10 +222,10 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### 7.1 Tiers
 
-- [ ] Tour tier columns `commission_tier`/`tier_key`/`tier_rank`/`tier_locked_until`/`quality_score`
-- [ ] New tours default standard (20%, rank 5); `tier_rank` denormalized, never client-written
-- [ ] Tier change updates all three + sets `tier_locked_until = now+30d`; rejected while locked
-- [ ] `deposit_pct` tier-driven
+- [x] Tour tier columns `commission_tier`/`tier_key`/`tier_rank`/`tier_locked_until`/`quality_score` — Tour columns
+- [x] New tours default standard (20%, rank 5); `tier_rank` denormalized, never client-written
+- [x] Tier change updates all three + sets `tier_locked_until = now+30d`; rejected while locked — `PATCH /tiers/tours/:id/tier`
+- [x] `deposit_pct` tier-driven (surfaced read-only)
 
 ### 7.2 Ranking & eligibility
 
@@ -235,8 +235,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [ ] Eligibility flat bar (5 reviews / 4.0 / ≤10% cancellation, min 10 bookings)
 - [ ] One-time 90-day provisional window from first publish
 - [ ] Nightly enforcement → notify → 30-day grace → auto-demote (keep snapshotted commission)
-- [ ] Destination Spotlight extra bar (10/4.5) + manual approval + max-3 cap
-- [ ] Force-majeure pardons (admin: date range + destination)
+- [x] Destination Spotlight extra bar (10/4.5) + manual approval + max-3 cap — `src/tiers/` (cancellation-rate gate is a TODO pending operator E.6 field)
+- [x] Force-majeure pardons (admin: date range + destination) — `ForceMajeurePardon` model
 - [ ] Sponsored/Most popular/Locals' favorites badges & labels
 
 ### 7.3 Affiliate program
@@ -332,7 +332,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [x] overview, highlights, included_items, gallery (is_hero/focal) — child tables + `TripTranslation`
 - [x] short_description, what_to_bring, know_before_you_go, not_suitable_for, local_tip, meeting_point_text — `TourTranslation` + trip-children translation DTO/service
-- [ ] category_display (plural noun phrase for "More {x} in {destination}")
+- [x] category_display (plural noun phrase for "More {x} in {destination}") — `TourTranslation.categoryDisplay`
+- [x] meta_title, meta_description (per locale), what_to_expect_intro — `TourTranslation`; og_image — Tour column
 - [x] excluded_items typed `{item, type, price_text?}` — `TourExclusion.type`/`priceText` (LD18) + create/update DTO + service
 
 ### E.3 tours — pricing & party
@@ -346,7 +347,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] cancellation_hours enum [24,48,72,168] default 48 — DTO `@IsIn`, service default 48 (master rule #20)
 - [x] free_cancellation derivable (cancellation_hours NOT NULL — no standalone field)
 - [x] payment_model, instant_confirmation, booking_type, duration_minutes_max(durationMinutesTo) — trip create/update DTO + service; deposit_pct surfaced read-only (tier-driven)
-- [ ] start_times[] — deferred to availability phase (schedules slot template)
+- [x] start_times[] — `Tour.startTimes` column; availability schedules validate slots against it
+- [x] check_in_minutes_before — Tour column (default 30); pickup window (windowStart/windowEnd) — `PickupLocation`
 - [x] meeting_point_lat / meeting_point_lng (+ departure_city; localized meeting_point_text on `TourTranslation`)
 
 ### E.3 tours — flags & accessibility
@@ -357,7 +359,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### E.3 tours — computed
 
 - [x] aggregate_rating, review_count, booking_count(+today), spots_remaining, last_booked_at — cached fields
-- [ ] rating_distribution[], photo_review_count — rating_distribution computed live in `GET /reviews/summary`; `photo_review_count` not yet exposed
+- [x] rating_distribution[], photo_review_count — cached columns on Tour (rating_distribution also live in `GET /reviews/summary`)
 - [ ] quality_score (nightly)
 
 ### E.3 tours — commercial tier
@@ -394,10 +396,10 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### E.9 availability & departures
 
-- [ ] availability_schedules (weekly pattern)
-- [ ] availability_exceptions (close_date/close_slot/add_slot/set_capacity)
-- [ ] departures (materialized truth, capacity/booked_count/status/sold_out_at/source/manually_edited)
-- [ ] Nightly materialization (12 rolling months), read contract, atomic claim, all-sold-out recovery
+- [x] availability_schedules (weekly pattern) — schema + service (create/update/list, slot-set validation, Monday=0)
+- [x] availability_exceptions (close_date/close_slot/add_slot/set_capacity) — schema + service + materializer
+- [x] departures (materialized truth, capacity/booked_count/status/sold_out_at/source/manually_edited) — schema + service
+- [x] Materialization engine + read contract (live cutoff, remaining<5 disclosure) + atomic claim (guarded count-up); nightly cron + all-sold-out recovery still pending
 - [ ] Operator portal (schedule editor, exceptions, blackouts, close-today, freshness nudge)
 - [ ] ⚠️ Replaces the existing simple `TourSchedule` model
 

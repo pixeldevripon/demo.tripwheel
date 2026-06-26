@@ -11,6 +11,7 @@ import {
   ParseEnumPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -23,7 +24,11 @@ import {
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
+  HubRenderQueryDto,
   LocaleQueryDto,
+  ReplaceContentSectionsDto,
+  SetComparisonDto,
+  SetOurPicksDto,
   UpdateFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
@@ -98,6 +103,13 @@ export class HubController {
   @ApiGetHubBySlugDocs()
   getBySlug(@Param('slug') slug: string, @Query() query: HubBySlugQueryDto) {
     return this.hubService.getBySlug(slug, query);
+  }
+
+  /** Full public render payload (hero, editorial lead, Our Picks, comparison, Discover/Local Tips, FAQ, related). */
+  @Get('render/:slug')
+  @Public()
+  render(@Param('slug') slug: string, @Query() query: HubRenderQueryDto) {
+    return this.hubService.render(slug, query);
   }
 
   @Get(':id')
@@ -269,5 +281,59 @@ export class HubController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.removeAllowedCategory(id, categoryId, user.id);
+  }
+
+  // ── Content sections: Discover / Local Tips / Fast Facts / Editorial (HUB-DATA §5) ──
+
+  @Get(':id/content-sections')
+  @Public()
+  getContentSections(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.hubService.getContentSections(id, query.locale);
+  }
+
+  @Put(':id/content-sections')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  replaceContentSections(
+    @Param('id') id: string,
+    @Body() dto: ReplaceContentSectionsDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.replaceContentSections(id, dto, user.id);
+  }
+
+  // ── Our Picks (best overall / most popular / best for families) ─────────────────
+
+  @Get(':id/our-picks')
+  @Public()
+  getOurPicks(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.hubService.getOurPicks(id, query.locale ?? Locale.en);
+  }
+
+  @Put(':id/our-picks')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  setOurPicks(
+    @Param('id') id: string,
+    @Body() dto: SetOurPicksDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.setOurPicks(id, dto, user.id);
+  }
+
+  // ── Comparison table (Comfort vs Adventure, per-locale, standout cells) ─────────
+
+  @Get(':id/comparison')
+  @Public()
+  getComparison(@Param('id') id: string, @Query() query: LocaleQueryDto) {
+    return this.hubService.getComparison(id, query.locale ?? Locale.en);
+  }
+
+  @Put(':id/comparison')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  setComparison(
+    @Param('id') id: string,
+    @Body() dto: SetComparisonDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.setComparison(id, dto, user.id);
   }
 }

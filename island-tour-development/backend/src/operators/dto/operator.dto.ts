@@ -145,7 +145,10 @@ export class PaginatedOperatorsResponseDto {
 // ── Query & Input DTOs ────────────────────────────────────────────────────────
 
 export class OperatorQueryDto {
-  @ApiPropertyOptional({ example: 'island', description: 'Search by company name or user name/email' })
+  @ApiPropertyOptional({
+    example: 'island',
+    description: 'Search by company name or user name/email',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -293,7 +296,6 @@ export class OnboardOperatorDto {
   @Min(0)
   yearlySalesTarget!: number;
 }
-
 
 export class UpdateOperatorSocialMediaDto {
   @ApiPropertyOptional({ example: 'https://facebook.com/travelco' })

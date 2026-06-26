@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Locale, ReviewModerationStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -13,7 +14,6 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { Locale, ReviewModerationStatus } from '@prisma/client';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Response DTOs
@@ -23,23 +23,50 @@ export class ReviewResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty() operatorId!: string;
-  @ApiProperty({ example: 5, description: 'Overall rating 1–5.' }) rating!: number;
-  @ApiPropertyOptional({ nullable: true, example: 4 }) ratingValue!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 5 }) ratingGuide!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 5 }) ratingSafety!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 'Unforgettable sunset' }) title!: string | null;
-  @ApiPropertyOptional({ nullable: true, description: 'Comment in the requested locale (fallback to any).' })
+  @ApiProperty({ example: 5, description: 'Overall rating 1–5.' })
+  rating!: number;
+  @ApiPropertyOptional({ nullable: true, example: 4 }) ratingValue!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 5 }) ratingGuide!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 5 }) ratingSafety!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Unforgettable sunset' })
+  title!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Comment in the requested locale (fallback to any).',
+  })
   comment!: string | null;
-  @ApiProperty({ enum: Locale, description: 'Locale the returned comment is in.' }) locale!: Locale;
-  @ApiPropertyOptional({ nullable: true, example: 'Ada B.' }) reviewerInitial!: string | null;
-  @ApiPropertyOptional({ nullable: true, example: 'NL' }) reviewerCountry!: string | null;
-  @ApiPropertyOptional({ nullable: true, example: 7 }) travelMonth!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 2026 }) travelYear!: number | null;
+  @ApiProperty({
+    enum: Locale,
+    description: 'Locale the returned comment is in.',
+  })
+  locale!: Locale;
+  @ApiPropertyOptional({ nullable: true, example: 'Ada B.' }) reviewerInitial!:
+    | string
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 'NL' }) reviewerCountry!:
+    | string
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 7 }) travelMonth!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 2026 }) travelYear!:
+    | number
+    | null;
   @ApiProperty({ type: [String], example: [] }) photos!: string[];
   @ApiProperty({ example: 0 }) helpfulCount!: number;
-  @ApiProperty({ example: true, description: 'Always true - reviews are booking-gated.' })
+  @ApiProperty({
+    example: true,
+    description: 'Always true - reviews are booking-gated.',
+  })
   isVerified!: boolean;
-  @ApiProperty({ enum: ReviewModerationStatus }) moderationStatus!: ReviewModerationStatus;
+  @ApiProperty({ enum: ReviewModerationStatus })
+  moderationStatus!: ReviewModerationStatus;
   @ApiPropertyOptional({ nullable: true }) operatorResponse!: string | null;
   @ApiPropertyOptional({ nullable: true }) operatorRespondedAt!: string | null;
   @ApiProperty() createdAt!: string;
@@ -54,23 +81,41 @@ export class ReviewSummaryDto {
   @ApiProperty() tourId!: string;
   @ApiProperty({
     enum: ['tour', 'operator', 'none'],
-    description: 'LD11 cold-start: which entity the displayed rating comes from.',
+    description:
+      'LD11 cold-start: which entity the displayed rating comes from.',
   })
   source!: 'tour' | 'operator' | 'none';
-  @ApiPropertyOptional({ nullable: true, example: 4.6, description: 'Displayed rating (1dp), or null to hide.' })
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 4.6,
+    description: 'Displayed rating (1dp), or null to hide.',
+  })
   rating!: number | null;
-  @ApiProperty({ example: 12, description: 'Review count behind the displayed rating.' })
+  @ApiProperty({
+    example: 12,
+    description: 'Review count behind the displayed rating.',
+  })
   reviewCount!: number;
-  @ApiProperty({ example: 12, description: "This tour's own approved-review count." })
+  @ApiProperty({
+    example: 12,
+    description: "This tour's own approved-review count.",
+  })
   approvedCount!: number;
   @ApiProperty({
     type: [RatingBucketDto],
-    description: 'Star distribution (approved only). Frontend renders at ≥3 (LD31).',
+    description:
+      'Star distribution (approved only). Frontend renders at ≥3 (LD31).',
   })
   distribution!: RatingBucketDto[];
-  @ApiPropertyOptional({ nullable: true, example: 4.5 }) avgValue!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 4.8 }) avgGuide!: number | null;
-  @ApiPropertyOptional({ nullable: true, example: 4.9 }) avgSafety!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: 4.5 }) avgValue!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 4.8 }) avgGuide!:
+    | number
+    | null;
+  @ApiPropertyOptional({ nullable: true, example: 4.9 }) avgSafety!:
+    | number
+    | null;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -105,7 +150,10 @@ export class ListReviewsQueryDto {
   @IsString()
   sort?: 'newest' | 'rating_desc' | 'rating_asc' | 'helpful';
 
-  @ApiPropertyOptional({ enum: Locale, description: 'Preferred comment locale (fallback to any).' })
+  @ApiPropertyOptional({
+    enum: Locale,
+    description: 'Preferred comment locale (fallback to any).',
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale;
@@ -133,7 +181,10 @@ export class ModerationQueueQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ enum: ReviewModerationStatus, default: ReviewModerationStatus.PENDING })
+  @ApiPropertyOptional({
+    enum: ReviewModerationStatus,
+    default: ReviewModerationStatus.PENDING,
+  })
   @IsOptional()
   @IsEnum(ReviewModerationStatus)
   status?: ReviewModerationStatus;
@@ -149,7 +200,10 @@ export class ModerationQueueQueryDto {
 // ════════════════════════════════════════════════════════════════════════════
 
 export class CreateReviewDto {
-  @ApiProperty({ description: 'A confirmed/redeemed booking owned by the caller, not yet reviewed.' })
+  @ApiProperty({
+    description:
+      'A confirmed/redeemed booking owned by the caller, not yet reviewed.',
+  })
   @IsUUID()
   bookingId!: string;
 
@@ -159,7 +213,11 @@ export class CreateReviewDto {
   @Max(5)
   rating!: number;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 5, description: 'Value for money.' })
+  @ApiPropertyOptional({
+    minimum: 1,
+    maximum: 5,
+    description: 'Value for money.',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -173,7 +231,11 @@ export class CreateReviewDto {
   @Max(5)
   ratingGuide?: number;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 5, description: 'Safety / organization.' })
+  @ApiPropertyOptional({
+    minimum: 1,
+    maximum: 5,
+    description: 'Safety / organization.',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -186,13 +248,21 @@ export class CreateReviewDto {
   @MaxLength(120)
   title?: string;
 
-  @ApiProperty({ minLength: 10, maxLength: 4000, description: 'The review text.' })
+  @ApiProperty({
+    minLength: 10,
+    maxLength: 4000,
+    description: 'The review text.',
+  })
   @IsString()
   @MinLength(10)
   @MaxLength(4000)
   comment!: string;
 
-  @ApiPropertyOptional({ enum: Locale, default: Locale.en, description: 'Locale the comment is written in.' })
+  @ApiPropertyOptional({
+    enum: Locale,
+    default: Locale.en,
+    description: 'Locale the comment is written in.',
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale;
@@ -206,7 +276,9 @@ export class CreateReviewDto {
 }
 
 export class ModerateReviewDto {
-  @ApiProperty({ enum: [ReviewModerationStatus.APPROVED, ReviewModerationStatus.REJECTED] })
+  @ApiProperty({
+    enum: [ReviewModerationStatus.APPROVED, ReviewModerationStatus.REJECTED],
+  })
   @IsEnum(ReviewModerationStatus)
   status!: ReviewModerationStatus;
 

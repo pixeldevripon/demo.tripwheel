@@ -9,6 +9,7 @@ function mockPrisma() {
     booking: { findUnique: jest.fn() },
     payment: { upsert: jest.fn(), updateMany: jest.fn() },
     stripeWebhookEvent: { create: jest.fn(), update: jest.fn() },
+    mollieWebhookEvent: { create: jest.fn(), update: jest.fn() },
   } as any;
 }
 
@@ -153,6 +154,31 @@ describe('PaymentsService', () => {
       stripe.constructEvent.mockRejectedValue(new Error('bad sig'));
       await expect(svc.handleWebhook(rawBody, 'sig')).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleMollieWebhook', () => {
+    it('records the event idempotently and marks it processed', async () => {
+      prisma.mollieWebhookEvent.create.mockResolvedValue({});
+      await svc.handleMollieWebhook('tr_abc');
+      expect(prisma.mollieWebhookEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ id: 'tr_abc' }) }),
+      );
+      expect(prisma.mollieWebhookEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'tr_abc' } }),
+      );
+    });
+
+    it('is a no-op on redelivery (duplicate id)', async () => {
+      prisma.mollieWebhookEvent.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'x' }),
+      );
+      await svc.handleMollieWebhook('tr_abc');
+      expect(prisma.mollieWebhookEvent.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing payment id', async () => {
+      await expect(svc.handleMollieWebhook('')).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

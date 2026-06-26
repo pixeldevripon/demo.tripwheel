@@ -8,10 +8,12 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -52,6 +54,12 @@ export class ThankYouResponseDto {
   @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!: string | null;
   @ApiProperty({ example: '2026-07-01' }) localDate!: string;
   @ApiPropertyOptional({ nullable: true, example: '09:00' }) startTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '2026-07-01T13:00:00.000Z' })
+  tourStartDateTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '2026-07-01T21:00:00.000Z' })
+  tourEndDateTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Marriott Beach Resort — main lobby' })
+  pickupAddress!: string | null;
   @ApiProperty({ example: 2 }) partySize!: number;
   @ApiProperty({ example: 'EUR' }) currency!: string;
   @ApiProperty({ example: '209.97' }) totalRetail!: string;
@@ -104,6 +112,15 @@ export class ReserveItemDto {
   @IsInt()
   @Min(1)
   quantity!: number;
+
+  @ApiPropertyOptional({
+    example: 8,
+    description: 'Traveler age (master child ages); enforced against the tour minimum age.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  travelerAge?: number;
 }
 
 export class ReserveAddOnDto {
@@ -196,9 +213,10 @@ export class ReserveBookingDto {
   @Max(60)
   expirationMinutes?: number;
 
-  @ApiPropertyOptional({ example: 'Honeymoon trip' })
+  @ApiPropertyOptional({ example: 'Honeymoon trip', maxLength: 500 })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notes?: string;
 
   @ApiPropertyOptional({ example: false })
@@ -210,6 +228,28 @@ export class ReserveBookingDto {
   @IsOptional()
   @IsString()
   pickupLocationId?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Figma checkout marketing opt-in ("Send me the good stuff...").',
+  })
+  @IsOptional()
+  @IsBoolean()
+  newsletterOptIn?: boolean;
+
+  @ApiPropertyOptional({ example: 'SUMMER10', description: 'Promo code entered at checkout.' })
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+
+  @ApiPropertyOptional({
+    example: '10.00',
+    description: 'Discount amount applied at checkout (currency = booking currency).',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
 }
 
 export class ConfirmBookingDto {
@@ -223,9 +263,10 @@ export class ConfirmBookingDto {
   @IsString()
   resellerReference?: string;
 
-  @ApiPropertyOptional({ example: 'Please seat us together' })
+  @ApiPropertyOptional({ example: 'Please seat us together', maxLength: 500 })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notes?: string;
 }
 
@@ -260,9 +301,10 @@ export class UpdateBookingDto {
   @Type(() => ContactDto)
   contact?: ContactDto;
 
-  @ApiPropertyOptional({ example: 'Updated note' })
+  @ApiPropertyOptional({ example: 'Updated note', maxLength: 500 })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notes?: string;
 
   @ApiPropertyOptional({ example: true })

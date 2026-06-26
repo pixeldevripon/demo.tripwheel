@@ -1,6 +1,6 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
-import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
+import { applyTranslation, faqSelect } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { clearCooledDownSlugs, isSlugTaken, renameEntitySlug } from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -11,8 +11,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { SlugEntityType, TourStatus } from '@prisma/client';
+import { HubSectionType, HubStatus, SlugEntityType, TourStatus } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -21,6 +22,10 @@ import {
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
+  HubRenderQueryDto,
+  ReplaceContentSectionsDto,
+  SetComparisonDto,
+  SetOurPicksDto,
   UpdateFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
@@ -33,12 +38,25 @@ export class HubService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  // Hub translation select including `heroTagline` (absent from the shared translationSelect util).
+  private readonly hubTranslationSelect = {
+    name: true,
+    overview: true,
+    heroTagline: true,
+    h1Override: true,
+    breadcrumbLabel: true,
+    isMachineTranslated: true,
+  } as const;
+
   private readonly hubSelect = {
     id: true,
     destinationId: true,
     name: true,
     slug: true,
     description: true,
+    heroImage: true,
+    ogImage: true,
+    status: true,
     hubType: true,
     latitude: true,
     longitude: true,
@@ -54,6 +72,9 @@ export class HubService {
     name: true,
     slug: true,
     description: true,
+    heroImage: true,
+    ogImage: true,
+    status: true,
     hubType: true,
     latitude: true,
     longitude: true,
@@ -85,6 +106,14 @@ export class HubService {
     });
     if (!hub) throw new NotFoundException(`Hub ${id} not found`);
     return hub;
+  }
+
+  /** Localized tour title with en fallback to the canonical name. */
+  private tourTitle(tour: {
+    name: string;
+    translations: { title: string | null }[];
+  }): string {
+    return tour.translations[0]?.title ?? tour.name;
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
@@ -144,7 +173,7 @@ export class HubService {
       where: { id },
       select: {
         ...this.hubDetailSelect,
-        translations: { where: { locale }, select: translationSelect },
+        translations: { where: { locale }, select: this.hubTranslationSelect },
       },
     });
 
@@ -156,6 +185,7 @@ export class HubService {
     return {
       ...applyTranslation(hubData, t, locale),
       overview: t?.overview ?? null,
+      heroTagline: t?.heroTagline ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
     };
@@ -171,7 +201,7 @@ export class HubService {
       },
       select: {
         ...this.hubDetailSelect,
-        translations: { where: { locale }, select: translationSelect },
+        translations: { where: { locale }, select: this.hubTranslationSelect },
       },
     });
 
@@ -187,6 +217,7 @@ export class HubService {
     return {
       ...applyTranslation(hubData, t, locale),
       overview: t?.overview ?? null,
+      heroTagline: t?.heroTagline ?? null,
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
     };
@@ -211,6 +242,9 @@ export class HubService {
             name: dto.name,
             slug,
             description: dto.description,
+            heroImage: dto.heroImage ?? null,
+            ogImage: dto.ogImage ?? null,
+            ...(dto.status !== undefined && { status: dto.status }),
             hubType: dto.hubType,
             latitude: dto.latitude ?? null,
             longitude: dto.longitude ?? null,
@@ -289,6 +323,11 @@ export class HubService {
       }
     }
 
+    // Publish guard (G6): DRAFT -> PUBLISHED must satisfy the listing requirements.
+    if (dto.status === HubStatus.PUBLISHED) {
+      await this.assertPublishable(id, dto);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       if (renameTo && renameFrom) {
         await renameEntitySlug(tx, {
@@ -306,6 +345,9 @@ export class HubService {
             ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.description !== undefined && { description: dto.description }),
+            ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+            ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
+            ...(dto.status !== undefined && { status: dto.status }),
             ...(dto.hubType !== undefined && { hubType: dto.hubType }),
             ...(dto.latitude !== undefined && { latitude: dto.latitude }),
             ...(dto.longitude !== undefined && { longitude: dto.longitude }),
@@ -329,6 +371,53 @@ export class HubService {
 
       return updated;
     });
+  }
+
+  /**
+   * Publish guard (HUB-DATA §14 G6). A hub may go PUBLISHED only when:
+   *  - heroImage is set (incoming dto value or stored),
+   *  - hubType is set,
+   *  - base-locale (en) H1 override + overview (editorial lead) exist,
+   *  - at least one en DISCOVER and one en LOCAL_TIP content section exist.
+   * Throws 422 with the full missing-list otherwise.
+   */
+  private async assertPublishable(id: string, dto: UpdateHubDto): Promise<void> {
+    const hub = await this.prisma.hub.findUnique({
+      where: { id },
+      select: { heroImage: true, hubType: true },
+    });
+    if (!hub) throw new NotFoundException(`Hub ${id} not found`);
+
+    const [enTranslation, discoverCount, localTipCount] = await Promise.all([
+      this.prisma.hubTranslation.findUnique({
+        where: { hubId_locale: { hubId: id, locale: Locale.en } },
+        select: { h1Override: true, overview: true },
+      }),
+      this.prisma.hubContentSection.count({
+        where: { hubId: id, locale: Locale.en, sectionType: HubSectionType.DISCOVER },
+      }),
+      this.prisma.hubContentSection.count({
+        where: { hubId: id, locale: Locale.en, sectionType: HubSectionType.LOCAL_TIP },
+      }),
+    ]);
+
+    const heroImage = dto.heroImage ?? hub.heroImage;
+    const hubType = dto.hubType ?? hub.hubType;
+
+    const missing: string[] = [];
+    if (!heroImage) missing.push('heroImage');
+    if (!hubType) missing.push('hubType');
+    if (!enTranslation?.h1Override) missing.push('English (en) H1 override');
+    if (!enTranslation?.overview) missing.push('English (en) overview (editorial lead)');
+    if (discoverCount === 0) missing.push('at least one English (en) DISCOVER content section');
+    if (localTipCount === 0) missing.push('at least one English (en) LOCAL_TIP content section');
+
+    if (missing.length > 0) {
+      throw new UnprocessableEntityException({
+        message: 'Hub cannot be published until all listing requirements are met.',
+        missing,
+      });
+    }
   }
 
   async remove(id: string, adminId: string) {
@@ -436,7 +525,7 @@ export class HubService {
 
     return this.prisma.hubTranslation.findMany({
       where: { hubId: id },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.hubTranslationSelect },
       orderBy: { locale: 'asc' },
     });
   }
@@ -446,7 +535,7 @@ export class HubService {
 
     const translation = await this.prisma.hubTranslation.findUnique({
       where: { hubId_locale: { hubId: id, locale } },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.hubTranslationSelect },
     });
 
     return (
@@ -454,6 +543,7 @@ export class HubService {
         locale,
         name: null,
         overview: null,
+        heroTagline: null,
         h1Override: null,
         breadcrumbLabel: null,
         isMachineTranslated: false,
@@ -479,6 +569,7 @@ export class HubService {
         isMachineTranslated: isMachineTranslated ?? false,
         name: fields.name,
         overview: fields.overview,
+        heroTagline: fields.heroTagline,
         h1Override: fields.h1Override,
         breadcrumbLabel: fields.breadcrumbLabel,
       },
@@ -486,10 +577,11 @@ export class HubService {
         isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
+        ...(fields.heroTagline !== undefined && { heroTagline: fields.heroTagline }),
         ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
         ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
       },
-      select: { locale: true, ...translationSelect },
+      select: { locale: true, ...this.hubTranslationSelect },
     });
 
     this.logger.log(`Admin ${adminId} upserted translation for hub ${id} [${locale}]`);
@@ -558,6 +650,386 @@ export class HubService {
 
     this.logger.log(`Admin ${adminId} upserted page content for hub ${id} [${locale}]`);
     return result;
+  }
+
+  // ── Content sections (Discover / Local Tips / Fast Facts / Editorial) ──────────
+
+  private readonly contentSectionSelect = {
+    locale: true,
+    sectionType: true,
+    heading: true,
+    body: true,
+    displayOrder: true,
+  } as const;
+
+  async getContentSections(id: string, locale?: Locale) {
+    await this.findHubOrThrow(id);
+
+    return this.prisma.hubContentSection.findMany({
+      where: { hubId: id, ...(locale && { locale }) },
+      select: this.contentSectionSelect,
+      orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  /** Replace the hub's full set of content sections (delete-then-insert). */
+  async replaceContentSections(id: string, dto: ReplaceContentSectionsDto, adminId: string) {
+    await this.findHubOrThrow(id);
+
+    const sections = await this.prisma.$transaction(async (tx) => {
+      await tx.hubContentSection.deleteMany({ where: { hubId: id } });
+
+      if (dto.sections.length > 0) {
+        await tx.hubContentSection.createMany({
+          data: dto.sections.map((s) => ({
+            hubId: id,
+            locale: s.locale,
+            sectionType: s.sectionType,
+            heading: s.heading,
+            body: s.body,
+            displayOrder: s.displayOrder ?? 0,
+          })),
+        });
+      }
+
+      return tx.hubContentSection.findMany({
+        where: { hubId: id },
+        select: this.contentSectionSelect,
+        orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
+      });
+    });
+
+    this.logger.log(
+      `Admin ${adminId} replaced ${sections.length} content section(s) for hub ${id}`,
+    );
+
+    return { count: sections.length, sections };
+  }
+
+  // ── Our Picks ──────────────────────────────────────────────────────────────────
+
+  /** Replace the hub's Our-Pick selections, including per-locale blurb translations. */
+  async setOurPicks(id: string, dto: SetOurPicksDto, adminId: string) {
+    await this.findHubOrThrow(id);
+
+    // Validate referenced tours exist and belong to the same destination as the hub.
+    if (dto.picks.length > 0) {
+      const tourIds = dto.picks.map((p) => p.tourId);
+      const hub = await this.prisma.hub.findUniqueOrThrow({
+        where: { id },
+        select: { destinationId: true },
+      });
+      const tours = await this.prisma.tour.findMany({
+        where: { id: { in: tourIds }, destinationId: hub.destinationId },
+        select: { id: true },
+      });
+      const found = new Set(tours.map((t) => t.id));
+      const missing = tourIds.filter((tid) => !found.has(tid));
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `Tour(s) not found in this hub's destination: ${missing.join(', ')}`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Cascade removes child translations of the old rows.
+      await tx.hubOurPick.deleteMany({ where: { hubId: id } });
+
+      for (const pick of dto.picks) {
+        const created = await tx.hubOurPick.create({
+          data: {
+            hubId: id,
+            tourId: pick.tourId,
+            pickType: pick.pickType,
+            description: pick.description,
+            displayOrder: pick.displayOrder ?? 0,
+          },
+          select: { id: true },
+        });
+
+        if (pick.translations && pick.translations.length > 0) {
+          await tx.hubOurPickTranslation.createMany({
+            data: pick.translations.map((t) => ({
+              ourPickId: created.id,
+              locale: t.locale,
+              description: t.description,
+            })),
+          });
+        }
+      }
+    });
+
+    this.logger.log(`Admin ${adminId} set ${dto.picks.length} Our-Pick(s) for hub ${id}`);
+
+    return this.getOurPicks(id, Locale.en);
+  }
+
+  async getOurPicks(id: string, locale: Locale = Locale.en) {
+    await this.findHubOrThrow(id);
+
+    const rows = await this.prisma.hubOurPick.findMany({
+      where: { hubId: id },
+      select: {
+        id: true,
+        pickType: true,
+        description: true,
+        displayOrder: true,
+        translations: { where: { locale }, select: { description: true } },
+        tour: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            translations: { where: { locale }, select: { title: true } },
+          },
+        },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    const ourPicks = rows.map((r) => ({
+      id: r.id,
+      pickType: r.pickType,
+      description: r.translations[0]?.description ?? r.description,
+      displayOrder: r.displayOrder,
+      tour: {
+        id: r.tour.id,
+        slug: r.tour.slug,
+        title: this.tourTitle(r.tour),
+      },
+    }));
+
+    return { count: ourPicks.length, ourPicks };
+  }
+
+  // ── Comparison ───────────────────────────────────────────────────────────────
+
+  /** Replace the hub's comparison groups + tour columns, with per-locale labels/notes. */
+  async setComparison(id: string, dto: SetComparisonDto, adminId: string) {
+    await this.findHubOrThrow(id);
+
+    // Validate referenced tours belong to the hub's destination.
+    const tourIds = dto.groups.flatMap((g) => g.tours.map((t) => t.tourId));
+    if (tourIds.length > 0) {
+      const hub = await this.prisma.hub.findUniqueOrThrow({
+        where: { id },
+        select: { destinationId: true },
+      });
+      const tours = await this.prisma.tour.findMany({
+        where: { id: { in: tourIds }, destinationId: hub.destinationId },
+        select: { id: true },
+      });
+      const found = new Set(tours.map((t) => t.id));
+      const missing = [...new Set(tourIds)].filter((tid) => !found.has(tid));
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `Tour(s) not found in this hub's destination: ${missing.join(', ')}`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Cascade removes comparison tours + all translations.
+      await tx.hubComparisonGroup.deleteMany({ where: { hubId: id } });
+
+      for (const group of dto.groups) {
+        const createdGroup = await tx.hubComparisonGroup.create({
+          data: {
+            hubId: id,
+            groupName: group.groupName,
+            displayOrder: group.displayOrder ?? 0,
+          },
+          select: { id: true },
+        });
+
+        if (group.translations && group.translations.length > 0) {
+          await tx.hubComparisonGroupTranslation.createMany({
+            data: group.translations.map((t) => ({
+              groupId: createdGroup.id,
+              locale: t.locale,
+              groupName: t.groupName,
+            })),
+          });
+        }
+
+        for (const tour of group.tours) {
+          const createdTour = await tx.hubComparisonTour.create({
+            data: {
+              groupId: createdGroup.id,
+              tourId: tour.tourId,
+              standoutNote: tour.standoutNote ?? null,
+              displayOrder: tour.displayOrder ?? 0,
+            },
+            select: { id: true },
+          });
+
+          if (tour.translations && tour.translations.length > 0) {
+            await tx.hubComparisonTourTranslation.createMany({
+              data: tour.translations.map((t) => ({
+                comparisonTourId: createdTour.id,
+                locale: t.locale,
+                standoutNote: t.standoutNote,
+              })),
+            });
+          }
+        }
+      }
+    });
+
+    this.logger.log(
+      `Admin ${adminId} set ${dto.groups.length} comparison group(s) for hub ${id}`,
+    );
+
+    return this.getComparison(id, Locale.en);
+  }
+
+  async getComparison(id: string, locale: Locale = Locale.en) {
+    await this.findHubOrThrow(id);
+
+    const groups = await this.prisma.hubComparisonGroup.findMany({
+      where: { hubId: id },
+      select: {
+        id: true,
+        groupName: true,
+        displayOrder: true,
+        translations: { where: { locale }, select: { groupName: true } },
+        comparisonTours: {
+          select: {
+            id: true,
+            standoutNote: true,
+            displayOrder: true,
+            translations: { where: { locale }, select: { standoutNote: true } },
+            tour: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                translations: { where: { locale }, select: { title: true } },
+              },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    const mapped = groups.map((g) => ({
+      id: g.id,
+      groupName: g.translations[0]?.groupName ?? g.groupName,
+      displayOrder: g.displayOrder,
+      tours: g.comparisonTours.map((ct) => ({
+        id: ct.id,
+        displayOrder: ct.displayOrder,
+        standoutNote: ct.translations[0]?.standoutNote ?? ct.standoutNote ?? null,
+        tour: {
+          id: ct.tour.id,
+          slug: ct.tour.slug,
+          title: this.tourTitle(ct.tour),
+        },
+      })),
+    }));
+
+    return { count: mapped.length, groups: mapped };
+  }
+
+  // ── Public render payload (§14) ────────────────────────────────────────────────
+
+  async render(slug: string, query: HubRenderQueryDto) {
+    const locale = query.locale ?? Locale.en;
+
+    const hub = await this.prisma.hub.findFirst({
+      where: {
+        slug,
+        destinationId: query.destinationId,
+        isActive: true,
+        status: HubStatus.PUBLISHED,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        hubType: true,
+        heroImage: true,
+        destinationId: true,
+        translations: {
+          where: { locale },
+          select: { name: true, h1Override: true, heroTagline: true, overview: true, breadcrumbLabel: true },
+        },
+      },
+    });
+
+    if (!hub) {
+      throw new NotFoundException(`Hub "${slug}" not found`);
+    }
+
+    // English fallback for editorial lead / h1 / tagline when the locale row is empty.
+    const localeT = hub.translations[0];
+    const enT =
+      locale === Locale.en
+        ? localeT
+        : await this.prisma.hubTranslation.findUnique({
+            where: { hubId_locale: { hubId: hub.id, locale: Locale.en } },
+            select: { name: true, h1Override: true, heroTagline: true, overview: true, breadcrumbLabel: true },
+          });
+
+    const h1 = localeT?.h1Override ?? enT?.h1Override ?? localeT?.name ?? enT?.name ?? hub.name;
+    const heroTagline = localeT?.heroTagline ?? enT?.heroTagline ?? null;
+    const editorialLead = localeT?.overview ?? enT?.overview ?? null;
+    const breadcrumbLabel = localeT?.breadcrumbLabel ?? enT?.breadcrumbLabel ?? null;
+
+    const [sections, ourPicks, comparison, faqs, relatedHubs] = await Promise.all([
+      this.prisma.hubContentSection.findMany({
+        where: { hubId: hub.id, locale },
+        select: this.contentSectionSelect,
+        orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
+      }),
+      this.getOurPicks(hub.id, locale),
+      this.getComparison(hub.id, locale),
+      this.prisma.faq.findMany({
+        where: { pageType: FAQ_PAGE_TYPE.HUB, entityId: hub.id, isActive: true, locale },
+        select: faqSelect,
+        orderBy: { displayOrder: 'asc' },
+      }),
+      this.prisma.hub.findMany({
+        where: {
+          destinationId: hub.destinationId,
+          isActive: true,
+          status: HubStatus.PUBLISHED,
+          id: { not: hub.id },
+        },
+        select: { id: true, slug: true, name: true, heroImage: true },
+        orderBy: { name: 'asc' },
+        take: 3,
+      }),
+    ]);
+
+    const fastFacts = sections.filter((s) => s.sectionType === HubSectionType.FAST_FACT);
+    const discover = sections.filter((s) => s.sectionType === HubSectionType.DISCOVER);
+    const localTips = sections.filter((s) => s.sectionType === HubSectionType.LOCAL_TIP);
+
+    return {
+      id: hub.id,
+      slug: hub.slug,
+      name: localeT?.name ?? enT?.name ?? hub.name,
+      locale,
+      hubType: hub.hubType,
+      breadcrumbLabel,
+      hero: {
+        heroImage: hub.heroImage,
+        h1,
+        heroTagline,
+        fastFacts,
+      },
+      editorialLead,
+      ourPicks: ourPicks.ourPicks,
+      comparisonGroups: comparison.groups,
+      discover,
+      localTips,
+      faqs,
+      relatedHubs,
+    };
   }
 
   // ── FAQ ───────────────────────────────────────────────────────────────────────

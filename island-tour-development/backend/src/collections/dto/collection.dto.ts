@@ -1,8 +1,9 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CollectionType } from '@prisma/client';
+import { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -24,6 +25,8 @@ export class CollectionResponseDto {
   @ApiProperty({ example: 'Top 10 Tours' }) name!: string;
   @ApiProperty({ example: 'top-10-tours' }) slug!: string;
   @ApiProperty({ enum: CollectionType }) collectionType!: CollectionType;
+  @ApiProperty({ enum: CollectionStatus, example: CollectionStatus.DRAFT }) status!: CollectionStatus;
+  @ApiProperty({ enum: CollectionDisplayStyle, example: CollectionDisplayStyle.PERSONA }) displayStyle!: CollectionDisplayStyle;
   @ApiProperty({ type: [String], example: [] }) tourIds!: string[];
   @ApiPropertyOptional({ example: { booking_type: 'private' }, nullable: true }) filterQuery!: unknown;
   @ApiPropertyOptional({ example: null, nullable: true }) heroImage!: string | null;
@@ -51,9 +54,23 @@ export class CollectionTranslationEntryDto {
   @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
   @ApiPropertyOptional({ nullable: true }) name!: string | null;
   @ApiPropertyOptional({ nullable: true }) overview!: string | null;
+  @ApiPropertyOptional({ nullable: true }) curationNote!: string | null;
+  @ApiPropertyOptional({ nullable: true }) eyebrowLabel!: string | null;
   @ApiPropertyOptional({ nullable: true }) h1Override!: string | null;
   @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
   @ApiProperty({ example: false }) isMachineTranslated!: boolean;
+}
+
+export class CollectionTourRationaleResponseDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000099' }) tourId!: string;
+  @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
+  @ApiProperty({ example: 'An uninhabited island, 10km offshore, sea turtles, no signal.' }) rationale!: string;
+}
+
+export class CollectionTourEntryDto {
+  @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000099' }) tourId!: string;
+  @ApiProperty({ example: 0 }) position!: number;
 }
 
 export class CollectionPageContentResponseDto {
@@ -74,6 +91,36 @@ export class FaqResponseDto {
 
 export class DeleteMessageResponseDto {
   @ApiProperty({ example: 'Deleted successfully' }) message!: string;
+}
+
+export class CollectionFastStatsDto {
+  @ApiProperty({ example: 10, description: 'Number of resolved tours' }) tourCount!: number;
+  @ApiPropertyOptional({ example: 36, nullable: true, description: 'min(priceFrom) across resolved tours' })
+  fromPrice!: number | null;
+}
+
+export class RelatedCollectionDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'Best for couples' }) name!: string;
+  @ApiProperty({ example: 'best-for-couples' }) slug!: string;
+  @ApiPropertyOptional({ example: null, nullable: true }) heroImage!: string | null;
+}
+
+/** Full §10 render payload for a published collection page. */
+export class CollectionRenderResponseDto extends CollectionLocalizedResponseDto {
+  @ApiPropertyOptional({ nullable: true }) overview!: string | null;
+  @ApiPropertyOptional({ nullable: true }) h1Override!: string | null;
+  @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Chosen by Islanders' }) curationNote!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'BEST THINGS TO DO' }) eyebrowLabel!: string | null;
+  @ApiProperty({
+    type: [Object],
+    description: 'Resolved tours in render order. MANUAL tours carry { rationale } for the locale (fallback en).',
+  })
+  tours!: unknown[];
+  @ApiProperty({ type: CollectionFastStatsDto }) fastStats!: CollectionFastStatsDto;
+  @ApiProperty({ type: [FaqResponseDto] }) faqs!: FaqResponseDto[];
+  @ApiProperty({ type: [RelatedCollectionDto] }) relatedCollections!: RelatedCollectionDto[];
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
@@ -136,6 +183,12 @@ export class CreateCollectionDto {
 
   @ApiPropertyOptional({ example: 'recommended', description: 'recommended | price_asc | price_desc | rating | newest' })
   @IsOptional() @IsString() sortOrder?: string;
+
+  @ApiPropertyOptional({ enum: CollectionStatus, default: CollectionStatus.DRAFT, description: 'Defaults to DRAFT' })
+  @IsOptional() @IsEnum(CollectionStatus) status?: CollectionStatus;
+
+  @ApiPropertyOptional({ enum: CollectionDisplayStyle, default: CollectionDisplayStyle.PERSONA, description: 'Defaults to PERSONA' })
+  @IsOptional() @IsEnum(CollectionDisplayStyle) displayStyle?: CollectionDisplayStyle;
 }
 
 export class UpdateCollectionDto {
@@ -161,6 +214,9 @@ export class UpdateCollectionDto {
   @ApiPropertyOptional({ example: 'rating' })
   @IsOptional() @IsString() sortOrder?: string;
 
+  @ApiPropertyOptional({ enum: CollectionDisplayStyle })
+  @IsOptional() @IsEnum(CollectionDisplayStyle) displayStyle?: CollectionDisplayStyle;
+
   @ApiPropertyOptional({ example: false })
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
@@ -170,6 +226,10 @@ export class CollectionTranslationFieldsDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
   @ApiPropertyOptional({ example: 'Onze top 10 tours' })
   @IsOptional() @IsString() overview?: string;
+  @ApiPropertyOptional({ example: 'Gekozen door eilandbewoners' })
+  @IsOptional() @IsString() curationNote?: string;
+  @ApiPropertyOptional({ example: 'BESTE DINGEN OM TE DOEN' })
+  @IsOptional() @IsString() eyebrowLabel?: string;
   @ApiPropertyOptional({ example: 'Top 10 Tours op Curaçao' })
   @IsOptional() @IsString() h1Override?: string;
   @ApiPropertyOptional({ example: 'Top 10' })
@@ -210,4 +270,38 @@ export class UpdateFaqDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(10) answer?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) displayOrder?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+// ── Membership / rationale / status ─────────────────────────────────────────────
+
+export class CollectionTourMemberDto {
+  @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000099' })
+  @IsUUID('4') tourId!: string;
+
+  @ApiProperty({ example: 0, description: 'Editorial order (the product). Position is re-normalized 0..n on save.' })
+  @IsInt() @Min(0) position!: number;
+}
+
+export class ReplaceCollectionToursDto {
+  @ApiProperty({ type: [CollectionTourMemberDto], description: 'Ordered MANUAL membership. Replaces all existing members.' })
+  @IsArray() @ArrayMinSize(1) @ValidateNested({ each: true }) @Type(() => CollectionTourMemberDto)
+  tours!: CollectionTourMemberDto[];
+}
+
+export class UpsertCollectionTourRationaleDto {
+  @ApiProperty({ example: 'An uninhabited island, 10km offshore, sea turtles, no signal.', description: 'Max 20 words.' })
+  @IsString() @MinLength(1) rationale!: string;
+}
+
+export class UpdateCollectionStatusDto {
+  @ApiProperty({ enum: CollectionStatus, example: CollectionStatus.PUBLISHED })
+  @IsEnum(CollectionStatus) status!: CollectionStatus;
+}
+
+export class CollectionRenderQueryDto {
+  @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000001', description: 'Destination UUID' })
+  @IsUUID('4') destinationId!: string;
+
+  @ApiPropertyOptional({ enum: Locale, default: 'en' })
+  @IsOptional() @IsEnum(Locale) locale?: Locale = Locale.en;
 }

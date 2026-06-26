@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { Currency, PaymentKind, PaymentStatus } from '@prisma/client';
 
 // ── Response ──────────────────────────────────────────────────────────────────
@@ -36,4 +37,13 @@ export class PaymentIntentResponseDto {
 export class WebhookAckDto {
   @ApiProperty({ example: true })
   received!: boolean;
+}
+
+// ── Request ─────────────────────────────────────────────────────────────────
+
+/** Mollie posts only the payment id to its webhook (form-urlencoded `id`). */
+export class MollieWebhookDto {
+  @ApiProperty({ example: 'tr_WDqYK6vllg', description: 'Mollie payment/object id.' })
+  @IsString()
+  id!: string;
 }

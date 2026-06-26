@@ -1,10 +1,12 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AddOnUnit, ExclusionType } from '@prisma/client';
+import { AddOnUnit, AgeBandType, BandParticipation, ExclusionType, FeatureType } from '@prisma/client';
 import {
+  ArrayMaxSize,
   IsBoolean,
   IsDecimal,
   IsEnum,
+  IsArray,
   IsInt,
   IsNumber,
   IsOptional,
@@ -16,6 +18,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // ── Image DTOs ────────────────────────────────────────────────────────────────
 
@@ -207,6 +211,8 @@ export class UpdateTourAddOnDto {
 export class TourAgeBandResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
+  @ApiProperty({ enum: AgeBandType }) bandType!: AgeBandType;
+  @ApiProperty({ enum: BandParticipation }) participation!: BandParticipation;
   @ApiProperty({ example: 'Adult' }) label!: string;
   @ApiPropertyOptional({ example: 13 }) minAge!: number | null;
   @ApiPropertyOptional({ example: null }) maxAge!: number | null;
@@ -218,6 +224,15 @@ export class TourAgeBandResponseDto {
 }
 
 export class CreateTourAgeBandDto {
+  @ApiProperty({ enum: AgeBandType, example: AgeBandType.ADULT })
+  @IsEnum(AgeBandType)
+  bandType!: AgeBandType;
+
+  @ApiPropertyOptional({ enum: BandParticipation, default: BandParticipation.PARTICIPANT })
+  @IsOptional()
+  @IsEnum(BandParticipation)
+  participation?: BandParticipation;
+
   @ApiProperty({ example: 'Adult' })
   @IsString()
   @MinLength(1)
@@ -265,6 +280,16 @@ export class CreateTourAgeBandDto {
 }
 
 export class UpdateTourAgeBandDto {
+  @ApiPropertyOptional({ enum: AgeBandType })
+  @IsOptional()
+  @IsEnum(AgeBandType)
+  bandType?: AgeBandType;
+
+  @ApiPropertyOptional({ enum: BandParticipation })
+  @IsOptional()
+  @IsEnum(BandParticipation)
+  participation?: BandParticipation;
+
   @ApiPropertyOptional({ example: 'Adult' })
   @IsOptional()
   @IsString()
@@ -562,6 +587,411 @@ export class UpsertExclusionTranslationDto {
   isMachineTranslated?: boolean;
 }
 
+// ── Feature DTOs ─────────────────────────────────────────────────────────────
+
+export class TourFeatureTranslationDto {
+  @ApiProperty({ example: 'en' }) locale!: string;
+  @ApiProperty() text!: string;
+  @ApiProperty() isMachineTranslated!: boolean;
+}
+
+export class TourFeatureResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty({ enum: FeatureType }) type!: FeatureType;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ type: [TourFeatureTranslationDto] }) translations!: TourFeatureTranslationDto[];
+}
+
+export class CreateTourFeatureDto {
+  @ApiProperty({ enum: FeatureType })
+  @IsEnum(FeatureType)
+  type!: FeatureType;
+
+  @ApiProperty({ example: 'Please bring your voucher and arrive before departure.' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateTourFeatureDto {
+  @ApiPropertyOptional({ enum: FeatureType })
+  @IsOptional()
+  @IsEnum(FeatureType)
+  type?: FeatureType;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpsertFeatureTranslationDto {
+  @ApiProperty({ example: 'Please bring your voucher and arrive before departure.' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean;
+}
+
+// ── Location DTOs ────────────────────────────────────────────────────────────
+
+export class TourLocationTranslationDto {
+  @ApiProperty({ example: 'en' }) locale!: string;
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() shortDescription!: string | null;
+  @ApiProperty() isMachineTranslated!: boolean;
+}
+
+export class TourLocationResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty({ type: [String], example: ['START'] }) types!: string[];
+  @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
+  @ApiPropertyOptional() streetAddress!: string | null;
+  @ApiPropertyOptional() addressLocality!: string | null;
+  @ApiPropertyOptional() addressRegion!: string | null;
+  @ApiPropertyOptional() postalCode!: string | null;
+  @ApiPropertyOptional() addressCountry!: string | null;
+  @ApiPropertyOptional({ example: 20 }) minutesTo!: number | null;
+  @ApiPropertyOptional({ example: 45 }) minutesAt!: number | null;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ type: [TourLocationTranslationDto] }) translations!: TourLocationTranslationDto[];
+}
+
+export class CreateTourLocationDto {
+  @ApiProperty({ type: [String], example: ['START'] })
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  types!: string[];
+
+  @ApiProperty({ example: 'Main dock' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  title!: string;
+
+  @ApiPropertyOptional({ example: 'Meet your crew beside the check-in counter.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  shortDescription?: string;
+
+  @ApiPropertyOptional({ example: 12.1091 })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ example: -68.9316 })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  streetAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressLocality?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressRegion?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  postalCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  addressCountry?: string;
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesTo?: number;
+
+  @ApiPropertyOptional({ example: 45 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesAt?: number;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateTourLocationDto {
+  @ApiPropertyOptional({ type: [String], example: ['ITINERARY_ITEM'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  types?: string[];
+
+  @ApiPropertyOptional({ example: 12.1091 })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ example: -68.9316 })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  streetAddress?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressLocality?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressRegion?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  postalCode?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  addressCountry?: string | null;
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesTo?: number | null;
+
+  @ApiPropertyOptional({ example: 45 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesAt?: number | null;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpsertLocationTranslationDto {
+  @ApiProperty({ example: 'Main dock' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  title!: string;
+
+  @ApiPropertyOptional({ example: 'Meet your crew beside the check-in counter.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  shortDescription?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean;
+}
+
+// ── Pickup Location DTOs ─────────────────────────────────────────────────────
+
+export class PickupLocationTranslationDto {
+  @ApiProperty({ example: 'en' }) locale!: string;
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() directions!: string | null;
+  @ApiProperty() isMachineTranslated!: boolean;
+}
+
+export class PickupLocationResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty() name!: string;
+  @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
+  @ApiPropertyOptional() address!: string | null;
+  @ApiPropertyOptional({ example: 30 }) minutesPrior!: number | null;
+  @ApiPropertyOptional({ example: '07:45' }) windowStart!: string | null;
+  @ApiPropertyOptional({ example: '08:15' }) windowEnd!: string | null;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty() isActive!: boolean;
+  @ApiProperty({ type: [PickupLocationTranslationDto] }) translations!: PickupLocationTranslationDto[];
+}
+
+export class CreatePickupLocationDto {
+  @ApiProperty({ example: 'Marriott Beach Resort - main lobby' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  name!: string;
+
+  @ApiPropertyOptional({ example: 'Marriott Beach Resort - main lobby' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'Wait near the concierge desk.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  directions?: string;
+
+  @ApiPropertyOptional({ example: 12.1091 })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ example: -68.9316 })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  address?: string;
+
+  @ApiPropertyOptional({ example: 30 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesPrior?: number;
+
+  @ApiPropertyOptional({ example: '07:45' })
+  @IsOptional()
+  @Matches(HHMM, { message: 'windowStart must be HH:MM (00:00-23:59)' })
+  windowStart?: string;
+
+  @ApiPropertyOptional({ example: '08:15' })
+  @IsOptional()
+  @Matches(HHMM, { message: 'windowEnd must be HH:MM (00:00-23:59)' })
+  windowEnd?: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdatePickupLocationDto {
+  @ApiPropertyOptional({ example: 'Marriott Beach Resort - main lobby' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  name?: string;
+
+  @ApiPropertyOptional({ example: 12.1091 })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ example: -68.9316 })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  address?: string | null;
+
+  @ApiPropertyOptional({ example: 30 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutesPrior?: number | null;
+
+  @ApiPropertyOptional({ example: '07:45' })
+  @IsOptional()
+  @Matches(HHMM, { message: 'windowStart must be HH:MM (00:00-23:59)' })
+  windowStart?: string | null;
+
+  @ApiPropertyOptional({ example: '08:15' })
+  @IsOptional()
+  @Matches(HHMM, { message: 'windowEnd must be HH:MM (00:00-23:59)' })
+  windowEnd?: string | null;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpsertPickupLocationTranslationDto {
+  @ApiProperty({ example: 'Marriott Beach Resort - main lobby' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  title!: string;
+
+  @ApiPropertyOptional({ example: 'Wait near the concierge desk.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  directions?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean;
+}
+
 // ── Tour Translation DTOs ─────────────────────────────────────────────────────
 
 export class TourTranslationResponseDto {
@@ -571,11 +1001,15 @@ export class TourTranslationResponseDto {
   @ApiPropertyOptional() description!: string | null;
   // Marketing / info content (master E.3, LD19/LD22/LD23)
   @ApiPropertyOptional() shortDescription!: string | null;
-  @ApiPropertyOptional() whatToBring!: string | null;
-  @ApiPropertyOptional() knowBeforeYouGo!: string | null;
-  @ApiPropertyOptional() notSuitableFor!: string | null;
+  @ApiProperty({ type: [String] }) whatToBring!: string[];
+  @ApiProperty({ type: [String] }) knowBeforeYouGo!: string[];
+  @ApiProperty({ type: [String] }) notSuitableFor!: string[];
+  @ApiPropertyOptional() whatToExpectIntro!: string | null;
+  @ApiPropertyOptional() categoryDisplay!: string | null;
   @ApiPropertyOptional() localTip!: string | null;
   @ApiPropertyOptional() meetingPointText!: string | null;
+  @ApiPropertyOptional() metaTitle!: string | null;
+  @ApiPropertyOptional() metaDescription!: string | null;
   @ApiProperty() isMachineTranslated!: boolean;
   @ApiProperty() updatedAt!: Date;
 }
@@ -602,26 +1036,44 @@ export class UpsertTourTranslationDto {
   @ApiPropertyOptional({ example: 'Sunset sailing with open bar and snorkelling.', description: 'One-line teaser for cards (LD19)' })
   @IsOptional()
   @IsString()
-  @MaxLength(200)
+  @MaxLength(160)
   shortDescription?: string;
 
-  @ApiPropertyOptional({ example: 'Swimwear, towel, sunscreen, a light jacket.' })
+  @ApiPropertyOptional({ type: [String], example: ['Swimwear', 'Towel', 'Reef-safe sunscreen'] })
   @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  whatToBring?: string;
+  @IsArray()
+  @ArrayMaxSize(8)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  whatToBring?: string[];
 
-  @ApiPropertyOptional({ example: 'Bring a valid photo ID. Tour runs rain or shine.' })
+  @ApiPropertyOptional({ type: [String], example: ['Bring a valid photo ID', 'Tour runs rain or shine'] })
   @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  knowBeforeYouGo?: string;
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  knowBeforeYouGo?: string[];
 
-  @ApiPropertyOptional({ example: 'Travellers with back problems or who are pregnant.' })
+  @ApiPropertyOptional({ type: [String], example: ['Travellers who are pregnant', 'Wheelchair users'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  notSuitableFor?: string[];
+
+  @ApiPropertyOptional({ example: 'Start with a calm cruise along the coast before your first snorkel stop.' })
   @IsOptional()
   @IsString()
-  @MaxLength(2000)
-  notSuitableFor?: string;
+  @MaxLength(1000)
+  whatToExpectIntro?: string;
+
+  @ApiPropertyOptional({ example: 'snorkeling tours' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  categoryDisplay?: string;
 
   @ApiPropertyOptional({ example: 'Ask the crew about the hidden cove on the west side.' })
   @IsOptional()
@@ -634,6 +1086,18 @@ export class UpsertTourTranslationDto {
   @IsString()
   @MaxLength(2000)
   meetingPointText?: string;
+
+  @ApiPropertyOptional({ example: 'Sunset catamaran cruise in Curaçao' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(70)
+  metaTitle?: string;
+
+  @ApiPropertyOptional({ example: 'Book a sunset catamaran cruise with snorkeling, drinks, and local crew.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(170)
+  metaDescription?: string;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

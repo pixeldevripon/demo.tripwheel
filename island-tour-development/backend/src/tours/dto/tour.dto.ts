@@ -2,12 +2,19 @@ import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   AddOnUnit,
+  AgeBandType,
+  BandParticipation,
   Currency,
+  DeliveryFormat,
+  DeliveryMethod,
   EligibilityState,
+  FeatureType,
   FitnessLevel,
+  OctoAvailabilityType,
   PaymentModel,
   PickupModel,
   PricingModel,
+  RedemptionMethod,
   TierKey,
   TourBookingType,
   TourStatus,
@@ -15,9 +22,11 @@ import {
 } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsDecimal,
   IsEnum,
   IsIn,
@@ -27,6 +36,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Matches,
   Max,
@@ -37,6 +47,7 @@ import {
 
 /** Master rule #20 / §6.2 - free-cancellation window is enum-bound, NOT NULL, default 48. */
 const CANCELLATION_HOURS = [24, 48, 72, 168] as const;
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
@@ -45,72 +56,172 @@ export class TourResponseDto {
   @ApiProperty({ example: 'Sunset Catamaran Cruise' }) name!: string;
   @ApiProperty({ example: 'sunset-catamaran-cruise' }) slug!: string;
   @ApiProperty({ enum: TourStatus }) status!: TourStatus;
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) operatorId!: string;
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) destinationId!: string;
-  @ApiProperty({ type: [String], example: ['3fa85f64-…', 'a1b2c3d4-…'], description: 'All category ids (V2 §4)' })
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  operatorId!: string;
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  destinationId!: string;
+  @ApiProperty({
+    type: [String],
+    example: ['3fa85f64-…', 'a1b2c3d4-…'],
+    description: 'All category ids (V2 §4)',
+  })
   categoryIds!: string[];
-  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category (breadcrumb/canonical)' })
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description: 'Primary category (breadcrumb/canonical)',
+  })
   primaryCategoryId!: string | null;
-  @ApiProperty({ type: [String], example: [], description: '0–n activity hub ids (discovery tag, no URL impact)' })
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description: '0–n activity hub ids (discovery tag, no URL impact)',
+  })
   hubIds!: string[];
   @ApiProperty({ enum: PricingModel }) pricingModel!: PricingModel;
-  @ApiPropertyOptional({ enum: WholeUnitType }) wholeUnitType!: WholeUnitType | null;
+  @ApiPropertyOptional({ enum: WholeUnitType })
+  wholeUnitType!: WholeUnitType | null;
   @ApiProperty({ enum: Currency }) defaultCurrency!: Currency;
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
   @ApiPropertyOptional({ example: '75.00' }) priceFrom!: string | null;
   @ApiPropertyOptional({ example: 180 }) durationMinutesFrom!: number | null;
   @ApiPropertyOptional({ example: 240 }) durationMinutesTo!: number | null;
   @ApiProperty({ enum: PickupModel }) pickupModel!: PickupModel;
-  @ApiProperty({ example: false, description: 'OCTO option.pickupRequired' }) pickupRequired!: boolean;
+  @ApiProperty({ example: false, description: 'OCTO option.pickupRequired' })
+  pickupRequired!: boolean;
   @ApiPropertyOptional({ example: 20 }) maxPartySize!: number | null;
   @ApiProperty({ example: 1 }) minPartySize!: number;
   @ApiProperty({ example: 120 }) bookingCutoffMinutes!: number;
-  @ApiProperty({ example: 48, description: 'Free-cancellation window in hours [24,48,72,168]' }) cancellationHours!: number;
+  @ApiProperty({
+    example: 48,
+    description: 'Free-cancellation window in hours [24,48,72,168]',
+  })
+  cancellationHours!: number;
+  @ApiProperty({
+    type: [String],
+    example: ['09:00', '13:00'],
+    description:
+      'Tour slot set; availability schedules switch these on per weekday.',
+  })
+  startTimes!: string[];
   @ApiProperty({ example: true }) instantConfirmation!: boolean;
 
   // ── Booking / payment (master E.3) ──
   @ApiProperty({ enum: PaymentModel }) paymentModel!: PaymentModel;
-  @ApiProperty({ example: '20.0', description: 'Deposit %, tier-driven (system-managed)' }) depositPct!: string;
-  @ApiPropertyOptional({ enum: TourBookingType, description: 'private | shared' }) bookingType!: TourBookingType | null;
+  @ApiProperty({
+    example: '20.0',
+    description: 'Deposit %, tier-driven (system-managed)',
+  })
+  depositPct!: string;
+  @ApiPropertyOptional({
+    enum: TourBookingType,
+    description: 'private | shared',
+  })
+  bookingType!: TourBookingType | null;
+  @ApiProperty({ enum: OctoAvailabilityType })
+  availabilityType!: OctoAvailabilityType;
+  @ApiProperty({ example: true }) instantDelivery!: boolean;
+  @ApiProperty({ example: true }) availabilityRequired!: boolean;
+  @ApiProperty({ example: false }) allowFreesale!: boolean;
+  @ApiProperty({ enum: DeliveryFormat, isArray: true })
+  deliveryFormats!: DeliveryFormat[];
+  @ApiProperty({ enum: DeliveryMethod, isArray: true })
+  deliveryMethods!: DeliveryMethod[];
+  @ApiProperty({ enum: RedemptionMethod }) redemptionMethod!: RedemptionMethod;
+  @ApiPropertyOptional({ example: 'OP-SKU-1024' }) reference!: string | null;
+  @ApiProperty({ example: 'America/Curacao' }) timeZone!: string;
 
   // ── Meeting point / departure (master E.3) ──
   @ApiPropertyOptional({ example: 12.1091 }) meetingPointLat!: number | null;
   @ApiPropertyOptional({ example: -68.9316 }) meetingPointLng!: number | null;
   @ApiPropertyOptional({ example: 'Willemstad' }) departureCity!: string | null;
+  @ApiPropertyOptional({ example: 30 }) checkInMinutesBefore!: number | null;
 
   // ── Audience / accessibility flags (master E.3) ──
   @ApiPropertyOptional({ example: 8 }) minAgeYears!: number | null;
-  @ApiPropertyOptional({ enum: FitnessLevel }) fitnessLevel!: FitnessLevel | null;
+  @ApiPropertyOptional({ enum: FitnessLevel })
+  fitnessLevel!: FitnessLevel | null;
   @ApiProperty({ example: false }) weatherDependent!: boolean;
   @ApiProperty({ example: false }) wheelchairAccessible!: boolean;
   @ApiProperty({ example: false }) familyFriendly!: boolean;
   @ApiProperty({ example: false }) suitableForBeginners!: boolean;
-  @ApiProperty({ example: false, description: 'Manual editorial flag (never tier-linked)' }) isLocalsFavourite!: boolean;
+  @ApiProperty({
+    example: false,
+    description: 'Manual editorial flag (never tier-linked)',
+  })
+  isLocalsFavourite!: boolean;
 
   // ── Commercial tier (master §7) - read-only, system-managed. Examples reflect the
   // default standard-tier tour: tierKey=standard → commissionTier 20.0, tierRank 5, depositPct 20.0. ──
-  @ApiProperty({ example: '20.0', description: 'Commission %, derived from tierKey (standard = 20.0)' }) commissionTier!: string;
+  @ApiProperty({
+    example: '20.0',
+    description: 'Commission %, derived from tierKey (standard = 20.0)',
+  })
+  commissionTier!: string;
   @ApiProperty({ enum: TierKey, example: TierKey.standard }) tierKey!: TierKey;
-  @ApiProperty({ example: 5, description: 'Denormalized from tierKey; never client-written (standard = 5)' }) tierRank!: number;
+  @ApiProperty({
+    example: 5,
+    description:
+      'Denormalized from tierKey; never client-written (standard = 5)',
+  })
+  tierRank!: number;
   @ApiPropertyOptional({ example: null }) tierLockedUntil!: Date | null;
   @ApiProperty({ example: '0.00' }) qualityScore!: string;
-  @ApiProperty({ enum: EligibilityState, example: EligibilityState.LOCKED, description: 'New tours default to LOCKED (rule #7)' }) eligibilityState!: EligibilityState;
-  @ApiProperty({ example: false, description: '≥1 AVAILABLE departure ≤30d (nightly)' }) isBookable!: boolean;
+  @ApiProperty({
+    enum: EligibilityState,
+    example: EligibilityState.LOCKED,
+    description: 'New tours default to LOCKED (rule #7)',
+  })
+  eligibilityState!: EligibilityState;
+  @ApiProperty({
+    example: false,
+    description: '≥1 AVAILABLE departure ≤30d (nightly)',
+  })
+  isBookable!: boolean;
   @ApiPropertyOptional({ example: null }) firstPublishedAt!: Date | null;
+  @ApiPropertyOptional({ example: null }) graceStartedAt!: Date | null;
+  @ApiPropertyOptional({ example: null }) graceMetric!: string | null;
+  @ApiPropertyOptional({ example: null }) availabilityConfirmedAt!: Date | null;
 
   @ApiPropertyOptional({ example: null }) h1Override!: string | null;
   @ApiPropertyOptional({ example: null }) breadcrumbLabel!: string | null;
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/tours/sunset-og.jpg',
+  })
+  ogImage!: string | null;
   @ApiPropertyOptional({ example: 4.8 }) aggregateRating!: number | null;
   @ApiProperty({ example: 0 }) aggregateReviewCount!: number;
+  @ApiProperty({
+    type: [Number],
+    example: [10, 2, 1, 0, 0],
+    description: '[5-star,4-star,3-star,2-star,1-star] review counts.',
+  })
+  ratingDistribution!: number[];
+  @ApiProperty({ example: 0 }) photoReviewCount!: number;
   // CRO signals (V2 §10). Columns exist + are returned, but stay at 0/null until the
   // bookings module (Phase 4) populates them. Documented here so Swagger matches the runtime response.
-  @ApiProperty({ example: 0, description: 'Total bookings (CRO + Recommended-sort signal). 0 until the bookings module ships.' })
+  @ApiProperty({
+    example: 0,
+    description:
+      'Total bookings (CRO + Recommended-sort signal). 0 until the bookings module ships.',
+  })
   bookingCount!: number;
-  @ApiProperty({ example: 0, description: 'Bookings today ("Booked N times today"). 0 until the bookings module ships.' })
+  @ApiProperty({
+    example: 0,
+    description:
+      'Bookings today ("Booked N times today"). 0 until the bookings module ships.',
+  })
   bookingCountToday!: number;
-  @ApiPropertyOptional({ example: null, description: 'Spots left across upcoming schedules ("Only X left"). null until the bookings module ships.' })
+  @ApiPropertyOptional({
+    example: null,
+    description:
+      'Spots left across upcoming schedules ("Only X left"). null until the bookings module ships.',
+  })
   spotsRemaining!: number | null;
-  @ApiPropertyOptional({ example: null, description: 'Last booking time ("Last booked 2 hours ago"). null until the bookings module ships.' })
+  @ApiPropertyOptional({
+    example: null,
+    description:
+      'Last booking time ("Last booked 2 hours ago"). null until the bookings module ships.',
+  })
   lastBookedAt!: Date | null;
   @ApiProperty({ example: false }) isSponsored!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
@@ -121,12 +232,17 @@ export class TourResponseDto {
 
 export class TourHeroImageDto {
   @ApiProperty() id!: string;
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/sunset-cruise' }) url!: string;
+  @ApiProperty({
+    example:
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/sunset-cruise',
+  })
+  url!: string;
   @ApiPropertyOptional() altText!: string | null;
 }
 
 export class TourDetailResponseDto extends TourResponseDto {
-  @ApiPropertyOptional({ type: TourHeroImageDto, nullable: true }) heroImage!: TourHeroImageDto | null;
+  @ApiPropertyOptional({ type: TourHeroImageDto, nullable: true })
+  heroImage!: TourHeroImageDto | null;
   @ApiProperty({ example: 0 }) imageCount!: number;
   @ApiProperty({ example: 0 }) highlightCount!: number;
   @ApiProperty({ example: 0 }) inclusionCount!: number;
@@ -149,15 +265,25 @@ export class TourUpdateResponseDto {
 
 export class TourTranslationInlineDto {
   @ApiProperty({ example: 'en' }) locale!: string;
-  @ApiPropertyOptional({ example: 'Sunset Catamaran Cruise' }) title!: string | null;
-  @ApiPropertyOptional({ example: 'Join us for a breathtaking sunset cruise...' }) overview!: string | null;
-  @ApiPropertyOptional({ example: 'Full description of the tour...' }) description!: string | null;
+  @ApiPropertyOptional({ example: 'Sunset Catamaran Cruise' }) title!:
+    | string
+    | null;
+  @ApiPropertyOptional({
+    example: 'Join us for a breathtaking sunset cruise...',
+  })
+  overview!: string | null;
+  @ApiPropertyOptional({ example: 'Full description of the tour...' })
+  description!: string | null;
   @ApiProperty({ example: false }) isMachineTranslated!: boolean;
 }
 
 export class TourImageInlineDto {
   @ApiProperty() id!: string;
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img' }) url!: string;
+  @ApiProperty({
+    example:
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img',
+  })
+  url!: string;
   @ApiProperty() isHero!: boolean;
   @ApiPropertyOptional() altText!: string | null;
   @ApiPropertyOptional({ example: 0.5 }) focalX!: number;
@@ -170,7 +296,10 @@ export class TourImageInlineDto {
 export class TourHighlightInlineDto {
   @ApiProperty() id!: string;
   @ApiProperty() displayOrder!: number;
-  @ApiProperty({ example: 'Watch the sunset from the water with cocktails in hand' }) text!: string;
+  @ApiProperty({
+    example: 'Watch the sunset from the water with cocktails in hand',
+  })
+  text!: string;
 }
 
 export class TourInclusionInlineDto {
@@ -197,15 +326,82 @@ export class TourAddOnInlineDto {
   @ApiProperty() displayOrder!: number;
 }
 
+export class TourAgeBandInlineDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: AgeBandType }) bandType!: AgeBandType;
+  @ApiProperty({ enum: BandParticipation }) participation!: BandParticipation;
+  @ApiProperty({ example: 'Adult' }) label!: string;
+  @ApiPropertyOptional({ example: 13 }) minAge!: number | null;
+  @ApiPropertyOptional({ example: null }) maxAge!: number | null;
+  @ApiProperty({ example: '79.00' }) price!: string;
+  @ApiPropertyOptional({ example: '99.00' }) priceOriginal!: string | null;
+  @ApiPropertyOptional({ example: '60.00' }) priceNet!: string | null;
+  @ApiProperty() isDefault!: boolean;
+  @ApiProperty() displayOrder!: number;
+}
+
+export class TourLocationInlineDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ type: [String], example: ['START'] }) types!: string[];
+  @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
+  @ApiPropertyOptional() streetAddress!: string | null;
+  @ApiPropertyOptional() addressLocality!: string | null;
+  @ApiPropertyOptional() addressRegion!: string | null;
+  @ApiPropertyOptional() postalCode!: string | null;
+  @ApiPropertyOptional() addressCountry!: string | null;
+  @ApiPropertyOptional({ example: 20 }) minutesTo!: number | null;
+  @ApiPropertyOptional({ example: 45 }) minutesAt!: number | null;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ example: 'Main Dock' }) title!: string;
+  @ApiPropertyOptional({ example: 'Meet your crew.' }) shortDescription!:
+    | string
+    | null;
+}
+
+export class PickupLocationInlineDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() name!: string;
+  @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
+  @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
+  @ApiPropertyOptional() address!: string | null;
+  @ApiPropertyOptional({ example: 30 }) minutesPrior!: number | null;
+  @ApiPropertyOptional({ example: '07:45' }) windowStart!: string | null;
+  @ApiPropertyOptional({ example: '08:15' }) windowEnd!: string | null;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ example: 'Hotel Lobby' }) title!: string;
+  @ApiPropertyOptional({ example: 'Wait in lobby.' }) directions!:
+    | string
+    | null;
+}
+
+export class TourFeatureInlineDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: FeatureType }) type!: FeatureType;
+  @ApiProperty() displayOrder!: number;
+  @ApiProperty({ example: 'Please arrive early.' }) text!: string;
+}
+
 export class TourPublicDetailResponseDto extends TourResponseDto {
   @ApiProperty({ type: TourTranslationInlineDto, nullable: true })
   translation!: TourTranslationInlineDto | null;
 
   @ApiProperty({ type: [TourImageInlineDto] }) images!: TourImageInlineDto[];
-  @ApiProperty({ type: [TourHighlightInlineDto] }) highlights!: TourHighlightInlineDto[];
-  @ApiProperty({ type: [TourInclusionInlineDto] }) inclusions!: TourInclusionInlineDto[];
-  @ApiProperty({ type: [TourExclusionInlineDto] }) exclusions!: TourExclusionInlineDto[];
+  @ApiProperty({ type: [TourHighlightInlineDto] })
+  highlights!: TourHighlightInlineDto[];
+  @ApiProperty({ type: [TourInclusionInlineDto] })
+  inclusions!: TourInclusionInlineDto[];
+  @ApiProperty({ type: [TourExclusionInlineDto] })
+  exclusions!: TourExclusionInlineDto[];
   @ApiProperty({ type: [TourAddOnInlineDto] }) addOns!: TourAddOnInlineDto[];
+  @ApiProperty({ type: [TourAgeBandInlineDto] })
+  ageBands!: TourAgeBandInlineDto[];
+  @ApiProperty({ type: [TourLocationInlineDto] })
+  locations!: TourLocationInlineDto[];
+  @ApiProperty({ type: [PickupLocationInlineDto] })
+  pickupLocations!: PickupLocationInlineDto[];
+  @ApiProperty({ type: [TourFeatureInlineDto] })
+  features!: TourFeatureInlineDto[];
   @ApiProperty({ type: [String], example: ['en', 'nl'] }) languages!: string[];
 }
 
@@ -220,25 +416,45 @@ export enum TourSort {
 }
 
 export class TourQueryDto {
-  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @ApiPropertyOptional({
+    example: 'catamaran',
+    description: 'Case-insensitive name search',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   search?: string;
 
-  @ApiPropertyOptional({ enum: TourSort, default: TourSort.recommended, description: 'Sort order (default: Recommended)' })
+  @ApiPropertyOptional({
+    enum: TourSort,
+    default: TourSort.recommended,
+    description: 'Sort order (default: Recommended)',
+  })
   @IsOptional()
   @IsEnum(TourSort)
   sort?: TourSort = TourSort.recommended;
 
   @ApiPropertyOptional({ example: 60, description: 'Min duration in minutes' })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0) durationMin?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  durationMin?: number;
 
   @ApiPropertyOptional({ example: 480, description: 'Max duration in minutes' })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0) durationMax?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  durationMax?: number;
 
   @ApiPropertyOptional({ example: 4.0, description: 'Minimum average rating' })
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(5) ratingMin?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  ratingMin?: number;
 
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()
@@ -309,7 +525,10 @@ export class TourBySlugQueryDto {
 }
 
 export class MyToursQueryDto {
-  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @ApiPropertyOptional({
+    example: 'catamaran',
+    description: 'Case-insensitive name search',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -337,7 +556,10 @@ export class MyToursQueryDto {
 }
 
 export class AdminToursQueryDto {
-  @ApiPropertyOptional({ example: 'catamaran', description: 'Case-insensitive name search' })
+  @ApiPropertyOptional({
+    example: 'catamaran',
+    description: 'Case-insensitive name search',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -348,7 +570,10 @@ export class AdminToursQueryDto {
   @IsEnum(TourStatus)
   status?: TourStatus;
 
-  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Filter by operator ID' })
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description: 'Filter by operator ID',
+  })
   @IsOptional()
   @IsUUID()
   operatorId?: string;
@@ -381,7 +606,9 @@ export class CreateTourDto {
   @ApiPropertyOptional({ example: 'sunset-catamaran-cruise' })
   @IsOptional()
   @IsString()
-  @Matches(/^[a-z0-9-]+$/, { message: 'slug must contain only lowercase letters, numbers and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'slug must contain only lowercase letters, numbers and hyphens',
+  })
   @MinLength(2)
   slug?: string;
 
@@ -389,18 +616,30 @@ export class CreateTourDto {
   @IsUUID()
   destinationId!: string;
 
-  @ApiProperty({ type: [String], example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'], description: '1+ category ids (V2 §4)' })
+  @ApiProperty({
+    type: [String],
+    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+    description: '1+ category ids (V2 §4)',
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsUUID('4', { each: true })
   categoryIds!: string[];
 
-  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6', description: 'Primary category - must be one of categoryIds. Defaults to the first.' })
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description:
+      'Primary category - must be one of categoryIds. Defaults to the first.',
+  })
   @IsOptional()
   @IsUUID()
   primaryCategoryId?: string;
 
-  @ApiPropertyOptional({ type: [String], example: [], description: '0–n activity hub ids' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: [],
+    description: '0–n activity hub ids',
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
@@ -433,7 +672,10 @@ export class CreateTourDto {
   @Max(10080)
   durationMinutesFrom?: number;
 
-  @ApiPropertyOptional({ example: 240, description: 'Upper bound of a duration range (≥ durationMinutesFrom)' })
+  @ApiPropertyOptional({
+    example: 240,
+    description: 'Upper bound of a duration range (≥ durationMinutesFrom)',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -445,7 +687,10 @@ export class CreateTourDto {
   @IsEnum(PickupModel)
   pickupModel?: PickupModel;
 
-  @ApiPropertyOptional({ example: false, description: 'OCTO option.pickupRequired' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'OCTO option.pickupRequired',
+  })
   @IsOptional()
   @IsBoolean()
   pickupRequired?: boolean;
@@ -469,22 +714,50 @@ export class CreateTourDto {
   @Max(10080)
   bookingCutoffMinutes?: number;
 
-  @ApiPropertyOptional({ example: 48, enum: CANCELLATION_HOURS, default: 48, description: 'Free-cancellation window (master rule #20: enum-bound, default 48)' })
+  @ApiPropertyOptional({
+    example: 48,
+    enum: CANCELLATION_HOURS,
+    default: 48,
+    description:
+      'Free-cancellation window (master rule #20: enum-bound, default 48)',
+  })
   @IsOptional()
-  @IsIn(CANCELLATION_HOURS as unknown as number[], { message: 'cancellationHours must be one of 24, 48, 72, 168' })
+  @IsIn(CANCELLATION_HOURS as unknown as number[], {
+    message: 'cancellationHours must be one of 24, 48, 72, 168',
+  })
   cancellationHours?: number;
 
-  @ApiPropertyOptional({ enum: PaymentModel, default: PaymentModel.OPERATOR_LINK })
+  @ApiPropertyOptional({
+    enum: PaymentModel,
+    default: PaymentModel.OPERATOR_LINK,
+  })
   @IsOptional()
   @IsEnum(PaymentModel)
   paymentModel?: PaymentModel;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['09:00', '13:00'],
+    description: 'Tour slot set; values must be HH:MM.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @Matches(HHMM, {
+    each: true,
+    message: 'startTimes must be HH:MM (00:00-23:59)',
+  })
+  startTimes?: string[];
 
   @ApiPropertyOptional({ example: true, default: true })
   @IsOptional()
   @IsBoolean()
   instantConfirmation?: boolean;
 
-  @ApiPropertyOptional({ enum: TourBookingType, description: 'private | shared' })
+  @ApiPropertyOptional({
+    enum: TourBookingType,
+    description: 'private | shared',
+  })
   @IsOptional()
   @IsEnum(TourBookingType)
   bookingType?: TourBookingType;
@@ -499,13 +772,29 @@ export class CreateTourDto {
   @IsLongitude()
   meetingPointLng?: number;
 
-  @ApiPropertyOptional({ example: 'Willemstad', description: 'Drives the meta-row location label; empty → island only' })
+  @ApiPropertyOptional({
+    example: 30,
+    description: 'Please arrive N minutes before departure for check-in.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(240)
+  checkInMinutesBefore?: number;
+
+  @ApiPropertyOptional({
+    example: 'Willemstad',
+    description: 'Drives the meta-row location label; empty → island only',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   departureCity?: string;
 
-  @ApiPropertyOptional({ example: 8, description: 'Tour-level minimum age (distinct from per-unit minAge)' })
+  @ApiPropertyOptional({
+    example: 8,
+    description: 'Tour-level minimum age (distinct from per-unit minAge)',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -537,11 +826,30 @@ export class CreateTourDto {
   @IsBoolean()
   suitableForBeginners?: boolean;
 
-  @ApiPropertyOptional({ example: 'OP-SKU-1024', description: "Operator's external id (OCTO reference)" })
+  @ApiPropertyOptional({
+    example: 'OP-SKU-1024',
+    description: "Operator's external id (OCTO reference)",
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   reference?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/tours/sunset-og.jpg',
+  })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(500)
+  ogImage?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-06-23T10:00:00.000Z',
+    description: 'Operator freshness confirmation timestamp.',
+  })
+  @IsOptional()
+  @IsDateString()
+  availabilityConfirmedAt?: string;
 
   @ApiPropertyOptional({ example: null })
   @IsOptional()
@@ -571,14 +879,19 @@ export class UpdateTourDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[a-z0-9-]+$/, { message: 'slug must contain only lowercase letters, numbers and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'slug must contain only lowercase letters, numbers and hyphens',
+  })
   @MinLength(2)
   @MaxLength(120)
   slug?: string;
 
   // V2 §4: supply categoryIds to replace the full category set; supply primaryCategoryId
   // alone to re-point the primary among the existing categories.
-  @ApiPropertyOptional({ type: [String], example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
@@ -590,7 +903,11 @@ export class UpdateTourDto {
   @IsUUID()
   primaryCategoryId?: string;
 
-  @ApiPropertyOptional({ type: [String], example: [], description: '0–n activity hub ids (replaces the full hub set)' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: [],
+    description: '0–n activity hub ids (replaces the full hub set)',
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
@@ -623,7 +940,10 @@ export class UpdateTourDto {
   @Max(10080)
   durationMinutesFrom?: number;
 
-  @ApiPropertyOptional({ example: 240, description: 'Upper bound of a duration range (≥ durationMinutesFrom)' })
+  @ApiPropertyOptional({
+    example: 240,
+    description: 'Upper bound of a duration range (≥ durationMinutesFrom)',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -635,7 +955,10 @@ export class UpdateTourDto {
   @IsEnum(PickupModel)
   pickupModel?: PickupModel;
 
-  @ApiPropertyOptional({ example: false, description: 'OCTO option.pickupRequired' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'OCTO option.pickupRequired',
+  })
   @IsOptional()
   @IsBoolean()
   pickupRequired?: boolean;
@@ -659,9 +982,16 @@ export class UpdateTourDto {
   @Max(10080)
   bookingCutoffMinutes?: number;
 
-  @ApiPropertyOptional({ example: 48, enum: CANCELLATION_HOURS, description: 'Free-cancellation window (master rule #20: enum-bound, default 48)' })
+  @ApiPropertyOptional({
+    example: 48,
+    enum: CANCELLATION_HOURS,
+    description:
+      'Free-cancellation window (master rule #20: enum-bound, default 48)',
+  })
   @IsOptional()
-  @IsIn(CANCELLATION_HOURS as unknown as number[], { message: 'cancellationHours must be one of 24, 48, 72, 168' })
+  @IsIn(CANCELLATION_HOURS as unknown as number[], {
+    message: 'cancellationHours must be one of 24, 48, 72, 168',
+  })
   cancellationHours?: number;
 
   @ApiPropertyOptional({ enum: PaymentModel })
@@ -669,12 +999,29 @@ export class UpdateTourDto {
   @IsEnum(PaymentModel)
   paymentModel?: PaymentModel;
 
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['09:00', '13:00'],
+    description: 'Tour slot set; values must be HH:MM.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @Matches(HHMM, {
+    each: true,
+    message: 'startTimes must be HH:MM (00:00-23:59)',
+  })
+  startTimes?: string[];
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   instantConfirmation?: boolean;
 
-  @ApiPropertyOptional({ enum: TourBookingType, description: 'private | shared' })
+  @ApiPropertyOptional({
+    enum: TourBookingType,
+    description: 'private | shared',
+  })
   @IsOptional()
   @IsEnum(TourBookingType)
   bookingType?: TourBookingType;
@@ -688,6 +1035,13 @@ export class UpdateTourDto {
   @IsOptional()
   @IsLongitude()
   meetingPointLng?: number;
+
+  @ApiPropertyOptional({ example: 30 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(240)
+  checkInMinutesBefore?: number;
 
   @ApiPropertyOptional({ example: 'Willemstad' })
   @IsOptional()
@@ -727,16 +1081,35 @@ export class UpdateTourDto {
   @IsBoolean()
   suitableForBeginners?: boolean;
 
-  @ApiPropertyOptional({ example: false, description: 'Manual editorial flag (never tier-linked)' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Manual editorial flag (never tier-linked)',
+  })
   @IsOptional()
   @IsBoolean()
   isLocalsFavourite?: boolean;
 
-  @ApiPropertyOptional({ example: 'OP-SKU-1024', description: "Operator's external id (OCTO reference)" })
+  @ApiPropertyOptional({
+    example: 'OP-SKU-1024',
+    description: "Operator's external id (OCTO reference)",
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   reference?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/tours/sunset-og.jpg',
+  })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(500)
+  ogImage?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-23T10:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  availabilityConfirmedAt?: string;
 
   @ApiPropertyOptional({ example: null })
   @IsOptional()

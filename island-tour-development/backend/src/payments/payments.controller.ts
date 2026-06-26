@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Headers,
   Param,
@@ -12,7 +13,12 @@ import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '@/auth/decorators/public.decorator';
 import { PaymentsService } from './payments.service';
-import { ApiCreateIntentDocs, ApiStripeWebhookDocs } from './payments.swagger';
+import { MollieWebhookDto } from './dto/payment.dto';
+import {
+  ApiCreateIntentDocs,
+  ApiMollieWebhookDocs,
+  ApiStripeWebhookDocs,
+} from './payments.swagger';
 
 /**
  * PaymentsController - checkout intents + the Stripe webhook.
@@ -45,6 +51,16 @@ export class PaymentsController {
     if (!signature) throw new BadRequestException('Missing Stripe-Signature header');
     if (!req.rawBody) throw new BadRequestException('Missing raw request body');
     await this.payments.handleWebhook(req.rawBody, signature);
+    return { received: true };
+  }
+
+  @Post('webhook/mollie')
+  @Public()
+  @SkipThrottle()
+  @ApiMollieWebhookDocs()
+  async mollieWebhook(@Body() body: MollieWebhookDto) {
+    if (!body?.id) throw new BadRequestException('Missing Mollie payment id');
+    await this.payments.handleMollieWebhook(body.id);
     return { received: true };
   }
 }

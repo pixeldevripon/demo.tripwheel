@@ -12,8 +12,17 @@ import { BookingStatus, PaymentModel, Prisma, Role } from '@prisma/client';
 import { BookingsService } from './bookings.service';
 
 const D = (v: string | number) => new Prisma.Decimal(v);
-const FUTURE = new Date('2030-06-05T07:00:00.000Z');
 const PAST = new Date('2020-01-01T00:00:00.000Z');
+
+/** A @db.Time(0) storage value (time-only, epoch day). */
+function time(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return new Date(Date.UTC(1970, 0, 1, h, m, 0));
+}
+/** A @db.Date storage value. */
+function day(date: string) {
+  return new Date(`${date}T00:00:00.000Z`);
+}
 
 function mockPrisma() {
   const p: any = {
@@ -28,13 +37,15 @@ function mockPrisma() {
     departure: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
-      updateMany: jest.fn(),
       update: jest.fn(),
     },
     tourAgeBand: { findMany: jest.fn() },
     tourAddOn: { findMany: jest.fn() },
     bookingUnitItem: { updateMany: jest.fn() },
+    pickupLocation: { findUnique: jest.fn() },
     operator: { findUnique: jest.fn() },
+    // Atomic seat claim/release run through raw SQL (master §5); default = 1 row affected.
+    $executeRaw: jest.fn().mockResolvedValue(1),
   };
   p.$transaction = jest.fn((arg: unknown) =>
     typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(p) : Promise.all(arg as []),
@@ -83,18 +94,27 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
   m.tour.findUnique.mockResolvedValue({
     operatorId: 'op1',
     timeZone: 'America/Curacao',
+    bookingCutoffMinutes: 120,
     defaultCurrency: 'EUR',
     paymentModel: PaymentModel.OPERATOR_LINK,
     depositPct: D('20'),
     commissionTier: D('20'),
     minPartySize: 1,
     maxPartySize: 10,
+    durationMinutesFrom: 480,
+    minAgeYears: null,
+    destination: { slug: 'curacao' },
     ...over,
+  });
+  m.pickupLocation.findUnique.mockResolvedValue({
+    tourId: 't1',
+    name: 'Marriott Beach Resort',
+    address: 'Piscadera Bay, Willemstad',
   });
   m.departure.findFirst.mockResolvedValue({
     id: 'dep1',
-    localDateTimeStart: new Date('2030-06-05T09:00:00.000Z'),
-    utcCutoffAt: FUTURE,
+    date: day('2030-06-05'),
+    startTime: time('09:00'),
   });
   m.tourAgeBand.findMany.mockResolvedValue([
     {
@@ -104,12 +124,12 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
       priceNet: D('63.99'),
     },
   ]);
-  m.departure.updateMany.mockResolvedValue({ count: 1 });
+  m.$executeRaw.mockResolvedValue(1); // claim succeeds (1 row)
   m.departure.findUnique.mockResolvedValue({
-    vacancies: 8,
     capacity: 10,
-    utcCutoffAt: FUTURE,
-    status: 'AVAILABLE',
+    bookedCount: 2,
+    status: 'OPEN',
+    soldOutAt: null,
   });
   m.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
@@ -132,6 +152,7 @@ describe('BookingsService', () => {
   let mail: any;
   let tracking: any;
   let notifications: any;
+  let tiers: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -143,7 +164,9 @@ describe('BookingsService', () => {
       emitAvailabilityUpdate: jest.fn(),
       emitBookingUpdate: jest.fn(),
     };
-    svc = new BookingsService(prisma, mail, tracking, notifications);
+    // No active spotlight by default → effective rate = tour tier (0.20 in the mock).
+    tiers = { effectiveCommissionRate: jest.fn().mockResolvedValue(0.2) };
+    svc = new BookingsService(prisma, mail, tracking, notifications, tiers);
   });
 
   describe('reserve', () => {
@@ -151,12 +174,8 @@ describe('BookingsService', () => {
       setupReserveContext(prisma);
       const res = await svc.reserve(reserveDto);
 
-      expect(m.departure.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ id: 'dep1', vacancies: { gte: 2 } }),
-          data: { vacancies: { decrement: 2 } },
-        }),
-      );
+      // The guarded count-up runs through raw SQL (master §5).
+      expect(m.$executeRaw).toHaveBeenCalled();
       expect(m.booking.create).toHaveBeenCalled();
       expect(res.status).toBe(BookingStatus.ON_HOLD);
     });
@@ -171,7 +190,7 @@ describe('BookingsService', () => {
 
     it('rejects when the atomic claim wins 0 rows (sold out)', async () => {
       setupReserveContext(prisma);
-      m.departure.updateMany.mockResolvedValue({ count: 0 });
+      m.$executeRaw.mockResolvedValue(0);
       await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
@@ -186,10 +205,11 @@ describe('BookingsService', () => {
 
     it('rejects when the booking cutoff has passed', async () => {
       setupReserveContext(prisma);
+      // A departure in the past is necessarily past its (live-computed) cutoff.
       m.departure.findFirst.mockResolvedValue({
         id: 'dep1',
-        localDateTimeStart: new Date('2030-06-05T09:00:00.000Z'),
-        utcCutoffAt: PAST,
+        date: day('2020-01-01'),
+        startTime: time('09:00'),
       });
       await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
@@ -203,6 +223,53 @@ describe('BookingsService', () => {
       expect(data.status).toBe(BookingStatus.CONFIRMED);
       expect(data.utcExpiresAt).toBeNull();
       expect(data.utcConfirmedAt).toBeInstanceOf(Date);
+    });
+
+    it('snapshots E.8 fields (tour window, pickup address, island, marketing opt-in)', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve({
+        ...reserveDto,
+        pickupLocationId: 'pk1',
+        newsletterOptIn: true,
+        couponCode: 'SUMMER10',
+        discountAmount: 5,
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.tourStartDateTime).toBeInstanceOf(Date);
+      expect(data.tourEndDateTime).toBeInstanceOf(Date);
+      // start + durationMinutesFrom (480) = end.
+      expect(data.tourEndDateTime.getTime() - data.tourStartDateTime.getTime()).toBe(
+        480 * 60_000,
+      );
+      expect(data.pickupAddress).toBe('Piscadera Bay, Willemstad');
+      expect(data.island).toBe('curacao');
+      expect(data.newsletterOptIn).toBe(true);
+      expect(data.couponCode).toBe('SUMMER10');
+    });
+
+    it('persists per-seat travelerAge supplied on a reserve item', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve({ tourId: 't1', departureId: 'dep1', items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 30 }] });
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.unitItems.create).toEqual([
+        expect.objectContaining({ travelerAge: 30 }),
+        expect.objectContaining({ travelerAge: 30 }),
+      ]);
+    });
+
+    it('rejects a traveler below the tour minimum age', async () => {
+      setupReserveContext(prisma, { minAgeYears: 12 });
+      await expect(
+        svc.reserve({ tourId: 't1', departureId: 'dep1', items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 8 }] }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejects an invalid pickupLocationId (wrong tour)', async () => {
+      setupReserveContext(prisma);
+      m.pickupLocation.findUnique.mockResolvedValue({ tourId: 'OTHER', name: 'x', address: 'y' });
+      await expect(
+        svc.reserve({ ...reserveDto, pickupLocationId: 'pk1' }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
   });
 
@@ -254,29 +321,28 @@ describe('BookingsService', () => {
         timeZone: 'America/Curacao',
       });
       m.departure.findUnique.mockResolvedValue({
-        vacancies: 10,
         capacity: 10,
-        utcCutoffAt: FUTURE,
-        status: 'AVAILABLE',
+        bookedCount: 0,
+        status: 'OPEN',
+        soldOutAt: null,
       });
       m.booking.update.mockResolvedValue(
         fakeBooking({ status: BookingStatus.CANCELLED, cancellationRefund: 'FULL' }),
       );
 
       const res = await svc.cancel('b1', {});
-      expect(m.departure.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { vacancies: { increment: 2 } } }),
-      );
+      // Seats are released via the clamped raw count-down (master §3).
+      expect(m.$executeRaw).toHaveBeenCalled();
       expect(res.cancellationRefund).toBe('FULL');
     });
 
     it('refunds NONE for an on-hold cancellation (no payment taken)', async () => {
       m.booking.findUnique.mockResolvedValue(fakeBooking({ status: BookingStatus.ON_HOLD }));
       m.departure.findUnique.mockResolvedValue({
-        vacancies: 10,
         capacity: 10,
-        utcCutoffAt: FUTURE,
-        status: 'AVAILABLE',
+        bookedCount: 0,
+        status: 'OPEN',
+        soldOutAt: null,
       });
       m.booking.update.mockResolvedValue(
         fakeBooking({ status: BookingStatus.CANCELLED, cancellationRefund: 'NONE' }),
@@ -324,16 +390,15 @@ describe('BookingsService', () => {
       ]);
       m.tour.findUnique.mockResolvedValue({ timeZone: 'America/Curacao' });
       m.departure.findUnique.mockResolvedValue({
-        vacancies: 10,
         capacity: 10,
-        utcCutoffAt: FUTURE,
+        bookedCount: 2,
         status: 'SOLD_OUT',
+        soldOutAt: new Date('2030-06-04T00:00:00.000Z'),
       });
       const count = await svc.expireStaleHolds();
       expect(count).toBe(1);
-      expect(m.departure.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { vacancies: { increment: 2 } } }),
-      );
+      // Seats released via raw count-down; SOLD_OUT departure reopens to OPEN.
+      expect(m.$executeRaw).toHaveBeenCalled();
       expect(m.booking.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: BookingStatus.EXPIRED } }),
       );

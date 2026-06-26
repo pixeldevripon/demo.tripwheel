@@ -27,14 +27,17 @@ model Booking {
   utcRedeemedAt  DateTime?
 
   // Snapshot at booking time
-  paymentModel PaymentModel
-  currency     Currency
-  localDate    DateTime     @db.Date
-  startTime    String?
+  paymentModel      PaymentModel
+  currency          Currency
+  localDate         DateTime     @db.Date
+  startTime         String?
+  tourStartDateTime DateTime? // full local start instant (TYP range, ICS, reminder, deadline calc) — master E.8
+  tourEndDateTime   DateTime? // local end = start + duration (TYP "8:00 AM – 5:00 PM") — master E.8
 
   // Pickup (octo/pickups; D12)
   pickupRequested  Boolean @default(false)
   pickupLocationId String? // selected pickup point (null = no pickup / meet-on-site)
+  pickupAddress    String? // snapshot of the selected pickup point address (booking immutability) — master E.8
 
   // Pricing snapshot (Decimal; minor units at boundary). `currency` above = booking/original currency.
   totalRetail      Decimal  @db.Decimal(10, 2)
@@ -44,6 +47,10 @@ model Booking {
   depositAmount    Decimal  @db.Decimal(10, 2)
   balanceAmount    Decimal  @db.Decimal(10, 2) // operator-collected balance
   taxes            Json?    @default("[]")
+
+  // Coupon / discount (Figma "Apply" promo; applied in the original currency)
+  couponCode     String?
+  discountAmount Decimal? @db.Decimal(10, 2)
 
   // Multi-currency EUR normalization (G3 — conversion value must be EUR)
   totalEur    Decimal? @db.Decimal(10, 2) // totalRetail converted to EUR
@@ -58,7 +65,8 @@ model Booking {
   contactPostalCode String?
   contactCountry    String?
   contactLocales    String[] @default([])
-  notes             String?
+  notes             String? // "Special requests" — capped at 500 chars in the DTO
+  newsletterOptIn   Boolean  @default(false) // Figma checkout marketing opt-in
 
   // Attribution + tracking (master tracking E.8; booking_complete contract)
   utmSource         String?
@@ -71,7 +79,7 @@ model Booking {
   wbraid            String? // Google app-to-web
   fbclid            String? // Meta click id
   affiliateId       String? // Trackdesk
-  island            String? // denormalized destination slug for analytics
+  island            String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
   customerLocale    String? // locale at time of booking
   customerId        String? // hashed email (CAPI/advanced matching), not PII
   conversionFiredAt DateTime? // mark-first idempotency
@@ -124,6 +132,7 @@ model BookingUnitItem {
   // Per-traveler contact (optional; OCTO allows per-unit contact)
   contactFirstName String?
   contactLastName  String?
+  travelerAge      Int? // child ages (master "children_count plus child ages"); min-age enforcement
 
   // Pricing snapshot
   priceRetail Decimal  @db.Decimal(10, 2)

@@ -75,3 +75,48 @@ export function parseHhMm(value: string): { hour: number; minute: number } {
 export function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * A `"HH:MM"` string → the storage form for a Postgres `@db.Time(0)` column: a
+ * `Z`-labelled `Date` on the epoch day carrying only the time-of-day. Prisma reads it
+ * back the same way (time on 1970-01-01).
+ */
+export function hhmmToTime(value: string): Date {
+  const { hour, minute } = parseHhMm(value);
+  return new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
+}
+
+/** A `@db.Time(0)` value (Z-labelled, time-only) → `"HH:MM"`. */
+export function timeOfDay(time: Date): string {
+  return time.toISOString().slice(11, 16);
+}
+
+/** `YYYY-MM-DD` (a `@db.Date`) → midnight-UTC `Date` storage form. */
+export function dayDate(dateKeyStr: string): Date {
+  return new Date(`${dateKeyStr}T00:00:00.000Z`);
+}
+
+/**
+ * Combine a `@db.Date` (Y/M/D) and a `@db.Time(0)` (H/M) into the departure's local
+ * wall-clock start (`Z`-labelled), so it compares directly against {@link localNow}.
+ */
+export function combineDateTime(date: Date, time: Date): Date {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      time.getUTCHours(),
+      time.getUTCMinutes(),
+      0,
+    ),
+  );
+}
+
+/**
+ * Weekday in the master convention (**Monday = 0 … Sunday = 6**) for a (local,
+ * `Z`-labelled) date. JS `getUTCDay()` is Sunday = 0, so rotate by 6.
+ */
+export function mondayZeroWeekday(date: Date): number {
+  return (date.getUTCDay() + 6) % 7;
+}

@@ -1,7 +1,8 @@
 // Collections domain (Platform Architecture V2 §6).
 // Editorial/curated tour lists within a destination — NOT part of the core taxonomy.
-// MANUAL = ordered tourIds; DYNAMIC = a saved filterQuery resolved at read time.
-// Admin-only create; writes a COLLECTION slug_registry row in the same transaction.
+// MANUAL = ordered CollectionTour rows (+ per-locale rationale); DYNAMIC = a saved
+// filterQuery resolved at read time. Admin-only create; writes a COLLECTION slug_registry
+// row in the same transaction. See technical-doc/03-implementation/COLLECTION-DATA.md.
 
 model Collection {
   id             String         @id @default(uuid())
@@ -9,24 +10,30 @@ model Collection {
   name           String
   slug           String // unique per destination; must NOT collide with a category slug (cannibalization guard)
   collectionType CollectionType
-  tourIds        String[]       @default([]) // MANUAL: ordered tour ids
+  tourIds        String[]       @default([]) // MANUAL legacy mirror; CollectionTour is authoritative for order
   filterQuery    Json? // DYNAMIC: saved attribute/price/category filter
   heroImage      String?
-  sortOrder      String         @default("recommended") // how tours are sorted (maps to TripSort)
-  isActive       Boolean        @default(true)
-  isSeeded       Boolean        @default(false)
-  createdBy      String?
+  sortOrder      String         @default("recommended") // DYNAMIC only — maps to TourSort (master E.5)
+
+  status       CollectionStatus       @default(DRAFT) // publish lifecycle (G5)
+  displayStyle CollectionDisplayStyle @default(PERSONA) // NUMBERED (Best Things to Do/Top 10) vs PERSONA peach card #1
+
+  isActive  Boolean @default(true)
+  isSeeded  Boolean @default(false)
+  createdBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  destination  Destination             @relation(fields: [destinationId], references: [id])
-  creator      User?                   @relation("CollectionCreator", fields: [createdBy], references: [id])
-  translations CollectionTranslation[]
-  pageContents CollectionPageContent[]
+  destination     Destination             @relation(fields: [destinationId], references: [id])
+  creator         User?                   @relation("CollectionCreator", fields: [createdBy], references: [id])
+  translations    CollectionTranslation[]
+  pageContents    CollectionPageContent[]
+  collectionTours CollectionTour[] // MANUAL ordered membership + per-locale rationale
 
   @@unique([destinationId, slug])
   @@index([destinationId])
+  @@index([destinationId, status])
   @@map("collections")
 }
 
@@ -36,7 +43,9 @@ model CollectionTranslation {
   collection          Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   locale              Locale
   name                String? // null falls back to Collection.name
-  overview            String?
+  overview            String? // section-3 intro: one sentence, ≤30 words, AEO "include" structure
+  curationNote        String? // banner subtitle ("Chosen by Islanders…") — G2
+  eyebrowLabel        String? // banner eyebrow / persona label ("BEST THINGS TO DO") — G3
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean    @default(false)
@@ -59,4 +68,33 @@ model CollectionPageContent {
   @@unique([collectionId, locale])
   @@index([collectionId, locale])
   @@map("collection_page_content")
+}
+
+// MANUAL collections: ordered membership. The order IS the product (master 5.6).
+model CollectionTour {
+  id           String @id @default(uuid())
+  collectionId String
+  tourId       String
+  position     Int    @default(0) // editorial order
+
+  collection   Collection                @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  tour         Tour                      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  translations CollectionTourRationale[]
+
+  @@unique([collectionId, tourId])
+  @@index([collectionId, position])
+  @@map("collection_tours")
+}
+
+// Per-tour, per-locale "Collection Rationale" (master E.5; ≤20 words; required for the
+// base locale before a MANUAL collection can be PUBLISHED).
+model CollectionTourRationale {
+  id               String         @id @default(uuid())
+  collectionTourId String
+  locale           Locale
+  rationale        String
+  collectionTour   CollectionTour @relation(fields: [collectionTourId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionTourId, locale])
+  @@map("collection_tour_rationales")
 }

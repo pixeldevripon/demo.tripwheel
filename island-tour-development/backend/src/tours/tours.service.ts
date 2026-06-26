@@ -1,5 +1,4 @@
 import { Locale } from '@/common/constants/locales';
-import { generateSlug } from '@/common/utils/slug.util';
 import {
   clearCooledDownSlugs,
   isSlugTaken,
@@ -7,6 +6,7 @@ import {
   renameEntitySlug,
   slugRowBlocks,
 } from '@/common/utils/slug-registry.util';
+import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -17,8 +17,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { Role, SlugEntityType, TourStatus } from '@prisma/client';
-import { AdminToursQueryDto, CreateTourDto, MyToursQueryDto, TourBySlugQueryDto, TourQueryDto, TourSort, UpdateTourDto } from './dto/tour.dto';
+import {
+  BandParticipation,
+  Role,
+  SlugEntityType,
+  TourStatus,
+} from '@prisma/client';
+import {
+  AdminToursQueryDto,
+  CreateTourDto,
+  MyToursQueryDto,
+  TourBySlugQueryDto,
+  TourQueryDto,
+  TourSort,
+  UpdateTourDto,
+} from './dto/tour.dto';
 
 @Injectable()
 export class ToursService {
@@ -33,6 +46,15 @@ export class ToursService {
     status: true,
     operatorId: true,
     destinationId: true,
+    timeZone: true,
+    availabilityType: true,
+    instantDelivery: true,
+    availabilityRequired: true,
+    allowFreesale: true,
+    deliveryFormats: true,
+    deliveryMethods: true,
+    redemptionMethod: true,
+    reference: true,
     pricingModel: true,
     wholeUnitType: true,
     defaultCurrency: true,
@@ -46,6 +68,7 @@ export class ToursService {
     minPartySize: true,
     bookingCutoffMinutes: true,
     cancellationHours: true,
+    startTimes: true,
     instantConfirmation: true,
     // Booking / payment (master E.3)
     paymentModel: true,
@@ -55,6 +78,7 @@ export class ToursService {
     meetingPointLat: true,
     meetingPointLng: true,
     departureCity: true,
+    checkInMinutesBefore: true,
     // Audience / accessibility flags (master E.3)
     minAgeYears: true,
     fitnessLevel: true,
@@ -70,12 +94,18 @@ export class ToursService {
     tierLockedUntil: true,
     qualityScore: true,
     eligibilityState: true,
+    graceStartedAt: true,
+    graceMetric: true,
     isBookable: true,
+    availabilityConfirmedAt: true,
     firstPublishedAt: true,
     h1Override: true,
     breadcrumbLabel: true,
+    ogImage: true,
     aggregateRating: true,
     aggregateReviewCount: true,
+    ratingDistribution: true,
+    photoReviewCount: true,
     bookingCount: true,
     bookingCountToday: true,
     spotsRemaining: true,
@@ -94,15 +124,18 @@ export class ToursService {
    * Flattens the TourCategory/TourHub relation arrays into the response-friendly
    * `categoryIds` / `primaryCategoryId` / `hubIds` shape.
    */
-  private flattenTour<T extends {
-    categories?: { categoryId: string; isPrimary: boolean }[];
-    hubs?: { hubId: string }[];
-  }>(tour: T) {
+  private flattenTour<
+    T extends {
+      categories?: { categoryId: string; isPrimary: boolean }[];
+      hubs?: { hubId: string }[];
+    },
+  >(tour: T) {
     const { categories, hubs, ...rest } = tour;
     return {
       ...rest,
       categoryIds: categories?.map((c) => c.categoryId) ?? [],
-      primaryCategoryId: categories?.find((c) => c.isPrimary)?.categoryId ?? null,
+      primaryCategoryId:
+        categories?.find((c) => c.isPrimary)?.categoryId ?? null,
       hubIds: hubs?.map((h) => h.hubId) ?? [],
     };
   }
@@ -130,7 +163,10 @@ export class ToursService {
     return tour;
   }
 
-  private async resolveOperatorId(userId: string, role?: Role): Promise<string> {
+  private async resolveOperatorId(
+    userId: string,
+    role?: Role,
+  ): Promise<string> {
     const operator = await this.prisma.operator.findUnique({
       where: { userId },
       select: { id: true },
@@ -143,11 +179,15 @@ export class ToursService {
         data: { userId },
         select: { id: true },
       });
-      this.logger.log(`Auto-provisioned operator profile for admin user ${userId}`);
+      this.logger.log(
+        `Auto-provisioned operator profile for admin user ${userId}`,
+      );
       return created.id;
     }
 
-    throw new BadRequestException('No operator profile found. Please complete your operator registration first.');
+    throw new BadRequestException(
+      'No operator profile found. Please complete your operator registration first.',
+    );
   }
 
   async assertOwnership(
@@ -158,7 +198,9 @@ export class ToursService {
     if (requesterRole === Role.ADMIN) return;
     const operatorId = await this.resolveOperatorId(userId);
     if (tour.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to modify this tour');
+      throw new ForbiddenException(
+        'You do not have permission to modify this tour',
+      );
     }
   }
 
@@ -176,17 +218,21 @@ export class ToursService {
     tx?: Prisma.TransactionClient,
   ): Promise<Prisma.Decimal | null> {
     const client = tx ?? this.prisma;
-    const tour = await client.tour.findUnique({ where: { id: tourId }, select: { basePrice: true } });
+    const tour = await client.tour.findUnique({
+      where: { id: tourId },
+      select: { basePrice: true },
+    });
     if (!tour) return null;
 
     // priceFrom anchors off the cheapest TourAgeBand once bands are entered, and
     // falls back to basePrice when none exist yet.
     const cheapestBand = await client.tourAgeBand.findFirst({
-      where: { tourId },
+      where: { tourId, participation: BandParticipation.PARTICIPANT },
       orderBy: { price: 'asc' },
       select: { price: true },
     });
-    const priceFrom: Prisma.Decimal | null = cheapestBand?.price ?? tour.basePrice ?? null;
+    const priceFrom: Prisma.Decimal | null =
+      cheapestBand?.price ?? tour.basePrice ?? null;
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
@@ -200,10 +246,19 @@ export class ToursService {
     if (!ids.length) return [];
     const tours = await this.prisma.tour.findMany({
       where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
-      select: { ...this.tourSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+      select: {
+        ...this.tourSelect,
+        images: {
+          where: { isHero: true },
+          select: this.heroImageSelect,
+          take: 1,
+        },
+      },
     });
     const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
-    return ids.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => Boolean(t));
+    return ids
+      .map((id) => byId.get(id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t));
   }
 
   /**
@@ -212,11 +267,22 @@ export class ToursService {
    * V1 uses case-insensitive `contains` (Postgres ILIKE); upgrade path: a `tsvector` GIN
    * column or Algolia/ElasticSearch for ranking + typo tolerance (V2 §10).
    */
-  async search(params: { q?: string; destinationSlug?: string; page?: number; limit?: number }) {
+  async search(params: {
+    q?: string;
+    destinationSlug?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const { destinationSlug, page = 1, limit = 20 } = params;
     const term = params.q?.trim();
     if (!term || term.length < 2) {
-      return { total: 0, page, limit, query: term ?? '', data: [] as ReturnType<typeof this.flattenTour>[] };
+      return {
+        total: 0,
+        page,
+        limit,
+        query: term ?? '',
+        data: [] as ReturnType<typeof this.flattenTour>[],
+      };
     }
     const ci = { contains: term, mode: 'insensitive' as const };
     const where: Prisma.TourWhereInput = {
@@ -225,7 +291,13 @@ export class ToursService {
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
       OR: [
         { name: ci },
-        { translations: { some: { OR: [{ title: ci }, { overview: ci }, { description: ci }] } } },
+        {
+          translations: {
+            some: {
+              OR: [{ title: ci }, { overview: ci }, { description: ci }],
+            },
+          },
+        },
         { categories: { some: { category: { name: ci } } } },
         { hubs: { some: { hub: { name: ci } } } },
         { highlights: { some: { translations: { some: { text: ci } } } } },
@@ -236,32 +308,69 @@ export class ToursService {
       this.prisma.tour.count({ where }),
       this.prisma.tour.findMany({
         where,
-        select: { ...this.tourSelect, images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 } },
+        select: {
+          ...this.tourSelect,
+          images: {
+            where: { isHero: true },
+            select: this.heroImageSelect,
+            take: 1,
+          },
+        },
         orderBy: this.buildOrderBy(TourSort.recommended),
         skip,
         take: limit,
       }),
     ]);
-    return { total, page, limit, query: term, data: data.map((t) => this.flattenTour(t)) };
+    return {
+      total,
+      page,
+      limit,
+      query: term,
+      data: data.map((t) => this.flattenTour(t)),
+    };
   }
 
   // ── Public list ───────────────────────────────────────────────────────────────
 
   // Known/typed query params - everything else in the raw query is treated as an attribute filter.
   private static readonly RESERVED_QUERY_KEYS = new Set([
-    'search', 'destinationId', 'categoryId', 'hubId', 'pricingModel',
-    'minPrice', 'maxPrice', 'durationMin', 'durationMax', 'ratingMin',
-    'locale', 'page', 'limit', 'sort',
+    'search',
+    'destinationId',
+    'categoryId',
+    'hubId',
+    'pricingModel',
+    'minPrice',
+    'maxPrice',
+    'durationMin',
+    'durationMax',
+    'ratingMin',
+    'locale',
+    'page',
+    'limit',
+    'sort',
   ]);
 
   async findAll(query: TourQueryDto, rawQuery: Record<string, unknown> = {}) {
     const {
-      search, destinationId, categoryId, hubId, pricingModel,
-      minPrice, maxPrice, durationMin, durationMax, ratingMin,
-      sort = TourSort.recommended, page = 1, limit = 20,
+      search,
+      destinationId,
+      categoryId,
+      hubId,
+      pricingModel,
+      minPrice,
+      maxPrice,
+      durationMin,
+      durationMax,
+      ratingMin,
+      sort = TourSort.recommended,
+      page = 1,
+      limit = 20,
     } = query;
 
-    const where: Prisma.TourWhereInput = { status: TourStatus.LIVE, isActive: true };
+    const where: Prisma.TourWhereInput = {
+      status: TourStatus.LIVE,
+      isActive: true,
+    };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categories = { some: { categoryId } };
@@ -274,8 +383,10 @@ export class ToursService {
     }
     if (durationMin !== undefined || durationMax !== undefined) {
       where.durationMinutesFrom = {};
-      if (durationMin !== undefined) where.durationMinutesFrom.gte = durationMin;
-      if (durationMax !== undefined) where.durationMinutesFrom.lte = durationMax;
+      if (durationMin !== undefined)
+        where.durationMinutesFrom.gte = durationMin;
+      if (durationMax !== undefined)
+        where.durationMinutesFrom.lte = durationMax;
     }
     if (ratingMin !== undefined) where.aggregateRating = { gte: ratingMin };
 
@@ -293,7 +404,11 @@ export class ToursService {
         where,
         select: {
           ...this.tourSelect,
-          images: { where: { isHero: true }, select: this.heroImageSelect, take: 1 },
+          images: {
+            where: { isHero: true },
+            select: this.heroImageSelect,
+            take: 1,
+          },
         },
         orderBy,
         skip,
@@ -301,7 +416,13 @@ export class ToursService {
       }),
     ]);
 
-    return { total, page, limit, sort, data: data.map((t) => this.flattenTour(t)) };
+    return {
+      total,
+      page,
+      limit,
+      sort,
+      data: data.map((t) => this.flattenTour(t)),
+    };
   }
 
   /** Maps the requested sort to a Prisma orderBy. */
@@ -312,7 +433,10 @@ export class ToursService {
       case TourSort.price_desc:
         return [{ basePrice: { sort: 'desc', nulls: 'last' } }];
       case TourSort.rating:
-        return [{ aggregateRating: { sort: 'desc', nulls: 'last' } }, { aggregateReviewCount: 'desc' }];
+        return [
+          { aggregateRating: { sort: 'desc', nulls: 'last' } },
+          { aggregateReviewCount: 'desc' },
+        ];
       case TourSort.newest:
         return [{ publishedAt: 'desc' }];
       case TourSort.recommended:
@@ -335,9 +459,14 @@ export class ToursService {
    * Turns raw attribute query params into AND-ed `attributes.some` conditions.
    * Only keys present (and filterable) in the dictionary are honored; others are ignored.
    */
-  private async buildAttributeFilters(rawQuery: Record<string, unknown>): Promise<Prisma.TourWhereInput[]> {
+  private async buildAttributeFilters(
+    rawQuery: Record<string, unknown>,
+  ): Promise<Prisma.TourWhereInput[]> {
     const candidates = Object.keys(rawQuery).filter(
-      (k) => !ToursService.RESERVED_QUERY_KEYS.has(k) && typeof rawQuery[k] === 'string' && rawQuery[k] !== '',
+      (k) =>
+        !ToursService.RESERVED_QUERY_KEYS.has(k) &&
+        typeof rawQuery[k] === 'string' &&
+        rawQuery[k] !== '',
     );
     if (candidates.length === 0) return [];
 
@@ -350,14 +479,19 @@ export class ToursService {
     const filters: Prisma.TourWhereInput[] = [];
     for (const key of candidates) {
       if (!validKeys.has(key)) continue;
-      const values = String(rawQuery[key]).split(',').map((v) => v.trim()).filter(Boolean);
+      const values = String(rawQuery[key])
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
       if (values.length === 0) continue;
       // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
       const valueOr = values.flatMap((v) => [
         { attributeValue: v },
         { attributeValue: { contains: JSON.stringify(v) } },
       ]);
-      filters.push({ attributes: { some: { attributeKey: key, OR: valueOr } } });
+      filters.push({
+        attributes: { some: { attributeKey: key, OR: valueOr } },
+      });
     }
     return filters;
   }
@@ -385,7 +519,13 @@ export class ToursService {
             take: 1,
           },
           destination: { select: { name: true } },
-          categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+          categories: {
+            select: {
+              categoryId: true,
+              isPrimary: true,
+              category: { select: { name: true } },
+            },
+          },
           hubs: { select: { hubId: true, hub: { select: { name: true } } } },
           operator: {
             select: {
@@ -395,7 +535,12 @@ export class ToursService {
             },
           },
           _count: {
-            select: { images: true, highlights: true, inclusions: true, exclusions: true },
+            select: {
+              images: true,
+              highlights: true,
+              inclusions: true,
+              exclusions: true,
+            },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -430,10 +575,21 @@ export class ToursService {
             take: 1,
           },
           destination: { select: { name: true } },
-          categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+          categories: {
+            select: {
+              categoryId: true,
+              isPrimary: true,
+              category: { select: { name: true } },
+            },
+          },
           hubs: { select: { hubId: true, hub: { select: { name: true } } } },
           _count: {
-            select: { images: true, highlights: true, inclusions: true, exclusions: true },
+            select: {
+              images: true,
+              highlights: true,
+              inclusions: true,
+              exclusions: true,
+            },
           },
         },
         orderBy: { updatedAt: 'desc' },
@@ -448,7 +604,8 @@ export class ToursService {
   // ── Single tour ───────────────────────────────────────────────────────────────
 
   private flattenCounts(tour: any) {
-    const { _count, images, operator, destination, categories, hubs, ...rest } = tour;
+    const { _count, images, operator, destination, categories, hubs, ...rest } =
+      tour;
     const cats = categories ?? [];
     const tourHubs = hubs ?? [];
     const primary = cats.find((c: any) => c.isPrimary);
@@ -477,7 +634,11 @@ export class ToursService {
     };
   }
 
-  async findOne(id: string, requesterId: string | null, requesterRole: Role | null) {
+  async findOne(
+    id: string,
+    requesterId: string | null,
+    requesterRole: Role | null,
+  ) {
     const tour = await this.prisma.tour.findUnique({
       where: { id },
       select: {
@@ -488,10 +649,21 @@ export class ToursService {
           take: 1,
         },
         destination: { select: { name: true } },
-        categories: { select: { categoryId: true, isPrimary: true, category: { select: { name: true } } } },
+        categories: {
+          select: {
+            categoryId: true,
+            isPrimary: true,
+            category: { select: { name: true } },
+          },
+        },
         hubs: { select: { hubId: true, hub: { select: { name: true } } } },
         _count: {
-          select: { images: true, highlights: true, inclusions: true, exclusions: true },
+          select: {
+            images: true,
+            highlights: true,
+            inclusions: true,
+            exclusions: true,
+          },
         },
       },
     });
@@ -504,7 +676,9 @@ export class ToursService {
         // tour.operatorId is from the operators table; requesterId is user.id - must resolve
         const operatorId = await this.resolveOperatorId(requesterId);
         if (tour.operatorId !== operatorId) {
-          throw new ForbiddenException('You do not have permission to view this tour');
+          throw new ForbiddenException(
+            'You do not have permission to view this tour',
+          );
         }
       }
     }
@@ -545,7 +719,43 @@ export class ToursService {
         // Fetch both requested locale and EN so we can fallback without a second query
         translations: {
           where: { locale: { in: [locale, Locale.en] } },
-          select: { locale: true, title: true, overview: true, description: true, isMachineTranslated: true },
+          select: {
+            locale: true,
+            title: true,
+            overview: true,
+            description: true,
+            shortDescription: true,
+            whatToBring: true,
+            knowBeforeYouGo: true,
+            notSuitableFor: true,
+            whatToExpectIntro: true,
+            categoryDisplay: true,
+            localTip: true,
+            meetingPointText: true,
+            metaTitle: true,
+            metaDescription: true,
+            isMachineTranslated: true,
+          },
+        },
+        ageBands: {
+          select: {
+            id: true,
+            bandType: true,
+            participation: true,
+            label: true,
+            minAge: true,
+            maxAge: true,
+            price: true,
+            priceOriginal: true,
+            priceNet: true,
+            isDefault: true,
+            displayOrder: true,
+          },
+          orderBy: [
+            { participation: 'asc' },
+            { isDefault: 'desc' },
+            { displayOrder: 'asc' },
+          ],
         },
         highlights: {
           select: {
@@ -574,10 +784,64 @@ export class ToursService {
           select: {
             id: true,
             icon: true,
+            type: true,
+            priceText: true,
             displayOrder: true,
             translations: {
               where: { locale: { in: [locale, Locale.en] } },
               select: { locale: true, label: true },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+        locations: {
+          select: {
+            id: true,
+            types: true,
+            latitude: true,
+            longitude: true,
+            streetAddress: true,
+            addressLocality: true,
+            addressRegion: true,
+            postalCode: true,
+            addressCountry: true,
+            minutesTo: true,
+            minutesAt: true,
+            displayOrder: true,
+            translations: {
+              where: { locale: { in: [locale, Locale.en] } },
+              select: { locale: true, title: true, shortDescription: true },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+        pickupLocations: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            latitude: true,
+            longitude: true,
+            address: true,
+            minutesPrior: true,
+            windowStart: true,
+            windowEnd: true,
+            displayOrder: true,
+            translations: {
+              where: { locale: { in: [locale, Locale.en] } },
+              select: { locale: true, title: true, directions: true },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+        features: {
+          select: {
+            id: true,
+            type: true,
+            displayOrder: true,
+            translations: {
+              where: { locale: { in: [locale, Locale.en] } },
+              select: { locale: true, text: true },
             },
           },
           orderBy: { displayOrder: 'asc' },
@@ -605,7 +869,17 @@ export class ToursService {
     if (!tour) throw new NotFoundException('Tour not found');
 
     // Apply locale → EN fallback for translated child models
-    const { translations, highlights, inclusions, exclusions, languages, ...rest } = tour;
+    const {
+      translations,
+      highlights,
+      inclusions,
+      exclusions,
+      locations,
+      pickupLocations,
+      features,
+      languages,
+      ...rest
+    } = tour;
 
     const resolvedTranslation =
       translations.find((t) => t.locale === locale) ??
@@ -616,8 +890,10 @@ export class ToursService {
       id: h.id,
       displayOrder: h.displayOrder,
       text:
-        (h.translations.find((t) => t.locale === locale) ??
-          h.translations.find((t) => t.locale === Locale.en))?.text ?? '',
+        (
+          h.translations.find((t) => t.locale === locale) ??
+          h.translations.find((t) => t.locale === Locale.en)
+        )?.text ?? '',
     }));
 
     const resolvedInclusions = inclusions.map((i) => ({
@@ -625,25 +901,87 @@ export class ToursService {
       icon: i.icon,
       displayOrder: i.displayOrder,
       label:
-        (i.translations.find((t) => t.locale === locale) ??
-          i.translations.find((t) => t.locale === Locale.en))?.label ?? '',
+        (
+          i.translations.find((t) => t.locale === locale) ??
+          i.translations.find((t) => t.locale === Locale.en)
+        )?.label ?? '',
     }));
 
     const resolvedExclusions = exclusions.map((e) => ({
       id: e.id,
       icon: e.icon,
+      type: e.type,
+      priceText: e.priceText,
       displayOrder: e.displayOrder,
       label:
-        (e.translations.find((t) => t.locale === locale) ??
-          e.translations.find((t) => t.locale === Locale.en))?.label ?? '',
+        (
+          e.translations.find((t) => t.locale === locale) ??
+          e.translations.find((t) => t.locale === Locale.en)
+        )?.label ?? '',
+    }));
+
+    const resolvedLocations = locations.map((l) => {
+      const tr =
+        l.translations.find((t) => t.locale === locale) ??
+        l.translations.find((t) => t.locale === Locale.en);
+      return {
+        id: l.id,
+        types: l.types,
+        latitude: l.latitude,
+        longitude: l.longitude,
+        streetAddress: l.streetAddress,
+        addressLocality: l.addressLocality,
+        addressRegion: l.addressRegion,
+        postalCode: l.postalCode,
+        addressCountry: l.addressCountry,
+        minutesTo: l.minutesTo,
+        minutesAt: l.minutesAt,
+        displayOrder: l.displayOrder,
+        title: tr?.title ?? '',
+        shortDescription: tr?.shortDescription ?? null,
+      };
+    });
+
+    const resolvedPickupLocations = pickupLocations.map((p) => {
+      const tr =
+        p.translations.find((t) => t.locale === locale) ??
+        p.translations.find((t) => t.locale === Locale.en);
+      return {
+        id: p.id,
+        name: p.name,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        address: p.address,
+        minutesPrior: p.minutesPrior,
+        windowStart: p.windowStart,
+        windowEnd: p.windowEnd,
+        displayOrder: p.displayOrder,
+        title: tr?.title ?? p.name,
+        directions: tr?.directions ?? null,
+      };
+    });
+
+    const resolvedFeatures = features.map((f) => ({
+      id: f.id,
+      type: f.type,
+      displayOrder: f.displayOrder,
+      text:
+        (
+          f.translations.find((t) => t.locale === locale) ??
+          f.translations.find((t) => t.locale === Locale.en)
+        )?.text ?? '',
     }));
 
     return {
       ...this.flattenTour(rest),
       translation: resolvedTranslation,
+      ageBands: rest.ageBands,
       highlights: resolvedHighlights,
       inclusions: resolvedInclusions,
       exclusions: resolvedExclusions,
+      locations: resolvedLocations,
+      pickupLocations: resolvedPickupLocations,
+      features: resolvedFeatures,
       languages: languages.map((l) => l.language),
     };
   }
@@ -670,12 +1008,17 @@ export class ToursService {
       select: { id: true },
     });
     if (ownConflict) {
-      throw new ConflictException(`You already have a tour with slug "${baseSlug}" at this destination`);
+      throw new ConflictException(
+        `You already have a tour with slug "${baseSlug}" at this destination`,
+      );
     }
 
     // V2 §5: every tour is flat /{destination}/{tour-slug}/, so ALWAYS check the slug registry.
     const [tourConflict, registryRow] = await Promise.all([
-      this.prisma.tour.findFirst({ where: { destinationId, slug: baseSlug }, select: { id: true } }),
+      this.prisma.tour.findFirst({
+        where: { destinationId, slug: baseSlug },
+        select: { id: true },
+      }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: baseSlug } },
         select: { id: true, deletedAt: true },
@@ -702,7 +1045,10 @@ export class ToursService {
     const candidate = `${baseSlug}-${suffix}`;
 
     const [candidateTour, candidateRegistryRow] = await Promise.all([
-      this.prisma.tour.findFirst({ where: { destinationId, slug: candidate }, select: { id: true, operatorId: true } }),
+      this.prisma.tour.findFirst({
+        where: { destinationId, slug: candidate },
+        select: { id: true, operatorId: true },
+      }),
       this.prisma.slugRegistry.findUnique({
         where: { destinationSlug_slug: { destinationSlug, slug: candidate } },
         select: { id: true, deletedAt: true },
@@ -710,9 +1056,12 @@ export class ToursService {
     ]);
 
     if (candidateTour?.operatorId === operatorId) {
-      throw new ConflictException(`You already have a tour with slug "${candidate}" at this destination`);
+      throw new ConflictException(
+        `You already have a tour with slug "${candidate}" at this destination`,
+      );
     }
-    if (!candidateTour && !slugRowBlocks(candidateRegistryRow)) return candidate;
+    if (!candidateTour && !slugRowBlocks(candidateRegistryRow))
+      return candidate;
 
     // The operator-name suffix is also taken. We do NOT fall back to numeric suffixes,
     // so the operator must pick a different tour name or slug.
@@ -732,7 +1081,7 @@ export class ToursService {
     // Validate destination
     const destination = await this.prisma.destination.findUnique({
       where: { id: dto.destinationId },
-      select: { id: true, slug: true, isActive: true },
+      select: { id: true, slug: true, isActive: true, timezone: true },
     });
     if (!destination || !destination.isActive) {
       throw new BadRequestException('Destination not found or is not active');
@@ -745,20 +1094,29 @@ export class ToursService {
     }
     const primaryCategoryId = dto.primaryCategoryId ?? categoryIds[0];
     if (!categoryIds.includes(primaryCategoryId)) {
-      throw new BadRequestException('primaryCategoryId must be one of categoryIds');
+      throw new BadRequestException(
+        'primaryCategoryId must be one of categoryIds',
+      );
     }
     const foundCategories = await this.prisma.category.findMany({
       where: { id: { in: categoryIds }, isActive: true },
       select: { id: true },
     });
     if (foundCategories.length !== categoryIds.length) {
-      throw new BadRequestException('One or more categories not found or not active');
+      throw new BadRequestException(
+        'One or more categories not found or not active',
+      );
     }
 
     const hubIds = [...new Set(dto.hubIds ?? [])];
 
     // Resolve a unique slug - always checks the slug registry (flat URLs, V2 §5).
-    const slug = await this.resolveUniqueSlug(baseSlug, dto.destinationId, destination.slug, operatorId);
+    const slug = await this.resolveUniqueSlug(
+      baseSlug,
+      dto.destinationId,
+      destination.slug,
+      operatorId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       // Hub validation inside transaction (TOCTOU-safe). A hub is allowed if it belongs to
@@ -769,16 +1127,22 @@ export class ToursService {
           select: { id: true, destinationId: true, isActive: true },
         });
         if (!hub || !hub.isActive) {
-          throw new BadRequestException(`Hub ${hubId} not found or is not active`);
+          throw new BadRequestException(
+            `Hub ${hubId} not found or is not active`,
+          );
         }
         if (hub.destinationId !== dto.destinationId) {
-          throw new BadRequestException(`Hub ${hubId} does not belong to the specified destination`);
+          throw new BadRequestException(
+            `Hub ${hubId} does not belong to the specified destination`,
+          );
         }
         const allowedCount = await tx.hubAllowedCategory.count({
           where: { hubId, categoryId: { in: categoryIds } },
         });
         if (allowedCount === 0) {
-          throw new BadRequestException(`None of the tour's categories are allowed in hub ${hubId}`);
+          throw new BadRequestException(
+            `None of the tour's categories are allowed in hub ${hubId}`,
+          );
         }
       }
 
@@ -789,9 +1153,12 @@ export class ToursService {
             slug,
             operatorId,
             destinationId: dto.destinationId,
+            timeZone: destination.timezone ?? 'America/Curacao',
             pricingModel: dto.pricingModel,
             wholeUnitType: dto.wholeUnitType ?? null,
-            ...(dto.defaultCurrency !== undefined && { defaultCurrency: dto.defaultCurrency }),
+            ...(dto.defaultCurrency !== undefined && {
+              defaultCurrency: dto.defaultCurrency,
+            }),
             basePrice: dto.basePrice ?? null,
             priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
             durationMinutesFrom: dto.durationMinutesFrom ?? null,
@@ -803,19 +1170,37 @@ export class ToursService {
             bookingCutoffMinutes: dto.bookingCutoffMinutes ?? 120,
             // Master rule #20 / §6.2 - free-cancellation window, enum-bound, default 48.
             cancellationHours: dto.cancellationHours ?? 48,
-            ...(dto.instantConfirmation !== undefined && { instantConfirmation: dto.instantConfirmation }),
-            ...(dto.paymentModel !== undefined && { paymentModel: dto.paymentModel }),
+            startTimes: dto.startTimes ?? [],
+            ...(dto.instantConfirmation !== undefined && {
+              instantConfirmation: dto.instantConfirmation,
+            }),
+            ...(dto.paymentModel !== undefined && {
+              paymentModel: dto.paymentModel,
+            }),
             bookingType: dto.bookingType ?? null,
             meetingPointLat: dto.meetingPointLat ?? null,
             meetingPointLng: dto.meetingPointLng ?? null,
+            checkInMinutesBefore: dto.checkInMinutesBefore ?? 30,
             departureCity: dto.departureCity ?? null,
             minAgeYears: dto.minAgeYears ?? null,
             fitnessLevel: dto.fitnessLevel ?? null,
-            ...(dto.weatherDependent !== undefined && { weatherDependent: dto.weatherDependent }),
-            ...(dto.wheelchairAccessible !== undefined && { wheelchairAccessible: dto.wheelchairAccessible }),
-            ...(dto.familyFriendly !== undefined && { familyFriendly: dto.familyFriendly }),
-            ...(dto.suitableForBeginners !== undefined && { suitableForBeginners: dto.suitableForBeginners }),
+            ...(dto.weatherDependent !== undefined && {
+              weatherDependent: dto.weatherDependent,
+            }),
+            ...(dto.wheelchairAccessible !== undefined && {
+              wheelchairAccessible: dto.wheelchairAccessible,
+            }),
+            ...(dto.familyFriendly !== undefined && {
+              familyFriendly: dto.familyFriendly,
+            }),
+            ...(dto.suitableForBeginners !== undefined && {
+              suitableForBeginners: dto.suitableForBeginners,
+            }),
             reference: dto.reference ?? null,
+            ogImage: dto.ogImage ?? null,
+            availabilityConfirmedAt: dto.availabilityConfirmedAt
+              ? new Date(dto.availabilityConfirmedAt)
+              : null,
             h1Override: dto.h1Override ?? null,
             breadcrumbLabel: dto.breadcrumbLabel ?? null,
             categories: {
@@ -831,13 +1216,17 @@ export class ToursService {
         .catch((err: any) => {
           if (err?.code === 'P2002') {
             // Race-condition fallback: slug was taken between our pre-check and the write.
-            throw new ConflictException(`Slug "${slug}" was taken concurrently. Please retry.`);
+            throw new ConflictException(
+              `Slug "${slug}" was taken concurrently. Please retry.`,
+            );
           }
           throw err;
         });
 
       // Clear any cooled-down ghost row occupying this slug (reusable after the 90-day cooldown).
-      await clearCooledDownSlugs(tx, [{ destinationSlug: destination.slug, slug: tour.slug }]);
+      await clearCooledDownSlugs(tx, [
+        { destinationSlug: destination.slug, slug: tour.slug },
+      ]);
 
       // V2 §5: every tour gets a flat /{destination}/{tour-slug}/ slug_registry TOUR row.
       await tx.slugRegistry
@@ -852,19 +1241,28 @@ export class ToursService {
         })
         .catch((err: any) => {
           if (err?.code === 'P2002') {
-            throw new ConflictException(`Slug "${slug}" is already taken at destination "${destination.slug}"`);
+            throw new ConflictException(
+              `Slug "${slug}" is already taken at destination "${destination.slug}"`,
+            );
           }
           throw err;
         });
 
-      this.logger.log(`Operator ${operatorId} created tour "${dto.name}" (${tour.id})`);
+      this.logger.log(
+        `Operator ${operatorId} created tour "${dto.name}" (${tour.id})`,
+      );
       return this.flattenTour(tour);
     });
   }
 
   // ── Update ────────────────────────────────────────────────────────────────────
 
-  async update(id: string, dto: UpdateTourDto, requesterId: string, requesterRole: Role) {
+  async update(
+    id: string,
+    dto: UpdateTourDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
     const tour = await this.findTourOrThrow(id);
     await this.assertOwnership(tour, requesterId, requesterRole);
 
@@ -879,20 +1277,26 @@ export class ToursService {
     let primaryCategoryId: string | undefined;
     if (dto.categoryIds !== undefined) {
       categoryIds = [...new Set(dto.categoryIds)];
-      if (categoryIds.length === 0) throw new BadRequestException('At least one category is required');
+      if (categoryIds.length === 0)
+        throw new BadRequestException('At least one category is required');
       primaryCategoryId = dto.primaryCategoryId ?? categoryIds[0];
       if (!categoryIds.includes(primaryCategoryId)) {
-        throw new BadRequestException('primaryCategoryId must be one of categoryIds');
+        throw new BadRequestException(
+          'primaryCategoryId must be one of categoryIds',
+        );
       }
       const found = await this.prisma.category.findMany({
         where: { id: { in: categoryIds }, isActive: true },
         select: { id: true },
       });
       if (found.length !== categoryIds.length) {
-        throw new BadRequestException('One or more categories not found or not active');
+        throw new BadRequestException(
+          'One or more categories not found or not active',
+        );
       }
     }
-    const hubIds = dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
+    const hubIds =
+      dto.hubIds !== undefined ? [...new Set(dto.hubIds)] : undefined;
 
     // ── Slug rename → 301 redirect + 90-day cooldown (master slug-registry rules) ──
     // Resolve the rename target up-front (cooldown-aware, excluding this tour's own row).
@@ -908,12 +1312,23 @@ export class ToursService {
         if (!dest) throw new BadRequestException('Tour destination not found');
 
         const slugTourConflict = await this.prisma.tour.findFirst({
-          where: { destinationId: tour.destinationId, slug: normalized, id: { not: id } },
+          where: {
+            destinationId: tour.destinationId,
+            slug: normalized,
+            id: { not: id },
+          },
           select: { id: true },
         });
-        const registryTaken = await isSlugTaken(this.prisma, dest.slug, normalized, id);
+        const registryTaken = await isSlugTaken(
+          this.prisma,
+          dest.slug,
+          normalized,
+          id,
+        );
         if (slugTourConflict || registryTaken) {
-          throw new ConflictException(`Slug "${normalized}" is already taken at this destination`);
+          throw new ConflictException(
+            `Slug "${normalized}" is already taken at this destination`,
+          );
         }
         renameFrom = tour.slug;
         renameTo = normalized;
@@ -937,34 +1352,92 @@ export class ToursService {
         data: {
           ...(renameTo && { slug: renameTo }),
           ...(dto.name !== undefined && { name: dto.name }),
-          ...(dto.pricingModel !== undefined && { pricingModel: dto.pricingModel }),
-          ...(dto.wholeUnitType !== undefined && { wholeUnitType: dto.wholeUnitType }),
-          ...(dto.defaultCurrency !== undefined && { defaultCurrency: dto.defaultCurrency }),
+          ...(dto.pricingModel !== undefined && {
+            pricingModel: dto.pricingModel,
+          }),
+          ...(dto.wholeUnitType !== undefined && {
+            wholeUnitType: dto.wholeUnitType,
+          }),
+          ...(dto.defaultCurrency !== undefined && {
+            defaultCurrency: dto.defaultCurrency,
+          }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
-          ...(dto.durationMinutesFrom !== undefined && { durationMinutesFrom: dto.durationMinutesFrom }),
-          ...(dto.durationMinutesTo !== undefined && { durationMinutesTo: dto.durationMinutesTo }),
-          ...(dto.pickupModel !== undefined && { pickupModel: dto.pickupModel }),
-          ...(dto.pickupRequired !== undefined && { pickupRequired: dto.pickupRequired }),
-          ...(dto.maxPartySize !== undefined && { maxPartySize: dto.maxPartySize }),
-          ...(dto.minPartySize !== undefined && { minPartySize: dto.minPartySize }),
-          ...(dto.bookingCutoffMinutes !== undefined && { bookingCutoffMinutes: dto.bookingCutoffMinutes }),
-          ...(dto.cancellationHours !== undefined && { cancellationHours: dto.cancellationHours }),
-          ...(dto.paymentModel !== undefined && { paymentModel: dto.paymentModel }),
-          ...(dto.instantConfirmation !== undefined && { instantConfirmation: dto.instantConfirmation }),
-          ...(dto.bookingType !== undefined && { bookingType: dto.bookingType }),
-          ...(dto.meetingPointLat !== undefined && { meetingPointLat: dto.meetingPointLat }),
-          ...(dto.meetingPointLng !== undefined && { meetingPointLng: dto.meetingPointLng }),
-          ...(dto.departureCity !== undefined && { departureCity: dto.departureCity }),
-          ...(dto.minAgeYears !== undefined && { minAgeYears: dto.minAgeYears }),
-          ...(dto.fitnessLevel !== undefined && { fitnessLevel: dto.fitnessLevel }),
-          ...(dto.weatherDependent !== undefined && { weatherDependent: dto.weatherDependent }),
-          ...(dto.wheelchairAccessible !== undefined && { wheelchairAccessible: dto.wheelchairAccessible }),
-          ...(dto.familyFriendly !== undefined && { familyFriendly: dto.familyFriendly }),
-          ...(dto.suitableForBeginners !== undefined && { suitableForBeginners: dto.suitableForBeginners }),
-          ...(dto.isLocalsFavourite !== undefined && { isLocalsFavourite: dto.isLocalsFavourite }),
+          ...(dto.durationMinutesFrom !== undefined && {
+            durationMinutesFrom: dto.durationMinutesFrom,
+          }),
+          ...(dto.durationMinutesTo !== undefined && {
+            durationMinutesTo: dto.durationMinutesTo,
+          }),
+          ...(dto.pickupModel !== undefined && {
+            pickupModel: dto.pickupModel,
+          }),
+          ...(dto.pickupRequired !== undefined && {
+            pickupRequired: dto.pickupRequired,
+          }),
+          ...(dto.maxPartySize !== undefined && {
+            maxPartySize: dto.maxPartySize,
+          }),
+          ...(dto.minPartySize !== undefined && {
+            minPartySize: dto.minPartySize,
+          }),
+          ...(dto.bookingCutoffMinutes !== undefined && {
+            bookingCutoffMinutes: dto.bookingCutoffMinutes,
+          }),
+          ...(dto.cancellationHours !== undefined && {
+            cancellationHours: dto.cancellationHours,
+          }),
+          ...(dto.startTimes !== undefined && { startTimes: dto.startTimes }),
+          ...(dto.paymentModel !== undefined && {
+            paymentModel: dto.paymentModel,
+          }),
+          ...(dto.instantConfirmation !== undefined && {
+            instantConfirmation: dto.instantConfirmation,
+          }),
+          ...(dto.bookingType !== undefined && {
+            bookingType: dto.bookingType,
+          }),
+          ...(dto.meetingPointLat !== undefined && {
+            meetingPointLat: dto.meetingPointLat,
+          }),
+          ...(dto.meetingPointLng !== undefined && {
+            meetingPointLng: dto.meetingPointLng,
+          }),
+          ...(dto.checkInMinutesBefore !== undefined && {
+            checkInMinutesBefore: dto.checkInMinutesBefore,
+          }),
+          ...(dto.departureCity !== undefined && {
+            departureCity: dto.departureCity,
+          }),
+          ...(dto.minAgeYears !== undefined && {
+            minAgeYears: dto.minAgeYears,
+          }),
+          ...(dto.fitnessLevel !== undefined && {
+            fitnessLevel: dto.fitnessLevel,
+          }),
+          ...(dto.weatherDependent !== undefined && {
+            weatherDependent: dto.weatherDependent,
+          }),
+          ...(dto.wheelchairAccessible !== undefined && {
+            wheelchairAccessible: dto.wheelchairAccessible,
+          }),
+          ...(dto.familyFriendly !== undefined && {
+            familyFriendly: dto.familyFriendly,
+          }),
+          ...(dto.suitableForBeginners !== undefined && {
+            suitableForBeginners: dto.suitableForBeginners,
+          }),
+          ...(dto.isLocalsFavourite !== undefined && {
+            isLocalsFavourite: dto.isLocalsFavourite,
+          }),
           ...(dto.reference !== undefined && { reference: dto.reference }),
+          ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
+          ...(dto.availabilityConfirmedAt !== undefined && {
+            availabilityConfirmedAt: new Date(dto.availabilityConfirmedAt),
+          }),
           ...(dto.h1Override !== undefined && { h1Override: dto.h1Override }),
-          ...(dto.breadcrumbLabel !== undefined && { breadcrumbLabel: dto.breadcrumbLabel }),
+          ...(dto.breadcrumbLabel !== undefined && {
+            breadcrumbLabel: dto.breadcrumbLabel,
+          }),
           ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         },
       });
@@ -981,42 +1454,71 @@ export class ToursService {
         });
       } else if (dto.primaryCategoryId !== undefined) {
         const existing = await tx.tourCategory.findUnique({
-          where: { tourId_categoryId: { tourId: id, categoryId: dto.primaryCategoryId } },
+          where: {
+            tourId_categoryId: {
+              tourId: id,
+              categoryId: dto.primaryCategoryId,
+            },
+          },
           select: { id: true },
         });
-        if (!existing) throw new BadRequestException('primaryCategoryId must be one of the tour categories');
-        await tx.tourCategory.updateMany({ where: { tourId: id }, data: { isPrimary: false } });
-        await tx.tourCategory.update({ where: { id: existing.id }, data: { isPrimary: true } });
+        if (!existing)
+          throw new BadRequestException(
+            'primaryCategoryId must be one of the tour categories',
+          );
+        await tx.tourCategory.updateMany({
+          where: { tourId: id },
+          data: { isPrimary: false },
+        });
+        await tx.tourCategory.update({
+          where: { id: existing.id },
+          data: { isPrimary: true },
+        });
       }
 
       // Replace the full hub set (validate destination + allowed-category).
       if (hubIds) {
         const effectiveCategoryIds =
           categoryIds ??
-          (await tx.tourCategory.findMany({ where: { tourId: id }, select: { categoryId: true } })).map(
-            (c) => c.categoryId,
-          );
+          (
+            await tx.tourCategory.findMany({
+              where: { tourId: id },
+              select: { categoryId: true },
+            })
+          ).map((c) => c.categoryId);
         for (const hubId of hubIds) {
           const hub = await tx.hub.findUnique({
             where: { id: hubId },
             select: { id: true, destinationId: true, isActive: true },
           });
-          if (!hub || !hub.isActive) throw new BadRequestException(`Hub ${hubId} not found or is not active`);
+          if (!hub || !hub.isActive)
+            throw new BadRequestException(
+              `Hub ${hubId} not found or is not active`,
+            );
           if (hub.destinationId !== tour.destinationId) {
-            throw new BadRequestException(`Hub ${hubId} does not belong to the destination`);
+            throw new BadRequestException(
+              `Hub ${hubId} does not belong to the destination`,
+            );
           }
           const allowedCount = await tx.hubAllowedCategory.count({
             where: { hubId, categoryId: { in: effectiveCategoryIds } },
           });
           if (allowedCount === 0) {
-            throw new BadRequestException(`None of the tour's categories are allowed in hub ${hubId}`);
+            throw new BadRequestException(
+              `None of the tour's categories are allowed in hub ${hubId}`,
+            );
           }
         }
         await tx.tourHub.deleteMany({ where: { tourId: id } });
-        await tx.tourHub.createMany({ data: hubIds.map((hubId) => ({ tourId: id, hubId })) });
+        await tx.tourHub.createMany({
+          data: hubIds.map((hubId) => ({ tourId: id, hubId })),
+        });
       }
 
-      return tx.tour.findUniqueOrThrow({ where: { id }, select: this.tourSelect });
+      return tx.tour.findUniqueOrThrow({
+        where: { id },
+        select: this.tourSelect,
+      });
     });
 
     // Keep the "From $X" anchor in sync if basePrice changed.
@@ -1037,7 +1539,10 @@ export class ToursService {
         ...this.tourSelect,
         images: { select: { id: true, isHero: true } },
         highlights: { select: { id: true } },
-        translations: { where: { locale: Locale.en }, select: { overview: true } },
+        translations: {
+          where: { locale: Locale.en },
+          select: { overview: true },
+        },
         _count: { select: { ageBands: true } },
       },
     });
@@ -1048,17 +1553,23 @@ export class ToursService {
     }
 
     const errors: string[] = [];
-    if (tour.images.length < 5) errors.push('At least 5 images are required to publish');
-    if (!tour.images.some((img) => img.isHero)) errors.push('A hero image must be set before publishing');
+    if (tour.images.length < 5)
+      errors.push('At least 5 images are required to publish');
+    if (!tour.images.some((img) => img.isHero))
+      errors.push('A hero image must be set before publishing');
 
     const enTranslation = tour.translations[0];
-    if (!enTranslation?.overview?.trim()) errors.push('An English overview is required to publish');
+    if (!enTranslation?.overview?.trim())
+      errors.push('An English overview is required to publish');
 
-    if (tour.highlights.length < 3) errors.push('At least 3 highlights are required to publish');
+    if (tour.highlights.length < 3)
+      errors.push('At least 3 highlights are required to publish');
 
     // Price required: either a flat basePrice or at least one priced age band.
     if (tour.basePrice == null && tour._count.ageBands === 0) {
-      errors.push('A price is required to publish (set a base price or add an age band)');
+      errors.push(
+        'A price is required to publish (set a base price or add an age band)',
+      );
     }
 
     if (errors.length > 0) throw new BadRequestException(errors);
@@ -1167,7 +1678,9 @@ export class ToursService {
     const tour = await this.findTourOrThrow(id);
     await this.assertOwnership(tour, userId, userRole);
     if (userRole !== Role.ADMIN && tour.status !== TourStatus.ARCHIVED) {
-      throw new BadRequestException('Only ARCHIVED tours can be permanently deleted. Archive the tour first.');
+      throw new BadRequestException(
+        'Only ARCHIVED tours can be permanently deleted. Archive the tour first.',
+      ); 
     }
 
     await this.prisma.$transaction(async (tx) => {

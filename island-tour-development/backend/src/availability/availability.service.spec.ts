@@ -1,13 +1,21 @@
 /**
  * Unit tests for AvailabilityService. Prisma + the materializer are mocked.
- * Focus: ownership scoping, live status mapping (check/calendar),
- * manual departure edits, and the isBookable helper.
+ * Focus: ownership scoping, live status mapping (check/calendar) against the
+ * master §E.9 departure model, manual departure edits, and the isBookable helper.
  */
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AvailabilityService } from './availability.service';
 
-const FUTURE = new Date('2030-06-30T12:00:00.000Z');
+/** A @db.Time(0) storage value (time-only, epoch day). */
+function time(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return new Date(Date.UTC(1970, 0, 1, h, m, 0));
+}
+/** A @db.Date storage value. */
+function day(date: string) {
+  return new Date(`${date}T00:00:00.000Z`);
+}
 
 function mockPrisma() {
   return {
@@ -33,19 +41,39 @@ function departureRow(over: Record<string, unknown> = {}) {
   return {
     id: 'd1',
     tourId: 't1',
-    optionId: 'opt1',
-    localDateTimeStart: new Date('2030-06-05T09:00:00.000Z'),
-    localDateTimeEnd: null,
-    allDay: false,
+    date: day('2030-06-05'),
+    startTime: time('09:00'),
     capacity: 10,
-    vacancies: 5,
-    status: 'AVAILABLE',
-    utcCutoffAt: FUTURE,
-    priceOverride: null,
+    bookedCount: 5,
+    status: 'OPEN',
+    soldOutAt: null,
+    source: 'SCHEDULE',
     manuallyEdited: false,
     ...over,
   };
 }
+
+function scheduleRow(over: Record<string, unknown> = {}) {
+  return {
+    id: 's1',
+    tourId: 't1',
+    weekday: 1,
+    startTime: time('09:00'),
+    capacityOverride: 10,
+    validFrom: day('2026-06-01'),
+    validUntil: null,
+    status: 'ACTIVE',
+    ...over,
+  };
+}
+
+/** A tour row that satisfies assertTourAccess + assertStartTimeInSlotSet + tourClock. */
+const TOUR = {
+  operatorId: 'op1',
+  startTimes: ['09:00', '13:00'],
+  timeZone: 'America/Curacao',
+  bookingCutoffMinutes: 120,
+};
 
 describe('AvailabilityService', () => {
   let prisma: ReturnType<typeof mockPrisma>;
@@ -66,34 +94,26 @@ describe('AvailabilityService', () => {
 
   const createDto = {
     tourId: 't1',
-    weekdays: [1, 2, 3],
-    startTimes: ['09:00'],
-    capacity: 10,
+    weekday: 1,
+    startTime: '09:00',
+    capacityOverride: 10,
   };
 
   describe('ownership', () => {
     it('lets the owning operator create a schedule', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ operatorId: 'op1' });
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      prisma.availabilitySchedule.create.mockResolvedValue({
-        id: 's1',
-        tourId: 't1',
-        weekdays: [1, 2, 3],
-        startTimes: ['09:00'],
-        capacity: 10,
-        seasonStart: null,
-        seasonEnd: null,
-        priceOverride: null,
-        isActive: true,
-      });
+      prisma.availabilitySchedule.create.mockResolvedValue(scheduleRow());
 
       const res = await svc.createSchedule('u1', Role.TOUR_OPERATOR, createDto);
       expect(res.id).toBe('s1');
+      expect(res.weekday).toBe(1);
+      expect(res.startTime).toBe('09:00');
       expect(prisma.availabilitySchedule.create).toHaveBeenCalled();
     });
 
     it('forbids an operator who does not own the tour', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ operatorId: 'op2' });
+      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, operatorId: 'op2' });
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       await expect(
         svc.createSchedule('u1', Role.TOUR_OPERATOR, createDto),
@@ -101,18 +121,8 @@ describe('AvailabilityService', () => {
     });
 
     it('lets an ADMIN bypass ownership', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ operatorId: 'opX' });
-      prisma.availabilitySchedule.create.mockResolvedValue({
-        id: 's2',
-        tourId: 't1',
-        weekdays: [1],
-        startTimes: ['09:00'],
-        capacity: 10,
-        seasonStart: null,
-        seasonEnd: null,
-        priceOverride: null,
-        isActive: true,
-      });
+      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, operatorId: 'opX' });
+      prisma.availabilitySchedule.create.mockResolvedValue(scheduleRow({ id: 's2' }));
       const res = await svc.createSchedule('admin', Role.ADMIN, createDto);
       expect(res.id).toBe('s2');
       expect(prisma.operator.findUnique).not.toHaveBeenCalled();
@@ -124,15 +134,23 @@ describe('AvailabilityService', () => {
         svc.createSchedule('u1', Role.TOUR_OPERATOR, createDto),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
+
+    it('rejects a startTime outside the tour slot set', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.createSchedule('u1', Role.TOUR_OPERATOR, { ...createDto, startTime: '10:30' }),
+      ).rejects.toThrow(/slot set/);
+    });
   });
 
   describe('checkAvailability', () => {
-    it('returns only live-bookable slots with enough vacancies', async () => {
-      prisma.tour.findFirst.mockResolvedValue({ timeZone: 'America/Curacao' });
+    it('returns only live-bookable slots with enough seats left', async () => {
+      prisma.tour.findFirst.mockResolvedValue(TOUR);
       prisma.departure.findMany.mockResolvedValue([
-        departureRow({ id: 'ok', vacancies: 5 }),
-        departureRow({ id: 'soldout', vacancies: 0, status: 'SOLD_OUT' }),
-        departureRow({ id: 'tooFew', vacancies: 1 }),
+        departureRow({ id: 'ok', bookedCount: 5 }), // 5 left
+        departureRow({ id: 'soldout', bookedCount: 10, status: 'SOLD_OUT' }), // 0 left
+        departureRow({ id: 'tooFew', bookedCount: 9 }), // 1 left
       ]);
 
       const res = await svc.checkAvailability({
@@ -148,26 +166,21 @@ describe('AvailabilityService', () => {
     it('throws 404 when the tour is not LIVE/active', async () => {
       prisma.tour.findFirst.mockResolvedValue(null);
       await expect(
-        svc.checkAvailability({
-          tourId: 't1',
-          dateFrom: '2030-06-01',
-          dateTo: '2030-06-30',
-        }),
+        svc.checkAvailability({ tourId: 't1', dateFrom: '2030-06-01', dateTo: '2030-06-30' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
   describe('calendar', () => {
-    it('aggregates departures per day', async () => {
-      prisma.tour.findFirst.mockResolvedValue({ timeZone: 'America/Curacao' });
+    it('aggregates departures per day and discloses low remaining only', async () => {
+      prisma.tour.findFirst.mockResolvedValue(TOUR);
       prisma.departure.findMany.mockResolvedValue([
-        departureRow({ id: 'a', vacancies: 5, capacity: 10 }),
+        departureRow({ id: 'a', bookedCount: 5, capacity: 10 }), // 5 left (hidden)
         departureRow({
           id: 'b',
-          vacancies: 2,
-          capacity: 10,
-          status: 'LIMITED',
-          localDateTimeStart: new Date('2030-06-05T13:00:00.000Z'),
+          bookedCount: 8,
+          capacity: 10, // 2 left (disclosed)
+          startTime: time('13:00'),
         }),
       ]);
 
@@ -181,24 +194,21 @@ describe('AvailabilityService', () => {
       expect(res[0]).toMatchObject({
         date: '2030-06-05',
         available: true,
-        status: 'AVAILABLE',
-        vacancies: 7,
-        capacity: 20,
+        status: 'OPEN',
+        remaining: 2,
         departureCount: 2,
       });
     });
   });
 
   describe('updateDeparture', () => {
-    it('preserves booked seats, recomputes vacancies, and flags manuallyEdited', async () => {
+    it('preserves booked seats, re-derives status, and flags manuallyEdited', async () => {
       prisma.departure.findUnique.mockResolvedValue(
-        departureRow({ capacity: 10, vacancies: 7 }), // 3 booked
+        departureRow({ capacity: 10, bookedCount: 7 }),
       );
-      prisma.tour.findUnique.mockResolvedValue({ operatorId: 'op1' });
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      prisma.departure.update.mockImplementation(({ data }) =>
-        departureRow({ ...data }),
-      );
+      prisma.departure.update.mockImplementation(({ data }) => departureRow({ ...data }));
 
       await svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', { capacity: 12 });
 
@@ -207,7 +217,7 @@ describe('AvailabilityService', () => {
           where: { id: 'd1' },
           data: expect.objectContaining({
             capacity: 12,
-            vacancies: 9,
+            status: 'OPEN',
             manuallyEdited: true,
           }),
         }),
@@ -216,16 +226,14 @@ describe('AvailabilityService', () => {
   });
 
   describe('computeIsBookable', () => {
-    it('is true when a bookable departure exists in the horizon', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ timeZone: 'America/Curacao' });
-      prisma.departure.findMany.mockResolvedValue([
-        departureRow({ vacancies: 4, utcCutoffAt: FUTURE }),
-      ]);
+    it('is true when an OPEN, non-cutoff departure exists in the horizon', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.departure.findMany.mockResolvedValue([departureRow({ bookedCount: 4 })]);
       expect(await svc.computeIsBookable('t1')).toBe(true);
     });
 
     it('is false when there are no bookable departures', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ timeZone: 'America/Curacao' });
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.departure.findMany.mockResolvedValue([]);
       expect(await svc.computeIsBookable('t1')).toBe(false);
     });

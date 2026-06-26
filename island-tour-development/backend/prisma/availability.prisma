@@ -1,65 +1,69 @@
-// Availability domain — recurring schedules + date exceptions materialize into
-// Departure rows, which are the single source of truth for bookable inventory
-// (= OCTO Availability). See OCTO-AVAILABILITY-AND-BOOKING.md.
+// Availability domain (master E.9) — weekly schedules + date exceptions
+// materialize into Departure rows, the single source of truth for bookable
+// inventory. Capacity lives per departure, never on the tour or schedule.
 
-// Recurring availability rule (operator-authored)
+// Recurring weekly pattern (operator-authored). One row per tour × weekday ×
+// startTime; the Tour.startTimes[] slot set defines which times are allowed.
 model AvailabilitySchedule {
-  id            String    @id @default(uuid())
-  tourId        String
-  weekdays      Int[]     @default([]) // 0=Sun … 6=Sat
-  startTimes    String[]  @default([]) // ["09:00","13:00"]
-  capacity      Int
-  seasonStart   DateTime? @db.Date
-  seasonEnd     DateTime? @db.Date
-  priceOverride Decimal?  @db.Decimal(10, 2)
-  isActive      Boolean   @default(true)
+  id        String   @id @default(uuid())
+  tourId    String
+  weekday   Int      @db.SmallInt // 0=Monday … 6=Sunday (tour-local)
+  startTime DateTime @db.Time(0) // must exist in Tour.startTimes[]
+
+  capacityOverride Int? // null = Tour.maxPartySize default
+  validFrom        DateTime                   @db.Date
+  validUntil       DateTime?                  @db.Date
+  status           AvailabilityScheduleStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
-  @@index([tourId])
+  @@unique([tourId, weekday, startTime, validFrom])
+  @@index([tourId, weekday, status])
   @@map("availability_schedules")
 }
 
-// Date-specific override
+// Date-specific deviation. close_date / close_slot are stop-sell actions;
+// add_slot creates an extra departure, set_capacity overrides one date/slot.
 model AvailabilityException {
-  id            String                    @id @default(uuid())
-  tourId        String
-  date          DateTime                  @db.Date
-  type          AvailabilityExceptionType
-  startTime     String? // for EXTRA_DEPARTURE / TIME_OVERRIDE
-  capacity      Int? // for CAPACITY_OVERRIDE
-  priceOverride Decimal?                  @db.Decimal(10, 2)
-  note          String?
+  id        String                    @id @default(uuid())
+  tourId    String
+  date      DateTime                  @db.Date
+  startTime DateTime?                 @db.Time(0) // null = whole date
+  type      AvailabilityExceptionType
+  capacity  Int? // for add_slot / set_capacity
+  note      String?
+  createdBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
   @@index([tourId, date])
+  @@index([tourId, date, startTime])
   @@map("availability_exceptions")
 }
 
-// Materialized bookable slot (= OCTO Availability). Inventory source of truth.
-// vacancies is the atomic counter; a DB CHECK (vacancies >= 0) is the overbooking backstop.
+// Materialized truth: one concrete bookable instance per tour × date × startTime.
+// Booking claims increment bookedCount atomically and can flip status to SOLD_OUT.
 model Departure {
   id     String @id @default(uuid())
   tourId String
 
-  localDateTimeStart DateTime
-  localDateTimeEnd   DateTime?
-  allDay             Boolean            @default(false)
-  capacity           Int
-  vacancies          Int // atomic counter; CHECK (vacancies >= 0)
-  status             AvailabilityStatus @default(AVAILABLE)
-  utcCutoffAt        DateTime
-  priceOverride      Decimal?           @db.Decimal(10, 2)
+  date      DateTime @db.Date
+  startTime DateTime @db.Time(0)
 
-  // ── Operational (master E.9) ──
-  soldOutAt      DateTime? // when it flipped SOLD_OUT (demand signal)
-  source         String    @default("schedule") // schedule | exception | api
-  manuallyEdited Boolean   @default(false) // protect from re-materialization overwrite
-  externalRef    String? // operator/external system id when source = api
+  capacity    Int
+  bookedCount Int             @default(0)
+  status      DepartureStatus @default(OPEN)
+  soldOutAt   DateTime? // stamped once when the row fills; feeds demand signals
+
+  source         DepartureSource @default(SCHEDULE)
+  externalRef    String? // operator/external system id when source = API
+  manuallyEdited Boolean         @default(false) // protects from re-materialization
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -67,8 +71,8 @@ model Departure {
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
-  @@unique([tourId, localDateTimeStart])
-  @@index([tourId, localDateTimeStart])
-  @@index([status])
+  @@unique([tourId, date, startTime])
+  @@index([tourId, date])
+  @@index([tourId, status, date])
   @@map("departures")
 }

@@ -162,17 +162,64 @@ export class PaymentsService {
     }
   }
 
+  // ── Mollie webhook settlement (idempotent ledger, mirrors Stripe) ────────────
+
+  /**
+   * Record a Mollie webhook delivery idempotently. Mollie posts only a payment id;
+   * the ledger row (keyed by that id) makes redelivery a no-op — mirroring the Stripe
+   * `stripe_webhook_events` guard (master rule #15).
+   *
+   * TODO(payments): full reconciliation — fetch the Mollie payment by id, map its
+   * status, update the matching `Payment` row, and call `confirmFromPayment` on
+   * success (parallel to `onIntentSucceeded`). Wiring the Mollie API client lands
+   * with the Mollie checkout flow.
+   */
+  async handleMollieWebhook(paymentId: string): Promise<void> {
+    if (!paymentId) throw new BadRequestException('Missing Mollie payment id');
+
+    try {
+      await this.prisma.mollieWebhookEvent.create({
+        data: {
+          id: paymentId,
+          type: 'payment',
+          payload: { id: paymentId } as unknown as Prisma.InputJsonValue,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        this.logger.log(`Mollie payment ${paymentId} already processed - skipping`);
+        return;
+      }
+      throw err;
+    }
+
+    // No-op for now beyond recording; mark processed so it is not re-handled.
+    await this.prisma.mollieWebhookEvent.update({
+      where: { id: paymentId },
+      data: { processedAt: new Date() },
+    });
+    this.logger.log(`Mollie webhook recorded for payment ${paymentId} (reconciliation pending)`);
+  }
+
   // ── internals ──────────────────────────────────────────────────────────────
 
   private async onIntentSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
     const bookingId = intent.metadata?.bookingId;
     const charge = expandedCharge(intent);
 
+    // Which method the customer used (card / paypal / apple_pay / google_pay) — Figma.
+    const methodType =
+      charge?.payment_method_details?.type ??
+      (typeof intent.payment_method === 'object'
+        ? (intent.payment_method?.type ?? null)
+        : null);
+
     await this.prisma.payment.updateMany({
       where: { intentId: intent.id },
       data: {
         status: PaymentStatus.SUCCEEDED,
         chargeId: typeof intent.latest_charge === 'string' ? intent.latest_charge : charge?.id,
+        ...(methodType ? { methodType } : {}),
       },
     });
 
