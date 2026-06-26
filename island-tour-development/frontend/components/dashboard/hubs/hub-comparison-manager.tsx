@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { ColumnsIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,23 +43,24 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
 
   const [groups, setGroups] = useState<DraftGroup[]>([]);
 
-  useEffect(() => {
-    if (data) {
-      setGroups(
-        data.groups.map((g) => ({
-          key: nextKey('group'),
-          groupName: g.groupName,
-          displayOrder: g.displayOrder,
-          tours: g.tours.map((t) => ({
-            key: nextKey('tour'),
-            tourId: t.tour.id,
-            standoutNote: t.standoutNote ?? '',
-            displayOrder: t.displayOrder,
-          })),
-        }))
-      );
-    }
-  }, [data]);
+  // Seed local edit state from the loaded comparison (render-time, reference-guarded).
+  const [seededFrom, setSeededFrom] = useState<typeof data>(undefined);
+  if (data && data !== seededFrom) {
+    setSeededFrom(data);
+    setGroups(
+      data.groups.map((g) => ({
+        key: nextKey('group'),
+        groupName: g.groupName,
+        displayOrder: g.displayOrder,
+        tours: g.tours.map((t) => ({
+          key: nextKey('tour'),
+          tourId: t.tour.id,
+          standoutNote: t.standoutNote ?? '',
+          displayOrder: t.displayOrder,
+        })),
+      }))
+    );
+  }
 
   function updateGroup(key: string, patch: Partial<Omit<DraftGroup, 'tours'>>) {
     setGroups((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));

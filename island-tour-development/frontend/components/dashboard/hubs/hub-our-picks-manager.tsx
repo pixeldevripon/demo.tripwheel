@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { PlusIcon, StarIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,19 +48,20 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
 
   const [rows, setRows] = useState<DraftPick[]>([]);
 
-  useEffect(() => {
-    if (data) {
-      setRows(
-        data.ourPicks.map((p) => ({
-          key: nextKey(),
-          tourId: p.tour.id,
-          pickType: p.pickType,
-          description: p.description,
-          displayOrder: p.displayOrder,
-        }))
-      );
-    }
-  }, [data]);
+  // Seed local edit state from the loaded picks (render-time, reference-guarded).
+  const [seededFrom, setSeededFrom] = useState<typeof data>(undefined);
+  if (data && data !== seededFrom) {
+    setSeededFrom(data);
+    setRows(
+      data.ourPicks.map((p) => ({
+        key: nextKey(),
+        tourId: p.tour.id,
+        pickType: p.pickType,
+        description: p.description,
+        displayOrder: p.displayOrder,
+      }))
+    );
+  }
 
   function updateRow(key: string, patch: Partial<DraftPick>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { LayersIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,11 +54,13 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
   const [rows, setRows] = useState<DraftSection[]>([]);
   const [localeFilter, setLocaleFilter] = useState<string>('all');
 
-  useEffect(() => {
-    if (data) {
-      setRows(data.map((s) => ({ ...s, key: nextKey() })));
-    }
-  }, [data]);
+  // Seed local edit state from the loaded set. Setting state during render (guarded
+  // by a reference check) is React's sanctioned alternative to a setState-in-effect.
+  const [seededFrom, setSeededFrom] = useState<typeof data>(undefined);
+  if (data && data !== seededFrom) {
+    setSeededFrom(data);
+    setRows(data.map((s) => ({ ...s, key: nextKey() })));
+  }
 
   function updateRow(key: string, patch: Partial<DraftSection>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
