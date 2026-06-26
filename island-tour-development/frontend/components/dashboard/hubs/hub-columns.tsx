@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
 import type { HubLocalized } from '@/types/hub';
+import { HUB_STATUS_LABELS, type HubStatus } from '@/types/enums';
 import { HubRowActions } from './hub-row-actions';
+
+const statusVariant: Record<HubStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  DRAFT: 'secondary',
+  PUBLISHED: 'default',
+  ARCHIVED: 'destructive',
+};
 
 interface HubColumnsOptions {
   destinationsMap: Map<string, string>;
@@ -92,8 +99,17 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
       enableSorting: true,
     },
     {
-      accessorKey: 'isActive',
+      accessorKey: 'status',
       header: 'Status',
+      cell: ({ row }) => {
+        const status = row.original.status;
+        return <Badge variant={statusVariant[status]}>{HUB_STATUS_LABELS[status]}</Badge>;
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'isActive',
+      header: 'Active',
       cell: ({ row }) => {
         const isActive = row.original.isActive;
         return (

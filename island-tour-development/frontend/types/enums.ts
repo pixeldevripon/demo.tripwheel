@@ -15,6 +15,64 @@ export type HubType = 'LOCATION' | 'HIGHLIGHT' | 'AREA';
 
 export const HUB_TYPE_VALUES: HubType[] = ['LOCATION', 'HIGHLIGHT', 'AREA'];
 
+/** Human label for each hub type (selectors / badges). */
+export const HUB_TYPE_LABELS: Record<HubType, string> = {
+  LOCATION: 'Location',
+  HIGHLIGHT: 'Highlight',
+  AREA: 'Area',
+};
+
+// Hub publish lifecycle (G6). New hubs default to DRAFT; promote to PUBLISHED via
+// PATCH once the publish guard passes. Distinct from `isActive` (soft-delete).
+export type HubStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export const HUB_STATUS_VALUES: HubStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+
+export const HUB_STATUS_LABELS: Record<HubStatus, string> = {
+  DRAFT: 'Draft',
+  PUBLISHED: 'Published',
+  ARCHIVED: 'Archived',
+};
+
+// Hub editorial content blocks (HUB-DATA §5). DISCOVER + LOCAL_TIP (en) are
+// required for PUBLISHED; FAST_FACT feeds the hero bar.
+export type HubSectionType = 'DISCOVER' | 'LOCAL_TIP' | 'FAST_FACT' | 'EDITORIAL';
+
+export const HUB_SECTION_TYPE_VALUES: HubSectionType[] = [
+  'DISCOVER',
+  'LOCAL_TIP',
+  'FAST_FACT',
+  'EDITORIAL',
+];
+
+export const HUB_SECTION_TYPE_LABELS: Record<HubSectionType, string> = {
+  DISCOVER: 'Discover',
+  LOCAL_TIP: 'Local Tip',
+  FAST_FACT: 'Fast Fact',
+  EDITORIAL: 'Editorial',
+};
+
+// Our Picks classification.
+export type HubPickType =
+  | 'BEST_OVERALL'
+  | 'MOST_POPULAR'
+  | 'BEST_FOR_FAMILIES'
+  | 'BEST_VALUE';
+
+export const HUB_PICK_TYPE_VALUES: HubPickType[] = [
+  'BEST_OVERALL',
+  'MOST_POPULAR',
+  'BEST_FOR_FAMILIES',
+  'BEST_VALUE',
+];
+
+export const HUB_PICK_TYPE_LABELS: Record<HubPickType, string> = {
+  BEST_OVERALL: 'Best Overall',
+  MOST_POPULAR: 'Most Popular',
+  BEST_FOR_FAMILIES: 'Best for Families',
+  BEST_VALUE: 'Best Value',
+};
+
 // Supported currencies (ISO 4217) - must match the backend Prisma `Currency` enum.
 export type Currency =
   | 'USD'

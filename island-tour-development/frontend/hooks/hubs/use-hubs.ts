@@ -11,6 +11,9 @@ import type {
   UpdateHubFaqPayload,
   UpsertHubPageContentPayload,
   UpsertHubTranslationPayload,
+  ReplaceContentSectionsPayload,
+  SetOurPicksPayload,
+  SetComparisonPayload,
 } from '@/types/hub';
 
 export const hubKeys = {
@@ -25,6 +28,10 @@ export const hubKeys = {
   pageContent: (id: string, locale?: Locale) => [...hubKeys.all, 'page-content', id, locale] as const,
   faqs: (id: string, locale?: Locale) => [...hubKeys.all, 'faqs', id, locale] as const,
   allowedCategories: (id: string) => [...hubKeys.all, 'allowed-categories', id] as const,
+  contentSections: (id: string, locale?: Locale) =>
+    [...hubKeys.all, 'content-sections', id, locale] as const,
+  ourPicks: (id: string, locale?: Locale) => [...hubKeys.all, 'our-picks', id, locale] as const,
+  comparison: (id: string, locale?: Locale) => [...hubKeys.all, 'comparison', id, locale] as const,
 };
 
 export function useHubs(params: HubsQueryParams = {}) {
@@ -251,6 +258,69 @@ export function useRemoveHubAllowedCategory() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: hubKeys.allowedCategories(variables.id) });
       queryClient.invalidateQueries({ queryKey: hubKeys.detail(variables.id) });
+    },
+  });
+}
+
+// ── Content sections ────────────────────────────────────────────────────────────
+
+export function useHubContentSections(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.contentSections(id, locale),
+    queryFn: () => hubsApi.getContentSections(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useReplaceHubContentSections() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: ReplaceContentSectionsPayload }) =>
+      hubsApi.replaceContentSections(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.contentSections(variables.id) });
+    },
+  });
+}
+
+// ── Our Picks ─────────────────────────────────────────────────────────────────
+
+export function useHubOurPicks(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.ourPicks(id, locale),
+    queryFn: () => hubsApi.getOurPicks(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useSetHubOurPicks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: SetOurPicksPayload }) =>
+      hubsApi.setOurPicks(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicks(variables.id) });
+    },
+  });
+}
+
+// ── Comparison ──────────────────────────────────────────────────────────────
+
+export function useHubComparison(id: string, locale?: Locale) {
+  return useQuery({
+    queryKey: hubKeys.comparison(id, locale),
+    queryFn: () => hubsApi.getComparison(id, locale),
+    enabled: !!id,
+  });
+}
+
+export function useSetHubComparison() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: SetComparisonPayload }) =>
+      hubsApi.setComparison(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
     },
   });
 }

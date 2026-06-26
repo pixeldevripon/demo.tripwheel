@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
 import { useCreateHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import type { HubDetail } from '@/types/hub';
@@ -42,6 +43,8 @@ const hubSchema = z.object({
     .refine(v => !v || /^[a-z0-9-]+$/.test(v), 'Slug may only contain lowercase letters, numbers, and hyphens')
     .refine(v => !v || v.length >= 2, 'Slug must be at least 2 characters'),
   description: z.string().optional(),
+  heroImage: z.string().optional(),
+  ogImage: z.string().optional(),
   hubType: z.enum(HUB_TYPE_VALUES as [string, ...string[]], { message: 'Hub type is required' }),
   latitude: z
     .string()
@@ -86,6 +89,8 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
       name: hub?.name ?? '',
       slug: hub?.slug ?? '',
       description: hub?.description ?? '',
+      heroImage: hub?.heroImage ?? '',
+      ogImage: hub?.ogImage ?? '',
       hubType: hub?.hubType ?? undefined,
       latitude: hub?.latitude?.toString() ?? '',
       longitude: hub?.longitude?.toString() ?? '',
@@ -96,6 +101,8 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
   const isActiveValue = watch('isActive');
   const destinationIdValue = watch('destinationId');
   const hubTypeValue = watch('hubType');
+  const heroImageValue = watch('heroImage');
+  const ogImageValue = watch('ogImage');
 
   const num = (v: string | undefined) =>
     v === '' || v === undefined ? null : Number(v);
@@ -110,6 +117,9 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             // Omit when blank so the backend never attempts an empty rename.
             slug: values.slug || undefined,
             description: values.description || null,
+            // null when cleared (backend @IsUrl skips null via @IsOptional).
+            heroImage: values.heroImage || null,
+            ogImage: values.ogImage || null,
             hubType: values.hubType as HubDetail['hubType'] ?? undefined,
             latitude: num(values.latitude),
             longitude: num(values.longitude),
@@ -132,6 +142,8 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           destinationId: values.destinationId,
           name: values.name,
           description: values.description || null,
+          heroImage: values.heroImage || null,
+          ogImage: values.ogImage || null,
           hubType: values.hubType as NonNullable<HubDetail['hubType']>,
           latitude: num(values.latitude),
           longitude: num(values.longitude),
@@ -232,6 +244,29 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
               />
               <FieldDescription>
                 Short description shown in hub listings and previews.
+              </FieldDescription>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Hero Image</Label>
+              <ImageSelectorField
+                value={heroImageValue || null}
+                onChange={(url) => setValue('heroImage', url ?? '')}
+              />
+              <FieldDescription>
+                Full-bleed hero - the hub&apos;s defining visual. Required before the hub can be
+                published.
+              </FieldDescription>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Open Graph Image</Label>
+              <ImageSelectorField
+                value={ogImageValue || null}
+                onChange={(url) => setValue('ogImage', url ?? '')}
+              />
+              <FieldDescription>
+                Social-share preview image (Open Graph). Falls back to the hero image when unset.
               </FieldDescription>
             </Field>
 

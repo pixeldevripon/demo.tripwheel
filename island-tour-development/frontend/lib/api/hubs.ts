@@ -13,6 +13,15 @@ import type {
   UpdateHubFaqPayload,
   UpsertHubPageContentPayload,
   UpsertHubTranslationPayload,
+  HubContentSection,
+  ReplaceContentSectionsPayload,
+  ReplaceContentSectionsResponse,
+  HubOurPick,
+  SetOurPicksPayload,
+  SetOurPicksResponse,
+  ComparisonGroupItem,
+  SetComparisonPayload,
+  SetComparisonResponse,
   Locale,
 } from '@/types/hub';
 
@@ -164,6 +173,48 @@ export const hubsApi = {
   removeAllowedCategory(id: string, categoryId: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/hubs/${id}/allowed-categories/${categoryId}`, {
       method: 'DELETE',
+    });
+  },
+
+  // ── Content sections ────────────────────────────────────────────────────────
+  getContentSections(id: string, locale?: Locale): Promise<HubContentSection[]> {
+    const query = buildQuery({ locale: locale ?? undefined });
+    return apiFetch<HubContentSection[]>(`/hubs/${id}/content-sections${query}`);
+  },
+
+  replaceContentSections(
+    id: string,
+    payload: ReplaceContentSectionsPayload
+  ): Promise<ReplaceContentSectionsResponse> {
+    return apiFetch<ReplaceContentSectionsResponse>(`/hubs/${id}/content-sections`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Our Picks ─────────────────────────────────────────────────────────────────
+  getOurPicks(id: string, locale?: Locale): Promise<SetOurPicksResponse> {
+    const query = buildQuery({ locale: locale ?? undefined });
+    return apiFetch<SetOurPicksResponse>(`/hubs/${id}/our-picks${query}`);
+  },
+
+  setOurPicks(id: string, payload: SetOurPicksPayload): Promise<SetOurPicksResponse> {
+    return apiFetch<SetOurPicksResponse>(`/hubs/${id}/our-picks`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Comparison ──────────────────────────────────────────────────────────────
+  getComparison(id: string, locale?: Locale): Promise<SetComparisonResponse> {
+    const query = buildQuery({ locale: locale ?? undefined });
+    return apiFetch<SetComparisonResponse>(`/hubs/${id}/comparison${query}`);
+  },
+
+  setComparison(id: string, payload: SetComparisonPayload): Promise<SetComparisonResponse> {
+    return apiFetch<SetComparisonResponse>(`/hubs/${id}/comparison`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     });
   },
 };
