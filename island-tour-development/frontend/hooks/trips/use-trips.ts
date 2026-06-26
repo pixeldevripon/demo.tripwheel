@@ -9,6 +9,9 @@ import type {
   CreateTourHighlightPayload,
   CreateTourInclusionPayload,
   CreateTourExclusionPayload,
+  CreateTourFeaturePayload,
+  CreateTourLocationPayload,
+  CreatePickupLocationPayload,
   CreateTourSchedulePayload,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -18,11 +21,17 @@ import type {
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourExclusionPayload,
+  UpdateTourFeaturePayload,
+  UpdateTourLocationPayload,
+  UpdatePickupLocationPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
   UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
   UpsertExclusionTranslationPayload,
+  UpsertFeatureTranslationPayload,
+  UpsertLocationTranslationPayload,
+  UpsertPickupLocationTranslationPayload,
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
@@ -39,6 +48,9 @@ export const tripKeys = {
   highlights: (tripId: string) => [...tripKeys.all, 'highlights', tripId] as const,
   inclusions: (tripId: string) => [...tripKeys.all, 'inclusions', tripId] as const,
   exclusions: (tripId: string) => [...tripKeys.all, 'exclusions', tripId] as const,
+  features: (tripId: string) => [...tripKeys.all, 'features', tripId] as const,
+  locations: (tripId: string) => [...tripKeys.all, 'locations', tripId] as const,
+  pickupLocations: (tripId: string) => [...tripKeys.all, 'pickup-locations', tripId] as const,
   translations: (tripId: string) => [...tripKeys.all, 'translations', tripId] as const,
   translationByLocale: (tripId: string, locale: string) => [...tripKeys.translations(tripId), locale] as const,
   schedules: (tripId: string) => [...tripKeys.all, 'schedules', tripId] as const,
@@ -121,6 +133,30 @@ export function useExclusions(tripId: string) {
   return useQuery({
     queryKey: tripKeys.exclusions(tripId),
     queryFn: () => tripsApi.getExclusions(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function useFeatures(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.features(tripId),
+    queryFn: () => tripsApi.getFeatures(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function useLocations(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.locations(tripId),
+    queryFn: () => tripsApi.getLocations(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function usePickupLocations(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.pickupLocations(tripId),
+    queryFn: () => tripsApi.getPickupLocations(tripId),
     enabled: !!tripId,
   });
 }
@@ -567,6 +603,201 @@ export function useDeleteExclusionTranslation() {
       tripsApi.deleteExclusionTranslation(tripId, exclusionId, locale),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
+    },
+  });
+}
+
+// Mutations - Features
+export function useAddFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourFeaturePayload }) =>
+      tripsApi.addFeature(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, featureId, payload }: { tripId: string; featureId: string; payload: UpdateTourFeaturePayload }) =>
+      tripsApi.updateFeature(tripId, featureId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, featureId }: { tripId: string; featureId: string }) =>
+      tripsApi.removeFeature(tripId, featureId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
+    },
+  });
+}
+
+export function useUpsertFeatureTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      featureId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      featureId: string;
+      locale: string;
+      payload: UpsertFeatureTranslationPayload;
+    }) => tripsApi.upsertFeatureTranslation(tripId, featureId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
+    },
+  });
+}
+
+export function useDeleteFeatureTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, featureId, locale }: { tripId: string; featureId: string; locale: string }) =>
+      tripsApi.deleteFeatureTranslation(tripId, featureId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
+    },
+  });
+}
+
+// Mutations - Locations
+export function useAddLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourLocationPayload }) =>
+      tripsApi.addLocation(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, locationId, payload }: { tripId: string; locationId: string; payload: UpdateTourLocationPayload }) =>
+      tripsApi.updateLocation(tripId, locationId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, locationId }: { tripId: string; locationId: string }) =>
+      tripsApi.removeLocation(tripId, locationId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
+    },
+  });
+}
+
+export function useUpsertLocationTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      locationId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      locationId: string;
+      locale: string;
+      payload: UpsertLocationTranslationPayload;
+    }) => tripsApi.upsertLocationTranslation(tripId, locationId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
+    },
+  });
+}
+
+export function useDeleteLocationTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, locationId, locale }: { tripId: string; locationId: string; locale: string }) =>
+      tripsApi.deleteLocationTranslation(tripId, locationId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
+    },
+  });
+}
+
+// Mutations - Pickup Locations
+export function useAddPickupLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreatePickupLocationPayload }) =>
+      tripsApi.addPickupLocation(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdatePickupLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, pickupLocationId, payload }: { tripId: string; pickupLocationId: string; payload: UpdatePickupLocationPayload }) =>
+      tripsApi.updatePickupLocation(tripId, pickupLocationId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
+    },
+  });
+}
+
+export function useRemovePickupLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, pickupLocationId }: { tripId: string; pickupLocationId: string }) =>
+      tripsApi.removePickupLocation(tripId, pickupLocationId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
+    },
+  });
+}
+
+export function useUpsertPickupLocationTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      pickupLocationId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      pickupLocationId: string;
+      locale: string;
+      payload: UpsertPickupLocationTranslationPayload;
+    }) => tripsApi.upsertPickupLocationTranslation(tripId, pickupLocationId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
+    },
+  });
+}
+
+export function useDeletePickupLocationTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, pickupLocationId, locale }: { tripId: string; pickupLocationId: string; locale: string }) =>
+      tripsApi.deletePickupLocationTranslation(tripId, pickupLocationId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
     },
   });
 }

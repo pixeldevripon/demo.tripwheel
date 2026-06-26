@@ -11,6 +11,19 @@ export type PaymentModel = 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OP
 export type TourBookingType = 'PRIVATE' | 'SHARED';
 export type FitnessLevel = 'EASY' | 'MODERATE' | 'CHALLENGING';
 export type ExclusionType = 'PAID_ADVANCE' | 'PAID_ONSITE' | 'UNAVAILABLE' | 'NOT_PERMITTED';
+// Feature types (master E.3). INCLUSION/EXCLUSION/HIGHLIGHT have dedicated tables/tabs;
+// the dashboard Features tab only manages the informational + terms variants below.
+export type FeatureType =
+  | 'INCLUSION'
+  | 'EXCLUSION'
+  | 'HIGHLIGHT'
+  | 'PREBOOKING_INFORMATION'
+  | 'PREARRIVAL_INFORMATION'
+  | 'REDEMPTION_INSTRUCTION'
+  | 'ACCESSIBILITY_INFORMATION'
+  | 'ADDITIONAL_INFORMATION'
+  | 'BOOKING_TERM'
+  | 'CANCELLATION_TERM';
 export type TierKey = 'premium' | 'featured' | 'boosted' | 'organic' | 'standard';
 export type EligibilityState = 'LOCKED' | 'PROVISIONAL' | 'ELIGIBLE' | 'GRACE' | 'DEMOTED';
 export type Currency = 'USD' | 'EUR';
@@ -50,6 +63,7 @@ export interface TripListItem {
   minPartySize: number;
   bookingCutoffMinutes: number;
   cancellationHours: number;
+  checkInMinutesBefore: number | null;
   instantConfirmation: boolean;
 
   // Booking / payment (master E.3)
@@ -84,6 +98,9 @@ export interface TripListItem {
   // SEO overrides
   h1Override: string | null;
   breadcrumbLabel: string | null;
+  ogImage: string | null;
+  // Operator's external reference (OCTO product id)
+  reference: string | null;
 
   // Ratings + CRO signals (0/null until the bookings module ships)
   aggregateRating: number | null;
@@ -230,17 +247,81 @@ export interface TourExclusion {
   translations: TourExclusionTranslation[];
 }
 
+export interface TourFeatureTranslation {
+  locale: string;
+  text: string;
+  isMachineTranslated: boolean;
+}
+
+export interface TourFeature {
+  id: string;
+  tourId: string;
+  type: FeatureType;
+  displayOrder: number;
+  translations: TourFeatureTranslation[];
+}
+
+export interface TourLocationTranslation {
+  locale: string;
+  title: string;
+  shortDescription: string | null;
+  isMachineTranslated: boolean;
+}
+
+export interface TourLocation {
+  id: string;
+  tourId: string;
+  types: string[]; // e.g. ['START'], ['ITINERARY_ITEM'], ['END'], ['POI']
+  latitude: number | null;
+  longitude: number | null;
+  streetAddress: string | null;
+  addressLocality: string | null;
+  addressRegion: string | null;
+  postalCode: string | null;
+  addressCountry: string | null;
+  minutesTo: number | null;
+  minutesAt: number | null;
+  displayOrder: number;
+  translations: TourLocationTranslation[];
+}
+
+export interface PickupLocationTranslation {
+  locale: string;
+  title: string;
+  directions: string | null;
+  isMachineTranslated: boolean;
+}
+
+export interface PickupLocation {
+  id: string;
+  tourId: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  minutesPrior: number | null;
+  windowStart: string | null; // 'HH:MM'
+  windowEnd: string | null; // 'HH:MM'
+  displayOrder: number;
+  isActive: boolean;
+  translations: PickupLocationTranslation[];
+}
+
 export interface TripTranslation {
   locale: string;
   title: string | null;
   overview: string | null;
   description: string | null;
   shortDescription: string | null;
-  whatToBring: string | null;
-  knowBeforeYouGo: string | null;
-  notSuitableFor: string | null;
+  whatToBring: string[];
+  knowBeforeYouGo: string[];
+  notSuitableFor: string[];
+  whatToExpectIntro: string | null;
+  categoryDisplay: string | null;
   localTip: string | null;
   meetingPointText: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
   isMachineTranslated: boolean;
   updatedAt: string;
 }
@@ -306,7 +387,9 @@ export interface CreateTripPayload {
   wheelchairAccessible?: boolean;
   familyFriendly?: boolean;
   suitableForBeginners?: boolean;
+  checkInMinutesBefore?: number;
   reference?: string;
+  ogImage?: string;
   h1Override?: string;
   breadcrumbLabel?: string;
 }
@@ -343,7 +426,9 @@ export interface UpdateTripPayload {
   familyFriendly?: boolean;
   suitableForBeginners?: boolean;
   isLocalsFavourite?: boolean;
-  reference?: string;
+  checkInMinutesBefore?: number;
+  reference?: string | null;
+  ogImage?: string | null;
   h1Override?: string | null;
   breadcrumbLabel?: string | null;
   isActive?: boolean;
@@ -470,11 +555,102 @@ export interface UpsertTripTranslationPayload {
   overview?: string | null;
   description?: string | null;
   shortDescription?: string | null;
-  whatToBring?: string | null;
-  knowBeforeYouGo?: string | null;
-  notSuitableFor?: string | null;
+  // Backend expects string arrays (one item per entry), NOT a single blob.
+  whatToBring?: string[];
+  knowBeforeYouGo?: string[];
+  notSuitableFor?: string[];
+  whatToExpectIntro?: string | null;
+  categoryDisplay?: string | null;
   localTip?: string | null;
   meetingPointText?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  isMachineTranslated?: boolean;
+}
+
+// ── Feature payloads ──────────────────────────────────────────────────────────
+export interface CreateTourFeaturePayload {
+  type: FeatureType;
+  text: string;
+  displayOrder?: number;
+}
+
+export interface UpdateTourFeaturePayload {
+  type?: FeatureType;
+  displayOrder?: number;
+}
+
+export interface UpsertFeatureTranslationPayload {
+  text: string;
+  isMachineTranslated?: boolean;
+}
+
+// ── Location payloads ─────────────────────────────────────────────────────────
+export interface CreateTourLocationPayload {
+  types: string[];
+  title: string;
+  shortDescription?: string;
+  latitude?: number;
+  longitude?: number;
+  streetAddress?: string;
+  addressLocality?: string;
+  addressRegion?: string;
+  postalCode?: string;
+  addressCountry?: string;
+  minutesTo?: number;
+  minutesAt?: number;
+  displayOrder?: number;
+}
+
+export interface UpdateTourLocationPayload {
+  types?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  streetAddress?: string | null;
+  addressLocality?: string | null;
+  addressRegion?: string | null;
+  postalCode?: string | null;
+  addressCountry?: string | null;
+  minutesTo?: number | null;
+  minutesAt?: number | null;
+  displayOrder?: number;
+}
+
+export interface UpsertLocationTranslationPayload {
+  title: string;
+  shortDescription?: string;
+  isMachineTranslated?: boolean;
+}
+
+// ── Pickup location payloads ──────────────────────────────────────────────────
+export interface CreatePickupLocationPayload {
+  name: string;
+  title?: string;
+  directions?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  minutesPrior?: number;
+  windowStart?: string;
+  windowEnd?: string;
+  displayOrder?: number;
+}
+
+export interface UpdatePickupLocationPayload {
+  name?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  minutesPrior?: number | null;
+  windowStart?: string | null;
+  windowEnd?: string | null;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpsertPickupLocationTranslationPayload {
+  title: string;
+  directions?: string;
   isMachineTranslated?: boolean;
 }
 

@@ -29,9 +29,12 @@ import { TripAttributesTab } from './trip-attributes-tab';
 import { TripDetailShell } from './trip-detail-shell';
 import { TripDetailsTab } from './trip-details-tab';
 import { TripExclusionsTab } from './trip-exclusions-tab';
+import { TripFeaturesTab } from './trip-features-tab';
 import { TripHighlightsTab } from './trip-highlights-tab';
 import { TripImagesTab } from './trip-images-tab';
 import { TripInclusionsTab } from './trip-inclusions-tab';
+import { TripLocationsTab } from './trip-locations-tab';
+import { TripPickupLocationsTab } from './trip-pickup-locations-tab';
 import { TripPricingTab } from './trip-pricing-tab';
 import { TripSchedulesTab } from './trip-schedules-tab';
 import { TripTranslationsTab } from './trip-translations-tab';
@@ -75,6 +78,9 @@ const VALID_TABS = [
     'highlights',
     'inclusions',
     'exclusions',
+    'features',
+    'itinerary',
+    'pickups',
     'pricing',
     'attributes',
     'schedules',
@@ -308,6 +314,9 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                         </TabsTrigger>
                         <TabsTrigger value='inclusions'>Inclusions</TabsTrigger>
                         <TabsTrigger value='exclusions'>Exclusions</TabsTrigger>
+                        <TabsTrigger value='features'>Features</TabsTrigger>
+                        <TabsTrigger value='itinerary'>Itinerary</TabsTrigger>
+                        <TabsTrigger value='pickups'>Pickups</TabsTrigger>
                         <TabsTrigger value='pricing'>Pricing</TabsTrigger>
                         <TabsTrigger value='attributes'>Attributes</TabsTrigger>
                         <TabsTrigger value='schedules'>Schedules</TabsTrigger>
@@ -335,6 +344,18 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
                 <TabsContent value='exclusions'>
                     <TripExclusionsTab tripId={id} />
+                </TabsContent>
+
+                <TabsContent value='features'>
+                    <TripFeaturesTab tripId={id} />
+                </TabsContent>
+
+                <TabsContent value='itinerary'>
+                    <TripLocationsTab tripId={id} />
+                </TabsContent>
+
+                <TabsContent value='pickups'>
+                    <TripPickupLocationsTab tripId={id} />
                 </TabsContent>
 
                 <TabsContent value='pricing'>

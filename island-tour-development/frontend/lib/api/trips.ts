@@ -7,6 +7,9 @@ import type {
   CreateTourHighlightPayload,
   CreateTourInclusionPayload,
   CreateTourExclusionPayload,
+  CreateTourFeaturePayload,
+  CreateTourLocationPayload,
+  CreatePickupLocationPayload,
   CreateTourSchedulePayload,
   CreateTripPayload,
   MyTripsQueryParams,
@@ -17,6 +20,9 @@ import type {
   TourImage,
   TourInclusion,
   TourExclusion,
+  TourFeature,
+  TourLocation,
+  PickupLocation,
   TourLanguage,
   TourSchedule,
   TripListItem,
@@ -28,11 +34,17 @@ import type {
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourExclusionPayload,
+  UpdateTourFeaturePayload,
+  UpdateTourLocationPayload,
+  UpdatePickupLocationPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
   UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
   UpsertExclusionTranslationPayload,
+  UpsertFeatureTranslationPayload,
+  UpsertLocationTranslationPayload,
+  UpsertPickupLocationTranslationPayload,
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
@@ -331,6 +343,137 @@ export const tripsApi = {
 
   deleteExclusionTranslation(tripId: string, exclusionId: string, locale: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/tours/${tripId}/exclusions/${exclusionId}/translations/${locale}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Features (terms, pre-booking / pre-arrival info, redemption, accessibility, additional info)
+  getFeatures(tripId: string): Promise<TourFeature[]> {
+    return apiFetch<TourFeature[]>(`/tours/${tripId}/features`);
+  },
+
+  addFeature(tripId: string, payload: CreateTourFeaturePayload): Promise<TourFeature> {
+    return apiFetch<TourFeature>(`/tours/${tripId}/features`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateFeature(tripId: string, featureId: string, payload: UpdateTourFeaturePayload): Promise<TourFeature> {
+    return apiFetch<TourFeature>(`/tours/${tripId}/features/${featureId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removeFeature(tripId: string, featureId: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/features/${featureId}`, { method: 'DELETE' });
+  },
+
+  upsertFeatureTranslation(
+    tripId: string,
+    featureId: string,
+    locale: string,
+    payload: UpsertFeatureTranslationPayload
+  ): Promise<TourFeature> {
+    return apiFetch<TourFeature>(`/tours/${tripId}/features/${featureId}/translations/${locale}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteFeatureTranslation(tripId: string, featureId: string, locale: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/features/${featureId}/translations/${locale}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Locations (itinerary: start / itinerary item / end / point of interest)
+  getLocations(tripId: string): Promise<TourLocation[]> {
+    return apiFetch<TourLocation[]>(`/tours/${tripId}/locations`);
+  },
+
+  addLocation(tripId: string, payload: CreateTourLocationPayload): Promise<TourLocation> {
+    return apiFetch<TourLocation>(`/tours/${tripId}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateLocation(tripId: string, locationId: string, payload: UpdateTourLocationPayload): Promise<TourLocation> {
+    return apiFetch<TourLocation>(`/tours/${tripId}/locations/${locationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removeLocation(tripId: string, locationId: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/locations/${locationId}`, { method: 'DELETE' });
+  },
+
+  upsertLocationTranslation(
+    tripId: string,
+    locationId: string,
+    locale: string,
+    payload: UpsertLocationTranslationPayload
+  ): Promise<TourLocation> {
+    return apiFetch<TourLocation>(`/tours/${tripId}/locations/${locationId}/translations/${locale}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteLocationTranslation(tripId: string, locationId: string, locale: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/locations/${locationId}/translations/${locale}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Pickup locations
+  getPickupLocations(tripId: string): Promise<PickupLocation[]> {
+    return apiFetch<PickupLocation[]>(`/tours/${tripId}/pickup-locations`);
+  },
+
+  addPickupLocation(tripId: string, payload: CreatePickupLocationPayload): Promise<PickupLocation> {
+    return apiFetch<PickupLocation>(`/tours/${tripId}/pickup-locations`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updatePickupLocation(
+    tripId: string,
+    pickupLocationId: string,
+    payload: UpdatePickupLocationPayload
+  ): Promise<PickupLocation> {
+    return apiFetch<PickupLocation>(`/tours/${tripId}/pickup-locations/${pickupLocationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removePickupLocation(tripId: string, pickupLocationId: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/pickup-locations/${pickupLocationId}`, { method: 'DELETE' });
+  },
+
+  upsertPickupLocationTranslation(
+    tripId: string,
+    pickupLocationId: string,
+    locale: string,
+    payload: UpsertPickupLocationTranslationPayload
+  ): Promise<PickupLocation> {
+    return apiFetch<PickupLocation>(`/tours/${tripId}/pickup-locations/${pickupLocationId}/translations/${locale}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deletePickupLocationTranslation(
+    tripId: string,
+    pickupLocationId: string,
+    locale: string
+  ): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/pickup-locations/${pickupLocationId}/translations/${locale}`, {
       method: 'DELETE',
     });
   },

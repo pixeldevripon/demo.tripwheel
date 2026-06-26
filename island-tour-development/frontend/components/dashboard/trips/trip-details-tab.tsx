@@ -26,6 +26,7 @@ import { useUpdateTrip, useLanguages, useAddLanguage, useRemoveLanguage } from '
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
 import type { TripListItem } from '@/types/trip';
 
 const COMMON_LANGUAGES = [
@@ -220,6 +221,9 @@ const detailsSchema = z.object({
   familyFriendly: z.boolean(),
   suitableForBeginners: z.boolean(),
   isLocalsFavourite: z.boolean(),
+  checkInMinutesBefore: z.coerce.number().int().min(0).max(240).optional().or(z.literal('')),
+  reference: z.string().max(120).optional().or(z.literal('')),
+  ogImage: z.string().max(500).optional().or(z.literal('')),
   h1Override: z.string().max(200).optional().or(z.literal('')),
   breadcrumbLabel: z.string().max(60).optional().or(z.literal('')),
   isActive: z.boolean().optional(),
@@ -256,6 +260,9 @@ type DetailsFormValues = {
   familyFriendly: boolean;
   suitableForBeginners: boolean;
   isLocalsFavourite: boolean;
+  checkInMinutesBefore: string;
+  reference: string;
+  ogImage: string;
   h1Override: string;
   breadcrumbLabel: string;
   isActive: boolean;
@@ -300,6 +307,9 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     familyFriendly: trip.familyFriendly,
     suitableForBeginners: trip.suitableForBeginners,
     isLocalsFavourite: trip.isLocalsFavourite,
+    checkInMinutesBefore: trip.checkInMinutesBefore != null ? String(trip.checkInMinutesBefore) : '',
+    reference: trip.reference ?? '',
+    ogImage: trip.ogImage ?? '',
     h1Override: trip.h1Override ?? '',
     breadcrumbLabel: trip.breadcrumbLabel ?? '',
     isActive: trip.isActive,
@@ -389,6 +399,9 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           familyFriendly: values.familyFriendly,
           suitableForBeginners: values.suitableForBeginners,
           isLocalsFavourite: values.isLocalsFavourite,
+          checkInMinutesBefore: values.checkInMinutesBefore !== '' ? Number(values.checkInMinutesBefore) : undefined,
+          reference: values.reference || null,
+          ogImage: values.ogImage || null,
           h1Override: values.h1Override || null,
           breadcrumbLabel: values.breadcrumbLabel || null,
           isActive: values.isActive,
@@ -724,10 +737,18 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             </Field>
           </div>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
-            <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
+              <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
+              <FieldDescription>How long before departure bookings close.</FieldDescription>
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Check-in Before (minutes)</Label>
+              <Input {...register('checkInMinutesBefore')} type="number" min={0} max={240} placeholder="e.g. 30" />
+              <FieldDescription>How early travelers should arrive.</FieldDescription>
+            </Field>
+          </div>
 
           {/* Meeting point */}
           <div className="grid grid-cols-3 gap-4">
@@ -837,6 +858,27 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
             <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
             <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
+          </Field>
+
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Social Share Image (OG)</Label>
+            <Controller
+              name="ogImage"
+              control={control}
+              render={({ field }) => (
+                <ImageSelectorField
+                  value={field.value || null}
+                  onChange={(url) => field.onChange(url ?? '')}
+                />
+              )}
+            />
+            <FieldDescription>Image shown when this trip is shared on social media. Falls back to the hero image when empty.</FieldDescription>
+          </Field>
+
+          <Field>
+            <Label className="text-xs font-semibold uppercase">External Reference</Label>
+            <Input {...register('reference')} placeholder="Your own product code / OCTO id" />
+            <FieldDescription>Optional. Your external system&apos;s identifier for this product.</FieldDescription>
           </Field>
 
           <Field>

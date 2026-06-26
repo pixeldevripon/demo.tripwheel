@@ -21,6 +21,8 @@ import {
 } from '@/hooks/trips/use-trips';
 import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 
+// The three list fields are typed as `string[]` by the backend. We edit them as a
+// textarea (one item per line) and convert on save / load.
 const tripTranslationSchema = z.object({
   title: z.string().max(120).optional().or(z.literal('')),
   overview: z.string().max(3000).optional().or(z.literal('')),
@@ -29,11 +31,44 @@ const tripTranslationSchema = z.object({
   whatToBring: z.string().max(2000).optional().or(z.literal('')),
   knowBeforeYouGo: z.string().max(2000).optional().or(z.literal('')),
   notSuitableFor: z.string().max(2000).optional().or(z.literal('')),
+  whatToExpectIntro: z.string().max(1000).optional().or(z.literal('')),
+  categoryDisplay: z.string().max(120).optional().or(z.literal('')),
   localTip: z.string().max(2000).optional().or(z.literal('')),
   meetingPointText: z.string().max(2000).optional().or(z.literal('')),
+  metaTitle: z.string().max(70).optional().or(z.literal('')),
+  metaDescription: z.string().max(170).optional().or(z.literal('')),
 });
 
 type TripTranslationFormValues = z.infer<typeof tripTranslationSchema>;
+
+const EMPTY_FORM: TripTranslationFormValues = {
+  title: '',
+  overview: '',
+  description: '',
+  shortDescription: '',
+  whatToBring: '',
+  knowBeforeYouGo: '',
+  notSuitableFor: '',
+  whatToExpectIntro: '',
+  categoryDisplay: '',
+  localTip: '',
+  meetingPointText: '',
+  metaTitle: '',
+  metaDescription: '',
+};
+
+/** Textarea text (one item per line) → trimmed, de-blanked string array. */
+function linesToArray(value: string | undefined): string[] {
+  return (value ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+/** String array → newline-joined textarea text. */
+function arrayToLines(value: string[] | null | undefined): string {
+  return (value ?? []).join('\n');
+}
 
 interface LocaleTabProps {
   tripId: string;
@@ -55,17 +90,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
     formState: { errors },
   } = useForm<TripTranslationFormValues>({
     resolver: zodResolver(tripTranslationSchema),
-    defaultValues: {
-      title: isEnglish ? tripName : '',
-      overview: '',
-      description: '',
-      shortDescription: '',
-      whatToBring: '',
-      knowBeforeYouGo: '',
-      notSuitableFor: '',
-      localTip: '',
-      meetingPointText: '',
-    },
+    defaultValues: { ...EMPTY_FORM, title: isEnglish ? tripName : '' },
   });
 
   useEffect(() => {
@@ -74,11 +99,15 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       overview: translation?.overview ?? '',
       description: translation?.description ?? '',
       shortDescription: translation?.shortDescription ?? '',
-      whatToBring: translation?.whatToBring ?? '',
-      knowBeforeYouGo: translation?.knowBeforeYouGo ?? '',
-      notSuitableFor: translation?.notSuitableFor ?? '',
+      whatToBring: arrayToLines(translation?.whatToBring),
+      knowBeforeYouGo: arrayToLines(translation?.knowBeforeYouGo),
+      notSuitableFor: arrayToLines(translation?.notSuitableFor),
+      whatToExpectIntro: translation?.whatToExpectIntro ?? '',
+      categoryDisplay: translation?.categoryDisplay ?? '',
       localTip: translation?.localTip ?? '',
       meetingPointText: translation?.meetingPointText ?? '',
+      metaTitle: translation?.metaTitle ?? '',
+      metaDescription: translation?.metaDescription ?? '',
     });
   }, [translation, reset, isEnglish, tripName]);
 
@@ -92,11 +121,15 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           overview: values.overview || null,
           description: values.description || null,
           shortDescription: values.shortDescription || null,
-          whatToBring: values.whatToBring || null,
-          knowBeforeYouGo: values.knowBeforeYouGo || null,
-          notSuitableFor: values.notSuitableFor || null,
+          whatToBring: linesToArray(values.whatToBring),
+          knowBeforeYouGo: linesToArray(values.knowBeforeYouGo),
+          notSuitableFor: linesToArray(values.notSuitableFor),
+          whatToExpectIntro: values.whatToExpectIntro || null,
+          categoryDisplay: values.categoryDisplay || null,
           localTip: values.localTip || null,
           meetingPointText: values.meetingPointText || null,
+          metaTitle: values.metaTitle || null,
+          metaDescription: values.metaDescription || null,
         },
       },
       {
@@ -119,18 +152,22 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
             overview: null,
             description: null,
             shortDescription: null,
-            whatToBring: null,
-            knowBeforeYouGo: null,
-            notSuitableFor: null,
+            whatToBring: [],
+            knowBeforeYouGo: [],
+            notSuitableFor: [],
+            whatToExpectIntro: null,
+            categoryDisplay: null,
             localTip: null,
             meetingPointText: null,
+            metaTitle: null,
+            metaDescription: null,
           },
         },
         {
           onSuccess: () => {
             toast.success('English translation fields cleared.');
             setShowDeleteConfirm(false);
-            reset({ title: '', overview: '', description: '', shortDescription: '', whatToBring: '', knowBeforeYouGo: '', notSuitableFor: '', localTip: '', meetingPointText: '' });
+            reset(EMPTY_FORM);
           },
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : 'Failed to clear fields.'),
@@ -143,7 +180,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           onSuccess: () => {
             toast.success(`${LOCALE_LABELS[locale]} translation deleted.`);
             setShowDeleteConfirm(false);
-            reset({ title: '', overview: '', description: '', shortDescription: '', whatToBring: '', knowBeforeYouGo: '', notSuitableFor: '', localTip: '', meetingPointText: '' });
+            reset(EMPTY_FORM);
           },
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : 'Failed to delete translation.'),
@@ -227,17 +264,31 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
 
       <Field>
         <Label className="text-xs font-semibold uppercase">What to Bring</Label>
-        <Textarea {...register('whatToBring')} rows={3} placeholder="e.g. Swimwear, towel, sunscreen" />
+        <Textarea {...register('whatToBring')} rows={4} placeholder={'Swimwear\nTowel\nReef-safe sunscreen'} />
+        <FieldDescription>One item per line (max 8). Each line becomes a separate bullet.</FieldDescription>
       </Field>
 
       <Field>
         <Label className="text-xs font-semibold uppercase">Know Before You Go</Label>
-        <Textarea {...register('knowBeforeYouGo')} rows={3} placeholder="Important info before booking" />
+        <Textarea {...register('knowBeforeYouGo')} rows={4} placeholder={'Bring a valid photo ID\nTour runs rain or shine'} />
+        <FieldDescription>One item per line (max 10).</FieldDescription>
       </Field>
 
       <Field>
         <Label className="text-xs font-semibold uppercase">Not Suitable For</Label>
-        <Textarea {...register('notSuitableFor')} rows={2} placeholder="e.g. Travellers with back problems or who are pregnant" />
+        <Textarea {...register('notSuitableFor')} rows={3} placeholder={'Travellers who are pregnant\nWheelchair users'} />
+        <FieldDescription>One item per line (max 6).</FieldDescription>
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">What to Expect (intro)</Label>
+        <Textarea {...register('whatToExpectIntro')} rows={3} placeholder="Short intro shown above the itinerary." />
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">Category Display</Label>
+        <Input {...register('categoryDisplay')} placeholder="e.g. Snorkeling Tours" />
+        <FieldDescription>Plural noun phrase used in headings (e.g. &ldquo;Snorkeling Tours in Curaçao&rdquo;).</FieldDescription>
       </Field>
 
       <Field>
@@ -249,6 +300,22 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
         <Label className="text-xs font-semibold uppercase">Meeting Point Text</Label>
         <Textarea {...register('meetingPointText')} rows={2} placeholder="e.g. Meet at the main dock, Pier 3, 15 minutes before departure" />
       </Field>
+
+      <div className="border-t pt-5 space-y-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search engine listing (SEO)</p>
+        <Field>
+          <Label className="text-xs font-semibold uppercase">Meta Title</Label>
+          <Input {...register('metaTitle')} placeholder="Overrides the page <title>" aria-invalid={!!errors.metaTitle} />
+          <FieldDescription>Keep under 70 characters. Leave blank to auto-generate.</FieldDescription>
+          <FieldError>{errors.metaTitle?.message}</FieldError>
+        </Field>
+        <Field>
+          <Label className="text-xs font-semibold uppercase">Meta Description</Label>
+          <Textarea {...register('metaDescription')} rows={2} placeholder="Search-result snippet" aria-invalid={!!errors.metaDescription} />
+          <FieldDescription>Keep under 170 characters.</FieldDescription>
+          <FieldError>{errors.metaDescription?.message}</FieldError>
+        </Field>
+      </div>
 
       <div className="flex items-center justify-between pt-2">
         <div>
