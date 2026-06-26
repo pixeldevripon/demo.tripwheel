@@ -24,6 +24,8 @@ import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales
 const translationSchema = z.object({
   name: z.string().min(1, 'Name is required').optional().or(z.literal('')),
   overview: z.string().optional().or(z.literal('')),
+  curationNote: z.string().optional().or(z.literal('')),
+  eyebrowLabel: z.string().optional().or(z.literal('')),
   h1Override: z.string().optional().or(z.literal('')),
   breadcrumbLabel: z.string().optional().or(z.literal('')),
 });
@@ -49,7 +51,14 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
     formState: { errors },
   } = useForm<TranslationFormValues>({
     resolver: zodResolver(translationSchema),
-    defaultValues: { name: '', overview: '', h1Override: '', breadcrumbLabel: '' },
+    defaultValues: {
+      name: '',
+      overview: '',
+      curationNote: '',
+      eyebrowLabel: '',
+      h1Override: '',
+      breadcrumbLabel: '',
+    },
   });
 
   useEffect(() => {
@@ -57,6 +66,8 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
       reset({
         name: translation.name ?? '',
         overview: translation.overview ?? '',
+        curationNote: translation.curationNote ?? '',
+        eyebrowLabel: translation.eyebrowLabel ?? '',
         h1Override: translation.h1Override ?? '',
         breadcrumbLabel: translation.breadcrumbLabel ?? '',
       });
@@ -72,6 +83,8 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
           fields: {
             name: values.name || null,
             overview: values.overview || null,
+            curationNote: values.curationNote || null,
+            eyebrowLabel: values.eyebrowLabel || null,
             h1Override: values.h1Override || null,
             breadcrumbLabel: values.breadcrumbLabel || null,
           },
@@ -91,13 +104,28 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
         {
           id: collectionId,
           locale,
-          payload: { fields: { overview: null, h1Override: null, breadcrumbLabel: null } },
+          payload: {
+            fields: {
+              overview: null,
+              curationNote: null,
+              eyebrowLabel: null,
+              h1Override: null,
+              breadcrumbLabel: null,
+            },
+          },
         },
         {
           onSuccess: () => {
             toast.success('English optional fields cleared.');
             setShowDeleteConfirm(false);
-            reset((prev) => ({ ...prev, overview: '', h1Override: '', breadcrumbLabel: '' }));
+            reset((prev) => ({
+              ...prev,
+              overview: '',
+              curationNote: '',
+              eyebrowLabel: '',
+              h1Override: '',
+              breadcrumbLabel: '',
+            }));
           },
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : 'Failed to clear fields.'),
@@ -110,7 +138,14 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
           onSuccess: () => {
             toast.success(`${LOCALE_LABELS[locale]} translation deleted.`);
             setShowDeleteConfirm(false);
-            reset({ name: '', overview: '', h1Override: '', breadcrumbLabel: '' });
+            reset({
+              name: '',
+              overview: '',
+              curationNote: '',
+              eyebrowLabel: '',
+              h1Override: '',
+              breadcrumbLabel: '',
+            });
           },
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : 'Failed to delete translation.'),
@@ -161,6 +196,19 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
           placeholder={`Overview in ${LOCALE_LABELS[locale]}`}
           rows={4}
         />
+        <FieldDescription>One sentence shown in the listing / banner.</FieldDescription>
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">Curation Note</Label>
+        <Input {...register('curationNote')} placeholder="e.g. Chosen by Islanders" />
+        <FieldDescription>Banner subtitle on the collection page.</FieldDescription>
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">Eyebrow Label</Label>
+        <Input {...register('eyebrowLabel')} placeholder="e.g. BEST THINGS TO DO" />
+        <FieldDescription>Small label above the banner heading.</FieldDescription>
       </Field>
 
       <Field>

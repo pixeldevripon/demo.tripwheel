@@ -1,7 +1,7 @@
 import type { Locale } from '@/lib/constants/locales';
-import type { CollectionType } from '@/types/enums';
+import type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 export type { Locale } from '@/lib/constants/locales';
-export type { CollectionType } from '@/types/enums';
+export type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 
 export interface Collection {
   id: string;
@@ -9,6 +9,8 @@ export interface Collection {
   name: string;
   slug: string;
   collectionType: CollectionType;
+  status: CollectionStatus;
+  displayStyle: CollectionDisplayStyle;
   tourIds: string[] | null; // null/empty for DYNAMIC collections
   filterQuery: Record<string, unknown> | null;
   heroImage: string | null;
@@ -45,14 +47,18 @@ export interface CreateCollectionPayload {
   filterQuery?: Record<string, unknown>;
   heroImage?: string | null;
   sortOrder?: string;
+  status?: CollectionStatus;
+  displayStyle?: CollectionDisplayStyle;
 }
 
 export interface UpdateCollectionPayload {
   name?: string;
+  slug?: string;
   tourIds?: string[];
   filterQuery?: Record<string, unknown>;
   heroImage?: string | null;
   sortOrder?: string;
+  displayStyle?: CollectionDisplayStyle;
   isActive?: boolean;
 }
 
@@ -60,6 +66,8 @@ export interface UpdateCollectionPayload {
 export interface CollectionTranslationFields {
   name?: string | null;
   overview?: string | null;
+  curationNote?: string | null;
+  eyebrowLabel?: string | null;
   h1Override?: string | null;
   breadcrumbLabel?: string | null;
 }
@@ -73,6 +81,8 @@ export interface CollectionTranslation {
   locale: Locale;
   name: string | null;
   overview: string | null;
+  curationNote: string | null;
+  eyebrowLabel: string | null;
   h1Override: string | null;
   breadcrumbLabel: string | null;
   isMachineTranslated: boolean;
@@ -112,4 +122,38 @@ export interface UpdateCollectionFaqPayload {
   answer?: string;
   displayOrder?: number;
   isActive?: boolean;
+}
+
+// ── Status lifecycle ────────────────────────────────────────────────────────────
+export interface UpdateCollectionStatusPayload {
+  status: CollectionStatus;
+}
+
+// ── MANUAL membership (replace-all PUT) ───────────────────────────────────────────
+export interface CollectionTourMember {
+  tourId: string;
+  position: number;
+}
+
+export interface ReplaceCollectionToursPayload {
+  tours: CollectionTourMember[];
+}
+
+/** Response row from PUT /collections/:id/tours. */
+export interface CollectionTourEntry {
+  id: string;
+  tourId: string;
+  position: number;
+}
+
+// ── Per-tour, per-locale rationale (≤20 words) ────────────────────────────────────
+export interface UpsertCollectionTourRationalePayload {
+  rationale: string;
+}
+
+export interface CollectionTourRationale {
+  id: string;
+  tourId: string;
+  locale: Locale;
+  rationale: string;
 }

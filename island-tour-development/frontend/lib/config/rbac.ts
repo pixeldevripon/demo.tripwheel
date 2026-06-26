@@ -98,6 +98,10 @@ export const Permission = {
   DELETE_REVIEW: 'DELETE_REVIEW',
   APPROVE_REVIEW: 'APPROVE_REVIEW',
 
+  // Commercial tiers & spotlight
+  MANAGE_TIERS: 'MANAGE_TIERS',
+  APPROVE_SPOTLIGHT: 'APPROVE_SPOTLIGHT',
+
 
   // Files & Media
   UPLOAD_MEDIA: 'UPLOAD_MEDIA',
@@ -196,6 +200,9 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_REVIEWS',
     'EDIT_REVIEW',
     'DELETE_REVIEW',
+    'APPROVE_REVIEW',
+    'MANAGE_TIERS',
+    'APPROVE_SPOTLIGHT',
     'DELETE_OPERATOR',
     'UPLOAD_MEDIA',
     'MANAGE_MEDIA',
@@ -253,6 +260,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_REVIEWS',
     'EDIT_REVIEW',
     'DELETE_REVIEW',
+    'APPROVE_REVIEW',
     'UPLOAD_MEDIA',
     'MANAGE_MEDIA',
     'VIEW_PROFILE',
@@ -281,6 +289,8 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'DELETE_LEAD',
     'VIEW_REVIEWS',
     'EDIT_REVIEW',
+    'DELETE_REVIEW',
+    'APPROVE_REVIEW',
     'UPLOAD_MEDIA',
     'MANAGE_MEDIA',
     'VIEW_PROFILE',

@@ -79,6 +79,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.DELETE_REVIEW,
     Permission.APPROVE_REVIEW,
 
+    // Commercial tiers & spotlight (admin-only; operators change tiers / request
+    // spotlight via EDIT_TRIP on their own tours)
+    Permission.MANAGE_TIERS,
+    Permission.APPROVE_SPOTLIGHT,
+
     Permission.UPLOAD_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,

@@ -4,15 +4,20 @@ import type {
   CollectionFaq,
   CollectionLocalized,
   CollectionPageContent,
+  CollectionTourEntry,
+  CollectionTourRationale,
   CollectionTranslation,
   CreateCollectionFaqPayload,
   CreateCollectionPayload,
   Locale,
+  ReplaceCollectionToursPayload,
   UpdateCollectionFaqPayload,
   UpdateCollectionPayload,
   UpsertCollectionPageContentPayload,
+  UpsertCollectionTourRationalePayload,
   UpsertCollectionTranslationPayload,
 } from '@/types/collection';
+import type { CollectionStatus } from '@/types/enums';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
@@ -132,5 +137,35 @@ export const collectionsApi = {
     return apiFetch<{ message: string }>(`/collections/${id}/faqs/${faqId}`, {
       method: 'DELETE',
     });
+  },
+
+  // Status lifecycle (publish guard G5 enforced server-side → 422 on blockers)
+  updateStatus(id: string, status: CollectionStatus): Promise<Collection> {
+    return apiFetch<Collection>(`/collections/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // MANUAL membership (replace-all). Re-normalizes positions 0..n and clears
+  // existing per-tour rationales (CollectionTour rows are recreated).
+  replaceTours(id: string, payload: ReplaceCollectionToursPayload): Promise<CollectionTourEntry[]> {
+    return apiFetch<CollectionTourEntry[]>(`/collections/${id}/tours`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Per-tour, per-locale rationale (tour must already be a member).
+  upsertTourRationale(
+    id: string,
+    tourId: string,
+    locale: Locale,
+    payload: UpsertCollectionTourRationalePayload
+  ): Promise<CollectionTourRationale> {
+    return apiFetch<CollectionTourRationale>(
+      `/collections/${id}/tours/${tourId}/rationale/${locale}`,
+      { method: 'PUT', body: JSON.stringify(payload) }
+    );
   },
 };

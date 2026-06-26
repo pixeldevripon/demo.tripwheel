@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangleIcon } from 'lucide-react';
+import { AlertTriangleIcon, ListOrderedIcon } from 'lucide-react';
 import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,12 @@ import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { Collection } from '@/types/collection';
-import { COLLECTION_TYPE_VALUES } from '@/types/enums';
+import {
+  COLLECTION_DISPLAY_STYLE_LABELS,
+  COLLECTION_DISPLAY_STYLE_VALUES,
+  COLLECTION_TYPE_VALUES,
+  type CollectionDisplayStyle,
+} from '@/types/enums';
 
 function toSlug(value: string) {
   return value
@@ -45,6 +51,7 @@ const schema = z.object({
   tourIds: z.array(z.string()).optional(),
   heroImage: z.string().optional(),
   sortOrder: z.string().optional(),
+  displayStyle: z.enum(COLLECTION_DISPLAY_STYLE_VALUES as [string, ...string[]]),
   // DYNAMIC filter fields
   categoryId: z.string().optional(),
   minPrice: z.string().optional(),
@@ -89,6 +96,7 @@ export function CollectionForm({ collection }: CollectionFormProps) {
       tourIds: collection?.tourIds ?? [],
       heroImage: collection?.heroImage ?? '',
       sortOrder: collection?.sortOrder ?? 'recommended',
+      displayStyle: collection?.displayStyle ?? 'PERSONA',
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : '',
       minPrice: fq.minPrice != null ? String(fq.minPrice) : '',
       maxPrice: fq.maxPrice != null ? String(fq.maxPrice) : '',
@@ -106,6 +114,7 @@ export function CollectionForm({ collection }: CollectionFormProps) {
   const tourIds = watch('tourIds') ?? [];
   const heroImageValue = watch('heroImage');
   const sortOrder = watch('sortOrder');
+  const displayStyle = watch('displayStyle');
   const categoryId = watch('categoryId');
 
   useEffect(() => {
@@ -147,7 +156,10 @@ export function CollectionForm({ collection }: CollectionFormProps) {
 
   function onSubmit(values: FormValues) {
     const isManual = values.collectionType === 'MANUAL';
-    if (isManual && (values.tourIds ?? []).length === 0) {
+    // Membership is only set through this form on CREATE (the service seeds CollectionTour
+    // rows). In edit mode, MANUAL membership/ordering lives in the Tours tab (PATCH does not
+    // sync the authoritative CollectionTour rows).
+    if (isManual && !isEditMode && (values.tourIds ?? []).length === 0) {
       toast.error('A manual collection needs at least one tour.');
       return;
     }
@@ -160,7 +172,8 @@ export function CollectionForm({ collection }: CollectionFormProps) {
             name: values.name,
             heroImage: values.heroImage || null,
             sortOrder: values.sortOrder,
-            ...(isManual ? { tourIds: values.tourIds ?? [] } : { filterQuery: buildFilterQuery(values) }),
+            displayStyle: values.displayStyle as CollectionDisplayStyle,
+            ...(isManual ? {} : { filterQuery: buildFilterQuery(values) }),
           },
         },
         {
@@ -180,6 +193,7 @@ export function CollectionForm({ collection }: CollectionFormProps) {
           collectionType: values.collectionType as Collection['collectionType'],
           heroImage: values.heroImage || null,
           sortOrder: values.sortOrder,
+          displayStyle: values.displayStyle as CollectionDisplayStyle,
           ...(isManual ? { tourIds: values.tourIds ?? [] } : { filterQuery: buildFilterQuery(values) }),
         },
         {
@@ -285,6 +299,24 @@ export function CollectionForm({ collection }: CollectionFormProps) {
           </Field>
 
           <Field>
+            <Label className="text-xs font-semibold uppercase">Display Style</Label>
+            <Select
+              value={displayStyle || 'PERSONA'}
+              onValueChange={v => setValue('displayStyle', v as CollectionDisplayStyle)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {COLLECTION_DISPLAY_STYLE_VALUES.map(s => (
+                  <SelectItem key={s} value={s}>{COLLECTION_DISPLAY_STYLE_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>How tour cards are rendered on the collection page.</FieldDescription>
+          </Field>
+
+          <Field>
             <Label className="text-xs font-semibold uppercase">Type</Label>
             {isEditMode ? (
               <Input value={collection?.collectionType ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
@@ -305,18 +337,34 @@ export function CollectionForm({ collection }: CollectionFormProps) {
           </Field>
 
           {collectionType === 'MANUAL' ? (
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Tours (ordered)</Label>
-              <MultiSelect
-                options={tourOptions}
-                value={tourIds}
-                onChange={v => setValue('tourIds', v)}
-                placeholder={destinationId ? 'Select tours…' : 'Select a destination first'}
-                searchPlaceholder="Search tours…"
-                disabled={!destinationId}
-              />
-              <FieldDescription>Selection order is the display order.</FieldDescription>
-            </Field>
+            isEditMode ? (
+              <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4">
+                <ListOrderedIcon className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    Tour selection, ordering, and per-tour rationale are managed in the Tours tab.
+                  </p>
+                  <Button asChild variant="outline" size="xs">
+                    <Link href={`/dashboard/collections/${collection?.id}/tours`}>
+                      Manage Tours
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Tours (ordered)</Label>
+                <MultiSelect
+                  options={tourOptions}
+                  value={tourIds}
+                  onChange={v => setValue('tourIds', v)}
+                  placeholder={destinationId ? 'Select tours…' : 'Select a destination first'}
+                  searchPlaceholder="Search tours…"
+                  disabled={!destinationId}
+                />
+                <FieldDescription>Selection order is the display order.</FieldDescription>
+              </Field>
+            )
           ) : (
             <div className="space-y-6 rounded-md border border-border p-4">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Filter query</p>

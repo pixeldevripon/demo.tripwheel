@@ -58,8 +58,8 @@ import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales
 import type { CollectionFaq } from '@/types/collection';
 
 const faqSchema = z.object({
-  question: z.string().min(3, 'Question must be at least 3 characters'),
-  answer: z.string().min(3, 'Answer must be at least 3 characters'),
+  question: z.string().min(5, 'Question must be at least 5 characters'),
+  answer: z.string().min(10, 'Answer must be at least 10 characters'),
   displayOrder: z.number().int().min(0).optional(),
   locale: z.enum(['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh']),
   isActive: z.boolean().optional(),

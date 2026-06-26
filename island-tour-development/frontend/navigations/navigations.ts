@@ -1,7 +1,4 @@
 import {
-    Activity,
-    BarChart3,
-    BookOpen,
     Calendar,
     CircleUser,
     CreditCard,
@@ -10,10 +7,10 @@ import {
     LayoutDashboard,
     Mail,
     Map,
-    MapPin,
     MessageSquare,
     Settings,
     SlidersHorizontal,
+    Sparkles,
     Star,
     Store,
     Tag,
@@ -137,6 +134,14 @@ const dashboardNav: NavItem[] = [
         url: 'reviews',
         icon: Star,
         permissions: [Permission.VIEW_REVIEWS],
+    },
+
+    // ─── Spotlight (admin approval queue) ───────────────────────────────────────
+    {
+        title: 'Spotlight',
+        url: 'spotlight',
+        icon: Sparkles,
+        permissions: [Permission.APPROVE_SPOTLIGHT],
     },
 
     // ─── Tour Operators ──────────────────────────────────────────────────────

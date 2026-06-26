@@ -6,11 +6,14 @@ import type {
   CreateCollectionFaqPayload,
   CreateCollectionPayload,
   Locale,
+  ReplaceCollectionToursPayload,
   UpdateCollectionFaqPayload,
   UpdateCollectionPayload,
   UpsertCollectionPageContentPayload,
+  UpsertCollectionTourRationalePayload,
   UpsertCollectionTranslationPayload,
 } from '@/types/collection';
+import type { CollectionStatus } from '@/types/enums';
 
 export const collectionKeys = {
   all: ['collections'] as const,
@@ -198,5 +201,47 @@ export function useDeleteCollectionFaq() {
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: collectionKeys.faqs(vars.id) });
     },
+  });
+}
+
+// Status lifecycle
+export function useUpdateCollectionStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: CollectionStatus }) =>
+      collectionsApi.updateStatus(id, status),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: collectionKeys.all });
+      qc.invalidateQueries({ queryKey: collectionKeys.detail(vars.id) });
+    },
+  });
+}
+
+// MANUAL membership (replace-all). Invalidates the detail so the ordered tourIds refresh.
+export function useReplaceCollectionTours() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: ReplaceCollectionToursPayload }) =>
+      collectionsApi.replaceTours(id, payload),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: collectionKeys.detail(vars.id) });
+    },
+  });
+}
+
+// Per-tour, per-locale rationale.
+export function useUpsertCollectionTourRationale() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      tourId,
+      locale,
+      payload,
+    }: {
+      id: string;
+      tourId: string;
+      locale: Locale;
+      payload: UpsertCollectionTourRationalePayload;
+    }) => collectionsApi.upsertTourRationale(id, tourId, locale, payload),
   });
 }

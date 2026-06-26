@@ -11,6 +11,7 @@ export function CollectionSubNav({ collectionId }: CollectionSubNavProps) {
     <DashboardTabNav
       tabs={[
         { label: 'Details', href: `/dashboard/collections/${collectionId}/edit` },
+        { label: 'Tours', href: `/dashboard/collections/${collectionId}/tours` },
         { label: 'Translations', href: `/dashboard/collections/${collectionId}/translations` },
         { label: 'Page Content', href: `/dashboard/collections/${collectionId}/page-content` },
         { label: 'FAQs', href: `/dashboard/collections/${collectionId}/faqs` },

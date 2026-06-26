@@ -36,6 +36,7 @@ import { TripInclusionsTab } from './trip-inclusions-tab';
 import { TripLocationsTab } from './trip-locations-tab';
 import { TripPickupLocationsTab } from './trip-pickup-locations-tab';
 import { TripPricingTab } from './trip-pricing-tab';
+import { TripPromotionTab } from './trip-promotion-tab';
 import { TripSchedulesTab } from './trip-schedules-tab';
 import { TripTranslationsTab } from './trip-translations-tab';
 
@@ -84,6 +85,7 @@ const VALID_TABS = [
     'pricing',
     'attributes',
     'schedules',
+    'promotion',
     'translations',
 ] as const;
 
@@ -320,6 +322,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                         <TabsTrigger value='pricing'>Pricing</TabsTrigger>
                         <TabsTrigger value='attributes'>Attributes</TabsTrigger>
                         <TabsTrigger value='schedules'>Schedules</TabsTrigger>
+                        <TabsTrigger value='promotion'>Promotion</TabsTrigger>
                         <TabsTrigger value='translations'>
                             Translations
                         </TabsTrigger>
@@ -368,6 +371,10 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
                 <TabsContent value='schedules'>
                     <TripSchedulesTab tripId={id} />
+                </TabsContent>
+
+                <TabsContent value='promotion'>
+                    <TripPromotionTab trip={trip} />
                 </TabsContent>
 
                 <TabsContent value='translations'>

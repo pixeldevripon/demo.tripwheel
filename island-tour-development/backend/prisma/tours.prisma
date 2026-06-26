@@ -4,6 +4,7 @@
 // no hero, overview empty, highlights <3.
 
 model Tour {
+ 
   id            String @id @default(uuid())
   operatorId    String
   destinationId String

@@ -116,4 +116,33 @@ export type CollectionType = 'MANUAL' | 'DYNAMIC';
 
 export const COLLECTION_TYPE_VALUES: CollectionType[] = ['MANUAL', 'DYNAMIC'];
 
+export const COLLECTION_TYPE_LABELS: Record<CollectionType, string> = {
+  MANUAL: 'Manual',
+  DYNAMIC: 'Dynamic',
+};
+
+// Collection publish lifecycle (G5). New collections default to DRAFT; promote to
+// PUBLISHED via the /status endpoint once the publish guard passes. Distinct from
+// `isActive` (soft-delete).
+export type CollectionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export const COLLECTION_STATUS_VALUES: CollectionStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+
+export const COLLECTION_STATUS_LABELS: Record<CollectionStatus, string> = {
+  DRAFT: 'Draft',
+  PUBLISHED: 'Published',
+  ARCHIVED: 'Archived',
+};
+
+// Card rendering style for the collection page. NUMBERED draws 01..n badges
+// (e.g. "Top 10"); PERSONA highlights card #1 instead.
+export type CollectionDisplayStyle = 'NUMBERED' | 'PERSONA';
+
+export const COLLECTION_DISPLAY_STYLE_VALUES: CollectionDisplayStyle[] = ['NUMBERED', 'PERSONA'];
+
+export const COLLECTION_DISPLAY_STYLE_LABELS: Record<CollectionDisplayStyle, string> = {
+  NUMBERED: 'Numbered (01..n badges)',
+  PERSONA: 'Persona (highlight first card)',
+};
+
 export type SlugEntityType = 'TOUR' | 'CATEGORY' | 'HUB' | 'COLLECTION' | 'RESERVED';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
@@ -38,18 +38,25 @@ import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useCollectionsByDestination, useDeleteCollection } from '@/hooks/collections/use-collections';
 import { useRole } from '@/contexts/role-context';
 import type { Collection } from '@/types/collection';
+import { COLLECTION_STATUS_LABELS, type CollectionStatus } from '@/types/enums';
+
+const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  DRAFT: 'secondary',
+  PUBLISHED: 'default',
+  ARCHIVED: 'destructive',
+};
 
 export function CollectionsListView() {
   const { can } = useRole();
   const { data: destinations } = useActiveDestinations();
   const [destSlug, setDestSlug] = useState<string>('');
 
-  // Default to the first destination once loaded
-  useEffect(() => {
-    if (!destSlug && destinations && destinations.length > 0) {
-      setDestSlug(destinations[0].slug);
-    }
-  }, [destinations, destSlug]);
+  // Default to the first destination once loaded. Setting state during render (guarded so it
+  // runs only while no destination is selected) is React's sanctioned alternative to a
+  // setState-in-effect, which the repo's eslint config flags as an error.
+  if (!destSlug && destinations && destinations.length > 0) {
+    setDestSlug(destinations[0].slug);
+  }
 
   const { data: collections, isLoading } = useCollectionsByDestination(destSlug || undefined);
   const { mutate: remove, isPending: removing } = useDeleteCollection();
@@ -96,13 +103,14 @@ export function CollectionsListView() {
                   <TableHead>Type</TableHead>
                   <TableHead>Tours</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Active</TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(collections ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                       No collections for this destination yet.
                     </TableCell>
                   </TableRow>
@@ -113,6 +121,9 @@ export function CollectionsListView() {
                     <TableCell><Badge variant="secondary">{c.collectionType}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {c.collectionType === 'MANUAL' ? `${(c.tourIds ?? []).length} tours` : 'dynamic'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[c.status]}>{COLLECTION_STATUS_LABELS[c.status]}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={c.isActive ? 'default' : 'outline'}>
