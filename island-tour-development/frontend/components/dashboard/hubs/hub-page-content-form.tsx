@@ -155,8 +155,8 @@ export function HubPageContentForm({ hubId }: HubPageContentFormProps) {
       </CardHeader>
       <CardContent className="pt-8">
         <Tabs defaultValue="en">
-          <div className="overflow-x-auto pb-2 mb-6">
-            <TabsList variant="line" className="w-max">
+          <div className="pb-2 mb-6">
+            <TabsList>
               {ALL_LOCALES.map((locale) => (
                 <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
                   <span className="sm:hidden uppercase">{locale}</span>

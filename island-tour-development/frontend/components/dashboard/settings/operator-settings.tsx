@@ -25,7 +25,7 @@ export function OperatorSettings() {
 
   return (
     <Tabs defaultValue="company" className="w-full">
-      <TabsList className="flex-wrap">
+      <TabsList>
         <TabsTrigger value="company">Company</TabsTrigger>
         <TabsTrigger value="payments">Payments</TabsTrigger>
       </TabsList>

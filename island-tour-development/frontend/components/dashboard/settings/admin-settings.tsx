@@ -20,7 +20,7 @@ const TABS = [
 export function AdminSettings() {
   return (
     <Tabs defaultValue="general" className="w-full">
-      <TabsList className="flex-wrap">
+      <TabsList>
         {TABS.map((t) => (
           <TabsTrigger key={t.value} value={t.value}>
             {t.label}

@@ -297,8 +297,8 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
             {/* Tabbed interface */}
             <Tabs defaultValue={activeTab}>
-                <div className='overflow-x-auto pb-2 mb-6'>
-                    <TabsList variant='line' className='w-max'>
+                <div className='pb-2 mb-6'>
+                    <TabsList>
                         <TabsTrigger value='details'>Details</TabsTrigger>
                         <TabsTrigger value='images'>
                             Images

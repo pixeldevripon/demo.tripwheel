@@ -249,3 +249,46 @@ Destinations with `isSeeded: true` cannot be deleted. Pattern for any protected 
   )}
 </Tooltip>
 ```
+
+---
+
+## 8. Tabs — one design everywhere
+
+All dashboard tabs use the shared `@/components/ui/tabs` **default variant** (the
+`bg-muted` pill / segmented bar, active pill = `bg-background`). This is the Settings
+look. Do **not** use `variant="line"` and do **not** hand-roll tab bars.
+
+`TabsList` is responsive by default: a single row that scrolls horizontally on
+overflow with the scrollbar hidden (triggers are `shrink-0`, so they never compress).
+So **don't** add `flex-wrap`, `w-max`, or your own `overflow-x-auto` wrapper.
+
+**In-page tabs** (switch panels without navigating — settings, statistics, the trip
+edit view, locale translation/page-content forms): use the primitives directly.
+
+```tsx
+<Tabs defaultValue="general" className="w-full">
+  <TabsList>                                 {/* no flex-wrap / w-max / variant="line" */}
+    <TabsTrigger value="general">General</TabsTrigger>
+    {/* … */}
+  </TabsList>
+  <TabsContent value="general" className="mt-6">{/* … */}</TabsContent>
+</Tabs>
+```
+
+**Route-based sub-navs** (Details / Translations / Page Content / FAQs / …): use the
+reusable `DashboardTabNav` (`@/components/dashboard/dashboard-tab-nav`). It renders the
+same pill styling via `<Link>` triggers and derives the active tab from `usePathname()`.
+
+```tsx
+export function HubSubNav({ hubId }: { hubId: string }) {
+  return (
+    <DashboardTabNav
+      tabs={[
+        { label: 'Details', href: `/dashboard/hubs/${hubId}/edit` },
+        { label: 'Translations', href: `/dashboard/hubs/${hubId}/translations` },
+        // optional: badge?: ReactNode (count/dot), exact?: boolean
+      ]}
+    />
+  );
+}
+```
