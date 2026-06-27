@@ -256,6 +256,46 @@
       "comparison": { "title": "¿Qué excursión es la ideal para ti?", "subtitle": "Los seis barcos van a Klein Curazao. Refrescos y un almuerzo barbacoa incluidos. Esto es lo que cambia una vez que llegas.", "book": "Reservar" },
       "discover": { "titlePattern": "Descubre {hub}", "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.", "bookTrip": "Reserva tu excursión" }
     },
+    "tour": {
+      "save": "Guardar",
+      "share": "Compartir",
+      "localsFavorite": "Favorito de los locales",
+      "showAllPhotos": "Ver todas las fotos",
+      "booking": {
+        "from": "Desde",
+        "perPerson": "por persona",
+        "continue": "Continuar",
+        "selected": "Seleccionado",
+        "soldOut": "Agotado",
+        "onlyLeft": "Solo quedan {count}",
+        "travelers": "{count} viajeros",
+        "total": "Total",
+        "payToday": "Paga hoy",
+        "balanceLater": "Resto después",
+        "taxesIncluded": "Todos los impuestos y tasas incluidos",
+        "showDetails": "Ver detalles",
+        "freeCancellation": "Cancelación gratuita hasta {hours}h",
+        "payLater": "Paga solo {pct}% hoy, el resto después",
+        "sellOutTitle": "Probable que se agote",
+        "sellOutSubtitle": "Reserva hoy para asegurar tu lugar"
+      },
+      "reviews": {
+        "title": "Lo que dicen nuestros clientes",
+        "subtitle": "Opiniones verificadas de viajeros reales",
+        "seeAll": "Ver todas las opiniones",
+        "verified": "Verificado",
+        "readMore": "Leer más"
+      },
+      "sections": {
+        "overview": "Resumen",
+        "included": "Qué incluye",
+        "expect": "Qué esperar",
+        "meeting": "Punto de encuentro",
+        "info": "Información importante",
+        "cancellation": "Política de cancelación",
+        "reviews": "Opiniones"
+      }
+    },
     "categoryAboutTitle": "Sobre {category} en {destination}",
     "faqTitle": "Preguntas frecuentes",
     "categoryTrust": {

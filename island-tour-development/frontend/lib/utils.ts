@@ -5,6 +5,24 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/**
+ * Normalize a string to an English slug - kept in sync with the backend
+ * `generateSlug` util and the dashboard form `toSlug` (NFD strip, lowercase,
+ * hyphenate, collapse, trim). Used to build flat tour URLs from mock titles
+ * until the public tour list API returns real slugs.
+ */
+export function toSlug(value: string): string {
+    return value
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 export function formatFileSize(bytes: number | null | undefined): string {
     if (!bytes) return '0 Bytes';
     const k = 1024;

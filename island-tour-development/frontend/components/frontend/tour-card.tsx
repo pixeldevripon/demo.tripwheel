@@ -10,6 +10,7 @@
  */
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,13 @@ export type TourBadge = 'new' | 'likelyToSellOut' | 'mostPopular' | null;
 
 export type TourListing = {
     id: string;
+    /**
+     * Flat tour detail URL (locale-prefixed, e.g. `/en/curacao/{slug}`). When
+     * set, the whole card becomes a link to the tour page. Built by the data
+     * source (the inner wishlist / gallery controls stop propagation so they
+     * never trigger navigation).
+     */
+    href?: string;
     /** Array of image paths for the hover-gallery slider */
     images: string[];
     badge: TourBadge;
@@ -128,7 +136,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
 
     const activeImage = tour.images[activeImageIndex] || '';
 
-    return (
+    const card = (
         <motion.article
             aria-label={tour.title}
             onMouseEnter={() => setIsHovered(true)}
@@ -384,4 +392,20 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
             </motion.div>
         </motion.article>
     );
+
+    // When the data source supplies a detail URL, the whole card links to the
+    // tour page. The inner buttons call preventDefault/stopPropagation, so they
+    // stay interactive without navigating.
+    if (tour.href) {
+        return (
+            <Link
+                href={tour.href}
+                aria-label={tour.title}
+                className='block rounded-[16px] @[220px]:rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                {card}
+            </Link>
+        );
+    }
+
+    return card;
 }

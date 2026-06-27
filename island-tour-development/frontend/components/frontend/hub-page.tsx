@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { hubsApi } from '@/lib/api/hubs';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { toSlug } from '@/lib/utils';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
     HubAlsoWorthSection,
@@ -388,6 +389,13 @@ export async function HubPage({
 
     if (!hub || !hub.isActive) notFound();
 
+    // Link each trip/charter card to its flat tour URL (slug derived from the
+    // title until the hub-filtered trips API returns real slugs).
+    const linkTour = (t: HubTour): HubTour => ({
+        ...t,
+        href: localizeHref(locale, `/${destinationSlug}/${toSlug(t.title)}`),
+    });
+
     const hubDict = dict.destination.hub;
     // Hero title: localized "{hub} day trips" pattern, overridable by the
     // backend's localized H1 when set.
@@ -444,7 +452,7 @@ export async function HubPage({
         {
             title: tripsTitle,
             subtitle: hubDict.tripsSubtitle,
-            groups: [{ tours: MOCK_TRIPS }],
+            groups: [{ tours: MOCK_TRIPS.map(linkTour) }],
         },
         {
             title: chartersDict.heading.replace(
@@ -455,11 +463,11 @@ export async function HubPage({
             groups: [
                 {
                     title: `${chartersDict.dayCharters} (${MOCK_DAY_CHARTERS.length})`,
-                    tours: MOCK_DAY_CHARTERS,
+                    tours: MOCK_DAY_CHARTERS.map(linkTour),
                 },
                 {
                     title: `${chartersDict.overnightCharters} (${MOCK_NIGHT_CHARTERS.length})`,
-                    tours: MOCK_NIGHT_CHARTERS,
+                    tours: MOCK_NIGHT_CHARTERS.map(linkTour),
                 },
             ],
             picks: {

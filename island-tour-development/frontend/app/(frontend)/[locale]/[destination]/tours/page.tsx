@@ -10,8 +10,9 @@ import {
 } from '@/components/frontend/tours-listing';
 import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
 import { destinationsApi } from '@/lib/api/destinations';
-import { isLocale, type Locale } from '@/lib/constants/locales';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 
 // Fallback slugs for static generation if the backend is unreachable at build.
@@ -173,6 +174,13 @@ export default async function AllToursPage({
     if (!dest || !dest.isActive) notFound();
     const destinationName = dest.name;
 
+    // Link each card to its flat tour URL (slug derived from the title until the
+    // paginated tour API returns real slugs).
+    const tours = ALL_TOURS.map(tour => ({
+        ...tour,
+        href: localizeHref(locale as Locale, `/${destination}/${toSlug(tour.title)}`),
+    }));
+
     return (
         <>
             <ToursBreadcrumb
@@ -220,7 +228,7 @@ export default async function AllToursPage({
                             />
 
                             <ToursListing
-                                tours={ALL_TOURS}
+                                tours={tours}
                                 dict={dict.destination.listings}
                                 pageCount={6}
                             />

@@ -1,0 +1,296 @@
+'use client';
+
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+
+export type TourGalleryMeta = {
+    /** Icon path in /public/icons (Figma SVG export). */
+    icon: string;
+    label: string;
+};
+
+/**
+ * Tour photo gallery + meta strip (Figma node 47940:12742).
+ *
+ * Desktop: a 5-tile collage - one large tile (396x448) plus a 2x2 grid of small
+ * tiles (190x220), 8px gaps, with a "Show all photos" pill anchored bottom-right.
+ * Mobile: the large tile alone (the 4 small tiles are hidden). Beneath sits the
+ * meta strip (duration / pickup / languages) between two hairline dividers.
+ *
+ * Any tile (or "Show all photos") opens a full-screen lightbox over the whole
+ * image set, navigable by arrows / keyboard, dismissed by the close button,
+ * Escape, or a backdrop click.
+ */
+export function TourGallery({
+    images,
+    title,
+    meta,
+    showAllPhotosLabel,
+}: {
+    images: string[];
+    title: string;
+    meta: TourGalleryMeta[];
+    showAllPhotosLabel: string;
+}) {
+    const [hero, ...rest] = images.slice(0, 5);
+    const [open, setOpen] = useState(false);
+    const [index, setIndex] = useState(0);
+    // Inline mobile slider position (desktop shows the full collage instead).
+    const [slide, setSlide] = useState(0);
+    const slidePrev = () =>
+        setSlide(i => (i === 0 ? images.length - 1 : i - 1));
+    const slideNext = () =>
+        setSlide(i => (i === images.length - 1 ? 0 : i + 1));
+
+    const openAt = (i: number) => {
+        setIndex(i);
+        setOpen(true);
+    };
+    const close = useCallback(() => setOpen(false), []);
+    const prev = useCallback(
+        () => setIndex(i => (i === 0 ? images.length - 1 : i - 1)),
+        [images.length],
+    );
+    const next = useCallback(
+        () => setIndex(i => (i === images.length - 1 ? 0 : i + 1)),
+        [images.length],
+    );
+
+    // While the lightbox is open: lock body scroll + wire keyboard nav.
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') close();
+            else if (e.key === 'ArrowLeft') prev();
+            else if (e.key === 'ArrowRight') next();
+        };
+        document.addEventListener('keydown', onKey);
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [open, close, prev, next]);
+
+    const tileClass =
+        'group relative cursor-pointer overflow-hidden rounded-[16px] border-none bg-it-border p-0';
+
+    return (
+        <div className='flex flex-col gap-6'>
+            {/* Mobile: swipeable single-image slider (prev/next + dots), like the
+                tour card. Tapping the image opens the full-screen lightbox. */}
+            <div className='relative aspect-396/300 w-full overflow-hidden rounded-[16px] bg-it-border lg:hidden'>
+                <button
+                    type='button'
+                    onClick={() => openAt(slide)}
+                    aria-label={title}
+                    className='absolute inset-0 cursor-pointer border-none bg-transparent p-0'>
+                    <Image
+                        src={images[slide]}
+                        alt={title}
+                        fill
+                        sizes='100vw'
+                        className='object-cover'
+                        priority
+                    />
+                </button>
+                {images.length > 1 && (
+                    <>
+                        <button
+                            type='button'
+                            onClick={slidePrev}
+                            aria-label='Previous photo'
+                            className='absolute top-1/2 left-3 z-10 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-transform active:scale-90'>
+                            <Image
+                                src='/icons/arrow-right-listings.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                            />
+                        </button>
+                        <button
+                            type='button'
+                            onClick={slideNext}
+                            aria-label='Next photo'
+                            className='absolute top-1/2 right-3 z-10 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-transform active:scale-90'>
+                            <Image
+                                src='/icons/arrow-right-listings.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='rotate-180'
+                            />
+                        </button>
+                        {/* Pagination dots - active dot widens (tour-card style). */}
+                        <div className='absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5'>
+                            {images.map((_, i) => (
+                                <button
+                                    type='button'
+                                    key={i}
+                                    onClick={() => setSlide(i)}
+                                    aria-label={`Go to photo ${i + 1}`}
+                                    className={`h-2 cursor-pointer rounded-it-full border-none p-0 transition-all duration-200 ${
+                                        i === slide ? 'w-6 bg-it-white' : 'w-2 bg-it-white/60'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+                {/* "Show all photos" - bottom-right of the slider. */}
+                <button
+                    type='button'
+                    onClick={() => openAt(slide)}
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-full border border-it-border bg-it-white px-3 py-1.75 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-surface'>
+                    <Image
+                        src='/icons/gallery-photos.svg'
+                        alt=''
+                        width={24}
+                        height={24}
+                        className='size-6 shrink-0'
+                    />
+                    {showAllPhotosLabel}
+                </button>
+            </div>
+
+            {/* Desktop: 5-tile collage - big tile + 2x2 small tiles. */}
+            <div className='relative hidden gap-2 lg:grid lg:aspect-792/448 lg:grid-cols-[396fr_190fr_190fr] lg:grid-rows-2'>
+                <button
+                    type='button'
+                    onClick={() => openAt(0)}
+                    aria-label={title}
+                    className={`${tileClass} lg:row-span-2`}>
+                    {hero && (
+                        <Image
+                            src={hero}
+                            alt={title}
+                            fill
+                            sizes='396px'
+                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                        />
+                    )}
+                </button>
+                {rest.map((src, i) => (
+                    <button
+                        type='button'
+                        key={i}
+                        onClick={() => openAt(i + 1)}
+                        aria-label={`${title} - photo ${i + 2}`}
+                        className={tileClass}>
+                        <Image
+                            src={src}
+                            alt=''
+                            fill
+                            sizes='190px'
+                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                        />
+                    </button>
+                ))}
+                {/* "Show all photos" - bottom-right of the collage. */}
+                <button
+                    type='button'
+                    onClick={() => openAt(0)}
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-full border border-it-border bg-it-white px-3 py-1.75 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-surface'>
+                    <Image
+                        src='/icons/gallery-photos.svg'
+                        alt=''
+                        width={24}
+                        height={24}
+                        className='size-6 shrink-0'
+                    />
+                    {showAllPhotosLabel}
+                </button>
+            </div>
+
+            {/* Meta strip: duration / pickup / languages between hairlines. */}
+            <div className='flex flex-col gap-2'>
+                <div className='h-px w-full bg-it-heading/10' />
+                <div className='flex flex-wrap items-center gap-x-10 gap-y-2 py-1.5'>
+                    {meta.map(m => (
+                        <span key={m.label} className='flex items-center gap-2'>
+                            <Image
+                                src={m.icon}
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-6 shrink-0'
+                            />
+                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                {m.label}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+                <div className='h-px w-full bg-it-heading/10' />
+            </div>
+
+            {/* Full-screen lightbox */}
+            {open && (
+                <div
+                    role='dialog'
+                    aria-modal='true'
+                    aria-label={title}
+                    onClick={close}
+                    className='fixed inset-0 z-100 flex flex-col bg-black/95'>
+                    {/* Top bar: counter + close */}
+                    <div
+                        className='flex items-center justify-between px-4 py-4 text-it-white md:px-6'
+                        onClick={e => e.stopPropagation()}>
+                        <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums'>
+                            {index + 1} / {images.length}
+                        </span>
+                        <button
+                            type='button'
+                            onClick={close}
+                            aria-label='Close'
+                            className='grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors hover:bg-white/20'>
+                            <X className='size-5' />
+                        </button>
+                    </div>
+
+                    {/* Stage */}
+                    <div className='relative flex flex-1 items-center justify-center px-4 pb-6 md:px-16'>
+                        {images.length > 1 && (
+                            <button
+                                type='button'
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    prev();
+                                }}
+                                aria-label='Previous photo'
+                                className='absolute left-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors hover:bg-white/20 md:size-12'>
+                                <ChevronLeft className='size-6' />
+                            </button>
+                        )}
+                        <div
+                            className='relative h-full w-full max-w-5xl'
+                            onClick={e => e.stopPropagation()}>
+                            <Image
+                                src={images[index]}
+                                alt={`${title} - photo ${index + 1}`}
+                                fill
+                                sizes='100vw'
+                                className='object-contain'
+                                priority
+                            />
+                        </div>
+                        {images.length > 1 && (
+                            <button
+                                type='button'
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    next();
+                                }}
+                                aria-label='Next photo'
+                                className='absolute right-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors hover:bg-white/20 md:size-12'>
+                                <ChevronRight className='size-6' />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

@@ -10,8 +10,9 @@ import {
 } from '@/components/frontend/destination-listings';
 import type { TourListing } from '@/components/frontend/tour-card';
 import { FaqSection } from '@/components/frontend/faq-section';
-import { isLocale, type Locale } from '@/lib/constants/locales';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 
 // Destination display names (proper nouns - not translated, only resolved from the slug).
@@ -215,6 +216,13 @@ export default async function DestinationPage({
         DESTINATION_NAMES[destination] ??
         destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+    // Link each card to its flat tour URL (slug derived from the title until the
+    // public tour list API returns real slugs).
+    const tours = TOURS.map(tour => ({
+        ...tour,
+        href: localizeHref(locale as Locale, `/${destination}/${toSlug(tour.title)}`),
+    }));
+
     return (
         <>
             <DestinationHero
@@ -231,7 +239,7 @@ export default async function DestinationPage({
             />
             <DestinationListings
                 dict={dict.destination.listings}
-                tours={TOURS}
+                tours={tours}
                 destinationName={destinationName}
                 locale={locale as Locale}
                 destinationSlug={destination}

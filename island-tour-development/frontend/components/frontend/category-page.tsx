@@ -1,7 +1,8 @@
 import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours/page';
 import { categoriesApi } from '@/lib/api/categories';
-import type { Locale } from '@/lib/constants/locales';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 import { CategoryAbout } from './category-about';
 import { CategoryFilterBar } from './category-filter-bar';
@@ -211,6 +212,13 @@ export async function CategoryPage({
 
     if (!category) notFound();
 
+    // Link each card to its flat tour URL (slug derived from the title until the
+    // category tour list API returns real slugs).
+    const tours = MOCK_TOURS.map(tour => ({
+        ...tour,
+        href: localizeHref(locale, `/${destinationSlug}/${toSlug(tour.title)}`),
+    }));
+
     const t = dict.destination.allTours;
     const total = category.publishedTourCount;
 
@@ -310,7 +318,7 @@ export async function CategoryPage({
                             />
 
                             <ToursListing
-                                tours={MOCK_TOURS}
+                                tours={tours}
                                 dict={dict.destination.listings}
                                 pageCount={6}
                             />
@@ -354,7 +362,7 @@ export async function CategoryPage({
 
                         {/* Listing grid - 6 cards, no pagination (Figma 2147227769). */}
                         <ToursListing
-                            tours={MOCK_TOURS}
+                            tours={tours}
                             dict={dict.destination.listings}
                             pageCount={1}
                         />

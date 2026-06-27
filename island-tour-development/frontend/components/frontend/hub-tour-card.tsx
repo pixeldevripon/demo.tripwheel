@@ -1,12 +1,19 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Fragment, useState } from 'react';
 
 export type HubTourBadge = 'sponsored' | 'mostPopular' | 'likelyToSellOut' | null;
 
 export type HubTour = {
     id: string;
+    /**
+     * Flat tour detail URL (locale-prefixed, e.g. `/en/curacao/{slug}`). When
+     * set, the whole card links to the tour page; the Save button stops
+     * propagation so it never triggers navigation.
+     */
+    href?: string;
     /** Single hero image (no carousel in this card variant). */
     image?: string | null;
     badge: HubTourBadge;
@@ -59,7 +66,7 @@ export function HubTourCard({
             likelyToSellOut: dict.badges.likelyToSellOut,
         }[tour.badge];
 
-    return (
+    const card = (
         <article
             aria-label={tour.title}
             className='group flex flex-col overflow-hidden rounded-[8px] bg-it-white transition-colors duration-300 ease-in-out hover:bg-[#fdf6f0] md:rounded-[16px]'>
@@ -86,7 +93,11 @@ export function HubTourCard({
                     )}
                     <button
                         type='button'
-                        onClick={() => setSaved((v) => !v)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSaved((v) => !v);
+                        }}
                         aria-label={dict.save}
                         aria-pressed={saved}
                         className='grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-all duration-150 hover:shadow-it-md active:scale-90 md:size-10'>
@@ -175,4 +186,19 @@ export function HubTourCard({
             </div>
         </article>
     );
+
+    // When the data source supplies a detail URL, the whole card links to the
+    // tour page (the Save button stops propagation so it stays interactive).
+    if (tour.href) {
+        return (
+            <Link
+                href={tour.href}
+                aria-label={tour.title}
+                className='block rounded-[8px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:rounded-[16px]'>
+                {card}
+            </Link>
+        );
+    }
+
+    return card;
 }

@@ -7,24 +7,48 @@ type BreadcrumbDict = {
     current: string;
 };
 
+/** Optional clickable crumb between the destination and the current page. */
+export type BreadcrumbAnchor = {
+    label: string;
+    /** Path relative to the locale root, e.g. `/curacao/klein-curacao`. */
+    href: string;
+};
+
 /**
- * All Tours breadcrumb bar - `Home › {Destination} › All Tours`.
- * Matches Figma node 47167:4017. The trailing item (current page) is muted and
- * not a link; the full-width divider beneath bleeds to the 1440 container band.
+ * Breadcrumb bar - `Home › {Destination} [› {Anchor}] › {current}`.
+ * Matches Figma node 47167:4017 (All Tours) and 47936:3362 (Tour detail).
+ *
+ * The trailing item (current page) is muted and not a link; the full-width
+ * divider beneath bleeds to the 1440 container band. An optional `anchor` adds
+ * one clickable crumb between the destination and the current page - this is the
+ * tour page's hub-/category-anchored variant (master §9). Omit it for the flat
+ * `Home › Destination › current` shape used by All Tours / Hub / Category.
  */
 export function ToursBreadcrumb({
     locale,
     destinationName,
     destinationSlug,
+    anchor,
     dict,
 }: {
     locale: Locale;
     destinationName: string;
     destinationSlug: string;
+    anchor?: BreadcrumbAnchor | null;
     dict: BreadcrumbDict;
 }) {
     const linkClass =
         'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:text-it-primary';
+
+    const separator = (
+        <Image
+            src='/icons/breadcrumb/arrow-right.svg'
+            alt=''
+            width={20}
+            height={20}
+            className='size-5 shrink-0'
+        />
+    );
 
     return (
         <section className='bg-it-white'>
@@ -37,25 +61,23 @@ export function ToursBreadcrumb({
                         className={linkClass}>
                         {dict.home}
                     </Link>
-                    <Image
-                        src='/icons/breadcrumb/arrow-right.svg'
-                        alt=''
-                        width={20}
-                        height={20}
-                        className='size-5 shrink-0'
-                    />
+                    {separator}
                     <Link
                         href={localizeHref(locale, `/${destinationSlug}`)}
                         className={linkClass}>
                         {destinationName}
                     </Link>
-                    <Image
-                        src='/icons/breadcrumb/arrow-right.svg'
-                        alt=''
-                        width={20}
-                        height={20}
-                        className='size-5 shrink-0'
-                    />
+                    {anchor && (
+                        <>
+                            {separator}
+                            <Link
+                                href={localizeHref(locale, anchor.href)}
+                                className={linkClass}>
+                                {anchor.label}
+                            </Link>
+                        </>
+                    )}
+                    {separator}
                     <span
                         aria-current='page'
                         className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>

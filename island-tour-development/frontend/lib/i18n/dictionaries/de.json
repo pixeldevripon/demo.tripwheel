@@ -256,6 +256,46 @@
       "comparison": { "title": "Welcher Ausflug passt zu dir?", "subtitle": "Alle sechs Boote fahren nach Klein Curaçao. Softdrinks und ein BBQ-Mittagessen inklusive. Das ist der Unterschied, sobald du dort bist.", "book": "Buchen" },
       "discover": { "titlePattern": "Entdecke {hub}", "subtitle": "Eine flache, unbewohnte Insel von 1,7 km², 10 km vor der Südostküste von Curaçao. Keine Geschäfte, kein Empfang, nur Sand, Riff und Geschichte.", "bookTrip": "Buche deinen Trip" }
     },
+    "tour": {
+      "save": "Speichern",
+      "share": "Teilen",
+      "localsFavorite": "Favorit der Einheimischen",
+      "showAllPhotos": "Alle Fotos anzeigen",
+      "booking": {
+        "from": "Ab",
+        "perPerson": "pro Person",
+        "continue": "Weiter",
+        "selected": "Ausgewählt",
+        "soldOut": "Ausverkauft",
+        "onlyLeft": "Nur noch {count} frei",
+        "travelers": "{count} Reisende",
+        "total": "Gesamt",
+        "payToday": "Heute zahlen",
+        "balanceLater": "Rest später",
+        "taxesIncluded": "Alle Steuern und Gebühren inbegriffen",
+        "showDetails": "Details anzeigen",
+        "freeCancellation": "Kostenlose Stornierung bis {hours}h",
+        "payLater": "Nur {pct}% heute zahlen, Rest später",
+        "sellOutTitle": "Schnell ausverkauft",
+        "sellOutSubtitle": "Buche heute und sichere dir deinen Platz"
+      },
+      "reviews": {
+        "title": "Was unsere Gäste sagen",
+        "subtitle": "Verifizierte Bewertungen von echten Reisenden",
+        "seeAll": "Alle Bewertungen ansehen",
+        "verified": "Verifiziert",
+        "readMore": "Mehr lesen"
+      },
+      "sections": {
+        "overview": "Überblick",
+        "included": "Inbegriffen",
+        "expect": "Was dich erwartet",
+        "meeting": "Treffpunkt & Abholung",
+        "info": "Wichtige Infos",
+        "cancellation": "Stornierungsbedingungen",
+        "reviews": "Bewertungen"
+      }
+    },
     "categoryAboutTitle": "Über {category} in {destination}",
     "faqTitle": "Häufig gestellte Fragen",
     "categoryTrust": {

@@ -256,6 +256,46 @@
       "comparison": { "title": "Quelle excursion vous convient ?", "subtitle": "Les six bateaux se rendent à Klein Curaçao. Boissons et déjeuner barbecue inclus. Voici ce qui change une fois sur place.", "book": "Réserver" },
       "discover": { "titlePattern": "Découvrez {hub}", "subtitle": "Une île plate et inhabitée de 1,7 km², à 10 km au large de la côte sud-est de Curaçao. Pas de boutiques, pas de réseau, juste du sable, du récif et de l'histoire.", "bookTrip": "Réservez votre excursion" }
     },
+    "tour": {
+      "save": "Enregistrer",
+      "share": "Partager",
+      "localsFavorite": "Favori des locaux",
+      "showAllPhotos": "Voir toutes les photos",
+      "booking": {
+        "from": "À partir de",
+        "perPerson": "par personne",
+        "continue": "Continuer",
+        "selected": "Sélectionné",
+        "soldOut": "Complet",
+        "onlyLeft": "Plus que {count}",
+        "travelers": "{count} voyageurs",
+        "total": "Total",
+        "payToday": "Payer aujourd'hui",
+        "balanceLater": "Solde plus tard",
+        "taxesIncluded": "Taxes et frais inclus",
+        "showDetails": "Voir les détails",
+        "freeCancellation": "Annulation gratuite jusqu'à {hours}h",
+        "payLater": "Payez {pct}% aujourd'hui, le reste plus tard",
+        "sellOutTitle": "Risque de complet",
+        "sellOutSubtitle": "Réservez aujourd'hui pour garantir votre place"
+      },
+      "reviews": {
+        "title": "Ce que disent nos clients",
+        "subtitle": "Avis vérifiés de vrais voyageurs",
+        "seeAll": "Voir tous les avis",
+        "verified": "Vérifié",
+        "readMore": "Lire plus"
+      },
+      "sections": {
+        "overview": "Aperçu",
+        "included": "Ce qui est inclus",
+        "expect": "À quoi s'attendre",
+        "meeting": "Point de rencontre",
+        "info": "Infos importantes",
+        "cancellation": "Politique d'annulation",
+        "reviews": "Avis"
+      }
+    },
     "categoryAboutTitle": "À propos de {category} à {destination}",
     "faqTitle": "Questions fréquentes",
     "categoryTrust": {

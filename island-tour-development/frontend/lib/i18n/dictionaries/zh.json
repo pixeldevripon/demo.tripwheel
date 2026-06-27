@@ -256,6 +256,46 @@
       "comparison": { "title": "哪一趟行程适合你？", "subtitle": "六艘船都前往小库拉索岛。含软饮料和烧烤午餐。以下是抵达后的不同之处。", "book": "预订" },
       "discover": { "titlePattern": "探索 {hub}", "subtitle": "一座面积 1.7 平方公里的平坦无人岛，位于库拉索东南海岸外 10 公里处。没有商店，没有信号，只有沙滩、珊瑚礁和历史。", "bookTrip": "预订行程" }
     },
+    "tour": {
+      "save": "收藏",
+      "share": "分享",
+      "localsFavorite": "当地人最爱",
+      "showAllPhotos": "查看所有照片",
+      "booking": {
+        "from": "仅需",
+        "perPerson": "每人",
+        "continue": "继续",
+        "selected": "已选择",
+        "soldOut": "售罄",
+        "onlyLeft": "仅剩 {count} 个",
+        "travelers": "{count} 位旅客",
+        "total": "总计",
+        "payToday": "今日支付",
+        "balanceLater": "余款后付",
+        "taxesIncluded": "含全部税费",
+        "showDetails": "查看明细",
+        "freeCancellation": "{hours} 小时前免费取消",
+        "payLater": "今日仅付 {pct}%，余款后付",
+        "sellOutTitle": "可能售罄",
+        "sellOutSubtitle": "立即预订以确保名额"
+      },
+      "reviews": {
+        "title": "我们的客人怎么说",
+        "subtitle": "来自真实旅客的已验证评价",
+        "seeAll": "查看所有评价",
+        "verified": "已验证",
+        "readMore": "阅读更多"
+      },
+      "sections": {
+        "overview": "概览",
+        "included": "包含内容",
+        "expect": "行程预期",
+        "meeting": "集合与接送",
+        "info": "重要信息",
+        "cancellation": "取消政策",
+        "reviews": "评价"
+      }
+    },
     "categoryAboutTitle": "关于{destination}的{category}",
     "faqTitle": "常见问题",
     "categoryTrust": {

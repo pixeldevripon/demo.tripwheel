@@ -256,6 +256,46 @@
       "comparison": { "title": "Welke trip past bij jou?", "subtitle": "Alle zes de boten varen naar Klein Curaçao. Frisdrank en een BBQ-lunch inbegrepen. Dit is wat er anders is zodra je er bent.", "book": "Boek" },
       "discover": { "titlePattern": "Ontdek {hub}", "subtitle": "Een vlak, onbewoond eiland van 1,7 km², 10 km voor de zuidoostkust van Curaçao. Geen winkels, geen bereik, alleen zand, rif en geschiedenis.", "bookTrip": "Boek je trip" }
     },
+    "tour": {
+      "save": "Bewaren",
+      "share": "Delen",
+      "localsFavorite": "Favoriet van locals",
+      "showAllPhotos": "Alle foto's tonen",
+      "booking": {
+        "from": "Vanaf",
+        "perPerson": "per persoon",
+        "continue": "Doorgaan",
+        "selected": "Geselecteerd",
+        "soldOut": "Uitverkocht",
+        "onlyLeft": "Nog {count} beschikbaar",
+        "travelers": "{count} reizigers",
+        "total": "Totaal",
+        "payToday": "Vandaag betalen",
+        "balanceLater": "Rest later",
+        "taxesIncluded": "Alle belastingen en kosten inbegrepen",
+        "showDetails": "Details tonen",
+        "freeCancellation": "Gratis annuleren tot {hours}u",
+        "payLater": "Betaal nu {pct}%, de rest later",
+        "sellOutTitle": "Snel uitverkocht",
+        "sellOutSubtitle": "Boek vandaag om je plek te verzekeren"
+      },
+      "reviews": {
+        "title": "Wat onze gasten zeggen",
+        "subtitle": "Geverifieerde reviews van echte reizigers",
+        "seeAll": "Alle reviews bekijken",
+        "verified": "Geverifieerd",
+        "readMore": "Meer lezen"
+      },
+      "sections": {
+        "overview": "Overzicht",
+        "included": "Wat is inbegrepen",
+        "expect": "Wat te verwachten",
+        "meeting": "Ontmoeting & ophalen",
+        "info": "Belangrijke info",
+        "cancellation": "Annuleringsbeleid",
+        "reviews": "Reviews"
+      }
+    },
     "categoryAboutTitle": "Over {category} in {destination}",
     "faqTitle": "Veelgestelde vragen",
     "categoryTrust": {

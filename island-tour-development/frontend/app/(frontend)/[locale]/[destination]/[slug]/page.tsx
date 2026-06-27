@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { CategoryPage } from '@/components/frontend/category-page';
 import { HubPage } from '@/components/frontend/hub-page';
+import { TourPage } from '@/components/frontend/tour-page';
 import { categoriesApi } from '@/lib/api/categories';
 import {
     ALL_LOCALES,
@@ -141,10 +142,10 @@ export async function generateMetadata({
  * reserved). It is resolved via the slug registry, then dispatched to the
  * matching page component (ROUTING-AND-RESOLUTION.md §5.2).
  *
- * Only the CATEGORY branch is implemented today; HUB / COLLECTION / TOUR are
- * tracked as not-yet-built (ROUTING-AND-RESOLUTION.md §11) and 404 until then.
- * RESERVED `tours` is normally served by the static `tours/` route; the redirect
- * here is a defensive fallback.
+ * CATEGORY / HUB / TOUR branches are implemented; COLLECTION is tracked as
+ * not-yet-built (ROUTING-AND-RESOLUTION.md §11) and 404s until then. RESERVED
+ * `tours` is normally served by the static `tours/` route; the redirect here is
+ * a defensive fallback.
  */
 export default async function EntityPage({
     params,
@@ -155,14 +156,20 @@ export default async function EntityPage({
     if (!isLocale(locale)) notFound();
 
     const resolution = await resolveSlug(destination, slug);
-    if (!resolution) notFound();
 
     const dict = await getDictionary(locale);
     const destinationName = await resolveDestinationName(destination, locale);
 
-    switch (resolution.entityType) {
+    // Tours are the flat catch-all entity. The public tour-by-slug endpoint is
+    // not wired yet, so a slug the registry can't resolve is treated as a TOUR
+    // and renders the (mock) tour page rather than 404. TEMPORARY: once
+    // `tripsApi.getBySlug` exists, restore `if (!resolution) notFound()` and let
+    // the registry's TOUR rows drive this branch.
+    const entityType = resolution?.entityType ?? 'TOUR';
+
+    switch (entityType) {
         case 'CATEGORY':
-            if (!resolution.entityId) notFound();
+            if (!resolution?.entityId) notFound();
             return (
                 <CategoryPage
                     destinationSlug={destination}
@@ -175,7 +182,7 @@ export default async function EntityPage({
             );
 
         case 'HUB':
-            if (!resolution.entityId) notFound();
+            if (!resolution?.entityId) notFound();
             return (
                 <HubPage
                     destinationSlug={destination}
@@ -187,12 +194,24 @@ export default async function EntityPage({
                 />
             );
 
+        case 'TOUR':
+            // Flat resolution: the tour fetches by its slug, not entityId
+            // (ROUTING-AND-RESOLUTION.md §5.2).
+            return (
+                <TourPage
+                    destinationSlug={destination}
+                    slug={slug}
+                    destinationName={destinationName}
+                    locale={locale}
+                    dict={dict}
+                />
+            );
+
         case 'RESERVED':
             redirect(localizeHref(locale, `/${destination}/tours`));
 
-        // COLLECTION / TOUR pages are not built yet (see routing doc §11).
+        // COLLECTION page is not built yet (see routing doc §11).
         case 'COLLECTION':
-        case 'TOUR':
         default:
             notFound();
     }
