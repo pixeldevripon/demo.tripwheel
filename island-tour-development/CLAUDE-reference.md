@@ -59,7 +59,7 @@ instantly on every model. Pre-payment copy is agentless; post-booking the operat
 ## Tour detail page (section order)
 
 Breadcrumbs (3 variants) → H1 `{Destination or Hub}: {Tour name}` → rating row → gallery → booking
-widget → overview (highlights merged in) → What's Included (✓/✗) → Meeting & Pickup → Important Info
+widget → overview → What's Included (✓/✗) → Meeting & Pickup → Important Info
 → reviews → related tours. 3 quick-info badges: Duration, Pickup, Languages (LD7). Sticky TOC, 7
 items (LD16). Deep reference: `technical-doc/specs/` (Tour Detail Page Specification).
 
@@ -90,7 +90,7 @@ is v2). See `technical-doc/02-architecture/AVAILABILITY-AND-DEPARTURES.md`.
 ## Trip lifecycle
 
 `DRAFT → LIVE ⇄ PAUSED → ARCHIVED` (+ restore). Publish guard: ≥5 images + hero, English overview,
-≥3 highlights, price, free-cancellation window present. Status changes re-run the category ≥3 gating
+price, free-cancellation window present. Status changes re-run the category ≥3 gating
 check in both directions. Ownership via `operator.id` (admin auto-provisioned, bypasses ownership).
 
 ## Auth

@@ -1,10 +1,9 @@
 // Tours domain — Tour and all related child models.
 // Operators create tours; admins can moderate. Per-traveler pricing is a flat list of
 // TourAgeBand rows on the Tour (Adult / Child / Infant …). Publish blocks: <5 images,
-// no hero, overview empty, highlights <3.
+// no hero, overview empty.
 
 model Tour {
- 
   id            String @id @default(uuid())
   operatorId    String
   destinationId String
@@ -111,7 +110,6 @@ model Tour {
   images             TourImage[]
   addOns             TourAddOn[]
   languages          TourLanguage[]
-  highlights         TourHighlight[]
   inclusions         TourInclusion[]
   exclusions         TourExclusion[]
   features           TourFeature[] // OTHER OCTO feature types (terms, accessibility…) — DS1
@@ -255,34 +253,6 @@ model TourLanguage {
   @@map("tour_languages")
 }
 
-// ── Highlights ────────────────────────────────────────────────────────────────
-// 3–6 bullet points per tour. Serialized into OCTO content features[] as HIGHLIGHT.
-model TourHighlight {
-  id           String  @id @default(uuid())
-  tourId       String
-  displayOrder Int     @default(0)
-  imageUrl     String?
-
-  tour         Tour                       @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  translations TourHighlightTranslation[]
-
-  @@index([tourId, displayOrder])
-  @@map("tour_highlights")
-}
-
-model TourHighlightTranslation {
-  id                  String  @id @default(uuid())
-  highlightId         String
-  locale              Locale
-  text                String
-  isMachineTranslated Boolean @default(false)
-
-  highlight TourHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
-
-  @@unique([highlightId, locale])
-  @@map("tour_highlight_translations")
-}
-
 // ── Inclusions ────────────────────────────────────────────────────────────────
 // Serialized into OCTO content features[] as INCLUSION.
 model TourInclusion {
@@ -343,12 +313,12 @@ model TourExclusionTranslation {
   @@map("tour_exclusion_translations")
 }
 
-// ── OCTO content features OTHER than highlight/inclusion/exclusion (DS1) ───────
+// ── OCTO content features OTHER than inclusion/exclusion (DS1) ────────────────
 // terms, accessibility, prebooking/prearrival info, redemption, additional info.
 model TourFeature {
   id           String      @id @default(uuid())
   tourId       String
-  type         FeatureType // not HIGHLIGHT/INCLUSION/EXCLUSION
+  type         FeatureType // not INCLUSION/EXCLUSION
   displayOrder Int         @default(0)
 
   tour         Tour                     @relation(fields: [tourId], references: [id], onDelete: Cascade)

@@ -237,7 +237,9 @@
       "tabs": { "trips": "Viajes", "privateCharters": "Chárteres privados", "compare": "Comparar", "discover": "Descubrir" },
       "tagline": "A donde los locales envían a sus visitantes",
       "selectDate": "Seleccionar fecha",
-      "checkAvailability": "Ver disponibilidad"
+      "checkAvailability": "Ver disponibilidad",
+      "comparison": { "title": "¿Qué excursión es la ideal para ti?", "subtitle": "Los seis barcos van a Klein Curazao. Refrescos y un almuerzo barbacoa incluidos. Esto es lo que cambia una vez que llegas.", "book": "Reservar" },
+      "discover": { "titlePattern": "Descubre {hub}", "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.", "bookTrip": "Reserva tu excursión" }
     },
     "categoryAboutTitle": "Sobre {category} en {destination}",
     "faqTitle": "Preguntas frecuentes",

@@ -237,7 +237,9 @@
       "tabs": { "trips": "Viagens", "privateCharters": "Fretamentos privados", "compare": "Comparar", "discover": "Descobrir" },
       "tagline": "Para onde os locais enviam os seus visitantes",
       "selectDate": "Selecionar data",
-      "checkAvailability": "Ver disponibilidade"
+      "checkAvailability": "Ver disponibilidade",
+      "comparison": { "title": "Qual passeio é ideal para você?", "subtitle": "Todos os seis barcos vão para Klein Curaçao. Refrigerantes e um almoço de churrasco incluídos. Veja o que muda quando você chega lá.", "book": "Reservar" },
+      "discover": { "titlePattern": "Descubra {hub}", "subtitle": "Uma ilha plana e desabitada de 1,7 km², a 10 km da costa sudeste de Curaçao. Sem lojas, sem sinal, apenas areia, recife e história.", "bookTrip": "Reserve seu passeio" }
     },
     "categoryAboutTitle": "Sobre {category} em {destination}",
     "faqTitle": "Perguntas frequentes",

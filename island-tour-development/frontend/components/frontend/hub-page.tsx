@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { hubsApi } from '@/lib/api/hubs';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { HubCompareSection, type CompareTable } from './hub-compare-section';
+import { HubDiscoverSection, type HubDiscoverItem } from './hub-discover-section';
 import { HubHero, type HubHeroMeta } from './hub-hero';
 import { type HubPick } from './hub-pick-card';
 import { type HubTour } from './hub-tour-card';
@@ -138,6 +140,162 @@ const MOCK_PICK_CONTENT: Omit<HubPick, 'label' | 'labelText'>[] = [
     },
 ];
 
+// "Which trip is right for you?" comparison tables (Figma node 48024:11654) -
+// placeholder until the per-tour attributes / hub-comparison API is wired
+// (mirrors the MOCK convention elsewhere on the hub page). Copy kept verbatim
+// from the design.
+const
+    MOCK_COMPARE_TABLES: CompareTable[] = [
+    {
+        title: 'Comfort trips',
+        boats: [
+            { name: 'Super Yacht with Beach House', price: 150 },
+            { name: 'Family Boat with Beach House', price: 150 },
+            { name: 'Catamaran Yacht with Open Bar', price: 135, priceCheck: true },
+        ],
+        rows: [
+            {
+                label: 'What stands out',
+                cells: [
+                    { parts: ['Diva school', 'massage with a view'] },
+                    { parts: ['360° Watch tower'] },
+                    { parts: ['Spacious catamaran', 'Luxury on board'] },
+                ],
+            },
+            {
+                label: 'On the island',
+                cells: [
+                    { parts: ['Beach house', 'Beds', 'Shower', 'WC'] },
+                    { parts: ['Beach house', 'Beds', 'Shower', 'WC'] },
+                    { parts: ['Palapas', 'On board WC'] },
+                ],
+            },
+            {
+                label: 'Breakfast',
+                cells: [{ parts: ['Included'] }, { parts: ['Included'] }, { parts: ['Included'] }],
+            },
+            {
+                label: 'Open bar',
+                cells: [
+                    { parts: ['Optional'] },
+                    { parts: ['Optional'] },
+                    { parts: ['Included'], check: true },
+                ],
+            },
+            {
+                label: 'Crossing',
+                cells: [{ parts: ['1 hour'] }, { parts: ['1.5 hours'] }, { parts: ['1 hour'] }],
+            },
+            {
+                label: 'Boat & group',
+                cells: [
+                    { parts: ['Super Yacht', 'max 70'] },
+                    { parts: ['Motorboat', 'max 80'] },
+                    { parts: ['Catamaran Yacht', 'max 60'] },
+                ],
+            },
+            {
+                label: 'Free cancel',
+                cells: [{ parts: ['48h'] }, { parts: ['72h'] }, { parts: ['48h'] }],
+            },
+        ],
+    },
+    {
+        title: 'Adventure trips',
+        boats: [
+            { name: 'Catamaran with Premium Open Bar', price: 140 },
+            { name: 'Catamaran with Breakfast', price: 120 },
+            { name: 'Powerboat Adventure', price: 169 },
+        ],
+        rows: [
+            {
+                label: 'What stands out',
+                cells: [
+                    { parts: ['Biggest cata-marans', 'premium bar'] },
+                    { parts: ['Lowest price'] },
+                    { parts: ['Fastest crossing', 'no seasickness'] },
+                ],
+            },
+            {
+                label: 'On the island',
+                cells: [
+                    { parts: ['Palapas', 'sunbeds'] },
+                    { parts: ['Palapas', 'sunbeds'] },
+                    { parts: ['Sunshade roof'] },
+                ],
+            },
+            {
+                label: 'Breakfast',
+                cells: [{ parts: ['-'] }, { parts: ['Included'], check: true }, { parts: ['-'] }],
+            },
+            {
+                label: 'Open bar',
+                cells: [
+                    { parts: ['Premium'], check: true },
+                    { parts: ['Open bar'] },
+                    { parts: ['Beer / wine'] },
+                ],
+            },
+            {
+                label: 'Lone Premium',
+                cells: [{ parts: ['from 12:30'] }, { parts: ['from 12:30'] }, {}],
+            },
+            {
+                label: 'Crossing',
+                cells: [{ parts: ['1 h 45min'] }, { parts: ['1.5 hours'] }, { parts: ['45min'] }],
+            },
+            {
+                label: 'Boat & group',
+                cells: [
+                    { parts: ['Catamaran', 'max 75'] },
+                    { parts: ['Catamaran', 'max 50'] },
+                    { parts: ['RIB', 'max 18 (inntimate)'] },
+                ],
+            },
+            {
+                label: 'Free cancel',
+                cells: [{ parts: ['48h'] }, { parts: ['48h'] }, { parts: ['48h'] }],
+            },
+        ],
+    },
+];
+
+// "Discover {hub}" editorial cards (Figma node 48371:20778) - placeholder until
+// the hub content API is wired (mirrors the MOCK convention elsewhere on the hub
+// page). Copy kept verbatim from the design.
+const MOCK_DISCOVER_ITEMS: HubDiscoverItem[] = [
+    {
+        title: 'The White Beach',
+        body: "Klein Curaçao has one of the longest white-sand beaches in the Caribbean: over a kilometre of fine, powdery sand along the calm, reef-protected south shore. The water runs in bands of turquoise to deep blue, shallow and clear right off the sand. It's the reason most people make the trip, a full day on an undeveloped beach with nothing built on it and no crowds beyond the day boats. The north shore is the opposite: rough, windswept, and where the wrecks lie.",
+        image: null,
+    },
+    {
+        title: 'History',
+        body: "In 1871, British mining engineer John Godden found phosphate on Klein Curaçao, left by centuries of nesting birds. Within fifteen years, they had dug out around 90,000 tons for fertiliser and cattle feed, leaving the island around 3 metres lower and stripped bare, which is why it's flat and treeless today. In the 1700s and 1800s, the West India Company used it as a quarantine station for enslaved people. Its ruins still stand in the northwest, and the graves of those who didn't survive remain in the south. A Carmabi project has since restored some green.",
+        image: null,
+    },
+    {
+        title: 'Sea Turtles',
+        body: 'Klein Curaçao is a protected nesting ground for three sea turtle species: Hawksbill, Loggerhead, and Green sea turtles. The whole island is a protected Ramsar wetland and a designated Important Bird Area. Those hatched here return year after year to the same beach to nest. While snorkeling you\'ll very likely see them grazing in the shallows, with the best chance during nesting season, March to October. Watch and swim alongside them, but never touch.',
+        image: null,
+    },
+    {
+        title: 'Snorkeling & Diving',
+        body: "Klein Curaçao's eastern reef is one of the healthiest untouched coral systems left in the Caribbean, rare in a region where bleaching has hit most reefs hard. With visibility up to 30 metres, you take in coral formations, underwater caves, and dense fish life: a real dive site, not just a snorkel stop. One operator runs the island's only dive school, and snorkel gear comes standard.",
+        image: null,
+    },
+    {
+        title: 'The Pink Lighthouse',
+        body: "Klein Curaçao's pink lighthouse, officially the Prins Hendrik tower, stands 20 metres tall in the middle of the island as its standout landmark. First built in 1850, it was destroyed by a hurricane in 1877, rebuilt in 1879, and first lit in 1913. Left empty for decades, it gained a solar-powered LED beacon in 2008, and stairs added in 2017 let you climb to the top for a view over the whole island, though they're weathered and unmaintained now.",
+        image: null,
+    },
+    {
+        title: 'Shipwrecks',
+        body: "Klein Curaçao's north shore holds three shipwrecks. Low and hard to spot, with strong currents, the island has caught out passing boats for centuries. The most visible is the Maria Bianca Guidesman, an oil tanker stranded in 1988. Two French sailing yachts lie nearby: the Tchao, wrecked in 2007, and another lost in 2024. Wind, salt, and sand are slowly reclaiming all three. The north-shore walk takes you right past them.",
+        image: null,
+    },
+];
+
 interface HubPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -185,6 +343,8 @@ export async function HubPage({
         .replace('{hub}', hub.name);
     const chartersDict = hubDict.charters;
     const picksDict = hubDict.picks;
+    const discoverDict = hubDict.discover;
+    const discoverTitle = discoverDict.titlePattern.replace('{hub}', hub.name);
     const pickLabels: HubPick['label'][] = ['best', 'popular', 'families'];
     const pickLabelText = [picksDict.best, picksDict.popular, picksDict.families];
     const picks: HubPick[] = MOCK_PICK_CONTENT.map((p, i) => ({
@@ -236,8 +396,36 @@ export async function HubPage({
                 },
             },
         },
-        null,
-        null,
+        // Compare and Discover render as scroll-nav panels (index-aligned to the
+        // `compare`/`discover` tabs) so they share the Trips section's
+        // `it-container`, sticky tab bar, and scrollspy.
+        (
+            <HubCompareSection
+                key='compare'
+                tables={MOCK_COMPARE_TABLES}
+                dict={{
+                    title: hubDict.comparison.title,
+                    subtitle: hubDict.comparison.subtitle,
+                    from: listingsDict.from,
+                    book: hubDict.comparison.book,
+                }}
+            />
+        ),
+        // Discover is the trailing panel: HubTripsSection renders it outside the
+        // sticky scope (bar releases here), and the Discover tab scrolls to it.
+        (
+            <HubDiscoverSection
+                key='discover'
+                items={MOCK_DISCOVER_ITEMS}
+                dict={{
+                    title: discoverTitle,
+                    subtitle: discoverDict.subtitle,
+                    bookTrip: discoverDict.bookTrip,
+                    learnMore: dict.destination.about.learnMore,
+                    readLess: dict.destination.about.readLess,
+                }}
+            />
+        ),
     ];
 
     return (
@@ -251,7 +439,6 @@ export async function HubPage({
                     current: breadcrumbLabel,
                 }}
             />
-
             <HubHero
                 title={title}
                 tagline={hubDict.tagline}
@@ -262,14 +449,12 @@ export async function HubPage({
                     checkAvailability: hubDict.checkAvailability,
                 }}
             />
-
             <HubWhySection
                 title={whyTitle}
                 paragraphs={whyParagraphs}
                 learnMoreLabel={dict.destination.about.learnMore}
                 readLessLabel={dict.destination.about.readLess}
             />
-
             <HubTripsSection
                 dict={{
                     tabs: tripsTabs,
@@ -290,3 +475,5 @@ export async function HubPage({
         </>
     );
 }
+
+

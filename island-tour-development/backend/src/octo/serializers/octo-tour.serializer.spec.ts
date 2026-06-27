@@ -56,9 +56,6 @@ function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
       { url: 'https://cdn/1.jpg', isHero: true, altText: 'Reef', displayOrder: 0 },
       { url: 'https://cdn/2.jpg', isHero: false, altText: null, displayOrder: 1 },
     ],
-    highlights: [
-      { translations: [{ locale: 'en', text: 'Two pristine reef stops' }] },
-    ],
     inclusions: [
       { translations: [{ locale: 'en', label: 'Snorkel gear & guide' }] },
     ],
@@ -179,7 +176,6 @@ describe('serializeTour', () => {
     expect(out.durationMinutesFrom).toBe(240);
 
     expect(out.features).toEqual([
-      { type: 'HIGHLIGHT', shortDescription: 'Two pristine reef stops' },
       { type: 'INCLUSION', shortDescription: 'Snorkel gear & guide' },
       { type: 'EXCLUSION', shortDescription: 'Gratuities' },
     ]);

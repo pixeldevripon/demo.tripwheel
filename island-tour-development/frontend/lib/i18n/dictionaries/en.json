@@ -237,7 +237,9 @@
       "tabs": { "trips": "Trips", "privateCharters": "Private charters", "compare": "Compare", "discover": "Discover" },
       "tagline": "Where islanders send their visitors",
       "selectDate": "Select date",
-      "checkAvailability": "Check Availability"
+      "checkAvailability": "Check Availability",
+      "comparison": { "title": "Which trip is right for you?", "subtitle": "All six boats go to Klein Curaçao. Soft drinks and a BBQ lunch included. Here's what's different once you're there.", "book": "Book" },
+      "discover": { "titlePattern": "Discover {hub}", "subtitle": "A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.", "bookTrip": "Book your trip" }
     },
     "categoryAboutTitle": "About {category} in {destination}",
     "faqTitle": "Frequently asked questions",

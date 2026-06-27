@@ -8,7 +8,7 @@ export function ApiSearchToursDocs() {
     ApiOperation({
       summary: 'Full-text tour search (public)',
       description:
-        'Searches tour title/description/highlights + category & hub names (V2 §10). ' +
+        'Searches tour title/description + category & hub names (V2 §10). ' +
         'Optionally scope to a destination via `destinationSlug`; otherwise global. ' +
         'Results use the Recommended ordering. V1 is case-insensitive substring matching; ' +
         'ranking/typo-tolerance (tsvector or Algolia) is the documented upgrade path.',

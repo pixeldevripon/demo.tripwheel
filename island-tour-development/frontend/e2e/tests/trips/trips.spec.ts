@@ -23,14 +23,7 @@
  *     - Save Changes triggers PATCH and shows success toast
  *     - Publish button visible for DRAFT trip
  *
- *  4. Edit Trip - Highlights Tab
- *     - Renders highlights list from API
- *     - "Add Highlight" form visible with text input
- *     - Submitting form POSTs to API and shows toast
- *     - Chevron button expands translation panel
- *     - Delete button sends DELETE and shows toast
- *
- *  5. Edit Trip - Inclusions Tab
+ *  4. Edit Trip - Inclusions Tab
  *     - Renders inclusions list from API
  *     - "Add Inclusion" form visible with label input and icon select
  *     - Submitting form POSTs to API and shows toast
@@ -105,7 +98,6 @@ const MOCK_TRIP_DRAFT: Record<string, unknown> = {
   heroImage: null,
   imageCount: 0,
   scheduleCount: 0,
-  highlightCount: 0,
   inclusionCount: 0,
   featuredSlotNumber: null,
   featuredSlotStatus: null,
@@ -141,23 +133,6 @@ const MOCK_DESTINATIONS = [
 
 const MOCK_CATEGORIES = [
   { id: 'cat-1', name: 'Boat Tours', slug: 'boat-tours', isActive: true },
-];
-
-const MOCK_HIGHLIGHTS = [
-  {
-    id: 'hl-1',
-    tripId: TRIP_ID,
-    displayOrder: 1,
-    imageUrl: null,
-    translations: [{ locale: 'en', text: 'Stunning sunset views', isMachineTranslated: false }],
-  },
-  {
-    id: 'hl-2',
-    tripId: TRIP_ID,
-    displayOrder: 2,
-    imageUrl: null,
-    translations: [{ locale: 'en', text: 'Free drinks on board', isMachineTranslated: false }],
-  },
 ];
 
 const MOCK_INCLUSIONS = [
@@ -255,36 +230,6 @@ async function mockSupportingData(page: PlaywrightPage) {
   // Hub match check - return null (no hub match) so hub prompt doesn't block tests
   await page.route('**/api/v1/hubs/match**', (route) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) });
-  });
-}
-
-async function mockHighlightsEndpoints(page: PlaywrightPage) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}/highlights`, (route) => {
-    const method = route.request().method();
-    if (method === 'GET') {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_HIGHLIGHTS) });
-    } else if (method === 'POST') {
-      const newHighlight = {
-        id: 'hl-new',
-        tripId: TRIP_ID,
-        displayOrder: 3,
-        imageUrl: null,
-        translations: [{ locale: 'en', text: 'New highlight text', isMachineTranslated: false }],
-      };
-      route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(newHighlight) });
-    } else {
-      route.continue();
-    }
-  });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/highlights/**`, (route) => {
-    const method = route.request().method();
-    if (method === 'DELETE') {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
-    } else if (method === 'PATCH') {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_HIGHLIGHTS[0]) });
-    } else {
-      route.continue();
-    }
   });
 }
 
@@ -387,13 +332,6 @@ async function mockTranslationsEndpoints(page: PlaywrightPage, tripId: string = 
 async function mockAllTripTabEndpoints(page: PlaywrightPage, trip: Record<string, unknown> = MOCK_TRIP_DRAFT) {
   await mockTripDetail(page, trip);
   await mockTranslationsEndpoints(page, trip.id as string);
-  await page.route(`**/api/v1/trips/${trip.id}/highlights**`, (route) => {
-    if (route.request().method() === 'GET') {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_HIGHLIGHTS) });
-    } else {
-      route.continue();
-    }
-  });
   await page.route(`**/api/v1/trips/${trip.id}/languages**`, (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
@@ -761,104 +699,7 @@ test.describe('Edit Trip - Details Tab', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Edit Trip - Highlights Tab
-// ---------------------------------------------------------------------------
-
-test.describe('Edit Trip - Highlights Tab', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockTripDetail(page);
-    await mockTranslationsEndpoints(page);
-    await mockHighlightsEndpoints(page);
-    await mockSupportingData(page);
-    await page.route(`**/api/v1/trips/${TRIP_ID}/languages**`, (route) => {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
-    });
-    await page.goto(`/dashboard/trips/${TRIP_ID}/edit?tab=highlights`);
-    // Wait for highlights content to load
-    await page.waitForSelector('text=Highlights', { timeout: 15_000 });
-  });
-
-  test('renders highlights from the API', async ({ page }) => {
-    await expect(page.getByText('Stunning sunset views')).toBeVisible();
-    await expect(page.getByText('Free drinks on board')).toBeVisible();
-  });
-
-  test('"Add Highlight" form section is visible with text input', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button - use .first() for the heading
-    await expect(page.getByText(/add highlight/i).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.locator('input[name="text"]')).toBeVisible({ timeout: 8_000 });
-  });
-
-  test('submitting Add Highlight form calls POST and shows success toast', async ({ page }) => {
-    let postCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/highlights`, (route) => {
-      if (route.request().method() === 'POST') {
-        postCalled = true;
-        route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'hl-new',
-            tripId: TRIP_ID,
-            displayOrder: 3,
-            imageUrl: null,
-            translations: [{ locale: 'en', text: 'Ocean coral reefs', isMachineTranslated: false }],
-          }),
-        });
-      } else if (route.request().method() === 'GET') {
-        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_HIGHLIGHTS) });
-      } else {
-        route.continue();
-      }
-    });
-
-    await page.locator('input[name="text"]').fill('Ocean coral reefs');
-    await page.getByRole('button', { name: /add highlight/i }).click();
-
-    await expect(page.getByText(/highlight added/i)).toBeVisible({ timeout: 5_000 });
-    expect(postCalled).toBe(true);
-  });
-
-  test('validation: submitting highlight with fewer than 5 characters shows error', async ({ page }) => {
-    await page.locator('input[name="text"]').fill('Hi');
-    await page.getByRole('button', { name: /add highlight/i }).click();
-    await expect(page.getByText(/at least 5 characters/i)).toBeVisible();
-  });
-
-  test('chevron button expands the translation panel for a highlight', async ({ page }) => {
-    // The chevron/translations button is the one that toggles the panel
-    const translationsToggle = page.getByTitle(/set translations/i).first();
-    await expect(translationsToggle).toBeVisible();
-    await translationsToggle.click();
-    // Translations panel should now be visible
-    await expect(page.getByText(/translations/i).last()).toBeVisible();
-  });
-
-  test('delete button on a highlight calls DELETE and shows success toast', async ({ page }) => {
-    let deleteCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/highlights/hl-1`, (route) => {
-      if (route.request().method() === 'DELETE') {
-        deleteCalled = true;
-        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
-      } else {
-        route.continue();
-      }
-    });
-
-    // Delete buttons are ghost icon buttons - click the first trash icon
-    const deleteButtons = page.getByRole('button').filter({ has: page.locator('svg') }).filter({ hasNot: page.locator('text') });
-    // Use the title/aria approach for the destructive trash button on the first highlight row
-    const firstRow = page.locator('.ring-1.ring-foreground\\/10').first();
-    const deleteBtn = firstRow.getByRole('button').last();
-    await deleteBtn.click();
-
-    await expect(page.getByText(/highlight removed/i)).toBeVisible({ timeout: 5_000 });
-    expect(deleteCalled).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. Edit Trip - Inclusions Tab
+// 4. Edit Trip - Inclusions Tab
 // ---------------------------------------------------------------------------
 
 test.describe('Edit Trip - Inclusions Tab', () => {

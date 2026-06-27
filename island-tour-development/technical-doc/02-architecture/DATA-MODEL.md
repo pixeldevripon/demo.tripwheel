@@ -62,7 +62,6 @@ The richest entity. Field groups follow the master's reconciled registry.
 |---|---|---|
 | `short_description` | string 160 | Card and preview text |
 | `overview_{locale}` | markdown | Paragraph breaks only; no headings, lists, or bold (LD22) |
-| `highlights_{locale}[]` | string[] | 3–6 items, 5–15 words; merged into Overview rendering (LD22) |
 | `included_items[]` | string[] | Supersedes the architecture field `includes` (LD18) |
 | `excluded_items[]` | object[] | `{item, type: paid_advance / paid_onsite / unavailable / not_permitted, price_text?}`; type drives inline rendering; supersedes `excludes` (LD18) |
 | `what_to_bring_{locale}[]` | string[] | 3–8 bullets, max 25 words; must not duplicate included items (CMS warning) |
@@ -143,7 +142,7 @@ The richest entity. Field groups follow the master's reconciled registry.
 - **No `payment_model`** field and **no `deposit_pct`**.
 - `cancellationHours` is a plain `Int @default(24)` — must become **enum `[24,48,72,168]`, default 48**.
 - **No** `short_description`, `what_to_bring_{locale}`, `not_suitable_for_{locale}`, `know_before_you_go_{locale}`, `local_tip_{locale}`, `category_display_{locale}`, `is_locals_favourite`, `excluded_items` object shape, `fitness_level`, `weather_dependent`, `wheelchair_accessible`, `min_age_years`, `departure_city`, `start_times[]`, `duration_minutes_max`, `meeting_point*`.
-- Localized content currently lives in `TripTranslation` / child tables (`TourHighlight`, `TourInclusion`, `TourExclusion`) rather than `_{locale}` suffixed array columns.
+- Localized content currently lives in `TripTranslation` / child tables (`TourInclusion`, `TourExclusion`) rather than `_{locale}` suffixed array columns.
 
 ---
 

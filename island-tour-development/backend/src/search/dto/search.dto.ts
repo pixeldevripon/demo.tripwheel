@@ -5,7 +5,7 @@ import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } f
 import { TourResponseDto } from '@/tours/dto/tour.dto';
 
 export class SearchQueryDto {
-  @ApiProperty({ example: 'catamaran', description: 'Search term (min 2 chars). Matches tour title/description/highlights + category & hub names.' })
+  @ApiProperty({ example: 'catamaran', description: 'Search term (min 2 chars). Matches tour title/description + category & hub names.' })
   @IsString()
   @MinLength(2)
   @MaxLength(100)

@@ -188,7 +188,7 @@ prisma/
 ├── destinations.prisma    Destination, Hub (+ allowed categories, our picks, comparison), content
 ├── categories.prisma      Category (+ translation, page content)
 ├── collections.prisma     Collection (+ translation, page content)
-├── trips.prisma           Trip + children (images, age bands, add-ons, languages, highlights,
+├── trips.prisma           Trip + children (images, age bands, add-ons, languages,
 │                          inclusions, exclusions, translations) + TourCategory + TourHub + tier cols
 ├── attributes.prisma      AttributeDefinition, TourAttribute
 ├── slug-registry.prisma   SlugRegistry (+ redirects table — to add)

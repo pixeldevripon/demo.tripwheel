@@ -263,7 +263,7 @@ export class ToursService {
 
   /**
    * Full-text-ish search across tour name + translations (title/overview/description) +
-   * category names + hub names + highlight text. Optionally scoped to a destination.
+   * category names + hub names. Optionally scoped to a destination.
    * V1 uses case-insensitive `contains` (Postgres ILIKE); upgrade path: a `tsvector` GIN
    * column or Algolia/ElasticSearch for ranking + typo tolerance (V2 §10).
    */
@@ -300,7 +300,6 @@ export class ToursService {
         },
         { categories: { some: { category: { name: ci } } } },
         { hubs: { some: { hub: { name: ci } } } },
-        { highlights: { some: { translations: { some: { text: ci } } } } },
       ],
     };
     const skip = (page - 1) * limit;
@@ -537,7 +536,6 @@ export class ToursService {
           _count: {
             select: {
               images: true,
-              highlights: true,
               inclusions: true,
               exclusions: true,
             },
@@ -586,7 +584,6 @@ export class ToursService {
           _count: {
             select: {
               images: true,
-              highlights: true,
               inclusions: true,
               exclusions: true,
             },
@@ -613,7 +610,6 @@ export class ToursService {
       ...rest,
       heroImage: images?.[0] ?? null,
       imageCount: _count?.images ?? 0,
-      highlightCount: _count?.highlights ?? 0,
       inclusionCount: _count?.inclusions ?? 0,
       exclusionCount: _count?.exclusions ?? 0,
       destinationName: destination?.name ?? null,
@@ -660,7 +656,6 @@ export class ToursService {
         _count: {
           select: {
             images: true,
-            highlights: true,
             inclusions: true,
             exclusions: true,
           },
@@ -756,17 +751,6 @@ export class ToursService {
             { isDefault: 'desc' },
             { displayOrder: 'asc' },
           ],
-        },
-        highlights: {
-          select: {
-            id: true,
-            displayOrder: true,
-            translations: {
-              where: { locale: { in: [locale, Locale.en] } },
-              select: { locale: true, text: true },
-            },
-          },
-          orderBy: { displayOrder: 'asc' },
         },
         inclusions: {
           select: {
@@ -871,7 +855,6 @@ export class ToursService {
     // Apply locale → EN fallback for translated child models
     const {
       translations,
-      highlights,
       inclusions,
       exclusions,
       locations,
@@ -885,16 +868,6 @@ export class ToursService {
       translations.find((t) => t.locale === locale) ??
       translations.find((t) => t.locale === Locale.en) ??
       null;
-
-    const resolvedHighlights = highlights.map((h) => ({
-      id: h.id,
-      displayOrder: h.displayOrder,
-      text:
-        (
-          h.translations.find((t) => t.locale === locale) ??
-          h.translations.find((t) => t.locale === Locale.en)
-        )?.text ?? '',
-    }));
 
     const resolvedInclusions = inclusions.map((i) => ({
       id: i.id,
@@ -976,7 +949,6 @@ export class ToursService {
       ...this.flattenTour(rest),
       translation: resolvedTranslation,
       ageBands: rest.ageBands,
-      highlights: resolvedHighlights,
       inclusions: resolvedInclusions,
       exclusions: resolvedExclusions,
       locations: resolvedLocations,
@@ -1538,7 +1510,6 @@ export class ToursService {
       select: {
         ...this.tourSelect,
         images: { select: { id: true, isHero: true } },
-        highlights: { select: { id: true } },
         translations: {
           where: { locale: Locale.en },
           select: { overview: true },
@@ -1561,9 +1532,6 @@ export class ToursService {
     const enTranslation = tour.translations[0];
     if (!enTranslation?.overview?.trim())
       errors.push('An English overview is required to publish');
-
-    if (tour.highlights.length < 3)
-      errors.push('At least 3 highlights are required to publish');
 
     // Price required: either a flat basePrice or at least one priced age band.
     if (tour.basePrice == null && tour._count.ageBands === 0) {

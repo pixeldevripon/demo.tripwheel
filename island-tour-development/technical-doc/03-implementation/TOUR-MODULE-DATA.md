@@ -22,10 +22,10 @@ Canonical URL is flat: `/{locale}/{destination}/{tour-slug}/`. Model = `Tour` (`
 Tour ──< TourCategory (>=1, one isPrimary)      Tour ──< TourImage (>=5 + 1 hero to publish)
      ──< TourHub (0-n, discovery tag, no URL)         ──< TourAgeBand (flat per-traveler pricing)
      ──< TourAttribute (filters)                      ──< TourAddOn
-     ──< TourLanguage (guide languages)               ──< TourHighlight ──< Translation (3-6)
-     ──< TourInclusion ──< Translation                ──< TourExclusion ──< Translation (typed)
-     ──< TourFeature ──< Translation (OCTO content)   ──< TourLocation ──< Translation (itinerary)
-     ──< PickupLocation ──< Translation               ──< TourTranslation (per-locale content + SEO)
+     ──< TourLanguage (guide languages)               ──< TourInclusion ──< Translation
+     ──< TourExclusion ──< Translation (typed)         ──< TourFeature ──< Translation (OCTO content)
+     ──< TourLocation ──< Translation (itinerary)      ──< PickupLocation ──< Translation
+     ──< TourTranslation (per-locale content + SEO)
      ──< AvailabilitySchedule / Exception / Departure (availability phase)
      ──< Booking · Review · Wishlist · SpotlightRequest
 ```
@@ -221,33 +221,29 @@ tour's categories is in the hub's `HubAllowedCategory` set.
 ### 2.6 `TourLanguage`  ✓
 `language` (ISO 639-1). Unique `(tourId, language)`. Drives the third quick-info badge (LD7).
 
-### 2.7 `TourHighlight` + `TourHighlightTranslation`  ✓
-Highlight: `displayOrder`, `imageUrl?`. Translation: `(highlightId, locale)`, `text`,
-`isMachineTranslated`. **3-6 highlights, 5-15 words each.** Publish: >=3.
-
-### 2.8 `TourInclusion` + `TourInclusionTranslation`  ✓
+### 2.7 `TourInclusion` + `TourInclusionTranslation`  ✓
 Inclusion: `icon` (default `check`), `displayOrder`, `imageUrl?`. Translation: `label`.
 
-### 2.9 `TourExclusion` + `TourExclusionTranslation`  ✓  (typed, LD18)
+### 2.8 `TourExclusion` + `TourExclusionTranslation`  ✓  (typed, LD18)
 Exclusion: `icon` (default `x`), `type` `ExclusionType?` (`PAID_ADVANCE`/`PAID_ONSITE`/`UNAVAILABLE`/
 `NOT_PERMITTED`), `priceText?` (for PAID_*), `displayOrder`, `imageUrl?`. Translation: `label`.
 
-### 2.10 `TourFeature` + `TourFeatureTranslation`  ✓  (other OCTO content, DS1)
-`type` `FeatureType` (NOT highlight/inclusion/exclusion): prebooking/prearrival info, redemption,
+### 2.9 `TourFeature` + `TourFeatureTranslation`  ✓  (other OCTO content, DS1)
+`type` `FeatureType` (NOT inclusion/exclusion): prebooking/prearrival info, redemption,
 accessibility, additional info, booking/cancellation terms. Translation: `text`.
 
-### 2.11 `TourLocation` + `TourLocationTranslation`  ✓  (OCTO itinerary)
+### 2.10 `TourLocation` + `TourLocationTranslation`  ✓  (OCTO itinerary)
 `types[]` (START/ITINERARY_ITEM/END/POI), lat/lng, address parts, `minutesTo`, `minutesAt`,
 `displayOrder`. Translation: `title`, `shortDescription?`.
 
-### 2.12 `PickupLocation` + `PickupLocationTranslation`  (✓ + pickup window TO ADD)
+### 2.11 `PickupLocation` + `PickupLocationTranslation`  (✓ + pickup window TO ADD)
 `name`, lat/lng, `address?`, `minutesPrior?`, `displayOrder`, `isActive`. Translation: `title`,
 `directions?`. A PAID_ADDON pickup also links to a `TourAddOn` for charging.
 **+ TO ADD (Figma):** `windowStart` / `windowEnd` (`'HH:MM'`) - the design shows a pickup window
 ("7:45-8:15 AM window"), not just a single `minutesPrior`. Add the two time fields (or keep
 `minutesPrior` and add a window). Master/design also surface "Confirm pickup location at booking".
 
-### 2.13 `TourTranslation`  (✓ + SEO/category_display TO ADD)
+### 2.12 `TourTranslation`  (✓ + SEO/category_display TO ADD)
 Per-locale, unique `(tourId, locale)`:
 
 | Field | Type | Status | Rules |
@@ -271,10 +267,10 @@ Per-locale, unique `(tourId, locale)`:
 > (flat sends -> 400 `forbidNonWhitelisted`). English base-locale tab: `name` read-only, delete ->
 > clears fields via upsert (backend blocks delete on `en`).
 
-### 2.14 `TourAttribute`  ✓  (filters, V2 §7)
+### 2.13 `TourAttribute`  ✓  (filters, V2 §7)
 Per-tour values against `AttributeDefinition`. Drives faceted filters/badges/JSON-LD.
 
-### 2.15 Related entities owned by OTHER modules (not tour-module children)
+### 2.14 Related entities owned by OTHER modules (not tour-module children)
 
 These have a `Tour` relation but are **written by other modules**, not the operator's tour
 create/update flow. The tour module only reads from them (mostly via the §1.7 aggregates). Listed
@@ -342,7 +338,7 @@ the bullet structure and makes the master's count/word-limit validation impossib
 
 **Follow master:** change these three on `TourTranslation` to **`String[]`** (Postgres `text[]`).
 Keep `overview` / `description` / `localTip` / `meetingPointText` as `String?` (free prose - master
-types them as markdown/string, not arrays). Highlights, inclusions, and exclusions stay as child
+types them as markdown/string, not arrays). Inclusions and exclusions stay as child
 tables (already correct - they carry order, icons, types, images, and per-locale text).
 
 ---
@@ -353,10 +349,9 @@ A tour can move `DRAFT -> LIVE` only when ALL hold:
 
 1. **>=5 images** with exactly one `isHero`.
 2. **English `overview`** present (80-200 words).
-3. **>=3 highlights**.
-4. **A price** (>=1 `TourAgeBand` or `basePrice`).
-5. **Free-cancellation window present** (`cancellationHours` set; always is, NOT NULL).
-6. **>=1 category** with exactly one `isPrimary`.
+3. **A price** (>=1 `TourAgeBand` or `basePrice`).
+4. **Free-cancellation window present** (`cancellationHours` set; always is, NOT NULL).
+5. **>=1 category** with exactly one `isPrimary`.
 
 Lifecycle: `DRAFT -> LIVE <-> PAUSED -> ARCHIVED` (+ restore). Status changes re-run the category
 >=3 gating in both directions.
@@ -430,7 +425,7 @@ The existing `availability.prisma` was written toward an OCTO shape and conflict
 | `DELETE` | `/tours/:id` | Hard delete (90-day slug cooldown) |
 | `PATCH` | `/tours/:id/status` | Lifecycle transition (runs publish guard) |
 | `PATCH` | `/tours/:id/tier` | Tier change (eligibility-gated, 30-day lock) |
-| `*` | `/tours/:id/{images,age-bands,add-ons,languages,highlights,inclusions,exclusions,features,locations,pickups,categories,hubs}` | Children CRUD |
+| `*` | `/tours/:id/{images,age-bands,add-ons,languages,inclusions,exclusions,features,locations,pickups,categories,hubs}` | Children CRUD |
 | `PUT` | `/tours/:id/translations/:locale` | Upsert localized content (`{ fields: {...} }`) |
 
 RBAC: `CREATE_TRIP` / `EDIT_TRIP` / `DELETE_TRIP` / `MANAGE_TRIPS`. Guard order:

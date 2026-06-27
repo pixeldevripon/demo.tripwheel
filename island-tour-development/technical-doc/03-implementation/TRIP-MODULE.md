@@ -19,7 +19,7 @@ Its canonical URL is flat: `/{locale}/{destination}/{tour-slug}/`. The model ent
   in the hub's `HubAllowedCategory` set.
 - **Slug registry** — tour create **always** writes one `TOUR` row to `slug_registry`, in the same
   transaction. See [../02-architecture/SLUG-REGISTRY.md](../02-architecture/SLUG-REGISTRY.md).
-- Children: `TourImage`, `TourAgeBand`, `TourAddOn`, `TourLanguage`, `TourHighlight`,
+- Children: `TourImage`, `TourAgeBand`, `TourAddOn`, `TourLanguage`,
   `TourInclusion`, `TourExclusion` (+ their translations), `TourAttribute`, `TripTranslation`.
 
 ## Field groups (master E.3)
@@ -30,13 +30,12 @@ Its canonical URL is flat: `/{locale}/{destination}/{tour-slug}/`. The model ent
 empty → island only).
 
 ### Localized content — built
-Built: `overview`/`description` (via `TourTranslation`), highlights, inclusions, exclusions (via
+Built: `overview`/`description` (via `TourTranslation`), inclusions, exclusions (via
 child tables + translations). `shortDescription` (200, card/preview), `whatToBring`,
 `knowBeforeYouGo`, `notSuitableFor`, `localTip`, `meetingPointText` are on `TourTranslation` and
 upsertable via the trip-children translation endpoint. `TourExclusion` carries the master shape
 `{label, type: paid_advance|paid_onsite|unavailable|not_permitted, priceText?}` (LD18). **To add:**
-`categoryDisplay` (plural noun phrase for "More {x} in {destination}"). Highlights merge into the
-Overview rendering (LD22) — a frontend render rule.
+`categoryDisplay` (plural noun phrase for "More {x} in {destination}").
 
 ### Pricing & party — mostly built
 Built: `pricingModel` (`per_person`/`unit`), `unitType` (`group`/`boat`/`vehicle`/`aircraft`/
@@ -83,7 +82,7 @@ tours only in v1 (LD25).
 ## Lifecycle & publish guard
 
 Lifecycle: `DRAFT → LIVE ⇄ PAUSED → ARCHIVED` (+ restore). Publish guard enforces the listing
-requirements: ≥5 images with a hero, English overview, ≥3 highlights, a price, and a
+requirements: ≥5 images with a hero, English overview, a price, and a
 free-cancellation window present (`cancellation_hours`, listing requirement per master §6.2).
 Tour status changes re-run the category ≥3 gating check in both directions (see
 [../02-architecture/ROUTING-AND-RESOLUTION.md](../02-architecture/ROUTING-AND-RESOLUTION.md)).

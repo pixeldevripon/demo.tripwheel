@@ -15,7 +15,7 @@ datasource db {
 //   categories.prisma     ← Category
 //   collections.prisma    ← Collection (+ translation, page content)
 //   tours.prisma          ← Tour + TourAgeBand (flat per-traveler pricing) + content children (images, add-ons,
-//                            languages, highlights, inclusions, exclusions, features, locations, translations)
+//                            languages, inclusions, exclusions, features, locations, translations)
 //   availability.prisma   ← AvailabilitySchedule, AvailabilityException, Departure (= OCTO Availability)
 //   bookings.prisma       ← Booking (OCTO reserve→confirm) + BookingUnitItem (= OCTO unit item)
 //   payments.prisma       ← Payment + StripeWebhookEvent (idempotent ledger)

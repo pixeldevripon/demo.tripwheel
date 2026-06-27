@@ -30,10 +30,6 @@ export const octoTourInclude = {
   ageBands: { orderBy: [{ isDefault: 'desc' }, { displayOrder: 'asc' }] },
   categories: { select: { isPrimary: true, category: { select: { slug: true } } } },
   images: { orderBy: { displayOrder: 'asc' } },
-  highlights: {
-    orderBy: { displayOrder: 'asc' },
-    include: { translations: { select: { locale: true, text: true } } },
-  },
   inclusions: {
     orderBy: { displayOrder: 'asc' },
     include: { translations: { select: { locale: true, label: true } } },
@@ -176,10 +172,6 @@ function serializeContent(
   const t = pick(tour.translations, locale);
 
   const features = [
-    ...tour.highlights.map((h) => ({
-      type: 'HIGHLIGHT' as const,
-      shortDescription: pick(h.translations, locale)?.text ?? null,
-    })),
     ...tour.inclusions.map((i) => ({
       type: 'INCLUSION' as const,
       shortDescription: pick(i.translations, locale)?.label ?? null,

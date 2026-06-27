@@ -108,7 +108,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 <ImageIcon />
                 Images
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=highlights`)}>
+              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=inclusions`)}>
                 <FileTextIcon />
                 Content
               </DropdownMenuItem>

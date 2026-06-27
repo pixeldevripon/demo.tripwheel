@@ -237,7 +237,9 @@
       "tabs": { "trips": "Trips", "privateCharters": "Privécharters", "compare": "Vergelijken", "discover": "Ontdekken" },
       "tagline": "Waar eilandbewoners hun bezoekers heen sturen",
       "selectDate": "Selecteer datum",
-      "checkAvailability": "Beschikbaarheid bekijken"
+      "checkAvailability": "Beschikbaarheid bekijken",
+      "comparison": { "title": "Welke trip past bij jou?", "subtitle": "Alle zes de boten varen naar Klein Curaçao. Frisdrank en een BBQ-lunch inbegrepen. Dit is wat er anders is zodra je er bent.", "book": "Boek" },
+      "discover": { "titlePattern": "Ontdek {hub}", "subtitle": "Een vlak, onbewoond eiland van 1,7 km², 10 km voor de zuidoostkust van Curaçao. Geen winkels, geen bereik, alleen zand, rif en geschiedenis.", "bookTrip": "Boek je trip" }
     },
     "categoryAboutTitle": "Over {category} in {destination}",
     "faqTitle": "Veelgestelde vragen",

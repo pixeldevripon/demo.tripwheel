@@ -237,7 +237,9 @@
       "tabs": { "trips": "Excursions", "privateCharters": "Charters privés", "compare": "Comparer", "discover": "Découvrir" },
       "tagline": "Là où les habitants envoient leurs visiteurs",
       "selectDate": "Sélectionner une date",
-      "checkAvailability": "Vérifier la disponibilité"
+      "checkAvailability": "Vérifier la disponibilité",
+      "comparison": { "title": "Quelle excursion vous convient ?", "subtitle": "Les six bateaux se rendent à Klein Curaçao. Boissons et déjeuner barbecue inclus. Voici ce qui change une fois sur place.", "book": "Réserver" },
+      "discover": { "titlePattern": "Découvrez {hub}", "subtitle": "Une île plate et inhabitée de 1,7 km², à 10 km au large de la côte sud-est de Curaçao. Pas de boutiques, pas de réseau, juste du sable, du récif et de l'histoire.", "bookTrip": "Réservez votre excursion" }
     },
     "categoryAboutTitle": "À propos de {category} à {destination}",
     "faqTitle": "Questions fréquentes",

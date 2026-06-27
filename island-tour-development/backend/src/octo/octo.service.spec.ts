@@ -45,7 +45,6 @@ function liveTour() {
     ageBands: [],
     categories: [],
     images: [],
-    highlights: [],
     inclusions: [],
     exclusions: [],
     features: [],

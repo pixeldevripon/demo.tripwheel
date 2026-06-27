@@ -257,12 +257,11 @@ enum RedemptionMethod {
   MANIFEST
 }
 
-// OCTO content feature types. HIGHLIGHT/INCLUSION/EXCLUSION are sourced from their
+// OCTO content feature types. INCLUSION/EXCLUSION are sourced from their
 // own dedicated tables (DS1); the rest are stored on TourFeature.
 enum FeatureType {
   INCLUSION
   EXCLUSION
-  HIGHLIGHT
   PREBOOKING_INFORMATION
   PREARRIVAL_INFORMATION
   REDEMPTION_INSTRUCTION

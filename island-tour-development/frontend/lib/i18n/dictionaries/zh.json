@@ -237,7 +237,9 @@
       "tabs": { "trips": "行程", "privateCharters": "私人包船", "compare": "比较", "discover": "发现" },
       "tagline": "岛民推荐访客去的地方",
       "selectDate": "选择日期",
-      "checkAvailability": "查看可用性"
+      "checkAvailability": "查看可用性",
+      "comparison": { "title": "哪一趟行程适合你？", "subtitle": "六艘船都前往小库拉索岛。含软饮料和烧烤午餐。以下是抵达后的不同之处。", "book": "预订" },
+      "discover": { "titlePattern": "探索 {hub}", "subtitle": "一座面积 1.7 平方公里的平坦无人岛，位于库拉索东南海岸外 10 公里处。没有商店，没有信号，只有沙滩、珊瑚礁和历史。", "bookTrip": "预订行程" }
     },
     "categoryAboutTitle": "关于{destination}的{category}",
     "faqTitle": "常见问题",

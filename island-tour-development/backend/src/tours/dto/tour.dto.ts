@@ -244,7 +244,6 @@ export class TourDetailResponseDto extends TourResponseDto {
   @ApiPropertyOptional({ type: TourHeroImageDto, nullable: true })
   heroImage!: TourHeroImageDto | null;
   @ApiProperty({ example: 0 }) imageCount!: number;
-  @ApiProperty({ example: 0 }) highlightCount!: number;
   @ApiProperty({ example: 0 }) inclusionCount!: number;
   @ApiProperty({ example: 0 }) exclusionCount!: number;
 }
@@ -291,15 +290,6 @@ export class TourImageInlineDto {
   @ApiProperty({ example: 1920 }) width!: number;
   @ApiProperty({ example: 1080 }) height!: number;
   @ApiProperty() displayOrder!: number;
-}
-
-export class TourHighlightInlineDto {
-  @ApiProperty() id!: string;
-  @ApiProperty() displayOrder!: number;
-  @ApiProperty({
-    example: 'Watch the sunset from the water with cocktails in hand',
-  })
-  text!: string;
 }
 
 export class TourInclusionInlineDto {
@@ -387,8 +377,6 @@ export class TourPublicDetailResponseDto extends TourResponseDto {
   translation!: TourTranslationInlineDto | null;
 
   @ApiProperty({ type: [TourImageInlineDto] }) images!: TourImageInlineDto[];
-  @ApiProperty({ type: [TourHighlightInlineDto] })
-  highlights!: TourHighlightInlineDto[];
   @ApiProperty({ type: [TourInclusionInlineDto] })
   inclusions!: TourInclusionInlineDto[];
   @ApiProperty({ type: [TourExclusionInlineDto] })

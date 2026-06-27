@@ -30,7 +30,7 @@ import {
 import type { TourFeature, FeatureType } from '@/types/trip';
 import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
 
-// INCLUSION / EXCLUSION / HIGHLIGHT have their own dedicated tabs, so they're
+// INCLUSION / EXCLUSION have their own dedicated tabs, so they're
 // intentionally excluded from the Features picker.
 const FEATURE_TYPE_OPTIONS: { value: FeatureType; label: string }[] = [
   { value: 'PREBOOKING_INFORMATION', label: 'Pre-booking info' },

@@ -74,7 +74,6 @@ const MOCK_TRIP_DRAFT: Record<string, unknown> = {
   heroImage: null,
   imageCount: 0,
   scheduleCount: 0,
-  highlightCount: 0,
   inclusionCount: 0,
   featuredSlotNumber: null,
   featuredSlotStatus: null,
@@ -260,13 +259,6 @@ async function mockAllEditTabs(page: PW) {
   await mockTranslationsEndpoints(page);
   await mockAttributesEndpoints(page);
   await mockExclusionsEndpoints(page);
-  await page.route(`**/api/v1/trips/${TRIP_ID}/highlights**`, (route) => {
-    if (route.request().method() === 'GET') {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
-    } else {
-      route.continue();
-    }
-  });
   await page.route(`**/api/v1/trips/${TRIP_ID}/languages**`, (route) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
   });

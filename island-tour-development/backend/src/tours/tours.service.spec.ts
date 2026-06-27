@@ -408,7 +408,7 @@ describe('ToursService', () => {
       expect(prisma.tour.findMany).not.toHaveBeenCalled();
     });
 
-    it('searches across name/translations/category/hub/highlights and flattens results', async () => {
+    it('searches across name/translations/category/hub and flattens results', async () => {
       prisma.tour.count.mockResolvedValue(1);
       prisma.tour.findMany.mockResolvedValue([makeTour({ images: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] })]);
       const res = await service.search({ q: 'catamaran', destinationSlug: 'curacao' });
@@ -427,7 +427,7 @@ describe('ToursService', () => {
   describe('findBySlug', () => {
     it('resolves purely by destination + slug (no hub condition)', async () => {
       prisma.tour.findFirst.mockResolvedValue(
-        makeTour({ images: [], translations: [], highlights: [], inclusions: [], exclusions: [], locations: [], pickupLocations: [], features: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
+        makeTour({ images: [], translations: [], inclusions: [], exclusions: [], locations: [], pickupLocations: [], features: [], ageBands: [], addOns: [], languages: [], schedules: [], categories: [{ categoryId: 'cat-1', isPrimary: true }], hubs: [] }),
       );
       const result: any = await service.findBySlug('sunset-catamaran-cruise', { destinationSlug: 'curacao' } as any);
       const whereArg = prisma.tour.findFirst.mock.calls[0][0].where;
@@ -449,7 +449,6 @@ describe('ToursService', () => {
     const ready = () =>
       makeTour({
         images: [{ id: 'i1', isHero: true }, { id: 'i2', isHero: false }, { id: 'i3' }, { id: 'i4' }, { id: 'i5' }],
-        highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
         translations: [{ overview: 'A lovely cruise overview.' }],
       });
 
@@ -467,7 +466,7 @@ describe('ToursService', () => {
 
     it('collects all readiness errors', async () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
-      prisma.tour.findUnique.mockResolvedValue(makeTour({ images: [], highlights: [], translations: [], ageBands: [] }));
+      prisma.tour.findUnique.mockResolvedValue(makeTour({ images: [], translations: [], ageBands: [] }));
       await expect(service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR)).rejects.toThrow(BadRequestException);
     });
 

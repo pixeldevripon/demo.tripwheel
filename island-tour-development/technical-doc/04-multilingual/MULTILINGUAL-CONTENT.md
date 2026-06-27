@@ -41,7 +41,7 @@ Each translatable entity has a typed child table keyed `(entityId, locale)` uniq
 | Hub | `HubTranslation` | (same shape) |
 | Trip | `TripTranslation` | title, overview, description, isMachineTranslated |
 | Collection | `CollectionTranslation` | name, overview, h1Override, breadcrumbLabel, isMachineTranslated |
-| Tour highlights / inclusions / exclusions | `Tour*Translation` | text/label, isMachineTranslated |
+| Tour inclusions / exclusions | `Tour*Translation` | text/label, isMachineTranslated |
 
 SEO meta is stored separately per locale in the `*PageContent` tables (`metaTitle`,
 `metaDescription`, `aboutText`). FAQ is a polymorphic table (`pageType` + `entityId` + `locale`).

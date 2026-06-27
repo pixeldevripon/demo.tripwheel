@@ -4,7 +4,6 @@ import type {
   AdminTripsQueryParams,
   CreateTourAddOnPayload,
   CreateTourAgeBandPayload,
-  CreateTourHighlightPayload,
   CreateTourInclusionPayload,
   CreateTourExclusionPayload,
   CreateTourFeaturePayload,
@@ -16,7 +15,6 @@ import type {
   PaginatedTrips,
   TourAddOn,
   TourAgeBand,
-  TourHighlight,
   TourImage,
   TourInclusion,
   TourExclusion,
@@ -30,7 +28,6 @@ import type {
   TripUpdateResponse,
   UpdateTourAddOnPayload,
   UpdateTourAgeBandPayload,
-  UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourExclusionPayload,
@@ -39,7 +36,6 @@ import type {
   UpdatePickupLocationPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
-  UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
   UpsertExclusionTranslationPayload,
   UpsertFeatureTranslationPayload,
@@ -222,47 +218,6 @@ export const tripsApi = {
 
   removeLanguage(tripId: string, languageId: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/tours/${tripId}/languages/${languageId}`, { method: 'DELETE' });
-  },
-
-  // Highlights
-  getHighlights(tripId: string): Promise<TourHighlight[]> {
-    return apiFetch<TourHighlight[]>(`/tours/${tripId}/highlights`);
-  },
-
-  addHighlight(tripId: string, payload: CreateTourHighlightPayload): Promise<TourHighlight> {
-    return apiFetch<TourHighlight>(`/tours/${tripId}/highlights`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  updateHighlight(tripId: string, highlightId: string, payload: UpdateTourHighlightPayload): Promise<TourHighlight> {
-    return apiFetch<TourHighlight>(`/tours/${tripId}/highlights/${highlightId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  removeHighlight(tripId: string, highlightId: string): Promise<{ message: string }> {
-    return apiFetch<{ message: string }>(`/tours/${tripId}/highlights/${highlightId}`, { method: 'DELETE' });
-  },
-
-  upsertHighlightTranslation(
-    tripId: string,
-    highlightId: string,
-    locale: string,
-    payload: UpsertHighlightTranslationPayload
-  ): Promise<TourHighlight> {
-    return apiFetch<TourHighlight>(`/tours/${tripId}/highlights/${highlightId}/translations/${locale}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  deleteHighlightTranslation(tripId: string, highlightId: string, locale: string): Promise<{ message: string }> {
-    return apiFetch<{ message: string }>(`/tours/${tripId}/highlights/${highlightId}/translations/${locale}`, {
-      method: 'DELETE',
-    });
   },
 
   // Inclusions

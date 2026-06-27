@@ -14,8 +14,8 @@
  *     unauthenticated callers, owner-operator access, and ADMIN bypass.
  *   - All CRUD child methods are tested for: happy path, 404 on parent tour,
  *     403 on non-owner operator, 404 when the child resource itself is missing.
- *   - Translation delete guards (English locale) are tested for highlights,
- *     inclusions, and tour translations.
+ *   - Translation delete guards (English locale) are tested for inclusions
+ *     and tour translations.
  *   - Conflict (P2002) and not-found (P2025) Prisma errors are tested where
  *     the service explicitly handles them.
  */
@@ -79,19 +79,6 @@ function createMockPrismaService() {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
-      delete: jest.fn(),
-    },
-    tourHighlight: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      findUnique: jest.fn(),
-    },
-    tourHighlightTranslation: {
-      create: jest.fn(),
-      upsert: jest.fn(),
       delete: jest.fn(),
     },
     tourInclusion: {
@@ -226,17 +213,6 @@ function makeImage(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-
-function makeHighlight(overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 'hl-1',
-    tourId: 'tour-1',
-    displayOrder: 0,
-    imageUrl: null,
-    translations: [{ locale: 'en', text: 'Watch the sunset', isMachineTranslated: false }],
-    ...overrides,
-  };
-}
 
 function makeInclusion(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -910,195 +886,6 @@ describe('TourChildrenService', () => {
     });
   });
 
-  // ── Highlights ────────────────────────────────────────────────────────────────
-
-  describe('getHighlights', () => {
-    it('returns all highlights with translations ordered by displayOrder', async () => {
-      const highlights = [makeHighlight()];
-      prisma.tourHighlight.findMany.mockResolvedValue(highlights);
-
-      const result = await service.getHighlights('tour-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual(highlights);
-      expect(prisma.tourHighlight.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { tourId: 'tour-1' },
-          orderBy: { displayOrder: 'asc' },
-        }),
-      );
-    });
-  });
-
-  describe('addHighlight', () => {
-    it('creates a highlight with English translation inside a transaction and returns it', async () => {
-      const highlight = makeHighlight();
-      prisma.tourHighlight.create.mockResolvedValue({ id: 'hl-1', tourId: 'tour-1', displayOrder: 0, imageUrl: null });
-      prisma.tourHighlightTranslation.create.mockResolvedValue({});
-      prisma.tourHighlight.findUnique.mockResolvedValue(highlight);
-
-      const result = await service.addHighlight(
-        'tour-1',
-        { text: 'Watch the sunset', displayOrder: 0 },
-        'user-1',
-        Role.TOUR_OPERATOR,
-      );
-
-      expect(prisma.$transaction).toHaveBeenCalled();
-      expect(prisma.tourHighlight.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ tourId: 'tour-1' }),
-        }),
-      );
-      expect(prisma.tourHighlightTranslation.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ text: 'Watch the sunset', locale: 'en' }),
-        }),
-      );
-      expect(result).toEqual(highlight);
-    });
-
-    it('propagates NotFoundException when tour does not exist', async () => {
-      toursService.findTourOrThrow.mockRejectedValue(new NotFoundException('Tour not found'));
-
-      await expect(
-        service.addHighlight('tour-99', { text: 'Some highlight text here' }, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('updateHighlight', () => {
-    it('updates highlight fields and returns the updated record', async () => {
-      const existing = makeHighlight();
-      const updated = { ...existing, displayOrder: 2 };
-      prisma.tourHighlight.findFirst.mockResolvedValue(existing);
-      prisma.tourHighlight.update.mockResolvedValue(updated);
-
-      const result = await service.updateHighlight(
-        'tour-1', 'hl-1', { displayOrder: 2 }, 'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(result.displayOrder).toBe(2);
-    });
-
-    it('throws NotFoundException when highlight does not belong to the tour', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.updateHighlight('tour-1', 'hl-99', { displayOrder: 1 }, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('removeHighlight', () => {
-    it('deletes the highlight and returns success message', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue(makeHighlight());
-      prisma.tourHighlight.delete.mockResolvedValue({});
-
-      const result = await service.removeHighlight('tour-1', 'hl-1', 'user-1', Role.TOUR_OPERATOR);
-
-      expect(result).toEqual({ message: 'Highlight removed successfully' });
-      expect(prisma.tourHighlight.delete).toHaveBeenCalledWith({ where: { id: 'hl-1' } });
-    });
-
-    it('throws NotFoundException when highlight is not found on the tour', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.removeHighlight('tour-1', 'hl-99', 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('upsertHighlightTranslation', () => {
-    it('upserts the translation and returns it', async () => {
-      const highlight = { id: 'hl-1' };
-      const translation = { locale: Locale.nl, text: 'Zie de zonsondergang', isMachineTranslated: false };
-      prisma.tourHighlight.findFirst.mockResolvedValue(highlight);
-      prisma.tourHighlightTranslation.upsert.mockResolvedValue(translation);
-
-      const result = await service.upsertHighlightTranslation(
-        'tour-1', 'hl-1', Locale.nl,
-        { text: 'Zie de zonsondergang' },
-        'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(result).toEqual(translation);
-      expect(prisma.tourHighlightTranslation.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { highlightId_locale: { highlightId: 'hl-1', locale: Locale.nl } },
-          create: expect.objectContaining({ text: 'Zie de zonsondergang', locale: Locale.nl }),
-          update: expect.objectContaining({ text: 'Zie de zonsondergang' }),
-        }),
-      );
-    });
-
-    it('throws NotFoundException when highlight does not belong to the tour', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.upsertHighlightTranslation(
-          'tour-1', 'hl-99', Locale.nl,
-          { text: 'Some text here for translation' },
-          'user-1', Role.TOUR_OPERATOR,
-        ),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('defaults isMachineTranslated to false when not provided', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue({ id: 'hl-1' });
-      prisma.tourHighlightTranslation.upsert.mockResolvedValue({});
-
-      await service.upsertHighlightTranslation(
-        'tour-1', 'hl-1', Locale.nl,
-        { text: 'Some text here for translation' },
-        'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(prisma.tourHighlightTranslation.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          create: expect.objectContaining({ isMachineTranslated: false }),
-        }),
-      );
-    });
-  });
-
-  describe('deleteHighlightTranslation', () => {
-    it('throws BadRequestException when attempting to delete the English translation', async () => {
-      await expect(
-        service.deleteHighlightTranslation('tour-1', 'hl-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('deletes a non-English translation and returns success message', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue({ id: 'hl-1' });
-      prisma.tourHighlightTranslation.delete.mockResolvedValue({});
-
-      const result = await service.deleteHighlightTranslation(
-        'tour-1', 'hl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR,
-      );
-
-      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
-    });
-
-    it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue({ id: 'hl-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
-      prisma.tourHighlightTranslation.delete.mockRejectedValue(p2025);
-
-      await expect(
-        service.deleteHighlightTranslation('tour-1', 'hl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('throws NotFoundException when highlight does not belong to the tour', async () => {
-      prisma.tourHighlight.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.deleteHighlightTranslation('tour-1', 'hl-99', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
   // ── Inclusions ────────────────────────────────────────────────────────────────
 
   describe('getInclusions', () => {
@@ -1724,12 +1511,12 @@ describe('TourChildrenService', () => {
   // ── ADMIN bypass for child operations ─────────────────────────────────────────
 
   describe('ADMIN bypass via assertOwnership', () => {
-    it('ADMIN can read highlights on any tour without ownership check failing', async () => {
+    it('ADMIN can read inclusions on any tour without ownership check failing', async () => {
       // toursService.assertOwnership is mocked to always pass (default); this test
       // verifies that ADMIN role is forwarded correctly to the mock
-      prisma.tourHighlight.findMany.mockResolvedValue([makeHighlight()]);
+      prisma.tourInclusion.findMany.mockResolvedValue([makeInclusion()]);
 
-      await service.getHighlights('tour-1', 'admin-user', Role.ADMIN);
+      await service.getInclusions('tour-1', 'admin-user', Role.ADMIN);
 
       expect(toursService.assertOwnership).toHaveBeenCalledWith(
         expect.anything(),

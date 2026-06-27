@@ -17,7 +17,7 @@ Already built and master-shaped:
   Stripe/Mollie configs).
 - Destinations, Categories (19 global), Hubs (+ allowed-categories, our-picks, comparison groups),
   Collections (manual/dynamic) — all with translations + per-locale page content + FAQ.
-- Tours (`Trip`) + children (images, age bands, add-ons, languages, highlights, inclusions,
+- Tours (`Trip`) + children (images, age bands, add-ons, languages, inclusions,
   exclusions, schedules, translations), multi-category (`TourCategory`, one `isPrimary`),
   multi-hub (`TourHub`), flat URLs with a `TOUR` `slug_registry` row on create.
 - Attributes dictionary (`AttributeDefinition`) + per-tour values (`TourAttribute`) + public
