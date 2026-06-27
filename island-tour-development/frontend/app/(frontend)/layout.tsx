@@ -1,3 +1,7 @@
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
-    return <div className='frontend-root min-h-screen'>{children}</div>;
+    // overflow-x-clip lets full-viewport (100vw) bleed sections - e.g. the hub
+    // Discover banner - sit edge-to-edge without spawning a horizontal scrollbar
+    // from the scrollbar-gutter difference. `clip` (not `hidden`) keeps sticky
+    // descendants (the trips tab bar) working.
+    return <div className='frontend-root min-h-screen overflow-x-clip'>{children}</div>;
 }

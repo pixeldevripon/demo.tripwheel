@@ -228,6 +228,21 @@
     "youMightLike": "Misschien vind je dit ook leuk",
     "hub": {
       "whyTitle": "Waarom {hub}",
+      "firstTimersTitle": "Wat we eerstebezoekers vertellen over {hub}",
+      "alsoWorthTitle": "Ook de moeite waard op {destination}",
+      "faq": {
+        "items": [
+          { "q": "Is Klein Curaçao de moeite waard?", "a": "Ja. De meeste bezoekers vinden de dagtrip zeer de moeite waard, een van de langste en mooiste witte zandstranden van het Caribisch gebied. Een hele dag op het strand en in het water, perfect voor zonnen, zwemmen en snorkelen, met een beschermd rif en zeeschildpadden in het ondiepe water. Het eiland is volledig onbebouwd, zonder drukte buiten de dagboten. We hebben nog niemand ontmoet die er spijt van had." },
+          { "q": "Wat is er te doen op Klein Curaçao?", "a": "Zwemmen en snorkelen op het beschermde rif aan de zuidkust, zonnen op meer dan een kilometer wit zand, de roze vuurtoren uit 1877 beklimmen en langs de noordkust langs drie scheepswrakken wandelen. Kijk uit naar de karet-, onechte karet- en groene zeeschildpadden die hier nestelen. Er zijn geen winkels of attracties, het eiland zelf is de ervaring." },
+          { "q": "Hoeveel kost een trip naar Klein Curaçao?", "a": "Dagtrips beginnen rond $120 per persoon en variëren per boot en wat inbegrepen is, ontbijt, lunch, een open bar en snorkeluitrusting zijn per aanbieder anders samengesteld. Privécharters worden per groep berekend. De prijs op elke aanbieding is het volledige tarief per persoon." },
+          { "q": "Hoe lang duurt de boottocht naar Klein Curaçao?", "a": "De oversteek duurt ongeveer 1 tot 2 uur per kant, afhankelijk van de boot, zeilcatamarans en jachten zijn langzamer dan de speedboten en RIB's. Je vaart heen tegen de passaatwinden in en terug met de wind mee, dus de terugweg is meestal rustiger en sneller." },
+          { "q": "Word ik zeeziek op weg naar Klein Curaçao?", "a": "Op de heenweg de passaatwinden in kan het schommelen, dus het kan. Ga achterin en in het midden van de boot zitten, houd je blik op de horizon en neem voor vertrek iets in als je er gevoelig voor bent. De meeste magen komen tot rust zodra je vaart." },
+          { "q": "Wat moet ik meenemen naar Klein Curaçao?", "a": "Waterschoenen, rifvriendelijke zonnebrand, een pet en zonnebril, een handdoek en wat contant geld. De zon is fel en weerkaatst op het zand en water, dus smeer vaak opnieuw in. Er is nauwelijks telefoonbereik, dus download alles wat je nodig hebt voordat je gaat." },
+          { "q": "Zijn er toiletten op Klein Curaçao?", "a": "Ja. De meeste boten hebben een toilet aan boord, en meerdere aanbieders hebben een strandhuis op het eiland met toiletten en douches. De voorzieningen zijn eenvoudig, het eiland is verder onbebouwd." },
+          { "q": "Is Klein Curaçao geschikt voor gezinnen met jonge kinderen?", "a": "Ja. De rustige, ondiepe, door het rif beschermde zuidkust is ideaal voor kinderen, en de stabielere motorboten en gezinsboten maken de oversteek makkelijker. Neem waterschoenen en zonbescherming mee, en let op dat er geen schaduw is buiten de palapa's en strandhuizen." },
+          { "q": "Wat gebeurt er als het weer slecht is tijdens mijn trip?", "a": "Als een aanbieder annuleert vanwege weer of ruwe zee, word je omgeboekt naar een andere dag of volledig terugbetaald. Elke aanbieding heeft ook een gratis annuleringsvenster, zodat je je plannen daarbinnen kosteloos kunt wijzigen." }
+        ]
+      },
       "titlePattern": "Dagtochten naar {hub}",
       "tripsHeading": "{count} dagtochten naar {hub}. Maak je keuze.",
       "tripsSubtitle": "Selecteer een datum of vergelijk eerst hieronder",

@@ -2,8 +2,17 @@ import { notFound } from 'next/navigation';
 import { hubsApi } from '@/lib/api/hubs';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import {
+    HubAlsoWorthSection,
+    type HubAlsoWorthItem,
+} from './hub-also-worth-section';
 import { HubCompareSection, type CompareTable } from './hub-compare-section';
+import { FaqSection } from './faq-section';
 import { HubDiscoverSection, type HubDiscoverItem } from './hub-discover-section';
+import {
+    HubFirstTimersSection,
+    type HubFirstTimersTip,
+} from './hub-first-timers-section';
 import { HubHero, type HubHeroMeta } from './hub-hero';
 import { type HubPick } from './hub-pick-card';
 import { type HubTour } from './hub-tour-card';
@@ -296,6 +305,62 @@ const MOCK_DISCOVER_ITEMS: HubDiscoverItem[] = [
     },
 ];
 
+// "What we tell first-timers" quick takeaways + tips (Figma node 48024:12062) -
+// placeholder editorial copy until the hub content API is wired (mirrors the MOCK
+// convention elsewhere on the hub page). Copy kept verbatim from the design.
+const MOCK_FIRST_TIMER_HIGHLIGHTS = [
+    'Take water shoes',
+    'The open bar opens after arrival',
+    'There is no phone signal',
+];
+const MOCK_FIRST_TIMER_TIPS: HubFirstTimersTip[] = [
+    {
+        title: 'Sit at the back',
+        body: 'Heading out, you sail straight into the trade winds, so the front of the boat takes the chop. Sit at the back, ideally back-centre, keep your eyes on the horizon, and most stomachs settle fast.',
+    },
+    {
+        title: 'No need to rush ashore',
+        body: 'There are enough beach beds and palapas for everyone, so take your time getting off the boat. The only perk of the first dinghy is first pick of your spot for the day.',
+    },
+    {
+        title: 'Bring reef-safe sunscreen',
+        body: 'The sun out here is fierce and bounces off the water and white sand, so reapply often. Go reef-safe: the reef is protected, and ordinary sunscreen harms the coral.',
+    },
+    {
+        title: 'Barely any phone signal',
+        body: "Signal is weak and patchy. You'll catch a bit out on the Hammerhead pier or up in the watchtower, but mostly you're off the grid, so tell people at home before you sail and enjoy a full day unplugged.",
+    },
+    {
+        title: 'Book weeks ahead',
+        body: 'This isn\'t the usual "limited availability" line: boats to Klein Curaçao genuinely sell out three to four weeks ahead, year-round. If your dates are fixed, lock it in early.',
+    },
+    {
+        title: 'Mind the lighthouse stairs',
+        body: 'You can climb to the top for a view over the whole island, but the stairs are weathered and unmaintained. Take them slowly, watch your footing, and hold on.',
+    },
+];
+
+// "Also worth your time" related activities (Figma 48024:12096) - placeholder
+// sibling categories at the destination until the backend returns related
+// activities (mirrors CategoryYouMightLike's FALLBACK_RELATED convention).
+const MOCK_ALSO_WORTH: HubAlsoWorthItem[] = [
+    {
+        name: 'Sunset Cruises',
+        slug: 'sunset-cruises',
+        image: '/images/home-page/categories/catamaran-trips.jpg',
+    },
+    {
+        name: 'Dolphin Experience',
+        slug: 'dolphin-experience',
+        image: '/images/home-page/islands/curacao.jpg',
+    },
+    {
+        name: 'Snorkeling',
+        slug: 'snorkeling',
+        image: '/images/home-page/categories/snorkel-trips.jpg',
+    },
+];
+
 interface HubPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -345,6 +410,22 @@ export async function HubPage({
     const picksDict = hubDict.picks;
     const discoverDict = hubDict.discover;
     const discoverTitle = discoverDict.titlePattern.replace('{hub}', hub.name);
+    const firstTimersTitle = hubDict.firstTimersTitle.replace('{hub}', hub.name);
+    // "Also worth your time on {destination}" uses the destination name (these
+    // are sibling activities at the island, not the hub).
+    const alsoWorthTitle = hubDict.alsoWorthTitle.replace(
+        '{destination}',
+        destinationName,
+    );
+    // Reuse the shared FaqSection (minimal variant) - hub FAQs come from the
+    // dictionary; the "Frequently asked questions" title is shared with the
+    // destination/category pages. Left-panel fields (subtitle/whatsapp/guarantees)
+    // are inherited from home.faq for the type but unused in `minimal` mode.
+    const faqDict = {
+        ...dict.home.faq,
+        title: dict.destination.faqTitle,
+        items: hubDict.faq.items,
+    };
     const pickLabels: HubPick['label'][] = ['best', 'popular', 'families'];
     const pickLabelText = [picksDict.best, picksDict.popular, picksDict.families];
     const picks: HubPick[] = MOCK_PICK_CONTENT.map((p, i) => ({
@@ -471,6 +552,22 @@ export async function HubPage({
                         save: dict.nav.wishlist,
                     },
                 }}
+            />
+            <HubFirstTimersSection
+                dict={{
+                    title: firstTimersTitle,
+                    highlights: MOCK_FIRST_TIMER_HIGHLIGHTS,
+                    tips: MOCK_FIRST_TIMER_TIPS,
+                }}
+            />
+            <FaqSection dict={faqDict} minimal />
+            {/* "Also worth your time on {destination}" - related activities
+                (Figma desktop 48024:12096 / mobile 48621:8785). */}
+            <HubAlsoWorthSection
+                title={alsoWorthTitle}
+                items={MOCK_ALSO_WORTH}
+                locale={locale}
+                destinationSlug={destinationSlug}
             />
         </>
     );

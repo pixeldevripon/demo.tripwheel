@@ -20,6 +20,17 @@ import { resolveSlug } from '@/lib/api/slug-registry';
  * all its registry rows - §5.10), so on any fetch error we fall back to a
  * prettified slug rather than 404.
  */
+// English slugs strip diacritics, so title-casing `curacao` yields "Curacao".
+// Map launch destinations to their proper display names for the fallback path
+// (the backend `name` already carries diacritics when reachable).
+const DESTINATION_DISPLAY_NAMES: Record<string, string> = {
+    curacao: 'Curaçao',
+    aruba: 'Aruba',
+    'sint-maarten': 'Sint Maarten',
+    'saint-lucia': 'Saint Lucia',
+    bahamas: 'Bahamas',
+};
+
 async function resolveDestinationName(
     destination: string,
     locale: Locale,
@@ -27,6 +38,7 @@ async function resolveDestinationName(
     const dest = await destinationsApi.getBySlug(destination, locale).catch(() => null);
     return (
         dest?.name ??
+        DESTINATION_DISPLAY_NAMES[destination] ??
         destination.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     );
 }

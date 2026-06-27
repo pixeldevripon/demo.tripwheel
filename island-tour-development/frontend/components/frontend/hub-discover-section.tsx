@@ -35,13 +35,13 @@ export type HubDiscoverDict = {
     readLess: string;
 };
 
-// Cancels / re-applies the `it-container` horizontal gutter (16 / 32 / 120px at
-// base / md / xl) so the banner spans the full container width while its heading
-// stays aligned to the page content edge.
-const BLEED =
-    '-mx-[var(--it-container-px-sm)] md:-mx-[var(--it-container-px-md)] xl:-mx-[var(--it-container-px)]';
-const GUTTER =
-    'px-[var(--it-container-px-sm)] md:px-[var(--it-container-px-md)] xl:px-[var(--it-container-px)]';
+// Breaks the banner out to the FULL VIEWPORT width (like the hero), regardless of
+// the `it-container` it is nested inside. The 50%/50vw centering trick works
+// because every ancestor container is centered in the viewport; an `it-container`
+// inside the banner then re-aligns the heading to the page content edge.
+// (frontend-root carries `overflow-x: clip` so the 100vw width can't introduce a
+// horizontal scrollbar.)
+const FULL_BLEED = 'w-screen ml-[calc(50%-50vw)]';
 
 export function HubDiscoverSection({
     items,
@@ -55,26 +55,26 @@ export function HubDiscoverSection({
 }) {
     return (
         <div className='flex flex-col gap-10 md:gap-[90px]'>
-            {/* Full-bleed banner - heading + summary bottom-left.
-                Mobile: 332px min-height, 12px rounded corners, 32px bottom padding.
-                Desktop: 533px min-height, 20px rounded corners, 90px bottom padding.
-                Content re-padded to align with the page content edge. */}
+            {/* Full-viewport banner - heading + summary bottom-left. Square
+                corners, edge-to-edge like the hero (Figma 1440x533 / 402x332).
+                Mobile: 332px min-height, 49px bottom padding.
+                Desktop: 533px min-height, 90px bottom padding.
+                The inner it-container re-aligns the heading to the page content. */}
             <Reveal>
                 <div
-                    className={`relative flex min-h-[332px] items-end overflow-hidden rounded-[12px] bg-it-border md:min-h-[533px] md:rounded-[20px] ${BLEED}`}>
+                    className={`relative flex min-h-[332px] items-end overflow-hidden bg-it-border md:min-h-[533px] ${FULL_BLEED}`}>
                     {bannerImage ? (
                         <Image
                             src={bannerImage}
                             alt={dict.title}
                             fill
                             className='object-cover'
-                            sizes='(max-width: 768px) 100vw, 1200px'
+                            sizes='100vw'
                         />
                     ) : (
                         <div className='absolute inset-0 bg-it-border' />
                     )}
-                    <div
-                        className={`relative z-10 w-full pb-8 md:pb-[90px] ${GUTTER}`}>
+                    <div className='it-container relative z-10 w-full pb-[49px] md:pb-[90px]'>
                         <div className='flex max-w-[645px] flex-col gap-1'>
                             <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                 {dict.title}
@@ -88,10 +88,10 @@ export function HubDiscoverSection({
             </Reveal>
 
             {/* Editorial grid + CTA.
-                Mobile: 24px gap between cards, 24px gap to CTA.
+                Mobile: 16px gap between cards, 24px gap to CTA.
                 Desktop: 24px gap between cards, 56px gap to CTA. */}
             <div className='flex flex-col gap-6 md:gap-14'>
-                <Reveal className='grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-6'>
+                <Reveal className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6'>
                     {items.map((item, i) => (
                         <HubDiscoverCard
                             key={i}
@@ -104,11 +104,12 @@ export function HubDiscoverSection({
                     ))}
                 </Reveal>
 
-                {/* "Book your trip" - outlined orange pill, centered */}
-                <Reveal width='fit-content' className='mx-auto'>
+                {/* "Book your trip" - outlined orange pill. Full-width on mobile
+                    (h-46, 40px sides), hugged + centered on desktop (h-48). */}
+                <Reveal className='flex md:justify-center'>
                     <button
                         type='button'
-                        className='inline-flex h-12 cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5'>
+                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
                         {dict.bookTrip}
                     </button>
                 </Reveal>

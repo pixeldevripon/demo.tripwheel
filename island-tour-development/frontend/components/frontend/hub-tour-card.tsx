@@ -60,9 +60,13 @@ export function HubTourCard({
         }[tour.badge];
 
     return (
-        <article className='flex flex-col gap-2 md:gap-4'>
-            {/* Image - single photo, badge top-left + wishlist top-right. */}
-            <div className='relative aspect-177/148 md:aspect-384/270 overflow-hidden rounded-[8px] bg-it-border md:rounded-[16px]'>
+        <article
+            aria-label={tour.title}
+            className='group flex flex-col overflow-hidden rounded-[8px] bg-it-white transition-colors duration-300 ease-in-out hover:bg-[#fdf6f0] md:rounded-[16px]'>
+            {/* Image - single photo, badge top-left + wishlist top-right. On hover
+                the card fills cream and the image's bottom corners square off so it
+                merges into the inset content area (mirrors <TourCard>). */}
+            <div className='relative aspect-177/148 w-full shrink-0 overflow-hidden rounded-[8px] bg-it-border transition-[border-radius] duration-300 ease-in-out group-hover:rounded-b-none md:aspect-384/270 md:rounded-[16px]'>
                 {tour.image && (
                     <Image
                         src={tour.image}
@@ -85,7 +89,7 @@ export function HubTourCard({
                         onClick={() => setSaved((v) => !v)}
                         aria-label={dict.save}
                         aria-pressed={saved}
-                        className='grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white md:size-10'>
+                        className='grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-all duration-150 hover:shadow-it-md active:scale-90 md:size-10'>
                         <Image
                             src={saved ? '/icons/heart-filled.svg' : '/icons/heart-outline.svg'}
                             alt=''
@@ -97,8 +101,10 @@ export function HubTourCard({
                 </div>
             </div>
 
-            {/* Content */}
-            <div className='flex flex-col gap-1.5 md:gap-3'>
+            {/* Content - on hover it insets horizontally + gains bottom padding so
+                the cream card wraps it (mirrors <TourCard>). The top padding stands
+                in for the previous image->content gap. */}
+            <div className='flex flex-col gap-1.5 pt-2 transition-[padding] duration-300 ease-in-out group-hover:px-3 group-hover:pb-3 md:gap-3 md:pt-4 md:group-hover:px-4 md:group-hover:pb-4'>
                 {/* Rating */}
                 <div className='flex items-center gap-2'>
                     <Image

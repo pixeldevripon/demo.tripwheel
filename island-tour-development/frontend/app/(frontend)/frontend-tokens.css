@@ -36,6 +36,7 @@
     --it-border:           #ededed;
     --it-border-dark:      #1a1a1a;
     --it-border-white:     #ffffff;
+    --it-border-subtle:    #2c2c2c1a;   /* heading @ 10% — card / divider hairline */
 
     /* Overlays */
     --it-scrim-light:      rgba(166, 166, 166, 0.20);
@@ -262,6 +263,7 @@
     --color-it-border:          var(--it-border);
     --color-it-border-dark:     var(--it-border-dark);
     --color-it-border-white:    var(--it-border-white);
+    --color-it-border-subtle:   var(--it-border-subtle);
     --color-it-star:            var(--it-star-filled);
     --color-it-heading:         var(--it-heading);
     --color-it-text-muted:      var(--it-text-muted);

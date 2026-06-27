@@ -228,6 +228,21 @@
     "youMightLike": "Você também pode gostar",
     "hub": {
       "whyTitle": "Porquê {hub}",
+      "firstTimersTitle": "O que dizemos aos visitantes de primeira viagem sobre {hub}",
+      "alsoWorthTitle": "Também vale a pena em {destination}",
+      "faq": {
+        "items": [
+          { "q": "Vale a pena Klein Curaçao?", "a": "Sim. A maioria dos visitantes acha o passeio de um dia bem vale a pena, uma das praias de areia branca mais longas e bonitas das Caraíbas. Um dia inteiro na areia e na água, perfeito para apanhar sol, nadar e mergulhar com tubo, com um recife protegido e tartarugas marinhas nas águas rasas. A ilha é totalmente preservada, sem multidões para além dos barcos do dia. Ainda não conhecemos ninguém que se tenha arrependido de ir." },
+          { "q": "O que há para fazer em Klein Curaçao?", "a": "Nadar e mergulhar com tubo no recife protegido da costa sul, apanhar sol em mais de um quilómetro de areia branca, subir ao farol cor-de-rosa de 1877 e percorrer a costa norte junto a três naufrágios. Procure as tartarugas-de-pente, cabeçudas e verdes que nidificam aqui. Não há lojas nem atrações, a própria ilha é a experiência." },
+          { "q": "Quanto custa um passeio a Klein Curaçao?", "a": "Os passeios de um dia começam por volta de 120 $ por pessoa e variam consoante o barco e o que está incluído, pequeno-almoço, almoço, bar aberto e equipamento de snorkeling são incluídos de forma diferente por cada operador. Os charters privados são cobrados por grupo. O preço em cada anúncio é a tarifa completa por pessoa." },
+          { "q": "Quanto tempo demora a viagem de barco até Klein Curaçao?", "a": "A travessia demora cerca de 1 a 2 horas em cada sentido, consoante o barco, os catamarãs à vela e os iates são mais lentos do que as lanchas e os semirrígidos. Vai-se contra os ventos alísios à ida e com eles à volta, por isso o regresso costuma ser mais suave e rápido." },
+          { "q": "Vou enjoar a caminho de Klein Curaçao?", "a": "À ida, contra os ventos alísios, o mar pode estar agitado, por isso é possível. Sente-se na parte de trás e ao centro do barco, mantenha os olhos no horizonte e tome algo antes de partir se for propenso. A maioria dos estômagos acalma assim que se está em andamento." },
+          { "q": "O que devo levar para Klein Curaçao?", "a": "Sapatos de água, protetor solar amigo dos recifes, chapéu e óculos de sol, uma toalha e algum dinheiro. O sol é forte e reflete na areia e na água, por isso reaplique com frequência. Quase não há rede móvel, por isso descarregue o que precisa antes de ir." },
+          { "q": "Há casas de banho em Klein Curaçao?", "a": "Sim. A maioria dos barcos tem casa de banho a bordo, e vários operadores têm uma casa de praia na ilha com casas de banho e duches. As instalações são básicas, a ilha é, de resto, preservada." },
+          { "q": "Klein Curaçao é adequado para famílias com crianças pequenas?", "a": "Sim. A costa sul, calma, rasa e protegida pelo recife, é ideal para crianças, e os barcos a motor e de família mais estáveis tornam a travessia mais fácil. Leve sapatos de água e proteção solar, e tenha em conta que não há sombra para além das palapas e casas de praia." },
+          { "q": "O que acontece se o tempo estiver mau no dia do meu passeio?", "a": "Se um operador cancelar por causa do tempo ou do mar agitado, é remarcado para outro dia ou reembolsado na totalidade. Cada anúncio tem também uma janela de cancelamento gratuito, pelo que pode alterar os seus planos sem custos dentro desse prazo." }
+        ]
+      },
       "titlePattern": "Passeios de um dia a {hub}",
       "tripsHeading": "{count} passeios de um dia a {hub}. Escolha o seu.",
       "tripsSubtitle": "Selecione uma data ou compare primeiro abaixo",

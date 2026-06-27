@@ -228,6 +228,21 @@
     "youMightLike": "Vous aimerez aussi",
     "hub": {
       "whyTitle": "Pourquoi {hub}",
+      "firstTimersTitle": "Ce que nous disons aux nouveaux venus sur {hub}",
+      "alsoWorthTitle": "À ne pas manquer non plus à {destination}",
+      "faq": {
+        "items": [
+          { "q": "Klein Curaçao vaut-il le détour ?", "a": "Oui. La plupart des visiteurs trouvent l'excursion d'une journée très intéressante, l'une des plus longues et plus belles plages de sable blanc des Caraïbes. Une journée entière sur le sable et dans l'eau, parfaite pour le bronzage, la baignade et la plongée avec tuba, avec un récif protégé et des tortues de mer près du rivage. L'île est totalement sauvage, sans foule en dehors des bateaux du jour. Nous n'avons encore rencontré personne qui l'ait regretté." },
+          { "q": "Que faire à Klein Curaçao ?", "a": "Nager et faire du snorkeling sur le récif protégé de la côte sud, bronzer sur plus d'un kilomètre de sable blanc, monter au phare rose de 1877 et longer la côte nord devant trois épaves. Cherchez les tortues imbriquées, caouannes et vertes qui nichent ici. Il n'y a ni boutiques ni attractions, l'île elle-même est l'expérience." },
+          { "q": "Combien coûte une excursion à Klein Curaçao ?", "a": "Les excursions à la journée démarrent autour de 120 $ par personne et varient selon le bateau et les prestations, petit-déjeuner, déjeuner, open bar et équipement de snorkeling sont inclus différemment selon les prestataires. Les charters privés sont facturés par groupe. Le prix affiché sur chaque annonce est le tarif complet par personne." },
+          { "q": "Combien de temps dure la traversée vers Klein Curaçao ?", "a": "La traversée dure environ 1 à 2 heures dans chaque sens selon le bateau, les catamarans à voile et les yachts sont plus lents que les hors-bord et les semi-rigides. On part contre les alizés et on revient avec eux, le retour est donc généralement plus doux et plus rapide." },
+          { "q": "Vais-je avoir le mal de mer en allant à Klein Curaçao ?", "a": "La mer peut être agitée à l'aller face aux alizés, c'est donc possible. Asseyez-vous vers l'arrière et au centre du bateau, gardez les yeux sur l'horizon et prenez un remède avant de partir si vous y êtes sujet. La plupart des estomacs se calment une fois en route." },
+          { "q": "Que dois-je emporter à Klein Curaçao ?", "a": "Des chaussures d'eau, une crème solaire respectueuse des récifs, un chapeau et des lunettes de soleil, une serviette et un peu d'espèces. Le soleil est intense et se reflète sur le sable et l'eau, alors réappliquez souvent. Le réseau mobile est quasi inexistant, téléchargez donc ce dont vous avez besoin avant de partir." },
+          { "q": "Y a-t-il des toilettes à Klein Curaçao ?", "a": "Oui. La plupart des bateaux ont des toilettes à bord, et plusieurs prestataires disposent d'une maison de plage sur l'île avec toilettes et douches. Les installations sont sommaires, l'île est par ailleurs sauvage." },
+          { "q": "Klein Curaçao convient-il aux familles avec de jeunes enfants ?", "a": "Oui. La côte sud calme, peu profonde et protégée par le récif est idéale pour les enfants, et les bateaux à moteur et bateaux familiaux plus stables facilitent la traversée. Apportez des chaussures d'eau et une protection solaire, et notez qu'il n'y a pas d'ombre en dehors des palapas et des maisons de plage." },
+          { "q": "Que se passe-t-il si le temps est mauvais le jour de mon excursion ?", "a": "Si un prestataire annule pour cause de météo ou de mer agitée, vous êtes replacé un autre jour ou intégralement remboursé. Chaque annonce comporte aussi une fenêtre d'annulation gratuite, vous pouvez donc modifier vos plans sans frais dans ce délai." }
+        ]
+      },
       "titlePattern": "Excursions d'une journée à {hub}",
       "tripsHeading": "{count} excursions d'une journée à {hub}. Faites votre choix.",
       "tripsSubtitle": "Sélectionnez une date ou comparez d'abord ci-dessous",
