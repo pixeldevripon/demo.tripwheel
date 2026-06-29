@@ -122,8 +122,11 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                         {dict.title}
                     </h2>
 
-                    {/* Carousel */}
-                    <div className='w-full overflow-hidden' ref={emblaRef}>
+                    {/* Carousel - drag to swipe (Embla handles pointer + touch) */}
+                    <div
+                        className='w-full overflow-hidden cursor-grab select-none active:cursor-grabbing'
+                        ref={emblaRef}
+                    >
                         <div className='flex items-center gap-6' style={{ height: H_MAX }}>
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
@@ -154,6 +157,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                             alt={title}
                                                             fill
                                                             sizes='220px'
+                                                            draggable={false}
                                                             className='object-cover'
                                                         />
                                                     ) : (
