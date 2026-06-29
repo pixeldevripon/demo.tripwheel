@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { useState } from 'react';
+import { Pagination } from './pagination';
 import { Reveal } from './reveal';
 import { TourCard } from './tour-card';
 import type { TourCardDict, TourListing } from './tour-card';
@@ -24,7 +24,6 @@ export function ToursListing({
     pageCount: number;
 }) {
     const [page, setPage] = useState(1);
-    const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
 
     return (
         <Reveal className='flex flex-col gap-12 sm:gap-18'>
@@ -40,56 +39,7 @@ export function ToursListing({
             </div>
 
             {/* ── Pagination ─────────────────────────────────────────────── */}
-            {pageCount > 1 && (
-                <nav
-                    aria-label='Pagination'
-                    className='flex items-center justify-center gap-5'>
-                    <button
-                        type='button'
-                        aria-label='Previous page'
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        className='inline-flex cursor-pointer items-center border-none bg-transparent p-0 transition-opacity disabled:cursor-not-allowed disabled:opacity-30'>
-                        <Image
-                            src='/icons/filters/pagination-arrow.svg'
-                            alt=''
-                            width={20}
-                            height={20}
-                            className='size-5 rotate-180'
-                        />
-                    </button>
-
-                    {pages.map((n) => (
-                        <button
-                            key={n}
-                            type='button'
-                            aria-current={n === page ? 'page' : undefined}
-                            onClick={() => setPage(n)}
-                            className={`cursor-pointer border-none bg-transparent p-0 text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors ${
-                                n === page
-                                    ? 'text-it-heading'
-                                    : 'text-it-heading/30 hover:text-it-heading'
-                            }`}>
-                            {n}
-                        </button>
-                    ))}
-
-                    <button
-                        type='button'
-                        aria-label='Next page'
-                        disabled={page === pageCount}
-                        onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                        className='inline-flex cursor-pointer items-center border-none bg-transparent p-0 transition-opacity disabled:cursor-not-allowed disabled:opacity-30'>
-                        <Image
-                            src='/icons/filters/pagination-arrow.svg'
-                            alt=''
-                            width={20}
-                            height={20}
-                            className='size-5'
-                        />
-                    </button>
-                </nav>
-            )}
+            <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </Reveal>
     );
 }

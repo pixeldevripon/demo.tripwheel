@@ -24,6 +24,7 @@ import { PaymentsModule } from '@/payments/payments.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
+import { WishlistModule } from '@/wishlist/wishlist.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -53,6 +54,7 @@ import { NotificationsModule } from '@/notifications/notifications.module';
     TrackingModule,
     ReviewsModule,
     NotificationsModule,
+    WishlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],

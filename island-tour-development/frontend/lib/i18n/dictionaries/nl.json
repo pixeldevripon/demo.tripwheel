@@ -42,6 +42,30 @@
     "viewAll": "Bekijk alles",
     "readMore": "Lees meer"
   },
+  "search": {
+    "title": "Zoeken",
+    "placeholder": "Zoek tours, activiteiten, plaatsen",
+    "resultsFor": "{count} resultaten voor “{query}”",
+    "resultFor": "{count} resultaat voor “{query}”",
+    "noResults": "Geen resultaten voor “{query}”",
+    "noResultsHint": "Controleer de spelling of probeer een algemenere term.",
+    "promptTitle": "Zoek Island Tours",
+    "promptHint": "Typ minstens 2 tekens om tours, activiteiten en plaatsen te vinden.",
+    "searching": "Zoeken...",
+    "seeAll": "Bekijk alle {count} resultaten",
+    "hours": "{value} uur",
+    "hour": "1 uur",
+    "minutes": "{value} min",
+    "range": "{from} tot {to} uur"
+  },
+  "wishlist": {
+    "title": "Jouw verlanglijst",
+    "empty": "Nog geen opgeslagen tours",
+    "emptyHint": "Tik op het hartje bij een tour om die hier op te slaan.",
+    "signInTitle": "Log in om je verlanglijst te bekijken",
+    "signInHint": "Je opgeslagen tours zijn gekoppeld aan je account.",
+    "signInCta": "Inloggen"
+  },
   "home": {
     "hero": {
       "title": "Wij hebben de Caraïben niet ontdekt. Wij zijn er opgegroeid.",

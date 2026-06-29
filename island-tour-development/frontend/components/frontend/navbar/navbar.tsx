@@ -1,0 +1,252 @@
+'use client';
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { categoriesApi } from '@/lib/api/categories';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+
+import { CategoriesMenu } from './categories-menu';
+import { DestinationSelector } from './destination-selector';
+import { LocaleSelector } from './locale-selector';
+import { MobileMenu } from './mobile-menu';
+import { NavSearch } from './nav-search';
+import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
+import { WishlistLink } from './wishlist-link';
+
+/** localStorage key for the last-viewed island (persists the navbar selection). */
+const DESTINATION_KEY = 'it.activeDestination';
+
+/**
+ * Public-site top bar. Owns only the state shared across its parts: the active
+ * island (path + remembered), the destination-scoped categories, and the two
+ * mobile toggles. Each selector/search/menu owns its own open state internally.
+ */
+export function Navbar({
+    locale,
+    dict,
+    search,
+    islands,
+}: {
+    locale: Locale;
+    dict: NavDict;
+    search: SearchDict;
+    islands: Island[];
+}) {
+    const pathname = usePathname();
+
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+    // Home keeps the discovery layout; every other page shows the inner layout.
+    const isHome = pathname === '/' || pathname === `/${locale}`;
+
+    // The island in the URL (first segment after the locale), if any.
+    const pathIsland = useMemo(() => {
+        const slug = pathname.split('/')[2];
+        return islands.find(i => i.slug === slug) ?? null;
+    }, [pathname, islands]);
+
+    // Persist the last-viewed island so it stays selected across navigation -
+    // including back on the home page. Read once on mount, written whenever the
+    // URL resolves to an island.
+    const [rememberedSlug, setRememberedSlug] = useState<string | null>(null);
+    useEffect(() => {
+        setRememberedSlug(window.localStorage.getItem(DESTINATION_KEY));
+    }, []);
+    useEffect(() => {
+        if (pathIsland) {
+            window.localStorage.setItem(DESTINATION_KEY, pathIsland.slug);
+            setRememberedSlug(pathIsland.slug);
+        }
+    }, [pathIsland]);
+
+    const currentIsland =
+        pathIsland ?? islands.find(i => i.slug === rememberedSlug) ?? null;
+
+    // Destination-scoped categories - only those with a published tour, so the
+    // links never 404. Resolved client-side (the island comes from the path) and
+    // cached per `locale:slug`. Shared by the desktop dropdown + mobile drawer.
+    const [categories, setCategories] = useState<Category[]>([]);
+    const categoryCache = useRef<Map<string, Category[]>>(new Map());
+    useEffect(() => {
+        const slug = currentIsland?.slug;
+        if (!slug) {
+            setCategories([]);
+            return;
+        }
+        const cacheKey = `${locale}:${slug}`;
+        const cached = categoryCache.current.get(cacheKey);
+        if (cached) {
+            setCategories(cached);
+            return;
+        }
+        let ignore = false;
+        categoriesApi
+            .getActiveByDestination(slug, locale)
+            .then(rows => {
+                if (ignore) return;
+                const mapped = rows.map(c => ({ name: c.name, slug: c.slug }));
+                categoryCache.current.set(cacheKey, mapped);
+                setCategories(mapped);
+            })
+            .catch(() => {
+                if (!ignore) setCategories([]);
+            });
+        return () => {
+            ignore = true;
+        };
+    }, [currentIsland?.slug, locale]);
+
+    return (
+        <header className='fixed top-0 left-0 right-0 z-100 h-18 md:h-20 bg-it-white border-b border-it-border'>
+            <div className='it-container h-full flex items-center justify-between gap-6'>
+                {/* ── Left: logo + island + categories ── */}
+                <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
+                    <Link href={localizeHref(locale, '/')} className='shrink-0'>
+                        <Image
+                            src='/logo/logo.png'
+                            alt='Island Tours'
+                            width={68}
+                            height={50}
+                            priority
+                            className='h-9 w-auto object-contain md:h-12.5'
+                        />
+                    </Link>
+
+                    <div className='hidden md:flex items-center gap-4'>
+                        <DestinationSelector
+                            variant='desktop'
+                            locale={locale}
+                            dict={dict}
+                            islands={islands}
+                            currentIsland={currentIsland}
+                        />
+                        {!isHome && (
+                            <CategoriesMenu
+                                locale={locale}
+                                dict={dict}
+                                categories={categories}
+                                currentIsland={currentIsland}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Middle: search (desktop pill + mobile overlay) ── */}
+                <NavSearch
+                    locale={locale}
+                    nav={dict}
+                    search={search}
+                    currentIsland={currentIsland}
+                    showDesktop={!isHome}
+                    mobileOpen={mobileSearchOpen}
+                    onMobileClose={() => setMobileSearchOpen(false)}
+                />
+
+                {/* ── Desktop right: language + wishlist + account ── */}
+                <div className='hidden md:flex items-center gap-6 shrink-0'>
+                    <LocaleSelector variant='desktop' locale={locale} dict={dict} />
+                    <div className='w-px h-5 bg-it-border' />
+                    <WishlistLink locale={locale} dict={dict} />
+                    <div className='w-px h-5 bg-it-border' />
+                    <Link
+                        href='/login'
+                        aria-label={dict.account}
+                        className='flex items-center no-underline'>
+                        <Image
+                            src='/icons/nav-profile.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
+                    </Link>
+                </div>
+
+                {/* ── Mobile right: search + island + language + account + menu ── */}
+                <div className='flex md:hidden items-center gap-5'>
+                    {!isHome && (
+                        <button
+                            type='button'
+                            onClick={() => {
+                                setMobileOpen(false);
+                                setMobileSearchOpen(true);
+                            }}
+                            aria-label={dict.search}
+                            aria-expanded={mobileSearchOpen}
+                            className='flex items-center bg-transparent border-none cursor-pointer p-0'>
+                            <Image
+                                src='/icons/nav-search.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-6'
+                            />
+                        </button>
+                    )}
+
+                    <DestinationSelector
+                        variant='mobile'
+                        locale={locale}
+                        dict={dict}
+                        islands={islands}
+                        currentIsland={currentIsland}
+                    />
+                    <LocaleSelector variant='mobile' locale={locale} dict={dict} />
+
+                    <Link
+                        href='/login'
+                        aria-label={dict.account}
+                        className='flex items-center no-underline'>
+                        <Image
+                            src='/icons/nav-profile.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-6'
+                        />
+                    </Link>
+
+                    <motion.button
+                        className='bg-transparent border-none cursor-pointer p-0 text-it-ink'
+                        whileTap={{ scale: 0.85 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        aria-label={mobileOpen ? dict.close : dict.menu}
+                        onClick={() => setMobileOpen(v => !v)}>
+                        <AnimatePresence mode='wait' initial={false}>
+                            <motion.span
+                                key={mobileOpen ? 'close' : 'open'}
+                                className='inline-flex'
+                                initial={{ rotate: -90, opacity: 0 }}
+                                animate={{ rotate: 0, opacity: 1 }}
+                                exit={{ rotate: 90, opacity: 0 }}
+                                transition={{ duration: 0.18 }}>
+                                {mobileOpen ? (
+                                    <X size={24} strokeWidth={1.5} />
+                                ) : (
+                                    <Menu size={24} strokeWidth={1.5} />
+                                )}
+                            </motion.span>
+                        </AnimatePresence>
+                    </motion.button>
+                </div>
+            </div>
+
+            <MobileMenu
+                open={mobileOpen}
+                onClose={() => setMobileOpen(false)}
+                locale={locale}
+                dict={dict}
+                islands={islands}
+                categories={categories}
+                currentIsland={currentIsland}
+                isHome={isHome}
+            />
+        </header>
+    );
+}

@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
                 hostname: 'lh3.googleusercontent.com',
                 pathname: '/**',
             },
+            // Demo seed image host (picsum.photos redirects to fastly.picsum.photos).
+            // Remove together with the demo seed before production.
+            {
+                protocol: 'https',
+                hostname: 'picsum.photos',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'fastly.picsum.photos',
+                pathname: '/**',
+            },
         ],
     },
 };

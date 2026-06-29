@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useWishlist } from '@/components/frontend/wishlist-provider';
 
 // ── Dictionary type ─────────────────────────────────────────────────────────
 export type TourCardDict = {
@@ -107,7 +108,8 @@ export interface TourCardProps {
 }
 
 export function TourCard({ tour, dict, className = '' }: TourCardProps) {
-    const [wishlisted, setWishlisted] = useState(false);
+    const { isSaved, toggle } = useWishlist();
+    const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -191,7 +193,7 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setWishlisted((v) => !v);
+                            toggle(tour.id);
                         }}
                         className="ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-all duration-150 active:scale-90 hover:shadow-it-md"
                     >

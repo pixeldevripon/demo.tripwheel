@@ -42,6 +42,30 @@
     "viewAll": "Ver tudo",
     "readMore": "Ler mais"
   },
+  "search": {
+    "title": "Pesquisar",
+    "placeholder": "Pesquise passeios, atividades, locais",
+    "resultsFor": "{count} resultados para “{query}”",
+    "resultFor": "{count} resultado para “{query}”",
+    "noResults": "Sem resultados para “{query}”",
+    "noResultsHint": "Verifique a ortografia ou tente um termo mais geral.",
+    "promptTitle": "Pesquisar na Island Tours",
+    "promptHint": "Digite pelo menos 2 caracteres para encontrar passeios, atividades e locais.",
+    "searching": "Pesquisando...",
+    "seeAll": "Ver os {count} resultados",
+    "hours": "{value} horas",
+    "hour": "1 hora",
+    "minutes": "{value} min",
+    "range": "{from} a {to} horas"
+  },
+  "wishlist": {
+    "title": "A sua lista de desejos",
+    "empty": "Ainda não há passeios guardados",
+    "emptyHint": "Toque no coração de qualquer passeio para o guardar aqui.",
+    "signInTitle": "Inicie sessão para ver a sua lista de desejos",
+    "signInHint": "Os seus passeios guardados estão associados à sua conta.",
+    "signInCta": "Iniciar sessão"
+  },
   "home": {
     "hero": {
       "title": "Não descobrimos as Caraíbas. Crescemos nelas.",

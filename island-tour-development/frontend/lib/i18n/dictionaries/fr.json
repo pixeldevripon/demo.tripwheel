@@ -42,6 +42,30 @@
     "viewAll": "Tout voir",
     "readMore": "Lire la suite"
   },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher des excursions, activités, lieux",
+    "resultsFor": "{count} résultats pour “{query}”",
+    "resultFor": "{count} résultat pour “{query}”",
+    "noResults": "Aucun résultat pour “{query}”",
+    "noResultsHint": "Vérifiez l'orthographe ou essayez un terme plus général.",
+    "promptTitle": "Rechercher sur Island Tours",
+    "promptHint": "Saisissez au moins 2 caractères pour trouver des excursions, activités et lieux.",
+    "searching": "Recherche...",
+    "seeAll": "Voir les {count} résultats",
+    "hours": "{value} heures",
+    "hour": "1 heure",
+    "minutes": "{value} min",
+    "range": "{from} à {to} heures"
+  },
+  "wishlist": {
+    "title": "Votre liste de souhaits",
+    "empty": "Aucune excursion enregistrée",
+    "emptyHint": "Touchez le cœur sur une excursion pour l'enregistrer ici.",
+    "signInTitle": "Connectez-vous pour voir votre liste de souhaits",
+    "signInHint": "Vos excursions enregistrées sont liées à votre compte.",
+    "signInCta": "Se connecter"
+  },
   "home": {
     "hero": {
       "title": "Nous n'avons pas découvert les Caraïbes. Nous y avons grandi.",

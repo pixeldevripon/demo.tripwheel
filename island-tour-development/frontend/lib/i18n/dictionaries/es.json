@@ -42,6 +42,30 @@
     "viewAll": "Ver todo",
     "readMore": "Leer más"
   },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Busca tours, actividades, lugares",
+    "resultsFor": "{count} resultados para “{query}”",
+    "resultFor": "{count} resultado para “{query}”",
+    "noResults": "Sin resultados para “{query}”",
+    "noResultsHint": "Revisa la ortografía o prueba un término más general.",
+    "promptTitle": "Buscar en Island Tours",
+    "promptHint": "Escribe al menos 2 caracteres para encontrar tours, actividades y lugares.",
+    "searching": "Buscando...",
+    "seeAll": "Ver los {count} resultados",
+    "hours": "{value} horas",
+    "hour": "1 hora",
+    "minutes": "{value} min",
+    "range": "{from} a {to} horas"
+  },
+  "wishlist": {
+    "title": "Tu lista de deseos",
+    "empty": "Aún no hay tours guardados",
+    "emptyHint": "Toca el corazón en cualquier tour para guardarlo aquí.",
+    "signInTitle": "Inicia sesión para ver tu lista de deseos",
+    "signInHint": "Tus tours guardados están vinculados a tu cuenta.",
+    "signInCta": "Iniciar sesión"
+  },
   "home": {
     "hero": {
       "title": "No descubrimos el Caribe. Crecimos en él.",

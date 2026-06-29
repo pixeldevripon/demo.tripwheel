@@ -42,6 +42,30 @@
     "viewAll": "Alle ansehen",
     "readMore": "Mehr lesen"
   },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Touren, Aktivitäten, Orte suchen",
+    "resultsFor": "{count} Ergebnisse für “{query}”",
+    "resultFor": "{count} Ergebnis für “{query}”",
+    "noResults": "Keine Ergebnisse für “{query}”",
+    "noResultsHint": "Überprüfe die Schreibweise oder versuche einen allgemeineren Begriff.",
+    "promptTitle": "Island Tours durchsuchen",
+    "promptHint": "Gib mindestens 2 Zeichen ein, um Touren, Aktivitäten und Orte zu finden.",
+    "searching": "Suche...",
+    "seeAll": "Alle {count} Ergebnisse ansehen",
+    "hours": "{value} Std.",
+    "hour": "1 Std.",
+    "minutes": "{value} Min.",
+    "range": "{from} bis {to} Std."
+  },
+  "wishlist": {
+    "title": "Deine Wunschliste",
+    "empty": "Noch keine gespeicherten Touren",
+    "emptyHint": "Tippe bei einer Tour auf das Herz, um sie hier zu speichern.",
+    "signInTitle": "Melde dich an, um deine Wunschliste zu sehen",
+    "signInHint": "Deine gespeicherten Touren sind mit deinem Konto verknüpft.",
+    "signInCta": "Anmelden"
+  },
   "home": {
     "hero": {
       "title": "Wir haben die Karibik nicht entdeckt. Wir sind in ihr aufgewachsen.",

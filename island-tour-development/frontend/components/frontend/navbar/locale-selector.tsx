@@ -1,0 +1,97 @@
+'use client';
+
+import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
+
+import {
+    ALL_LOCALES,
+    LOCALE_COOKIE,
+    LOCALE_NATIVE_LABELS,
+    type Locale,
+} from '@/lib/constants/locales';
+
+import { dropdownMotion } from './lib/navbar.constants';
+import type { NavDict } from './lib/navbar.types';
+import { useClickOutside } from './lib/use-click-outside';
+
+/**
+ * Language switcher. `desktop` shows the active locale code beside the globe;
+ * `mobile` is the bare globe. Switching swaps the first path segment, remembers
+ * the choice in a cookie, and navigates. Owns its own open state + outside-click.
+ */
+export function LocaleSelector({
+    locale,
+    dict,
+    variant,
+}: {
+    locale: Locale;
+    dict: NavDict;
+    variant: 'desktop' | 'mobile';
+}) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useClickOutside(ref, () => setOpen(false), open);
+
+    function switchLocale(next: Locale) {
+        setOpen(false);
+        if (next === locale) return;
+
+        const segments = pathname.split('/');
+        segments[1] = next; // [0] is '' (leading slash), [1] is the locale
+        const nextPath = segments.join('/') || `/${next}`;
+
+        document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        router.push(nextPath);
+    }
+
+    const menuWidth = variant === 'desktop' ? 'min-w-45' : 'min-w-48';
+
+    return (
+        <div ref={ref} className='relative'>
+            <button
+                onClick={() => setOpen(v => !v)}
+                aria-label={dict.language}
+                aria-expanded={open}
+                className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
+                <Image
+                    src='/icons/nav-globe.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-6 shrink-0'
+                />
+                {variant === 'desktop' && (
+                    <span className='text-base font-medium text-it-ink uppercase'>
+                        {locale}
+                    </span>
+                )}
+            </button>
+
+            <AnimatePresence>
+                {open && (
+                    <motion.ul
+                        {...dropdownMotion}
+                        className={`absolute top-[calc(100%+18px)] right-0 m-0 p-0 list-none ${menuWidth} origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50`}>
+                        {ALL_LOCALES.map(code => (
+                            <li key={code}>
+                                <button
+                                    onClick={() => switchLocale(code)}
+                                    aria-current={code === locale}
+                                    className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                    <span>{LOCALE_NATIVE_LABELS[code]}</span>
+                                    <span className='uppercase text-xs text-it-ink-muted'>
+                                        {code}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                    </motion.ul>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}

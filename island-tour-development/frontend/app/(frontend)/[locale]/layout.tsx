@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 
 import { Suspense } from 'react';
-import { Navbar } from '@/components/frontend/navbar';
+import { Navbar } from '@/components/frontend/navbar/navbar';
 import { Footer } from '@/components/frontend/footer';
-import { ALL_LOCALES, isLocale } from '@/lib/constants/locales';
+import { WishlistProvider } from '@/components/frontend/wishlist-provider';
+import { ALL_LOCALES, isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { getActiveDestinations } from '@/lib/api/public';
 
@@ -31,14 +32,28 @@ export default async function LocaleLayout({
     const islands = destinations.map((d) => ({ name: d.name, slug: d.slug }));
 
     return (
-        <>
-            <Navbar locale={locale} dict={dict.nav} islands={islands} />
+        // WishlistProvider is a client island; the server-rendered Navbar/main/Footer
+        // are passed through as children, so the shell still prerenders. Per-user
+        // wishlist state is resolved inside the provider, in the browser.
+        <WishlistProvider locale={locale as Locale}>
+            <Navbar
+                locale={locale}
+                dict={dict.nav}
+                search={{
+                    ...dict.search,
+                    // Card meta labels live in the shared listings dictionary.
+                    pickupAvailable: dict.destination.listings.pickupAvailable,
+                    freeCancellation: dict.destination.listings.freeCancellation,
+                    from: dict.destination.listings.from,
+                }}
+                islands={islands}
+            />
             {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
                 as a dynamic hole so request-time routes don't block the shell. */}
             <main className='pt-18 md:pt-20'>
                 <Suspense>{children}</Suspense>
             </main>
             <Footer locale={locale} dict={dict.footer} />
-        </>
+        </WishlistProvider>
     );
 }

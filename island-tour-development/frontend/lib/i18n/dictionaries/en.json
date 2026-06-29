@@ -42,6 +42,30 @@
     "viewAll": "View all",
     "readMore": "Read more"
   },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search tours, activities, places",
+    "resultsFor": "{count} results for “{query}”",
+    "resultFor": "{count} result for “{query}”",
+    "noResults": "No results for “{query}”",
+    "noResultsHint": "Check your spelling or try a more general term.",
+    "promptTitle": "Search Island Tours",
+    "promptHint": "Type at least 2 characters to find tours, activities and places.",
+    "searching": "Searching...",
+    "seeAll": "See all {count} results",
+    "hours": "{value} hours",
+    "hour": "1 hour",
+    "minutes": "{value} min",
+    "range": "{from} to {to} hours"
+  },
+  "wishlist": {
+    "title": "Your wishlist",
+    "empty": "No saved tours yet",
+    "emptyHint": "Tap the heart on any tour to save it here.",
+    "signInTitle": "Sign in to view your wishlist",
+    "signInHint": "Your saved tours are tied to your account.",
+    "signInCta": "Sign in"
+  },
   "home": {
     "hero": {
       "title": "We didn't discover the Caribbean. We grew up in it.",

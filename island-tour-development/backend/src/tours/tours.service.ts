@@ -270,10 +270,11 @@ export class ToursService {
   async search(params: {
     q?: string;
     destinationSlug?: string;
+    locale?: Locale;
     page?: number;
     limit?: number;
   }) {
-    const { destinationSlug, page = 1, limit = 20 } = params;
+    const { destinationSlug, locale = Locale.en, page = 1, limit = 20 } = params;
     const term = params.q?.trim();
     if (!term || term.length < 2) {
       return {
@@ -281,7 +282,7 @@ export class ToursService {
         page,
         limit,
         query: term ?? '',
-        data: [] as ReturnType<typeof this.flattenTour>[],
+        data: [] as ReturnType<typeof this.flattenSearchHit>[],
       };
     }
     const ci = { contains: term, mode: 'insensitive' as const };
@@ -309,6 +310,10 @@ export class ToursService {
         where,
         select: {
           ...this.tourSelect,
+          // Each hit must carry enough to build its flat URL (/{dest}/{slug}) and
+          // show a localized title without a second round-trip.
+          destination: { select: { slug: true } },
+          translations: { where: { locale }, select: { title: true } },
           images: {
             where: { isHero: true },
             select: this.heroImageSelect,
@@ -325,7 +330,29 @@ export class ToursService {
       page,
       limit,
       query: term,
-      data: data.map((t) => this.flattenTour(t)),
+      data: data.map((t) => this.flattenSearchHit(t)),
+    };
+  }
+
+  /**
+   * Flattens a search hit into a link-ready shape: adds `destinationSlug` and a
+   * localized `title` (falling back to the canonical `name`), and drops the raw
+   * `destination`/`translations` relations.
+   */
+  private flattenSearchHit<
+    T extends {
+      name: string;
+      destination?: { slug: string } | null;
+      translations?: { title: string | null }[];
+      categories?: { categoryId: string; isPrimary: boolean }[];
+      hubs?: { hubId: string }[];
+    },
+  >(hit: T) {
+    const { destination, translations, ...rest } = hit;
+    return {
+      ...this.flattenTour(rest),
+      destinationSlug: destination?.slug ?? null,
+      title: translations?.[0]?.title?.trim() || hit.name,
     };
   }
 

@@ -42,6 +42,30 @@
     "viewAll": "查看全部",
     "readMore": "阅读更多"
   },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索行程、活动、地点",
+    "resultsFor": "“{query}” 的 {count} 个结果",
+    "resultFor": "“{query}” 的 {count} 个结果",
+    "noResults": "没有找到 “{query}” 的结果",
+    "noResultsHint": "请检查拼写或尝试更宽泛的关键词。",
+    "promptTitle": "搜索 Island Tours",
+    "promptHint": "输入至少 2 个字符以查找行程、活动和地点。",
+    "searching": "搜索中...",
+    "seeAll": "查看全部 {count} 个结果",
+    "hours": "{value} 小时",
+    "hour": "1 小时",
+    "minutes": "{value} 分钟",
+    "range": "{from} 至 {to} 小时"
+  },
+  "wishlist": {
+    "title": "你的心愿单",
+    "empty": "还没有收藏的行程",
+    "emptyHint": "点击任意行程上的爱心即可收藏到这里。",
+    "signInTitle": "登录以查看你的心愿单",
+    "signInHint": "你收藏的行程与你的账户关联。",
+    "signInCta": "登录"
+  },
   "home": {
     "hero": {
       "title": "我们没有发现加勒比海。我们在这里长大。",
