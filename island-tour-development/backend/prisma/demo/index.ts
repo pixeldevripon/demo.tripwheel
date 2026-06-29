@@ -1,0 +1,107 @@
+// DEMO SEED — orchestrator. Runs the demo modules in dependency order, and
+// provides cleanDemo() to remove the demo graph.
+//
+// This is NOT run by the production build. Invoke with `pnpm prisma:seed:demo`
+// (the base `pnpm prisma:seed` must have run first to create the admin user,
+// categories, destinations, hubs, and attribute dictionary that this depends on).
+
+import { SlugEntityType } from '@prisma/client';
+import {
+  DEMO_EMAIL_DOMAIN,
+  DEMO_TOUR_REF,
+  DEMO_WEBHOOK_HOST,
+  prisma,
+} from './_shared';
+import { seedUsersAndOperators } from './users-operators';
+import { seedTours } from './tours';
+import { seedAvailability } from './availability';
+import { seedBookingsAndPayments } from './bookings-payments';
+import { seedReviews } from './reviews';
+import { COLLECTION_SLUGS, seedCollections } from './collections';
+import { seedCommercial } from './commercial';
+import { seedEngagement } from './engagement';
+import { seedEntityContent } from './entity-content';
+import { seedSettings } from './settings';
+
+async function assertBaseSeed(): Promise<void> {
+  const [dest, cat] = await Promise.all([
+    prisma.destination.count(),
+    prisma.category.count(),
+  ]);
+  if (dest === 0 || cat === 0) {
+    throw new Error(
+      'Base seed missing (no destinations/categories). Run `pnpm prisma:seed` first, then `pnpm prisma:seed:demo`.',
+    );
+  }
+}
+
+export async function runDemoSeed(): Promise<void> {
+  console.log('\n════════════ DEMO SEED (removable; not for production) ════════════');
+  await assertBaseSeed();
+
+  await seedUsersAndOperators(); // users + operators + configs
+  await seedTours(); // tours + all children + TOUR slug_registry
+  await seedAvailability(); // schedules + exceptions + departures
+  await seedBookingsAndPayments(); // bookings + unit items + add-ons + payments
+  await seedReviews(); // reviews + translations + aggregate recompute
+  await seedCollections(); // collections + membership + COLLECTION slug_registry
+  await seedCommercial(); // spotlight + force-majeure + featured experiences
+  await seedEngagement(); // wishlists + notifications
+  await seedEntityContent(); // dest/cat/hub translations + page content + FAQs + hub editorial
+  await seedSettings(); // singletons + webhooks + media
+
+  console.log('\n════════════ DEMO SEED COMPLETE ════════════');
+  console.log(`Demo login password: see DEMO_PASSWORD env (default DemoPass123!).`);
+  console.log(`Operator logins: op.<key>@${DEMO_EMAIL_DOMAIN} · Traveler logins: traveler.<key>@${DEMO_EMAIL_DOMAIN}\n`);
+}
+
+export async function cleanDemo(): Promise<void> {
+  console.log('\n════════════ DEMO CLEAN — removing demo graph ════════════');
+
+  // Capture demo tour slugs before deletion (for slug_registry cleanup).
+  const demoTours = await prisma.tour.findMany({
+    where: { reference: DEMO_TOUR_REF },
+    select: { slug: true, destination: { select: { slug: true } } },
+  });
+
+  // 1) Reviews + bookings on demo tours (cascades translations, payments, items, add-ons).
+  await prisma.review.deleteMany({ where: { tour: { reference: DEMO_TOUR_REF } } });
+  await prisma.booking.deleteMany({ where: { tour: { reference: DEMO_TOUR_REF } } });
+
+  // 2) Collections (demo slugs) + their slug_registry rows.
+  await prisma.collection.deleteMany({ where: { slug: { in: COLLECTION_SLUGS } } });
+  await prisma.slugRegistry.deleteMany({ where: { slug: { in: COLLECTION_SLUGS }, entityType: SlugEntityType.COLLECTION } });
+
+  // 3) Demo-only commercial tables.
+  await prisma.featuredExperience.deleteMany({});
+  await prisma.forceMajeurePardon.deleteMany({});
+
+  // 4) TOUR slug_registry rows, then the demo tours (cascades all tour children,
+  //    schedules, exceptions, departures, spotlight requests, wishlists, etc.).
+  for (const t of demoTours) {
+    await prisma.slugRegistry.deleteMany({ where: { destinationSlug: t.destination.slug, slug: t.slug, entityType: SlugEntityType.TOUR } });
+  }
+  await prisma.tour.deleteMany({ where: { reference: DEMO_TOUR_REF } });
+
+  // 5) Notification subscriptions (cascades deliveries) + lead webhook points.
+  await prisma.notificationSubscription.deleteMany({ where: { url: { contains: DEMO_WEBHOOK_HOST } } });
+  await prisma.webhookPoint.deleteMany({ where: { url: { contains: DEMO_WEBHOOK_HOST } } });
+
+  // 6) Demo media.
+  await prisma.mediaGallery.deleteMany({ where: { publicId: { startsWith: 'demo/' } } });
+
+  // 7) Operators (configs first; companyInfo cascades) for demo accounts.
+  const demoOps = await prisma.operator.findMany({ where: { user: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } }, select: { id: true } });
+  const opIds = demoOps.map((o) => o.id);
+  if (opIds.length) {
+    await prisma.operatorSocialMedia.deleteMany({ where: { operatorId: { in: opIds } } });
+    await prisma.operatorStripeConfig.deleteMany({ where: { operatorId: { in: opIds } } });
+    await prisma.operatorMollieConfig.deleteMany({ where: { operatorId: { in: opIds } } });
+    await prisma.operator.deleteMany({ where: { id: { in: opIds } } });
+  }
+
+  // 8) Demo users (cascades sessions, accounts, remaining wishlists).
+  await prisma.user.deleteMany({ where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } });
+
+  console.log('Demo graph removed. (Entity editorial content + settings singletons left in place — they are idempotent on re-seed.)\n');
+}

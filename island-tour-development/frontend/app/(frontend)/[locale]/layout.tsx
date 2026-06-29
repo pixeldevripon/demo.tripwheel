@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+
 import { Suspense } from 'react';
 import { Navbar } from '@/components/frontend/navbar';
 import { Footer } from '@/components/frontend/footer';
