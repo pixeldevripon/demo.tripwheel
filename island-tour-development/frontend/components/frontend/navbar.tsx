@@ -13,17 +13,10 @@ import {
     localizeHref,
     type Locale,
 } from '@/lib/constants/locales';
+import { categoriesApi } from '@/lib/api/categories';
 
 type Island = { name: string; slug: string };
-
-// Global categories - explicit slugs (names are proper nouns, not translated here).
-const categories: { name: string; slug: string }[] = [
-    { name: 'Boat Tours', slug: 'boat-tours' },
-    { name: 'Snorkeling', slug: 'snorkeling' },
-    { name: 'Boat Tours', slug: 'boat-tours' },
-    { name: 'Off-Road Tours', slug: 'off-road-tours' },
-    { name: 'Island Hopping', slug: 'island-hopping' },
-];
+type Category = { name: string; slug: string };
 
 type NavDict = {
     selectIsland: string;
@@ -97,6 +90,42 @@ export function Navbar({
     // Category links point into the current island when there is one.
     const categoryHref = (slug: string) =>
         localizeHref(locale, currentIsland ? `/${currentIsland.slug}/${slug}` : `/${slug}`);
+
+    // Categories shown in the dropdown are destination-specific: only those with a
+    // published tour at the current island (so the links never 404). The current
+    // island is resolved client-side from the path, so this is fetched client-side
+    // and cached per `locale:slug` to avoid refetching when navigating back.
+    const [categories, setCategories] = useState<Category[]>([]);
+    const categoryCache = useRef<Map<string, Category[]>>(new Map());
+
+    useEffect(() => {
+        const slug = currentIsland?.slug;
+        if (!slug) {
+            setCategories([]);
+            return;
+        }
+        const cacheKey = `${locale}:${slug}`;
+        const cached = categoryCache.current.get(cacheKey);
+        if (cached) {
+            setCategories(cached);
+            return;
+        }
+        let ignore = false;
+        categoriesApi
+            .getActiveByDestination(slug, locale)
+            .then((rows) => {
+                if (ignore) return;
+                const mapped = rows.map((c) => ({ name: c.name, slug: c.slug }));
+                categoryCache.current.set(cacheKey, mapped);
+                setCategories(mapped);
+            })
+            .catch(() => {
+                if (!ignore) setCategories([]);
+            });
+        return () => {
+            ignore = true;
+        };
+    }, [currentIsland?.slug, locale]);
 
     // Submit search → /[locale]/search?q=…
     function submitSearch(event: React.FormEvent<HTMLFormElement>) {
@@ -229,8 +258,9 @@ export function Navbar({
                             </AnimatePresence>
                         </div>
 
-                        {/* Inner pages: divider + Categories dropdown */}
-                        {!isHome && (
+                        {/* Inner pages: divider + Categories dropdown (only when the
+                            current island has categories with published tours) */}
+                        {!isHome && categories.length > 0 && (
                             <>
                                 <div className='w-px h-5 bg-it-ink/40' />
                                 <div ref={catRef} className='relative'>
@@ -582,11 +612,11 @@ export function Navbar({
                                 </motion.div>
                             ))}
 
-                            {!isHome && (
+                            {!isHome && categories.length > 0 && (
                                 <>
                                     <div className='my-3 h-px bg-it-border' />
                                     <span className='px-1 pb-1 text-xs font-medium text-it-ink-muted'>
-                                        {dict.categories} 
+                                        {dict.categories}
                                     </span>
                                     {categories.map((cat, i) => (
                                         <motion.div
