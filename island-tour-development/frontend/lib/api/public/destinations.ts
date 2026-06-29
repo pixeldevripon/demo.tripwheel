@@ -6,7 +6,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { DestinationLocalized } from '@/types/destination';
+import type { DestinationActive } from '@/types/destination';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
@@ -21,12 +21,12 @@ import { buildQuery, publicGet } from './fetch';
  */
 export async function getActiveDestinations(
   locale: Locale = DEFAULT_LOCALE,
-): Promise<DestinationLocalized[]> {
+): Promise<DestinationActive[]> {
   'use cache';
   cacheLife('hours');
   cacheTag('destinations');
 
-  const data = await publicGet<DestinationLocalized[]>(
+  const data = await publicGet<DestinationActive[]>(
     `/destinations/active${buildQuery({ locale })}`,
   );
   return data ?? [];

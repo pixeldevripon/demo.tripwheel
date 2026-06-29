@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Reveal } from './reveal';
 
+// Live destinations, mapped from getActiveDestinations in the page
+// (image already falls back upstream, so it is always a usable URL here).
 type Island = {
     name: string;
     slug: string;
@@ -13,20 +15,17 @@ type Island = {
     image: string;
 };
 
-const islands: Island[] = [
-    { name: 'Curaçao', slug: 'curacao', tours: 42, image: '/images/home-page/islands/curacao.jpg' },
-    { name: 'Aruba', slug: 'aruba', tours: 42, image: '/images/home-page/islands/aruba.jpg' },
-    { name: 'Sint Maarten', slug: 'sint-maarten', tours: 42, image: '/images/home-page/islands/sint-maarten.jpg' },
-    { name: 'Saint Lucia', slug: 'saint-lucia', tours: 42, image: '/images/home-page/islands/saint-lucia.jpg' },
-];
-
 export function ExploreIslands({
     dict,
     locale,
+    islands,
 }: {
     dict: { title: string; tours: string; seeMore: string };
     locale: Locale;
+    islands: Island[];
 }) {
+    if (islands.length === 0) return null;
+
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>

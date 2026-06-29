@@ -29,6 +29,11 @@ export interface DestinationLocalized extends Destination {
   isMachineTranslated: boolean;
 }
 
+// Returned by GET /destinations/active - adds the live (published) tour count.
+export interface DestinationActive extends DestinationLocalized {
+  tourCount: number;
+}
+
 export interface DestinationDetail extends DestinationLocalized {
   overview: string | null;
   h1Override: string | null;

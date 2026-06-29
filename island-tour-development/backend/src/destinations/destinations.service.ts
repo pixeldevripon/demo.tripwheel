@@ -99,14 +99,17 @@ export class DestinationService {
       where: { isActive: true },
       select: {
         ...this.destinationSelect,
+        // Live (published) tours only — drives the homepage "Explore islands" count.
+        _count: { select: { tours: { where: { status: TourStatus.LIVE } } } },
         translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
       },
       orderBy: { name: 'asc' },
     });
 
-    return data.map(({ translations, ...dest }) =>
-      applyTranslation(dest, translations[0], locale),
-    );
+    return data.map(({ translations, _count, ...dest }) => ({
+      ...applyTranslation(dest, translations[0], locale),
+      tourCount: _count.tours,
+    }));
   }
 
   async getById(id: string, locale: Locale = Locale.en) {

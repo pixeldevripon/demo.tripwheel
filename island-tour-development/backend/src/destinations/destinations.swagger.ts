@@ -12,6 +12,7 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
   DeleteDestinationResponseDto,
   DeleteMessageResponseDto,
+  DestinationActiveResponseDto,
   DestinationDetailResponseDto,
   DestinationLocalizedResponseDto,
   DestinationPageContentResponseDto,
@@ -64,7 +65,7 @@ export function ApiGetActiveDestinationsDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'List all active destinations (public)' }),
     localeParam,
-    ApiResponse({ status: 200, type: [DestinationLocalizedResponseDto] }),
+    ApiResponse({ status: 200, type: [DestinationActiveResponseDto] }),
     ...publicErrors,
   );
 }

@@ -44,7 +44,15 @@ const categories: CategoryCard[] = [
     },
 ];
 
-export function EditorialBanner({ dict }: { dict: EditorialDict }) {
+export function EditorialBanner({
+    dict,
+    ctaHref,
+}: {
+    dict: EditorialDict;
+    // Destination the banner is themed to (the copy names the launch island);
+    // resolved in the page so this stays presentational.
+    ctaHref: string;
+}) {
     // Index of the card lifted to the front - defaults to the middle card
     const [topIndex, setTopIndex] = useState(2);
 
@@ -69,9 +77,9 @@ export function EditorialBanner({ dict }: { dict: EditorialDict }) {
                                 </p>
                             </div>
 
-                            <motion.button
-                                type='button'
-                                className='flex w-full items-center justify-center gap-2.5 rounded-it-full bg-it-white px-12 py-[19px] cursor-pointer border-none sm:w-auto lg:w-full'
+                            <motion.a
+                                href={ctaHref}
+                                className='flex w-full items-center justify-center gap-2.5 rounded-it-full bg-it-white px-12 py-[19px] no-underline cursor-pointer border-none sm:w-auto lg:w-full'
                                 initial='rest'
                                 animate='rest'
                                 whileHover='hover'
@@ -89,7 +97,7 @@ export function EditorialBanner({ dict }: { dict: EditorialDict }) {
                                 >
                                     <ArrowRight className='size-6 text-it-primary' strokeWidth={1.5} />
                                 </motion.span>
-                            </motion.button>
+                            </motion.a>
                         </div>
 
                         {/* Category cards - fanned deck (2nd row on mobile, right side on desktop). Click brings a card to the front. */}

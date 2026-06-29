@@ -50,6 +50,12 @@ export class DestinationLocalizedResponseDto extends DestinationResponseDto {
   isMachineTranslated!: boolean;
 }
 
+// Returned by getActive - localized + a live (published) tour count
+export class DestinationActiveResponseDto extends DestinationLocalizedResponseDto {
+  @ApiProperty({ example: 42, description: 'Number of LIVE (published) tours in this destination' })
+  tourCount!: number;
+}
+
 // Returned by getById / getBySlug - includes all translated fields
 export class DestinationDetailResponseDto extends DestinationLocalizedResponseDto {
   @ApiPropertyOptional({ example: 'Curaçao is a sun-drenched island in the southern Caribbean.', nullable: true })
