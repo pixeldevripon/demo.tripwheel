@@ -1,0 +1,33 @@
+/**
+ * Public destination data (server-side, cached). Powers the navbar island
+ * selector, the footer, and the "Explore islands" homepage section.
+ */
+import 'server-only';
+
+import { cacheLife, cacheTag } from 'next/cache';
+
+import type { DestinationLocalized } from '@/types/destination';
+import type { Locale } from '@/lib/constants/locales';
+import { DEFAULT_LOCALE } from '@/lib/constants/locales';
+import { buildQuery, publicGet } from './fetch';
+
+/**
+ * Active destinations for the given locale (name already localized server-side),
+ * ordered alphabetically. Returns `[]` if the backend is unreachable.
+ *
+ * Cached hourly and tagged `destinations`; bust on demand with
+ * `revalidateTag('destinations')` after an admin edit. `locale` is part of the
+ * cache key.
+ */
+export async function getActiveDestinations(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DestinationLocalized[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('destinations');
+
+  const data = await publicGet<DestinationLocalized[]>(
+    `/destinations/active${buildQuery({ locale })}`,
+  );
+  return data ?? [];
+}

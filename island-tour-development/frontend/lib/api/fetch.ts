@@ -30,15 +30,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return res.json() as Promise<T>;
 }
 
-export function buildQuery(
-  params: Record<string, string | number | boolean | undefined | null>,
-): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') {
-      qs.set(key, String(value));
-    }
-  }
-  const str = qs.toString();
-  return str ? `?${str}` : '';
-}
+// Re-exported from the shared neutral util so existing `@/lib/api/fetch` imports
+// keep working.
+export { buildQuery } from './query';

@@ -14,14 +14,7 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 
-// Pre-defined islands - explicit slugs (not generated at click time).
-const islands: { name: string; slug: string }[] = [
-    { name: 'Curaçao', slug: 'curacao' },
-    { name: 'Aruba', slug: 'aruba' },
-    { name: 'Sint Maarten', slug: 'sint-maarten' },
-    { name: 'Saint Lucia', slug: 'saint-lucia' },
-    { name: 'Bonaire', slug: 'bonaire' },
-];
+type Island = { name: string; slug: string };
 
 // Global categories - explicit slugs (names are proper nouns, not translated here).
 const categories: { name: string; slug: string }[] = [
@@ -65,7 +58,15 @@ function Globe({ className = 'size-6' }: { className?: string }) {
     );
 }
 
-export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
+export function Navbar({
+    locale,
+    dict,
+    islands,
+}: {
+    locale: Locale;
+    dict: NavDict;
+    islands: Island[];
+}) {
     const pathname = usePathname();
     const router = useRouter();
 
@@ -91,7 +92,7 @@ export function Navbar({ locale, dict }: { locale: Locale; dict: NavDict }) {
     const currentIsland = useMemo(() => {
         const slug = pathname.split('/')[2];
         return islands.find((i) => i.slug === slug) ?? null;
-    }, [pathname]);
+    }, [pathname, islands]);
 
     // Category links point into the current island when there is one.
     const categoryHref = (slug: string) =>
