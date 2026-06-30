@@ -21,6 +21,8 @@ jobs:
     env:
       # Prisma needs DATABASE_URL to generate the client even without a real DB.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/island_tours
+      # Needed for crypto.util.ts which is imported in tests
+      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     steps:
       - uses: actions/checkout@v4
 
