@@ -24,18 +24,41 @@ export class DestinationResponseDto {
   @ApiProperty({ example: 'curacao' }) slug!: string;
   @ApiPropertyOptional({ example: 'https://cdn.example.com/curacao-hero.jpg' })
   heroImage!: string | null;
-  @ApiPropertyOptional({ enum: Region, example: Region.CARIBBEAN, nullable: true })
+  @ApiPropertyOptional({
+    enum: Region,
+    example: Region.CARIBBEAN,
+    nullable: true,
+  })
   region!: Region | null;
-  @ApiPropertyOptional({ example: 'Curaçao', nullable: true }) country!: string | null;
-  @ApiPropertyOptional({ example: 12.1696, nullable: true }) latitude!: number | null;
-  @ApiPropertyOptional({ example: -68.99, nullable: true }) longitude!: number | null;
-  @ApiPropertyOptional({ example: 'America/Curacao', nullable: true }) timezone!: string | null;
-  @ApiPropertyOptional({ enum: Currency, example: Currency.USD, nullable: true }) currency!: Currency | null;
-  @ApiPropertyOptional({ example: 'en', nullable: true }) language!: string | null;
+  @ApiPropertyOptional({ example: 'Curaçao', nullable: true }) country!:
+    | string
+    | null;
+  @ApiPropertyOptional({ example: 12.1696, nullable: true }) latitude!:
+    | number
+    | null;
+  @ApiPropertyOptional({ example: -68.99, nullable: true }) longitude!:
+    | number
+    | null;
+  @ApiPropertyOptional({ example: 'America/Curacao', nullable: true })
+  timezone!: string | null;
+  @ApiPropertyOptional({
+    enum: Currency,
+    example: Currency.USD,
+    nullable: true,
+  })
+  currency!: Currency | null;
+  @ApiPropertyOptional({ example: 'en', nullable: true }) language!:
+    | string
+    | null;
   @ApiProperty({ type: [String], example: [] }) galleryImages!: string[];
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/curacao-og.jpg', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/curacao-og.jpg',
+    nullable: true,
+  })
   ogImage!: string | null;
-  @ApiPropertyOptional({ example: null, nullable: true }) parentDestinationId!: string | null;
+  @ApiPropertyOptional({ example: null, nullable: true }) parentDestinationId!:
+    | string
+    | null;
   @ApiProperty({ example: true }) isSeeded!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) createdAt!: Date;
@@ -52,16 +75,25 @@ export class DestinationLocalizedResponseDto extends DestinationResponseDto {
 
 // Returned by getActive - localized + a live (published) tour count
 export class DestinationActiveResponseDto extends DestinationLocalizedResponseDto {
-  @ApiProperty({ example: 42, description: 'Number of LIVE (published) tours in this destination' })
+  @ApiProperty({
+    example: 42,
+    description: 'Number of LIVE (published) tours in this destination',
+  })
   tourCount!: number;
 }
 
 // Returned by getById / getBySlug - includes all translated fields
 export class DestinationDetailResponseDto extends DestinationLocalizedResponseDto {
-  @ApiPropertyOptional({ example: 'Curaçao is a sun-drenched island in the southern Caribbean.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Curaçao is a sun-drenched island in the southern Caribbean.',
+    nullable: true,
+  })
   overview!: string | null;
 
-  @ApiPropertyOptional({ example: 'Tours & Activities in Curaçao', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Tours & Activities in Curaçao',
+    nullable: true,
+  })
   h1Override!: string | null;
 
   @ApiPropertyOptional({ example: 'Curaçao', nullable: true })
@@ -72,11 +104,13 @@ export class PaginatedLocalizedDestinationsResponseDto {
   @ApiProperty({ example: 4 }) total!: number;
   @ApiProperty({ example: 1 }) page!: number;
   @ApiProperty({ example: 20 }) limit!: number;
-  @ApiProperty({ type: [DestinationLocalizedResponseDto] }) data!: DestinationLocalizedResponseDto[];
+  @ApiProperty({ type: [DestinationLocalizedResponseDto] })
+  data!: DestinationLocalizedResponseDto[];
 }
 
 export class DeleteDestinationResponseDto {
-  @ApiProperty({ example: 'Destination deactivated successfully' }) message!: string;
+  @ApiProperty({ example: 'Destination deactivated successfully' })
+  message!: string;
 }
 
 export class DeleteMessageResponseDto {
@@ -92,7 +126,9 @@ export class DestinationTranslationFieldsDto {
   @MinLength(2)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'Curaçao is een zonnig eiland in het zuidelijke Caribisch gebied.' })
+  @ApiPropertyOptional({
+    example: 'Curaçao is een zonnig eiland in het zuidelijke Caribisch gebied.',
+  })
   @IsOptional()
   @IsString()
   overview?: string;
@@ -117,7 +153,8 @@ export class UpsertDestinationTranslationsDto {
   @ApiPropertyOptional({
     example: false,
     default: false,
-    description: 'Destination names are proper nouns - always keep false for destinations.',
+    description:
+      'Destination names are proper nouns - always keep false for destinations.',
   })
   @IsOptional()
   @IsBoolean()
@@ -131,10 +168,16 @@ export class DestinationTranslationEntryDto {
   @ApiPropertyOptional({ example: 'Curaçao', nullable: true })
   name!: string | null;
 
-  @ApiPropertyOptional({ example: 'Curaçao is een zonnig eiland in het zuidelijke Caribisch gebied.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Curaçao is een zonnig eiland in het zuidelijke Caribisch gebied.',
+    nullable: true,
+  })
   overview!: string | null;
 
-  @ApiPropertyOptional({ example: 'Rondleidingen & Activiteiten op Curaçao', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Rondleidingen & Activiteiten op Curaçao',
+    nullable: true,
+  })
   h1Override!: string | null;
 
   @ApiPropertyOptional({ example: 'Curaçao', nullable: true })
@@ -147,17 +190,25 @@ export class DestinationTranslationEntryDto {
 // ── Page Content DTOs ─────────────────────────────────────────────────────────
 
 export class UpsertDestinationPageContentDto {
-  @ApiPropertyOptional({ example: 'Curaçao is a vibrant Caribbean island known for its colourful architecture...' })
+  @ApiPropertyOptional({
+    example:
+      'Curaçao is a vibrant Caribbean island known for its colourful architecture...',
+  })
   @IsOptional()
   @IsString()
   aboutText?: string;
 
-  @ApiPropertyOptional({ example: 'Best Tours & Activities in Curaçao | Island Tours' })
+  @ApiPropertyOptional({
+    example: 'Best Tours & Activities in Curaçao | Island Tours',
+  })
   @IsOptional()
   @IsString()
   metaTitle?: string;
 
-  @ApiPropertyOptional({ example: 'Explore top-rated boat tours, snorkelling trips, and island experiences in Curaçao.' })
+  @ApiPropertyOptional({
+    example:
+      'Explore top-rated boat tours, snorkelling trips, and island experiences in Curaçao.',
+  })
   @IsOptional()
   @IsString()
   metaDescription?: string;
@@ -167,13 +218,23 @@ export class DestinationPageContentResponseDto {
   @ApiProperty({ enum: Locale, example: Locale.nl })
   locale!: Locale;
 
-  @ApiPropertyOptional({ example: 'Curaçao is een levendig Caribisch eiland...', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Curaçao is een levendig Caribisch eiland...',
+    nullable: true,
+  })
   aboutText!: string | null;
 
-  @ApiPropertyOptional({ example: 'Beste Rondleidingen op Curaçao | Island Tours', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Beste Rondleidingen op Curaçao | Island Tours',
+    nullable: true,
+  })
   metaTitle!: string | null;
 
-  @ApiPropertyOptional({ example: 'Ontdek topbeoordeelde boottochten en eilandactiviteiten op Curaçao.', nullable: true })
+  @ApiPropertyOptional({
+    example:
+      'Ontdek topbeoordeelde boottochten en eilandactiviteiten op Curaçao.',
+    nullable: true,
+  })
   metaDescription!: string | null;
 }
 
@@ -186,7 +247,10 @@ export class FaqResponseDto {
   @ApiProperty({ example: 'What is the best time to visit Curaçao?' })
   question!: string;
 
-  @ApiProperty({ example: 'Curaçao enjoys warm weather year-round, but January–June offers the calmest seas.' })
+  @ApiProperty({
+    example:
+      'Curaçao enjoys warm weather year-round, but January–June offers the calmest seas.',
+  })
   answer!: string;
 
   @ApiProperty({ example: 0 })
@@ -209,7 +273,10 @@ export class CreateFaqDto {
   @MinLength(5)
   question!: string;
 
-  @ApiProperty({ example: 'Curaçao enjoys warm weather year-round, but January–June offers the calmest seas.' })
+  @ApiProperty({
+    example:
+      'Curaçao enjoys warm weather year-round, but January–June offers the calmest seas.',
+  })
   @IsString()
   @MinLength(10)
   answer!: string;
@@ -228,7 +295,10 @@ export class UpdateFaqDto {
   @MinLength(5)
   question?: string;
 
-  @ApiPropertyOptional({ example: 'EU and US passport holders do not need a visa for stays up to 90 days.' })
+  @ApiPropertyOptional({
+    example:
+      'EU and US passport holders do not need a visa for stays up to 90 days.',
+  })
   @IsOptional()
   @IsString()
   @MinLength(10)
@@ -274,14 +344,22 @@ export class DestinationQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
+  @ApiPropertyOptional({
+    description: 'Content locale',
+    enum: Locale,
+    default: Locale.en,
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 }
 
 export class LocaleQueryDto {
-  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
+  @ApiPropertyOptional({
+    description: 'Content locale',
+    enum: Locale,
+    default: Locale.en,
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
@@ -326,36 +404,66 @@ export class CreateDestinationDto {
   heroImage?: string;
 
   // ── V2 fields ──────────────────────────────────────────────────────────────
-  @ApiProperty({ enum: Region, example: Region.CARIBBEAN, description: 'Geographic region (required - V2 §2). No URL impact.' })
+  @ApiProperty({
+    enum: Region,
+    example: Region.CARIBBEAN,
+    description: 'Geographic region (required - V2 §2). No URL impact.',
+  })
   @IsEnum(Region)
   region!: Region;
 
   @ApiPropertyOptional({ example: 'Aruba' })
-  @IsOptional() @IsString() country?: string;
+  @IsOptional()
+  @IsString()
+  country?: string;
 
   @ApiPropertyOptional({ example: 12.5211 })
-  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
 
   @ApiPropertyOptional({ example: -69.9683 })
-  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @ApiPropertyOptional({ example: 'America/Aruba' })
-  @IsOptional() @IsString() timezone?: string;
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
-  @IsOptional() @IsEnum(Currency) currency?: Currency;
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 
   @ApiPropertyOptional({ example: 'en' })
-  @IsOptional() @IsString() language?: string;
+  @IsOptional()
+  @IsString()
+  language?: string;
 
   @ApiPropertyOptional({ type: [String], example: [] })
-  @IsOptional() @IsArray() @IsString({ each: true }) galleryImages?: string[];
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/aruba-og.jpg' })
-  @IsOptional() @IsString() ogImage?: string;
+  @IsOptional()
+  @IsString()
+  ogImage?: string;
 
-  @ApiPropertyOptional({ description: 'Parent destination id for future sub-destinations (unused at launch).' })
-  @IsOptional() @IsString() parentDestinationId?: string;
+  @ApiPropertyOptional({
+    description:
+      'Parent destination id for future sub-destinations (unused at launch).',
+  })
+  @IsOptional()
+  @IsString()
+  parentDestinationId?: string;
 }
 
 export class UpdateDestinationDto {
@@ -371,31 +479,54 @@ export class UpdateDestinationDto {
   heroImage?: string;
 
   @ApiPropertyOptional({ enum: Region, example: Region.CARIBBEAN })
-  @IsOptional() @IsEnum(Region) region?: Region;
+  @IsOptional()
+  @IsEnum(Region)
+  region?: Region;
 
   @ApiPropertyOptional({ example: 'Aruba' })
-  @IsOptional() @IsString() country?: string;
+  @IsOptional()
+  @IsString()
+  country?: string;
 
   @ApiPropertyOptional({ example: 12.5211 })
-  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
 
   @ApiPropertyOptional({ example: -69.9683 })
-  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @ApiPropertyOptional({ example: 'America/Aruba' })
-  @IsOptional() @IsString() timezone?: string;
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
-  @IsOptional() @IsEnum(Currency) currency?: Currency;
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 
   @ApiPropertyOptional({ example: 'en' })
-  @IsOptional() @IsString() language?: string;
+  @IsOptional()
+  @IsString()
+  language?: string;
 
   @ApiPropertyOptional({ type: [String], example: [] })
-  @IsOptional() @IsArray() @IsString({ each: true }) galleryImages?: string[];
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/aruba-og.jpg' })
-  @IsOptional() @IsString() ogImage?: string;
+  @IsOptional()
+  @IsString()
+  ogImage?: string;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

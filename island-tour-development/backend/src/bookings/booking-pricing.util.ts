@@ -14,7 +14,8 @@ import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
  */
 
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
-const money = (v: Prisma.Decimal) => v.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+const money = (v: Prisma.Decimal) =>
+  v.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
 export interface PriceLineInput {
   ageBandId: string;
@@ -72,7 +73,14 @@ interface ComputeInput {
 }
 
 export function computeBookingPricing(input: ComputeInput): BookingPricing {
-  const { lines, addOns = [], currency, paymentModel, depositPct, commissionTier } = input;
+  const {
+    lines,
+    addOns = [],
+    currency,
+    paymentModel,
+    depositPct,
+    commissionTier,
+  } = input;
 
   const pax = lines.reduce((s, l) => s + l.quantity, 0);
 
@@ -98,7 +106,8 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   const expandedAddOns: ExpandedAddOn[] = [];
   let addOnsRetail = D(0);
   for (const a of addOns) {
-    const multiplier = a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
+    const multiplier =
+      a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
     const totalPrice = money(a.unitPrice.times(multiplier));
     addOnsRetail = addOnsRetail.plus(totalPrice);
     expandedAddOns.push({ ...a, totalPrice });
@@ -118,7 +127,9 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   const commissionRate = commissionTier.dividedBy(100).toDecimalPlaces(4);
   const fxRateToEur = currency === Currency.EUR ? D(1) : null;
   const totalEur = fxRateToEur ? totalRetail : null;
-  const commissionAmount = totalEur ? money(totalEur.times(commissionRate)) : null;
+  const commissionAmount = totalEur
+    ? money(totalEur.times(commissionRate))
+    : null;
 
   return {
     totalRetail,
@@ -147,7 +158,10 @@ function splitDeposit(
     case PaymentModel.OPERATOR_LINK: {
       // Platform takes the deposit; operator collects the balance on site.
       const depositAmount = money(totalRetail.times(depositPct).dividedBy(100));
-      return { depositAmount, balanceAmount: money(totalRetail.minus(depositAmount)) };
+      return {
+        depositAmount,
+        balanceAmount: money(totalRetail.minus(depositAmount)),
+      };
     }
     case PaymentModel.ON_ARRIVAL:
     case PaymentModel.OPERATOR_FULL:

@@ -17,7 +17,8 @@ const DEFAULT_USD_TO_EUR = 0.92;
 export function usdToEurRate(): Prisma.Decimal {
   const raw = process.env.FX_USD_TO_EUR;
   const parsed = raw ? Number(raw) : NaN;
-  const rate = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_USD_TO_EUR;
+  const rate =
+    Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_USD_TO_EUR;
   return new Prisma.Decimal(rate);
 }
 
@@ -27,6 +28,11 @@ export function eurFxRate(currency: Currency): Prisma.Decimal {
 }
 
 /** Convert an amount in `currency` to EUR, rounded HALF_UP to 2dp. */
-export function toEur(amount: Prisma.Decimal, currency: Currency): Prisma.Decimal {
-  return amount.mul(eurFxRate(currency)).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+export function toEur(
+  amount: Prisma.Decimal,
+  currency: Currency,
+): Prisma.Decimal {
+  return amount
+    .mul(eurFxRate(currency))
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 }

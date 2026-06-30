@@ -49,7 +49,11 @@ function createMockDestinationService() {
 }
 
 // A minimal TypedAuthUser shape that satisfies id extraction in the controller
-const mockAdminUser = { id: 'admin-1', role: 'ADMIN', email: 'admin@example.com' } as any;
+const mockAdminUser = {
+  id: 'admin-1',
+  role: 'ADMIN',
+  email: 'admin@example.com',
+} as any;
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
@@ -76,16 +80,30 @@ describe('DestinationController', () => {
 
   describe('getAll', () => {
     it('delegates to service.getAll with the full query object', async () => {
-      service.getAll.mockResolvedValue({ total: 0, page: 1, limit: 20, data: [] });
+      service.getAll.mockResolvedValue({
+        total: 0,
+        page: 1,
+        limit: 20,
+        data: [],
+      });
 
-      const query: DestinationQueryDto = { page: 1, limit: 20, locale: Locale.en };
+      const query: DestinationQueryDto = {
+        page: 1,
+        limit: 20,
+        locale: Locale.en,
+      };
       await controller.getAll(query);
 
       expect(service.getAll).toHaveBeenCalledWith(query);
     });
 
     it('returns the service result unchanged', async () => {
-      const expected = { total: 2, page: 1, limit: 20, data: [{ id: 'd1' }, { id: 'd2' }] };
+      const expected = {
+        total: 2,
+        page: 1,
+        limit: 20,
+        data: [{ id: 'd1' }, { id: 'd2' }],
+      };
       service.getAll.mockResolvedValue(expected);
 
       const result = await controller.getAll({});
@@ -132,7 +150,9 @@ describe('DestinationController', () => {
       const expected = { id: 'd1', slug: 'curacao', name: 'Curaçao' };
       service.getBySlug.mockResolvedValue(expected);
 
-      const result = await controller.getBySlug('curacao', { locale: Locale.en });
+      const result = await controller.getBySlug('curacao', {
+        locale: Locale.en,
+      });
 
       expect(result).toEqual(expected);
     });
@@ -157,7 +177,10 @@ describe('DestinationController', () => {
     it('delegates to service.create with dto and user.id', async () => {
       service.create.mockResolvedValue({ id: 'new-dest' });
 
-      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
+      const dto: CreateDestinationDto = {
+        name: 'Aruba',
+        region: Region.CARIBBEAN,
+      };
       await controller.create(dto, mockAdminUser);
 
       expect(service.create).toHaveBeenCalledWith(dto, 'admin-1');
@@ -167,7 +190,10 @@ describe('DestinationController', () => {
       const created = { id: 'new-dest', name: 'Aruba', slug: 'aruba' };
       service.create.mockResolvedValue(created);
 
-      const result = await controller.create({ name: 'Aruba', region: Region.CARIBBEAN }, mockAdminUser);
+      const result = await controller.create(
+        { name: 'Aruba', region: Region.CARIBBEAN },
+        mockAdminUser,
+      );
 
       expect(result).toEqual(created);
     });
@@ -190,7 +216,9 @@ describe('DestinationController', () => {
 
   describe('remove', () => {
     it('delegates to service.remove with id and user.id', async () => {
-      service.remove.mockResolvedValue({ message: 'Destination deactivated successfully' });
+      service.remove.mockResolvedValue({
+        message: 'Destination deactivated successfully',
+      });
 
       await controller.remove('dest-1', mockAdminUser);
 
@@ -227,7 +255,10 @@ describe('DestinationController', () => {
 
       await controller.getTranslationsByLocale('dest-1', Locale.nl);
 
-      expect(service.getTranslationsByLocale).toHaveBeenCalledWith('dest-1', Locale.nl);
+      expect(service.getTranslationsByLocale).toHaveBeenCalledWith(
+        'dest-1',
+        Locale.nl,
+      );
     });
   });
 
@@ -241,9 +272,19 @@ describe('DestinationController', () => {
         fields: { name: 'Curaçao NL' },
         isMachineTranslated: false,
       };
-      await controller.upsertTranslations('dest-1', Locale.nl, dto, mockAdminUser);
+      await controller.upsertTranslations(
+        'dest-1',
+        Locale.nl,
+        dto,
+        mockAdminUser,
+      );
 
-      expect(service.upsertTranslations).toHaveBeenCalledWith('dest-1', Locale.nl, dto, 'admin-1');
+      expect(service.upsertTranslations).toHaveBeenCalledWith(
+        'dest-1',
+        Locale.nl,
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -251,11 +292,17 @@ describe('DestinationController', () => {
 
   describe('deleteTranslations', () => {
     it('delegates to service.deleteTranslations with id, locale, and user.id', async () => {
-      service.deleteTranslations.mockResolvedValue({ message: 'Translation deleted' });
+      service.deleteTranslations.mockResolvedValue({
+        message: 'Translation deleted',
+      });
 
       await controller.deleteTranslations('dest-1', Locale.nl, mockAdminUser);
 
-      expect(service.deleteTranslations).toHaveBeenCalledWith('dest-1', Locale.nl, 'admin-1');
+      expect(service.deleteTranslations).toHaveBeenCalledWith(
+        'dest-1',
+        Locale.nl,
+        'admin-1',
+      );
     });
   });
 
@@ -279,9 +326,19 @@ describe('DestinationController', () => {
       service.upsertPageContent.mockResolvedValue({});
 
       const dto: UpsertDestinationPageContentDto = { aboutText: 'About text' };
-      await controller.upsertPageContent('dest-1', Locale.en, dto, mockAdminUser);
+      await controller.upsertPageContent(
+        'dest-1',
+        Locale.en,
+        dto,
+        mockAdminUser,
+      );
 
-      expect(service.upsertPageContent).toHaveBeenCalledWith('dest-1', Locale.en, dto, 'admin-1');
+      expect(service.upsertPageContent).toHaveBeenCalledWith(
+        'dest-1',
+        Locale.en,
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -325,7 +382,12 @@ describe('DestinationController', () => {
       const dto: UpdateFaqDto = { question: 'Updated question?' };
       await controller.updateFaq('dest-1', 'faq-1', dto, mockAdminUser);
 
-      expect(service.updateFaq).toHaveBeenCalledWith('dest-1', 'faq-1', dto, 'admin-1');
+      expect(service.updateFaq).toHaveBeenCalledWith(
+        'dest-1',
+        'faq-1',
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -333,18 +395,28 @@ describe('DestinationController', () => {
 
   describe('deleteFaq', () => {
     it('delegates to service.deleteFaq with id, faqId, and user.id', async () => {
-      service.deleteFaq.mockResolvedValue({ message: 'FAQ deleted successfully' });
+      service.deleteFaq.mockResolvedValue({
+        message: 'FAQ deleted successfully',
+      });
 
       await controller.deleteFaq('dest-1', 'faq-1', mockAdminUser);
 
-      expect(service.deleteFaq).toHaveBeenCalledWith('dest-1', 'faq-1', 'admin-1');
+      expect(service.deleteFaq).toHaveBeenCalledWith(
+        'dest-1',
+        'faq-1',
+        'admin-1',
+      );
     });
 
     it('returns the service result unchanged', async () => {
       const expected = { message: 'FAQ deleted successfully' };
       service.deleteFaq.mockResolvedValue(expected);
 
-      const result = await controller.deleteFaq('dest-1', 'faq-1', mockAdminUser);
+      const result = await controller.deleteFaq(
+        'dest-1',
+        'faq-1',
+        mockAdminUser,
+      );
 
       expect(result).toEqual(expected);
     });
@@ -354,7 +426,10 @@ describe('DestinationController', () => {
 
   describe('permission metadata', () => {
     function getPermission(methodName: keyof DestinationController) {
-      return Reflect.getMetadata('permissions', DestinationController.prototype[methodName]);
+      return Reflect.getMetadata(
+        'permissions',
+        DestinationController.prototype[methodName],
+      );
     }
 
     it('create endpoint requires CREATE_DESTINATION permission', () => {
@@ -370,19 +445,27 @@ describe('DestinationController', () => {
     });
 
     it('getAllTranslations endpoint requires EDIT_DESTINATION permission', () => {
-      expect(getPermission('getAllTranslations')).toContain(Permission.EDIT_DESTINATION);
+      expect(getPermission('getAllTranslations')).toContain(
+        Permission.EDIT_DESTINATION,
+      );
     });
 
     it('upsertTranslations endpoint requires EDIT_DESTINATION permission', () => {
-      expect(getPermission('upsertTranslations')).toContain(Permission.EDIT_DESTINATION);
+      expect(getPermission('upsertTranslations')).toContain(
+        Permission.EDIT_DESTINATION,
+      );
     });
 
     it('deleteTranslations endpoint requires EDIT_DESTINATION permission', () => {
-      expect(getPermission('deleteTranslations')).toContain(Permission.EDIT_DESTINATION);
+      expect(getPermission('deleteTranslations')).toContain(
+        Permission.EDIT_DESTINATION,
+      );
     });
 
     it('upsertPageContent endpoint requires EDIT_DESTINATION permission', () => {
-      expect(getPermission('upsertPageContent')).toContain(Permission.EDIT_DESTINATION);
+      expect(getPermission('upsertPageContent')).toContain(
+        Permission.EDIT_DESTINATION,
+      );
     });
 
     it('createFaq endpoint requires EDIT_DESTINATION permission', () => {
@@ -402,7 +485,10 @@ describe('DestinationController', () => {
 
   describe('public endpoint metadata', () => {
     function isPublic(methodName: keyof DestinationController) {
-      return Reflect.getMetadata('isPublic', DestinationController.prototype[methodName]);
+      return Reflect.getMetadata(
+        'isPublic',
+        DestinationController.prototype[methodName],
+      );
     }
 
     it('getAll endpoint is marked @Public', () => {

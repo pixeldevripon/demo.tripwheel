@@ -73,7 +73,12 @@ describe('TiersService', () => {
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       prisma.spotlightRequest.create.mockResolvedValue(spotlightRow());
 
-      const res = await svc.requestSpotlight('u1', Role.TOUR_OPERATOR, 't1', {});
+      const res = await svc.requestSpotlight(
+        'u1',
+        Role.TOUR_OPERATOR,
+        't1',
+        {},
+      );
       expect(res.status).toBe(SpotlightStatus.REQUESTED);
       expect(prisma.spotlightRequest.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -111,7 +116,10 @@ describe('TiersService', () => {
     });
 
     it('forbids an operator who does not own the tour', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ ...ELIGIBLE_TOUR, operatorId: 'op2' });
+      prisma.tour.findUnique.mockResolvedValue({
+        ...ELIGIBLE_TOUR,
+        operatorId: 'op2',
+      });
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       await expect(
         svc.requestSpotlight('u1', Role.TOUR_OPERATOR, 't1', {}),
@@ -123,7 +131,9 @@ describe('TiersService', () => {
   describe('approveSpotlight', () => {
     function wireTransaction() {
       // The service runs its body inside $transaction(cb); execute it with the same mock.
-      prisma.$transaction.mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma));
+      prisma.$transaction.mockImplementation(
+        (cb: (tx: typeof prisma) => unknown) => cb(prisma),
+      );
     }
 
     const approveDto = {
@@ -159,9 +169,9 @@ describe('TiersService', () => {
       });
       prisma.spotlightRequest.count.mockResolvedValue(3);
 
-      await expect(svc.approveSpotlight('admin', 'sr1', approveDto)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        svc.approveSpotlight('admin', 'sr1', approveDto),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.spotlightRequest.update).not.toHaveBeenCalled();
     });
 
@@ -174,9 +184,9 @@ describe('TiersService', () => {
         tour: { aggregateRating: 4.0, aggregateReviewCount: 5 },
       });
       prisma.spotlightRequest.count.mockResolvedValue(0);
-      await expect(svc.approveSpotlight('admin', 'sr1', approveDto)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        svc.approveSpotlight('admin', 'sr1', approveDto),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('rejects a non-REQUESTED request', async () => {
@@ -187,9 +197,9 @@ describe('TiersService', () => {
         status: SpotlightStatus.ACTIVE,
         tour: { aggregateRating: 4.7, aggregateReviewCount: 12 },
       });
-      await expect(svc.approveSpotlight('admin', 'sr1', approveDto)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        svc.approveSpotlight('admin', 'sr1', approveDto),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('rejects an inverted window (endsAt <= startsAt)', async () => {
@@ -231,10 +241,14 @@ describe('TiersService', () => {
     it('rejects a tier change while the lock is still in the future', async () => {
       prisma.tour.findUnique
         .mockResolvedValueOnce(ELIGIBLE_TOUR)
-        .mockResolvedValueOnce({ tierLockedUntil: new Date(Date.now() + 5 * 86_400_000) });
+        .mockResolvedValueOnce({
+          tierLockedUntil: new Date(Date.now() + 5 * 86_400_000),
+        });
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       await expect(
-        svc.changeTier('u1', Role.TOUR_OPERATOR, 't1', { tierKey: TierKey.boosted }),
+        svc.changeTier('u1', Role.TOUR_OPERATOR, 't1', {
+          tierKey: TierKey.boosted,
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.tour.update).not.toHaveBeenCalled();
     });
@@ -242,7 +256,9 @@ describe('TiersService', () => {
     it('allows a change once an expired lock has passed', async () => {
       prisma.tour.findUnique
         .mockResolvedValueOnce(ELIGIBLE_TOUR)
-        .mockResolvedValueOnce({ tierLockedUntil: new Date(Date.now() - 86_400_000) });
+        .mockResolvedValueOnce({
+          tierLockedUntil: new Date(Date.now() - 86_400_000),
+        });
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       prisma.tour.update.mockResolvedValue({
         id: 't1',
@@ -263,14 +279,19 @@ describe('TiersService', () => {
   describe('effectiveCommissionRate', () => {
     it('is 0.35 when a spotlight is active in the window', async () => {
       prisma.spotlightRequest.findFirst.mockResolvedValue({ id: 'sr1' });
-      const rate = await svc.effectiveCommissionRate('t1', new Date('2026-07-10'));
+      const rate = await svc.effectiveCommissionRate(
+        't1',
+        new Date('2026-07-10'),
+      );
       expect(rate).toBe(0.35);
       expect(prisma.tour.findUnique).not.toHaveBeenCalled();
     });
 
     it('falls back to the tier rate when no spotlight is active', async () => {
       prisma.spotlightRequest.findFirst.mockResolvedValue(null);
-      prisma.tour.findUnique.mockResolvedValue({ commissionTier: new Prisma.Decimal(25.0) });
+      prisma.tour.findUnique.mockResolvedValue({
+        commissionTier: new Prisma.Decimal(25.0),
+      });
       const rate = await svc.effectiveCommissionRate('t1');
       expect(rate).toBe(0.25);
     });
@@ -283,8 +304,17 @@ describe('TiersService', () => {
 
   // ── lifecycle job ─────────────────────────────────────────────────────────────
   describe('runSpotlightLifecycle', () => {
+    function wireTransaction() {
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+    }
+
     it('activates APPROVED-past-start and expires ACTIVE-past-end', async () => {
-      prisma.$transaction.mockResolvedValue([{ count: 2 }, { count: 1 }]);
+      wireTransaction();
+      prisma.spotlightRequest.findMany.mockResolvedValue([]); // activating, expiring
+      prisma.spotlightRequest.updateMany
+        .mockResolvedValueOnce({ count: 2 }) // activated
+        .mockResolvedValueOnce({ count: 1 }); // expired
+        
       const res = await svc.runSpotlightLifecycle(new Date('2026-07-15'));
       expect(res).toEqual({ activated: 2, expired: 1 });
 
@@ -298,8 +328,16 @@ describe('TiersService', () => {
     });
 
     it('reports zero transitions when nothing matches', async () => {
-      prisma.$transaction.mockResolvedValue([{ count: 0 }, { count: 0 }]);
-      expect(await svc.runSpotlightLifecycle()).toEqual({ activated: 0, expired: 0 });
+      wireTransaction();
+      prisma.spotlightRequest.findMany.mockResolvedValue([]);
+      prisma.spotlightRequest.updateMany
+        .mockResolvedValueOnce({ count: 0 })
+        .mockResolvedValueOnce({ count: 0 });
+        
+      expect(await svc.runSpotlightLifecycle()).toEqual({
+        activated: 0,
+        expired: 0,
+      });
     });
   });
 });

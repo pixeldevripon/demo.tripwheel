@@ -86,13 +86,18 @@ export class AvailabilityService {
         weekday: dto.weekday,
         startTime: hhmmToTime(dto.startTime),
         capacityOverride: dto.capacityOverride ?? null,
-        validFrom: dto.validFrom ? dayDate(dto.validFrom) : dayDate(dateKey(localNow(clock.timeZone))),
+        validFrom: dto.validFrom
+          ? dayDate(dto.validFrom)
+          : dayDate(dateKey(localNow(clock.timeZone))),
         validUntil: dto.validUntil ? dayDate(dto.validUntil) : null,
         ...(dto.status && { status: dto.status }),
       },
     });
     this.logger.log(`Schedule ${row.id} created for tour ${dto.tourId}`);
-    this.notifications.emitAvailabilityUpdate({ tourId: dto.tourId, operatorId });
+    this.notifications.emitAvailabilityUpdate({
+      tourId: dto.tourId,
+      operatorId,
+    });
     return mapSchedule(row);
   }
 
@@ -107,8 +112,13 @@ export class AvailabilityService {
       select: { tourId: true },
     });
     if (!existing) throw new NotFoundException('Schedule not found');
-    const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
-    if (dto.startTime) await this.assertStartTimeInSlotSet(existing.tourId, dto.startTime);
+    const operatorId = await this.assertTourAccess(
+      existing.tourId,
+      userId,
+      role,
+    );
+    if (dto.startTime)
+      await this.assertStartTimeInSlotSet(existing.tourId, dto.startTime);
     const row = await this.prisma.availabilitySchedule.update({
       where: { id },
       data: {
@@ -124,7 +134,10 @@ export class AvailabilityService {
         ...(dto.status && { status: dto.status }),
       },
     });
-    this.notifications.emitAvailabilityUpdate({ tourId: existing.tourId, operatorId });
+    this.notifications.emitAvailabilityUpdate({
+      tourId: existing.tourId,
+      operatorId,
+    });
     return mapSchedule(row);
   }
 
@@ -134,10 +147,17 @@ export class AvailabilityService {
       select: { tourId: true },
     });
     if (!existing) throw new NotFoundException('Schedule not found');
-    const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
+    const operatorId = await this.assertTourAccess(
+      existing.tourId,
+      userId,
+      role,
+    );
     await this.prisma.availabilitySchedule.delete({ where: { id } });
     this.logger.log(`Schedule ${id} deleted`);
-    this.notifications.emitAvailabilityUpdate({ tourId: existing.tourId, operatorId });
+    this.notifications.emitAvailabilityUpdate({
+      tourId: existing.tourId,
+      operatorId,
+    });
   }
 
   async listSchedules(
@@ -193,7 +213,11 @@ export class AvailabilityService {
       select: { tourId: true, date: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
-    const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
+    const operatorId = await this.assertTourAccess(
+      existing.tourId,
+      userId,
+      role,
+    );
     const row = await this.prisma.availabilityException.update({
       where: { id },
       data: {
@@ -219,7 +243,11 @@ export class AvailabilityService {
       select: { tourId: true, date: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
-    const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
+    const operatorId = await this.assertTourAccess(
+      existing.tourId,
+      userId,
+      role,
+    );
     await this.prisma.availabilityException.delete({ where: { id } });
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
@@ -234,7 +262,9 @@ export class AvailabilityService {
     query: ListExceptionsQueryDto,
   ): Promise<ExceptionResponseDto[]> {
     await this.assertTourAccess(query.tourId, userId, role);
-    const where: Prisma.AvailabilityExceptionWhereInput = { tourId: query.tourId };
+    const where: Prisma.AvailabilityExceptionWhereInput = {
+      tourId: query.tourId,
+    };
     if (query.from || query.to) {
       where.date = {};
       if (query.from) where.date.gte = dayDate(query.from);
@@ -253,8 +283,15 @@ export class AvailabilityService {
 
   async materialize(userId: string, role: Role, dto: MaterializeDto) {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
-    const result = await this.materializer.materializeTour(dto.tourId, dto.from, dto.to);
-    this.notifications.emitAvailabilityUpdate({ tourId: dto.tourId, operatorId });
+    const result = await this.materializer.materializeTour(
+      dto.tourId,
+      dto.from,
+      dto.to,
+    );
+    this.notifications.emitAvailabilityUpdate({
+      tourId: dto.tourId,
+      operatorId,
+    });
     return result;
   }
 
@@ -284,7 +321,9 @@ export class AvailabilityService {
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
     // Operator view: surface the true remaining seats (not the public <5 disclosure).
-    return rows.map((r) => mapDeparture(r, now, clock.bookingCutoffMinutes, false));
+    return rows.map((r) =>
+      mapDeparture(r, now, clock.bookingCutoffMinutes, false),
+    );
   }
 
   async updateDeparture(
@@ -295,13 +334,18 @@ export class AvailabilityService {
   ): Promise<DepartureResponseDto> {
     const existing = await this.prisma.departure.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Departure not found');
-    const operatorId = await this.assertTourAccess(existing.tourId, userId, role);
+    const operatorId = await this.assertTourAccess(
+      existing.tourId,
+      userId,
+      role,
+    );
     const clock = await this.tourClock(existing.tourId);
     const now = localNow(clock.timeZone);
 
     const capacity = dto.capacity ?? existing.capacity;
     // A manual status wins; otherwise re-derive from the (preserved) booked count.
-    const status = dto.status ?? storedStatusForFill(capacity, existing.bookedCount);
+    const status =
+      dto.status ?? storedStatusForFill(capacity, existing.bookedCount);
     const soldOut = status === DepartureStatus.SOLD_OUT;
 
     const row = await this.prisma.departure.update({
@@ -326,18 +370,26 @@ export class AvailabilityService {
   // Public availability (real-time reads)
   // ════════════════════════════════════════════════════════════════════════
 
-  async checkAvailability(dto: AvailabilityCheckDto): Promise<DepartureResponseDto[]> {
+  async checkAvailability(
+    dto: AvailabilityCheckDto,
+  ): Promise<DepartureResponseDto[]> {
     const clock = await this.publicTourClock(dto.tourId);
     const now = localNow(clock.timeZone);
     const requiredSeats = (dto.units ?? []).reduce((s, u) => s + u.quantity, 0);
 
     const rows = await this.prisma.departure.findMany({
-      where: { tourId: dto.tourId, date: { gte: dayDate(dto.dateFrom), lte: dayDate(dto.dateTo) } },
+      where: {
+        tourId: dto.tourId,
+        date: { gte: dayDate(dto.dateFrom), lte: dayDate(dto.dateTo) },
+      },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
 
     return rows
-      .map((r) => ({ row: r, dto: mapDeparture(r, now, clock.bookingCutoffMinutes, true) }))
+      .map((r) => ({
+        row: r,
+        dto: mapDeparture(r, now, clock.bookingCutoffMinutes, true),
+      }))
       .filter(
         ({ row, dto: d }) =>
           d.available && row.capacity - row.bookedCount >= requiredSeats,
@@ -345,12 +397,17 @@ export class AvailabilityService {
       .map(({ dto: d }) => d);
   }
 
-  async calendar(dto: AvailabilityCalendarDto): Promise<CalendarDayResponseDto[]> {
+  async calendar(
+    dto: AvailabilityCalendarDto,
+  ): Promise<CalendarDayResponseDto[]> {
     const clock = await this.publicTourClock(dto.tourId);
     const now = localNow(clock.timeZone);
 
     const rows = await this.prisma.departure.findMany({
-      where: { tourId: dto.tourId, date: { gte: dayDate(dto.dateFrom), lte: dayDate(dto.dateTo) } },
+      where: {
+        tourId: dto.tourId,
+        date: { gte: dayDate(dto.dateFrom), lte: dayDate(dto.dateTo) },
+      },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
 
@@ -376,14 +433,22 @@ export class AvailabilityService {
     const clock = await this.tourClock(tourId).catch(() => null);
     if (!clock) return false;
     const now = localNow(clock.timeZone);
-    const horizon = new Date(now.getTime() + BOOKABLE_HORIZON_DAYS * MS_PER_DAY);
+    const horizon = new Date(
+      now.getTime() + BOOKABLE_HORIZON_DAYS * MS_PER_DAY,
+    );
     const candidates = await this.prisma.departure.findMany({
       where: {
         tourId,
         status: DepartureStatus.OPEN,
         date: { gte: dayDate(dateKey(now)), lte: dayDate(dateKey(horizon)) },
       },
-      select: { date: true, startTime: true, capacity: true, bookedCount: true, status: true },
+      select: {
+        date: true,
+        startTime: true,
+        capacity: true,
+        bookedCount: true,
+        status: true,
+      },
       take: 100,
     });
     return candidates.some((c) => {
@@ -416,13 +481,18 @@ export class AvailabilityService {
     if (role === Role.ADMIN) return tour.operatorId;
     const operatorId = await resolveOperatorId(this.prisma, userId, role);
     if (tour.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to manage this tour');
+      throw new ForbiddenException(
+        'You do not have permission to manage this tour',
+      );
     }
     return tour.operatorId;
   }
 
   /** A schedule slot must be one of the tour's declared start times (master §2.1). */
-  private async assertStartTimeInSlotSet(tourId: string, startTime: string): Promise<void> {
+  private async assertStartTimeInSlotSet(
+    tourId: string,
+    startTime: string,
+  ): Promise<void> {
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
       select: { startTimes: true },
@@ -490,7 +560,8 @@ function mapDeparture(
   publicView: boolean,
 ): DepartureResponseDto {
   const start = combineDateTime(row.date, row.startTime);
-  const cutoffPassed = now.getTime() >= start.getTime() - cutoffMinutes * 60_000;
+  const cutoffPassed =
+    now.getTime() >= start.getTime() - cutoffMinutes * 60_000;
   const remaining = Math.max(0, row.capacity - row.bookedCount);
   const status = liveDepartureStatus({
     status: row.status,
@@ -506,7 +577,11 @@ function mapDeparture(
     capacity: row.capacity,
     bookedCount: row.bookedCount,
     // Public read contract (§4): only surface remaining when under the threshold.
-    remaining: publicView ? (discloseRemaining(remaining) ? remaining : null) : remaining,
+    remaining: publicView
+      ? discloseRemaining(remaining)
+        ? remaining
+        : null
+      : remaining,
     status,
     available: isDepartureBookable(status),
     soldOutAt: row.soldOutAt ? row.soldOutAt.toISOString() : null,

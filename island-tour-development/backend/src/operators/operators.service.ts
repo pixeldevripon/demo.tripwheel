@@ -21,7 +21,6 @@ import {
   UpdateOperatorStripeConfigDto,
 } from './dto/operator.dto';
 
-
 @Injectable()
 export class OperatorsService {
   private readonly logger = new Logger(OperatorsService.name);

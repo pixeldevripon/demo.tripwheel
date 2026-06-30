@@ -25,10 +25,16 @@ export class CategoryResponseDto {
   @ApiProperty({ example: 'boat-tours' })
   slug!: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours.jpg',
+    nullable: true,
+  })
   heroImage!: string | null;
 
-  @ApiPropertyOptional({ example: 'Catamaran sailing, snorkelling and island cruises.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Catamaran sailing, snorkelling and island cruises.',
+    nullable: true,
+  })
   description!: string | null;
 
   @ApiPropertyOptional({ example: 'boat', nullable: true })
@@ -37,10 +43,16 @@ export class CategoryResponseDto {
   @ApiProperty({ example: 1 })
   sortOrder!: number;
 
-  @ApiPropertyOptional({ example: '{category} in {destination}', nullable: true })
+  @ApiPropertyOptional({
+    example: '{category} in {destination}',
+    nullable: true,
+  })
   metaTitleTemplate!: string | null;
 
-  @ApiPropertyOptional({ example: 'Book {category} in {destination}. Instant confirmation.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Book {category} in {destination}. Instant confirmation.',
+    nullable: true,
+  })
   metaDescriptionTemplate!: string | null;
 
   @ApiPropertyOptional({ example: null, nullable: true })
@@ -69,7 +81,10 @@ export class CategoryLocalizedResponseDto extends CategoryResponseDto {
 
 // Returned by getById / getBySlug - includes all translated fields
 export class CategoryDetailResponseDto extends CategoryLocalizedResponseDto {
-  @ApiPropertyOptional({ example: 'Discover stunning boat tours around the island.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Discover stunning boat tours around the island.',
+    nullable: true,
+  })
   overview!: string | null;
 
   @ApiPropertyOptional({ example: 'Boat Tours in Curaçao', nullable: true })
@@ -81,12 +96,18 @@ export class CategoryDetailResponseDto extends CategoryLocalizedResponseDto {
 
 // Destination-scoped responses (V2 §3 tour-gating) - carry the published tour count.
 export class CategoryByDestinationResponseDto extends CategoryLocalizedResponseDto {
-  @ApiProperty({ example: 7, description: 'Published (LIVE) tours for this category in the destination.' })
+  @ApiProperty({
+    example: 7,
+    description: 'Published (LIVE) tours for this category in the destination.',
+  })
   publishedTourCount!: number;
 }
 
 export class CategoryDetailByDestinationResponseDto extends CategoryDetailResponseDto {
-  @ApiProperty({ example: 7, description: 'Published (LIVE) tours for this category in the destination.' })
+  @ApiProperty({
+    example: 7,
+    description: 'Published (LIVE) tours for this category in the destination.',
+  })
   publishedTourCount!: number;
 }
 
@@ -123,7 +144,9 @@ export class CategoryTranslationFieldsDto {
   @MinLength(2)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'Ontdek de mooiste boottochten van het eiland.' })
+  @ApiPropertyOptional({
+    example: 'Ontdek de mooiste boottochten van het eiland.',
+  })
   @IsOptional()
   @IsString()
   overview?: string;
@@ -158,7 +181,10 @@ export class CategoryTranslationEntryDto {
   @ApiPropertyOptional({ example: 'Boottochten', nullable: true })
   name!: string | null;
 
-  @ApiPropertyOptional({ example: 'Ontdek de mooiste boottochten van het eiland.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Ontdek de mooiste boottochten van het eiland.',
+    nullable: true,
+  })
   overview!: string | null;
 
   @ApiPropertyOptional({ example: 'Boottochten op Curaçao', nullable: true })
@@ -174,7 +200,9 @@ export class CategoryTranslationEntryDto {
 // ── Page Content DTOs ─────────────────────────────────────────────────────────
 
 export class UpsertCategoryPageContentDto {
-  @ApiPropertyOptional({ example: 'Boat tours in Curaçao offer stunning Caribbean views...' })
+  @ApiPropertyOptional({
+    example: 'Boat tours in Curaçao offer stunning Caribbean views...',
+  })
   @IsOptional()
   @IsString()
   aboutText?: string;
@@ -194,13 +222,22 @@ export class CategoryPageContentResponseDto {
   @ApiProperty({ enum: Locale, example: Locale.nl })
   locale!: Locale;
 
-  @ApiPropertyOptional({ example: 'Boottochten op Curaçao zijn...', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Boottochten op Curaçao zijn...',
+    nullable: true,
+  })
   aboutText!: string | null;
 
-  @ApiPropertyOptional({ example: 'Beste Boottochten | Island Tours', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Beste Boottochten | Island Tours',
+    nullable: true,
+  })
   metaTitle!: string | null;
 
-  @ApiPropertyOptional({ example: 'Ontdek topbeoordeelde boottochten...', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Ontdek topbeoordeelde boottochten...',
+    nullable: true,
+  })
   metaDescription!: string | null;
 }
 
@@ -213,7 +250,9 @@ export class FaqResponseDto {
   @ApiProperty({ example: 'What is included in the tour?' })
   question!: string;
 
-  @ApiProperty({ example: 'The tour includes a life jacket, snorkeling gear, and a guide.' })
+  @ApiProperty({
+    example: 'The tour includes a life jacket, snorkeling gear, and a guide.',
+  })
   answer!: string;
 
   @ApiProperty({ example: 0 })
@@ -236,7 +275,9 @@ export class CreateFaqDto {
   @MinLength(5)
   question!: string;
 
-  @ApiProperty({ example: 'The tour includes a life jacket, snorkeling gear, and a guide.' })
+  @ApiProperty({
+    example: 'The tour includes a life jacket, snorkeling gear, and a guide.',
+  })
   @IsString()
   @MinLength(10)
   answer!: string;
@@ -301,14 +342,22 @@ export class CategoryQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
+  @ApiPropertyOptional({
+    description: 'Content locale',
+    enum: Locale,
+    default: Locale.en,
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 }
 
 export class LocaleQueryDto {
-  @ApiPropertyOptional({ description: 'Content locale', enum: Locale, default: Locale.en })
+  @ApiPropertyOptional({
+    description: 'Content locale',
+    enum: Locale,
+    default: Locale.en,
+  })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
@@ -335,35 +384,67 @@ export class CreateCategoryDto {
   @MinLength(2)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'sunset-cruises', description: 'URL slug. Auto-generated from the name when omitted.' })
+  @ApiPropertyOptional({
+    example: 'sunset-cruises',
+    description: 'URL slug. Auto-generated from the name when omitted.',
+  })
   @IsOptional()
   @IsString()
   @MinLength(2)
   slug?: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours.jpg',
+    nullable: true,
+  })
   @IsOptional()
   @IsString()
   heroImage?: string | null;
 
   // ── V2 fields ──────────────────────────────────────────────────────────────
-  @ApiPropertyOptional({ example: 'Catamaran sailing, snorkelling and island cruises.' })
-  @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional({
+    example: 'Catamaran sailing, snorkelling and island cruises.',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 
-  @ApiPropertyOptional({ example: 'boat', description: 'Icon identifier for UI.' })
-  @IsOptional() @IsString() icon?: string;
+  @ApiPropertyOptional({
+    example: 'boat',
+    description: 'Icon identifier for UI.',
+  })
+  @IsOptional()
+  @IsString()
+  icon?: string;
 
-  @ApiPropertyOptional({ example: 1, description: 'Display order in nav/filter.' })
-  @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Display order in nav/filter.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 
   @ApiPropertyOptional({ example: '{category} in {destination}' })
-  @IsOptional() @IsString() metaTitleTemplate?: string;
+  @IsOptional()
+  @IsString()
+  metaTitleTemplate?: string;
 
-  @ApiPropertyOptional({ example: 'Book {category} in {destination}. Instant confirmation.' })
-  @IsOptional() @IsString() metaDescriptionTemplate?: string;
+  @ApiPropertyOptional({
+    example: 'Book {category} in {destination}. Instant confirmation.',
+  })
+  @IsOptional()
+  @IsString()
+  metaDescriptionTemplate?: string;
 
-  @ApiPropertyOptional({ description: 'Parent category id for future sub-categories (unused at launch).' })
-  @IsOptional() @IsString() parentCategoryId?: string;
+  @ApiPropertyOptional({
+    description:
+      'Parent category id for future sub-categories (unused at launch).',
+  })
+  @IsOptional()
+  @IsString()
+  parentCategoryId?: string;
 }
 
 export class UpdateCategoryDto {
@@ -383,28 +464,51 @@ export class UpdateCategoryDto {
   @MinLength(2)
   slug?: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/boat-tours.jpg', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours.jpg',
+    nullable: true,
+  })
   @IsOptional()
   @IsString()
   heroImage?: string | null;
 
-  @ApiPropertyOptional({ example: 'Catamaran sailing, snorkelling and island cruises.' })
-  @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional({
+    example: 'Catamaran sailing, snorkelling and island cruises.',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @ApiPropertyOptional({ example: 'boat' })
-  @IsOptional() @IsString() icon?: string;
+  @IsOptional()
+  @IsString()
+  icon?: string;
 
   @ApiPropertyOptional({ example: 1 })
-  @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 
   @ApiPropertyOptional({ example: '{category} in {destination}' })
-  @IsOptional() @IsString() metaTitleTemplate?: string;
+  @IsOptional()
+  @IsString()
+  metaTitleTemplate?: string;
 
-  @ApiPropertyOptional({ example: 'Book {category} in {destination}. Instant confirmation.' })
-  @IsOptional() @IsString() metaDescriptionTemplate?: string;
+  @ApiPropertyOptional({
+    example: 'Book {category} in {destination}. Instant confirmation.',
+  })
+  @IsOptional()
+  @IsString()
+  metaDescriptionTemplate?: string;
 
-  @ApiPropertyOptional({ description: 'Parent category id for future sub-categories (unused at launch).' })
-  @IsOptional() @IsString() parentCategoryId?: string;
+  @ApiPropertyOptional({
+    description:
+      'Parent category id for future sub-categories (unused at launch).',
+  })
+  @IsOptional()
+  @IsString()
+  parentCategoryId?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

@@ -4,7 +4,11 @@ jest.mock('@/auth/auth.instance', () => ({
   auth: {
     $context: Promise.resolve({
       password: { hash: jest.fn() },
-      internalAdapter: { createUser: jest.fn(), linkAccount: jest.fn(), deleteUser: jest.fn() },
+      internalAdapter: {
+        createUser: jest.fn(),
+        linkAccount: jest.fn(),
+        deleteUser: jest.fn(),
+      },
     }),
     api: { requestPasswordReset: jest.fn() },
   },
@@ -37,7 +41,9 @@ describe('OperatorsController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OperatorsController],
-      providers: [{ provide: OperatorsService, useValue: mockOperatorsService }],
+      providers: [
+        { provide: OperatorsService, useValue: mockOperatorsService },
+      ],
     }).compile();
 
     controller = module.get<OperatorsController>(OperatorsController);

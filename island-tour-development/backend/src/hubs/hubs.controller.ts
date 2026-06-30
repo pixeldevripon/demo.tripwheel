@@ -121,7 +121,10 @@ export class HubController {
     @Param('destinationSlug') destinationSlug: string,
     @Query() query: LocaleQueryDto,
   ) {
-    return this.hubService.getActiveByDestinationSlug(destinationSlug, query.locale);
+    return this.hubService.getActiveByDestinationSlug(
+      destinationSlug,
+      query.locale,
+    );
   }
 
   @Get(':id')

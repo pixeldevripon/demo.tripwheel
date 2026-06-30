@@ -43,7 +43,8 @@ export class NotificationSubscriptionResponseDto {
 
   @ApiPropertyOptional({
     example: { 'X-Custom': 'abc' },
-    description: 'Custom headers echoed on every delivery to this subscription.',
+    description:
+      'Custom headers echoed on every delivery to this subscription.',
   })
   headers!: Record<string, string> | null;
 

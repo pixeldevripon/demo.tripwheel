@@ -213,7 +213,6 @@ function makeImage(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-
 function makeInclusion(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 'inc-1',
@@ -221,7 +220,9 @@ function makeInclusion(overrides: Partial<Record<string, unknown>> = {}) {
     icon: 'check',
     displayOrder: 0,
     imageUrl: null,
-    translations: [{ locale: 'en', label: 'Open bar', isMachineTranslated: false }],
+    translations: [
+      { locale: 'en', label: 'Open bar', isMachineTranslated: false },
+    ],
     ...overrides,
   };
 }
@@ -233,7 +234,13 @@ function makeExclusion(overrides: Partial<Record<string, unknown>> = {}) {
     icon: 'x',
     displayOrder: 0,
     imageUrl: null,
-    translations: [{ locale: 'en', label: 'Flights not included', isMachineTranslated: false }],
+    translations: [
+      {
+        locale: 'en',
+        label: 'Flights not included',
+        isMachineTranslated: false,
+      },
+    ],
     ...overrides,
   };
 }
@@ -244,7 +251,9 @@ function makeFeature(overrides: Partial<Record<string, unknown>> = {}) {
     tourId: 'tour-1',
     type: 'KNOW_BEFORE_YOU_GO',
     displayOrder: 0,
-    translations: [{ locale: 'en', text: 'Bring your voucher.', isMachineTranslated: false }],
+    translations: [
+      { locale: 'en', text: 'Bring your voucher.', isMachineTranslated: false },
+    ],
     ...overrides,
   };
 }
@@ -264,7 +273,14 @@ function makeLocation(overrides: Partial<Record<string, unknown>> = {}) {
     minutesTo: null,
     minutesAt: null,
     displayOrder: 0,
-    translations: [{ locale: 'en', title: 'Main dock', shortDescription: null, isMachineTranslated: false }],
+    translations: [
+      {
+        locale: 'en',
+        title: 'Main dock',
+        shortDescription: null,
+        isMachineTranslated: false,
+      },
+    ],
     ...overrides,
   };
 }
@@ -282,11 +298,17 @@ function makePickupLocation(overrides: Partial<Record<string, unknown>> = {}) {
     windowEnd: '08:15',
     displayOrder: 0,
     isActive: true,
-    translations: [{ locale: 'en', title: 'Marriott Beach Resort', directions: null, isMachineTranslated: false }],
+    translations: [
+      {
+        locale: 'en',
+        title: 'Marriott Beach Resort',
+        directions: null,
+        isMachineTranslated: false,
+      },
+    ],
     ...overrides,
   };
 }
-
 
 function makeAddOn(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -331,8 +353,8 @@ describe('TourChildrenService', () => {
     toursService = createMockToursService();
 
     // Default: $transaction calls its callback with the same mock object
-    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
 
     // Default: findTourOrThrow returns a DRAFT tour; assertOwnership passes
@@ -351,8 +373,8 @@ describe('TourChildrenService', () => {
     jest.clearAllMocks();
 
     // Re-apply defaults after clearAllMocks
-    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
     toursService.findTourOrThrow.mockResolvedValue(makeTour());
     toursService.assertOwnership.mockResolvedValue(undefined);
@@ -376,11 +398,17 @@ describe('TourChildrenService', () => {
 
       await service.getImages('tour-1', 'user-1', Role.TOUR_OPERATOR);
 
-      expect(toursService.assertOwnership).toHaveBeenCalledWith(tour, 'user-1', Role.TOUR_OPERATOR);
+      expect(toursService.assertOwnership).toHaveBeenCalledWith(
+        tour,
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
     });
 
     it('propagates NotFoundException from findTourOrThrow when tour does not exist', async () => {
-      toursService.findTourOrThrow.mockRejectedValue(new NotFoundException('Tour tour-99 not found'));
+      toursService.findTourOrThrow.mockRejectedValue(
+        new NotFoundException('Tour tour-99 not found'),
+      );
 
       await expect(
         service.getImages('tour-99', 'user-1', Role.TOUR_OPERATOR),
@@ -389,7 +417,9 @@ describe('TourChildrenService', () => {
 
     it('propagates ForbiddenException from assertOwnership for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
@@ -414,7 +444,11 @@ describe('TourChildrenService', () => {
       const images = [makeImage(), makeImage({ id: 'img-2', displayOrder: 1 })];
       prisma.tourImage.findMany.mockResolvedValue(images);
 
-      const result = await service.getImages('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getImages(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(images);
       expect(prisma.tourImage.findMany).toHaveBeenCalledWith(
@@ -433,7 +467,12 @@ describe('TourChildrenService', () => {
 
       const result = await service.addImage(
         'tour-1',
-        { url: 'https://example.com/img.jpg', isHero: false, width: 1920, height: 1080 },
+        {
+          url: 'https://example.com/img.jpg',
+          isHero: false,
+          width: 1920,
+          height: 1080,
+        },
         'user-1',
         Role.TOUR_OPERATOR,
       );
@@ -453,7 +492,12 @@ describe('TourChildrenService', () => {
 
       await service.addImage(
         'tour-1',
-        { url: 'https://example.com/hero.jpg', isHero: true, width: 1920, height: 1080 },
+        {
+          url: 'https://example.com/hero.jpg',
+          isHero: true,
+          width: 1920,
+          height: 1080,
+        },
         'user-1',
         Role.TOUR_OPERATOR,
       );
@@ -471,7 +515,9 @@ describe('TourChildrenService', () => {
     });
 
     it('propagates NotFoundException from assertTourAccess when tour does not exist', async () => {
-      toursService.findTourOrThrow.mockRejectedValue(new NotFoundException('Tour tour-99 not found'));
+      toursService.findTourOrThrow.mockRejectedValue(
+        new NotFoundException('Tour tour-99 not found'),
+      );
 
       await expect(
         service.addImage(
@@ -509,7 +555,11 @@ describe('TourChildrenService', () => {
       prisma.tourImage.update.mockResolvedValue(updated);
 
       const result = await service.updateImage(
-        'tour-1', 'img-1', { altText: 'Sunset view' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'img-1',
+        { altText: 'Sunset view' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(updated);
@@ -519,7 +569,13 @@ describe('TourChildrenService', () => {
       prisma.tourImage.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateImage('tour-1', 'img-99', { altText: 'X' }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateImage(
+          'tour-1',
+          'img-99',
+          { altText: 'X' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -531,7 +587,11 @@ describe('TourChildrenService', () => {
       prisma.tourImage.update.mockResolvedValue(updated);
 
       await service.updateImage(
-        'tour-1', 'img-1', { isHero: true }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'img-1',
+        { isHero: true },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.$transaction).toHaveBeenCalled();
@@ -547,10 +607,17 @@ describe('TourChildrenService', () => {
       prisma.tourImage.findFirst.mockResolvedValue(makeImage());
       prisma.tourImage.delete.mockResolvedValue({});
 
-      const result = await service.removeImage('tour-1', 'img-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeImage(
+        'tour-1',
+        'img-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Image removed successfully' });
-      expect(prisma.tourImage.delete).toHaveBeenCalledWith({ where: { id: 'img-1' } });
+      expect(prisma.tourImage.delete).toHaveBeenCalledWith({
+        where: { id: 'img-1' },
+      });
     });
 
     it('throws NotFoundException when image is not found on the tour', async () => {
@@ -569,7 +636,11 @@ describe('TourChildrenService', () => {
       const addOns = [makeAddOn()];
       prisma.tourAddOn.findMany.mockResolvedValue(addOns);
 
-      const result = await service.getAddOns('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getAddOns(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(addOns);
       expect(prisma.tourAddOn.findMany).toHaveBeenCalledWith(
@@ -596,7 +667,11 @@ describe('TourChildrenService', () => {
       expect(result).toEqual(addOn);
       expect(prisma.tourAddOn.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ tourId: 'tour-1', name: 'Hotel pickup', price: '15.00' }),
+          data: expect.objectContaining({
+            tourId: 'tour-1',
+            name: 'Hotel pickup',
+            price: '15.00',
+          }),
         }),
       );
     });
@@ -627,7 +702,11 @@ describe('TourChildrenService', () => {
       prisma.tourAddOn.update.mockResolvedValue(updated);
 
       const result = await service.updateAddOn(
-        'tour-1', 'addon-1', { name: 'Airport transfer' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'addon-1',
+        { name: 'Airport transfer' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result.name).toBe('Airport transfer');
@@ -637,7 +716,13 @@ describe('TourChildrenService', () => {
       prisma.tourAddOn.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateAddOn('tour-1', 'addon-99', { name: 'X' }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateAddOn(
+          'tour-1',
+          'addon-99',
+          { name: 'X' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -647,10 +732,17 @@ describe('TourChildrenService', () => {
       prisma.tourAddOn.findFirst.mockResolvedValue(makeAddOn());
       prisma.tourAddOn.delete.mockResolvedValue({});
 
-      const result = await service.removeAddOn('tour-1', 'addon-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeAddOn(
+        'tour-1',
+        'addon-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Add-on removed successfully' });
-      expect(prisma.tourAddOn.delete).toHaveBeenCalledWith({ where: { id: 'addon-1' } });
+      expect(prisma.tourAddOn.delete).toHaveBeenCalledWith({
+        where: { id: 'addon-1' },
+      });
     });
 
     it('throws NotFoundException when add-on does not exist on the tour', async () => {
@@ -669,7 +761,11 @@ describe('TourChildrenService', () => {
       const bands = [makeAgeBand()];
       prisma.tourAgeBand.findMany.mockResolvedValue(bands);
 
-      const result = await service.getAgeBands('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getAgeBands(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(bands);
       expect(prisma.tourAgeBand.findMany).toHaveBeenCalledWith(
@@ -696,9 +792,14 @@ describe('TourChildrenService', () => {
       expect(result).toEqual(band);
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.tourAgeBand.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ tourId: 'tour-1', label: 'Adult' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ tourId: 'tour-1', label: 'Adult' }),
+        }),
       );
-      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith(
+        'tour-1',
+        prisma,
+      );
     });
 
     it('clears other default bands when the new band is the default', async () => {
@@ -707,7 +808,12 @@ describe('TourChildrenService', () => {
 
       await service.addAgeBand(
         'tour-1',
-        { bandType: AgeBandType.ADULT, label: 'Adult', price: '79.00', isDefault: true },
+        {
+          bandType: AgeBandType.ADULT,
+          label: 'Adult',
+          price: '79.00',
+          isDefault: true,
+        },
         'user-1',
         Role.TOUR_OPERATOR,
       );
@@ -722,7 +828,13 @@ describe('TourChildrenService', () => {
       await expect(
         service.addAgeBand(
           'tour-1',
-          { bandType: AgeBandType.CHILD, label: 'Child', price: '40.00', minAge: 12, maxAge: 4 },
+          {
+            bandType: AgeBandType.CHILD,
+            label: 'Child',
+            price: '40.00',
+            minAge: 12,
+            maxAge: 4,
+          },
           'user-1',
           Role.TOUR_OPERATOR,
         ),
@@ -739,36 +851,65 @@ describe('TourChildrenService', () => {
       prisma.tourAgeBand.update.mockResolvedValue(updated);
 
       const result = await service.updateAgeBand(
-        'tour-1', 'band-1', { price: '85.00' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'band-1',
+        { price: '85.00' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(updated);
-      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith(
+        'tour-1',
+        prisma,
+      );
     });
 
     it('throws NotFoundException when the band does not belong to the tour', async () => {
       prisma.tourAgeBand.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateAgeBand('tour-1', 'band-99', { price: '85.00' }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateAgeBand(
+          'tour-1',
+          'band-99',
+          { price: '85.00' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('validates the resulting range against the stored bound when one side is omitted', async () => {
       // Stored minAge=13; incoming maxAge=4 → invalid range.
-      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand({ minAge: 13, maxAge: null }));
+      prisma.tourAgeBand.findFirst.mockResolvedValue(
+        makeAgeBand({ minAge: 13, maxAge: null }),
+      );
 
       await expect(
-        service.updateAgeBand('tour-1', 'band-1', { maxAge: 4 }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateAgeBand(
+          'tour-1',
+          'band-1',
+          { maxAge: 4 },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('clears other defaults when isDefault is set to true', async () => {
-      prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand({ isDefault: false }));
+      prisma.tourAgeBand.findFirst.mockResolvedValue(
+        makeAgeBand({ isDefault: false }),
+      );
       prisma.tourAgeBand.update.mockResolvedValue(makeAgeBand());
       prisma.tourAgeBand.updateMany.mockResolvedValue({ count: 1 });
 
-      await service.updateAgeBand('tour-1', 'band-1', { isDefault: true }, 'user-1', Role.TOUR_OPERATOR);
+      await service.updateAgeBand(
+        'tour-1',
+        'band-1',
+        { isDefault: true },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.tourAgeBand.updateMany).toHaveBeenCalledWith({
         where: { tourId: 'tour-1' },
@@ -782,18 +923,33 @@ describe('TourChildrenService', () => {
       prisma.tourAgeBand.findFirst.mockResolvedValue(makeAgeBand());
       prisma.tourAgeBand.delete.mockResolvedValue({});
 
-      const result = await service.removeAgeBand('tour-1', 'band-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeAgeBand(
+        'tour-1',
+        'band-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Age band removed successfully' });
-      expect(prisma.tourAgeBand.delete).toHaveBeenCalledWith({ where: { id: 'band-1' } });
-      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith('tour-1', prisma);
+      expect(prisma.tourAgeBand.delete).toHaveBeenCalledWith({
+        where: { id: 'band-1' },
+      });
+      expect(toursService.recomputePriceFrom).toHaveBeenCalledWith(
+        'tour-1',
+        prisma,
+      );
     });
 
     it('throws NotFoundException when the band does not exist on the tour', async () => {
       prisma.tourAgeBand.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeAgeBand('tour-1', 'band-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeAgeBand(
+          'tour-1',
+          'band-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -819,7 +975,11 @@ describe('TourChildrenService', () => {
       const langs = [{ id: 'lang-1', tourId: 'tour-1', language: 'en' }];
       prisma.tourLanguage.findMany.mockResolvedValue(langs);
 
-      const result = await service.getLanguages('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getLanguages(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(langs);
       expect(prisma.tourLanguage.findMany).toHaveBeenCalledWith(
@@ -837,7 +997,10 @@ describe('TourChildrenService', () => {
       prisma.tourLanguage.create.mockResolvedValue(lang);
 
       const result = await service.addLanguage(
-        'tour-1', { language: 'nl' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        { language: 'nl' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(lang);
@@ -849,11 +1012,18 @@ describe('TourChildrenService', () => {
     });
 
     it('throws ConflictException when language already exists on the tour (P2002)', async () => {
-      const p2002 = Object.assign(new Error('Unique constraint violation'), { code: 'P2002' });
+      const p2002 = Object.assign(new Error('Unique constraint violation'), {
+        code: 'P2002',
+      });
       prisma.tourLanguage.create.mockRejectedValue(p2002);
 
       await expect(
-        service.addLanguage('tour-1', { language: 'nl' }, 'user-1', Role.TOUR_OPERATOR),
+        service.addLanguage(
+          'tour-1',
+          { language: 'nl' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -861,27 +1031,47 @@ describe('TourChildrenService', () => {
       prisma.tourLanguage.create.mockRejectedValue(new Error('DB timeout'));
 
       await expect(
-        service.addLanguage('tour-1', { language: 'nl' }, 'user-1', Role.TOUR_OPERATOR),
+        service.addLanguage(
+          'tour-1',
+          { language: 'nl' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow('DB timeout');
     });
   });
 
   describe('removeLanguage', () => {
     it('deletes the language and returns success message', async () => {
-      prisma.tourLanguage.findFirst.mockResolvedValue({ id: 'lang-1', language: 'nl' });
+      prisma.tourLanguage.findFirst.mockResolvedValue({
+        id: 'lang-1',
+        language: 'nl',
+      });
       prisma.tourLanguage.delete.mockResolvedValue({});
 
-      const result = await service.removeLanguage('tour-1', 'lang-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeLanguage(
+        'tour-1',
+        'lang-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Language removed successfully' });
-      expect(prisma.tourLanguage.delete).toHaveBeenCalledWith({ where: { id: 'lang-1' } });
+      expect(prisma.tourLanguage.delete).toHaveBeenCalledWith({
+        where: { id: 'lang-1' },
+      });
     });
 
     it('throws NotFoundException when language is not found on the tour', async () => {
       prisma.tourLanguage.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeLanguage('tour-1', 'lang-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeLanguage(
+          'tour-1',
+          'lang-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -893,7 +1083,11 @@ describe('TourChildrenService', () => {
       const inclusions = [makeInclusion()];
       prisma.tourInclusion.findMany.mockResolvedValue(inclusions);
 
-      const result = await service.getInclusions('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getInclusions(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(inclusions);
       expect(prisma.tourInclusion.findMany).toHaveBeenCalledWith(
@@ -938,7 +1132,12 @@ describe('TourChildrenService', () => {
       prisma.tourInclusionTranslation.create.mockResolvedValue({});
       prisma.tourInclusion.findUnique.mockResolvedValue(makeInclusion());
 
-      await service.addInclusion('tour-1', { label: 'Open bar' }, 'user-1', Role.TOUR_OPERATOR);
+      await service.addInclusion(
+        'tour-1',
+        { label: 'Open bar' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.tourInclusion.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -956,7 +1155,11 @@ describe('TourChildrenService', () => {
       prisma.tourInclusion.update.mockResolvedValue(updated);
 
       const result = await service.updateInclusion(
-        'tour-1', 'inc-1', { icon: 'drink' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'inc-1',
+        { icon: 'drink' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result.icon).toBe('drink');
@@ -966,7 +1169,13 @@ describe('TourChildrenService', () => {
       prisma.tourInclusion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateInclusion('tour-1', 'inc-99', { icon: 'drink' }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateInclusion(
+          'tour-1',
+          'inc-99',
+          { icon: 'drink' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -976,17 +1185,29 @@ describe('TourChildrenService', () => {
       prisma.tourInclusion.findFirst.mockResolvedValue(makeInclusion());
       prisma.tourInclusion.delete.mockResolvedValue({});
 
-      const result = await service.removeInclusion('tour-1', 'inc-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeInclusion(
+        'tour-1',
+        'inc-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Inclusion removed successfully' });
-      expect(prisma.tourInclusion.delete).toHaveBeenCalledWith({ where: { id: 'inc-1' } });
+      expect(prisma.tourInclusion.delete).toHaveBeenCalledWith({
+        where: { id: 'inc-1' },
+      });
     });
 
     it('throws NotFoundException when inclusion is not found on the tour', async () => {
       prisma.tourInclusion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeInclusion('tour-1', 'inc-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeInclusion(
+          'tour-1',
+          'inc-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -994,20 +1215,29 @@ describe('TourChildrenService', () => {
   describe('upsertInclusionTranslation', () => {
     it('upserts the label translation and returns it', async () => {
       const inclusion = { id: 'inc-1' };
-      const translation = { locale: Locale.nl, label: 'Open bar NL', isMachineTranslated: false };
+      const translation = {
+        locale: Locale.nl,
+        label: 'Open bar NL',
+        isMachineTranslated: false,
+      };
       prisma.tourInclusion.findFirst.mockResolvedValue(inclusion);
       prisma.tourInclusionTranslation.upsert.mockResolvedValue(translation);
 
       const result = await service.upsertInclusionTranslation(
-        'tour-1', 'inc-1', Locale.nl,
+        'tour-1',
+        'inc-1',
+        Locale.nl,
         { label: 'Open bar NL' },
-        'user-1', Role.TOUR_OPERATOR,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(translation);
       expect(prisma.tourInclusionTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { inclusionId_locale: { inclusionId: 'inc-1', locale: Locale.nl } },
+          where: {
+            inclusionId_locale: { inclusionId: 'inc-1', locale: Locale.nl },
+          },
         }),
       );
     });
@@ -1017,9 +1247,12 @@ describe('TourChildrenService', () => {
 
       await expect(
         service.upsertInclusionTranslation(
-          'tour-1', 'inc-99', Locale.nl,
+          'tour-1',
+          'inc-99',
+          Locale.nl,
           { label: 'Some label' },
-          'user-1', Role.TOUR_OPERATOR,
+          'user-1',
+          Role.TOUR_OPERATOR,
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -1028,7 +1261,13 @@ describe('TourChildrenService', () => {
   describe('deleteInclusionTranslation', () => {
     it('throws BadRequestException when attempting to delete the English label', async () => {
       await expect(
-        service.deleteInclusionTranslation('tour-1', 'inc-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteInclusionTranslation(
+          'tour-1',
+          'inc-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -1037,19 +1276,33 @@ describe('TourChildrenService', () => {
       prisma.tourInclusionTranslation.delete.mockResolvedValue({});
 
       const result = await service.deleteInclusionTranslation(
-        'tour-1', 'inc-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'inc-1',
+        Locale.nl,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
-      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
+      expect(result).toEqual({
+        message: `Translation for locale "${Locale.nl}" deleted`,
+      });
     });
 
     it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
       prisma.tourInclusion.findFirst.mockResolvedValue({ id: 'inc-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.tourInclusionTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deleteInclusionTranslation('tour-1', 'inc-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteInclusionTranslation(
+          'tour-1',
+          'inc-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1059,12 +1312,30 @@ describe('TourChildrenService', () => {
   describe('getAllTranslations', () => {
     it('returns all translation rows ordered by locale', async () => {
       const translations = [
-        { locale: Locale.en, title: null, overview: 'Overview', description: null, isMachineTranslated: false, updatedAt: new Date() },
-        { locale: Locale.nl, title: null, overview: 'Overzicht', description: null, isMachineTranslated: true, updatedAt: new Date() },
+        {
+          locale: Locale.en,
+          title: null,
+          overview: 'Overview',
+          description: null,
+          isMachineTranslated: false,
+          updatedAt: new Date(),
+        },
+        {
+          locale: Locale.nl,
+          title: null,
+          overview: 'Overzicht',
+          description: null,
+          isMachineTranslated: true,
+          updatedAt: new Date(),
+        },
       ];
       prisma.tourTranslation.findMany.mockResolvedValue(translations);
 
-      const result = await service.getAllTranslations('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getAllTranslations(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(translations);
       expect(prisma.tourTranslation.findMany).toHaveBeenCalledWith(
@@ -1088,7 +1359,12 @@ describe('TourChildrenService', () => {
       };
       prisma.tourTranslation.findUnique.mockResolvedValue(translation);
 
-      const result = await service.getTranslationByLocale('tour-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getTranslationByLocale(
+        'tour-1',
+        Locale.nl,
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(translation);
     });
@@ -1096,7 +1372,12 @@ describe('TourChildrenService', () => {
     it('returns a null-filled placeholder when no translation row exists for that locale', async () => {
       prisma.tourTranslation.findUnique.mockResolvedValue(null);
 
-      const result = await service.getTranslationByLocale('tour-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getTranslationByLocale(
+        'tour-1',
+        Locale.nl,
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({
         locale: Locale.nl,
@@ -1132,9 +1413,11 @@ describe('TourChildrenService', () => {
       prisma.tourTranslation.upsert.mockResolvedValue(upserted);
 
       const result = await service.upsertTranslation(
-        'tour-1', Locale.en,
+        'tour-1',
+        Locale.en,
         { title: 'Sunset Cruise', overview: 'A beautiful cruise.' },
-        'user-1', Role.TOUR_OPERATOR,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(upserted);
@@ -1154,9 +1437,11 @@ describe('TourChildrenService', () => {
       prisma.tourTranslation.upsert.mockResolvedValue({});
 
       await service.upsertTranslation(
-        'tour-1', Locale.nl,
+        'tour-1',
+        Locale.nl,
         { overview: 'Dutch overview' },
-        'user-1', Role.TOUR_OPERATOR,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourTranslation.upsert).toHaveBeenCalledWith(
@@ -1168,12 +1453,18 @@ describe('TourChildrenService', () => {
 
     it('propagates ForbiddenException for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
         service.upsertTranslation(
-          'tour-1', Locale.nl, { overview: 'Dutch overview' }, 'user-other', Role.TOUR_OPERATOR,
+          'tour-1',
+          Locale.nl,
+          { overview: 'Dutch overview' },
+          'user-other',
+          Role.TOUR_OPERATOR,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -1182,7 +1473,12 @@ describe('TourChildrenService', () => {
   describe('deleteTranslation', () => {
     it('throws BadRequestException when attempting to delete the English translation', async () => {
       await expect(
-        service.deleteTranslation('tour-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteTranslation(
+          'tour-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       // Should not proceed to any Prisma call
@@ -1192,28 +1488,49 @@ describe('TourChildrenService', () => {
     it('deletes a non-English translation and returns success message', async () => {
       prisma.tourTranslation.delete.mockResolvedValue({});
 
-      const result = await service.deleteTranslation('tour-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.deleteTranslation(
+        'tour-1',
+        Locale.nl,
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
-      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
+      expect(result).toEqual({
+        message: `Translation for locale "${Locale.nl}" deleted`,
+      });
       expect(prisma.tourTranslation.delete).toHaveBeenCalledWith({
         where: { tourId_locale: { tourId: 'tour-1', locale: Locale.nl } },
       });
     });
 
     it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.tourTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deleteTranslation('tour-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteTranslation(
+          'tour-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('re-throws unknown errors from tourTranslation.delete unchanged', async () => {
-      prisma.tourTranslation.delete.mockRejectedValue(new Error('Fatal DB error'));
+      prisma.tourTranslation.delete.mockRejectedValue(
+        new Error('Fatal DB error'),
+      );
 
       await expect(
-        service.deleteTranslation('tour-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteTranslation(
+          'tour-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow('Fatal DB error');
     });
   });
@@ -1225,7 +1542,11 @@ describe('TourChildrenService', () => {
       const exclusions = [makeExclusion()];
       prisma.tourExclusion.findMany.mockResolvedValue(exclusions);
 
-      const result = await service.getExclusions('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getExclusions(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual(exclusions);
       expect(toursService.findTourOrThrow).toHaveBeenCalledWith('tour-1');
@@ -1238,7 +1559,9 @@ describe('TourChildrenService', () => {
     });
 
     it('propagates NotFoundException from assertTourAccess when tour does not exist', async () => {
-      toursService.findTourOrThrow.mockRejectedValue(new NotFoundException('Tour not found'));
+      toursService.findTourOrThrow.mockRejectedValue(
+        new NotFoundException('Tour not found'),
+      );
 
       await expect(
         service.getExclusions('tour-99', 'user-1', Role.TOUR_OPERATOR),
@@ -1247,7 +1570,9 @@ describe('TourChildrenService', () => {
 
     it('propagates ForbiddenException from assertTourAccess for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
@@ -1278,7 +1603,10 @@ describe('TourChildrenService', () => {
       );
       expect(prisma.tourExclusionTranslation.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ label: 'Flights not included', locale: 'en' }),
+          data: expect.objectContaining({
+            label: 'Flights not included',
+            locale: 'en',
+          }),
         }),
       );
       expect(result).toEqual(exclusion);
@@ -1289,7 +1617,12 @@ describe('TourChildrenService', () => {
       prisma.tourExclusionTranslation.create.mockResolvedValue({});
       prisma.tourExclusion.findUnique.mockResolvedValue(makeExclusion());
 
-      await service.addExclusion('tour-1', { label: 'Flights not included' }, 'user-1', Role.TOUR_OPERATOR);
+      await service.addExclusion(
+        'tour-1',
+        { label: 'Flights not included' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.tourExclusion.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1299,16 +1632,25 @@ describe('TourChildrenService', () => {
     });
 
     it('propagates NotFoundException when tour does not exist', async () => {
-      toursService.findTourOrThrow.mockRejectedValue(new NotFoundException('Tour not found'));
+      toursService.findTourOrThrow.mockRejectedValue(
+        new NotFoundException('Tour not found'),
+      );
 
       await expect(
-        service.addExclusion('tour-99', { label: 'Flights not included' }, 'user-1', Role.TOUR_OPERATOR),
+        service.addExclusion(
+          'tour-99',
+          { label: 'Flights not included' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('propagates ForbiddenException for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
@@ -1330,7 +1672,11 @@ describe('TourChildrenService', () => {
       prisma.tourExclusion.update.mockResolvedValue(updated);
 
       const result = await service.updateExclusion(
-        'tour-1', 'excl-1', { icon: 'circle-x', displayOrder: 2 }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'excl-1',
+        { icon: 'circle-x', displayOrder: 2 },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result.icon).toBe('circle-x');
@@ -1344,17 +1690,31 @@ describe('TourChildrenService', () => {
       prisma.tourExclusion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateExclusion('tour-1', 'excl-99', { icon: 'x' }, 'user-1', Role.TOUR_OPERATOR),
+        service.updateExclusion(
+          'tour-1',
+          'excl-99',
+          { icon: 'x' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('propagates ForbiddenException from assertTourAccess for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
-        service.updateExclusion('tour-1', 'excl-1', { icon: 'x' }, 'user-other', Role.TOUR_OPERATOR),
+        service.updateExclusion(
+          'tour-1',
+          'excl-1',
+          { icon: 'x' },
+          'user-other',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -1364,27 +1724,46 @@ describe('TourChildrenService', () => {
       prisma.tourExclusion.findFirst.mockResolvedValue(makeExclusion());
       prisma.tourExclusion.delete.mockResolvedValue({});
 
-      const result = await service.removeExclusion('tour-1', 'excl-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeExclusion(
+        'tour-1',
+        'excl-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(result).toEqual({ message: 'Exclusion removed successfully' });
-      expect(prisma.tourExclusion.delete).toHaveBeenCalledWith({ where: { id: 'excl-1' } });
+      expect(prisma.tourExclusion.delete).toHaveBeenCalledWith({
+        where: { id: 'excl-1' },
+      });
     });
 
     it('throws NotFoundException when exclusion is not found on the tour', async () => {
       prisma.tourExclusion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeExclusion('tour-1', 'excl-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeExclusion(
+          'tour-1',
+          'excl-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('propagates ForbiddenException for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
-        service.removeExclusion('tour-1', 'excl-1', 'user-other', Role.TOUR_OPERATOR),
+        service.removeExclusion(
+          'tour-1',
+          'excl-1',
+          'user-other',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -1392,22 +1771,36 @@ describe('TourChildrenService', () => {
   describe('upsertExclusionTranslation', () => {
     it('upserts the label translation and returns it', async () => {
       const exclusion = { id: 'excl-1' };
-      const translation = { locale: Locale.nl, label: 'Vluchten niet inbegrepen', isMachineTranslated: false };
+      const translation = {
+        locale: Locale.nl,
+        label: 'Vluchten niet inbegrepen',
+        isMachineTranslated: false,
+      };
       prisma.tourExclusion.findFirst.mockResolvedValue(exclusion);
       prisma.tourExclusionTranslation.upsert.mockResolvedValue(translation);
 
       const result = await service.upsertExclusionTranslation(
-        'tour-1', 'excl-1', Locale.nl,
+        'tour-1',
+        'excl-1',
+        Locale.nl,
         { label: 'Vluchten niet inbegrepen' },
-        'user-1', Role.TOUR_OPERATOR,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(result).toEqual(translation);
       expect(prisma.tourExclusionTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl } },
-          create: expect.objectContaining({ label: 'Vluchten niet inbegrepen', locale: Locale.nl }),
-          update: expect.objectContaining({ label: 'Vluchten niet inbegrepen' }),
+          where: {
+            exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl },
+          },
+          create: expect.objectContaining({
+            label: 'Vluchten niet inbegrepen',
+            locale: Locale.nl,
+          }),
+          update: expect.objectContaining({
+            label: 'Vluchten niet inbegrepen',
+          }),
         }),
       );
     });
@@ -1417,9 +1810,12 @@ describe('TourChildrenService', () => {
       prisma.tourExclusionTranslation.upsert.mockResolvedValue({});
 
       await service.upsertExclusionTranslation(
-        'tour-1', 'excl-1', Locale.nl,
+        'tour-1',
+        'excl-1',
+        Locale.nl,
         { label: 'Vluchten niet inbegrepen' },
-        'user-1', Role.TOUR_OPERATOR,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourExclusionTranslation.upsert).toHaveBeenCalledWith(
@@ -1434,23 +1830,31 @@ describe('TourChildrenService', () => {
 
       await expect(
         service.upsertExclusionTranslation(
-          'tour-1', 'excl-99', Locale.nl,
+          'tour-1',
+          'excl-99',
+          Locale.nl,
           { label: 'Some label' },
-          'user-1', Role.TOUR_OPERATOR,
+          'user-1',
+          Role.TOUR_OPERATOR,
         ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('propagates ForbiddenException from assertTourAccess for non-owner operators', async () => {
       toursService.assertOwnership.mockRejectedValue(
-        new ForbiddenException('You do not have permission to modify this tour'),
+        new ForbiddenException(
+          'You do not have permission to modify this tour',
+        ),
       );
 
       await expect(
         service.upsertExclusionTranslation(
-          'tour-1', 'excl-1', Locale.nl,
+          'tour-1',
+          'excl-1',
+          Locale.nl,
           { label: 'Some label' },
-          'user-other', Role.TOUR_OPERATOR,
+          'user-other',
+          Role.TOUR_OPERATOR,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -1459,7 +1863,13 @@ describe('TourChildrenService', () => {
   describe('deleteExclusionTranslation', () => {
     it('throws BadRequestException when attempting to delete the English translation', async () => {
       await expect(
-        service.deleteExclusionTranslation('tour-1', 'excl-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteExclusionTranslation(
+          'tour-1',
+          'excl-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       // Should not proceed to any Prisma call for the exclusion lookup
@@ -1471,22 +1881,38 @@ describe('TourChildrenService', () => {
       prisma.tourExclusionTranslation.delete.mockResolvedValue({});
 
       const result = await service.deleteExclusionTranslation(
-        'tour-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'excl-1',
+        Locale.nl,
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
-      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
+      expect(result).toEqual({
+        message: `Translation for locale "${Locale.nl}" deleted`,
+      });
       expect(prisma.tourExclusionTranslation.delete).toHaveBeenCalledWith({
-        where: { exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl } },
+        where: {
+          exclusionId_locale: { exclusionId: 'excl-1', locale: Locale.nl },
+        },
       });
     });
 
     it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
       prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.tourExclusionTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deleteExclusionTranslation('tour-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteExclusionTranslation(
+          'tour-1',
+          'excl-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -1494,16 +1920,30 @@ describe('TourChildrenService', () => {
       prisma.tourExclusion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.deleteExclusionTranslation('tour-1', 'excl-99', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteExclusionTranslation(
+          'tour-1',
+          'excl-99',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('re-throws unknown errors from tourExclusionTranslation.delete unchanged', async () => {
       prisma.tourExclusion.findFirst.mockResolvedValue({ id: 'excl-1' });
-      prisma.tourExclusionTranslation.delete.mockRejectedValue(new Error('DB timeout'));
+      prisma.tourExclusionTranslation.delete.mockRejectedValue(
+        new Error('DB timeout'),
+      );
 
       await expect(
-        service.deleteExclusionTranslation('tour-1', 'excl-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteExclusionTranslation(
+          'tour-1',
+          'excl-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow('DB timeout');
     });
   });
@@ -1533,11 +1973,19 @@ describe('TourChildrenService', () => {
       const feat = makeFeature();
       prisma.tourFeature.findMany.mockResolvedValue([feat]);
 
-      const result = await service.getFeatures('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getFeatures(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.tourFeature.findMany).toHaveBeenCalledWith({
         where: { tourId: 'tour-1' },
-        select: expect.objectContaining({ id: true, type: true, translations: expect.anything() }),
+        select: expect.objectContaining({
+          id: true,
+          type: true,
+          translations: expect.anything(),
+        }),
         orderBy: [{ type: 'asc' }, { displayOrder: 'asc' }],
       });
       expect(result).toEqual([feat]);
@@ -1568,7 +2016,12 @@ describe('TourChildrenService', () => {
 
       expect(prisma.tourFeature.create).toHaveBeenCalled();
       expect(prisma.tourFeatureTranslation.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ locale: 'en', text: 'Bring your voucher.' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            locale: 'en',
+            text: 'Bring your voucher.',
+          }),
+        }),
       );
       expect(result).toEqual(feat);
     });
@@ -1577,7 +2030,12 @@ describe('TourChildrenService', () => {
       toursService.assertOwnership.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        service.addFeature('tour-1', { type: 'KNOW_BEFORE_YOU_GO' as any, text: 'x' }, 'other', Role.TOUR_OPERATOR),
+        service.addFeature(
+          'tour-1',
+          { type: 'KNOW_BEFORE_YOU_GO' as any, text: 'x' },
+          'other',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -1589,7 +2047,11 @@ describe('TourChildrenService', () => {
       prisma.tourFeature.update.mockResolvedValue(updated);
 
       const result = await service.updateFeature(
-        'tour-1', 'feat-1', { displayOrder: 1 }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'feat-1',
+        { displayOrder: 1 },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourFeature.update).toHaveBeenCalledWith(
@@ -1602,7 +2064,13 @@ describe('TourChildrenService', () => {
       prisma.tourFeature.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateFeature('tour-1', 'feat-99', {}, 'user-1', Role.TOUR_OPERATOR),
+        service.updateFeature(
+          'tour-1',
+          'feat-99',
+          {},
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1612,9 +2080,16 @@ describe('TourChildrenService', () => {
       prisma.tourFeature.findFirst.mockResolvedValue({ id: 'feat-1' });
       prisma.tourFeature.delete.mockResolvedValue({});
 
-      const result = await service.removeFeature('tour-1', 'feat-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeFeature(
+        'tour-1',
+        'feat-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
-      expect(prisma.tourFeature.delete).toHaveBeenCalledWith({ where: { id: 'feat-1' } });
+      expect(prisma.tourFeature.delete).toHaveBeenCalledWith({
+        where: { id: 'feat-1' },
+      });
       expect(result).toEqual({ message: 'Feature removed successfully' });
     });
 
@@ -1622,7 +2097,12 @@ describe('TourChildrenService', () => {
       prisma.tourFeature.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeFeature('tour-1', 'feat-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeFeature(
+          'tour-1',
+          'feat-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1630,16 +2110,27 @@ describe('TourChildrenService', () => {
   describe('upsertFeatureTranslation', () => {
     it('upserts a translation for a non-EN locale', async () => {
       prisma.tourFeature.findFirst.mockResolvedValue({ id: 'feat-1' });
-      const translation = { locale: Locale.nl, text: 'Breng uw voucher.', isMachineTranslated: false };
+      const translation = {
+        locale: Locale.nl,
+        text: 'Breng uw voucher.',
+        isMachineTranslated: false,
+      };
       prisma.tourFeatureTranslation.upsert.mockResolvedValue(translation);
 
       const result = await service.upsertFeatureTranslation(
-        'tour-1', 'feat-1', Locale.nl, { text: 'Breng uw voucher.' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'feat-1',
+        Locale.nl,
+        { text: 'Breng uw voucher.' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourFeatureTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { featureId_locale: { featureId: 'feat-1', locale: Locale.nl } },
+          where: {
+            featureId_locale: { featureId: 'feat-1', locale: Locale.nl },
+          },
         }),
       );
       expect(result).toEqual(translation);
@@ -1649,17 +2140,31 @@ describe('TourChildrenService', () => {
   describe('deleteFeatureTranslation', () => {
     it('throws BadRequestException when deleting the EN translation', async () => {
       await expect(
-        service.deleteFeatureTranslation('tour-1', 'feat-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteFeatureTranslation(
+          'tour-1',
+          'feat-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when translation row does not exist (P2025)', async () => {
       prisma.tourFeature.findFirst.mockResolvedValue({ id: 'feat-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.tourFeatureTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deleteFeatureTranslation('tour-1', 'feat-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteFeatureTranslation(
+          'tour-1',
+          'feat-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1671,11 +2176,19 @@ describe('TourChildrenService', () => {
       const loc = makeLocation();
       prisma.tourLocation.findMany.mockResolvedValue([loc]);
 
-      const result = await service.getLocations('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getLocations(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.tourLocation.findMany).toHaveBeenCalledWith({
         where: { tourId: 'tour-1' },
-        select: expect.objectContaining({ id: true, types: true, translations: expect.anything() }),
+        select: expect.objectContaining({
+          id: true,
+          types: true,
+          translations: expect.anything(),
+        }),
         orderBy: { displayOrder: 'asc' },
       });
       expect(result).toEqual([loc]);
@@ -1698,7 +2211,9 @@ describe('TourChildrenService', () => {
 
       expect(prisma.tourLocation.create).toHaveBeenCalled();
       expect(prisma.tourLocationTranslation.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ locale: 'en', title: 'Main dock' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ locale: 'en', title: 'Main dock' }),
+        }),
       );
       expect(result).toEqual(loc);
     });
@@ -1707,7 +2222,12 @@ describe('TourChildrenService', () => {
       toursService.assertOwnership.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        service.addLocation('tour-1', { types: ['START'], title: 'x' }, 'other', Role.TOUR_OPERATOR),
+        service.addLocation(
+          'tour-1',
+          { types: ['START'], title: 'x' },
+          'other',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -1719,7 +2239,11 @@ describe('TourChildrenService', () => {
       prisma.tourLocation.update.mockResolvedValue(updated);
 
       const result = await service.updateLocation(
-        'tour-1', 'loc-1', { latitude: 12.5, longitude: -69.0 }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'loc-1',
+        { latitude: 12.5, longitude: -69.0 },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourLocation.update).toHaveBeenCalledWith(
@@ -1732,7 +2256,13 @@ describe('TourChildrenService', () => {
       prisma.tourLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateLocation('tour-1', 'loc-99', {}, 'user-1', Role.TOUR_OPERATOR),
+        service.updateLocation(
+          'tour-1',
+          'loc-99',
+          {},
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1742,9 +2272,16 @@ describe('TourChildrenService', () => {
       prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
       prisma.tourLocation.delete.mockResolvedValue({});
 
-      const result = await service.removeLocation('tour-1', 'loc-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removeLocation(
+        'tour-1',
+        'loc-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
-      expect(prisma.tourLocation.delete).toHaveBeenCalledWith({ where: { id: 'loc-1' } });
+      expect(prisma.tourLocation.delete).toHaveBeenCalledWith({
+        where: { id: 'loc-1' },
+      });
       expect(result).toEqual({ message: 'Location removed successfully' });
     });
 
@@ -1752,7 +2289,12 @@ describe('TourChildrenService', () => {
       prisma.tourLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removeLocation('tour-1', 'loc-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removeLocation(
+          'tour-1',
+          'loc-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1760,16 +2302,28 @@ describe('TourChildrenService', () => {
   describe('upsertLocationTranslation', () => {
     it('upserts a title translation for a non-EN locale', async () => {
       prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
-      const translation = { locale: Locale.nl, title: 'Hoofdkade', shortDescription: null, isMachineTranslated: false };
+      const translation = {
+        locale: Locale.nl,
+        title: 'Hoofdkade',
+        shortDescription: null,
+        isMachineTranslated: false,
+      };
       prisma.tourLocationTranslation.upsert.mockResolvedValue(translation);
 
       const result = await service.upsertLocationTranslation(
-        'tour-1', 'loc-1', Locale.nl, { title: 'Hoofdkade' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'loc-1',
+        Locale.nl,
+        { title: 'Hoofdkade' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.tourLocationTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { locationId_locale: { locationId: 'loc-1', locale: Locale.nl } },
+          where: {
+            locationId_locale: { locationId: 'loc-1', locale: Locale.nl },
+          },
         }),
       );
       expect(result).toEqual(translation);
@@ -1779,17 +2333,31 @@ describe('TourChildrenService', () => {
   describe('deleteLocationTranslation', () => {
     it('throws BadRequestException when deleting the EN translation', async () => {
       await expect(
-        service.deleteLocationTranslation('tour-1', 'loc-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteLocationTranslation(
+          'tour-1',
+          'loc-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when translation row does not exist (P2025)', async () => {
       prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.tourLocationTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deleteLocationTranslation('tour-1', 'loc-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteLocationTranslation(
+          'tour-1',
+          'loc-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -1797,7 +2365,13 @@ describe('TourChildrenService', () => {
       prisma.tourLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.deleteLocationTranslation('tour-1', 'loc-99', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deleteLocationTranslation(
+          'tour-1',
+          'loc-99',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1809,11 +2383,19 @@ describe('TourChildrenService', () => {
       const pickup = makePickupLocation();
       prisma.pickupLocation.findMany.mockResolvedValue([pickup]);
 
-      const result = await service.getPickupLocations('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.getPickupLocations(
+        'tour-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
       expect(prisma.pickupLocation.findMany).toHaveBeenCalledWith({
         where: { tourId: 'tour-1' },
-        select: expect.objectContaining({ id: true, name: true, translations: expect.anything() }),
+        select: expect.objectContaining({
+          id: true,
+          name: true,
+          translations: expect.anything(),
+        }),
         orderBy: { displayOrder: 'asc' },
       });
       expect(result).toEqual([pickup]);
@@ -1837,7 +2419,10 @@ describe('TourChildrenService', () => {
       expect(prisma.pickupLocation.create).toHaveBeenCalled();
       expect(prisma.pickupLocationTranslation.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ locale: 'en', title: 'Marriott Beach Resort' }),
+          data: expect.objectContaining({
+            locale: 'en',
+            title: 'Marriott Beach Resort',
+          }),
         }),
       );
       expect(result).toEqual(pickup);
@@ -1858,7 +2443,9 @@ describe('TourChildrenService', () => {
 
       expect(prisma.pickupLocationTranslation.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ title: 'Marriott Beach Resort - lobby entrance' }),
+          data: expect.objectContaining({
+            title: 'Marriott Beach Resort - lobby entrance',
+          }),
         }),
       );
     });
@@ -1867,7 +2454,12 @@ describe('TourChildrenService', () => {
       toursService.assertOwnership.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        service.addPickupLocation('tour-1', { name: 'x' }, 'other', Role.TOUR_OPERATOR),
+        service.addPickupLocation(
+          'tour-1',
+          { name: 'x' },
+          'other',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -1879,7 +2471,11 @@ describe('TourChildrenService', () => {
       prisma.pickupLocation.update.mockResolvedValue(updated);
 
       const result = await service.updatePickupLocation(
-        'tour-1', 'pickup-1', { address: '99 Ocean Ave' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'pickup-1',
+        { address: '99 Ocean Ave' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.pickupLocation.update).toHaveBeenCalledWith(
@@ -1892,7 +2488,13 @@ describe('TourChildrenService', () => {
       prisma.pickupLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updatePickupLocation('tour-1', 'pickup-99', {}, 'user-1', Role.TOUR_OPERATOR),
+        service.updatePickupLocation(
+          'tour-1',
+          'pickup-99',
+          {},
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1902,17 +2504,31 @@ describe('TourChildrenService', () => {
       prisma.pickupLocation.findFirst.mockResolvedValue({ id: 'pickup-1' });
       prisma.pickupLocation.delete.mockResolvedValue({});
 
-      const result = await service.removePickupLocation('tour-1', 'pickup-1', 'user-1', Role.TOUR_OPERATOR);
+      const result = await service.removePickupLocation(
+        'tour-1',
+        'pickup-1',
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
 
-      expect(prisma.pickupLocation.delete).toHaveBeenCalledWith({ where: { id: 'pickup-1' } });
-      expect(result).toEqual({ message: 'Pickup location removed successfully' });
+      expect(prisma.pickupLocation.delete).toHaveBeenCalledWith({
+        where: { id: 'pickup-1' },
+      });
+      expect(result).toEqual({
+        message: 'Pickup location removed successfully',
+      });
     });
 
     it('throws NotFoundException when pickup location is not found', async () => {
       prisma.pickupLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.removePickupLocation('tour-1', 'pickup-99', 'user-1', Role.TOUR_OPERATOR),
+        service.removePickupLocation(
+          'tour-1',
+          'pickup-99',
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1929,13 +2545,22 @@ describe('TourChildrenService', () => {
       prisma.pickupLocationTranslation.upsert.mockResolvedValue(translation);
 
       const result = await service.upsertPickupLocationTranslation(
-        'tour-1', 'pickup-1', Locale.nl,
-        { title: 'Marriott strandresort' }, 'user-1', Role.TOUR_OPERATOR,
+        'tour-1',
+        'pickup-1',
+        Locale.nl,
+        { title: 'Marriott strandresort' },
+        'user-1',
+        Role.TOUR_OPERATOR,
       );
 
       expect(prisma.pickupLocationTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { pickupLocationId_locale: { pickupLocationId: 'pickup-1', locale: Locale.nl } },
+          where: {
+            pickupLocationId_locale: {
+              pickupLocationId: 'pickup-1',
+              locale: Locale.nl,
+            },
+          },
         }),
       );
       expect(result).toEqual(translation);
@@ -1945,17 +2570,31 @@ describe('TourChildrenService', () => {
   describe('deletePickupLocationTranslation', () => {
     it('throws BadRequestException when deleting the EN translation', async () => {
       await expect(
-        service.deletePickupLocationTranslation('tour-1', 'pickup-1', Locale.en, 'user-1', Role.TOUR_OPERATOR),
+        service.deletePickupLocationTranslation(
+          'tour-1',
+          'pickup-1',
+          Locale.en,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when translation row does not exist (P2025)', async () => {
       prisma.pickupLocation.findFirst.mockResolvedValue({ id: 'pickup-1' });
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.pickupLocationTranslation.delete.mockRejectedValue(p2025);
 
       await expect(
-        service.deletePickupLocationTranslation('tour-1', 'pickup-1', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deletePickupLocationTranslation(
+          'tour-1',
+          'pickup-1',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -1963,7 +2602,13 @@ describe('TourChildrenService', () => {
       prisma.pickupLocation.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.deletePickupLocationTranslation('tour-1', 'pickup-99', Locale.nl, 'user-1', Role.TOUR_OPERATOR),
+        service.deletePickupLocationTranslation(
+          'tour-1',
+          'pickup-99',
+          Locale.nl,
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });

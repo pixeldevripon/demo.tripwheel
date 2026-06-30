@@ -106,7 +106,10 @@ export class OctoException extends HttpException {
     );
   }
 
-  static unprocessable(errorMessage: string, context: OctoErrorContext = {}): OctoException {
+  static unprocessable(
+    errorMessage: string,
+    context: OctoErrorContext = {},
+  ): OctoException {
     return new OctoException(
       HttpStatus.UNPROCESSABLE_ENTITY,
       OCTO_ERROR.UNPROCESSABLE_ENTITY,
@@ -115,7 +118,10 @@ export class OctoException extends HttpException {
     );
   }
 
-  static badRequest(errorMessage: string, context: OctoErrorContext = {}): OctoException {
+  static badRequest(
+    errorMessage: string,
+    context: OctoErrorContext = {},
+  ): OctoException {
     return new OctoException(
       HttpStatus.BAD_REQUEST,
       OCTO_ERROR.BAD_REQUEST,
@@ -171,8 +177,8 @@ export class OctoExceptionFilter implements ExceptionFilter {
       const errorMessage =
         typeof body === 'string'
           ? body
-          : extractMessage((body as Record<string, unknown>)?.message) ??
-            exception.message;
+          : (extractMessage((body as Record<string, unknown>)?.message) ??
+            exception.message);
       res.status(status).json({
         error: codeForStatus(status),
         errorMessage,

@@ -34,11 +34,20 @@ export class BookingUnitItemResponseDto {
 /** Conversion payload for the browser Pixel (master booking_complete contract). */
 export class BookingConversionDto {
   @ApiProperty({ example: 'Purchase' }) event!: string;
-  @ApiProperty({ example: 'b1a2…', description: 'Dedupe id shared with the server CAPI event.' })
+  @ApiProperty({
+    example: 'b1a2…',
+    description: 'Dedupe id shared with the server CAPI event.',
+  })
   eventId!: string;
-  @ApiProperty({ example: 'EUR', description: 'Conversion value is always EUR (rule #22).' })
+  @ApiProperty({
+    example: 'EUR',
+    description: 'Conversion value is always EUR (rule #22).',
+  })
   currency!: string;
-  @ApiProperty({ example: '57.74', description: 'Conversion value = commission_amount in EUR.' })
+  @ApiProperty({
+    example: '57.74',
+    description: 'Conversion value = commission_amount in EUR.',
+  })
   value!: string;
   @ApiProperty() contentId!: string;
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
@@ -51,23 +60,33 @@ export class ThankYouResponseDto {
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
   @ApiProperty() tourId!: string;
   @ApiProperty({ example: 'Sunset Catamaran Cruise' }) tourName!: string;
-  @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!:
+    | string
+    | null;
   @ApiProperty({ example: '2026-07-01' }) localDate!: string;
-  @ApiPropertyOptional({ nullable: true, example: '09:00' }) startTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '09:00' }) startTime!:
+    | string
+    | null;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-01T13:00:00.000Z' })
   tourStartDateTime!: string | null;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-01T21:00:00.000Z' })
   tourEndDateTime!: string | null;
-  @ApiPropertyOptional({ nullable: true, example: 'Marriott Beach Resort — main lobby' })
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Marriott Beach Resort — main lobby',
+  })
   pickupAddress!: string | null;
   @ApiProperty({ example: 2 }) partySize!: number;
   @ApiProperty({ example: 'EUR' }) currency!: string;
   @ApiProperty({ example: '209.97' }) totalRetail!: string;
-  @ApiPropertyOptional({ nullable: true, example: 'ada@x.io' }) contactEmail!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'ada@x.io' }) contactEmail!:
+    | string
+    | null;
   @ApiPropertyOptional({
     type: BookingConversionDto,
     nullable: true,
-    description: 'Present only for a confirmed booking with a valid EUR commission; null otherwise.',
+    description:
+      'Present only for a confirmed booking with a valid EUR commission; null otherwise.',
   })
   conversion!: BookingConversionDto | null;
 }
@@ -92,9 +111,12 @@ export class BookingResponseDto {
   commissionRate!: string | null;
   @ApiPropertyOptional({ example: '47.99', nullable: true })
   commissionAmount!: string | null;
-  @ApiProperty({ enum: ['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL'] })
+  @ApiProperty({
+    enum: ['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL'],
+  })
   paymentModel!: string;
-  @ApiPropertyOptional({ nullable: true }) cancellationRefund!: CancellationRefund | null;
+  @ApiPropertyOptional({ nullable: true })
+  cancellationRefund!: CancellationRefund | null;
   @ApiProperty({ type: [BookingUnitItemResponseDto] })
   unitItems!: BookingUnitItemResponseDto[];
 }
@@ -115,7 +137,8 @@ export class ReserveItemDto {
 
   @ApiPropertyOptional({
     example: 8,
-    description: 'Traveler age (master child ages); enforced against the tour minimum age.',
+    description:
+      'Traveler age (master child ages); enforced against the tour minimum age.',
   })
   @IsOptional()
   @IsInt()
@@ -206,7 +229,10 @@ export class ReserveBookingDto {
   @Type(() => ReserveAddOnDto)
   addOns?: ReserveAddOnDto[];
 
-  @ApiPropertyOptional({ example: 30, description: 'Hold window (default 30, max 60).' })
+  @ApiPropertyOptional({
+    example: 30,
+    description: 'Hold window (default 30, max 60).',
+  })
   @IsOptional()
   @IsInt()
   @Min(5)
@@ -231,20 +257,25 @@ export class ReserveBookingDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: 'Figma checkout marketing opt-in ("Send me the good stuff...").',
+    description:
+      'Figma checkout marketing opt-in ("Send me the good stuff...").',
   })
   @IsOptional()
   @IsBoolean()
   newsletterOptIn?: boolean;
 
-  @ApiPropertyOptional({ example: 'SUMMER10', description: 'Promo code entered at checkout.' })
+  @ApiPropertyOptional({
+    example: 'SUMMER10',
+    description: 'Promo code entered at checkout.',
+  })
   @IsOptional()
   @IsString()
   couponCode?: string;
 
   @ApiPropertyOptional({
     example: '10.00',
-    description: 'Discount amount applied at checkout (currency = booking currency).',
+    description:
+      'Discount amount applied at checkout (currency = booking currency).',
   })
   @IsOptional()
   @IsNumber()
@@ -278,7 +309,8 @@ export class CancelBookingDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: 'Override the cancellation-window refund policy (admin/operator).',
+    description:
+      'Override the cancellation-window refund policy (admin/operator).',
   })
   @IsOptional()
   @IsBoolean()
@@ -286,7 +318,10 @@ export class CancelBookingDto {
 }
 
 export class ExtendBookingDto {
-  @ApiPropertyOptional({ example: 30, description: 'New hold window (default 30, max 60).' })
+  @ApiPropertyOptional({
+    example: 30,
+    description: 'New hold window (default 30, max 60).',
+  })
   @IsOptional()
   @IsInt()
   @Min(5)

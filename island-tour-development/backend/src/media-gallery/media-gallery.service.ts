@@ -254,4 +254,3 @@ export class MediaGalleryService {
     return { deleted, failed };
   }
 }
-

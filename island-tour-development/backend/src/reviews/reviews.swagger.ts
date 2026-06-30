@@ -33,7 +33,9 @@ export const ApiCreateReviewDocs = () =>
 
 export const ApiListReviewsDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'List approved reviews for a tour (public, paginated)' }),
+    ApiOperation({
+      summary: 'List approved reviews for a tour (public, paginated)',
+    }),
     ApiOkResponse({ type: ReviewResponseDto, isArray: true }),
   );
 
@@ -57,20 +59,27 @@ export const ApiMyReviewsDocs = () =>
 
 export const ApiModerationQueueDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Moderation queue (oldest-first, default PENDING)' }),
+    ApiOperation({
+      summary: 'Moderation queue (oldest-first, default PENDING)',
+    }),
     ApiOkResponse({ type: ReviewResponseDto, isArray: true }),
   );
 
 export const ApiGetReviewDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Get a review (approved is public; otherwise owner/operator/admin)' }),
+    ApiOperation({
+      summary:
+        'Get a review (approved is public; otherwise owner/operator/admin)',
+    }),
     ApiOkResponse({ type: ReviewResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 
 export const ApiModerateReviewDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Approve or reject a review (recomputes aggregates)' }),
+    ApiOperation({
+      summary: 'Approve or reject a review (recomputes aggregates)',
+    }),
     ApiOkResponse({ type: ReviewResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
@@ -78,7 +87,9 @@ export const ApiModerateReviewDocs = () =>
 
 export const ApiRespondReviewDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Operator response to a review (tour owner or admin)' }),
+    ApiOperation({
+      summary: 'Operator response to a review (tour owner or admin)',
+    }),
     ApiOkResponse({ type: ReviewResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
     ApiForbiddenResponse({ type: ForbiddenErrorDto }),

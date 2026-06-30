@@ -22,7 +22,10 @@ const commonErrors = [
   ApiResponse({ status: 401, type: UnauthorizedErrorDto }),
   serverError,
 ];
-const adminErrors = [...commonErrors, ApiResponse({ status: 403, type: ForbiddenErrorDto })];
+const adminErrors = [
+  ...commonErrors,
+  ApiResponse({ status: 403, type: ForbiddenErrorDto }),
+];
 
 // ── Dictionary ────────────────────────────────────────────────────────────────
 
@@ -56,17 +59,24 @@ export function ApiCreateAttributeDefinitionDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Create an attribute definition (Admin)',
-      description: 'allowedValues is required for ENUM / ENUM_MULTI. `appliesToCategories` holds category slugs ([] = global).',
+      description:
+        'allowedValues is required for ENUM / ENUM_MULTI. `appliesToCategories` holds category slugs ([] = global).',
     }),
     ApiResponse({ status: 201, type: AttributeDefinitionResponseDto }),
-    ApiResponse({ status: 409, description: 'Key already exists', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Key already exists',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
 
 export function ApiUpdateAttributeDefinitionDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Update an attribute definition (Admin). Key is immutable.' }),
+    ApiOperation({
+      summary: 'Update an attribute definition (Admin). Key is immutable.',
+    }),
     ApiParam({ name: 'key', example: 'boat_type' }),
     ApiResponse({ status: 200, type: AttributeDefinitionResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -76,7 +86,10 @@ export function ApiUpdateAttributeDefinitionDocs() {
 
 export function ApiDeleteAttributeDefinitionDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Deactivate an attribute definition (Admin)', description: 'Soft - existing tour values are preserved.' }),
+    ApiOperation({
+      summary: 'Deactivate an attribute definition (Admin)',
+      description: 'Soft - existing tour values are preserved.',
+    }),
     ApiParam({ name: 'key', example: 'boat_type' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -97,7 +110,11 @@ export function ApiGetFiltersDocs() {
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
     ApiParam({ name: 'categorySlug', example: 'boat-tours' }),
     ApiResponse({ status: 200, type: FiltersResponseDto }),
-    ApiResponse({ status: 404, description: 'Destination/category not found', type: NotFoundErrorDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination/category not found',
+      type: NotFoundErrorDto,
+    }),
     ...publicErrors,
   );
 }
@@ -106,7 +123,9 @@ export function ApiGetFiltersDocs() {
 
 export function ApiGetTourAttributesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List a tour’s attribute values (Operator/Admin)' }),
+    ApiOperation({
+      summary: 'List a tour’s attribute values (Operator/Admin)',
+    }),
     ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiResponse({ status: 200, type: [TourAttributeResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -124,14 +143,20 @@ export function ApiSetTourAttributesDocs() {
     }),
     ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiResponse({ status: 200, type: [TourAttributeResponseDto] }),
-    ApiResponse({ status: 400, description: 'Unknown key or invalid value', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Unknown key or invalid value',
+      type: BadRequestErrorDto,
+    }),
     ...adminErrors,
   );
 }
 
 export function ApiDeleteTourAttributeDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Remove one attribute from a tour (Operator owner / Admin)' }),
+    ApiOperation({
+      summary: 'Remove one attribute from a tour (Operator owner / Admin)',
+    }),
     ApiParam({ name: 'tourId', description: 'Tour UUID' }),
     ApiParam({ name: 'key', example: 'boat_type' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),

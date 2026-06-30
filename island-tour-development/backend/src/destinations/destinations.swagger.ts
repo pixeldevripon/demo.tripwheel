@@ -29,14 +29,26 @@ const serverError = ApiResponse({ status: 500, type: InternalServerErrorDto });
 const publicErrors = [serverError];
 
 const commonErrors = [
-  ApiResponse({ status: 400, description: 'Bad Request', type: BadRequestErrorDto }),
-  ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto }),
+  ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: BadRequestErrorDto,
+  }),
+  ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: UnauthorizedErrorDto,
+  }),
   serverError,
 ];
 
 const adminErrors = [
   ...commonErrors,
-  ApiResponse({ status: 403, description: 'Forbidden', type: ForbiddenErrorDto }),
+  ApiResponse({
+    status: 403,
+    description: 'Forbidden',
+    type: ForbiddenErrorDto,
+  }),
 ];
 
 const localeParam = ApiQuery({
@@ -44,19 +56,25 @@ const localeParam = ApiQuery({
   required: false,
   enum: Locale,
   example: 'en',
-  description: 'Content locale - falls back to English when translation is missing',
+  description:
+    'Content locale - falls back to English when translation is missing',
 });
 
 // ── Public list / lookup ──────────────────────────────────────────────────────
 
 export function ApiGetAllDestinationsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all destinations with optional filters (public)' }),
+    ApiOperation({
+      summary: 'List all destinations with optional filters (public)',
+    }),
     ApiQuery({ name: 'isActive', required: false, type: Boolean }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     localeParam,
-    ApiResponse({ status: 200, type: PaginatedLocalizedDestinationsResponseDto }),
+    ApiResponse({
+      status: 200,
+      type: PaginatedLocalizedDestinationsResponseDto,
+    }),
     ...publicErrors,
   );
 }
@@ -105,7 +123,11 @@ export function ApiCreateDestinationDocs() {
         'timezone, currency, language, galleryImages, ogImage, parentDestinationId.',
     }),
     ApiResponse({ status: 201, type: DestinationResponseDto }),
-    ApiResponse({ status: 409, description: 'Slug already exists', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Slug already exists',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
@@ -134,8 +156,15 @@ export function ApiForceDeleteDestinationDocs() {
         'Hard delete. Removes the destination and all related data (hubs, translations, FAQs, page content, slug registry rows). Seeded destinations are protected. This action is irreversible.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
-    ApiResponse({ status: 200, description: 'Destination permanently deleted' }),
-    ApiResponse({ status: 403, description: 'Seeded destination', type: ForbiddenErrorDto }),
+    ApiResponse({
+      status: 200,
+      description: 'Destination permanently deleted',
+    }),
+    ApiResponse({
+      status: 403,
+      description: 'Seeded destination',
+      type: ForbiddenErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -150,9 +179,17 @@ export function ApiDeleteDestinationDocs() {
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiResponse({ status: 200, type: DeleteDestinationResponseDto }),
-    ApiResponse({ status: 403, description: 'Seeded destination', type: ForbiddenErrorDto }),
+    ApiResponse({
+      status: 403,
+      description: 'Seeded destination',
+      type: ForbiddenErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
-    ApiResponse({ status: 409, description: 'Destination has active trips', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Destination has active trips',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
@@ -174,7 +211,9 @@ export function ApiGetAllTranslationsDocs() {
 
 export function ApiGetTranslationsByLocaleDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get translations for a specific locale (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Get translations for a specific locale (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: DestinationTranslationEntryDto }),
@@ -220,7 +259,8 @@ export function ApiGetPageContentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get editorial page content for a destination (public)',
-      description: 'Returns about text, meta title, and meta description for the requested locale.',
+      description:
+        'Returns about text, meta title, and meta description for the requested locale.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     localeParam,
@@ -251,10 +291,16 @@ export function ApiGetFaqsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get active FAQs for a destination (public)',
-      description: 'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
+      description:
+        'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
-    ApiQuery({ name: 'locale', required: false, enum: Locale, example: Locale.en }),
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      example: Locale.en,
+    }),
     ApiResponse({ status: 200, type: [FaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
@@ -263,7 +309,9 @@ export function ApiGetFaqsDocs() {
 
 export function ApiCreateFaqDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Create a FAQ item for a destination (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Create a FAQ item for a destination (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiResponse({ status: 201, type: FaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),

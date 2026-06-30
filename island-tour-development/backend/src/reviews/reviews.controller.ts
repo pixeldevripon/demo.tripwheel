@@ -54,7 +54,10 @@ export class ReviewsController {
 
   @Post()
   @ApiCreateReviewDocs()
-  create(@Body() dto: CreateReviewDto, @AuthenticatedUser() user: TypedAuthUser) {
+  create(
+    @Body() dto: CreateReviewDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.reviews.create(dto, user.id);
   }
 
@@ -123,6 +126,9 @@ export class ReviewsController {
   @Public()
   @ApiGetReviewDocs()
   get(@Param('id') id: string, @AuthenticatedUser() user?: TypedAuthUser) {
-    return this.reviews.getById(id, user ? { id: user.id, role: user.role } : undefined);
+    return this.reviews.getById(
+      id,
+      user ? { id: user.id, role: user.role } : undefined,
+    );
   }
 }

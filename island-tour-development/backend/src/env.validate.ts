@@ -28,7 +28,6 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
   },
 };
 
-
 const OPTIONAL: Record<string, (v: string) => string | null> = {
   ADMIN_PASSWORD: (v) => {
     if (
@@ -49,7 +48,9 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   // Payments & tracking (Phase 6). Stripe keys live in the DB, not here.
   FX_USD_TO_EUR: (v) => {
     const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? null : 'must be a positive number (e.g. 0.92)';
+    return Number.isFinite(n) && n > 0
+      ? null
+      : 'must be a positive number (e.g. 0.92)';
   },
   META_PIXEL_ID: () => null,
   META_CAPI_TOKEN: () => null,
@@ -113,7 +114,6 @@ export function validateEnv(): void {
       'UPSTASH_REDIS_URL must be a rediss:// URL for BullMQ, not a https:// REST URL.',
     );
   }
-
 
   if (errors.length > 0) {
     throw new Error(

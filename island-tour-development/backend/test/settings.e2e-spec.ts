@@ -52,7 +52,7 @@ describe('Settings Rate Limiting (e2e)', () => {
     for (let i = 0; i < limit; i++) {
       const req = request(app.getHttpServer())[method](endpoint);
       if (method !== 'get') req.send(payload);
-      
+
       await req.expect((res) => {
         expect(res.status).not.toBe(429);
       });
@@ -64,46 +64,49 @@ describe('Settings Rate Limiting (e2e)', () => {
   }
 
   describe('Core Site & SEO (Global Limits - 3 req/min)', () => {
-    it('GET /settings/site is throttled after 3 requests', () => 
-      testRateLimit('get', '/api/v1/settings/site', 3)
-    );
+    it('GET /settings/site is throttled after 3 requests', () =>
+      testRateLimit('get', '/api/v1/settings/site', 3));
 
-    it('PATCH /settings/site is throttled after 3 requests', () => 
-      testRateLimit('patch', '/api/v1/settings/site', 3, { siteName: 'Test' })
-    );
+    it('PATCH /settings/site is throttled after 3 requests', () =>
+      testRateLimit('patch', '/api/v1/settings/site', 3, { siteName: 'Test' }));
 
-    it('GET /settings/seo is throttled after 3 requests', () => 
-      testRateLimit('get', '/api/v1/settings/seo', 3)
-    );
+    it('GET /settings/seo is throttled after 3 requests', () =>
+      testRateLimit('get', '/api/v1/settings/seo', 3));
   });
 
   describe('Stripe Configuration (Specific Override - 5 req/min)', () => {
-    it('POST /settings/payment/stripe is throttled after 5 requests', () => 
-      testRateLimit('post', '/api/v1/settings/payment/stripe', 5, { secretKey: 'sk_test' })
-    );
+    it('POST /settings/payment/stripe is throttled after 5 requests', () =>
+      testRateLimit('post', '/api/v1/settings/payment/stripe', 5, {
+        secretKey: 'sk_test',
+      }));
 
-    it('PATCH /settings/payment/stripe is throttled after 5 requests', () => 
-      testRateLimit('patch', '/api/v1/settings/payment/stripe', 5, { publishableKey: 'pk_test' })
-    );
+    it('PATCH /settings/payment/stripe is throttled after 5 requests', () =>
+      testRateLimit('patch', '/api/v1/settings/payment/stripe', 5, {
+        publishableKey: 'pk_test',
+      }));
   });
 
   describe('Mollie Configuration (Specific Override - 5 req/min)', () => {
-    it('POST /settings/payment/mollie is throttled after 5 requests', () => 
-      testRateLimit('post', '/api/v1/settings/payment/mollie', 5, { apiKey: 'key_1' })
-    );
+    it('POST /settings/payment/mollie is throttled after 5 requests', () =>
+      testRateLimit('post', '/api/v1/settings/payment/mollie', 5, {
+        apiKey: 'key_1',
+      }));
 
-    it('PATCH /settings/payment/mollie is throttled after 5 requests', () => 
-      testRateLimit('patch', '/api/v1/settings/payment/mollie', 5, { apiKey: 'key_2' })
-    );
+    it('PATCH /settings/payment/mollie is throttled after 5 requests', () =>
+      testRateLimit('patch', '/api/v1/settings/payment/mollie', 5, {
+        apiKey: 'key_2',
+      }));
   });
 
   describe('Company Profile (Specific Override - 10 req/min)', () => {
-    it('POST /api/company is throttled after 10 requests', () => 
-      testRateLimit('post', '/api/v1/settings/company', 10, { companyName: 'Name' })
-    );
+    it('POST /api/company is throttled after 10 requests', () =>
+      testRateLimit('post', '/api/v1/settings/company', 10, {
+        companyName: 'Name',
+      }));
 
-    it('PATCH /api/company is throttled after 10 requests', () => 
-      testRateLimit('patch', '/api/v1/settings/company', 10, { companyEmail: 'a@b.com' })
-    );
+    it('PATCH /api/company is throttled after 10 requests', () =>
+      testRateLimit('patch', '/api/v1/settings/company', 10, {
+        companyEmail: 'a@b.com',
+      }));
   });
 });

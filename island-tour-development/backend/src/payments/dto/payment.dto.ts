@@ -14,14 +14,21 @@ export class PaymentIntentResponseDto {
 
   @ApiPropertyOptional({
     example: 'pi_3Q…_secret_abc',
-    description: 'Stripe PaymentIntent client secret - hand to Stripe.js to collect the card.',
+    description:
+      'Stripe PaymentIntent client secret - hand to Stripe.js to collect the card.',
   })
   clientSecret?: string;
 
-  @ApiPropertyOptional({ example: 'pk_live_…', description: 'Stripe publishable key for Stripe.js.' })
+  @ApiPropertyOptional({
+    example: 'pk_live_…',
+    description: 'Stripe publishable key for Stripe.js.',
+  })
   publishableKey?: string;
 
-  @ApiPropertyOptional({ example: '41.99', description: 'Amount charged now, in the booking currency.' })
+  @ApiPropertyOptional({
+    example: '41.99',
+    description: 'Amount charged now, in the booking currency.',
+  })
   amount?: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.EUR })
@@ -30,7 +37,10 @@ export class PaymentIntentResponseDto {
   @ApiPropertyOptional({ enum: PaymentKind, example: PaymentKind.DEPOSIT })
   kind?: PaymentKind;
 
-  @ApiPropertyOptional({ enum: PaymentStatus, example: PaymentStatus.REQUIRES_PAYMENT })
+  @ApiPropertyOptional({
+    enum: PaymentStatus,
+    example: PaymentStatus.REQUIRES_PAYMENT,
+  })
   status?: PaymentStatus;
 }
 
@@ -43,7 +53,10 @@ export class WebhookAckDto {
 
 /** Mollie posts only the payment id to its webhook (form-urlencoded `id`). */
 export class MollieWebhookDto {
-  @ApiProperty({ example: 'tr_WDqYK6vllg', description: 'Mollie payment/object id.' })
+  @ApiProperty({
+    example: 'tr_WDqYK6vllg',
+    description: 'Mollie payment/object id.',
+  })
   @IsString()
   id!: string;
 }

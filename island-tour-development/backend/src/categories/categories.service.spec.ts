@@ -95,15 +95,17 @@ function createMockPrismaService() {
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
 
-function makeCategoryRecord(overrides: Partial<{
-  id: string;
-  name: string;
-  slug: string;
-  isActive: boolean;
-  isSeeded: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> = {}) {
+function makeCategoryRecord(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    isSeeded: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {},
+) {
   return {
     id: 'cat-1',
     name: 'Boat Tours',
@@ -116,14 +118,16 @@ function makeCategoryRecord(overrides: Partial<{
   };
 }
 
-function makeFaqRecord(overrides: Partial<{
-  id: string;
-  question: string;
-  answer: string;
-  displayOrder: number;
-  isActive: boolean;
-  locale: Locale;
-}> = {}) {
+function makeFaqRecord(
+  overrides: Partial<{
+    id: string;
+    question: string;
+    answer: string;
+    displayOrder: number;
+    isActive: boolean;
+    locale: Locale;
+  }> = {},
+) {
   return {
     id: 'faq-1',
     question: 'What is included?',
@@ -135,14 +139,16 @@ function makeFaqRecord(overrides: Partial<{
   };
 }
 
-function makeTranslationRecord(overrides: Partial<{
-  locale: Locale;
-  name: string | null;
-  overview: string | null;
-  h1Override: string | null;
-  breadcrumbLabel: string | null;
-  isMachineTranslated: boolean;
-}> = {}) {
+function makeTranslationRecord(
+  overrides: Partial<{
+    locale: Locale;
+    name: string | null;
+    overview: string | null;
+    h1Override: string | null;
+    breadcrumbLabel: string | null;
+    isMachineTranslated: boolean;
+  }> = {},
+) {
   return {
     locale: Locale.nl,
     name: 'Boottochten',
@@ -182,8 +188,8 @@ describe('CategoryService', () => {
     jest.clearAllMocks();
 
     // Re-apply default $transaction behaviour after clearAllMocks resets it
-    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
   });
 
@@ -192,7 +198,10 @@ describe('CategoryService', () => {
   describe('getAll', () => {
     it('returns paginated results with correct total, page, limit, and data', async () => {
       const cats = [
-        { ...makeCategoryRecord(), translations: [{ name: null, isMachineTranslated: false }] },
+        {
+          ...makeCategoryRecord(),
+          translations: [{ name: null, isMachineTranslated: false }],
+        },
       ];
       prisma.category.count.mockResolvedValue(1);
       prisma.category.findMany.mockResolvedValue(cats);
@@ -210,10 +219,17 @@ describe('CategoryService', () => {
       prisma.category.count.mockResolvedValue(0);
       prisma.category.findMany.mockResolvedValue([]);
 
-      const query: CategoryQueryDto = { isActive: true, page: 1, limit: 20, locale: Locale.en };
+      const query: CategoryQueryDto = {
+        isActive: true,
+        page: 1,
+        limit: 20,
+        locale: Locale.en,
+      };
       await service.getAll(query);
 
-      expect(prisma.category.count).toHaveBeenCalledWith({ where: { isActive: true } });
+      expect(prisma.category.count).toHaveBeenCalledWith({
+        where: { isActive: true },
+      });
       expect(prisma.category.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { isActive: true } }),
       );
@@ -391,17 +407,17 @@ describe('CategoryService', () => {
     it('throws NotFoundException when slug does not match any category', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getBySlug('nonexistent-slug', Locale.en)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getBySlug('nonexistent-slug', Locale.en),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('includes the slug in the NotFoundException message', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getBySlug('missing-slug', Locale.en)).rejects.toThrow(
-        'missing-slug',
-      );
+      await expect(
+        service.getBySlug('missing-slug', Locale.en),
+      ).rejects.toThrow('missing-slug');
     });
 
     it('queries Prisma with where: { slug } and the requested locale for translations', async () => {
@@ -450,13 +466,17 @@ describe('CategoryService', () => {
     it('throws NotFoundException when ID does not match any category', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('bad-id', Locale.en)).rejects.toThrow(NotFoundException);
+      await expect(service.getById('bad-id', Locale.en)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('includes the category id in the NotFoundException message', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('missing-id', Locale.en)).rejects.toThrow('missing-id');
+      await expect(service.getById('missing-id', Locale.en)).rejects.toThrow(
+        'missing-id',
+      );
     });
   });
 
@@ -531,7 +551,9 @@ describe('CategoryService', () => {
     it('throws ConflictException on Prisma P2002 (duplicate slug)', async () => {
       prisma.category.create.mockRejectedValue(makePrismaError('P2002'));
 
-      await expect(service.create(dto, adminId)).rejects.toThrow(ConflictException);
+      await expect(service.create(dto, adminId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('re-throws non-P2002 Prisma errors as-is', async () => {
@@ -565,8 +587,13 @@ describe('CategoryService', () => {
       // 1st findMany → pre-validation "others" (none); 2nd findMany → renameEntitySlug destinations.
       prisma.slugRegistry.findMany
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ destinationSlug: 'curacao' }, { destinationSlug: 'aruba' }]);
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ slug: 'new-slug' }));
+        .mockResolvedValueOnce([
+          { destinationSlug: 'curacao' },
+          { destinationSlug: 'aruba' },
+        ]);
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ slug: 'new-slug' }),
+      );
 
       await service.update('cat-1', { slug: 'new-slug' }, adminId);
 
@@ -577,16 +604,28 @@ describe('CategoryService', () => {
       // One 301 redirect per destination the category lives in.
       expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
+          where: {
+            destinationSlug_fromSlug: {
+              destinationSlug: 'curacao',
+              fromSlug: 'old-slug',
+            },
+          },
         }),
       );
       expect(prisma.slugRedirect.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { destinationSlug_fromSlug: { destinationSlug: 'aruba', fromSlug: 'old-slug' } },
+          where: {
+            destinationSlug_fromSlug: {
+              destinationSlug: 'aruba',
+              fromSlug: 'old-slug',
+            },
+          },
         }),
       );
       expect(prisma.category.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: 'new-slug' }),
+        }),
       );
     });
 
@@ -594,7 +633,9 @@ describe('CategoryService', () => {
       prisma.category.findUnique
         .mockResolvedValueOnce({ slug: 'old-slug' })
         .mockResolvedValueOnce({ id: 'cat-other' }); // 'boat-tours' already exists
-      await expect(service.update('cat-1', { slug: 'boat-tours' }, adminId)).rejects.toThrow(ConflictException);
+      await expect(
+        service.update('cat-1', { slug: 'boat-tours' }, adminId),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('updates category name inside a $transaction', async () => {
@@ -625,7 +666,9 @@ describe('CategoryService', () => {
     });
 
     it('updates slugRegistry.updateMany when isActive is included in dto', async () => {
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ isActive: false }),
+      );
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       const dto: UpdateCategoryDto = { isActive: false };
@@ -638,7 +681,9 @@ describe('CategoryService', () => {
     });
 
     it('does NOT call slugRegistry.updateMany when isActive is not in dto', async () => {
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ name: 'New Name' }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ name: 'New Name' }),
+      );
 
       const dto: UpdateCategoryDto = { name: 'New Name' };
       await service.update('cat-1', dto, adminId);
@@ -650,7 +695,9 @@ describe('CategoryService', () => {
       prisma.category.update.mockRejectedValue(makePrismaError('P2025'));
 
       const dto: UpdateCategoryDto = { name: 'Ghost' };
-      await expect(service.update('nonexistent', dto, adminId)).rejects.toThrow(NotFoundException);
+      await expect(service.update('nonexistent', dto, adminId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('re-throws non-P2025 Prisma errors as-is', async () => {
@@ -658,7 +705,9 @@ describe('CategoryService', () => {
       prisma.category.update.mockRejectedValue(dbError);
 
       const dto: UpdateCategoryDto = { name: 'X' };
-      await expect(service.update('cat-1', dto, adminId)).rejects.toThrow(dbError);
+      await expect(service.update('cat-1', dto, adminId)).rejects.toThrow(
+        dbError,
+      );
     });
   });
 
@@ -670,28 +719,42 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category does not exist', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', adminId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', adminId)).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when category isSeeded = true', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: true }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: true }),
+      );
 
-      await expect(service.remove('cat-1', adminId)).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('cat-1', adminId)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when active non-draft trips are assigned to the category', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: false }),
+      );
       prisma.tour.count.mockResolvedValue(2);
 
-      await expect(service.remove('cat-1', adminId)).rejects.toThrow(ConflictException);
+      await expect(service.remove('cat-1', adminId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('soft-deletes category (sets isActive = false) when no trips', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: false }),
+      );
       prisma.tour.count.mockResolvedValue(0);
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ isActive: false }),
+      );
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('cat-1', adminId);
@@ -705,9 +768,13 @@ describe('CategoryService', () => {
     });
 
     it('sets all slug_registry rows for the category to isActive = false', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: false }),
+      );
       prisma.tour.count.mockResolvedValue(0);
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ isActive: false }),
+      );
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('cat-1', adminId);
@@ -719,9 +786,13 @@ describe('CategoryService', () => {
     });
 
     it('returns success message on happy path', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: false }),
+      );
       prisma.tour.count.mockResolvedValue(0);
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ isActive: false }),
+      );
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.remove('cat-1', adminId);
@@ -730,9 +801,13 @@ describe('CategoryService', () => {
     });
 
     it('checks trip count using correct TourStatus filter (not: DRAFT, isActive: true)', async () => {
-      prisma.category.findUnique.mockResolvedValue(makeCategoryRecord({ isSeeded: false }));
+      prisma.category.findUnique.mockResolvedValue(
+        makeCategoryRecord({ isSeeded: false }),
+      );
       prisma.tour.count.mockResolvedValue(0);
-      prisma.category.update.mockResolvedValue(makeCategoryRecord({ isActive: false }));
+      prisma.category.update.mockResolvedValue(
+        makeCategoryRecord({ isActive: false }),
+      );
       prisma.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('cat-1', adminId);
@@ -753,12 +828,17 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getAllTranslations('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.getAllTranslations('bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns all translation rows for the category', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      const translations = [makeTranslationRecord(), makeTranslationRecord({ locale: Locale.es })];
+      const translations = [
+        makeTranslationRecord(),
+        makeTranslationRecord({ locale: Locale.es }),
+      ];
       prisma.categoryTranslation.findMany.mockResolvedValue(translations);
 
       const result = await service.getAllTranslations('cat-1');
@@ -785,9 +865,9 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getTranslationsByLocale('bad-id', Locale.nl)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getTranslationsByLocale('bad-id', Locale.nl),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('returns the translation when found for the given locale', async () => {
@@ -822,7 +902,10 @@ describe('CategoryService', () => {
   describe('upsertTranslations', () => {
     const adminId = 'admin-1';
     const dto: UpsertCategoryTranslationsDto = {
-      fields: { name: 'Boottochten', overview: 'Ontdek de mooiste boottochten.' },
+      fields: {
+        name: 'Boottochten',
+        overview: 'Ontdek de mooiste boottochten.',
+      },
       isMachineTranslated: false,
     };
 
@@ -843,7 +926,9 @@ describe('CategoryService', () => {
 
       expect(prisma.categoryTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { categoryId_locale: { categoryId: 'cat-1', locale: Locale.nl } },
+          where: {
+            categoryId_locale: { categoryId: 'cat-1', locale: Locale.nl },
+          },
           create: expect.objectContaining({
             categoryId: 'cat-1',
             locale: Locale.nl,
@@ -860,7 +945,9 @@ describe('CategoryService', () => {
 
     it('uses isMachineTranslated = false when not provided in dto', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.categoryTranslation.upsert.mockResolvedValue(makeTranslationRecord());
+      prisma.categoryTranslation.upsert.mockResolvedValue(
+        makeTranslationRecord(),
+      );
 
       const dtoWithout: UpsertCategoryTranslationsDto = {
         fields: { name: 'X' },
@@ -879,7 +966,12 @@ describe('CategoryService', () => {
       const upserted = makeTranslationRecord({ locale: Locale.nl });
       prisma.categoryTranslation.upsert.mockResolvedValue(upserted);
 
-      const result = await service.upsertTranslations('cat-1', Locale.nl, dto, adminId);
+      const result = await service.upsertTranslations(
+        'cat-1',
+        Locale.nl,
+        dto,
+        adminId,
+      );
 
       expect(result).toEqual(upserted);
     });
@@ -909,7 +1001,9 @@ describe('CategoryService', () => {
 
     it('throws NotFoundException when no translation row exists for the locale', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.categoryTranslation.delete.mockRejectedValue(makePrismaError('P2025'));
+      prisma.categoryTranslation.delete.mockRejectedValue(
+        makePrismaError('P2025'),
+      );
 
       await expect(
         service.deleteTranslations('cat-1', Locale.nl, adminId),
@@ -918,20 +1012,30 @@ describe('CategoryService', () => {
 
     it('deletes the translation row on success', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.categoryTranslation.delete.mockResolvedValue(makeTranslationRecord());
+      prisma.categoryTranslation.delete.mockResolvedValue(
+        makeTranslationRecord(),
+      );
 
       await service.deleteTranslations('cat-1', Locale.nl, adminId);
 
       expect(prisma.categoryTranslation.delete).toHaveBeenCalledWith({
-        where: { categoryId_locale: { categoryId: 'cat-1', locale: Locale.nl } },
+        where: {
+          categoryId_locale: { categoryId: 'cat-1', locale: Locale.nl },
+        },
       });
     });
 
     it('returns success message on happy path', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.categoryTranslation.delete.mockResolvedValue(makeTranslationRecord());
+      prisma.categoryTranslation.delete.mockResolvedValue(
+        makeTranslationRecord(),
+      );
 
-      const result = await service.deleteTranslations('cat-1', Locale.nl, adminId);
+      const result = await service.deleteTranslations(
+        'cat-1',
+        Locale.nl,
+        adminId,
+      );
 
       expect(result.message).toContain(String(Locale.nl));
     });
@@ -953,12 +1057,19 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getPageContent('bad-id', Locale.en)).rejects.toThrow(NotFoundException);
+      await expect(service.getPageContent('bad-id', Locale.en)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns page content row when it exists for the locale', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      const row = { locale: Locale.nl, aboutText: 'Over boottochten', metaTitle: 'Title', metaDescription: 'Desc' };
+      const row = {
+        locale: Locale.nl,
+        aboutText: 'Over boottochten',
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+      };
       prisma.categoryPageContent.findUnique.mockResolvedValue(row);
 
       const result = await service.getPageContent('cat-1', Locale.nl);
@@ -972,7 +1083,12 @@ describe('CategoryService', () => {
 
       const result = await service.getPageContent('cat-1', Locale.nl);
 
-      expect(result).toEqual({ locale: Locale.nl, aboutText: null, metaTitle: null, metaDescription: null });
+      expect(result).toEqual({
+        locale: Locale.nl,
+        aboutText: null,
+        metaTitle: null,
+        metaDescription: null,
+      });
     });
   });
 
@@ -1003,7 +1119,9 @@ describe('CategoryService', () => {
 
       expect(prisma.categoryPageContent.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { categoryId_locale: { categoryId: 'cat-1', locale: Locale.en } },
+          where: {
+            categoryId_locale: { categoryId: 'cat-1', locale: Locale.en },
+          },
           create: expect.objectContaining({
             categoryId: 'cat-1',
             locale: Locale.en,
@@ -1019,7 +1137,12 @@ describe('CategoryService', () => {
       const upserted = { locale: Locale.en, ...dto };
       prisma.categoryPageContent.upsert.mockResolvedValue(upserted);
 
-      const result = await service.upsertPageContent('cat-1', Locale.en, dto, adminId);
+      const result = await service.upsertPageContent(
+        'cat-1',
+        Locale.en,
+        dto,
+        adminId,
+      );
 
       expect(result).toEqual(upserted);
     });
@@ -1031,12 +1154,17 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getFaqs('bad-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.getFaqs('bad-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns all FAQs when no locale filter is provided', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      const faqs = [makeFaqRecord(), makeFaqRecord({ locale: Locale.nl, id: 'faq-2' })];
+      const faqs = [
+        makeFaqRecord(),
+        makeFaqRecord({ locale: Locale.nl, id: 'faq-2' }),
+      ];
       prisma.faq.findMany.mockResolvedValue(faqs);
 
       const query: FaqLocaleQueryDto = {};
@@ -1056,7 +1184,9 @@ describe('CategoryService', () => {
 
     it('filters by locale when locale is provided in query', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.faq.findMany.mockResolvedValue([makeFaqRecord({ locale: Locale.nl })]);
+      prisma.faq.findMany.mockResolvedValue([
+        makeFaqRecord({ locale: Locale.nl }),
+      ]);
 
       const query: FaqLocaleQueryDto = { locale: Locale.nl };
       await service.getFaqs('cat-1', query);
@@ -1093,7 +1223,9 @@ describe('CategoryService', () => {
     it('throws NotFoundException when category not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.createFaq('bad-id', dto, adminId)).rejects.toThrow(NotFoundException);
+      await expect(service.createFaq('bad-id', dto, adminId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('creates FAQ with pageType = FAQ_PAGE_TYPE.CATEGORY and the category entityId', async () => {
@@ -1149,25 +1281,32 @@ describe('CategoryService', () => {
 
   describe('updateFaq', () => {
     const adminId = 'admin-1';
-    const dto: UpdateFaqDto = { question: 'Is food included?', answer: 'Yes, light snacks.' };
+    const dto: UpdateFaqDto = {
+      question: 'Is food included?',
+      answer: 'Yes, light snacks.',
+    };
 
     it('throws NotFoundException when category not found (faq.findFirst returns null)', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.updateFaq('cat-1', 'faq-1', dto, adminId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateFaq('cat-1', 'faq-1', dto, adminId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('looks up FAQ using categoryId, pageType, and faqId together', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.updateFaq('cat-1', 'faq-1', dto, adminId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateFaq('cat-1', 'faq-1', dto, adminId),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith({
-        where: { id: 'faq-1', pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: 'cat-1' },
+        where: {
+          id: 'faq-1',
+          pageType: FAQ_PAGE_TYPE.CATEGORY,
+          entityId: 'cat-1',
+        },
       });
     });
 
@@ -1205,17 +1344,25 @@ describe('CategoryService', () => {
     it('throws NotFoundException when FAQ not found for the category', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteFaq('cat-1', 'faq-1', adminId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.deleteFaq('cat-1', 'faq-1', adminId),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.faq.delete).not.toHaveBeenCalled();
     });
 
     it('looks up FAQ using categoryId, pageType, and faqId', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteFaq('cat-1', 'faq-99', adminId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.deleteFaq('cat-1', 'faq-99', adminId),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith({
-        where: { id: 'faq-99', pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: 'cat-1' },
+        where: {
+          id: 'faq-99',
+          pageType: FAQ_PAGE_TYPE.CATEGORY,
+          entityId: 'cat-1',
+        },
       });
     });
 
@@ -1225,7 +1372,9 @@ describe('CategoryService', () => {
 
       await service.deleteFaq('cat-1', 'faq-1', adminId);
 
-      expect(prisma.faq.delete).toHaveBeenCalledWith({ where: { id: 'faq-1' } });
+      expect(prisma.faq.delete).toHaveBeenCalledWith({
+        where: { id: 'faq-1' },
+      });
     });
 
     it('returns success message on happy path', async () => {

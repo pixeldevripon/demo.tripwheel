@@ -4,7 +4,10 @@ import { buildRedisConnection } from '@/common/utils/redis.util';
 import { OctoCapabilitiesMiddleware } from '@/octo/common/octo-capabilities';
 import { NotificationDeliveryProcessor } from './notification-delivery.processor';
 import { NotificationsController } from './notifications.controller';
-import { NotificationsService, NOTIFICATION_QUEUE } from './notifications.service';
+import {
+  NotificationsService,
+  NOTIFICATION_QUEUE,
+} from './notifications.service';
 
 /**
  * OCTO notifications module - subscription CRUD + outbound webhook delivery.

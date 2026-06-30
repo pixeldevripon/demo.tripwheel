@@ -16,7 +16,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission, Role } from '@prisma/client';
-import { AdminToursQueryDto, CreateTourDto, MyToursQueryDto, TourBySlugQueryDto, TourQueryDto, UpdateTourDto } from './dto/tour.dto';
+import {
+  AdminToursQueryDto,
+  CreateTourDto,
+  MyToursQueryDto,
+  TourBySlugQueryDto,
+  TourQueryDto,
+  UpdateTourDto,
+} from './dto/tour.dto';
 import {
   ApiAdminListToursDocs,
   ApiArchiveTourDocs,
@@ -59,11 +66,17 @@ export class ToursController {
   findAll(
     // Relaxed pipe: dynamic attribute params (e.g. ?boat_type=catamaran) are NOT in the DTO,
     // so we strip them from `query` without rejecting, and read them from the raw request query.
-    @Query(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: false }))
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: false,
+      }),
+    )
     query: TourQueryDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.toursService.findAll(query, req.query as Record<string, unknown>);
+    return this.toursService.findAll(query, req.query);
   }
 
   // ── Public slug-based detail - static prefix before :id ──────────────────────
@@ -80,7 +93,10 @@ export class ToursController {
   @Get('my-tours')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetMyToursDocs()
-  findMyTours(@Query() query: MyToursQueryDto, @AuthenticatedUser() user: TypedAuthUser) {
+  findMyTours(
+    @Query() query: MyToursQueryDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.toursService.findMyTours(user.id, user.role, query);
   }
 
@@ -121,7 +137,7 @@ export class ToursController {
   @ApiGetTourByIdDocs()
   findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const requesterId = req.user?.id ?? null;
-    const requesterRole = (req.user?.role ?? null) as Role | null;
+    const requesterRole = req.user?.role ?? null;
     return this.toursService.findOne(id, requesterId, requesterRole);
   }
 

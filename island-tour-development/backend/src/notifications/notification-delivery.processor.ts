@@ -60,7 +60,10 @@ export class NotificationDeliveryProcessor extends WorkerHost {
 
     const rawBody = JSON.stringify(delivery.payload);
     const secret = decrypt(subscription.secret);
-    const customHeaders = (subscription.headers ?? {}) as Record<string, string>;
+    const customHeaders = (subscription.headers ?? {}) as Record<
+      string,
+      string
+    >;
 
     try {
       const controller = new AbortController();

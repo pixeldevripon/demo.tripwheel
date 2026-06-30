@@ -136,7 +136,6 @@ export function ApiOnboardOperatorDocs() {
   );
 }
 
-
 export function ApiGetOperatorCompanyInfoDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Get operator company information' }),

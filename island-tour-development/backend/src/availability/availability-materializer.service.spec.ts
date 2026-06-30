@@ -97,7 +97,12 @@ describe('AvailabilityMaterializerService', () => {
 
     const res = await svc.materializeTour('t1', DAY, DAY);
 
-    expect(res).toMatchObject({ created: 1, updated: 0, skipped: 0, removed: 0 });
+    expect(res).toMatchObject({
+      created: 1,
+      updated: 0,
+      skipped: 0,
+      removed: 0,
+    });
     const rows = createdRows(prisma);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -162,7 +167,9 @@ describe('AvailabilityMaterializerService', () => {
     prisma.availabilitySchedule.findMany.mockResolvedValue([
       schedule({ capacityOverride: 12 }),
     ]);
-    prisma.departure.findMany.mockResolvedValue([existingDeparture({ bookedCount: 0 })]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 0 }),
+    ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ created: 0, updated: 1 });
     expect(prisma.departure.update).toHaveBeenCalledWith(
@@ -177,7 +184,9 @@ describe('AvailabilityMaterializerService', () => {
     prisma.availabilitySchedule.findMany.mockResolvedValue([
       schedule({ capacityOverride: 12 }),
     ]);
-    prisma.departure.findMany.mockResolvedValue([existingDeparture({ bookedCount: 3 })]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 3 }),
+    ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ updated: 0, skipped: 1, created: 0 });
     expect(prisma.departure.update).not.toHaveBeenCalled();
@@ -187,7 +196,9 @@ describe('AvailabilityMaterializerService', () => {
     prisma.availabilitySchedule.findMany.mockResolvedValue([
       schedule({ capacityOverride: 12 }),
     ]);
-    prisma.departure.findMany.mockResolvedValue([existingDeparture({ manuallyEdited: true })]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ manuallyEdited: true }),
+    ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ updated: 0, skipped: 1, created: 0 });
     expect(prisma.departure.update).not.toHaveBeenCalled();
@@ -196,7 +207,11 @@ describe('AvailabilityMaterializerService', () => {
   it('prunes orphaned future departures with no bookings', async () => {
     prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]); // 09:00 only
     prisma.departure.findMany.mockResolvedValue([
-      existingDeparture({ id: 'd-orphan', startTime: time('18:00'), bookedCount: 0 }),
+      existingDeparture({
+        id: 'd-orphan',
+        startTime: time('18:00'),
+        bookedCount: 0,
+      }),
     ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ created: 1, removed: 1 });
@@ -213,6 +228,8 @@ describe('AvailabilityMaterializerService', () => {
 
   it('throws when the tour does not exist', async () => {
     prisma.tour.findUnique.mockResolvedValue(null);
-    await expect(svc.materializeTour('t1', DAY, DAY)).rejects.toThrow(/not found/i);
+    await expect(svc.materializeTour('t1', DAY, DAY)).rejects.toThrow(
+      /not found/i,
+    );
   });
 });

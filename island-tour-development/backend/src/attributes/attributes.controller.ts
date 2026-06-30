@@ -2,7 +2,16 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
 import { AttributesService } from './attributes.service';
@@ -51,7 +60,10 @@ export class AttributeDictionaryController {
   @Post()
   @RequirePermissions(Permission.MANAGE_SYSTEM)
   @ApiCreateAttributeDefinitionDocs()
-  create(@Body() dto: CreateAttributeDefinitionDto, @AuthenticatedUser() user: TypedAuthUser) {
+  create(
+    @Body() dto: CreateAttributeDefinitionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.attributesService.createDefinition(dto, user.id);
   }
 
@@ -117,7 +129,12 @@ export class TourAttributesController {
     @Body() dto: SetTourAttributesDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.attributesService.setTourAttributes(tourId, dto, user.id, user.role);
+    return this.attributesService.setTourAttributes(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete(':key')
@@ -128,6 +145,11 @@ export class TourAttributesController {
     @Param('key') key: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.attributesService.deleteTourAttribute(tourId, key, user.id, user.role);
+    return this.attributesService.deleteTourAttribute(
+      tourId,
+      key,
+      user.id,
+      user.role,
+    );
   }
 }

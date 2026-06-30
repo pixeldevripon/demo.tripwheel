@@ -25,7 +25,9 @@ export const ApiReserveDocs = () =>
     ApiCreatedResponse({ type: BookingResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
-    ApiUnprocessableEntityResponse({ description: 'Sold out / restriction / cutoff.' }),
+    ApiUnprocessableEntityResponse({
+      description: 'Sold out / restriction / cutoff.',
+    }),
   );
 
 export const ApiConfirmDocs = () =>
@@ -39,7 +41,9 @@ export const ApiConfirmDocs = () =>
 
 export const ApiCancelDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Cancel a booking (releases seats, computes refund)' }),
+    ApiOperation({
+      summary: 'Cancel a booking (releases seats, computes refund)',
+    }),
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
@@ -83,7 +87,8 @@ export const ApiGetBookingDocs = () =>
 export const ApiListBookingsDocs = () =>
   applyDecorators(
     ApiOperation({
-      summary: 'List bookings (admin: all · operator: their tours · user: their own)',
+      summary:
+        'List bookings (admin: all · operator: their tours · user: their own)',
     }),
     ApiOkResponse({ type: BookingResponseDto, isArray: true }),
   );

@@ -31,7 +31,10 @@ describe('timezone.util (local-time model)', () => {
   describe('localNow', () => {
     it('shifts a UTC instant into the destination wall-clock', () => {
       // 13:00 UTC == 09:00 in AST
-      const now = localNow('America/Curacao', new Date('2026-07-01T13:00:00.000Z'));
+      const now = localNow(
+        'America/Curacao',
+        new Date('2026-07-01T13:00:00.000Z'),
+      );
       expect(now.toISOString()).toBe('2026-07-01T09:00:00.000Z');
     });
   });

@@ -19,7 +19,9 @@ export const ApiCreateIntentDocs = () =>
     }),
     ApiCreatedResponse({ type: PaymentIntentResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
-    ApiServiceUnavailableResponse({ description: 'Payments are not configured.' }),
+    ApiServiceUnavailableResponse({
+      description: 'Payments are not configured.',
+    }),
   );
 
 export const ApiStripeWebhookDocs = () =>

@@ -30,7 +30,10 @@ export class WishlistController {
 
   @Get()
   @ApiGetWishlistDocs()
-  list(@AuthenticatedUser() user: TypedAuthUser, @Query() query: WishlistQueryDto) {
+  list(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: WishlistQueryDto,
+  ) {
     return this.wishlistService.list(user.id, query.locale);
   }
 
@@ -42,13 +45,19 @@ export class WishlistController {
 
   @Post(':tourId')
   @ApiAddWishlistDocs()
-  add(@AuthenticatedUser() user: TypedAuthUser, @Param('tourId') tourId: string) {
+  add(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Param('tourId') tourId: string,
+  ) {
     return this.wishlistService.add(user.id, tourId);
   }
 
   @Delete(':tourId')
   @ApiRemoveWishlistDocs()
-  remove(@AuthenticatedUser() user: TypedAuthUser, @Param('tourId') tourId: string) {
+  remove(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Param('tourId') tourId: string,
+  ) {
     return this.wishlistService.remove(user.id, tourId);
   }
 }

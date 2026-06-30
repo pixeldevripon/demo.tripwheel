@@ -48,7 +48,8 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature?: string,
   ) {
-    if (!signature) throw new BadRequestException('Missing Stripe-Signature header');
+    if (!signature)
+      throw new BadRequestException('Missing Stripe-Signature header');
     if (!req.rawBody) throw new BadRequestException('Missing raw request body');
     await this.payments.handleWebhook(req.rawBody, signature);
     return { received: true };

@@ -50,7 +50,11 @@ export class OctoService {
     );
 
     return tours.map((tour) =>
-      serializeTour(tour, { caps, locale, faqs: faqsByTour.get(tour.id) ?? [] }),
+      serializeTour(tour, {
+        caps,
+        locale,
+        faqs: faqsByTour.get(tour.id) ?? [],
+      }),
     );
   }
 

@@ -104,7 +104,10 @@ export class DestinationController {
   @Post()
   @RequirePermissions(Permission.CREATE_DESTINATION)
   @ApiCreateDestinationDocs()
-  create(@Body() dto: CreateDestinationDto, @AuthenticatedUser() user: TypedAuthUser) {
+  create(
+    @Body() dto: CreateDestinationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.destinationService.create(dto, user.id);
   }
 
@@ -122,7 +125,10 @@ export class DestinationController {
   @Delete(':id/force')
   @RequirePermissions(Permission.MANAGE_SYSTEM)
   @ApiForceDeleteDestinationDocs()
-  forceDelete(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+  forceDelete(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.destinationService.forceDelete(id, user.id);
   }
 

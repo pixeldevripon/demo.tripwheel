@@ -19,7 +19,9 @@ export function storedStatusForFill(
   capacity: number,
   bookedCount: number,
 ): DepartureStatus {
-  return bookedCount >= capacity ? DepartureStatus.SOLD_OUT : DepartureStatus.OPEN;
+  return bookedCount >= capacity
+    ? DepartureStatus.SOLD_OUT
+    : DepartureStatus.OPEN;
 }
 
 interface LiveStatusInput {

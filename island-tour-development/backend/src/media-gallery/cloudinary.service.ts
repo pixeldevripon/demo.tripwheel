@@ -3,7 +3,6 @@ import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
 import type { Multer } from 'multer';
 
-
 export interface CloudinaryUploadResult {
   publicId: string;
   url: string;

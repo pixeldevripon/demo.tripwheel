@@ -105,7 +105,9 @@ export const ApiMaterializeDocs = () =>
 // ── Departures ───────────────────────────────────────────────────────────────
 export const ApiListDeparturesDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'List a tour’s materialized departures (operator view)' }),
+    ApiOperation({
+      summary: 'List a tour’s materialized departures (operator view)',
+    }),
     ApiOkResponse({ type: DepartureResponseDto, isArray: true }),
     authErrors(),
   );
@@ -124,7 +126,9 @@ export const ApiUpdateDepartureDocs = () =>
 // ── Public availability ──────────────────────────────────────────────────────
 export const ApiCheckAvailabilityDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Check live bookable departures for a date range' }),
+    ApiOperation({
+      summary: 'Check live bookable departures for a date range',
+    }),
     ApiOkResponse({ type: DepartureResponseDto, isArray: true }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
@@ -132,7 +136,9 @@ export const ApiCheckAvailabilityDocs = () =>
 
 export const ApiCalendarDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Day-level availability calendar for a date range' }),
+    ApiOperation({
+      summary: 'Day-level availability calendar for a date range',
+    }),
     ApiOkResponse({ type: CalendarDayResponseDto, isArray: true }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),

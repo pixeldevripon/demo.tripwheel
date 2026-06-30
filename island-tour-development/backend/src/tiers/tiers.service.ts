@@ -56,7 +56,10 @@ const SPOTLIGHT_MIN_REVIEWS = 10;
 const SPOTLIGHT_MIN_RATING = 4.5;
 
 /** Requests that occupy a destination cap slot (not yet ended). */
-const CAP_STATUSES: SpotlightStatus[] = [SpotlightStatus.APPROVED, SpotlightStatus.ACTIVE];
+const CAP_STATUSES: SpotlightStatus[] = [
+  SpotlightStatus.APPROVED,
+  SpotlightStatus.ACTIVE,
+];
 
 @Injectable()
 export class TiersService {
@@ -85,12 +88,16 @@ export class TiersService {
         destinationId: tour.destinationId,
         status: SpotlightStatus.REQUESTED,
         requestedBy: userId,
-        requestedStartsAt: dto.requestedStartsAt ? new Date(dto.requestedStartsAt) : null,
+        requestedStartsAt: dto.requestedStartsAt
+          ? new Date(dto.requestedStartsAt)
+          : null,
         requestedDurationDays: dto.requestedDurationDays ?? null,
       },
       select: SPOTLIGHT_SELECT,
     });
-    this.logger.log(`Spotlight requested ${row.id} for tour ${tourId} by user ${userId}`);
+    this.logger.log(
+      `Spotlight requested ${row.id} for tour ${tourId} by user ${userId}`,
+    );
     return mapSpotlight(row);
   }
 
@@ -115,7 +122,9 @@ export class TiersService {
   // ════════════════════════════════════════════════════════════════════════
 
   /** Admin review queue + count of cap-occupying requests for the (optional) destination. */
-  async listSpotlightQueue(query: SpotlightQueueQueryDto): Promise<SpotlightQueueDto> {
+  async listSpotlightQueue(
+    query: SpotlightQueueQueryDto,
+  ): Promise<SpotlightQueueDto> {
     const where: Prisma.SpotlightRequestWhereInput = {};
     if (query.destinationId) where.destinationId = query.destinationId;
     if (query.status) where.status = query.status;
@@ -159,7 +168,9 @@ export class TiersService {
           tourId: true,
           destinationId: true,
           status: true,
-          tour: { select: { aggregateRating: true, aggregateReviewCount: true } },
+          tour: {
+            select: { aggregateRating: true, aggregateReviewCount: true },
+          },
         },
       });
       if (!req) throw new NotFoundException('Spotlight request not found');
@@ -168,7 +179,10 @@ export class TiersService {
           `Only a REQUESTED spotlight can be approved (current: ${req.status})`,
         );
       }
-      this.assertEligibleAggregates(req.tour.aggregateRating, req.tour.aggregateReviewCount);
+      this.assertEligibleAggregates(
+        req.tour.aggregateRating,
+        req.tour.aggregateReviewCount,
+      );
 
       const activeForDest = await tx.spotlightRequest.count({
         where: {
@@ -205,7 +219,10 @@ export class TiersService {
 
       // Mirror an ACTIVE spotlight onto the tour so deriveTourBadge -> 'sponsored'.
       if (activeNow) {
-        await tx.tour.update({ where: { id: req.tourId }, data: { isSponsored: true } });
+        await tx.tour.update({
+          where: { id: req.tourId },
+          data: { isSponsored: true },
+        });
       }
       return row;
     });
@@ -232,7 +249,10 @@ export class TiersService {
     }
     const row = await this.prisma.spotlightRequest.update({
       where: { id },
-      data: { status: SpotlightStatus.REJECTED, rejectionReason: dto.rejectionReason },
+      data: {
+        status: SpotlightStatus.REJECTED,
+        rejectionReason: dto.rejectionReason,
+      },
       select: SPOTLIGHT_SELECT,
     });
     this.logger.log(`Spotlight ${id} REJECTED by admin ${adminUserId}`);
@@ -261,14 +281,19 @@ export class TiersService {
     if (!tour) throw new NotFoundException('Tour not found');
 
     const now = new Date();
-    if (tour.tierLockedUntil && tour.tierLockedUntil.getTime() > now.getTime()) {
+    if (
+      tour.tierLockedUntil &&
+      tour.tierLockedUntil.getTime() > now.getTime()
+    ) {
       throw new ConflictException(
         `Tier is locked until ${tour.tierLockedUntil.toISOString()}; changes are not allowed yet`,
       );
     }
 
     const mapped = TIER_MAP[dto.tierKey];
-    const tierLockedUntil = new Date(now.getTime() + TIER_LOCK_DAYS * MS_PER_DAY);
+    const tierLockedUntil = new Date(
+      now.getTime() + TIER_LOCK_DAYS * MS_PER_DAY,
+    );
     const row = await this.prisma.tour.update({
       where: { id: tourId },
       data: {
@@ -293,7 +318,9 @@ export class TiersService {
       tierKey: row.tierKey,
       commissionTier: Number(row.commissionTier),
       tierRank: row.tierRank,
-      tierLockedUntil: row.tierLockedUntil ? row.tierLockedUntil.toISOString() : null,
+      tierLockedUntil: row.tierLockedUntil
+        ? row.tierLockedUntil.toISOString()
+        : null,
     };
   }
 
@@ -305,7 +332,10 @@ export class TiersService {
    * Whether the tour has an ACTIVE spotlight whose window contains `at` (default: now).
    * Booking/ranking call this to apply the overlay (SPOTLIGHT-DATA.md §3).
    */
-  async hasActiveSpotlight(tourId: string, at: Date = new Date()): Promise<boolean> {
+  async hasActiveSpotlight(
+    tourId: string,
+    at: Date = new Date(),
+  ): Promise<boolean> {
     const hit = await this.prisma.spotlightRequest.findFirst({
       where: {
         tourId,
@@ -323,8 +353,12 @@ export class TiersService {
    * active, else the tour's tier rate (`commissionTier / 100`). The booking service
    * snapshots this onto the booking; it never changes retroactively (SPOTLIGHT-DATA.md §3).
    */
-  async effectiveCommissionRate(tourId: string, at: Date = new Date()): Promise<number> {
-    if (await this.hasActiveSpotlight(tourId, at)) return SPOTLIGHT_COMMISSION_RATE;
+  async effectiveCommissionRate(
+    tourId: string,
+    at: Date = new Date(),
+  ): Promise<number> {
+    if (await this.hasActiveSpotlight(tourId, at))
+      return SPOTLIGHT_COMMISSION_RATE;
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
       select: { commissionTier: true },
@@ -415,7 +449,9 @@ export class TiersService {
     if (role === Role.ADMIN) return tour;
     const operatorId = await resolveOperatorId(this.prisma, userId, role);
     if (tour.operatorId !== operatorId) {
-      throw new ForbiddenException('You do not have permission to manage this tour');
+      throw new ForbiddenException(
+        'You do not have permission to manage this tour',
+      );
     }
     return tour;
   }
@@ -425,7 +461,10 @@ export class TiersService {
     aggregateRating?: number | null;
     aggregateReviewCount?: number;
   }): Promise<void> {
-    this.assertEligibleAggregates(tour.aggregateRating ?? null, tour.aggregateReviewCount ?? 0);
+    this.assertEligibleAggregates(
+      tour.aggregateRating ?? null,
+      tour.aggregateReviewCount ?? 0,
+    );
   }
 
   /**
@@ -433,8 +472,14 @@ export class TiersService {
    * TODO(operator-module gap E.6): also require operator.cancellation_rate_90d <= 10% once
    * that field exists; not yet modeled, so it is skipped here.
    */
-  private assertEligibleAggregates(rating: number | null, reviewCount: number): void {
-    if (reviewCount < SPOTLIGHT_MIN_REVIEWS || (rating ?? 0) < SPOTLIGHT_MIN_RATING) {
+  private assertEligibleAggregates(
+    rating: number | null,
+    reviewCount: number,
+  ): void {
+    if (
+      reviewCount < SPOTLIGHT_MIN_REVIEWS ||
+      (rating ?? 0) < SPOTLIGHT_MIN_RATING
+    ) {
       throw new BadRequestException(
         `Tour is not eligible for Spotlight (needs >=${SPOTLIGHT_MIN_REVIEWS} reviews and rating >=${SPOTLIGHT_MIN_RATING}; ` +
           `has ${reviewCount} reviews, rating ${rating ?? 0})`,
@@ -480,7 +525,9 @@ function mapSpotlight(row: SpotlightRow): SpotlightRequestResponseDto {
     startsAt: row.startsAt ? row.startsAt.toISOString() : null,
     endsAt: row.endsAt ? row.endsAt.toISOString() : null,
     note: row.note ?? null,
-    requestedStartsAt: row.requestedStartsAt ? row.requestedStartsAt.toISOString() : null,
+    requestedStartsAt: row.requestedStartsAt
+      ? row.requestedStartsAt.toISOString()
+      : null,
     requestedDurationDays: row.requestedDurationDays ?? null,
     rejectionReason: row.rejectionReason ?? null,
     requestedBy: row.requestedBy ?? null,

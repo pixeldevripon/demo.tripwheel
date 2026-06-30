@@ -30,14 +30,26 @@ const serverError = ApiResponse({ status: 500, type: InternalServerErrorDto });
 const publicErrors = [serverError];
 
 const commonErrors = [
-  ApiResponse({ status: 400, description: 'Bad Request', type: BadRequestErrorDto }),
-  ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto }),
+  ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: BadRequestErrorDto,
+  }),
+  ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: UnauthorizedErrorDto,
+  }),
   serverError,
 ];
 
 const adminErrors = [
   ...commonErrors,
-  ApiResponse({ status: 403, description: 'Forbidden', type: ForbiddenErrorDto }),
+  ApiResponse({
+    status: 403,
+    description: 'Forbidden',
+    type: ForbiddenErrorDto,
+  }),
 ];
 
 const localeParam = ApiQuery({
@@ -45,14 +57,17 @@ const localeParam = ApiQuery({
   required: false,
   enum: Locale,
   example: 'en',
-  description: 'Content locale - falls back to English when translation is missing',
+  description:
+    'Content locale - falls back to English when translation is missing',
 });
 
 // ── Public list / lookup ──────────────────────────────────────────────────────
 
 export function ApiGetAllCategoriesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all categories with optional filters (public)' }),
+    ApiOperation({
+      summary: 'List all categories with optional filters (public)',
+    }),
     ApiQuery({ name: 'isActive', required: false, type: Boolean }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
@@ -64,7 +79,10 @@ export function ApiGetAllCategoriesDocs() {
 
 export function ApiGetActiveCategoriesDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all active categories (public - used by tour-creation selectors)' }),
+    ApiOperation({
+      summary:
+        'List all active categories (public - used by tour-creation selectors)',
+    }),
     localeParam,
     ApiResponse({ status: 200, type: [CategoryLocalizedResponseDto] }),
     ...publicErrors,
@@ -74,7 +92,8 @@ export function ApiGetActiveCategoriesDocs() {
 export function ApiGetCategoriesByDestinationDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'List categories that have ≥1 published tour in a destination (public)',
+      summary:
+        'List categories that have ≥1 published tour in a destination (public)',
       description:
         'V2 §3 tour-gating: only categories with at least one LIVE tour in the destination are returned, ' +
         'each with publishedTourCount, ordered by sortOrder. Used for destination-page nav/listing and sitemaps.',
@@ -82,7 +101,11 @@ export function ApiGetCategoriesByDestinationDocs() {
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
     localeParam,
     ApiResponse({ status: 200, type: [CategoryByDestinationResponseDto] }),
-    ApiResponse({ status: 404, description: 'Destination not found', type: NotFoundErrorDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination not found',
+      type: NotFoundErrorDto,
+    }),
     ...publicErrors,
   );
 }
@@ -99,7 +122,11 @@ export function ApiGetCategoryByDestinationSlugDocs() {
     ApiParam({ name: 'categorySlug', example: 'boat-tours' }),
     localeParam,
     ApiResponse({ status: 200, type: CategoryDetailByDestinationResponseDto }),
-    ApiResponse({ status: 404, description: 'Destination/category not found or no published tours', type: NotFoundErrorDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination/category not found or no published tours',
+      type: NotFoundErrorDto,
+    }),
     ...publicErrors,
   );
 }
@@ -137,7 +164,11 @@ export function ApiCreateCategoryDocs() {
         'Accepts the V2 fields: description, icon, sortOrder, metaTitleTemplate, metaDescriptionTemplate, parentCategoryId.',
     }),
     ApiResponse({ status: 201, type: CategoryResponseDto }),
-    ApiResponse({ status: 409, description: 'Slug already exists', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Slug already exists',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
@@ -167,7 +198,11 @@ export function ApiForceDeleteCategoryDocs() {
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, description: 'Category permanently deleted' }),
-    ApiResponse({ status: 403, description: 'Seeded category', type: ForbiddenErrorDto }),
+    ApiResponse({
+      status: 403,
+      description: 'Seeded category',
+      type: ForbiddenErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -183,7 +218,11 @@ export function ApiDeleteCategoryDocs() {
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: DeleteCategoryResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
-    ApiResponse({ status: 409, description: 'Category has active trips', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Category has active trips',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
@@ -205,7 +244,9 @@ export function ApiGetAllTranslationsDocs() {
 
 export function ApiGetTranslationsByLocaleDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get translations for a specific locale (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Get translations for a specific locale (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: CategoryTranslationEntryDto }),
@@ -233,7 +274,8 @@ export function ApiDeleteTranslationsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Delete all translations for a locale (Admin/Editor)',
-      description: 'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint - update the category name field instead.',
+      description:
+        'Removes every translated field row for the given locale. English ("en") cannot be deleted via this endpoint - update the category name field instead.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -249,7 +291,8 @@ export function ApiGetPageContentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get editorial page content for a category (public)',
-      description: 'Returns about text, meta title, and meta description for the requested locale.',
+      description:
+        'Returns about text, meta title, and meta description for the requested locale.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     localeParam,
@@ -263,7 +306,8 @@ export function ApiUpsertPageContentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Patch editorial page content for a locale (Admin/Editor)',
-      description: 'Creates or updates about text, meta title, and meta description. Only supplied fields are written - omitted fields are left unchanged.',
+      description:
+        'Creates or updates about text, meta title, and meta description. Only supplied fields are written - omitted fields are left unchanged.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
@@ -279,10 +323,16 @@ export function ApiGetFaqsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get active FAQs for a category (public)',
-      description: 'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
+      description:
+        'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiQuery({ name: 'locale', required: false, enum: Locale, example: Locale.en }),
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      example: Locale.en,
+    }),
     ApiResponse({ status: 200, type: [FaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
@@ -291,7 +341,9 @@ export function ApiGetFaqsDocs() {
 
 export function ApiCreateFaqDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Create a FAQ item for a category (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Create a FAQ item for a category (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiResponse({ status: 201, type: FaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),

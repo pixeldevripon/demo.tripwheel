@@ -2,7 +2,9 @@ export interface PasswordResetTemplateProps {
   resetUrl: string;
 }
 
-export function passwordResetTemplate({ resetUrl }: PasswordResetTemplateProps) {
+export function passwordResetTemplate({
+  resetUrl,
+}: PasswordResetTemplateProps) {
   const html = `
 <!DOCTYPE html>
 <html lang="en">

@@ -70,20 +70,26 @@ export class ReviewsService {
       throw new ForbiddenException('You can only review your own booking');
     }
     if (!REVIEWABLE_STATUSES.includes(booking.status)) {
-      throw new BadRequestException('Only a confirmed or redeemed booking can be reviewed');
+      throw new BadRequestException(
+        'Only a confirmed or redeemed booking can be reviewed',
+      );
     }
     if (!this.hasExperiencePassed(booking)) {
-      throw new BadRequestException('You can review only after the experience date');
+      throw new BadRequestException(
+        'You can review only after the experience date',
+      );
     }
 
     const existing = await this.prisma.review.findUnique({
       where: { bookingId: dto.bookingId },
       select: { id: true },
     });
-    if (existing) throw new ConflictException('This booking has already been reviewed');
+    if (existing)
+      throw new ConflictException('This booking has already been reviewed');
 
     const locale = dto.locale ?? Locale.en;
-    const flagged = containsBannedWord(dto.comment) || containsBannedWord(dto.title);
+    const flagged =
+      containsBannedWord(dto.comment) || containsBannedWord(dto.title);
 
     const review = await this.prisma.review.create({
       data: {
@@ -97,7 +103,10 @@ export class ReviewsService {
         ratingSafety: dto.ratingSafety ?? null,
         title: dto.title ?? null,
         reviewerFirstName: booking.contactFirstName,
-        reviewerInitial: reviewerInitial(booking.contactFirstName, booking.contactLastName),
+        reviewerInitial: reviewerInitial(
+          booking.contactFirstName,
+          booking.contactLastName,
+        ),
         reviewerCountry: booking.contactCountry,
         travelMonth: booking.localDate.getUTCMonth() + 1,
         travelYear: booking.localDate.getUTCFullYear(),
@@ -136,7 +145,12 @@ export class ReviewsService {
         take: limit,
       }),
     ]);
-    return { total, page, limit, data: rows.map((r) => mapReview(r, query.locale)) };
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((r) => mapReview(r, query.locale)),
+    };
   }
 
   /** LD11 rating summary + star distribution for a tour. */
@@ -145,7 +159,9 @@ export class ReviewsService {
       where: { id: tourId },
       select: {
         id: true,
-        operator: { select: { aggregateRating: true, aggregateReviewCount: true } },
+        operator: {
+          select: { aggregateRating: true, aggregateReviewCount: true },
+        },
       },
     });
     if (!tour) throw new NotFoundException('Tour not found');
@@ -158,7 +174,12 @@ export class ReviewsService {
       this.prisma.review.aggregate({
         where,
         _count: true,
-        _avg: { rating: true, ratingValue: true, ratingGuide: true, ratingSafety: true },
+        _avg: {
+          rating: true,
+          ratingValue: true,
+          ratingGuide: true,
+          ratingSafety: true,
+        },
       }),
       this.prisma.review.groupBy({ by: ['rating'], where, _count: true }),
     ]);
@@ -180,7 +201,10 @@ export class ReviewsService {
     return {
       tourId,
       source: resolution.source,
-      rating: resolution.source === 'operator' ? roundRating(resolution.rating) : resolution.rating,
+      rating:
+        resolution.source === 'operator'
+          ? roundRating(resolution.rating)
+          : resolution.rating,
       reviewCount: resolution.reviewCount,
       approvedCount,
       distribution,
@@ -246,15 +270,25 @@ export class ReviewsService {
       dto.status !== ReviewModerationStatus.APPROVED &&
       dto.status !== ReviewModerationStatus.REJECTED
     ) {
-      throw new BadRequestException('Moderation status must be APPROVED or REJECTED');
+      throw new BadRequestException(
+        'Moderation status must be APPROVED or REJECTED',
+      );
     }
-    if (dto.status === ReviewModerationStatus.REJECTED && !dto.rejectionReason?.trim()) {
+    if (
+      dto.status === ReviewModerationStatus.REJECTED &&
+      !dto.rejectionReason?.trim()
+    ) {
       throw new BadRequestException('A rejection reason is required');
     }
 
     const review = await this.prisma.review.findUnique({
       where: { id },
-      select: { id: true, tourId: true, operatorId: true, moderationStatus: true },
+      select: {
+        id: true,
+        tourId: true,
+        operatorId: true,
+        moderationStatus: true,
+      },
     });
     if (!review) throw new NotFoundException('Review not found');
 
@@ -263,7 +297,9 @@ export class ReviewsService {
       data: {
         moderationStatus: dto.status,
         rejectionReason:
-          dto.status === ReviewModerationStatus.REJECTED ? dto.rejectionReason!.trim() : null,
+          dto.status === ReviewModerationStatus.REJECTED
+            ? dto.rejectionReason!.trim()
+            : null,
       },
       include: { translations: true },
     });
@@ -271,7 +307,9 @@ export class ReviewsService {
     // Aggregates change whenever a review enters or leaves the APPROVED set.
     await this.recomputeAggregates(review.tourId, review.operatorId);
 
-    this.logger.log(`Review ${id} moderated → ${dto.status} by admin ${adminId}`);
+    this.logger.log(
+      `Review ${id} moderated → ${dto.status} by admin ${adminId}`,
+    );
     return mapReview(updated);
   }
 
@@ -312,7 +350,10 @@ export class ReviewsService {
       });
       return { id: updated.id, helpfulCount: updated.helpfulCount };
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
         throw new NotFoundException('Review not found');
       }
       throw err;
@@ -322,7 +363,13 @@ export class ReviewsService {
   async remove(id: string, actor: Actor) {
     const review = await this.prisma.review.findUnique({
       where: { id },
-      select: { id: true, userId: true, tourId: true, operatorId: true, moderationStatus: true },
+      select: {
+        id: true,
+        userId: true,
+        tourId: true,
+        operatorId: true,
+        moderationStatus: true,
+      },
     });
     if (!review) throw new NotFoundException('Review not found');
 
@@ -370,7 +417,10 @@ export class ReviewsService {
   }
 
   /** Recompute cached tour + operator aggregates from the APPROVED set. */
-  private async recomputeAggregates(tourId: string, operatorId: string): Promise<void> {
+  private async recomputeAggregates(
+    tourId: string,
+    operatorId: string,
+  ): Promise<void> {
     const [tourAgg, opAgg] = await Promise.all([
       this.prisma.review.aggregate({
         where: { tourId, moderationStatus: ReviewModerationStatus.APPROVED },
@@ -378,7 +428,10 @@ export class ReviewsService {
         _avg: { rating: true },
       }),
       this.prisma.review.aggregate({
-        where: { operatorId, moderationStatus: ReviewModerationStatus.APPROVED },
+        where: {
+          operatorId,
+          moderationStatus: ReviewModerationStatus.APPROVED,
+        },
         _count: true,
         _avg: { rating: true },
       }),
@@ -401,11 +454,16 @@ export class ReviewsService {
     ]);
   }
 
-  private async assertOwnsOperator(operatorId: string, actor: Actor): Promise<void> {
+  private async assertOwnsOperator(
+    operatorId: string,
+    actor: Actor,
+  ): Promise<void> {
     if (actor.role === Role.ADMIN) return;
     const own = await resolveOperatorId(this.prisma, actor.id, actor.role);
     if (own !== operatorId) {
-      throw new ForbiddenException('You can only respond to reviews of your own tours');
+      throw new ForbiddenException(
+        'You can only respond to reviews of your own tours',
+      );
     }
   }
 
@@ -428,7 +486,9 @@ export class ReviewsService {
 // Pure mapping
 // ════════════════════════════════════════════════════════════════════════════
 
-type ReviewWithTranslations = Prisma.ReviewGetPayload<{ include: { translations: true } }>;
+type ReviewWithTranslations = Prisma.ReviewGetPayload<{
+  include: { translations: true };
+}>;
 
 function mapReview(review: ReviewWithTranslations, locale?: Locale) {
   const translation =

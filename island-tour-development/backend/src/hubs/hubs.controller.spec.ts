@@ -92,7 +92,7 @@ describe('HubController', () => {
   describe('getAll', () => {
     it('delegates to hubService.getAll with the query object', async () => {
       const expected = { total: 1, page: 1, limit: 20, data: [] };
-      service.getAll.mockResolvedValue(expected as any);
+      service.getAll.mockResolvedValue(expected);
 
       const query: HubQueryDto = { page: 1, limit: 20, locale: Locale.en };
       const result = await controller.getAll(query);
@@ -119,7 +119,10 @@ describe('HubController', () => {
       const expected = { id: 'hub-1', slug: 'klein-curacao' };
       service.getBySlug.mockResolvedValue(expected as any);
 
-      const query: HubBySlugQueryDto = { destinationSlug: 'curacao', locale: Locale.en };
+      const query: HubBySlugQueryDto = {
+        destinationSlug: 'curacao',
+        locale: Locale.en,
+      };
       const result = await controller.getBySlug('klein-curacao', query);
 
       expect(service.getBySlug).toHaveBeenCalledWith('klein-curacao', query);
@@ -147,7 +150,11 @@ describe('HubController', () => {
       const expected = { id: 'hub-new', name: 'Klein Curaçao' };
       service.create.mockResolvedValue(expected as any);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
       const user = makeAuthUser({ id: 'admin-1' });
       const result = await controller.create(dto, user);
 
@@ -201,9 +208,15 @@ describe('HubController', () => {
       const expected = { locale: Locale.nl, name: 'Klein (NL)' };
       service.getTranslationsByLocale.mockResolvedValue(expected as any);
 
-      const result = await controller.getTranslationsByLocale('hub-1', Locale.nl);
+      const result = await controller.getTranslationsByLocale(
+        'hub-1',
+        Locale.nl,
+      );
 
-      expect(service.getTranslationsByLocale).toHaveBeenCalledWith('hub-1', Locale.nl);
+      expect(service.getTranslationsByLocale).toHaveBeenCalledWith(
+        'hub-1',
+        Locale.nl,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -213,11 +226,24 @@ describe('HubController', () => {
       const expected = { locale: Locale.nl, name: 'Klein (NL)' };
       service.upsertTranslations.mockResolvedValue(expected as any);
 
-      const dto: UpsertHubTranslationsDto = { fields: { name: 'Klein (NL)' }, isMachineTranslated: false };
+      const dto: UpsertHubTranslationsDto = {
+        fields: { name: 'Klein (NL)' },
+        isMachineTranslated: false,
+      };
       const user = makeAuthUser({ id: 'admin-4' });
-      const result = await controller.upsertTranslations('hub-1', Locale.nl, dto, user);
+      const result = await controller.upsertTranslations(
+        'hub-1',
+        Locale.nl,
+        dto,
+        user,
+      );
 
-      expect(service.upsertTranslations).toHaveBeenCalledWith('hub-1', Locale.nl, dto, 'admin-4');
+      expect(service.upsertTranslations).toHaveBeenCalledWith(
+        'hub-1',
+        Locale.nl,
+        dto,
+        'admin-4',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -228,9 +254,17 @@ describe('HubController', () => {
       service.deleteTranslations.mockResolvedValue(expected);
 
       const user = makeAuthUser({ id: 'admin-5' });
-      const result = await controller.deleteTranslations('hub-1', Locale.nl, user);
+      const result = await controller.deleteTranslations(
+        'hub-1',
+        Locale.nl,
+        user,
+      );
 
-      expect(service.deleteTranslations).toHaveBeenCalledWith('hub-1', Locale.nl, 'admin-5');
+      expect(service.deleteTranslations).toHaveBeenCalledWith(
+        'hub-1',
+        Locale.nl,
+        'admin-5',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -239,7 +273,12 @@ describe('HubController', () => {
 
   describe('getPageContent', () => {
     it('delegates to hubService.getPageContent with id and locale from query', async () => {
-      const expected = { locale: Locale.en, aboutText: 'About.', metaTitle: null, metaDescription: null };
+      const expected = {
+        locale: Locale.en,
+        aboutText: 'About.',
+        metaTitle: null,
+        metaDescription: null,
+      };
       service.getPageContent.mockResolvedValue(expected);
 
       const query: LocaleQueryDto = { locale: Locale.en };
@@ -257,9 +296,19 @@ describe('HubController', () => {
 
       const dto: UpsertHubPageContentDto = { aboutText: 'About.' };
       const user = makeAuthUser({ id: 'admin-6' });
-      const result = await controller.upsertPageContent('hub-1', Locale.en, dto, user);
+      const result = await controller.upsertPageContent(
+        'hub-1',
+        Locale.en,
+        dto,
+        user,
+      );
 
-      expect(service.upsertPageContent).toHaveBeenCalledWith('hub-1', Locale.en, dto, 'admin-6');
+      expect(service.upsertPageContent).toHaveBeenCalledWith(
+        'hub-1',
+        Locale.en,
+        dto,
+        'admin-6',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -306,7 +355,12 @@ describe('HubController', () => {
       const user = makeAuthUser({ id: 'admin-8' });
       const result = await controller.updateFaq('hub-1', 'faq-1', dto, user);
 
-      expect(service.updateFaq).toHaveBeenCalledWith('hub-1', 'faq-1', dto, 'admin-8');
+      expect(service.updateFaq).toHaveBeenCalledWith(
+        'hub-1',
+        'faq-1',
+        dto,
+        'admin-8',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -319,7 +373,11 @@ describe('HubController', () => {
       const user = makeAuthUser({ id: 'admin-9' });
       const result = await controller.deleteFaq('hub-1', 'faq-1', user);
 
-      expect(service.deleteFaq).toHaveBeenCalledWith('hub-1', 'faq-1', 'admin-9');
+      expect(service.deleteFaq).toHaveBeenCalledWith(
+        'hub-1',
+        'faq-1',
+        'admin-9',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -340,14 +398,21 @@ describe('HubController', () => {
 
   describe('addAllowedCategory', () => {
     it('delegates to hubService.addAllowedCategory with hub id, dto, and user.id', async () => {
-      const expected = { message: 'Allowed category added successfully', allowedCategory: {} };
+      const expected = {
+        message: 'Allowed category added successfully',
+        allowedCategory: {},
+      };
       service.addAllowedCategory.mockResolvedValue(expected as any);
 
       const dto: AddAllowedCategoryDto = { categoryId: 'cat-1' };
       const user = makeAuthUser({ id: 'admin-10' });
       const result = await controller.addAllowedCategory('hub-1', dto, user);
 
-      expect(service.addAllowedCategory).toHaveBeenCalledWith('hub-1', dto, 'admin-10');
+      expect(service.addAllowedCategory).toHaveBeenCalledWith(
+        'hub-1',
+        dto,
+        'admin-10',
+      );
       expect(result).toBe(expected);
     });
   });
@@ -358,9 +423,17 @@ describe('HubController', () => {
       service.removeAllowedCategory.mockResolvedValue(expected);
 
       const user = makeAuthUser({ id: 'admin-11' });
-      const result = await controller.removeAllowedCategory('hub-1', 'cat-1', user);
+      const result = await controller.removeAllowedCategory(
+        'hub-1',
+        'cat-1',
+        user,
+      );
 
-      expect(service.removeAllowedCategory).toHaveBeenCalledWith('hub-1', 'cat-1', 'admin-11');
+      expect(service.removeAllowedCategory).toHaveBeenCalledWith(
+        'hub-1',
+        'cat-1',
+        'admin-11',
+      );
       expect(result).toBe(expected);
     });
   });

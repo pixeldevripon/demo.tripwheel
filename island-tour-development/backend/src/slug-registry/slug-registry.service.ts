@@ -8,7 +8,13 @@ export class SlugRegistryService {
   async resolve(destinationSlug: string, slug: string) {
     const entry = await this.prisma.slugRegistry.findUnique({
       where: { destinationSlug_slug: { destinationSlug, slug } },
-      select: { destinationSlug: true, slug: true, entityType: true, entityId: true, isActive: true },
+      select: {
+        destinationSlug: true,
+        slug: true,
+        entityType: true,
+        entityId: true,
+        isActive: true,
+      },
     });
 
     if (entry?.isActive) {

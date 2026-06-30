@@ -65,7 +65,12 @@ const SHORT_PASSWORD = 'Short1!';
  */
 async function signUp(
   server: ReturnType<INestApplication['getHttpServer']>,
-  payload: { name: string; email: string; password: string; [key: string]: unknown },
+  payload: {
+    name: string;
+    email: string;
+    password: string;
+    [key: string]: unknown;
+  },
 ) {
   return request(server)
     .post('/api/auth/sign-up/email')
@@ -93,10 +98,16 @@ async function signIn(
  * Returns the raw cookie header value (e.g. "better-auth.session_token=...") or
  * undefined if no such cookie is present.
  */
-function extractSessionCookie(setCookieHeader: string | string[] | undefined): string | undefined {
+function extractSessionCookie(
+  setCookieHeader: string | string[] | undefined,
+): string | undefined {
   if (!setCookieHeader) return undefined;
-  const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
-  const sessionCookie = cookies.find((c) => c.includes('better-auth.session_token'));
+  const cookies = Array.isArray(setCookieHeader)
+    ? setCookieHeader
+    : [setCookieHeader];
+  const sessionCookie = cookies.find((c) =>
+    c.includes('better-auth.session_token'),
+  );
   if (!sessionCookie) return undefined;
   // Return only the name=value part (before the first semicolon) so Supertest
   // can send it back as a Cookie header on subsequent requests.
@@ -144,7 +155,9 @@ describe('Auth (e2e)', () => {
 
     // Use a standalone PrismaClient (with the same PrismaPg adapter as PrismaService)
     // for cleanup to avoid depending on the internal PrismaService lifecycle.
-    const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaPg({
+      connectionString: process.env.DATABASE_URL,
+    });
     prisma = new PrismaClient({ adapter });
     await prisma.$connect();
   });
@@ -370,7 +383,9 @@ describe('Auth (e2e)', () => {
         password: VALID_PASSWORD,
       });
       if (res.status !== 200) {
-        throw new Error(`Sign-in test setup failed: ${JSON.stringify(res.body)}`);
+        throw new Error(
+          `Sign-in test setup failed: ${JSON.stringify(res.body)}`,
+        );
       }
     });
 
@@ -387,7 +402,10 @@ describe('Auth (e2e)', () => {
 
       expect(res.status).toBe(200);
 
-      const setCookieHeader = res.headers['set-cookie'] as string | string[] | undefined;
+      const setCookieHeader = res.headers['set-cookie'] as
+        | string
+        | string[]
+        | undefined;
       const sessionCookie = extractSessionCookie(setCookieHeader);
 
       expect(sessionCookie).toBeDefined();
@@ -414,13 +432,20 @@ describe('Auth (e2e)', () => {
 
       expect(res.status).not.toBe(200);
       // Ensure no session cookie is issued for a failed login.
-      const setCookieHeader = res.headers['set-cookie'] as string | string[] | undefined;
+      const setCookieHeader = res.headers['set-cookie'] as
+        | string
+        | string[]
+        | undefined;
       const sessionCookie = extractSessionCookie(setCookieHeader);
       expect(sessionCookie).toBeUndefined();
     });
 
     it('rejects a non-existent email', async () => {
-      const res = await signIn(server, 'nobody@does-not-exist-e2e.com', VALID_PASSWORD);
+      const res = await signIn(
+        server,
+        'nobody@does-not-exist-e2e.com',
+        VALID_PASSWORD,
+      );
 
       expect(res.status).not.toBe(200);
     });
@@ -453,17 +478,23 @@ describe('Auth (e2e)', () => {
         password: VALID_PASSWORD,
       });
       if (signUpRes.status !== 200) {
-        throw new Error(`Session test setup sign-up failed: ${JSON.stringify(signUpRes.body)}`);
+        throw new Error(
+          `Session test setup sign-up failed: ${JSON.stringify(signUpRes.body)}`,
+        );
       }
 
       const signInRes = await signIn(server, sessionEmail, VALID_PASSWORD);
       if (signInRes.status !== 200) {
-        throw new Error(`Session test setup sign-in failed: ${JSON.stringify(signInRes.body)}`);
+        throw new Error(
+          `Session test setup sign-in failed: ${JSON.stringify(signInRes.body)}`,
+        );
       }
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       if (!cookie) {
-        throw new Error('Session test setup: no session cookie received after sign-in');
+        throw new Error(
+          'Session test setup: no session cookie received after sign-in',
+        );
       }
       sessionCookie = cookie;
     });
@@ -563,7 +594,9 @@ describe('Auth (e2e)', () => {
         password: VALID_PASSWORD,
       });
       if (res.status !== 200) {
-        throw new Error(`Sign-out test setup failed: ${JSON.stringify(res.body)}`);
+        throw new Error(
+          `Sign-out test setup failed: ${JSON.stringify(res.body)}`,
+        );
       }
     });
 
@@ -579,7 +612,7 @@ describe('Auth (e2e)', () => {
       const signInRes = await signIn(server, signOutEmail, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       const signOutRes = await request(server)
@@ -593,7 +626,7 @@ describe('Auth (e2e)', () => {
       const signInRes = await signIn(server, signOutEmail, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       const signOutRes = await request(server)
@@ -604,11 +637,15 @@ describe('Auth (e2e)', () => {
 
       // After sign-out, Better Auth should instruct the browser to expire the
       // session cookie by setting it with an expired Max-Age or Expires value.
-      const setCookieAfterSignOut = signOutRes.headers['set-cookie'] as string | string[] | undefined;
+      const setCookieAfterSignOut = signOutRes.headers['set-cookie'] as
+        | string
+        | string[]
+        | undefined;
       if (setCookieAfterSignOut) {
-        const sessionCookieHeader = (Array.isArray(setCookieAfterSignOut)
-          ? setCookieAfterSignOut
-          : [setCookieAfterSignOut]
+        const sessionCookieHeader = (
+          Array.isArray(setCookieAfterSignOut)
+            ? setCookieAfterSignOut
+            : [setCookieAfterSignOut]
         ).find((c) => c.includes('better-auth.session_token'));
 
         if (sessionCookieHeader) {
@@ -636,13 +673,11 @@ describe('Auth (e2e)', () => {
       const signInRes = await signIn(server, signOutEmail, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       // Sign out.
-      await request(server)
-        .post('/api/auth/sign-out')
-        .set('Cookie', cookie!);
+      await request(server).post('/api/auth/sign-out').set('Cookie', cookie!);
 
       // Now verify the session is gone - GET /api/auth/get-session with the old
       // cookie should return null or an empty session.
@@ -720,7 +755,9 @@ describe('Auth (e2e)', () => {
       // UnauthorizedException, which the AllExceptionsFilter maps to 401.
       // Even for non-existent routes the guard fires first in NestJS.
 
-      const res = await request(server).get('/api/v1/protected-route-that-requires-auth');
+      const res = await request(server).get(
+        '/api/v1/protected-route-that-requires-auth',
+      );
 
       // NestJS evaluates guards even for routes that will ultimately 404 -
       // the guard runs in the middleware pipeline before route matching completes
@@ -736,11 +773,15 @@ describe('Auth (e2e)', () => {
       const email = uniqueEmail('authguard-test');
       createdEmails.push(email);
 
-      await signUp(server, { name: 'AuthGuard Tester', email, password: VALID_PASSWORD });
+      await signUp(server, {
+        name: 'AuthGuard Tester',
+        email,
+        password: VALID_PASSWORD,
+      });
       const signInRes = await signIn(server, email, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       // GET /api/auth/get-session is @Public() but it reads the session cookie via
@@ -811,7 +852,7 @@ describe('Auth (e2e)', () => {
       const signInRes = await signIn(server, email, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       const sessionRes = await request(server)
@@ -833,7 +874,11 @@ describe('Auth (e2e)', () => {
       const name = 'Round Trip User';
 
       // 1. Sign up
-      const signUpRes = await signUp(server, { name, email, password: VALID_PASSWORD });
+      const signUpRes = await signUp(server, {
+        name,
+        email,
+        password: VALID_PASSWORD,
+      });
       expect(signUpRes.status).toBe(200);
       expect(signUpRes.body.user.email).toBe(email);
       expect(signUpRes.body.user.role).toBe('TOUR_OPERATOR');
@@ -842,7 +887,7 @@ describe('Auth (e2e)', () => {
       const signInRes = await signIn(server, email, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
-      const cookie = extractSessionCookie(signInRes.headers['set-cookie'] as string | string[] | undefined);
+      const cookie = extractSessionCookie(signInRes.headers['set-cookie']);
       expect(cookie).toBeDefined();
 
       // 3. Get session - should return the correct user
@@ -872,8 +917,8 @@ describe('Auth (e2e)', () => {
       if (postSignOutSession.status === 200) {
         expect(
           postSignOutSession.body === null ||
-          postSignOutSession.body.session === null ||
-          postSignOutSession.body.user === null,
+            postSignOutSession.body.session === null ||
+            postSignOutSession.body.user === null,
         ).toBe(true);
       }
     });

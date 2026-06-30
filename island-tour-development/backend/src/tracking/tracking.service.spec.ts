@@ -59,6 +59,8 @@ describe('TrackingService.fireBookingComplete', () => {
     process.env.META_PIXEL_ID = '123';
     process.env.META_CAPI_TOKEN = 'tok';
     fetchSpy.mockRejectedValue(new Error('network down'));
-    await expect(new TrackingService().fireBookingComplete(PAYLOAD)).resolves.toBeUndefined();
+    await expect(
+      new TrackingService().fireBookingComplete(PAYLOAD),
+    ).resolves.toBeUndefined();
   });
 });

@@ -30,14 +30,26 @@ const serverError = ApiResponse({ status: 500, type: InternalServerErrorDto });
 const publicErrors = [serverError];
 
 const commonErrors = [
-  ApiResponse({ status: 400, description: 'Bad Request', type: BadRequestErrorDto }),
-  ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto }),
+  ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: BadRequestErrorDto,
+  }),
+  ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: UnauthorizedErrorDto,
+  }),
   serverError,
 ];
 
 const adminErrors = [
   ...commonErrors,
-  ApiResponse({ status: 403, description: 'Forbidden', type: ForbiddenErrorDto }),
+  ApiResponse({
+    status: 403,
+    description: 'Forbidden',
+    type: ForbiddenErrorDto,
+  }),
 ];
 
 const localeParam = ApiQuery({
@@ -45,7 +57,8 @@ const localeParam = ApiQuery({
   required: false,
   enum: Locale,
   example: 'en',
-  description: 'Content locale - falls back to English when translation is missing',
+  description:
+    'Content locale - falls back to English when translation is missing',
 });
 
 // ── Public list / lookup ──────────────────────────────────────────────────────
@@ -54,7 +67,8 @@ export function ApiGetAllHubsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'List all hubs with optional filters (public)',
-      description: 'Public paginated list. Supports filtering by destinationId and isActive.',
+      description:
+        'Public paginated list. Supports filtering by destinationId and isActive.',
     }),
     ApiQuery({ name: 'destinationId', required: false, type: String }),
     ApiQuery({ name: 'isActive', required: false, type: Boolean }),
@@ -70,7 +84,8 @@ export function ApiGetActiveHubsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'List all active hubs (public)',
-      description: 'Returns all active hubs without pagination. Optionally filter by destinationId.',
+      description:
+        'Returns all active hubs without pagination. Optionally filter by destinationId.',
     }),
     ApiQuery({ name: 'destinationId', required: false, type: String }),
     localeParam,
@@ -82,7 +97,8 @@ export function ApiGetActiveHubsDocs() {
 export function ApiGetHubsByDestinationDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'List hubs that have ≥1 published tour in a destination (public)',
+      summary:
+        'List hubs that have ≥1 published tour in a destination (public)',
       description:
         'Tour-gated: only PUBLISHED + active hubs with at least one LIVE tour in the destination are ' +
         'returned, each with publishedTourCount, ordered by name. Used for destination-page discovery rows.',
@@ -90,7 +106,11 @@ export function ApiGetHubsByDestinationDocs() {
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
     localeParam,
     ApiResponse({ status: 200, type: [HubByDestinationResponseDto] }),
-    ApiResponse({ status: 404, description: 'Destination not found', type: NotFoundErrorDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination not found',
+      type: NotFoundErrorDto,
+    }),
     ...publicErrors,
   );
 }
@@ -103,8 +123,17 @@ export function ApiGetHubBySlugDocs() {
         'Hub slugs are unique per destination, so `destinationSlug` is required. ' +
         'Example: GET /hubs/slug/klein-curacao?destinationSlug=curacao',
     }),
-    ApiParam({ name: 'slug', description: 'Hub slug', example: 'klein-curacao' }),
-    ApiQuery({ name: 'destinationSlug', required: true, example: 'curacao', description: 'Destination slug' }),
+    ApiParam({
+      name: 'slug',
+      description: 'Hub slug',
+      example: 'klein-curacao',
+    }),
+    ApiQuery({
+      name: 'destinationSlug',
+      required: true,
+      example: 'curacao',
+      description: 'Destination slug',
+    }),
     localeParam,
     ApiResponse({ status: 200, type: HubDetailLocalizedResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -135,8 +164,16 @@ export function ApiCreateHubDocs() {
         'Optionally seeds allowed categories in the same transaction.',
     }),
     ApiResponse({ status: 201, type: HubDetailLocalizedResponseDto }),
-    ApiResponse({ status: 404, description: 'Destination not found', type: NotFoundErrorDto }),
-    ApiResponse({ status: 409, description: 'Hub slug already exists for this destination', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination not found',
+      type: NotFoundErrorDto,
+    }),
+    ApiResponse({
+      status: 409,
+      description: 'Hub slug already exists for this destination',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
@@ -189,19 +226,26 @@ export function ApiAddAllowedCategoryDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Add an allowed category to a hub (Admin/Editor)',
-      description: "Adds a category to the hub's allowed set. Operators can only assign this category to trips in this hub.",
+      description:
+        "Adds a category to the hub's allowed set. Operators can only assign this category to trips in this hub.",
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiResponse({ status: 201, type: AddAllowedCategoryResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
-    ApiResponse({ status: 409, description: 'Category already allowed for this hub', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Category already allowed for this hub',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
 
 export function ApiRemoveAllowedCategoryDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Remove an allowed category from a hub (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Remove an allowed category from a hub (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'categoryId', description: 'Category UUID' }),
     ApiResponse({ status: 200, type: RemoveAllowedCategoryResponseDto }),
@@ -227,7 +271,9 @@ export function ApiGetAllTranslationsDocs() {
 
 export function ApiGetTranslationsByLocaleDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get translations for a specific locale (Admin/Editor)' }),
+    ApiOperation({
+      summary: 'Get translations for a specific locale (Admin/Editor)',
+    }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'locale', enum: Locale, example: Locale.nl }),
     ApiResponse({ status: 200, type: HubTranslationEntryDto }),
@@ -273,7 +319,8 @@ export function ApiGetPageContentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get editorial page content for a hub (public)',
-      description: 'Returns about text, meta title, and meta description for the requested locale.',
+      description:
+        'Returns about text, meta title, and meta description for the requested locale.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     localeParam,
@@ -304,10 +351,16 @@ export function ApiGetFaqsDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get active FAQs for a hub (public)',
-      description: 'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
+      description:
+        'Returns active FAQ items. Pass ?locale= to filter by locale; omit to return all locales.',
     }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
-    ApiQuery({ name: 'locale', required: false, enum: Locale, example: Locale.en }),
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      example: Locale.en,
+    }),
     ApiResponse({ status: 200, type: [FaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,

@@ -14,14 +14,20 @@ export class SlugResolveResponseDto {
   @ApiProperty({ enum: SlugEntityType, example: SlugEntityType.CATEGORY })
   entityType!: SlugEntityType;
 
-  @ApiProperty({ example: 'dcb12be5-fa5b-4613-bd5b-45a4a211acdc', nullable: true })
+  @ApiProperty({
+    example: 'dcb12be5-fa5b-4613-bd5b-45a4a211acdc',
+    nullable: true,
+  })
   entityId!: string | null;
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
 
 export class ResolveSlugQueryDto {
-  @ApiProperty({ example: 'curacao', description: 'Destination slug (e.g. curacao, aruba)' })
+  @ApiProperty({
+    example: 'curacao',
+    description: 'Destination slug (e.g. curacao, aruba)',
+  })
   @IsString()
   @IsNotEmpty()
   destinationSlug!: string;

@@ -29,14 +29,24 @@ const commonErrors = [
   ApiResponse({ status: 401, type: UnauthorizedErrorDto }),
   serverError,
 ];
-const adminErrors = [...commonErrors, ApiResponse({ status: 403, type: ForbiddenErrorDto })];
-const localeQuery = ApiQuery({ name: 'locale', required: false, enum: Locale, example: 'en' });
+const adminErrors = [
+  ...commonErrors,
+  ApiResponse({ status: 403, type: ForbiddenErrorDto }),
+];
+const localeQuery = ApiQuery({
+  name: 'locale',
+  required: false,
+  enum: Locale,
+  example: 'en',
+});
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
 export function ApiGetActiveCollectionsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List active collections for a destination (public)' }),
+    ApiOperation({
+      summary: 'List active collections for a destination (public)',
+    }),
     ApiQuery({ name: 'destinationSlug', required: true, example: 'curacao' }),
     localeQuery,
     ApiResponse({ status: 200, type: [CollectionLocalizedResponseDto] }),
@@ -49,7 +59,8 @@ export function ApiGetCollectionBySlugDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get a collection page + resolved tours (public)',
-      description: 'MANUAL → ordered tourIds; DYNAMIC → filterQuery resolved via the tour-listing engine.',
+      description:
+        'MANUAL → ordered tourIds; DYNAMIC → filterQuery resolved via the tour-listing engine.',
     }),
     ApiParam({ name: 'slug', example: 'top-10-tours' }),
     ApiQuery({ name: 'destinationSlug', required: true, example: 'curacao' }),
@@ -71,7 +82,11 @@ export function ApiRenderCollectionDocs() {
         'Only PUBLISHED + active collections render (404 otherwise).',
     }),
     ApiParam({ name: 'slug', example: 'best-things-to-do' }),
-    ApiQuery({ name: 'destinationId', required: true, example: 'a1b2c3d4-0000-0000-0000-000000000001' }),
+    ApiQuery({
+      name: 'destinationId',
+      required: true,
+      example: 'a1b2c3d4-0000-0000-0000-000000000001',
+    }),
     localeQuery,
     ApiResponse({ status: 200, type: CollectionRenderResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -81,7 +96,9 @@ export function ApiRenderCollectionDocs() {
 
 export function ApiGetCollectionPageContentDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get collection SEO/editorial page content (public)' }),
+    ApiOperation({
+      summary: 'Get collection SEO/editorial page content (public)',
+    }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     localeQuery,
     ApiResponse({ status: 200, type: CollectionPageContentResponseDto }),
@@ -110,14 +127,20 @@ export function ApiCreateCollectionDocs() {
         '(cannibalization guard). MANUAL requires tourIds; DYNAMIC requires filterQuery.',
     }),
     ApiResponse({ status: 201, type: CollectionResponseDto }),
-    ApiResponse({ status: 409, description: 'Slug collides with a category or already exists', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Slug collides with a category or already exists',
+      type: ConflictErrorDto,
+    }),
     ...adminErrors,
   );
 }
 
 export function ApiUpdateCollectionDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Update a collection (Admin). Slug is immutable.' }),
+    ApiOperation({
+      summary: 'Update a collection (Admin). Slug is immutable.',
+    }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     ApiResponse({ status: 200, type: CollectionResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
@@ -176,7 +199,9 @@ export function ApiUpsertCollectionTranslationsDocs() {
 
 export function ApiDeleteCollectionTranslationsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Delete a collection translation (non-EN) (Admin)' }),
+    ApiOperation({
+      summary: 'Delete a collection translation (non-EN) (Admin)',
+    }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     ApiParam({ name: 'locale', enum: Locale }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
@@ -242,7 +267,8 @@ export function ApiUpsertCollectionTourRationaleDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Upsert a per-tour, per-locale collection rationale (Admin)',
-      description: 'Max 20 words (400 otherwise). The tour must already be a member of the collection.',
+      description:
+        'Max 20 words (400 otherwise). The tour must already be a member of the collection.',
     }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     ApiParam({ name: 'tourId', description: 'Tour UUID' }),
@@ -256,7 +282,8 @@ export function ApiUpsertCollectionTourRationaleDocs() {
 export function ApiUpdateCollectionStatusDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Transition a collection status (Admin) - DRAFT/PUBLISHED/ARCHIVED',
+      summary:
+        'Transition a collection status (Admin) - DRAFT/PUBLISHED/ARCHIVED',
       description:
         'Publish guard (G5): DRAFT→PUBLISHED requires heroImage, base-locale (en) H1 + overview, and ' +
         '(MANUAL only) a valid base-locale rationale on every member tour. Throws 422 listing what is missing.',
@@ -264,7 +291,11 @@ export function ApiUpdateCollectionStatusDocs() {
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     ApiResponse({ status: 200, type: CollectionResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
-    ApiResponse({ status: 422, description: 'Collection is not publishable', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 422,
+      description: 'Collection is not publishable',
+      type: BadRequestErrorDto,
+    }),
     ...adminErrors,
   );
 }

@@ -32,7 +32,10 @@ export class SpotlightRequestResponseDto {
   startsAt!: string | null;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-31T00:00:00.000Z' })
   endsAt!: string | null;
-  @ApiPropertyOptional({ nullable: true, example: 'Approved for July high season.' })
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Approved for July high season.',
+  })
   note!: string | null;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-01T00:00:00.000Z' })
   requestedStartsAt!: string | null;
@@ -48,7 +51,8 @@ export class TourSpotlightHistoryDto {
   @ApiPropertyOptional({
     type: SpotlightRequestResponseDto,
     nullable: true,
-    description: 'The current live/pending request (ACTIVE > APPROVED > REQUESTED), if any.',
+    description:
+      'The current live/pending request (ACTIVE > APPROVED > REQUESTED), if any.',
   })
   current!: SpotlightRequestResponseDto | null;
 
@@ -63,7 +67,8 @@ export class TourSpotlightHistoryDto {
 export class SpotlightQueueDto {
   @ApiProperty({
     example: 2,
-    description: 'Count of APPROVED+ACTIVE (un-ended) requests for the queried destination.',
+    description:
+      'Count of APPROVED+ACTIVE (un-ended) requests for the queried destination.',
   })
   activeCount!: number;
 
@@ -78,14 +83,21 @@ export class SpotlightQueueDto {
 export class TierResponseDto {
   @ApiProperty({ example: 'tour-uuid' }) tourId!: string;
   @ApiProperty({ enum: TierKey, example: TierKey.premium }) tierKey!: TierKey;
-  @ApiProperty({ example: 30.0, description: 'Commission percentage for the tier.' })
+  @ApiProperty({
+    example: 30.0,
+    description: 'Commission percentage for the tier.',
+  })
   commissionTier!: number;
-  @ApiProperty({ example: 1, description: 'Denormalized sort key (lower wins).' })
+  @ApiProperty({
+    example: 1,
+    description: 'Denormalized sort key (lower wins).',
+  })
   tierRank!: number;
   @ApiPropertyOptional({
     nullable: true,
     example: '2026-07-25T10:00:00.000Z',
-    description: '30-day lock; further tier changes rejected while in the future.',
+    description:
+      '30-day lock; further tier changes rejected while in the future.',
   })
   tierLockedUntil!: string | null;
 }
@@ -113,13 +125,17 @@ export class SpotlightQueueQueryDto {
 export class CreateSpotlightRequestDto {
   @ApiPropertyOptional({
     example: '2026-07-01',
-    description: "Operator's preferred start date (admin still sets the final window).",
+    description:
+      "Operator's preferred start date (admin still sets the final window).",
   })
   @IsOptional()
   @IsDateString()
   requestedStartsAt?: string;
 
-  @ApiPropertyOptional({ example: 30, description: "Operator's preferred length in days." })
+  @ApiPropertyOptional({
+    example: 30,
+    description: "Operator's preferred length in days.",
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -128,11 +144,17 @@ export class CreateSpotlightRequestDto {
 }
 
 export class ApproveSpotlightDto {
-  @ApiProperty({ example: '2026-07-01T00:00:00.000Z', description: 'Window start.' })
+  @ApiProperty({
+    example: '2026-07-01T00:00:00.000Z',
+    description: 'Window start.',
+  })
   @IsDateString()
   startsAt!: string;
 
-  @ApiProperty({ example: '2026-07-31T00:00:00.000Z', description: 'Window end.' })
+  @ApiProperty({
+    example: '2026-07-31T00:00:00.000Z',
+    description: 'Window end.',
+  })
   @IsDateString()
   endsAt!: string;
 
@@ -151,7 +173,11 @@ export class RejectSpotlightDto {
 }
 
 export class ChangeTierDto {
-  @ApiProperty({ enum: TierKey, example: TierKey.premium, description: 'Operator-chosen tier.' })
+  @ApiProperty({
+    enum: TierKey,
+    example: TierKey.premium,
+    description: 'Operator-chosen tier.',
+  })
   @IsEnum(TierKey)
   tierKey!: TierKey;
 }

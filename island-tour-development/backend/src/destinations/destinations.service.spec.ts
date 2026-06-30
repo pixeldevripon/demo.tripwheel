@@ -155,7 +155,11 @@ describe('DestinationService', () => {
       prisma.destination.count.mockResolvedValue(1);
       prisma.destination.findMany.mockResolvedValue([dest]);
 
-      const query: DestinationQueryDto = { page: 1, limit: 20, locale: Locale.en };
+      const query: DestinationQueryDto = {
+        page: 1,
+        limit: 20,
+        locale: Locale.en,
+      };
       const result = await service.getAll(query);
 
       expect(result.total).toBe(1);
@@ -169,7 +173,11 @@ describe('DestinationService', () => {
       prisma.destination.count.mockResolvedValue(0);
       prisma.destination.findMany.mockResolvedValue([]);
 
-      const query: DestinationQueryDto = { isActive: false, page: 1, limit: 20 };
+      const query: DestinationQueryDto = {
+        isActive: false,
+        page: 1,
+        limit: 20,
+      };
       await service.getAll(query);
 
       expect(prisma.destination.count).toHaveBeenCalledWith({
@@ -208,7 +216,11 @@ describe('DestinationService', () => {
       prisma.destination.count.mockResolvedValue(1);
       prisma.destination.findMany.mockResolvedValue([dest]);
 
-      const query: DestinationQueryDto = { locale: Locale.nl, page: 1, limit: 20 };
+      const query: DestinationQueryDto = {
+        locale: Locale.nl,
+        page: 1,
+        limit: 20,
+      };
       const result = await service.getAll(query);
 
       expect(result.data[0].name).toBe('Curaçao NL');
@@ -221,7 +233,11 @@ describe('DestinationService', () => {
       prisma.destination.count.mockResolvedValue(1);
       prisma.destination.findMany.mockResolvedValue([dest]);
 
-      const query: DestinationQueryDto = { locale: Locale.nl, page: 1, limit: 20 };
+      const query: DestinationQueryDto = {
+        locale: Locale.nl,
+        page: 1,
+        limit: 20,
+      };
       const result = await service.getAll(query);
 
       expect(result.data[0].name).toBe('Curaçao');
@@ -244,7 +260,11 @@ describe('DestinationService', () => {
 
     it('returns localized destinations with translation applied', async () => {
       const translation = { name: 'Aruba ES', isMachineTranslated: true };
-      const dest = { ...makeDestination({ name: 'Aruba', slug: 'aruba' }), translations: [translation] };
+      const dest = {
+        ...makeDestination({ name: 'Aruba', slug: 'aruba' }),
+        translations: [translation],
+        _count: { tours: 0 },
+      };
       prisma.destination.findMany.mockResolvedValue([dest]);
 
       const result = await service.getActive(Locale.es);
@@ -255,7 +275,11 @@ describe('DestinationService', () => {
     });
 
     it('falls back to base name when no translation exists', async () => {
-      const dest = { ...makeDestination({ name: 'Aruba', slug: 'aruba' }), translations: [] };
+      const dest = {
+        ...makeDestination({ name: 'Aruba', slug: 'aruba' }),
+        translations: [],
+        _count: { tours: 0 },
+      };
       prisma.destination.findMany.mockResolvedValue([dest]);
 
       const result = await service.getActive(Locale.nl);
@@ -313,9 +337,9 @@ describe('DestinationService', () => {
     it('includes the slug in the NotFoundException message', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
 
-      await expect(service.getBySlug('ghost-island', Locale.en)).rejects.toThrow(
-        'ghost-island',
-      );
+      await expect(
+        service.getBySlug('ghost-island', Locale.en),
+      ).rejects.toThrow('ghost-island');
     });
 
     it('returns null for overview and breadcrumbLabel when no translation row exists', async () => {
@@ -361,7 +385,9 @@ describe('DestinationService', () => {
     it('includes the id in the NotFoundException message', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('bad-id', Locale.en)).rejects.toThrow('bad-id');
+      await expect(service.getById('bad-id', Locale.en)).rejects.toThrow(
+        'bad-id',
+      );
     });
   });
 
@@ -376,7 +402,10 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
+      const dto: CreateDestinationDto = {
+        name: 'Aruba',
+        region: Region.CARIBBEAN,
+      };
       const result = await service.create(dto, adminId);
 
       expect(prisma.$transaction).toHaveBeenCalled();
@@ -389,7 +418,10 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
+      const dto: CreateDestinationDto = {
+        name: 'Aruba',
+        region: Region.CARIBBEAN,
+      };
       await service.create(dto, adminId);
 
       expect(prisma.slugRegistry.create).toHaveBeenCalledWith({
@@ -413,13 +445,26 @@ describe('DestinationService', () => {
       prisma.category.findMany.mockResolvedValue(categories);
       prisma.slugRegistry.createMany.mockResolvedValue({ count: 2 });
 
-      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
+      const dto: CreateDestinationDto = {
+        name: 'Aruba',
+        region: Region.CARIBBEAN,
+      };
       await service.create(dto, adminId);
 
       expect(prisma.slugRegistry.createMany).toHaveBeenCalledWith({
         data: [
-          { destinationSlug: 'aruba', slug: 'boat-tours', entityType: SlugEntityType.CATEGORY, entityId: 'cat-1' },
-          { destinationSlug: 'aruba', slug: 'hiking', entityType: SlugEntityType.CATEGORY, entityId: 'cat-2' },
+          {
+            destinationSlug: 'aruba',
+            slug: 'boat-tours',
+            entityType: SlugEntityType.CATEGORY,
+            entityId: 'cat-1',
+          },
+          {
+            destinationSlug: 'aruba',
+            slug: 'hiking',
+            entityType: SlugEntityType.CATEGORY,
+            entityId: 'cat-2',
+          },
         ],
       });
     });
@@ -430,19 +475,29 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId);
+      await service.create(
+        { name: 'Aruba', region: Region.CARIBBEAN },
+        adminId,
+      );
 
       expect(prisma.slugRegistry.createMany).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when destination slug already exists (P2002)', async () => {
-      const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+      const p2002 = Object.assign(new Error('Unique constraint'), {
+        code: 'P2002',
+      });
       prisma.destination.create.mockRejectedValue(p2002);
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      const dto: CreateDestinationDto = { name: 'Aruba', region: Region.CARIBBEAN };
-      await expect(service.create(dto, adminId)).rejects.toThrow(ConflictException);
+      const dto: CreateDestinationDto = {
+        name: 'Aruba',
+        region: Region.CARIBBEAN,
+      };
+      await expect(service.create(dto, adminId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('re-throws unknown errors from destination.create unchanged', async () => {
@@ -451,9 +506,9 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await expect(service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId)).rejects.toThrow(
-        'DB connection lost',
-      );
+      await expect(
+        service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId),
+      ).rejects.toThrow('DB connection lost');
     });
 
     it('auto-generates slug from name (removes diacritics, lowercases)', async () => {
@@ -462,7 +517,10 @@ describe('DestinationService', () => {
       prisma.slugRegistry.create.mockResolvedValue({});
       prisma.category.findMany.mockResolvedValue([]);
 
-      await service.create({ name: 'Curaçao', region: Region.CARIBBEAN }, adminId);
+      await service.create(
+        { name: 'Curaçao', region: Region.CARIBBEAN },
+        adminId,
+      );
 
       expect(prisma.destination.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -478,7 +536,10 @@ describe('DestinationService', () => {
     const adminId = 'admin-1';
 
     it('updates destination fields and returns the updated record', async () => {
-      const updated = makeDestination({ name: 'Aruba Updated', isActive: true });
+      const updated = makeDestination({
+        name: 'Aruba Updated',
+        isActive: true,
+      });
       prisma.destination.update.mockResolvedValue(updated);
 
       const dto: UpdateDestinationDto = { name: 'Aruba Updated' };
@@ -494,7 +555,9 @@ describe('DestinationService', () => {
     });
 
     it('throws NotFoundException on Prisma P2025 (record not found)', async () => {
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.destination.update.mockRejectedValue(p2025);
 
       const dto: UpdateDestinationDto = { name: 'Ghost' };
@@ -507,7 +570,9 @@ describe('DestinationService', () => {
       const unknownErr = new Error('Timeout');
       prisma.destination.update.mockRejectedValue(unknownErr);
 
-      await expect(service.update('dest-1', {}, adminId)).rejects.toThrow('Timeout');
+      await expect(service.update('dest-1', {}, adminId)).rejects.toThrow(
+        'Timeout',
+      );
     });
 
     it('updates slugRegistry.isActive when isActive is provided in dto', async () => {
@@ -583,7 +648,9 @@ describe('DestinationService', () => {
         where: { destinationSlug: 'curacao' },
         data: { isActive: false },
       });
-      expect(result).toEqual({ message: 'Destination deactivated successfully' });
+      expect(result).toEqual({
+        message: 'Destination deactivated successfully',
+      });
     });
 
     it('runs the entire remove flow inside a single $transaction', async () => {
@@ -620,7 +687,14 @@ describe('DestinationService', () => {
     it('returns all translation rows for the destination', async () => {
       const dest = makeDestination();
       const translations = [
-        { locale: Locale.nl, name: 'Curaçao NL', overview: null, h1Override: null, breadcrumbLabel: null, isMachineTranslated: false },
+        {
+          locale: Locale.nl,
+          name: 'Curaçao NL',
+          overview: null,
+          h1Override: null,
+          breadcrumbLabel: null,
+          isMachineTranslated: false,
+        },
       ];
       prisma.destination.findUnique.mockResolvedValue(dest);
       prisma.destinationTranslation.findMany.mockResolvedValue(translations);
@@ -715,11 +789,21 @@ describe('DestinationService', () => {
         fields: { name: 'Curaçao NL' },
         isMachineTranslated: false,
       };
-      const result = await service.upsertTranslations('dest-1', Locale.nl, dto, adminId);
+      const result = await service.upsertTranslations(
+        'dest-1',
+        Locale.nl,
+        dto,
+        adminId,
+      );
 
       expect(prisma.destinationTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { destinationId_locale: { destinationId: 'dest-1', locale: Locale.nl } },
+          where: {
+            destinationId_locale: {
+              destinationId: 'dest-1',
+              locale: Locale.nl,
+            },
+          },
           create: expect.objectContaining({
             destinationId: 'dest-1',
             locale: Locale.nl,
@@ -775,7 +859,9 @@ describe('DestinationService', () => {
 
     it('throws NotFoundException when no translation row exists for that locale (P2025)', async () => {
       const dest = makeDestination();
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.destination.findUnique.mockResolvedValue(dest);
       prisma.destinationTranslation.delete.mockRejectedValue(p2025);
 
@@ -789,18 +875,28 @@ describe('DestinationService', () => {
       prisma.destination.findUnique.mockResolvedValue(dest);
       prisma.destinationTranslation.delete.mockResolvedValue({});
 
-      const result = await service.deleteTranslations('dest-1', Locale.nl, adminId);
+      const result = await service.deleteTranslations(
+        'dest-1',
+        Locale.nl,
+        adminId,
+      );
 
       expect(prisma.destinationTranslation.delete).toHaveBeenCalledWith({
-        where: { destinationId_locale: { destinationId: 'dest-1', locale: Locale.nl } },
+        where: {
+          destinationId_locale: { destinationId: 'dest-1', locale: Locale.nl },
+        },
       });
-      expect(result).toEqual({ message: `Translation for locale "${Locale.nl}" deleted` });
+      expect(result).toEqual({
+        message: `Translation for locale "${Locale.nl}" deleted`,
+      });
     });
 
     it('re-throws unknown errors from delete unchanged', async () => {
       const dest = makeDestination();
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.destinationTranslation.delete.mockRejectedValue(new Error('Fatal'));
+      prisma.destinationTranslation.delete.mockRejectedValue(
+        new Error('Fatal'),
+      );
 
       await expect(
         service.deleteTranslations('dest-1', Locale.nl, adminId),
@@ -814,9 +910,9 @@ describe('DestinationService', () => {
     it('throws NotFoundException when destination does not exist', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
 
-      await expect(service.getPageContent('missing', Locale.en)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getPageContent('missing', Locale.en),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('returns the page content row when found', async () => {
@@ -881,11 +977,21 @@ describe('DestinationService', () => {
         metaTitle: 'Title',
         metaDescription: 'Desc',
       };
-      const result = await service.upsertPageContent('dest-1', Locale.en, dto, adminId);
+      const result = await service.upsertPageContent(
+        'dest-1',
+        Locale.en,
+        dto,
+        adminId,
+      );
 
       expect(prisma.destinationPageContent.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { destinationId_locale: { destinationId: 'dest-1', locale: Locale.en } },
+          where: {
+            destinationId_locale: {
+              destinationId: 'dest-1',
+              locale: Locale.en,
+            },
+          },
           create: expect.objectContaining({
             destinationId: 'dest-1',
             locale: Locale.en,
@@ -903,9 +1009,9 @@ describe('DestinationService', () => {
     it('throws NotFoundException when destination does not exist', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getFaqs('missing', {}),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getFaqs('missing', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns all active FAQs for the destination when no locale filter is provided', async () => {
@@ -1039,7 +1145,10 @@ describe('DestinationService', () => {
 
     it('updates the FAQ and returns the updated record', async () => {
       const existingFaq = makeFaq();
-      const updatedFaq = { ...existingFaq, question: 'New question text here?' };
+      const updatedFaq = {
+        ...existingFaq,
+        question: 'New question text here?',
+      };
       prisma.faq.findFirst.mockResolvedValue(existingFaq);
       prisma.faq.update.mockResolvedValue(updatedFaq);
 
@@ -1049,7 +1158,9 @@ describe('DestinationService', () => {
       expect(prisma.faq.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'faq-1' },
-          data: expect.objectContaining({ question: 'New question text here?' }),
+          data: expect.objectContaining({
+            question: 'New question text here?',
+          }),
         }),
       );
       expect(result).toEqual(updatedFaq);
@@ -1059,9 +1170,9 @@ describe('DestinationService', () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
       const dto: UpdateFaqDto = {};
-      await expect(service.updateFaq('dest-1', 'faq-1', dto, adminId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateFaq('dest-1', 'faq-1', dto, adminId),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith({
         where: {
@@ -1097,9 +1208,9 @@ describe('DestinationService', () => {
     it('throws NotFoundException when destination does not exist (via findFirst)', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteFaq('dest-1', 'faq-999', adminId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteFaq('dest-1', 'faq-999', adminId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('deletes the FAQ and returns a success message', async () => {
@@ -1109,16 +1220,18 @@ describe('DestinationService', () => {
 
       const result = await service.deleteFaq('dest-1', 'faq-1', adminId);
 
-      expect(prisma.faq.delete).toHaveBeenCalledWith({ where: { id: 'faq-1' } });
+      expect(prisma.faq.delete).toHaveBeenCalledWith({
+        where: { id: 'faq-1' },
+      });
       expect(result).toEqual({ message: 'FAQ deleted successfully' });
     });
 
     it('queries faq.findFirst with correct pageType and entityId', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteFaq('dest-1', 'faq-99', adminId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteFaq('dest-1', 'faq-99', adminId),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith({
         where: {

@@ -48,7 +48,9 @@ function mockPrisma() {
     $executeRaw: jest.fn().mockResolvedValue(1),
   };
   p.$transaction = jest.fn((arg: unknown) =>
-    typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(p) : Promise.all(arg as []),
+    typeof arg === 'function'
+      ? (arg as (tx: unknown) => unknown)(p)
+      : Promise.all(arg as []),
   );
   return p;
 }
@@ -81,8 +83,20 @@ function fakeBooking(over: Record<string, unknown> = {}) {
     cancelledBy: null,
     cancellationReason: null,
     unitItems: [
-      { id: 'ui1', uuid: 'uui1', ageBandId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
-      { id: 'ui2', uuid: 'uui2', ageBandId: 'adult', status: BookingStatus.ON_HOLD, priceRetail: D('79.99') },
+      {
+        id: 'ui1',
+        uuid: 'uui1',
+        ageBandId: 'adult',
+        status: BookingStatus.ON_HOLD,
+        priceRetail: D('79.99'),
+      },
+      {
+        id: 'ui2',
+        uuid: 'uui2',
+        ageBandId: 'adult',
+        status: BookingStatus.ON_HOLD,
+        priceRetail: D('79.99'),
+      },
     ],
     ...over,
   };
@@ -131,12 +145,13 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
     status: 'OPEN',
     soldOutAt: null,
   });
-  m.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-    fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
+  m.booking.create.mockImplementation(
+    ({ data }: { data: Record<string, unknown> }) =>
+      fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
   );
   // finalizeConfirmation re-reads via booking.update (conversion backfill).
-  m.booking.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-    fakeBooking(data),
+  m.booking.update.mockImplementation(
+    ({ data }: { data: Record<string, unknown> }) => fakeBooking(data),
   );
 }
 
@@ -158,7 +173,9 @@ describe('BookingsService', () => {
   beforeEach(() => {
     prisma = mockPrisma();
     m = prisma;
-    mail = { sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined) };
+    mail = {
+      sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+    };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
     notifications = {
       emitAvailabilityUpdate: jest.fn(),
@@ -238,9 +255,9 @@ describe('BookingsService', () => {
       expect(data.tourStartDateTime).toBeInstanceOf(Date);
       expect(data.tourEndDateTime).toBeInstanceOf(Date);
       // start + durationMinutesFrom (480) = end.
-      expect(data.tourEndDateTime.getTime() - data.tourStartDateTime.getTime()).toBe(
-        480 * 60_000,
-      );
+      expect(
+        data.tourEndDateTime.getTime() - data.tourStartDateTime.getTime(),
+      ).toBe(480 * 60_000);
       expect(data.pickupAddress).toBe('Piscadera Bay, Willemstad');
       expect(data.island).toBe('curacao');
       expect(data.newsletterOptIn).toBe(true);
@@ -249,7 +266,11 @@ describe('BookingsService', () => {
 
     it('persists per-seat travelerAge supplied on a reserve item', async () => {
       setupReserveContext(prisma);
-      await svc.reserve({ tourId: 't1', departureId: 'dep1', items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 30 }] });
+      await svc.reserve({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 30 }],
+      });
       const data = m.booking.create.mock.calls[0][0].data;
       expect(data.unitItems.create).toEqual([
         expect.objectContaining({ travelerAge: 30 }),
@@ -260,13 +281,21 @@ describe('BookingsService', () => {
     it('rejects a traveler below the tour minimum age', async () => {
       setupReserveContext(prisma, { minAgeYears: 12 });
       await expect(
-        svc.reserve({ tourId: 't1', departureId: 'dep1', items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 8 }] }),
+        svc.reserve({
+          tourId: 't1',
+          departureId: 'dep1',
+          items: [{ ageBandId: 'adult', quantity: 2, travelerAge: 8 }],
+        }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('rejects an invalid pickupLocationId (wrong tour)', async () => {
       setupReserveContext(prisma);
-      m.pickupLocation.findUnique.mockResolvedValue({ tourId: 'OTHER', name: 'x', address: 'y' });
+      m.pickupLocation.findUnique.mockResolvedValue({
+        tourId: 'OTHER',
+        name: 'x',
+        address: 'y',
+      });
       await expect(
         svc.reserve({ ...reserveDto, pickupLocationId: 'pk1' }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
@@ -277,7 +306,10 @@ describe('BookingsService', () => {
     it('transitions ON_HOLD → CONFIRMED and persists contact', async () => {
       m.booking.findUnique.mockResolvedValue(fakeBooking());
       m.booking.update.mockResolvedValue(
-        fakeBooking({ status: BookingStatus.CONFIRMED, utcConfirmedAt: new Date() }),
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          utcConfirmedAt: new Date(),
+        }),
       );
       const res = await svc.confirm('b1', {
         contact: { firstName: 'Ada', lastName: 'Byron', email: 'ada@x.io' },
@@ -295,14 +327,20 @@ describe('BookingsService', () => {
     });
 
     it('rejects confirming an expired hold', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ utcExpiresAt: PAST }));
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ utcExpiresAt: PAST }),
+      );
       await expect(
-        svc.confirm('b1', { contact: { firstName: 'A', lastName: 'B', email: 'a@b.io' } }),
+        svc.confirm('b1', {
+          contact: { firstName: 'A', lastName: 'B', email: 'a@b.io' },
+        }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('is idempotent when already CONFIRMED', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ status: BookingStatus.CONFIRMED }));
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
       const res = await svc.confirm('b1', {
         contact: { firstName: 'A', lastName: 'B', email: 'a@b.io' },
       });
@@ -327,7 +365,10 @@ describe('BookingsService', () => {
         soldOutAt: null,
       });
       m.booking.update.mockResolvedValue(
-        fakeBooking({ status: BookingStatus.CANCELLED, cancellationRefund: 'FULL' }),
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
       );
 
       const res = await svc.cancel('b1', {});
@@ -337,7 +378,9 @@ describe('BookingsService', () => {
     });
 
     it('refunds NONE for an on-hold cancellation (no payment taken)', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ status: BookingStatus.ON_HOLD }));
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD }),
+      );
       m.departure.findUnique.mockResolvedValue({
         capacity: 10,
         bookedCount: 0,
@@ -345,15 +388,22 @@ describe('BookingsService', () => {
         soldOutAt: null,
       });
       m.booking.update.mockResolvedValue(
-        fakeBooking({ status: BookingStatus.CANCELLED, cancellationRefund: 'NONE' }),
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'NONE',
+        }),
       );
       const res = await svc.cancel('b1', {});
       expect(res.cancellationRefund).toBe('NONE');
     });
 
     it('rejects cancelling an already-redeemed booking', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ status: BookingStatus.REDEEMED }));
-      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(ConflictException);
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.REDEEMED }),
+      );
+      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
   });
 
@@ -370,8 +420,12 @@ describe('BookingsService', () => {
     });
 
     it('refuses to extend a confirmed booking', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ status: BookingStatus.CONFIRMED }));
-      await expect(svc.extend('b1', {})).rejects.toBeInstanceOf(ConflictException);
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      await expect(svc.extend('b1', {})).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
   });
 
@@ -407,14 +461,21 @@ describe('BookingsService', () => {
 
   describe('getById (auth scoping)', () => {
     it('allows the owning operator', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ operatorId: 'op1' }));
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ operatorId: 'op1' }),
+      );
       m.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      const res = await svc.getById('b1', { id: 'u1', role: Role.TOUR_OPERATOR });
+      const res = await svc.getById('b1', {
+        id: 'u1',
+        role: Role.TOUR_OPERATOR,
+      });
       expect(res.id).toBe('b1');
     });
 
     it('forbids an operator who does not own the booking', async () => {
-      m.booking.findUnique.mockResolvedValue(fakeBooking({ operatorId: 'opX' }));
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ operatorId: 'opX' }),
+      );
       m.operator.findUnique.mockResolvedValue({ id: 'op1' });
       await expect(
         svc.getById('b1', { id: 'u1', role: Role.TOUR_OPERATOR }),

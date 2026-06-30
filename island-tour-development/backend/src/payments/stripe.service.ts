@@ -84,7 +84,10 @@ export class StripeService {
   }
 
   /** Refund a charge/intent by its PaymentIntent id. */
-  async refundIntent(intentId: string, idempotencyKey: string): Promise<Stripe.Refund> {
+  async refundIntent(
+    intentId: string,
+    idempotencyKey: string,
+  ): Promise<Stripe.Refund> {
     const client = await this.requireClient();
     return client.refunds.create(
       { payment_intent: intentId },
@@ -93,7 +96,10 @@ export class StripeService {
   }
 
   /** Verify the Stripe-Signature header against the raw request body. */
-  async constructEvent(rawBody: Buffer, signature: string): Promise<Stripe.Event> {
+  async constructEvent(
+    rawBody: Buffer,
+    signature: string,
+  ): Promise<Stripe.Event> {
     const client = await this.requireClient();
     const secret = await this.webhookSecret();
     if (!secret) throw new Error('Stripe webhook secret is not configured');
@@ -104,19 +110,26 @@ export class StripeService {
 
   private async requireClient(): Promise<Stripe> {
     const client = await this.getClient();
-    if (!client) throw new Error('Stripe is not configured (missing secret key)');
+    if (!client)
+      throw new Error('Stripe is not configured (missing secret key)');
     return client;
   }
 
   /** Load + decrypt the stripe_configuration row. */
-  private async config(): Promise<{ secretKey: string; webhookSecret: string; methods: string[] }> {
+  private async config(): Promise<{
+    secretKey: string;
+    webhookSecret: string;
+    methods: string[];
+  }> {
     const row = await this.prisma.stripeConfiguration.findUnique({
       where: { id: 'default' },
       select: { secretKey: true, webhookSecret: true, paymentMethods: true },
     });
     return {
       secretKey: row?.secretKey ? safeDecrypt(row.secretKey, this.logger) : '',
-      webhookSecret: row?.webhookSecret ? safeDecrypt(row.webhookSecret, this.logger) : '',
+      webhookSecret: row?.webhookSecret
+        ? safeDecrypt(row.webhookSecret, this.logger)
+        : '',
       methods: row?.paymentMethods ?? [],
     };
   }
@@ -134,7 +147,9 @@ function safeDecrypt(value: string, logger: Logger): string {
   try {
     return decrypt(value);
   } catch {
-    logger.error('Failed to decrypt a Stripe credential - check ENCRYPTION_KEY');
+    logger.error(
+      'Failed to decrypt a Stripe credential - check ENCRYPTION_KEY',
+    );
     return '';
   }
 }

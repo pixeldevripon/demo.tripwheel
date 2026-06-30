@@ -4,7 +4,11 @@ jest.mock('@/auth/auth.instance', () => ({
   auth: {
     $context: Promise.resolve({
       password: { hash: jest.fn() },
-      internalAdapter: { createUser: jest.fn(), linkAccount: jest.fn(), deleteUser: jest.fn() },
+      internalAdapter: {
+        createUser: jest.fn(),
+        linkAccount: jest.fn(),
+        deleteUser: jest.fn(),
+      },
     }),
     api: { requestPasswordReset: jest.fn() },
   },
@@ -15,7 +19,14 @@ import { OperatorsService } from './operators.service';
 import { PrismaService } from '@/prisma/prisma.service';
 
 const mockPrismaService = {
-  operator: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn() },
+  operator: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
   user: { findUnique: jest.fn(), update: jest.fn() },
   operatorCompanyInfo: { upsert: jest.fn(), findUnique: jest.fn() },
   operatorSocialMedia: { upsert: jest.fn(), findUnique: jest.fn() },

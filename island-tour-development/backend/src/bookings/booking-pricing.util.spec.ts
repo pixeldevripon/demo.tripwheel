@@ -4,12 +4,24 @@ import { computeBookingPricing } from './booking-pricing.util';
 const D = (v: string | number) => new Prisma.Decimal(v);
 
 const lines = [
-  { ageBandId: 'adult', quantity: 2, priceRetail: D('79.99'), priceNet: D('63.99') },
-  { ageBandId: 'child', quantity: 1, priceRetail: D('49.99'), priceNet: D('39.99') },
+  {
+    ageBandId: 'adult',
+    quantity: 2,
+    priceRetail: D('79.99'),
+    priceNet: D('63.99'),
+  },
+  {
+    ageBandId: 'child',
+    quantity: 1,
+    priceRetail: D('49.99'),
+    priceNet: D('39.99'),
+  },
 ];
 // 79.99*2 + 49.99 = 209.97
 
-function compute(over: Partial<Parameters<typeof computeBookingPricing>[0]> = {}) {
+function compute(
+  over: Partial<Parameters<typeof computeBookingPricing>[0]> = {},
+) {
   return computeBookingPricing({
     lines,
     currency: Currency.EUR,
@@ -30,7 +42,10 @@ describe('computeBookingPricing', () => {
   });
 
   it('OPERATOR_LINK splits deposit (pct) and balance', () => {
-    const p = compute({ paymentModel: PaymentModel.OPERATOR_LINK, depositPct: D('20') });
+    const p = compute({
+      paymentModel: PaymentModel.OPERATOR_LINK,
+      depositPct: D('20'),
+    });
     expect(p.depositAmount.toString()).toBe('41.99'); // 209.97 * 0.20
     expect(p.balanceAmount.toString()).toBe('167.98');
   });
@@ -68,8 +83,20 @@ describe('computeBookingPricing', () => {
   it('multiplies PER_PERSON add-ons by pax; FLAT add-ons once', () => {
     const p = compute({
       addOns: [
-        { addOnId: 'a1', name: 'Lunch', unit: AddOnUnit.PER_PERSON, quantity: 1, unitPrice: D('10') },
-        { addOnId: 'a2', name: 'Transfer', unit: AddOnUnit.FLAT, quantity: 1, unitPrice: D('25') },
+        {
+          addOnId: 'a1',
+          name: 'Lunch',
+          unit: AddOnUnit.PER_PERSON,
+          quantity: 1,
+          unitPrice: D('10'),
+        },
+        {
+          addOnId: 'a2',
+          name: 'Transfer',
+          unit: AddOnUnit.FLAT,
+          quantity: 1,
+          unitPrice: D('25'),
+        },
       ],
     });
     // base 209.97 + lunch 10*3 + transfer 25 = 264.97
@@ -80,7 +107,14 @@ describe('computeBookingPricing', () => {
 
   it('drops net when any line is missing a net price', () => {
     const p = compute({
-      lines: [{ ageBandId: 'adult', quantity: 1, priceRetail: D('79.99'), priceNet: null }],
+      lines: [
+        {
+          ageBandId: 'adult',
+          quantity: 1,
+          priceRetail: D('79.99'),
+          priceNet: null,
+        },
+      ],
     });
     expect(p.totalNet).toBeNull();
   });

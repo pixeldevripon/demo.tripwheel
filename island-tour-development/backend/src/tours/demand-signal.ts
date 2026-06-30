@@ -33,7 +33,9 @@ const DAY_MS = 86_400_000;
 
 /** Midnight UTC of `d` - departures are stored as `@db.Date`. */
 function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  );
 }
 
 /**
@@ -60,7 +62,9 @@ export async function evaluateLikelyToSellOut(
   if (ageDays < DEMAND_MIN_AGE_DAYS) return false;
 
   // 2. >= 3 sellouts in the past 60 days (departures stamped sold_out_at).
-  const windowStart = new Date(now.getTime() - DEMAND_SELLOUT_WINDOW_DAYS * DAY_MS);
+  const windowStart = new Date(
+    now.getTime() - DEMAND_SELLOUT_WINDOW_DAYS * DAY_MS,
+  );
   const recentSellouts = await prisma.departure.count({
     where: { tourId, soldOutAt: { gte: windowStart, lte: now } },
   });
@@ -69,7 +73,9 @@ export async function evaluateLikelyToSellOut(
   // 3. Upcoming availability ratio < 0.40 over the next 30 days. Ratio = remaining
   //    seats / total capacity across non-cancelled departures in the window.
   const today = startOfUtcDay(now);
-  const horizon = new Date(today.getTime() + DEMAND_AVAILABILITY_WINDOW_DAYS * DAY_MS);
+  const horizon = new Date(
+    today.getTime() + DEMAND_AVAILABILITY_WINDOW_DAYS * DAY_MS,
+  );
   const upcoming = await prisma.departure.findMany({
     where: {
       tourId,

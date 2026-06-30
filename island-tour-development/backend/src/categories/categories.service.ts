@@ -1,6 +1,10 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
-import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
+import {
+  applyTranslation,
+  faqSelect,
+  translationSelect,
+} from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import {
   clearCooledDownSlugs,
@@ -77,7 +81,10 @@ export class CategoryService {
         where,
         select: {
           ...this.categorySelect,
-          translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+          translations: {
+            where: { locale },
+            select: { name: true, isMachineTranslated: true },
+          },
         },
         orderBy: { name: 'asc' },
         skip,
@@ -97,7 +104,10 @@ export class CategoryService {
       where: { isActive: true },
       select: {
         ...this.categorySelect,
-        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+        translations: {
+          where: { locale },
+          select: { name: true, isMachineTranslated: true },
+        },
       },
       orderBy: { name: 'asc' },
     });
@@ -136,7 +146,8 @@ export class CategoryService {
         translations: { where: { locale }, select: translationSelect },
       },
     });
-    if (!category) throw new NotFoundException(`Category with slug "${slug}" not found`);
+    if (!category)
+      throw new NotFoundException(`Category with slug "${slug}" not found`);
 
     const { translations, ...cat } = category;
     const t = translations[0];
@@ -156,7 +167,10 @@ export class CategoryService {
    * NOTE: uses the single `categoryId` FK today; Stage 4 (many-to-many) will switch
    * this to count via the `TourCategory` join.
    */
-  async getPublishedTourCount(categoryId: string, destinationId: string): Promise<number> {
+  async getPublishedTourCount(
+    categoryId: string,
+    destinationId: string,
+  ): Promise<number> {
     return this.prisma.tour.count({
       where: {
         categories: { some: { categoryId } },
@@ -172,7 +186,10 @@ export class CategoryService {
    * Empty-category pages must not exist, so zero-count categories are excluded.
    * Returns localized categories ordered by sortOrder, each with publishedTourCount.
    */
-  async getActiveByDestinationSlug(destinationSlug: string, locale: Locale = Locale.en) {
+  async getActiveByDestinationSlug(
+    destinationSlug: string,
+    locale: Locale = Locale.en,
+  ) {
     const destination = await this.prisma.destination.findUnique({
       where: { slug: destinationSlug },
       select: { id: true, isActive: true },
@@ -183,10 +200,18 @@ export class CategoryService {
 
     const grouped = await this.prisma.tourCategory.groupBy({
       by: ['categoryId'],
-      where: { tour: { destinationId: destination.id, status: TourStatus.LIVE, isActive: true } },
+      where: {
+        tour: {
+          destinationId: destination.id,
+          status: TourStatus.LIVE,
+          isActive: true,
+        },
+      },
       _count: { _all: true },
     });
-    const countByCategory = new Map(grouped.map((g) => [g.categoryId, g._count._all]));
+    const countByCategory = new Map(
+      grouped.map((g) => [g.categoryId, g._count._all]),
+    );
     const categoryIds = [...countByCategory.keys()];
     if (categoryIds.length === 0) return [];
 
@@ -194,7 +219,10 @@ export class CategoryService {
       where: { id: { in: categoryIds }, isActive: true },
       select: {
         ...this.categorySelect,
-        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+        translations: {
+          where: { locale },
+          select: { name: true, isMachineTranslated: true },
+        },
       },
       orderBy: { sortOrder: 'asc' },
     });
@@ -235,7 +263,10 @@ export class CategoryService {
       throw new NotFoundException(`Category "${categorySlug}" not found`);
     }
 
-    const publishedTourCount = await this.getPublishedTourCount(category.id, destination.id);
+    const publishedTourCount = await this.getPublishedTourCount(
+      category.id,
+      destination.id,
+    );
     if (publishedTourCount === 0) {
       throw new NotFoundException(
         `Category "${categorySlug}" has no published tours in "${destinationSlug}"`,
@@ -275,7 +306,9 @@ export class CategoryService {
         })
         .catch((err: any) => {
           if (err?.code === 'P2002') {
-            throw new ConflictException(`Category slug "${slug}" already exists`);
+            throw new ConflictException(
+              `Category slug "${slug}" already exists`,
+            );
           }
           throw err;
         });
@@ -289,7 +322,10 @@ export class CategoryService {
         // Clear any cooled-down ghosts so a previously force-deleted category slug can be reused.
         await clearCooledDownSlugs(
           tx,
-          destinations.map((dest) => ({ destinationSlug: dest.slug, slug: category.slug })),
+          destinations.map((dest) => ({
+            destinationSlug: dest.slug,
+            slug: category.slug,
+          })),
         );
         await tx.slugRegistry.createMany({
           data: destinations.map((dest) => ({
@@ -315,20 +351,34 @@ export class CategoryService {
     let renameFrom: string | undefined;
     let renameTo: string | undefined;
     if (dto.slug !== undefined) {
-      const current = await this.prisma.category.findUnique({ where: { id }, select: { slug: true } });
+      const current = await this.prisma.category.findUnique({
+        where: { id },
+        select: { slug: true },
+      });
       if (!current) throw new NotFoundException(`Category ${id} not found`);
       const normalized = generateSlug(dto.slug);
       if (normalized !== current.slug) {
         // Category slugs are globally unique.
-        const clash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
-        if (clash && clash.id !== id) throw new ConflictException(`Category slug "${normalized}" already exists`);
+        const clash = await this.prisma.category.findUnique({
+          where: { slug: normalized },
+          select: { id: true },
+        });
+        if (clash && clash.id !== id)
+          throw new ConflictException(
+            `Category slug "${normalized}" already exists`,
+          );
         // The target must not be held (in any destination) by another page - cooldown-aware.
         const others = await this.prisma.slugRegistry.findMany({
-          where: { slug: normalized, NOT: { entityType: SlugEntityType.CATEGORY, entityId: id } },
+          where: {
+            slug: normalized,
+            NOT: { entityType: SlugEntityType.CATEGORY, entityId: id },
+          },
           select: { deletedAt: true },
         });
         if (others.some((r) => slugRowBlocks(r))) {
-          throw new ConflictException(`Slug "${normalized}" is already taken by another page in at least one destination`);
+          throw new ConflictException(
+            `Slug "${normalized}" is already taken by another page in at least one destination`,
+          );
         }
         renameFrom = current.slug;
         renameTo = normalized;
@@ -352,18 +402,27 @@ export class CategoryService {
             ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
-            ...(dto.description !== undefined && { description: dto.description }),
+            ...(dto.description !== undefined && {
+              description: dto.description,
+            }),
             ...(dto.icon !== undefined && { icon: dto.icon }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
-            ...(dto.metaTitleTemplate !== undefined && { metaTitleTemplate: dto.metaTitleTemplate }),
-            ...(dto.metaDescriptionTemplate !== undefined && { metaDescriptionTemplate: dto.metaDescriptionTemplate }),
-            ...(dto.parentCategoryId !== undefined && { parentCategoryId: dto.parentCategoryId }),
+            ...(dto.metaTitleTemplate !== undefined && {
+              metaTitleTemplate: dto.metaTitleTemplate,
+            }),
+            ...(dto.metaDescriptionTemplate !== undefined && {
+              metaDescriptionTemplate: dto.metaDescriptionTemplate,
+            }),
+            ...(dto.parentCategoryId !== undefined && {
+              parentCategoryId: dto.parentCategoryId,
+            }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.categorySelect,
         })
         .catch((err: any) => {
-          if (err?.code === 'P2025') throw new NotFoundException(`Category ${id} not found`);
+          if (err?.code === 'P2025')
+            throw new NotFoundException(`Category ${id} not found`);
           throw err;
         });
 
@@ -388,7 +447,11 @@ export class CategoryService {
 
     await this.prisma.$transaction(async (tx) => {
       const tripCount = await tx.tour.count({
-        where: { categories: { some: { categoryId: id } }, isActive: true, status: { not: TourStatus.DRAFT } },
+        where: {
+          categories: { some: { categoryId: id } },
+          isActive: true,
+          status: { not: TourStatus.DRAFT },
+        },
       });
       if (tripCount > 0) {
         throw new ConflictException(
@@ -411,7 +474,9 @@ export class CategoryService {
     const category = await this.findCategoryOrThrow(id);
 
     if (category.isSeeded) {
-      throw new ForbiddenException('Seeded categories cannot be permanently deleted');
+      throw new ForbiddenException(
+        'Seeded categories cannot be permanently deleted',
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -446,7 +511,16 @@ export class CategoryService {
       select: { locale: true, ...translationSelect },
     });
 
-    return translation ?? { locale, name: null, overview: null, h1Override: null, breadcrumbLabel: null, isMachineTranslated: false };
+    return (
+      translation ?? {
+        locale,
+        name: null,
+        overview: null,
+        h1Override: null,
+        breadcrumbLabel: null,
+        isMachineTranslated: false,
+      }
+    );
   }
 
   async upsertTranslations(
@@ -474,13 +548,19 @@ export class CategoryService {
         isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
-        ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
-        ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
+        ...(fields.h1Override !== undefined && {
+          h1Override: fields.h1Override,
+        }),
+        ...(fields.breadcrumbLabel !== undefined && {
+          breadcrumbLabel: fields.breadcrumbLabel,
+        }),
       },
       select: { locale: true, ...translationSelect },
     });
 
-    this.logger.log(`Admin ${adminId} upserted translation for category ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} upserted translation for category ${id} [${locale}]`,
+    );
     return result;
   }
 
@@ -497,12 +577,16 @@ export class CategoryService {
       .delete({ where: { categoryId_locale: { categoryId: id, locale } } })
       .catch((err: any) => {
         if (err?.code === 'P2025') {
-          throw new NotFoundException(`No translation found for locale "${locale}"`);
+          throw new NotFoundException(
+            `No translation found for locale "${locale}"`,
+          );
         }
         throw err;
       });
 
-    this.logger.log(`Admin ${adminId} deleted translation for category ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} deleted translation for category ${id} [${locale}]`,
+    );
     return { message: `Translation for locale "${locale}" deleted` };
   }
 
@@ -513,10 +597,17 @@ export class CategoryService {
 
     const row = await this.prisma.categoryPageContent.findUnique({
       where: { categoryId_locale: { categoryId: id, locale } },
-      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+      select: {
+        locale: true,
+        aboutText: true,
+        metaTitle: true,
+        metaDescription: true,
+      },
     });
 
-    return row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null };
+    return (
+      row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
+    );
   }
 
   async upsertPageContent(
@@ -539,12 +630,21 @@ export class CategoryService {
       update: {
         ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
         ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
-        ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
+        ...(dto.metaDescription !== undefined && {
+          metaDescription: dto.metaDescription,
+        }),
       },
-      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+      select: {
+        locale: true,
+        aboutText: true,
+        metaTitle: true,
+        metaDescription: true,
+      },
     });
 
-    this.logger.log(`Admin ${adminId} upserted page content for category ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} upserted page content for category ${id} [${locale}]`,
+    );
     return result;
   }
 
@@ -580,22 +680,32 @@ export class CategoryService {
       select: faqSelect,
     });
 
-    this.logger.log(`Admin ${adminId} created FAQ for category ${id} [${dto.locale}]`);
+    this.logger.log(
+      `Admin ${adminId} created FAQ for category ${id} [${dto.locale}]`,
+    );
     return faq;
   }
 
-  async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
+  async updateFaq(
+    id: string,
+    faqId: string,
+    dto: UpdateFaqDto,
+    adminId: string,
+  ) {
     const faq = await this.prisma.faq.findFirst({
       where: { id: faqId, pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
     });
-    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
+    if (!faq)
+      throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
 
     const updated = await this.prisma.faq.update({
       where: { id: faqId },
       data: {
         ...(dto.question !== undefined && { question: dto.question }),
         ...(dto.answer !== undefined && { answer: dto.answer }),
-        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...(dto.displayOrder !== undefined && {
+          displayOrder: dto.displayOrder,
+        }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
       select: faqSelect,
@@ -609,7 +719,8 @@ export class CategoryService {
     const faq = await this.prisma.faq.findFirst({
       where: { id: faqId, pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
     });
-    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
+    if (!faq)
+      throw new NotFoundException(`FAQ ${faqId} not found for category ${id}`);
 
     await this.prisma.faq.delete({ where: { id: faqId } });
 

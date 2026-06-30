@@ -99,7 +99,11 @@ export class AvailabilityMaterializerService {
   }
 
   // ── window resolution ──────────────────────────────────────────────────────
-  private resolveWindow(from: string | undefined, to: string | undefined, now: Date) {
+  private resolveWindow(
+    from: string | undefined,
+    to: string | undefined,
+    now: Date,
+  ) {
     const fromDate = from ? dayDate(from) : dayDate(dateKey(now));
     const toDate = to
       ? dayDate(to)
@@ -107,8 +111,13 @@ export class AvailabilityMaterializerService {
     if (toDate < fromDate) {
       throw new BadRequestException('`to` must be on or after `from`');
     }
-    if ((toDate.getTime() - fromDate.getTime()) / MS_PER_DAY > MAX_HORIZON_DAYS) {
-      throw new BadRequestException(`Window exceeds ${MAX_HORIZON_DAYS}-day horizon`);
+    if (
+      (toDate.getTime() - fromDate.getTime()) / MS_PER_DAY >
+      MAX_HORIZON_DAYS
+    ) {
+      throw new BadRequestException(
+        `Window exceeds ${MAX_HORIZON_DAYS}-day horizon`,
+      );
     }
     return { fromDate, toDate };
   }
@@ -152,12 +161,16 @@ export class AvailabilityMaterializerService {
     for (const ex of dayExceptions) {
       if (ex.type !== AvailabilityExceptionType.ADD_SLOT) continue;
       if (!ex.startTime) {
-        this.logger.warn(`add_slot exception ${ex.id} has no startTime - skipped`);
+        this.logger.warn(
+          `add_slot exception ${ex.id} has no startTime - skipped`,
+        );
         continue;
       }
       const capacity = ex.capacity ?? tourDefaultCapacity;
       if (capacity == null) {
-        this.logger.warn(`add_slot exception ${ex.id} has no resolvable capacity - skipped`);
+        this.logger.warn(
+          `add_slot exception ${ex.id} has no resolvable capacity - skipped`,
+        );
         continue;
       }
       const startTime = timeOfDay(ex.startTime);
@@ -172,7 +185,11 @@ export class AvailabilityMaterializerService {
 
     // 3. set_capacity — override capacity for one slot (startTime set) or all (null).
     for (const ex of dayExceptions) {
-      if (ex.type !== AvailabilityExceptionType.SET_CAPACITY || ex.capacity == null) continue;
+      if (
+        ex.type !== AvailabilityExceptionType.SET_CAPACITY ||
+        ex.capacity == null
+      )
+        continue;
       if (ex.startTime) {
         const row = desired.get(keyOf(timeOfDay(ex.startTime)));
         if (row) row.capacity = ex.capacity;
@@ -187,9 +204,13 @@ export class AvailabilityMaterializerService {
     for (const ex of dayExceptions) {
       if (ex.type === AvailabilityExceptionType.CLOSE_DATE && !ex.startTime) {
         for (const [k, row] of desired) {
-          if (k.startsWith(`${dateKey(day)}|`)) row.status = DepartureStatus.CLOSED;
+          if (k.startsWith(`${dateKey(day)}|`))
+            row.status = DepartureStatus.CLOSED;
         }
-      } else if (ex.type === AvailabilityExceptionType.CLOSE_SLOT && ex.startTime) {
+      } else if (
+        ex.type === AvailabilityExceptionType.CLOSE_SLOT &&
+        ex.startTime
+      ) {
         const row = desired.get(keyOf(timeOfDay(ex.startTime)));
         if (row) row.status = DepartureStatus.CLOSED;
       }
@@ -217,11 +238,19 @@ export class AvailabilityMaterializerService {
     });
     const keyOf = (date: Date, startTime: Date) =>
       `${dateKey(date)}|${timeOfDay(startTime)}`;
-    const existingByKey = new Map(existing.map((e) => [keyOf(e.date, e.startTime), e]));
+    const existingByKey = new Map(
+      existing.map((e) => [keyOf(e.date, e.startTime), e]),
+    );
 
     /** A departure is protected from re-materialization (master §3). */
-    const isProtected = (row: { bookedCount: number; manuallyEdited: boolean; source: DepartureSource }) =>
-      row.bookedCount > 0 || row.manuallyEdited || row.source === DepartureSource.API;
+    const isProtected = (row: {
+      bookedCount: number;
+      manuallyEdited: boolean;
+      source: DepartureSource;
+    }) =>
+      row.bookedCount > 0 ||
+      row.manuallyEdited ||
+      row.source === DepartureSource.API;
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     const creates: Prisma.DepartureCreateManyInput[] = [];
@@ -262,14 +291,21 @@ export class AvailabilityMaterializerService {
 
     // Orphans: existing slots no longer desired, unbooked, not protected → remove.
     const orphanIds = existing
-      .filter((e) => !desired.has(keyOf(e.date, e.startTime)) && !isProtected(e))
+      .filter(
+        (e) => !desired.has(keyOf(e.date, e.startTime)) && !isProtected(e),
+      )
       .map((e) => e.id);
     if (orphanIds.length) {
-      ops.push(this.prisma.departure.deleteMany({ where: { id: { in: orphanIds } } }));
+      ops.push(
+        this.prisma.departure.deleteMany({ where: { id: { in: orphanIds } } }),
+      );
     }
     if (creates.length) {
       ops.push(
-        this.prisma.departure.createMany({ data: creates, skipDuplicates: true }),
+        this.prisma.departure.createMany({
+          data: creates,
+          skipDuplicates: true,
+        }),
       );
     }
     if (ops.length) await this.prisma.$transaction(ops);

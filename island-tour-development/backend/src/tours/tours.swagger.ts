@@ -26,14 +26,26 @@ const serverError = ApiResponse({ status: 500, type: InternalServerErrorDto });
 const publicErrors = [serverError];
 
 const commonErrors = [
-  ApiResponse({ status: 400, description: 'Bad Request', type: BadRequestErrorDto }),
-  ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto }),
+  ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: BadRequestErrorDto,
+  }),
+  ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: UnauthorizedErrorDto,
+  }),
   serverError,
 ];
 
 const operatorErrors = [
   ...commonErrors,
-  ApiResponse({ status: 403, description: 'Forbidden', type: ForbiddenErrorDto }),
+  ApiResponse({
+    status: 403,
+    description: 'Forbidden',
+    type: ForbiddenErrorDto,
+  }),
 ];
 
 const tourIdParam = ApiParam({ name: 'id', description: 'Tour UUID' });
@@ -43,7 +55,8 @@ const tourIdParam = ApiParam({ name: 'id', description: 'Tour UUID' });
 export function ApiGetTourBySlugDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Get a live tour by slug (public - used by the tour detail page)',
+      summary:
+        'Get a live tour by slug (public - used by the tour detail page)',
       description: [
         'Resolves a tour from the URL slug segments. Handles both URL patterns:',
         '- Destination-only: `?destinationSlug=curacao&slug=sunset-cruise`',
@@ -54,10 +67,24 @@ export function ApiGetTourBySlugDocs() {
         'AVAILABLE schedules (next 30). Only LIVE + isActive tours are returned.',
       ].join('\n'),
     }),
-    ApiParam({ name: 'slug', example: 'sunset-catamaran-cruise', description: 'Tour slug from the URL' }),
+    ApiParam({
+      name: 'slug',
+      example: 'sunset-catamaran-cruise',
+      description: 'Tour slug from the URL',
+    }),
     ApiQuery({ name: 'destinationSlug', required: true, example: 'curacao' }),
-    ApiQuery({ name: 'hubSlug', required: false, example: 'mambo-beach', description: 'Required for hub-anchored tour URLs' }),
-    ApiQuery({ name: 'locale', required: false, enum: Locale, description: 'Content locale - falls back to EN' }),
+    ApiQuery({
+      name: 'hubSlug',
+      required: false,
+      example: 'mambo-beach',
+      description: 'Required for hub-anchored tour URLs',
+    }),
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      description: 'Content locale - falls back to EN',
+    }),
     ApiResponse({ status: 200, type: TourPublicDetailResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
@@ -69,7 +96,8 @@ export function ApiGetTourBySlugDocs() {
 export function ApiGetAllToursDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'List all live tours with filters, attribute facets & sorting (public)',
+      summary:
+        'List all live tours with filters, attribute facets & sorting (public)',
       description:
         'Live tour listing (V2 §7). Beyond the typed params below, you may pass **any filterable attribute key ' +
         'from the dictionary as a query param** - e.g. `?boat_type=catamaran,yacht&booking_type=private&free_cancellation=true`. ' +
@@ -86,16 +114,55 @@ export function ApiGetAllToursDocs() {
     ApiQuery({ name: 'search', required: false, type: String }),
     ApiQuery({ name: 'minPrice', required: false, type: Number }),
     ApiQuery({ name: 'maxPrice', required: false, type: Number }),
-    ApiQuery({ name: 'durationMin', required: false, type: Number, description: 'Min duration (minutes)' }),
-    ApiQuery({ name: 'durationMax', required: false, type: Number, description: 'Max duration (minutes)' }),
-    ApiQuery({ name: 'ratingMin', required: false, type: Number, description: 'Minimum average rating (0–5)' }),
-    ApiQuery({ name: 'sort', required: false, enum: TourSort, description: 'Default: recommended' }),
+    ApiQuery({
+      name: 'durationMin',
+      required: false,
+      type: Number,
+      description: 'Min duration (minutes)',
+    }),
+    ApiQuery({
+      name: 'durationMax',
+      required: false,
+      type: Number,
+      description: 'Max duration (minutes)',
+    }),
+    ApiQuery({
+      name: 'ratingMin',
+      required: false,
+      type: Number,
+      description: 'Minimum average rating (0–5)',
+    }),
+    ApiQuery({
+      name: 'sort',
+      required: false,
+      enum: TourSort,
+      description: 'Default: recommended',
+    }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     // Example dynamic attribute filters (representative - full list is dictionary-driven)
-    ApiQuery({ name: 'booking_type', required: false, type: String, example: 'private', description: 'Example attribute filter (global). See GET /attributes.' }),
-    ApiQuery({ name: 'free_cancellation', required: false, type: String, example: 'true', description: 'Example attribute filter (global).' }),
-    ApiQuery({ name: 'boat_type', required: false, type: String, example: 'catamaran,yacht', description: 'Example category-specific attribute filter (boat-tours). Comma = OR.' }),
+    ApiQuery({
+      name: 'booking_type',
+      required: false,
+      type: String,
+      example: 'private',
+      description: 'Example attribute filter (global). See GET /attributes.',
+    }),
+    ApiQuery({
+      name: 'free_cancellation',
+      required: false,
+      type: String,
+      example: 'true',
+      description: 'Example attribute filter (global).',
+    }),
+    ApiQuery({
+      name: 'boat_type',
+      required: false,
+      type: String,
+      example: 'catamaran,yacht',
+      description:
+        'Example category-specific attribute filter (boat-tours). Comma = OR.',
+    }),
     ApiResponse({ status: 200, type: PaginatedToursResponseDto }),
     ...publicErrors,
   );
@@ -105,7 +172,9 @@ export function ApiGetAllToursDocs() {
 
 export function ApiGetMyToursDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get all tours for the authenticated operator (all statuses)' }),
+    ApiOperation({
+      summary: 'Get all tours for the authenticated operator (all statuses)',
+    }),
     ApiQuery({ name: 'status', required: false, enum: TourStatus }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
@@ -120,7 +189,8 @@ export function ApiGetTourByIdDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Get a single tour by ID',
-      description: 'LIVE tours are public. DRAFT/PAUSED tours require the owner operator or admin.',
+      description:
+        'LIVE tours are public. DRAFT/PAUSED tours require the owner operator or admin.',
     }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourDetailResponseDto }),
@@ -139,7 +209,11 @@ export function ApiCreateTourDocs() {
         'Creates a tour in DRAFT status. For destination-only tours (no hubId) a slug_registry row is written atomically. Hub-anchored tours skip slug_registry.',
     }),
     ApiResponse({ status: 201, type: TourResponseDto }),
-    ApiResponse({ status: 409, description: 'Slug already exists in this destination', type: ConflictErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Slug already exists in this destination',
+      type: ConflictErrorDto,
+    }),
     ...operatorErrors,
   );
 }
@@ -173,7 +247,8 @@ export function ApiPublishTourDocs() {
     ApiResponse({ status: 200, type: TourResponseDto }),
     ApiResponse({
       status: 400,
-      description: 'One or more publish blocks not met (images, hero, overview, price, category)',
+      description:
+        'One or more publish blocks not met (images, hero, overview, price, category)',
       type: BadRequestErrorDto,
     }),
     ...operatorErrors,
@@ -185,7 +260,11 @@ export function ApiPauseTourDocs() {
     ApiOperation({ summary: 'Pause a live tour (LIVE → PAUSED)' }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourResponseDto }),
-    ApiResponse({ status: 400, description: 'Tour is not LIVE', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Tour is not LIVE',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -196,7 +275,11 @@ export function ApiUnpauseTourDocs() {
     ApiOperation({ summary: 'Unpause a tour (PAUSED → LIVE)' }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourResponseDto }),
-    ApiResponse({ status: 400, description: 'Tour is not PAUSED', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Tour is not PAUSED',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -211,7 +294,11 @@ export function ApiArchiveTourDocs() {
     }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourResponseDto }),
-    ApiResponse({ status: 400, description: 'Tour is already archived', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Tour is already archived',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -226,7 +313,11 @@ export function ApiRestoreTourDocs() {
     }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourResponseDto }),
-    ApiResponse({ status: 400, description: 'Tour is not in ARCHIVED status', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Tour is not in ARCHIVED status',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -241,7 +332,11 @@ export function ApiDeleteTourDocs() {
     }),
     tourIdParam,
     ApiResponse({ status: 200, description: 'Tour permanently deleted' }),
-    ApiResponse({ status: 400, description: 'Tour is not ARCHIVED (operator only)', type: BadRequestErrorDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Tour is not ARCHIVED (operator only)',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...operatorErrors,
   );
@@ -266,7 +361,9 @@ export function ApiRecomputeDemandDocs() {
 
 export function ApiAdminListToursDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all tours across all operators (admin only)' }),
+    ApiOperation({
+      summary: 'List all tours across all operators (admin only)',
+    }),
     ApiQuery({ name: 'search', required: false, type: String }),
     ApiQuery({ name: 'status', required: false, enum: TourStatus }),
     ApiQuery({ name: 'operatorId', required: false, type: String }),

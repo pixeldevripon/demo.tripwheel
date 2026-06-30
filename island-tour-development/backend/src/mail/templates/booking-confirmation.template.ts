@@ -98,7 +98,9 @@ export function bookingConfirmationTemplate({
     `Guests: ${partySize}`,
     `Total: ${currency} ${totalRetail}`,
     depositPaid ? `Paid now: ${currency} ${depositPaid}` : '',
-    balanceDue && balanceDue !== '0' ? `Due on arrival: ${currency} ${balanceDue}` : '',
+    balanceDue && balanceDue !== '0'
+      ? `Due on arrival: ${currency} ${balanceDue}`
+      : '',
     manageUrl ? `View booking: ${manageUrl}` : '',
   ]
     .filter(Boolean)

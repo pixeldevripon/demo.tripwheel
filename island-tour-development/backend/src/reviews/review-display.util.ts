@@ -59,7 +59,11 @@ export function resolveRatingSource(input: {
   operatorRating: number | null;
 }): RatingResolution {
   if (input.tourCount >= MIN_TOUR_REVIEWS && input.tourRating != null) {
-    return { source: 'tour', rating: input.tourRating, reviewCount: input.tourCount };
+    return {
+      source: 'tour',
+      rating: input.tourRating,
+      reviewCount: input.tourCount,
+    };
   }
   if (
     input.operatorCount >= OPERATOR_FALLBACK_MIN_REVIEWS &&

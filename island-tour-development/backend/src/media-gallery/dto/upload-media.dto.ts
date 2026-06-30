@@ -18,7 +18,8 @@ export class ConfirmUploadDto {
 
   @ApiProperty({
     description: 'Cloudinary secure_url of the uploaded asset',
-    example: 'https://res.cloudinary.com/demo/image/upload/v1/users/abc-123/my_image.jpg',
+    example:
+      'https://res.cloudinary.com/demo/image/upload/v1/users/abc-123/my_image.jpg',
   })
   @IsString()
   url!: string;
@@ -56,7 +57,10 @@ export class MediaGalleryResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   id!: string;
 
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/v1/users/abc/img.jpg' })
+  @ApiProperty({
+    example:
+      'https://res.cloudinary.com/demo/image/upload/v1/users/abc/img.jpg',
+  })
   url!: string;
 
   @ApiProperty({ example: 'users/abc-123/img' })

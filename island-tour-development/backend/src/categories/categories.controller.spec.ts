@@ -74,7 +74,12 @@ describe('CategoryController', () => {
 
   describe('getAll', () => {
     it('delegates to categoryService.getAll with the full query DTO', async () => {
-      service.getAll.mockResolvedValue({ total: 0, page: 1, limit: 20, data: [] });
+      service.getAll.mockResolvedValue({
+        total: 0,
+        page: 1,
+        limit: 20,
+        data: [],
+      });
 
       const query: CategoryQueryDto = { page: 1, limit: 20, locale: Locale.en };
       await controller.getAll(query);
@@ -84,10 +89,19 @@ describe('CategoryController', () => {
     });
 
     it('returns whatever categoryService.getAll returns', async () => {
-      const expected = { total: 2, page: 1, limit: 20, data: ['cat-a', 'cat-b'] };
+      const expected = {
+        total: 2,
+        page: 1,
+        limit: 20,
+        data: ['cat-a', 'cat-b'],
+      };
       service.getAll.mockResolvedValue(expected);
 
-      const result = await controller.getAll({ page: 1, limit: 20, locale: Locale.en });
+      const result = await controller.getAll({
+        page: 1,
+        limit: 20,
+        locale: Locale.en,
+      });
 
       expect(result).toEqual(expected);
     });
@@ -175,7 +189,9 @@ describe('CategoryController', () => {
 
   describe('remove', () => {
     it('delegates to categoryService.remove with id and user id', async () => {
-      service.remove.mockResolvedValue({ message: 'Category deactivated successfully' });
+      service.remove.mockResolvedValue({
+        message: 'Category deactivated successfully',
+      });
 
       const user = makeAuthUser('admin-1');
       await controller.remove('cat-1', user);
@@ -204,7 +220,10 @@ describe('CategoryController', () => {
 
       await controller.getTranslationsByLocale('cat-1', Locale.nl);
 
-      expect(service.getTranslationsByLocale).toHaveBeenCalledWith('cat-1', Locale.nl);
+      expect(service.getTranslationsByLocale).toHaveBeenCalledWith(
+        'cat-1',
+        Locale.nl,
+      );
     });
   });
 
@@ -221,7 +240,12 @@ describe('CategoryController', () => {
       const user = makeAuthUser('admin-1');
       await controller.upsertTranslations('cat-1', Locale.nl, dto, user);
 
-      expect(service.upsertTranslations).toHaveBeenCalledWith('cat-1', Locale.nl, dto, 'admin-1');
+      expect(service.upsertTranslations).toHaveBeenCalledWith(
+        'cat-1',
+        Locale.nl,
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -229,12 +253,18 @@ describe('CategoryController', () => {
 
   describe('deleteTranslations', () => {
     it('delegates to categoryService.deleteTranslations with id, locale, and user id', async () => {
-      service.deleteTranslations.mockResolvedValue({ message: 'Translation deleted' });
+      service.deleteTranslations.mockResolvedValue({
+        message: 'Translation deleted',
+      });
 
       const user = makeAuthUser('admin-1');
       await controller.deleteTranslations('cat-1', Locale.nl, user);
 
-      expect(service.deleteTranslations).toHaveBeenCalledWith('cat-1', Locale.nl, 'admin-1');
+      expect(service.deleteTranslations).toHaveBeenCalledWith(
+        'cat-1',
+        Locale.nl,
+        'admin-1',
+      );
     });
   });
 
@@ -263,7 +293,12 @@ describe('CategoryController', () => {
       const user = makeAuthUser('admin-1');
       await controller.upsertPageContent('cat-1', Locale.nl, dto, user);
 
-      expect(service.upsertPageContent).toHaveBeenCalledWith('cat-1', Locale.nl, dto, 'admin-1');
+      expect(service.upsertPageContent).toHaveBeenCalledWith(
+        'cat-1',
+        Locale.nl,
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -319,7 +354,12 @@ describe('CategoryController', () => {
       const user = makeAuthUser('admin-1');
       await controller.updateFaq('cat-1', 'faq-1', dto, user);
 
-      expect(service.updateFaq).toHaveBeenCalledWith('cat-1', 'faq-1', dto, 'admin-1');
+      expect(service.updateFaq).toHaveBeenCalledWith(
+        'cat-1',
+        'faq-1',
+        dto,
+        'admin-1',
+      );
     });
   });
 
@@ -327,12 +367,18 @@ describe('CategoryController', () => {
 
   describe('deleteFaq', () => {
     it('delegates to categoryService.deleteFaq with id, faqId, and user id', async () => {
-      service.deleteFaq.mockResolvedValue({ message: 'FAQ deleted successfully' });
+      service.deleteFaq.mockResolvedValue({
+        message: 'FAQ deleted successfully',
+      });
 
       const user = makeAuthUser('admin-1');
       await controller.deleteFaq('cat-1', 'faq-1', user);
 
-      expect(service.deleteFaq).toHaveBeenCalledWith('cat-1', 'faq-1', 'admin-1');
+      expect(service.deleteFaq).toHaveBeenCalledWith(
+        'cat-1',
+        'faq-1',
+        'admin-1',
+      );
     });
 
     it('returns the service result unchanged', async () => {

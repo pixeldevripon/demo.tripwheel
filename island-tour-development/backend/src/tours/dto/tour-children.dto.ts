@@ -1,6 +1,12 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AddOnUnit, AgeBandType, BandParticipation, ExclusionType, FeatureType } from '@prisma/client';
+import {
+  AddOnUnit,
+  AgeBandType,
+  BandParticipation,
+  ExclusionType,
+  FeatureType,
+} from '@prisma/client';
 import {
   ArrayMaxSize,
   IsBoolean,
@@ -26,7 +32,11 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export class TourImageResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img' }) url!: string;
+  @ApiProperty({
+    example:
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img',
+  })
+  url!: string;
   @ApiProperty() isHero!: boolean;
   @ApiPropertyOptional({ example: 0.5 }) focalX!: number;
   @ApiPropertyOptional({ example: 0.5 }) focalY!: number;
@@ -37,7 +47,10 @@ export class TourImageResponseDto {
 }
 
 export class AddTourImageDto {
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img' })
+  @ApiProperty({
+    example:
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tour-img',
+  })
   @IsString()
   @IsUrl()
   url!: string;
@@ -228,7 +241,10 @@ export class CreateTourAgeBandDto {
   @IsEnum(AgeBandType)
   bandType!: AgeBandType;
 
-  @ApiPropertyOptional({ enum: BandParticipation, default: BandParticipation.PARTICIPANT })
+  @ApiPropertyOptional({
+    enum: BandParticipation,
+    default: BandParticipation.PARTICIPANT,
+  })
   @IsOptional()
   @IsEnum(BandParticipation)
   participation?: BandParticipation;
@@ -239,14 +255,20 @@ export class CreateTourAgeBandDto {
   @MaxLength(60)
   label!: string;
 
-  @ApiPropertyOptional({ example: 13, description: 'Inclusive lower age bound (null = no lower bound)' })
+  @ApiPropertyOptional({
+    example: 13,
+    description: 'Inclusive lower age bound (null = no lower bound)',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(120)
   minAge?: number;
 
-  @ApiPropertyOptional({ example: null, description: 'Inclusive upper age bound (null = no upper bound)' })
+  @ApiPropertyOptional({
+    example: null,
+    description: 'Inclusive upper age bound (null = no upper bound)',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -257,17 +279,26 @@ export class CreateTourAgeBandDto {
   @IsDecimal({}, { message: 'price must be a valid decimal number' })
   price!: string;
 
-  @ApiPropertyOptional({ example: '99.00', description: 'Optional pre-discount/strikethrough price' })
+  @ApiPropertyOptional({
+    example: '99.00',
+    description: 'Optional pre-discount/strikethrough price',
+  })
   @IsOptional()
   @IsDecimal({}, { message: 'priceOriginal must be a valid decimal number' })
   priceOriginal?: string;
 
-  @ApiPropertyOptional({ example: '60.00', description: 'Optional operator net price' })
+  @ApiPropertyOptional({
+    example: '60.00',
+    description: 'Optional operator net price',
+  })
   @IsOptional()
   @IsDecimal({}, { message: 'priceNet must be a valid decimal number' })
   priceNet?: string;
 
-  @ApiPropertyOptional({ example: true, description: 'Marks the band the UI/booking defaults to (e.g. Adult)' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Marks the band the UI/booking defaults to (e.g. Adult)',
+  })
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
@@ -297,14 +328,20 @@ export class UpdateTourAgeBandDto {
   @MaxLength(60)
   label?: string;
 
-  @ApiPropertyOptional({ example: 13, description: 'Inclusive lower age bound (null = no lower bound)' })
+  @ApiPropertyOptional({
+    example: 13,
+    description: 'Inclusive lower age bound (null = no lower bound)',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(120)
   minAge?: number;
 
-  @ApiPropertyOptional({ example: null, description: 'Inclusive upper age bound (null = no upper bound)' })
+  @ApiPropertyOptional({
+    example: null,
+    description: 'Inclusive upper age bound (null = no upper bound)',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -349,7 +386,9 @@ export class TourLanguageResponseDto {
 export class AddTourLanguageDto {
   @ApiProperty({ example: 'nl' })
   @IsString()
-  @Matches(/^[a-z]{2}$/, { message: 'language must be a valid ISO 639-1 code (2 lowercase letters)' })
+  @Matches(/^[a-z]{2}$/, {
+    message: 'language must be a valid ISO 639-1 code (2 lowercase letters)',
+  })
   language!: string;
 }
 
@@ -367,7 +406,8 @@ export class TourInclusionResponseDto {
   @ApiProperty() icon!: string;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
-  @ApiProperty({ type: [TourInclusionTranslationDto] }) translations!: TourInclusionTranslationDto[];
+  @ApiProperty({ type: [TourInclusionTranslationDto] })
+  translations!: TourInclusionTranslationDto[];
 }
 
 export class CreateTourInclusionDto {
@@ -439,12 +479,17 @@ export class TourExclusionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty() icon!: string;
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - paid_advance | paid_onsite | unavailable | not_permitted' })
+  @ApiPropertyOptional({
+    enum: ExclusionType,
+    description:
+      'LD18 - paid_advance | paid_onsite | unavailable | not_permitted',
+  })
   type?: ExclusionType | null;
   @ApiPropertyOptional({ example: '$15 per person' }) priceText?: string | null;
   @ApiProperty() displayOrder!: number;
   @ApiPropertyOptional() imageUrl?: string | null;
-  @ApiProperty({ type: [TourExclusionTranslationDto] }) translations!: TourExclusionTranslationDto[];
+  @ApiProperty({ type: [TourExclusionTranslationDto] })
+  translations!: TourExclusionTranslationDto[];
 }
 
 export class CreateTourExclusionDto {
@@ -460,12 +505,18 @@ export class CreateTourExclusionDto {
   @MaxLength(50)
   icon?: string;
 
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - how the excluded item is handled' })
+  @ApiPropertyOptional({
+    enum: ExclusionType,
+    description: 'LD18 - how the excluded item is handled',
+  })
   @IsOptional()
   @IsEnum(ExclusionType)
   type?: ExclusionType;
 
-  @ApiPropertyOptional({ example: '$15 per person', description: 'Shown when type is PAID_*' })
+  @ApiPropertyOptional({
+    example: '$15 per person',
+    description: 'Shown when type is PAID_*',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -490,12 +541,18 @@ export class UpdateTourExclusionDto {
   @MaxLength(50)
   icon?: string;
 
-  @ApiPropertyOptional({ enum: ExclusionType, description: 'LD18 - how the excluded item is handled' })
+  @ApiPropertyOptional({
+    enum: ExclusionType,
+    description: 'LD18 - how the excluded item is handled',
+  })
   @IsOptional()
   @IsEnum(ExclusionType)
   type?: ExclusionType;
 
-  @ApiPropertyOptional({ example: '$15 per person', description: 'Shown when type is PAID_*' })
+  @ApiPropertyOptional({
+    example: '$15 per person',
+    description: 'Shown when type is PAID_*',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -539,7 +596,8 @@ export class TourFeatureResponseDto {
   @ApiProperty() tourId!: string;
   @ApiProperty({ enum: FeatureType }) type!: FeatureType;
   @ApiProperty() displayOrder!: number;
-  @ApiProperty({ type: [TourFeatureTranslationDto] }) translations!: TourFeatureTranslationDto[];
+  @ApiProperty({ type: [TourFeatureTranslationDto] })
+  translations!: TourFeatureTranslationDto[];
 }
 
 export class CreateTourFeatureDto {
@@ -547,7 +605,9 @@ export class CreateTourFeatureDto {
   @IsEnum(FeatureType)
   type!: FeatureType;
 
-  @ApiProperty({ example: 'Please bring your voucher and arrive before departure.' })
+  @ApiProperty({
+    example: 'Please bring your voucher and arrive before departure.',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(2000)
@@ -574,7 +634,9 @@ export class UpdateTourFeatureDto {
 }
 
 export class UpsertFeatureTranslationDto {
-  @ApiProperty({ example: 'Please bring your voucher and arrive before departure.' })
+  @ApiProperty({
+    example: 'Please bring your voucher and arrive before departure.',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(2000)
@@ -609,7 +671,8 @@ export class TourLocationResponseDto {
   @ApiPropertyOptional({ example: 20 }) minutesTo!: number | null;
   @ApiPropertyOptional({ example: 45 }) minutesAt!: number | null;
   @ApiProperty() displayOrder!: number;
-  @ApiProperty({ type: [TourLocationTranslationDto] }) translations!: TourLocationTranslationDto[];
+  @ApiProperty({ type: [TourLocationTranslationDto] })
+  translations!: TourLocationTranslationDto[];
 }
 
 export class CreateTourLocationDto {
@@ -626,7 +689,9 @@ export class CreateTourLocationDto {
   @MaxLength(160)
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Meet your crew beside the check-in counter.' })
+  @ApiPropertyOptional({
+    example: 'Meet your crew beside the check-in counter.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -766,7 +831,9 @@ export class UpsertLocationTranslationDto {
   @MaxLength(160)
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Meet your crew beside the check-in counter.' })
+  @ApiPropertyOptional({
+    example: 'Meet your crew beside the check-in counter.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -799,7 +866,8 @@ export class PickupLocationResponseDto {
   @ApiPropertyOptional({ example: '08:15' }) windowEnd!: string | null;
   @ApiProperty() displayOrder!: number;
   @ApiProperty() isActive!: boolean;
-  @ApiProperty({ type: [PickupLocationTranslationDto] }) translations!: PickupLocationTranslationDto[];
+  @ApiProperty({ type: [PickupLocationTranslationDto] })
+  translations!: PickupLocationTranslationDto[];
 }
 
 export class CreatePickupLocationDto {
@@ -960,25 +1028,35 @@ export class UpsertTourTranslationDto {
   @MaxLength(120)
   title?: string;
 
-  @ApiPropertyOptional({ example: 'Join us for a breathtaking sunset cruise...' })
+  @ApiPropertyOptional({
+    example: 'Join us for a breathtaking sunset cruise...',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(3000)
   overview?: string;
 
-  @ApiPropertyOptional({ example: 'A full detailed description of the tour...' })
+  @ApiPropertyOptional({
+    example: 'A full detailed description of the tour...',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(10000)
   description?: string;
 
-  @ApiPropertyOptional({ example: 'Sunset sailing with open bar and snorkelling.', description: 'One-line teaser for cards (LD19)' })
+  @ApiPropertyOptional({
+    example: 'Sunset sailing with open bar and snorkelling.',
+    description: 'One-line teaser for cards (LD19)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(160)
   shortDescription?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Swimwear', 'Towel', 'Reef-safe sunscreen'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Swimwear', 'Towel', 'Reef-safe sunscreen'],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(8)
@@ -986,7 +1064,10 @@ export class UpsertTourTranslationDto {
   @MaxLength(160, { each: true })
   whatToBring?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['Bring a valid photo ID', 'Tour runs rain or shine'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Bring a valid photo ID', 'Tour runs rain or shine'],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
@@ -994,7 +1075,10 @@ export class UpsertTourTranslationDto {
   @MaxLength(160, { each: true })
   knowBeforeYouGo?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['Travellers who are pregnant', 'Wheelchair users'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Travellers who are pregnant', 'Wheelchair users'],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(6)
@@ -1002,7 +1086,10 @@ export class UpsertTourTranslationDto {
   @MaxLength(160, { each: true })
   notSuitableFor?: string[];
 
-  @ApiPropertyOptional({ example: 'Start with a calm cruise along the coast before your first snorkel stop.' })
+  @ApiPropertyOptional({
+    example:
+      'Start with a calm cruise along the coast before your first snorkel stop.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
@@ -1014,13 +1101,18 @@ export class UpsertTourTranslationDto {
   @MaxLength(120)
   categoryDisplay?: string;
 
-  @ApiPropertyOptional({ example: 'Ask the crew about the hidden cove on the west side.' })
+  @ApiPropertyOptional({
+    example: 'Ask the crew about the hidden cove on the west side.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   localTip?: string;
 
-  @ApiPropertyOptional({ example: 'Meet at the main dock, Pier 3, 15 minutes before departure.', description: 'Localized meeting-point text (geo lives on the Tour)' })
+  @ApiPropertyOptional({
+    example: 'Meet at the main dock, Pier 3, 15 minutes before departure.',
+    description: 'Localized meeting-point text (geo lives on the Tour)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -1032,7 +1124,10 @@ export class UpsertTourTranslationDto {
   @MaxLength(70)
   metaTitle?: string;
 
-  @ApiPropertyOptional({ example: 'Book a sunset catamaran cruise with snorkeling, drinks, and local crew.' })
+  @ApiPropertyOptional({
+    example:
+      'Book a sunset catamaran cruise with snorkeling, drinks, and local crew.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(170)

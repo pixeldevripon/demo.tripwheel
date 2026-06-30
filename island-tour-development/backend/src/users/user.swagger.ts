@@ -46,7 +46,9 @@ const adminErrors = [
 
 export function ApiGetAllUsersDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'List all users with optional filters (Admin only)' }),
+    ApiOperation({
+      summary: 'List all users with optional filters (Admin only)',
+    }),
     ApiQuery({ name: 'role', enum: Role, required: false }),
     ApiQuery({ name: 'status', enum: UserStatus, required: false }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
@@ -156,7 +158,8 @@ export function ApiUpdateUserRoleDocs() {
 export function ApiUpdateUserStatusDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update user status - approve, suspend, or deactivate (Admin only)',
+      summary:
+        'Update user status - approve, suspend, or deactivate (Admin only)',
     }),
     ApiParam({ name: 'id', description: 'User UUID' }),
     ApiResponse({
@@ -193,7 +196,9 @@ export function ApiDeleteUserDocs() {
 
 export function ApiGetUserPermissionsDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Get permissions of a specific user (Admin only)' }),
+    ApiOperation({
+      summary: 'Get permissions of a specific user (Admin only)',
+    }),
     ApiParam({ name: 'id', description: 'User UUID' }),
     ApiResponse({
       status: 200,

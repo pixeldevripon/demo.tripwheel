@@ -1,9 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { OCTO_CAP } from '@/octo/common/octo-capabilities';
-import {
-  serializeTour,
-  type OctoTourPayload,
-} from './octo-tour.serializer';
+import { serializeTour, type OctoTourPayload } from './octo-tour.serializer';
 
 /** Minimal-but-complete OctoTourPayload fixture (flat age bands: adult + child). */
 function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
@@ -53,8 +50,18 @@ function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
     ],
     categories: [{ isPrimary: true, category: { slug: 'boat-tours' } }],
     images: [
-      { url: 'https://cdn/1.jpg', isHero: true, altText: 'Reef', displayOrder: 0 },
-      { url: 'https://cdn/2.jpg', isHero: false, altText: null, displayOrder: 1 },
+      {
+        url: 'https://cdn/1.jpg',
+        isHero: true,
+        altText: 'Reef',
+        displayOrder: 0,
+      },
+      {
+        url: 'https://cdn/2.jpg',
+        isHero: false,
+        altText: null,
+        displayOrder: 1,
+      },
     ],
     inclusions: [
       { translations: [{ locale: 'en', label: 'Snorkel gear & guide' }] },
@@ -74,7 +81,11 @@ function makeTour(overrides: Partial<OctoTourPayload> = {}): OctoTourPayload {
         minutesTo: 0,
         minutesAt: 30,
         translations: [
-          { locale: 'en', title: 'Marina', shortDescription: 'Meet at the pier' },
+          {
+            locale: 'en',
+            title: 'Marina',
+            shortDescription: 'Meet at the pier',
+          },
         ],
       },
     ],
@@ -122,7 +133,7 @@ describe('serializeTour', () => {
     expect(units).toHaveLength(2);
     expect(units[0].pricingFrom).toBeUndefined(); // pricing not requested
     expect(units[0].internalName).toBe('Adult');
-    expect((units[1].restrictions as Record<string, unknown>)).toMatchObject({
+    expect(units[1].restrictions as Record<string, unknown>).toMatchObject({
       minAge: 4,
       maxAge: 12,
       paxCount: 1,

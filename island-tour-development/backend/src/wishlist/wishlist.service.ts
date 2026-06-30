@@ -72,7 +72,10 @@ export class WishlistService {
 
   /** Save a tour (idempotent). 404 if the tour does not exist. */
   async add(userId: string, tourId: string) {
-    const tour = await this.prisma.tour.findUnique({ where: { id: tourId }, select: { id: true } });
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: { id: true },
+    });
     if (!tour) throw new NotFoundException(`Tour ${tourId} not found`);
 
     await this.prisma.wishlist.upsert({

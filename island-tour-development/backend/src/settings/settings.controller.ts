@@ -320,4 +320,3 @@ export class SettingsController {
     return this.settingsService.updateMailchimp(dto);
   }
 }
-  

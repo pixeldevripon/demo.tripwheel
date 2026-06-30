@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client';
 import type { Currency, Locale } from '@prisma/client';
-import { OCTO_CAP, type OctoCapabilitySet } from '@/octo/common/octo-capabilities';
+import {
+  OCTO_CAP,
+  type OctoCapabilitySet,
+} from '@/octo/common/octo-capabilities';
 import { buildPricing, type OctoPricing } from '@/octo/common/octo-money';
 
 /**
@@ -28,7 +31,9 @@ const translationSelect = {
 
 export const octoTourInclude = {
   ageBands: { orderBy: [{ isDefault: 'desc' }, { displayOrder: 'asc' }] },
-  categories: { select: { isPrimary: true, category: { select: { slug: true } } } },
+  categories: {
+    select: { isPrimary: true, category: { select: { slug: true } } },
+  },
   images: { orderBy: { displayOrder: 'asc' } },
   inclusions: {
     orderBy: { displayOrder: 'asc' },
@@ -77,7 +82,9 @@ function pick<T extends { locale: Locale }>(
   rows: T[],
   locale: Locale,
 ): T | undefined {
-  return rows.find((r) => r.locale === locale) ?? rows.find((r) => r.locale === 'en');
+  return (
+    rows.find((r) => r.locale === locale) ?? rows.find((r) => r.locale === 'en')
+  );
 }
 
 function isoCutoff(amount: number, unit: string): string {

@@ -6,7 +6,10 @@ import {
 
 describe('signNotification', () => {
   it('produces a stable sha256= HMAC for the same body + secret', () => {
-    const body = JSON.stringify({ id: 'n1', notificationType: 'AVAILABILITY_UPDATE' });
+    const body = JSON.stringify({
+      id: 'n1',
+      notificationType: 'AVAILABILITY_UPDATE',
+    });
     const a = signNotification(body, 'secret');
     const b = signNotification(body, 'secret');
     expect(a).toBe(b);

@@ -84,7 +84,10 @@ export class NotificationsService {
   }
 
   /** `PRODUCT_UPDATE` - fired when a tour's catalog data changes. */
-  emitProductUpdate(params: { tourId: string; operatorId?: string | null }): void {
+  emitProductUpdate(params: {
+    tourId: string;
+    operatorId?: string | null;
+  }): void {
     void this.emit(
       NotificationType.PRODUCT_UPDATE,
       { productId: params.tourId },
@@ -93,7 +96,10 @@ export class NotificationsService {
   }
 
   /** `BOOKING_UPDATE` - fired when a booking's status changes. `uuid` = booking public ref. */
-  emitBookingUpdate(params: { uuid: string; operatorId?: string | null }): void {
+  emitBookingUpdate(params: {
+    uuid: string;
+    operatorId?: string | null;
+  }): void {
     void this.emit(
       NotificationType.BOOKING_UPDATE,
       { uuid: params.uuid },
@@ -116,14 +122,16 @@ export class NotificationsService {
           ? { OR: [{ operatorId: null }, { operatorId: ctx.operatorId }] }
           : { operatorId: null };
 
-      const subscriptions = await this.prisma.notificationSubscription.findMany({
-        where: {
-          isActive: true,
-          notificationTypes: { has: notificationType },
-          ...operatorScope,
+      const subscriptions = await this.prisma.notificationSubscription.findMany(
+        {
+          where: {
+            isActive: true,
+            notificationTypes: { has: notificationType },
+            ...operatorScope,
+          },
+          select: { id: true },
         },
-        select: { id: true },
-      });
+      );
       if (subscriptions.length === 0) return;
 
       const utcCreatedAt = new Date();
@@ -132,7 +140,7 @@ export class NotificationsService {
           data: {
             subscriptionId: sub.id,
             notificationType,
-            payload: {} as Prisma.InputJsonValue, // backfilled below with the row id
+            payload: {}, // backfilled below with the row id
             status: NotificationDeliveryStatus.PENDING,
           },
           select: { id: true },
@@ -190,7 +198,7 @@ export class NotificationsService {
         url: dto.url,
         secret: encrypt(secret), // stored encrypted at rest; HMAC uses the decrypted value
         notificationTypes: dto.notificationTypes,
-        headers: (dto.headers ?? {}) as Prisma.InputJsonValue,
+        headers: dto.headers ?? {},
       },
       select: subscriptionSelect,
     });
@@ -235,7 +243,7 @@ export class NotificationsService {
           notificationTypes: dto.notificationTypes,
         }),
         ...(dto.headers !== undefined && {
-          headers: dto.headers as Prisma.InputJsonValue,
+          headers: dto.headers,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
@@ -303,7 +311,9 @@ export class NotificationsService {
   // ════════════════════════════════════════════════════════════════════════
 
   /** The operatorId a NEW subscription gets: null for admin (platform), own id for operators. */
-  private async scopeForActor(actor: NotificationActor): Promise<string | null> {
+  private async scopeForActor(
+    actor: NotificationActor,
+  ): Promise<string | null> {
     if (actor.role === Role.ADMIN) return null;
     return resolveOperatorId(this.prisma, actor.id, actor.role);
   }
@@ -313,7 +323,11 @@ export class NotificationsService {
     actor: NotificationActor,
   ): Promise<Prisma.NotificationSubscriptionWhereInput> {
     if (actor.role === Role.ADMIN) return {};
-    const operatorId = await resolveOperatorId(this.prisma, actor.id, actor.role);
+    const operatorId = await resolveOperatorId(
+      this.prisma,
+      actor.id,
+      actor.role,
+    );
     return { operatorId };
   }
 
@@ -323,7 +337,8 @@ export class NotificationsService {
       where: { id },
       select: subscriptionSelect,
     });
-    if (!row) throw new NotFoundException('Notification subscription not found');
+    if (!row)
+      throw new NotFoundException('Notification subscription not found');
     if (actor.role !== Role.ADMIN) {
       const operatorId = await resolveOperatorId(
         this.prisma,

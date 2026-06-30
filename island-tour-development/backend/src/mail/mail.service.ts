@@ -68,7 +68,7 @@ export class MailService {
       });
 
       this.logger.log(
-        `Email sent to ${this.redact(opts.to)} | messageId: ${(info as any)?.messageId ?? 'n/a'}`,
+        `Email sent to ${this.redact(opts.to)} | messageId: ${info?.messageId ?? 'n/a'}`,
       );
     } catch (err) {
       this.logger.error(`Failed to send email to ${this.redact(opts.to)}`, err);

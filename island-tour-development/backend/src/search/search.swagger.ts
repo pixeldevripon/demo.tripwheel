@@ -1,4 +1,7 @@
-import { BadRequestErrorDto, InternalServerErrorDto } from '@/common/dto/error-responses.dto';
+import {
+  BadRequestErrorDto,
+  InternalServerErrorDto,
+} from '@/common/dto/error-responses.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SearchResultsResponseDto } from './dto/search.dto';

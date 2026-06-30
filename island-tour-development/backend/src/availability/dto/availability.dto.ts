@@ -40,18 +40,27 @@ export class ScheduleResponseDto {
   @ApiProperty({ example: '2026-06-01' }) validFrom!: string;
   @ApiPropertyOptional({ example: '2026-09-30', nullable: true })
   validUntil!: string | null;
-  @ApiProperty({ enum: AvailabilityScheduleStatus }) status!: AvailabilityScheduleStatus;
+  @ApiProperty({ enum: AvailabilityScheduleStatus })
+  status!: AvailabilityScheduleStatus;
 }
 
 export class ExceptionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tourId!: string;
   @ApiProperty({ example: '2026-07-04' }) date!: string;
-  @ApiPropertyOptional({ example: '09:00', nullable: true, description: 'null = whole date' })
+  @ApiPropertyOptional({
+    example: '09:00',
+    nullable: true,
+    description: 'null = whole date',
+  })
   startTime!: string | null;
   @ApiProperty({ enum: AvailabilityExceptionType })
   type!: AvailabilityExceptionType;
-  @ApiPropertyOptional({ example: 20, nullable: true, description: 'add_slot / set_capacity' })
+  @ApiPropertyOptional({
+    example: 20,
+    nullable: true,
+    description: 'add_slot / set_capacity',
+  })
   capacity!: number | null;
   @ApiPropertyOptional({ nullable: true }) note!: string | null;
 }
@@ -66,7 +75,8 @@ export class DepartureResponseDto {
   @ApiPropertyOptional({
     example: 2,
     nullable: true,
-    description: 'Seats left — surfaced only when under 5 (anti-scarcity, master §4).',
+    description:
+      'Seats left — surfaced only when under 5 (anti-scarcity, master §4).',
   })
   remaining!: number | null;
   @ApiProperty({
@@ -74,7 +84,10 @@ export class DepartureResponseDto {
     description: 'Live status (stored state folded with the read-time cutoff).',
   })
   status!: DepartureStatus;
-  @ApiProperty({ example: true, description: 'Live bookability (status OPEN, cutoff not passed).' })
+  @ApiProperty({
+    example: true,
+    description: 'Live bookability (status OPEN, cutoff not passed).',
+  })
   available!: boolean;
   @ApiPropertyOptional({ nullable: true, example: '2026-07-02T17:00:00.000Z' })
   soldOutAt!: string | null;
@@ -88,7 +101,8 @@ export class CalendarDayResponseDto {
   @ApiPropertyOptional({
     example: 2,
     nullable: true,
-    description: 'Lowest seats-left across open slots — surfaced only when under 5.',
+    description:
+      'Lowest seats-left across open slots — surfaced only when under 5.',
   })
   remaining!: number | null;
   @ApiProperty({ example: 3, description: 'Number of departures on the day.' })
@@ -103,7 +117,10 @@ export class MaterializeResultDto {
     description: 'Protected (booked / manuallyEdited / api) - left as-is.',
   })
   skipped!: number;
-  @ApiProperty({ example: 5, description: 'Orphaned (schedule changed) - removed.' })
+  @ApiProperty({
+    example: 5,
+    description: 'Orphaned (schedule changed) - removed.',
+  })
   removed!: number;
 }
 
@@ -169,34 +186,52 @@ export class CreateScheduleDto {
   @Max(6)
   weekday!: number;
 
-  @ApiProperty({ example: '09:00', description: 'Must exist in Tour.startTimes[]' })
+  @ApiProperty({
+    example: '09:00',
+    description: 'Must exist in Tour.startTimes[]',
+  })
   @Matches(HHMM, { message: 'startTime must be HH:MM (00:00–23:59)' })
   startTime!: string;
 
-  @ApiPropertyOptional({ example: 12, description: 'null/omitted = Tour.maxPartySize default' })
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'null/omitted = Tour.maxPartySize default',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
   capacityOverride?: number;
 
-  @ApiPropertyOptional({ example: '2026-06-01', description: 'Defaults to today.' })
+  @ApiPropertyOptional({
+    example: '2026-06-01',
+    description: 'Defaults to today.',
+  })
   @IsOptional()
   @IsDateString()
   validFrom?: string;
 
-  @ApiPropertyOptional({ example: '2026-09-30', description: 'null = open-ended.' })
+  @ApiPropertyOptional({
+    example: '2026-09-30',
+    description: 'null = open-ended.',
+  })
   @IsOptional()
   @IsDateString()
   validUntil?: string;
 
-  @ApiPropertyOptional({ enum: AvailabilityScheduleStatus, default: AvailabilityScheduleStatus.ACTIVE })
+  @ApiPropertyOptional({
+    enum: AvailabilityScheduleStatus,
+    default: AvailabilityScheduleStatus.ACTIVE,
+  })
   @IsOptional()
   @IsEnum(AvailabilityScheduleStatus)
   status?: AvailabilityScheduleStatus;
 }
 
 export class UpdateScheduleDto {
-  @ApiPropertyOptional({ example: 6, description: 'Weekday, Monday=0 … Sunday=6' })
+  @ApiPropertyOptional({
+    example: 6,
+    description: 'Weekday, Monday=0 … Sunday=6',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -241,17 +276,24 @@ export class CreateExceptionDto {
 
   @ApiProperty({
     enum: AvailabilityExceptionType,
-    description: 'close_date / close_slot (stop-sell) · add_slot · set_capacity',
+    description:
+      'close_date / close_slot (stop-sell) · add_slot · set_capacity',
   })
   @IsEnum(AvailabilityExceptionType)
   type!: AvailabilityExceptionType;
 
-  @ApiPropertyOptional({ example: '09:00', description: 'null = whole date (close_date / day-wide set_capacity)' })
+  @ApiPropertyOptional({
+    example: '09:00',
+    description: 'null = whole date (close_date / day-wide set_capacity)',
+  })
   @IsOptional()
   @Matches(HHMM, { message: 'startTime must be HH:MM' })
   startTime?: string;
 
-  @ApiPropertyOptional({ example: 20, description: 'Required for add_slot / set_capacity.' })
+  @ApiPropertyOptional({
+    example: 20,
+    description: 'Required for add_slot / set_capacity.',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -291,7 +333,10 @@ export class MaterializeDto {
   @IsString()
   tourId!: string;
 
-  @ApiPropertyOptional({ example: '2026-07-01', description: 'Defaults to today.' })
+  @ApiPropertyOptional({
+    example: '2026-07-01',
+    description: 'Defaults to today.',
+  })
   @IsOptional()
   @IsDateString()
   from?: string;
@@ -343,7 +388,8 @@ export class AvailabilityCheckDto {
 
   @ApiPropertyOptional({
     type: [PartySizeDto],
-    description: 'Optional capacity filter - only slots with enough seats left.',
+    description:
+      'Optional capacity filter - only slots with enough seats left.',
   })
   @IsOptional()
   @IsArray()

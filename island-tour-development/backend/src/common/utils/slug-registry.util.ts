@@ -28,7 +28,9 @@ export function slugCooldownCutoff(): Date {
  * it was hard-deleted (`deletedAt` set) more than the cooldown ago - those ghosts are
  * reusable and should be cleared with {@link clearCooledDownSlugs} before a new row is written.
  */
-export function slugRowBlocks(row: { deletedAt: Date | null } | null | undefined): boolean {
+export function slugRowBlocks(
+  row: { deletedAt: Date | null } | null | undefined,
+): boolean {
   if (!row) return false;
   if (row.deletedAt && row.deletedAt < slugCooldownCutoff()) return false;
   return true;
@@ -42,7 +44,10 @@ export async function clearCooledDownSlugs(
   if (pairs.length === 0) return;
   await tx.slugRegistry.deleteMany({
     where: {
-      OR: pairs.map((p) => ({ destinationSlug: p.destinationSlug, slug: p.slug })),
+      OR: pairs.map((p) => ({
+        destinationSlug: p.destinationSlug,
+        slug: p.slug,
+      })),
       deletedAt: { lt: slugCooldownCutoff() },
     },
   });
@@ -114,7 +119,12 @@ export async function clearCooledDownDestinationSlugs(
  */
 export async function renameEntitySlug(
   tx: SlugClient,
-  params: { entityType: SlugEntityType; entityId: string; fromSlug: string; toSlug: string },
+  params: {
+    entityType: SlugEntityType;
+    entityId: string;
+    fromSlug: string;
+    toSlug: string;
+  },
 ): Promise<void> {
   const { entityType, entityId, fromSlug, toSlug } = params;
   if (fromSlug === toSlug) return;
@@ -128,11 +138,17 @@ export async function renameEntitySlug(
 
   await clearCooledDownSlugs(
     tx,
-    destinationSlugs.map((destinationSlug) => ({ destinationSlug, slug: toSlug })),
+    destinationSlugs.map((destinationSlug) => ({
+      destinationSlug,
+      slug: toSlug,
+    })),
   );
 
   // Re-point every registry row for this entity to the new slug.
-  await tx.slugRegistry.updateMany({ where: { entityType, entityId }, data: { slug: toSlug } });
+  await tx.slugRegistry.updateMany({
+    where: { entityType, entityId },
+    data: { slug: toSlug },
+  });
 
   for (const destinationSlug of destinationSlugs) {
     // Collapse chains: redirects that pointed to the old slug now point to the new slug.
@@ -141,11 +157,19 @@ export async function renameEntitySlug(
       data: { toSlug },
     });
     // The target slug is live again - drop any stale redirect leaving it.
-    await tx.slugRedirect.deleteMany({ where: { destinationSlug, fromSlug: toSlug } });
+    await tx.slugRedirect.deleteMany({
+      where: { destinationSlug, fromSlug: toSlug },
+    });
     // Auto-301 old → new.
     await tx.slugRedirect.upsert({
       where: { destinationSlug_fromSlug: { destinationSlug, fromSlug } },
-      create: { destinationSlug, fromSlug, toSlug, entityType, statusCode: 301 },
+      create: {
+        destinationSlug,
+        fromSlug,
+        toSlug,
+        entityType,
+        statusCode: 301,
+      },
       update: { toSlug },
     });
   }

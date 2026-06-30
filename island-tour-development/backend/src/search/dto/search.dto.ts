@@ -1,27 +1,47 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { TourResponseDto } from '@/tours/dto/tour.dto';
 
 export class SearchQueryDto {
-  @ApiProperty({ example: 'catamaran', description: 'Search term (min 2 chars). Matches tour title/description + category & hub names.' })
+  @ApiProperty({
+    example: 'catamaran',
+    description:
+      'Search term (min 2 chars). Matches tour title/description + category & hub names.',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(100)
   q!: string;
 
-  @ApiPropertyOptional({ example: 'curacao', description: 'Scope results to a destination slug (omit for global search)' })
+  @ApiPropertyOptional({
+    example: 'curacao',
+    description: 'Scope results to a destination slug (omit for global search)',
+  })
   @IsOptional()
   @IsString()
   destinationSlug?: string;
 
   @ApiPropertyOptional({
     example: '2026-07-01',
-    description: 'Date (YYYY-MM-DD). When set, only tours with an OPEN departure on that date are returned.',
+    description:
+      'Date (YYYY-MM-DD). When set, only tours with an OPEN departure on that date are returned.',
   })
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be in YYYY-MM-DD format' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'date must be in YYYY-MM-DD format',
+  })
   date?: string;
 
   @ApiPropertyOptional({ enum: Locale, default: 'en' })
@@ -30,10 +50,19 @@ export class SearchQueryDto {
   locale?: Locale = Locale.en;
 
   @ApiPropertyOptional({ default: 1 })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number = 1;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
 
   @ApiPropertyOptional({ default: 20 })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number = 20;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
 }
 
 /**
@@ -42,10 +71,17 @@ export class SearchQueryDto {
  * (the flat URL is `/{locale}/{destinationSlug}/{slug}`).
  */
 export class SearchHitDto extends TourResponseDto {
-  @ApiProperty({ example: 'Sunset Catamaran Cruise', description: 'Localized title (falls back to the canonical name)' })
+  @ApiProperty({
+    example: 'Sunset Catamaran Cruise',
+    description: 'Localized title (falls back to the canonical name)',
+  })
   title!: string;
 
-  @ApiProperty({ example: 'curacao', nullable: true, description: 'Destination slug for building the flat tour URL' })
+  @ApiProperty({
+    example: 'curacao',
+    nullable: true,
+    description: 'Destination slug for building the flat tour URL',
+  })
   destinationSlug!: string | null;
 
   @ApiProperty({

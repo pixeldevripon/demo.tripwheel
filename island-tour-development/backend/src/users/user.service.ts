@@ -226,13 +226,16 @@ export class UserService {
 
   // ─── Set password (OAuth users only) ─────────────────────────────────────────
 
-  async setPassword(newPassword: string, cookie: string): Promise<{ status: boolean }> {
+  async setPassword(
+    newPassword: string,
+    cookie: string,
+  ): Promise<{ status: boolean }> {
     try {
       const result = await auth.api.setPassword({
         body: { newPassword },
         headers: new Headers({ cookie }),
       });
-      return result as { status: boolean };
+      return result;
     } catch (err: any) {
       const code = err?.body?.code as string | undefined;
       if (code === 'PASSWORD_ALREADY_SET') {

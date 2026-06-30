@@ -23,7 +23,12 @@ import { MailService } from '@/mail/mail.service';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
-import { combineDateTime, dateKey, localNow, timeOfDay } from '@/common/utils/timezone.util';
+import {
+  combineDateTime,
+  dateKey,
+  localNow,
+  timeOfDay,
+} from '@/common/utils/timezone.util';
 import { eurFxRate } from '@/common/utils/fx.util';
 import { storedStatusForFill } from '@/availability/availability-status.util';
 import { TiersService } from '@/tiers/tiers.service';
@@ -59,10 +64,7 @@ export class BookingsService {
 
   /** Fire the inventory + booking-status webhooks for a booking (fire-and-forget). */
   private emitBookingEvents(
-    booking: Pick<
-      Booking,
-      'tourId' | 'localDate' | 'operatorId' | 'publicRef'
-    >,
+    booking: Pick<Booking, 'tourId' | 'localDate' | 'operatorId' | 'publicRef'>,
     opts: { availability: boolean } = { availability: true },
   ): void {
     // A side-effect must never break the originating write - never let it throw.
@@ -105,18 +107,26 @@ export class BookingsService {
 
     const now = localNow(ctx.tour.timeZone);
     // Cutoff is computed live (master §4): now >= start - bookingCutoffMinutes → closed.
-    const localStart = combineDateTime(ctx.departure.date, ctx.departure.startTime);
+    const localStart = combineDateTime(
+      ctx.departure.date,
+      ctx.departure.startTime,
+    );
     const cutoffAt = new Date(
       localStart.getTime() - ctx.tour.bookingCutoffMinutes * 60_000,
     );
     if (now >= cutoffAt) {
-      throw new UnprocessableEntityException('Booking cutoff has passed for this departure');
+      throw new UnprocessableEntityException(
+        'Booking cutoff has passed for this departure',
+      );
     }
 
     // Effective commission: an ACTIVE Destination Spotlight overlays 35% over the tour's
     // tier rate (SPOTLIGHT-DATA.md §3). effectiveCommissionRate returns a fraction; the
     // pricing util expects a percentage. Snapshotted onto the booking, never retroactive.
-    const effectiveRate = await this.tiers.effectiveCommissionRate(dto.tourId, now);
+    const effectiveRate = await this.tiers.effectiveCommissionRate(
+      dto.tourId,
+      now,
+    );
     const effectiveTier = new Prisma.Decimal(effectiveRate)
       .mul(100)
       .toDecimalPlaces(2);
@@ -164,10 +174,14 @@ export class BookingsService {
            AND status = 'open'::departure_status
            AND booked_count + ${seats} <= capacity`;
       if (claimed === 0) {
-        throw new UnprocessableEntityException('Not enough availability for this departure');
+        throw new UnprocessableEntityException(
+          'Not enough availability for this departure',
+        );
       }
 
-      const status = operatorFull ? BookingStatus.CONFIRMED : BookingStatus.ON_HOLD;
+      const status = operatorFull
+        ? BookingStatus.CONFIRMED
+        : BookingStatus.ON_HOLD;
       return tx.booking.create({
         data: {
           id,
@@ -186,7 +200,10 @@ export class BookingsService {
           island: ctx.tour.destination?.slug ?? 'Curaçao',
           utcExpiresAt: operatorFull
             ? null
-            : new Date(Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000),
+            : new Date(
+                Date.now() +
+                  (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
+              ),
           utcConfirmedAt: operatorFull ? new Date() : null,
           pickupRequested: dto.pickupRequested ?? false,
           pickupLocationId: dto.pickupLocationId ?? null,
@@ -194,7 +211,10 @@ export class BookingsService {
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
           couponCode: dto.couponCode ?? null,
-          discountAmount: dto.discountAmount != null ? new Prisma.Decimal(dto.discountAmount) : null,
+          discountAmount:
+            dto.discountAmount != null
+              ? new Prisma.Decimal(dto.discountAmount)
+              : null,
           totalRetail: pricing.totalRetail,
           totalNet: pricing.totalNet,
           depositAmount: pricing.depositAmount,
@@ -373,11 +393,15 @@ export class BookingsService {
     const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
     const totalEur =
       booking.totalEur ??
-      booking.totalRetail.mul(fxRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+      booking.totalRetail
+        .mul(fxRate)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
     const commissionAmount =
       booking.commissionAmount ??
       (booking.commissionRate
-        ? totalEur.mul(booking.commissionRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+        ? totalEur
+            .mul(booking.commissionRate)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
         : null);
 
     const updated = await this.prisma.booking.update({
@@ -439,7 +463,10 @@ export class BookingsService {
         manageUrl,
       });
     } catch (err) {
-      this.logger.error(`Confirmation email failed for ${booking.displayRef}`, err as Error);
+      this.logger.error(
+        `Confirmation email failed for ${booking.displayRef}`,
+        err as Error,
+      );
     }
   }
 
@@ -460,7 +487,9 @@ export class BookingsService {
       country: booking.contactCountry,
       postalCode: booking.contactPostalCode,
       clickId: booking.fbclid,
-      eventTimeSec: Math.floor((booking.utcConfirmedAt ?? new Date()).getTime() / 1000),
+      eventTimeSec: Math.floor(
+        (booking.utcConfirmedAt ?? new Date()).getTime() / 1000,
+      ),
     });
   }
 
@@ -468,7 +497,11 @@ export class BookingsService {
   // Cancel - release seats atomically + compute refund from the cancellation window
   // ════════════════════════════════════════════════════════════════════════
 
-  async cancel(id: string, dto: CancelBookingDto, actor?: { id: string; role: Role }) {
+  async cancel(
+    id: string,
+    dto: CancelBookingDto,
+    actor?: { id: string; role: Role },
+  ) {
     const booking = await this.loadOr404(id);
     if (booking.status === BookingStatus.CANCELLED) return mapBooking(booking);
     if (
@@ -501,7 +534,9 @@ export class BookingsService {
         include: { unitItems: true },
       });
     });
-    this.logger.log(`Booking ${updated.displayRef} cancelled (refund ${refund})`);
+    this.logger.log(
+      `Booking ${updated.displayRef} cancelled (refund ${refund})`,
+    );
     // Seats released back to inventory + booking status changed.
     this.emitBookingEvents(updated, { availability: !!booking.departureId });
     return mapBooking(updated);
@@ -690,7 +725,11 @@ export class BookingsService {
     if (actor.role === Role.ADMIN) {
       // no scope restriction
     } else if (actor.role === Role.TOUR_OPERATOR) {
-      where.operatorId = await resolveOperatorId(this.prisma, actor.id, actor.role);
+      where.operatorId = await resolveOperatorId(
+        this.prisma,
+        actor.id,
+        actor.role,
+      );
     } else {
       where.userId = actor.id;
     }
@@ -699,7 +738,8 @@ export class BookingsService {
     if (query.status) where.status = query.status;
     if (query.from || query.to) {
       where.localDate = {};
-      if (query.from) where.localDate.gte = new Date(`${query.from}T00:00:00.000Z`);
+      if (query.from)
+        where.localDate.gte = new Date(`${query.from}T00:00:00.000Z`);
       if (query.to) where.localDate.lte = new Date(`${query.to}T00:00:00.000Z`);
     }
 
@@ -733,7 +773,11 @@ export class BookingsService {
   ): Promise<void> {
     if (actor.role === Role.ADMIN) return;
     if (actor.role === Role.TOUR_OPERATOR) {
-      const operatorId = await resolveOperatorId(this.prisma, actor.id, actor.role);
+      const operatorId = await resolveOperatorId(
+        this.prisma,
+        actor.id,
+        actor.role,
+      );
       if (booking.operatorId === operatorId) return;
     }
     if (booking.userId && booking.userId === actor.id) return;
@@ -764,7 +808,8 @@ export class BookingsService {
       where: { id: dto.departureId, tourId: dto.tourId },
       select: { id: true, date: true, startTime: true },
     });
-    if (!departure) throw new UnprocessableEntityException('Invalid departureId');
+    if (!departure)
+      throw new UnprocessableEntityException('Invalid departureId');
 
     // Snapshot the selected pickup point address (booking immutability — the
     // PickupLocation row can change after booking). master E.8 `pickup_address`.
@@ -789,7 +834,9 @@ export class BookingsService {
     const lines: PriceLineInput[] = dto.items.map((item) => {
       const band = ageBandsById.get(item.ageBandId);
       if (!band) {
-        throw new UnprocessableEntityException(`Invalid ageBandId ${item.ageBandId}`);
+        throw new UnprocessableEntityException(
+          `Invalid ageBandId ${item.ageBandId}`,
+        );
       }
       return {
         ageBandId: band.id,
@@ -814,7 +861,8 @@ export class BookingsService {
     const byId = new Map(rows.map((r) => [r.id, r]));
     return dto.addOns.map((a) => {
       const row = byId.get(a.addOnId);
-      if (!row) throw new UnprocessableEntityException(`Invalid addOnId ${a.addOnId}`);
+      if (!row)
+        throw new UnprocessableEntityException(`Invalid addOnId ${a.addOnId}`);
       return {
         addOnId: row.id,
         name: row.name,
@@ -833,10 +881,14 @@ export class BookingsService {
     const minUnits = ctx.tour.minPartySize;
     const maxUnits = ctx.tour.maxPartySize;
     if (seats < minUnits) {
-      throw new UnprocessableEntityException(`Minimum party size is ${minUnits}`);
+      throw new UnprocessableEntityException(
+        `Minimum party size is ${minUnits}`,
+      );
     }
     if (maxUnits != null && seats > maxUnits) {
-      throw new UnprocessableEntityException(`Maximum party size is ${maxUnits}`);
+      throw new UnprocessableEntityException(
+        `Maximum party size is ${maxUnits}`,
+      );
     }
 
     // Min-age enforcement (master child ages): reject any supplied traveler age below
@@ -877,10 +929,18 @@ export class BookingsService {
   ): Promise<void> {
     const dep = await tx.departure.findUnique({
       where: { id: departureId },
-      select: { capacity: true, bookedCount: true, status: true, soldOutAt: true },
+      select: {
+        capacity: true,
+        bookedCount: true,
+        status: true,
+        soldOutAt: true,
+      },
     });
     if (!dep) return;
-    if (dep.status === DepartureStatus.CLOSED || dep.status === DepartureStatus.CANCELLED) {
+    if (
+      dep.status === DepartureStatus.CLOSED ||
+      dep.status === DepartureStatus.CANCELLED
+    ) {
       return; // sticky operator/admin states
     }
     const next = storedStatusForFill(dep.capacity, dep.bookedCount);
@@ -889,9 +949,10 @@ export class BookingsService {
       where: { id: departureId },
       data: {
         status: next,
-        ...(next === DepartureStatus.SOLD_OUT && dep.soldOutAt == null && {
-          soldOutAt: new Date(),
-        }),
+        ...(next === DepartureStatus.SOLD_OUT &&
+          dep.soldOutAt == null && {
+            soldOutAt: new Date(),
+          }),
       },
     });
   }
@@ -902,7 +963,8 @@ export class BookingsService {
   ): Promise<CancellationRefund> {
     if (force) return CancellationRefund.FULL;
     // On-hold bookings never took payment → nothing to refund.
-    if (booking.status === BookingStatus.ON_HOLD) return CancellationRefund.NONE;
+    if (booking.status === BookingStatus.ON_HOLD)
+      return CancellationRefund.NONE;
 
     const tour = await this.prisma.tour.findUnique({
       where: { id: booking.tourId },
@@ -912,7 +974,7 @@ export class BookingsService {
 
     const now = localNow(tour.timeZone);
     const departureStart = new Date(
-      `${dateKey(booking.localDate)}T${(booking.startTime ?? '00:00')}:00.000Z`,
+      `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,
     );
     const hoursUntil = (departureStart.getTime() - now.getTime()) / 3_600_000;
     return hoursUntil >= tour.cancellationHours

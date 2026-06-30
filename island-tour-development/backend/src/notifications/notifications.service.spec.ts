@@ -117,9 +117,13 @@ describe('NotificationsService', () => {
       expect(queue.add).toHaveBeenCalledTimes(2);
       // job carries the delivery id as jobId (subscriber idempotency)
       expect(queue.add.mock.calls[0][1]).toEqual({ deliveryId: 'd1' });
-      expect(queue.add.mock.calls[0][2]).toMatchObject({ jobId: 'd1', attempts: 5 });
+      expect(queue.add.mock.calls[0][2]).toMatchObject({
+        jobId: 'd1',
+        attempts: 5,
+      });
       // operator-scoped emit widens to platform OR the operator's own subscriptions
-      const where = prisma.notificationSubscription.findMany.mock.calls[0][0].where;
+      const where =
+        prisma.notificationSubscription.findMany.mock.calls[0][0].where;
       expect(where.OR).toEqual([{ operatorId: null }, { operatorId: 'op1' }]);
     });
 
@@ -131,7 +135,9 @@ describe('NotificationsService', () => {
     });
 
     it('swallows errors so the originating write is never broken', async () => {
-      prisma.notificationSubscription.findMany.mockRejectedValue(new Error('db down'));
+      prisma.notificationSubscription.findMany.mockRejectedValue(
+        new Error('db down'),
+      );
       await expect(
         svc.emit(NotificationType.PRODUCT_UPDATE, { productId: 't1' }),
       ).resolves.toBeUndefined();

@@ -5,7 +5,6 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CloudinaryService } from './cloudinary.service';
 import type { Multer } from 'multer';
 
-
 export interface MediaUploadJobPayload {
   /** base64-encoded file buffer (BullMQ serializes jobs to JSON) */
   buffer: string;
@@ -53,7 +52,11 @@ export class MediaUploadProcessor extends WorkerHost {
       size: fileBuffer.length,
     } as Express.Multer.File;
 
-    let cloudResult: { publicId: string; url: string; resourceType: string } | null = null;
+    let cloudResult: {
+      publicId: string;
+      url: string;
+      resourceType: string;
+    } | null = null;
 
     try {
       // 1. Upload to Cloudinary

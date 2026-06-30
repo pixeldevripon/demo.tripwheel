@@ -42,7 +42,9 @@ export class PaymentsService {
 
   // ── Create / fetch the up-front PaymentIntent ────────────────────────────────
 
-  async createIntentForBooking(bookingId: string): Promise<PaymentIntentResponseDto> {
+  async createIntentForBooking(
+    bookingId: string,
+  ): Promise<PaymentIntentResponseDto> {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       select: {
@@ -62,10 +64,16 @@ export class PaymentsService {
       booking.status === BookingStatus.CANCELLED ||
       booking.status === BookingStatus.EXPIRED
     ) {
-      throw new BadRequestException(`Cannot pay for a ${booking.status} booking`);
+      throw new BadRequestException(
+        `Cannot pay for a ${booking.status} booking`,
+      );
     }
 
-    const charge = chargeFor(booking.paymentModel, booking.depositAmount, booking.totalRetail);
+    const charge = chargeFor(
+      booking.paymentModel,
+      booking.depositAmount,
+      booking.totalRetail,
+    );
     if (!charge || charge.amount.lte(0)) {
       return { paymentRequired: false }; // ON_ARRIVAL / OPERATOR_FULL / nothing due
     }
@@ -124,18 +132,29 @@ export class PaymentsService {
     try {
       event = await this.stripe.constructEvent(rawBody, signature);
     } catch (err) {
-      this.logger.error(`Stripe webhook signature verification failed: ${(err as Error).message}`);
+      this.logger.error(
+        `Stripe webhook signature verification failed: ${(err as Error).message}`,
+      );
       throw new BadRequestException('Invalid webhook signature');
     }
 
     // Idempotency ledger - a redelivered event id is recorded once and skipped.
     try {
       await this.prisma.stripeWebhookEvent.create({
-        data: { id: event.id, type: event.type, payload: event as unknown as Prisma.InputJsonValue },
+        data: {
+          id: event.id,
+          type: event.type,
+          payload: event as unknown as Prisma.InputJsonValue,
+        },
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        this.logger.log(`Stripe event ${event.id} already processed - skipping`);
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        this.logger.log(
+          `Stripe event ${event.id} already processed - skipping`,
+        );
         return;
       }
       throw err;
@@ -157,7 +176,10 @@ export class PaymentsService {
         data: { processedAt: new Date() },
       });
     } catch (err) {
-      this.logger.error(`Error processing Stripe event ${event.id}`, err as Error);
+      this.logger.error(
+        `Error processing Stripe event ${event.id}`,
+        err as Error,
+      );
       throw err; // leave processedAt null so Stripe retries
     }
   }
@@ -182,12 +204,17 @@ export class PaymentsService {
         data: {
           id: paymentId,
           type: 'payment',
-          payload: { id: paymentId } as unknown as Prisma.InputJsonValue,
+          payload: { id: paymentId },
         },
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        this.logger.log(`Mollie payment ${paymentId} already processed - skipping`);
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        this.logger.log(
+          `Mollie payment ${paymentId} already processed - skipping`,
+        );
         return;
       }
       throw err;
@@ -198,7 +225,9 @@ export class PaymentsService {
       where: { id: paymentId },
       data: { processedAt: new Date() },
     });
-    this.logger.log(`Mollie webhook recorded for payment ${paymentId} (reconciliation pending)`);
+    this.logger.log(
+      `Mollie webhook recorded for payment ${paymentId} (reconciliation pending)`,
+    );
   }
 
   // ── internals ──────────────────────────────────────────────────────────────
@@ -218,13 +247,18 @@ export class PaymentsService {
       where: { intentId: intent.id },
       data: {
         status: PaymentStatus.SUCCEEDED,
-        chargeId: typeof intent.latest_charge === 'string' ? intent.latest_charge : charge?.id,
+        chargeId:
+          typeof intent.latest_charge === 'string'
+            ? intent.latest_charge
+            : charge?.id,
         ...(methodType ? { methodType } : {}),
       },
     });
 
     if (!bookingId) {
-      this.logger.error(`PaymentIntent ${intent.id} succeeded without a bookingId in metadata`);
+      this.logger.error(
+        `PaymentIntent ${intent.id} succeeded without a bookingId in metadata`,
+      );
       return;
     }
 
@@ -275,7 +309,9 @@ function paymentRowId(bookingId: string, kind: PaymentKind): string {
   return `${bookingId}:${kind}`;
 }
 
-function mapIntentStatus(status: Stripe.PaymentIntent['status']): PaymentStatus {
+function mapIntentStatus(
+  status: Stripe.PaymentIntent['status'],
+): PaymentStatus {
   switch (status) {
     case 'succeeded':
       return PaymentStatus.SUCCEEDED;
@@ -289,9 +325,13 @@ function mapIntentStatus(status: Stripe.PaymentIntent['status']): PaymentStatus 
 }
 
 /** The charge embedded in the intent, when the webhook payload expands it. */
-function expandedCharge(intent: Stripe.PaymentIntent): Stripe.Charge | undefined {
+function expandedCharge(
+  intent: Stripe.PaymentIntent,
+): Stripe.Charge | undefined {
   const latest = intent.latest_charge;
   if (latest && typeof latest === 'object') return latest;
-  const charges = (intent as unknown as { charges?: { data?: Stripe.Charge[] } }).charges;
+  const charges = (
+    intent as unknown as { charges?: { data?: Stripe.Charge[] } }
+  ).charges;
   return charges?.data?.[0];
 }

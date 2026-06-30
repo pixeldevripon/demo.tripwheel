@@ -67,10 +67,20 @@ describe('resolveRatingSource (LD11)', () => {
 
   it('shows nothing when neither tour nor operator qualifies', () => {
     expect(
-      resolveRatingSource({ tourCount: 2, tourRating: 5, operatorCount: 9, operatorRating: 4.9 }),
+      resolveRatingSource({
+        tourCount: 2,
+        tourRating: 5,
+        operatorCount: 9,
+        operatorRating: 4.9,
+      }),
     ).toMatchObject({ source: 'none', rating: null });
     expect(
-      resolveRatingSource({ tourCount: 0, tourRating: null, operatorCount: 40, operatorRating: 3.9 }),
+      resolveRatingSource({
+        tourCount: 0,
+        tourRating: null,
+        operatorCount: 40,
+        operatorRating: 3.9,
+      }),
     ).toMatchObject({ source: 'none', rating: null });
   });
 });

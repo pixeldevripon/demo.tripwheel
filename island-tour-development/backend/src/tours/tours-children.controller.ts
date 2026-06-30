@@ -114,7 +114,10 @@ export class TourChildrenController {
   @Get('images')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetImagesDocs()
-  getImages(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getImages(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getImages(tourId, user.id, user.role);
   }
 
@@ -138,7 +141,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourImageDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateImage(tourId, imageId, dto, user.id, user.role);
+    return this.tourChildrenService.updateImage(
+      tourId,
+      imageId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('images/:imageId')
@@ -149,7 +158,12 @@ export class TourChildrenController {
     @Param('imageId') imageId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeImage(tourId, imageId, user.id, user.role);
+    return this.tourChildrenService.removeImage(
+      tourId,
+      imageId,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Add-Ons ───────────────────────────────────────────────────────────────────
@@ -157,7 +171,10 @@ export class TourChildrenController {
   @Get('addons')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetAddOnsDocs()
-  getAddOns(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getAddOns(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getAddOns(tourId, user.id, user.role);
   }
 
@@ -181,7 +198,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourAddOnDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateAddOn(tourId, addonId, dto, user.id, user.role);
+    return this.tourChildrenService.updateAddOn(
+      tourId,
+      addonId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('addons/:addonId')
@@ -192,7 +215,12 @@ export class TourChildrenController {
     @Param('addonId') addonId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeAddOn(tourId, addonId, user.id, user.role);
+    return this.tourChildrenService.removeAddOn(
+      tourId,
+      addonId,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Age Bands ───────────────────────────────────────────────────────────────────
@@ -200,7 +228,10 @@ export class TourChildrenController {
   @Get('age-bands')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetAgeBandsDocs()
-  getAgeBands(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getAgeBands(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getAgeBands(tourId, user.id, user.role);
   }
 
@@ -224,7 +255,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourAgeBandDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateAgeBand(tourId, ageBandId, dto, user.id, user.role);
+    return this.tourChildrenService.updateAgeBand(
+      tourId,
+      ageBandId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('age-bands/:ageBandId')
@@ -235,7 +272,12 @@ export class TourChildrenController {
     @Param('ageBandId') ageBandId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeAgeBand(tourId, ageBandId, user.id, user.role);
+    return this.tourChildrenService.removeAgeBand(
+      tourId,
+      ageBandId,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Languages ─────────────────────────────────────────────────────────────────
@@ -243,7 +285,10 @@ export class TourChildrenController {
   @Get('languages')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetLanguagesDocs()
-  getLanguages(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getLanguages(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getLanguages(tourId, user.id, user.role);
   }
 
@@ -255,7 +300,12 @@ export class TourChildrenController {
     @Body() dto: AddTourLanguageDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.addLanguage(tourId, dto, user.id, user.role);
+    return this.tourChildrenService.addLanguage(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('languages/:languageId')
@@ -266,7 +316,12 @@ export class TourChildrenController {
     @Param('languageId') languageId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeLanguage(tourId, languageId, user.id, user.role);
+    return this.tourChildrenService.removeLanguage(
+      tourId,
+      languageId,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Inclusions ────────────────────────────────────────────────────────────────
@@ -274,7 +329,10 @@ export class TourChildrenController {
   @Get('inclusions')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetInclusionsDocs()
-  getInclusions(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getInclusions(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getInclusions(tourId, user.id, user.role);
   }
 
@@ -286,7 +344,12 @@ export class TourChildrenController {
     @Body() dto: CreateTourInclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.addInclusion(tourId, dto, user.id, user.role);
+    return this.tourChildrenService.addInclusion(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('inclusions/:inclusionId')
@@ -298,7 +361,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourInclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateInclusion(tourId, inclusionId, dto, user.id, user.role);
+    return this.tourChildrenService.updateInclusion(
+      tourId,
+      inclusionId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('inclusions/:inclusionId')
@@ -309,7 +378,12 @@ export class TourChildrenController {
     @Param('inclusionId') inclusionId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeInclusion(tourId, inclusionId, user.id, user.role);
+    return this.tourChildrenService.removeInclusion(
+      tourId,
+      inclusionId,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('inclusions/:inclusionId/translations/:locale')
@@ -322,7 +396,14 @@ export class TourChildrenController {
     @Body() dto: UpsertInclusionTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertInclusionTranslation(tourId, inclusionId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertInclusionTranslation(
+      tourId,
+      inclusionId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('inclusions/:inclusionId/translations/:locale')
@@ -334,7 +415,13 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deleteInclusionTranslation(tourId, inclusionId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteInclusionTranslation(
+      tourId,
+      inclusionId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Exclusions ────────────────────────────────────────────────────────────────
@@ -342,7 +429,10 @@ export class TourChildrenController {
   @Get('exclusions')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetExclusionsDocs()
-  getExclusions(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getExclusions(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getExclusions(tourId, user.id, user.role);
   }
 
@@ -354,7 +444,12 @@ export class TourChildrenController {
     @Body() dto: CreateTourExclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.addExclusion(tourId, dto, user.id, user.role);
+    return this.tourChildrenService.addExclusion(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('exclusions/:exclusionId')
@@ -366,7 +461,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourExclusionDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateExclusion(tourId, exclusionId, dto, user.id, user.role);
+    return this.tourChildrenService.updateExclusion(
+      tourId,
+      exclusionId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('exclusions/:exclusionId')
@@ -377,7 +478,12 @@ export class TourChildrenController {
     @Param('exclusionId') exclusionId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeExclusion(tourId, exclusionId, user.id, user.role);
+    return this.tourChildrenService.removeExclusion(
+      tourId,
+      exclusionId,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('exclusions/:exclusionId/translations/:locale')
@@ -390,7 +496,14 @@ export class TourChildrenController {
     @Body() dto: UpsertExclusionTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertExclusionTranslation(tourId, exclusionId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertExclusionTranslation(
+      tourId,
+      exclusionId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('exclusions/:exclusionId/translations/:locale')
@@ -402,7 +515,13 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deleteExclusionTranslation(tourId, exclusionId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteExclusionTranslation(
+      tourId,
+      exclusionId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Features ──────────────────────────────────────────────────────────────────
@@ -410,7 +529,10 @@ export class TourChildrenController {
   @Get('features')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetFeaturesDocs()
-  getFeatures(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getFeatures(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getFeatures(tourId, user.id, user.role);
   }
 
@@ -434,7 +556,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourFeatureDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateFeature(tourId, featureId, dto, user.id, user.role);
+    return this.tourChildrenService.updateFeature(
+      tourId,
+      featureId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('features/:featureId')
@@ -445,7 +573,12 @@ export class TourChildrenController {
     @Param('featureId') featureId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeFeature(tourId, featureId, user.id, user.role);
+    return this.tourChildrenService.removeFeature(
+      tourId,
+      featureId,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('features/:featureId/translations/:locale')
@@ -458,7 +591,14 @@ export class TourChildrenController {
     @Body() dto: UpsertFeatureTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertFeatureTranslation(tourId, featureId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertFeatureTranslation(
+      tourId,
+      featureId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('features/:featureId/translations/:locale')
@@ -470,7 +610,13 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deleteFeatureTranslation(tourId, featureId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteFeatureTranslation(
+      tourId,
+      featureId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Locations ─────────────────────────────────────────────────────────────────
@@ -478,7 +624,10 @@ export class TourChildrenController {
   @Get('locations')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetLocationsDocs()
-  getLocations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  getLocations(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.tourChildrenService.getLocations(tourId, user.id, user.role);
   }
 
@@ -490,7 +639,12 @@ export class TourChildrenController {
     @Body() dto: CreateTourLocationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.addLocation(tourId, dto, user.id, user.role);
+    return this.tourChildrenService.addLocation(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('locations/:locationId')
@@ -502,7 +656,13 @@ export class TourChildrenController {
     @Body() dto: UpdateTourLocationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updateLocation(tourId, locationId, dto, user.id, user.role);
+    return this.tourChildrenService.updateLocation(
+      tourId,
+      locationId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('locations/:locationId')
@@ -513,7 +673,12 @@ export class TourChildrenController {
     @Param('locationId') locationId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removeLocation(tourId, locationId, user.id, user.role);
+    return this.tourChildrenService.removeLocation(
+      tourId,
+      locationId,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('locations/:locationId/translations/:locale')
@@ -526,7 +691,14 @@ export class TourChildrenController {
     @Body() dto: UpsertLocationTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertLocationTranslation(tourId, locationId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertLocationTranslation(
+      tourId,
+      locationId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('locations/:locationId/translations/:locale')
@@ -538,7 +710,13 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deleteLocationTranslation(tourId, locationId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteLocationTranslation(
+      tourId,
+      locationId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Pickup Locations ──────────────────────────────────────────────────────────
@@ -546,8 +724,15 @@ export class TourChildrenController {
   @Get('pickup-locations')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetPickupLocationsDocs()
-  getPickupLocations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tourChildrenService.getPickupLocations(tourId, user.id, user.role);
+  getPickupLocations(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.getPickupLocations(
+      tourId,
+      user.id,
+      user.role,
+    );
   }
 
   @Post('pickup-locations')
@@ -558,7 +743,12 @@ export class TourChildrenController {
     @Body() dto: CreatePickupLocationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.addPickupLocation(tourId, dto, user.id, user.role);
+    return this.tourChildrenService.addPickupLocation(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('pickup-locations/:pickupLocationId')
@@ -570,7 +760,13 @@ export class TourChildrenController {
     @Body() dto: UpdatePickupLocationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.updatePickupLocation(tourId, pickupLocationId, dto, user.id, user.role);
+    return this.tourChildrenService.updatePickupLocation(
+      tourId,
+      pickupLocationId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('pickup-locations/:pickupLocationId')
@@ -581,7 +777,12 @@ export class TourChildrenController {
     @Param('pickupLocationId') pickupLocationId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.removePickupLocation(tourId, pickupLocationId, user.id, user.role);
+    return this.tourChildrenService.removePickupLocation(
+      tourId,
+      pickupLocationId,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('pickup-locations/:pickupLocationId/translations/:locale')
@@ -594,7 +795,14 @@ export class TourChildrenController {
     @Body() dto: UpsertPickupLocationTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertPickupLocationTranslation(tourId, pickupLocationId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertPickupLocationTranslation(
+      tourId,
+      pickupLocationId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('pickup-locations/:pickupLocationId/translations/:locale')
@@ -606,7 +814,13 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deletePickupLocationTranslation(tourId, pickupLocationId, locale, user.id, user.role);
+    return this.tourChildrenService.deletePickupLocationTranslation(
+      tourId,
+      pickupLocationId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   // ── Tour Translations - static routes before :locale ─────────────────────────
@@ -614,8 +828,15 @@ export class TourChildrenController {
   @Get('translations')
   @RequirePermissions(Permission.VIEW_TRIPS)
   @ApiGetAllTourTranslationsDocs()
-  getAllTranslations(@Param('tourId') tourId: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.tourChildrenService.getAllTranslations(tourId, user.id, user.role);
+  getAllTranslations(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.getAllTranslations(
+      tourId,
+      user.id,
+      user.role,
+    );
   }
 
   @Get('translations/:locale')
@@ -626,7 +847,12 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.getTranslationByLocale(tourId, locale, user.id, user.role);
+    return this.tourChildrenService.getTranslationByLocale(
+      tourId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
 
   @Patch('translations/:locale')
@@ -638,7 +864,13 @@ export class TourChildrenController {
     @Body() dto: UpsertTourTranslationDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.upsertTranslation(tourId, locale, dto, user.id, user.role);
+    return this.tourChildrenService.upsertTranslation(
+      tourId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Delete('translations/:locale')
@@ -649,7 +881,11 @@ export class TourChildrenController {
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.tourChildrenService.deleteTranslation(tourId, locale, user.id, user.role);
+    return this.tourChildrenService.deleteTranslation(
+      tourId,
+      locale,
+      user.id,
+      user.role,
+    );
   }
-
 }

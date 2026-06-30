@@ -1,5 +1,14 @@
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { BookingStatus, PaymentKind, PaymentModel, PaymentStatus, Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import {
+  BookingStatus,
+  PaymentKind,
+  PaymentModel,
+  PaymentStatus,
+  Prisma,
+} from '@prisma/client';
 import { PaymentsService } from './payments.service';
 
 const D = (v: string | number) => new Prisma.Decimal(v);
@@ -37,9 +46,11 @@ describe('PaymentsService', () => {
     prisma = mockPrisma();
     stripe = {
       isConfigured: jest.fn().mockResolvedValue(true),
-      createPaymentIntent: jest
-        .fn()
-        .mockResolvedValue({ id: 'pi_1', client_secret: 'pi_1_secret', status: 'requires_payment_method' }),
+      createPaymentIntent: jest.fn().mockResolvedValue({
+        id: 'pi_1',
+        client_secret: 'pi_1_secret',
+        status: 'requires_payment_method',
+      }),
       paymentMethods: jest.fn().mockResolvedValue([]),
       publishableKey: jest.fn().mockResolvedValue('pk_test_123'),
       constructEvent: jest.fn(),
@@ -78,7 +89,9 @@ describe('PaymentsService', () => {
 
     it('requires no payment for ON_ARRIVAL / OPERATOR_FULL', async () => {
       for (const pm of [PaymentModel.ON_ARRIVAL, PaymentModel.OPERATOR_FULL]) {
-        prisma.booking.findUnique.mockResolvedValue(booking({ paymentModel: pm }));
+        prisma.booking.findUnique.mockResolvedValue(
+          booking({ paymentModel: pm }),
+        );
         const res = await svc.createIntentForBooking('b1');
         expect(res.paymentRequired).toBe(false);
       }
@@ -94,8 +107,12 @@ describe('PaymentsService', () => {
     });
 
     it('rejects paying for a cancelled booking', async () => {
-      prisma.booking.findUnique.mockResolvedValue(booking({ status: BookingStatus.CANCELLED }));
-      await expect(svc.createIntentForBooking('b1')).rejects.toBeInstanceOf(BadRequestException);
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({ status: BookingStatus.CANCELLED }),
+      );
+      await expect(svc.createIntentForBooking('b1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
   });
 
@@ -106,14 +123,22 @@ describe('PaymentsService', () => {
       stripe.constructEvent.mockResolvedValue({
         id: 'evt_1',
         type: 'payment_intent.succeeded',
-        data: { object: { id: 'pi_1', metadata: { bookingId: 'b1' }, latest_charge: 'ch_1' } },
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: 'ch_1',
+          },
+        },
       });
       prisma.stripeWebhookEvent.create.mockResolvedValue({});
 
       await svc.handleWebhook(rawBody, 'sig');
 
       expect(prisma.payment.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: PaymentStatus.SUCCEEDED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: PaymentStatus.SUCCEEDED }),
+        }),
       );
       expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', undefined);
       expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
@@ -128,7 +153,10 @@ describe('PaymentsService', () => {
         data: { object: { id: 'pi_1', metadata: { bookingId: 'b1' } } },
       });
       prisma.stripeWebhookEvent.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'x' }),
+        new Prisma.PrismaClientKnownRequestError('dup', {
+          code: 'P2002',
+          clientVersion: 'x',
+        }),
       );
 
       await svc.handleWebhook(rawBody, 'sig');
@@ -152,7 +180,9 @@ describe('PaymentsService', () => {
 
     it('rejects an invalid signature', async () => {
       stripe.constructEvent.mockRejectedValue(new Error('bad sig'));
-      await expect(svc.handleWebhook(rawBody, 'sig')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(svc.handleWebhook(rawBody, 'sig')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
     });
   });
@@ -162,7 +192,9 @@ describe('PaymentsService', () => {
       prisma.mollieWebhookEvent.create.mockResolvedValue({});
       await svc.handleMollieWebhook('tr_abc');
       expect(prisma.mollieWebhookEvent.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ id: 'tr_abc' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ id: 'tr_abc' }),
+        }),
       );
       expect(prisma.mollieWebhookEvent.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'tr_abc' } }),
@@ -171,14 +203,19 @@ describe('PaymentsService', () => {
 
     it('is a no-op on redelivery (duplicate id)', async () => {
       prisma.mollieWebhookEvent.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'x' }),
+        new Prisma.PrismaClientKnownRequestError('dup', {
+          code: 'P2002',
+          clientVersion: 'x',
+        }),
       );
       await svc.handleMollieWebhook('tr_abc');
       expect(prisma.mollieWebhookEvent.update).not.toHaveBeenCalled();
     });
 
     it('rejects a missing payment id', async () => {
-      await expect(svc.handleMollieWebhook('')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(svc.handleMollieWebhook('')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
   });
 });

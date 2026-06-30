@@ -92,26 +92,28 @@ function createMockPrismaService() {
 
   return {
     ...mockTx,
-    $transaction: jest.fn().mockImplementation((fn: (tx: typeof mockTx) => unknown) =>
-      fn(mockTx),
-    ),
+    $transaction: jest
+      .fn()
+      .mockImplementation((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
     _tx: mockTx, // expose for per-test access
   };
 }
 
 // ── Data fixtures ─────────────────────────────────────────────────────────────
 
-function makeHub(overrides: Partial<{
-  id: string;
-  destinationId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  isSeeded: boolean;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> = {}) {
+function makeHub(
+  overrides: Partial<{
+    id: string;
+    destinationId: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    isSeeded: boolean;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {},
+) {
   return {
     id: 'hub-1',
     destinationId: 'dest-1',
@@ -133,14 +135,16 @@ function makeHubDetail(overrides: Partial<ReturnType<typeof makeHub>> = {}) {
   };
 }
 
-function makeTranslation(overrides: Partial<{
-  locale: Locale;
-  name: string | null;
-  overview: string | null;
-  h1Override: string | null;
-  breadcrumbLabel: string | null;
-  isMachineTranslated: boolean;
-}> = {}) {
+function makeTranslation(
+  overrides: Partial<{
+    locale: Locale;
+    name: string | null;
+    overview: string | null;
+    h1Override: string | null;
+    breadcrumbLabel: string | null;
+    isMachineTranslated: boolean;
+  }> = {},
+) {
   return {
     locale: Locale.nl,
     name: 'Klein Curaçao (NL)',
@@ -152,14 +156,16 @@ function makeTranslation(overrides: Partial<{
   };
 }
 
-function makeFaq(overrides: Partial<{
-  id: string;
-  locale: Locale;
-  question: string;
-  answer: string;
-  displayOrder: number;
-  isActive: boolean;
-}> = {}) {
+function makeFaq(
+  overrides: Partial<{
+    id: string;
+    locale: Locale;
+    question: string;
+    answer: string;
+    displayOrder: number;
+    isActive: boolean;
+  }> = {},
+) {
   return {
     id: 'faq-1',
     locale: Locale.en,
@@ -171,11 +177,13 @@ function makeFaq(overrides: Partial<{
   };
 }
 
-function makeAllowedCategory(overrides: Partial<{
-  id: string;
-  categoryId: string;
-  category: { id: string; name: string; slug: string };
-}> = {}) {
+function makeAllowedCategory(
+  overrides: Partial<{
+    id: string;
+    categoryId: string;
+    category: { id: string; name: string; slug: string };
+  }> = {},
+) {
   return {
     id: 'hac-1',
     categoryId: 'cat-1',
@@ -240,7 +248,11 @@ describe('HubService', () => {
       prisma.hub.count.mockResolvedValue(0);
       prisma.hub.findMany.mockResolvedValue([]);
 
-      const query: HubQueryDto = { destinationId: 'dest-99', page: 1, limit: 20 };
+      const query: HubQueryDto = {
+        destinationId: 'dest-99',
+        page: 1,
+        limit: 20,
+      };
       await service.getAll(query);
 
       expect(prisma.hub.count).toHaveBeenCalledWith(
@@ -252,11 +264,18 @@ describe('HubService', () => {
       prisma.hub.count.mockResolvedValue(0);
       prisma.hub.findMany.mockResolvedValue([]);
 
-      const query: HubQueryDto = { destinationId: 'dest-2', isActive: true, page: 1, limit: 20 };
+      const query: HubQueryDto = {
+        destinationId: 'dest-2',
+        isActive: true,
+        page: 1,
+        limit: 20,
+      };
       await service.getAll(query);
 
       expect(prisma.hub.count).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { destinationId: 'dest-2', isActive: true } }),
+        expect.objectContaining({
+          where: { destinationId: 'dest-2', isActive: true },
+        }),
       );
     });
 
@@ -278,7 +297,12 @@ describe('HubService', () => {
       const hub = makeHub({ name: 'Klein Curaçao' });
       prisma.hub.count.mockResolvedValue(1);
       prisma.hub.findMany.mockResolvedValue([
-        { ...hub, translations: [{ name: 'Klein Curaçao (NL)', isMachineTranslated: true }] },
+        {
+          ...hub,
+          translations: [
+            { name: 'Klein Curaçao (NL)', isMachineTranslated: true },
+          ],
+        },
       ]);
 
       const query: HubQueryDto = { locale: Locale.nl };
@@ -291,9 +315,7 @@ describe('HubService', () => {
     it('falls back to base name when no translation row exists', async () => {
       const hub = makeHub({ name: 'Klein Curaçao' });
       prisma.hub.count.mockResolvedValue(1);
-      prisma.hub.findMany.mockResolvedValue([
-        { ...hub, translations: [] },
-      ]);
+      prisma.hub.findMany.mockResolvedValue([{ ...hub, translations: [] }]);
 
       const query: HubQueryDto = { locale: Locale.nl };
       const result = await service.getAll(query);
@@ -319,7 +341,10 @@ describe('HubService', () => {
     it('returns all active hubs with translation applied', async () => {
       const hub = makeHubDetail();
       prisma.hub.findMany.mockResolvedValue([
-        { ...hub, translations: [{ name: 'Klein (NL)', isMachineTranslated: false }] },
+        {
+          ...hub,
+          translations: [{ name: 'Klein (NL)', isMachineTranslated: false }],
+        },
       ]);
 
       const query: ActiveHubsQueryDto = { locale: Locale.nl };
@@ -335,11 +360,16 @@ describe('HubService', () => {
     it('applies destinationId filter when provided', async () => {
       prisma.hub.findMany.mockResolvedValue([]);
 
-      const query: ActiveHubsQueryDto = { destinationId: 'dest-7', locale: Locale.en };
+      const query: ActiveHubsQueryDto = {
+        destinationId: 'dest-7',
+        locale: Locale.en,
+      };
       await service.getActive(query);
 
       expect(prisma.hub.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { isActive: true, destinationId: 'dest-7' } }),
+        expect.objectContaining({
+          where: { isActive: true, destinationId: 'dest-7' },
+        }),
       );
     });
 
@@ -356,9 +386,7 @@ describe('HubService', () => {
 
     it('falls back to base name when no translation exists', async () => {
       const hub = makeHubDetail({ name: 'Willemstad' });
-      prisma.hub.findMany.mockResolvedValue([
-        { ...hub, translations: [] },
-      ]);
+      prisma.hub.findMany.mockResolvedValue([{ ...hub, translations: [] }]);
 
       const query: ActiveHubsQueryDto = { locale: Locale.fr };
       const result = await service.getActive(query);
@@ -369,9 +397,7 @@ describe('HubService', () => {
 
     it('sets locale on returned result matching the query locale', async () => {
       const hub = makeHubDetail();
-      prisma.hub.findMany.mockResolvedValue([
-        { ...hub, translations: [] },
-      ]);
+      prisma.hub.findMany.mockResolvedValue([{ ...hub, translations: [] }]);
 
       const query: ActiveHubsQueryDto = { locale: Locale.es };
       const result = await service.getActive(query);
@@ -398,7 +424,10 @@ describe('HubService', () => {
         ],
       });
 
-      const query: HubBySlugQueryDto = { destinationSlug: 'curacao', locale: Locale.en };
+      const query: HubBySlugQueryDto = {
+        destinationSlug: 'curacao',
+        locale: Locale.en,
+      };
       const result = await service.getBySlug('klein-curacao', query);
 
       expect(result).toBeDefined();
@@ -411,22 +440,35 @@ describe('HubService', () => {
     it('throws NotFoundException when hub is not found', async () => {
       prisma.hub.findFirst.mockResolvedValue(null);
 
-      const query: HubBySlugQueryDto = { destinationSlug: 'curacao', locale: Locale.en };
-      await expect(service.getBySlug('nonexistent', query)).rejects.toThrow(NotFoundException);
+      const query: HubBySlugQueryDto = {
+        destinationSlug: 'curacao',
+        locale: Locale.en,
+      };
+      await expect(service.getBySlug('nonexistent', query)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('includes slug and destinationSlug in the NotFoundException message', async () => {
       prisma.hub.findFirst.mockResolvedValue(null);
 
-      const query: HubBySlugQueryDto = { destinationSlug: 'aruba', locale: Locale.en };
-      await expect(service.getBySlug('missing-hub', query)).rejects.toThrow('aruba');
+      const query: HubBySlugQueryDto = {
+        destinationSlug: 'aruba',
+        locale: Locale.en,
+      };
+      await expect(service.getBySlug('missing-hub', query)).rejects.toThrow(
+        'aruba',
+      );
     });
 
     it('returns null for overview, h1Override, breadcrumbLabel when no translation exists', async () => {
       const hub = makeHubDetail();
       prisma.hub.findFirst.mockResolvedValue({ ...hub, translations: [] });
 
-      const query: HubBySlugQueryDto = { destinationSlug: 'curacao', locale: Locale.en };
+      const query: HubBySlugQueryDto = {
+        destinationSlug: 'curacao',
+        locale: Locale.en,
+      };
       const result = await service.getBySlug('klein-curacao', query);
 
       expect(result.overview).toBeNull();
@@ -463,13 +505,17 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('nonexistent', Locale.en)).rejects.toThrow(NotFoundException);
+      await expect(service.getById('nonexistent', Locale.en)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('includes the hub id in the NotFoundException message', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('missing-hub-id', Locale.en)).rejects.toThrow('missing-hub-id');
+      await expect(
+        service.getById('missing-hub-id', Locale.en),
+      ).rejects.toThrow('missing-hub-id');
     });
 
     it('returns null for optional fields when no translation row exists', async () => {
@@ -501,9 +547,15 @@ describe('HubService', () => {
       _tx.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
       _tx.hub.create.mockResolvedValue({ id: 'hub-new' });
       _tx.slugRegistry.create.mockResolvedValue({});
-      _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new' }));
+      _tx.hub.findUniqueOrThrow.mockResolvedValue(
+        makeHubDetail({ id: 'hub-new' }),
+      );
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
       await service.create(dto, 'admin-1');
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -524,9 +576,15 @@ describe('HubService', () => {
       _tx.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
       _tx.hub.create.mockResolvedValue({ id: 'hub-new' });
       _tx.slugRegistry.create.mockResolvedValue({});
-      _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new', slug: 'klein-curacao' }));
+      _tx.hub.findUniqueOrThrow.mockResolvedValue(
+        makeHubDetail({ id: 'hub-new', slug: 'klein-curacao' }),
+      );
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
       await service.create(dto, 'admin-1');
 
       expect(_tx.hub.create).toHaveBeenCalledWith(
@@ -540,19 +598,33 @@ describe('HubService', () => {
       const { _tx } = prisma;
       _tx.destination.findUnique.mockResolvedValue(null);
 
-      const dto: CreateHubDto = { destinationId: 'nonexistent-dest', name: 'Klein Curaçao', hubType: HubType.LOCATION };
-      await expect(service.create(dto, 'admin-1')).rejects.toThrow(NotFoundException);
+      const dto: CreateHubDto = {
+        destinationId: 'nonexistent-dest',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
+      await expect(service.create(dto, 'admin-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when hub.create fails with P2002', async () => {
       const { _tx } = prisma;
       _tx.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
 
-      const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+      const p2002 = Object.assign(new Error('Unique constraint'), {
+        code: 'P2002',
+      });
       _tx.hub.create.mockRejectedValue(p2002);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
-      await expect(service.create(dto, 'admin-1')).rejects.toThrow(ConflictException);
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
+      await expect(service.create(dto, 'admin-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('throws ConflictException when slugRegistry.create fails with P2002', async () => {
@@ -560,11 +632,19 @@ describe('HubService', () => {
       _tx.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
       _tx.hub.create.mockResolvedValue({ id: 'hub-new' });
 
-      const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+      const p2002 = Object.assign(new Error('Unique constraint'), {
+        code: 'P2002',
+      });
       _tx.slugRegistry.create.mockRejectedValue(p2002);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
-      await expect(service.create(dto, 'admin-1')).rejects.toThrow(ConflictException);
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
+      await expect(service.create(dto, 'admin-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('creates hubAllowedCategory rows when allowedCategoryIds are provided', async () => {
@@ -573,7 +653,9 @@ describe('HubService', () => {
       _tx.hub.create.mockResolvedValue({ id: 'hub-new' });
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hubAllowedCategory.createMany.mockResolvedValue({ count: 2 });
-      _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new' }));
+      _tx.hub.findUniqueOrThrow.mockResolvedValue(
+        makeHubDetail({ id: 'hub-new' }),
+      );
 
       const dto: CreateHubDto = {
         destinationId: 'dest-1',
@@ -599,9 +681,15 @@ describe('HubService', () => {
       _tx.destination.findUnique.mockResolvedValue({ slug: 'curacao' });
       _tx.hub.create.mockResolvedValue({ id: 'hub-new' });
       _tx.slugRegistry.create.mockResolvedValue({});
-      _tx.hub.findUniqueOrThrow.mockResolvedValue(makeHubDetail({ id: 'hub-new' }));
+      _tx.hub.findUniqueOrThrow.mockResolvedValue(
+        makeHubDetail({ id: 'hub-new' }),
+      );
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
       await service.create(dto, 'admin-1');
 
       expect(_tx.hubAllowedCategory.createMany).not.toHaveBeenCalled();
@@ -615,7 +703,11 @@ describe('HubService', () => {
       _tx.slugRegistry.create.mockResolvedValue({});
       _tx.hub.findUniqueOrThrow.mockResolvedValue(expectedHub);
 
-      const dto: CreateHubDto = { destinationId: 'dest-1', name: 'Klein Curaçao', hubType: HubType.LOCATION };
+      const dto: CreateHubDto = {
+        destinationId: 'dest-1',
+        name: 'Klein Curaçao',
+        hubType: HubType.LOCATION,
+      };
       const result = await service.create(dto, 'admin-1');
 
       expect(result).toEqual(expectedHub);
@@ -627,9 +719,14 @@ describe('HubService', () => {
   describe('update', () => {
     it('renames the slug: re-points the registry row and writes a 301 redirect', async () => {
       const { _tx } = prisma;
-      prisma.hub.findUnique.mockResolvedValue({ slug: 'old-slug', destination: { slug: 'curacao' } });
+      prisma.hub.findUnique.mockResolvedValue({
+        slug: 'old-slug',
+        destination: { slug: 'curacao' },
+      });
       prisma.slugRegistry.findUnique.mockResolvedValue(null); // isSlugTaken → free
-      prisma.slugRegistry.findMany.mockResolvedValue([{ destinationSlug: 'curacao' }]);
+      prisma.slugRegistry.findMany.mockResolvedValue([
+        { destinationSlug: 'curacao' },
+      ]);
       _tx.hub.update.mockResolvedValue(makeHubDetail({ slug: 'new-slug' }));
 
       await service.update('hub-1', { slug: 'new-slug' }, 'admin-1');
@@ -640,12 +737,23 @@ describe('HubService', () => {
       });
       expect(_tx.slugRedirect.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { destinationSlug_fromSlug: { destinationSlug: 'curacao', fromSlug: 'old-slug' } },
-          create: expect.objectContaining({ fromSlug: 'old-slug', toSlug: 'new-slug', statusCode: 301 }),
+          where: {
+            destinationSlug_fromSlug: {
+              destinationSlug: 'curacao',
+              fromSlug: 'old-slug',
+            },
+          },
+          create: expect.objectContaining({
+            fromSlug: 'old-slug',
+            toSlug: 'new-slug',
+            statusCode: 301,
+          }),
         }),
       );
       expect(_tx.hub.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ slug: 'new-slug' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: 'new-slug' }),
+        }),
       );
     });
 
@@ -695,11 +803,15 @@ describe('HubService', () => {
 
     it('throws NotFoundException when hub does not exist (P2025)', async () => {
       const { _tx } = prisma;
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       _tx.hub.update.mockRejectedValue(p2025);
 
       const dto: UpdateHubDto = { name: 'Something' };
-      await expect(service.update('nonexistent', dto, 'admin-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('nonexistent', dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('re-throws non-P2025 errors from hub.update', async () => {
@@ -708,7 +820,9 @@ describe('HubService', () => {
       _tx.hub.update.mockRejectedValue(unexpectedError);
 
       const dto: UpdateHubDto = { name: 'Test' };
-      await expect(service.update('hub-1', dto, 'admin-1')).rejects.toThrow('DB connection failed');
+      await expect(service.update('hub-1', dto, 'admin-1')).rejects.toThrow(
+        'DB connection failed',
+      );
     });
   });
 
@@ -718,14 +832,18 @@ describe('HubService', () => {
     it('throws ForbiddenException when the hub is seeded', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: true }));
 
-      await expect(service.remove('hub-1', 'admin-1')).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('hub-1', 'admin-1')).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when the hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent', 'admin-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('nonexistent', 'admin-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException inside transaction when active non-draft trips exist', async () => {
@@ -733,7 +851,9 @@ describe('HubService', () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
       _tx.tour.count.mockResolvedValue(3);
 
-      await expect(service.remove('hub-1', 'admin-1')).rejects.toThrow(ConflictException);
+      await expect(service.remove('hub-1', 'admin-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('soft-deletes hub and updates slugRegistry when no active trips exist', async () => {
@@ -746,7 +866,10 @@ describe('HubService', () => {
       const result = await service.remove('hub-1', 'admin-1');
 
       expect(_tx.hub.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'hub-1' }, data: { isActive: false } }),
+        expect.objectContaining({
+          where: { id: 'hub-1' },
+          data: { isActive: false },
+        }),
       );
       expect(_tx.slugRegistry.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -783,7 +906,10 @@ describe('HubService', () => {
   describe('getAllTranslations', () => {
     it('returns array of translations for an existing hub', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      const translations = [makeTranslation({ locale: Locale.nl }), makeTranslation({ locale: Locale.es })];
+      const translations = [
+        makeTranslation({ locale: Locale.nl }),
+        makeTranslation({ locale: Locale.es }),
+      ];
       prisma.hubTranslation.findMany.mockResolvedValue(translations);
 
       const result = await service.getAllTranslations('hub-1');
@@ -797,7 +923,9 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getAllTranslations('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getAllTranslations('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.hubTranslation.findMany).not.toHaveBeenCalled();
     });
   });
@@ -818,9 +946,9 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getTranslationsByLocale('nonexistent', Locale.nl)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getTranslationsByLocale('nonexistent', Locale.nl),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('returns empty shell object with locale when no translation row exists', async () => {
@@ -845,19 +973,31 @@ describe('HubService', () => {
   describe('upsertTranslations', () => {
     it('calls hubTranslation.upsert with correct fields for create and update', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      const upsertedTranslation = makeTranslation({ locale: Locale.nl, name: 'Klein (NL)' });
+      const upsertedTranslation = makeTranslation({
+        locale: Locale.nl,
+        name: 'Klein (NL)',
+      });
       prisma.hubTranslation.upsert.mockResolvedValue(upsertedTranslation);
 
       const dto: UpsertHubTranslationsDto = {
         fields: { name: 'Klein (NL)', overview: 'An island.' },
         isMachineTranslated: false,
       };
-      const result = await service.upsertTranslations('hub-1', Locale.nl, dto, 'admin-1');
+      const result = await service.upsertTranslations(
+        'hub-1',
+        Locale.nl,
+        dto,
+        'admin-1',
+      );
 
       expect(prisma.hubTranslation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { hubId_locale: { hubId: 'hub-1', locale: Locale.nl } },
-          create: expect.objectContaining({ hubId: 'hub-1', locale: Locale.nl, name: 'Klein (NL)' }),
+          create: expect.objectContaining({
+            hubId: 'hub-1',
+            locale: Locale.nl,
+            name: 'Klein (NL)',
+          }),
         }),
       );
       expect(result).toEqual(upsertedTranslation);
@@ -870,9 +1010,9 @@ describe('HubService', () => {
         fields: { name: 'Test' },
         isMachineTranslated: false,
       };
-      await expect(service.upsertTranslations('nonexistent', Locale.nl, dto, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.upsertTranslations('nonexistent', Locale.nl, dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('defaults isMachineTranslated to false when not provided', async () => {
@@ -898,36 +1038,42 @@ describe('HubService', () => {
 
   describe('deleteTranslations', () => {
     it('throws BadRequestException when locale is Locale.en', async () => {
-      await expect(service.deleteTranslations('hub-1', Locale.en, 'admin-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.deleteTranslations('hub-1', Locale.en, 'admin-1'),
+      ).rejects.toThrow(BadRequestException);
       expect(prisma.hub.findUnique).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.deleteTranslations('nonexistent', Locale.nl, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteTranslations('nonexistent', Locale.nl, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.hubTranslation.delete).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when no translation row exists for the locale (P2025)', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      const p2025 = Object.assign(new Error('Record not found'), { code: 'P2025' });
+      const p2025 = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
       prisma.hubTranslation.delete.mockRejectedValue(p2025);
 
-      await expect(service.deleteTranslations('hub-1', Locale.nl, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteTranslations('hub-1', Locale.nl, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('deletes the translation and returns success message on happy path', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
       prisma.hubTranslation.delete.mockResolvedValue({});
 
-      const result = await service.deleteTranslations('hub-1', Locale.nl, 'admin-1');
+      const result = await service.deleteTranslations(
+        'hub-1',
+        Locale.nl,
+        'admin-1',
+      );
 
       expect(prisma.hubTranslation.delete).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -943,7 +1089,12 @@ describe('HubService', () => {
   describe('getPageContent', () => {
     it('returns page content row when it exists', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      const content = { locale: Locale.en, aboutText: 'An island.', metaTitle: 'Title', metaDescription: 'Desc' };
+      const content = {
+        locale: Locale.en,
+        aboutText: 'An island.',
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+      };
       prisma.hubPageContent.findUnique.mockResolvedValue(content);
 
       const result = await service.getPageContent('hub-1', Locale.en);
@@ -954,7 +1105,9 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getPageContent('nonexistent', Locale.en)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getPageContent('nonexistent', Locale.en),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('returns null-filled shell when no page content row exists', async () => {
@@ -963,7 +1116,12 @@ describe('HubService', () => {
 
       const result = await service.getPageContent('hub-1', Locale.de);
 
-      expect(result).toEqual({ locale: Locale.de, aboutText: null, metaTitle: null, metaDescription: null });
+      expect(result).toEqual({
+        locale: Locale.de,
+        aboutText: null,
+        metaTitle: null,
+        metaDescription: null,
+      });
     });
   });
 
@@ -972,16 +1130,34 @@ describe('HubService', () => {
   describe('upsertPageContent', () => {
     it('calls hubPageContent.upsert and returns the result', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      const upserted = { locale: Locale.en, aboutText: 'About.', metaTitle: 'Title', metaDescription: 'Desc' };
+      const upserted = {
+        locale: Locale.en,
+        aboutText: 'About.',
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+      };
       prisma.hubPageContent.upsert.mockResolvedValue(upserted);
 
-      const dto: UpsertHubPageContentDto = { aboutText: 'About.', metaTitle: 'Title', metaDescription: 'Desc' };
-      const result = await service.upsertPageContent('hub-1', Locale.en, dto, 'admin-1');
+      const dto: UpsertHubPageContentDto = {
+        aboutText: 'About.',
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+      };
+      const result = await service.upsertPageContent(
+        'hub-1',
+        Locale.en,
+        dto,
+        'admin-1',
+      );
 
       expect(prisma.hubPageContent.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { hubId_locale: { hubId: 'hub-1', locale: Locale.en } },
-          create: expect.objectContaining({ hubId: 'hub-1', locale: Locale.en, aboutText: 'About.' }),
+          create: expect.objectContaining({
+            hubId: 'hub-1',
+            locale: Locale.en,
+            aboutText: 'About.',
+          }),
         }),
       );
       expect(result).toEqual(upserted);
@@ -991,9 +1167,9 @@ describe('HubService', () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
       const dto: UpsertHubPageContentDto = { aboutText: 'About.' };
-      await expect(service.upsertPageContent('nonexistent', Locale.en, dto, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.upsertPageContent('nonexistent', Locale.en, dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -1023,7 +1199,9 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getFaqs('nonexistent', {})).rejects.toThrow(NotFoundException);
+      await expect(service.getFaqs('nonexistent', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('applies locale filter to where clause when locale is provided', async () => {
@@ -1047,7 +1225,9 @@ describe('HubService', () => {
       const query: FaqLocaleQueryDto = {};
       await service.getFaqs('hub-1', query);
 
-      const callArg = prisma.faq.findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+      const callArg = prisma.faq.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      };
       expect(callArg.where).not.toHaveProperty('locale');
     });
   });
@@ -1089,7 +1269,9 @@ describe('HubService', () => {
         question: 'What should I bring?',
         answer: 'Bring sunscreen and water.',
       };
-      await expect(service.createFaq('nonexistent', dto, 'admin-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.createFaq('nonexistent', dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('defaults displayOrder to 0 when not provided', async () => {
@@ -1125,7 +1307,11 @@ describe('HubService', () => {
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'faq-1', pageType: FAQ_PAGE_TYPE.HUB, entityId: 'hub-1' },
+          where: {
+            id: 'faq-1',
+            pageType: FAQ_PAGE_TYPE.HUB,
+            entityId: 'hub-1',
+          },
         }),
       );
       expect(prisma.faq.update).toHaveBeenCalledWith(
@@ -1141,9 +1327,9 @@ describe('HubService', () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
       const dto: UpdateFaqDto = { question: 'Updated?' };
-      await expect(service.updateFaq('hub-1', 'nonexistent-faq', dto, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateFaq('hub-1', 'nonexistent-faq', dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.faq.update).not.toHaveBeenCalled();
     });
   });
@@ -1160,19 +1346,25 @@ describe('HubService', () => {
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'faq-1', pageType: FAQ_PAGE_TYPE.HUB, entityId: 'hub-1' },
+          where: {
+            id: 'faq-1',
+            pageType: FAQ_PAGE_TYPE.HUB,
+            entityId: 'hub-1',
+          },
         }),
       );
-      expect(prisma.faq.delete).toHaveBeenCalledWith({ where: { id: 'faq-1' } });
+      expect(prisma.faq.delete).toHaveBeenCalledWith({
+        where: { id: 'faq-1' },
+      });
       expect(result).toEqual({ message: 'FAQ deleted successfully' });
     });
 
     it('throws NotFoundException when FAQ is not found for this hub', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      await expect(service.deleteFaq('hub-1', 'nonexistent-faq', 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteFaq('hub-1', 'nonexistent-faq', 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.faq.delete).not.toHaveBeenCalled();
     });
   });
@@ -1183,8 +1375,16 @@ describe('HubService', () => {
     it('returns allowed categories ordered by category name ascending', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
       const categories = [
-        makeAllowedCategory({ id: 'hac-1', categoryId: 'cat-1', category: { id: 'cat-1', name: 'Boat Tours', slug: 'boat-tours' } }),
-        makeAllowedCategory({ id: 'hac-2', categoryId: 'cat-2', category: { id: 'cat-2', name: 'Snorkeling', slug: 'snorkeling' } }),
+        makeAllowedCategory({
+          id: 'hac-1',
+          categoryId: 'cat-1',
+          category: { id: 'cat-1', name: 'Boat Tours', slug: 'boat-tours' },
+        }),
+        makeAllowedCategory({
+          id: 'hac-2',
+          categoryId: 'cat-2',
+          category: { id: 'cat-2', name: 'Snorkeling', slug: 'snorkeling' },
+        }),
       ];
       prisma.hubAllowedCategory.findMany.mockResolvedValue(categories);
 
@@ -1202,7 +1402,9 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.getAllowedCategories('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getAllowedCategories('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.hubAllowedCategory.findMany).not.toHaveBeenCalled();
     });
   });
@@ -1212,7 +1414,10 @@ describe('HubService', () => {
   describe('addAllowedCategory', () => {
     it('creates hubAllowedCategory and returns the result with message', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      prisma.category.findUnique.mockResolvedValue({ id: 'cat-1', name: 'Boat Tours' });
+      prisma.category.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        name: 'Boat Tours',
+      });
       const allowedCategory = makeAllowedCategory();
       prisma.hubAllowedCategory.create.mockResolvedValue(allowedCategory);
 
@@ -1234,9 +1439,9 @@ describe('HubService', () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
       const dto: AddAllowedCategoryDto = { categoryId: 'cat-1' };
-      await expect(service.addAllowedCategory('nonexistent', dto, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.addAllowedCategory('nonexistent', dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException when category does not exist', async () => {
@@ -1244,22 +1449,27 @@ describe('HubService', () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
       const dto: AddAllowedCategoryDto = { categoryId: 'nonexistent-cat' };
-      await expect(service.addAllowedCategory('hub-1', dto, 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.addAllowedCategory('hub-1', dto, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.hubAllowedCategory.create).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when category is already allowed (P2002)', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      prisma.category.findUnique.mockResolvedValue({ id: 'cat-1', name: 'Boat Tours' });
-      const p2002 = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+      prisma.category.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        name: 'Boat Tours',
+      });
+      const p2002 = Object.assign(new Error('Unique constraint'), {
+        code: 'P2002',
+      });
       prisma.hubAllowedCategory.create.mockRejectedValue(p2002);
 
       const dto: AddAllowedCategoryDto = { categoryId: 'cat-1' };
-      await expect(service.addAllowedCategory('hub-1', dto, 'admin-1')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.addAllowedCategory('hub-1', dto, 'admin-1'),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -1268,34 +1478,42 @@ describe('HubService', () => {
   describe('removeAllowedCategory', () => {
     it('deletes allowed category and returns success message', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      prisma.hubAllowedCategory.findUnique.mockResolvedValue(makeAllowedCategory());
+      prisma.hubAllowedCategory.findUnique.mockResolvedValue(
+        makeAllowedCategory(),
+      );
       prisma.hubAllowedCategory.delete.mockResolvedValue({});
 
-      const result = await service.removeAllowedCategory('hub-1', 'cat-1', 'admin-1');
+      const result = await service.removeAllowedCategory(
+        'hub-1',
+        'cat-1',
+        'admin-1',
+      );
 
       expect(prisma.hubAllowedCategory.delete).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { hubId_categoryId: { hubId: 'hub-1', categoryId: 'cat-1' } },
         }),
       );
-      expect(result).toEqual({ message: 'Allowed category removed successfully' });
+      expect(result).toEqual({
+        message: 'Allowed category removed successfully',
+      });
     });
 
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeAllowedCategory('nonexistent', 'cat-1', 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.removeAllowedCategory('nonexistent', 'cat-1', 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException when allowed-category link does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
       prisma.hubAllowedCategory.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeAllowedCategory('hub-1', 'cat-999', 'admin-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.removeAllowedCategory('hub-1', 'cat-999', 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.hubAllowedCategory.delete).not.toHaveBeenCalled();
     });
   });

@@ -51,7 +51,9 @@ function parseList(raw: unknown): string[] {
 export class OctoCapabilitiesMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
     const header = req.headers['octo-capabilities'];
-    const fromHeader = parseList(Array.isArray(header) ? header.join(',') : header);
+    const fromHeader = parseList(
+      Array.isArray(header) ? header.join(',') : header,
+    );
     const fromQuery = parseList(req.query?._capabilities);
 
     const active = new Set<string>(

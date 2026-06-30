@@ -2,7 +2,18 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
-import { Body, Controller, Delete, Get, Param, ParseEnumPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseEnumPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import { CollectionsService } from './collections.service';
@@ -56,35 +67,59 @@ export class CollectionsController {
   @Public()
   @ApiGetActiveCollectionsDocs()
   getActive(@Query() query: ActiveCollectionsQueryDto) {
-    return this.collectionsService.getActiveByDestinationSlug(query.destinationSlug, query.locale);
+    return this.collectionsService.getActiveByDestinationSlug(
+      query.destinationSlug,
+      query.locale,
+    );
   }
 
   @Get('slug/:slug')
   @Public()
   @ApiGetCollectionBySlugDocs()
-  getBySlug(@Param('slug') slug: string, @Query() query: CollectionBySlugQueryDto) {
-    return this.collectionsService.getBySlug(query.destinationSlug, slug, query.locale);
+  getBySlug(
+    @Param('slug') slug: string,
+    @Query() query: CollectionBySlugQueryDto,
+  ) {
+    return this.collectionsService.getBySlug(
+      query.destinationSlug,
+      slug,
+      query.locale,
+    );
   }
 
   @Get('render/:slug')
   @Public()
   @ApiRenderCollectionDocs()
-  render(@Param('slug') slug: string, @Query() query: CollectionRenderQueryDto) {
-    return this.collectionsService.render(slug, query.destinationId, query.locale);
+  render(
+    @Param('slug') slug: string,
+    @Query() query: CollectionRenderQueryDto,
+  ) {
+    return this.collectionsService.render(
+      slug,
+      query.destinationId,
+      query.locale,
+    );
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
 
   @Get('admin/all')
   @RequirePermissions(Permission.VIEW_COLLECTIONS)
-  @ApiOperation({ summary: 'Admin: list all collections (active + inactive) for a destination slug' })
+  @ApiOperation({
+    summary:
+      'Admin: list all collections (active + inactive) for a destination slug',
+  })
   getAllAdmin(@Query() query: ActiveCollectionsQueryDto) {
-    return this.collectionsService.getAllByDestinationAdmin(query.destinationSlug);
+    return this.collectionsService.getAllByDestinationAdmin(
+      query.destinationSlug,
+    );
   }
 
   @Get(':id')
   @RequirePermissions(Permission.VIEW_COLLECTIONS)
-  @ApiOperation({ summary: 'Admin: get a single collection by id (for the edit form)' })
+  @ApiOperation({
+    summary: 'Admin: get a single collection by id (for the edit form)',
+  })
   getByIdAdmin(@Param('id') id: string) {
     return this.collectionsService.getByIdAdmin(id);
   }
@@ -92,7 +127,10 @@ export class CollectionsController {
   @Post()
   @RequirePermissions(Permission.CREATE_COLLECTION)
   @ApiCreateCollectionDocs()
-  create(@Body() dto: CreateCollectionDto, @AuthenticatedUser() user: TypedAuthUser) {
+  create(
+    @Body() dto: CreateCollectionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.collectionsService.create(dto, user.id);
   }
 
@@ -108,7 +146,10 @@ export class CollectionsController {
   @Get(':id/translations/:locale')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiGetCollectionTranslationByLocaleDocs()
-  getTranslationsByLocale(@Param('id') id: string, @Param('locale', new ParseEnumPipe(Locale)) locale: Locale) {
+  getTranslationsByLocale(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+  ) {
     return this.collectionsService.getTranslationsByLocale(id, locale);
   }
 
@@ -168,7 +209,11 @@ export class CollectionsController {
   @Post(':id/faqs')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiCreateCollectionFaqDocs()
-  createFaq(@Param('id') id: string, @Body() dto: CreateFaqDto, @AuthenticatedUser() user: TypedAuthUser) {
+  createFaq(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.collectionsService.createFaq(id, dto, user.id);
   }
 
@@ -187,7 +232,11 @@ export class CollectionsController {
   @Delete(':id/faqs/:faqId')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiDeleteCollectionFaqDocs()
-  deleteFaq(@Param('id') id: string, @Param('faqId') faqId: string, @AuthenticatedUser() user: TypedAuthUser) {
+  deleteFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.collectionsService.deleteFaq(id, faqId, user.id);
   }
 
@@ -214,7 +263,13 @@ export class CollectionsController {
     @Body() dto: UpsertCollectionTourRationaleDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.collectionsService.upsertTourRationale(id, tourId, locale, dto, user.id);
+    return this.collectionsService.upsertTourRationale(
+      id,
+      tourId,
+      locale,
+      dto,
+      user.id,
+    );
   }
 
   @Patch(':id/status')
@@ -233,14 +288,21 @@ export class CollectionsController {
   @Patch(':id')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpdateCollectionDocs()
-  update(@Param('id') id: string, @Body() dto: UpdateCollectionDto, @AuthenticatedUser() user: TypedAuthUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCollectionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.collectionsService.update(id, dto, user.id);
   }
 
   @Delete(':id/force')
   @RequirePermissions(Permission.MANAGE_SYSTEM)
   @ApiForceDeleteCollectionDocs()
-  forceDelete(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+  forceDelete(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.collectionsService.forceDelete(id, user.id);
   }
 

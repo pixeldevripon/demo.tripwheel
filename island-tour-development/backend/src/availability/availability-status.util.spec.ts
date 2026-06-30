@@ -17,25 +17,39 @@ describe('liveDepartureStatus', () => {
 
   it('SOLD_OUT when full, regardless of cutoff', () => {
     expect(
-      liveDepartureStatus({ status: DepartureStatus.OPEN, capacity: 10, bookedCount: 10, cutoffPassed: false }),
+      liveDepartureStatus({
+        status: DepartureStatus.OPEN,
+        capacity: 10,
+        bookedCount: 10,
+        cutoffPassed: false,
+      }),
     ).toBe(DepartureStatus.SOLD_OUT);
   });
 
   it('CLOSED (live) once the cutoff has passed', () => {
     expect(
-      liveDepartureStatus({ ...base, status: DepartureStatus.OPEN, cutoffPassed: true }),
+      liveDepartureStatus({
+        ...base,
+        status: DepartureStatus.OPEN,
+        cutoffPassed: true,
+      }),
     ).toBe(DepartureStatus.CLOSED);
   });
 
   it('keeps a sticky CLOSED even with room', () => {
-    expect(liveDepartureStatus({ ...base, status: DepartureStatus.CLOSED })).toBe(
-      DepartureStatus.CLOSED,
-    );
+    expect(
+      liveDepartureStatus({ ...base, status: DepartureStatus.CLOSED }),
+    ).toBe(DepartureStatus.CLOSED);
   });
 
   it('keeps a sticky CANCELLED above everything', () => {
     expect(
-      liveDepartureStatus({ status: DepartureStatus.CANCELLED, capacity: 10, bookedCount: 0, cutoffPassed: true }),
+      liveDepartureStatus({
+        status: DepartureStatus.CANCELLED,
+        capacity: 10,
+        bookedCount: 0,
+        cutoffPassed: true,
+      }),
     ).toBe(DepartureStatus.CANCELLED);
   });
 });

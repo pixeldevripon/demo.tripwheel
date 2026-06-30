@@ -34,9 +34,7 @@ describe('SettingsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SettingsController],
-      providers: [
-        { provide: SettingsService, useValue: service },
-      ],
+      providers: [{ provide: SettingsService, useValue: service }],
     }).compile();
 
     controller = module.get<SettingsController>(SettingsController);
@@ -50,7 +48,10 @@ describe('SettingsController', () => {
 
   describe('getSiteInfo', () => {
     it('delegates retrieval of core site configuration to the service layer', async () => {
-      service.getSiteInfo.mockResolvedValue({ id: 'default', siteName: 'Test' });
+      service.getSiteInfo.mockResolvedValue({
+        id: 'default',
+        siteName: 'Test',
+      });
       const result = await controller.getSiteInfo();
       expect(result).toEqual({ id: 'default', siteName: 'Test' });
       expect(service.getSiteInfo).toHaveBeenCalled();
@@ -133,13 +134,17 @@ describe('SettingsController', () => {
     });
 
     it('createCompanyInformations handles initial profile creation via the service layer', async () => {
-      const dto: UpdateCompanyInformationsDto = { companyName: 'Island Tour Ltd' };
+      const dto: UpdateCompanyInformationsDto = {
+        companyName: 'Island Tour Ltd',
+      };
       await controller.createCompanyInformations(dto);
       expect(service.createCompanyInformations).toHaveBeenCalledWith(dto);
     });
 
     it('updateCompanyInformations performs full or partial profile updates via the service layer', async () => {
-      const dto: UpdateCompanyInformationsDto = { companyEmail: 'contact@island.com' };
+      const dto: UpdateCompanyInformationsDto = {
+        companyEmail: 'contact@island.com',
+      };
       await controller.updateCompanyInformations(dto);
       expect(service.updateCompanyInformations).toHaveBeenCalledWith(dto);
     });
@@ -149,7 +154,10 @@ describe('SettingsController', () => {
 
   describe('Permission Guard Integration (Metadata)', () => {
     function getPermission(methodName: keyof SettingsController) {
-      return Reflect.getMetadata('permissions', SettingsController.prototype[methodName]);
+      return Reflect.getMetadata(
+        'permissions',
+        SettingsController.prototype[methodName],
+      );
     }
 
     it('getSiteInfo endpoint is gated by VIEW_SETTINGS permission', () => {
@@ -157,17 +165,26 @@ describe('SettingsController', () => {
     });
 
     it('ingestStripeConfiguration endpoint has a strict rate limit of 5 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.ingestStripeConfiguration);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.ingestStripeConfiguration,
+      );
       expect(limit).toBe(5);
     });
 
     it('ingestMollieConfiguration endpoint has a strict rate limit of 5 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.ingestMollieConfiguration);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.ingestMollieConfiguration,
+      );
       expect(limit).toBe(5);
     });
 
     it('createCompanyInformations endpoint has a rate limit of 10 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.createCompanyInformations);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.createCompanyInformations,
+      );
       expect(limit).toBe(10);
     });
 
@@ -184,33 +201,50 @@ describe('SettingsController', () => {
     });
 
     it('getCompanyInformations endpoint is gated by VIEW_SETTINGS permission', () => {
-      expect(getPermission('getCompanyInformations')).toContain('VIEW_SETTINGS');
+      expect(getPermission('getCompanyInformations')).toContain(
+        'VIEW_SETTINGS',
+      );
     });
 
     it('updateCompanyInformations endpoint is gated by MANAGE_SETTINGS permission', () => {
-      expect(getPermission('updateCompanyInformations')).toContain('MANAGE_SETTINGS');
+      expect(getPermission('updateCompanyInformations')).toContain(
+        'MANAGE_SETTINGS',
+      );
     });
 
     it('getStripeConfiguration endpoint is gated by MANAGE_SETTINGS permission', () => {
-      expect(getPermission('getStripeConfiguration')).toContain('MANAGE_SETTINGS');
+      expect(getPermission('getStripeConfiguration')).toContain(
+        'MANAGE_SETTINGS',
+      );
     });
 
     it('getMollieConfiguration endpoint is gated by MANAGE_SETTINGS permission', () => {
-      expect(getPermission('getMollieConfiguration')).toContain('MANAGE_SETTINGS');
+      expect(getPermission('getMollieConfiguration')).toContain(
+        'MANAGE_SETTINGS',
+      );
     });
 
     it('updateStripeConfiguration endpoint has a strict rate limit of 5 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.updateStripeConfiguration);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.updateStripeConfiguration,
+      );
       expect(limit).toBe(5);
     });
 
     it('updateMollieConfiguration endpoint has a strict rate limit of 5 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.updateMollieConfiguration);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.updateMollieConfiguration,
+      );
       expect(limit).toBe(5);
     });
 
     it('updateCompanyInformations endpoint has a rate limit of 10 requests per minute', () => {
-      const limit = Reflect.getMetadata('THROTTLER:LIMITmedium', SettingsController.prototype.updateCompanyInformations);
+      const limit = Reflect.getMetadata(
+        'THROTTLER:LIMITmedium',
+        SettingsController.prototype.updateCompanyInformations,
+      );
       expect(limit).toBe(10);
     });
   });

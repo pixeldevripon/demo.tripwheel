@@ -83,7 +83,10 @@ describe('SettingsService', () => {
       expect(prisma.siteInfo.upsert).toHaveBeenCalledWith({
         where: { id: 'default' },
         update: expect.objectContaining({ siteName: 'New Name' }),
-        create: expect.objectContaining({ id: 'default', siteName: 'New Name' }),
+        create: expect.objectContaining({
+          id: 'default',
+          siteName: 'New Name',
+        }),
       });
     });
 
@@ -197,24 +200,44 @@ describe('SettingsService', () => {
 
   describe('getStripeConfiguration', () => {
     it('returns Stripe settings via the default singleton ID', async () => {
-      const dbResult = { id: 'default', paymentLabel: 'Stripe', secretKey: null, webhookSecret: null };
+      const dbResult = {
+        id: 'default',
+        paymentLabel: 'Stripe',
+        secretKey: null,
+        webhookSecret: null,
+      };
       prisma.stripeConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.getStripeConfiguration();
 
-      expect(result).toEqual({ id: 'default', paymentLabel: 'Stripe', secretKey: null, webhookSecret: null });
+      expect(result).toEqual({
+        id: 'default',
+        paymentLabel: 'Stripe',
+        secretKey: null,
+        webhookSecret: null,
+      });
     });
   });
 
   describe('updateStripeConfiguration', () => {
     it('persists Stripe configuration updates via upsert', async () => {
       const dto: UpdateStripeConfigurationDto = { publishableKey: 'pk_test' };
-      const dbResult = { id: 'default', publishableKey: 'pk_test', secretKey: null, webhookSecret: null };
+      const dbResult = {
+        id: 'default',
+        publishableKey: 'pk_test',
+        secretKey: null,
+        webhookSecret: null,
+      };
       prisma.stripeConfiguration.upsert.mockResolvedValue(dbResult);
 
       const result = await service.updateStripeConfiguration(dto);
 
-      expect(result).toEqual({ id: 'default', publishableKey: 'pk_test', secretKey: null, webhookSecret: null });
+      expect(result).toEqual({
+        id: 'default',
+        publishableKey: 'pk_test',
+        secretKey: null,
+        webhookSecret: null,
+      });
       expect(prisma.stripeConfiguration.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'default' } }),
       );
@@ -230,7 +253,11 @@ describe('SettingsService', () => {
 
       const result = await service.getMollieConfiguration();
 
-      expect(result).toEqual({ id: 'default', paymentLabel: 'Mollie', apiKey: null });
+      expect(result).toEqual({
+        id: 'default',
+        paymentLabel: 'Mollie',
+        apiKey: null,
+      });
     });
   });
 

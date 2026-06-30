@@ -33,7 +33,11 @@ function mockPrisma() {
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
-    departure: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    departure: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
   };
 }
 
@@ -122,7 +126,9 @@ describe('AvailabilityService', () => {
 
     it('lets an ADMIN bypass ownership', async () => {
       prisma.tour.findUnique.mockResolvedValue({ ...TOUR, operatorId: 'opX' });
-      prisma.availabilitySchedule.create.mockResolvedValue(scheduleRow({ id: 's2' }));
+      prisma.availabilitySchedule.create.mockResolvedValue(
+        scheduleRow({ id: 's2' }),
+      );
       const res = await svc.createSchedule('admin', Role.ADMIN, createDto);
       expect(res.id).toBe('s2');
       expect(prisma.operator.findUnique).not.toHaveBeenCalled();
@@ -139,7 +145,10 @@ describe('AvailabilityService', () => {
       prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
       await expect(
-        svc.createSchedule('u1', Role.TOUR_OPERATOR, { ...createDto, startTime: '10:30' }),
+        svc.createSchedule('u1', Role.TOUR_OPERATOR, {
+          ...createDto,
+          startTime: '10:30',
+        }),
       ).rejects.toThrow(/slot set/);
     });
   });
@@ -166,7 +175,11 @@ describe('AvailabilityService', () => {
     it('throws 404 when the tour is not LIVE/active', async () => {
       prisma.tour.findFirst.mockResolvedValue(null);
       await expect(
-        svc.checkAvailability({ tourId: 't1', dateFrom: '2030-06-01', dateTo: '2030-06-30' }),
+        svc.checkAvailability({
+          tourId: 't1',
+          dateFrom: '2030-06-01',
+          dateTo: '2030-06-30',
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -208,9 +221,13 @@ describe('AvailabilityService', () => {
       );
       prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      prisma.departure.update.mockImplementation(({ data }) => departureRow({ ...data }));
+      prisma.departure.update.mockImplementation(({ data }) =>
+        departureRow({ ...data }),
+      );
 
-      await svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', { capacity: 12 });
+      await svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', {
+        capacity: 12,
+      });
 
       expect(prisma.departure.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -228,7 +245,9 @@ describe('AvailabilityService', () => {
   describe('computeIsBookable', () => {
     it('is true when an OPEN, non-cutoff departure exists in the horizon', async () => {
       prisma.tour.findUnique.mockResolvedValue(TOUR);
-      prisma.departure.findMany.mockResolvedValue([departureRow({ bookedCount: 4 })]);
+      prisma.departure.findMany.mockResolvedValue([
+        departureRow({ bookedCount: 4 }),
+      ]);
       expect(await svc.computeIsBookable('t1')).toBe(true);
     });
 

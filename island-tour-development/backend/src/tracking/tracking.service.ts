@@ -38,7 +38,9 @@ export class TrackingService {
     const token = process.env.META_CAPI_TOKEN;
     if (!pixelId || !token) {
       if (!this.warnedUnconfigured) {
-        this.logger.warn('Meta CAPI not configured (META_PIXEL_ID/META_CAPI_TOKEN) - skipping conversions');
+        this.logger.warn(
+          'Meta CAPI not configured (META_PIXEL_ID/META_CAPI_TOKEN) - skipping conversions',
+        );
         this.warnedUnconfigured = true;
       }
       return;
@@ -60,7 +62,9 @@ export class TrackingService {
           event_id: payload.eventId,
           event_time: payload.eventTimeSec,
           action_source: 'website',
-          ...(payload.eventSourceUrl && { event_source_url: payload.eventSourceUrl }),
+          ...(payload.eventSourceUrl && {
+            event_source_url: payload.eventSourceUrl,
+          }),
           user_data: userData,
           custom_data: {
             currency: 'EUR',
@@ -71,7 +75,9 @@ export class TrackingService {
           },
         },
       ],
-      ...(process.env.META_CAPI_TEST_CODE && { test_event_code: process.env.META_CAPI_TEST_CODE }),
+      ...(process.env.META_CAPI_TEST_CODE && {
+        test_event_code: process.env.META_CAPI_TEST_CODE,
+      }),
     };
 
     try {
@@ -85,9 +91,13 @@ export class TrackingService {
       );
       if (!res.ok) {
         const text = await res.text();
-        this.logger.error(`Meta CAPI booking_complete failed (${res.status}): ${text}`);
+        this.logger.error(
+          `Meta CAPI booking_complete failed (${res.status}): ${text}`,
+        );
       } else {
-        this.logger.log(`booking_complete fired (€${payload.commissionEur}, event ${payload.eventId})`);
+        this.logger.log(
+          `booking_complete fired (€${payload.commissionEur}, event ${payload.eventId})`,
+        );
       }
     } catch (err) {
       this.logger.error('Meta CAPI request error', err as Error);

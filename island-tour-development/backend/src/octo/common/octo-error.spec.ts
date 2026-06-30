@@ -5,16 +5,15 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  OCTO_ERROR,
-  OctoException,
-  OctoExceptionFilter,
-} from './octo-error';
+import { OCTO_ERROR, OctoException, OctoExceptionFilter } from './octo-error';
 
-function mockHost(): { host: ArgumentsHost; res: { status: jest.Mock; json: jest.Mock } } {
+function mockHost(): {
+  host: ArgumentsHost;
+  res: { status: jest.Mock; json: jest.Mock };
+} {
   const json = jest.fn();
   const status = jest.fn().mockReturnValue({ json });
-  const res = { status, json } as unknown as { status: jest.Mock; json: jest.Mock };
+  const res = { status, json };
   const host = {
     switchToHttp: () => ({ getResponse: () => ({ status, json }) }),
   } as unknown as ArgumentsHost;
@@ -33,7 +32,9 @@ describe('OctoException factories', () => {
   });
 
   it('unprocessable → 422', () => {
-    const ex = OctoException.unprocessable('Sold out', { availabilityId: 'a-1' });
+    const ex = OctoException.unprocessable('Sold out', {
+      availabilityId: 'a-1',
+    });
     expect(ex.getStatus()).toBe(422);
     expect(ex.getResponse()).toMatchObject({
       error: OCTO_ERROR.UNPROCESSABLE_ENTITY,
@@ -80,7 +81,9 @@ describe('OctoExceptionFilter', () => {
   it('flattens a ValidationPipe message array', () => {
     const { host, res } = mockHost();
     filter.catch(
-      new BadRequestException({ message: ['a must be a string', 'b is required'] }),
+      new BadRequestException({
+        message: ['a must be a string', 'b is required'],
+      }),
       host,
     );
     expect(res.json).toHaveBeenCalledWith({

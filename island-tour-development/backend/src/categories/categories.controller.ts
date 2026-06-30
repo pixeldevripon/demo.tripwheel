@@ -106,7 +106,10 @@ export class CategoryController {
     @Param('destinationSlug') destinationSlug: string,
     @Query() query: LocaleQueryDto,
   ) {
-    return this.categoryService.getActiveByDestinationSlug(destinationSlug, query.locale);
+    return this.categoryService.getActiveByDestinationSlug(
+      destinationSlug,
+      query.locale,
+    );
   }
 
   @Get('destination/:destinationSlug/:categorySlug')
@@ -117,7 +120,11 @@ export class CategoryController {
     @Param('categorySlug') categorySlug: string,
     @Query() query: LocaleQueryDto,
   ) {
-    return this.categoryService.getBySlugForDestination(destinationSlug, categorySlug, query.locale);
+    return this.categoryService.getBySlugForDestination(
+      destinationSlug,
+      categorySlug,
+      query.locale,
+    );
   }
 
   @Get(':id')
@@ -132,7 +139,10 @@ export class CategoryController {
   @Post()
   @RequirePermissions(Permission.CREATE_CATEGORY)
   @ApiCreateCategoryDocs()
-  create(@Body() dto: CreateCategoryDto, @AuthenticatedUser() user: TypedAuthUser) {
+  create(
+    @Body() dto: CreateCategoryDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.categoryService.create(dto, user.id);
   }
 
@@ -150,7 +160,10 @@ export class CategoryController {
   @Delete(':id/force')
   @RequirePermissions(Permission.MANAGE_SYSTEM)
   @ApiForceDeleteCategoryDocs()
-  forceDelete(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+  forceDelete(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
     return this.categoryService.forceDelete(id, user.id);
   }
 

@@ -196,7 +196,8 @@ export class ToursService {
     // 2. Likely to sell out (§3.7) - the daily-evaluated demand signal stored on
     //    `likelyToSellOut` (worker output, see src/tours/demand-signal.ts), with the
     //    manual CMS launch override taking precedence (`override ?? computed`).
-    if (tour.likelyToSellOutOverride ?? tour.likelyToSellOut) return 'likelyToSellOut';
+    if (tour.likelyToSellOutOverride ?? tour.likelyToSellOut)
+      return 'likelyToSellOut';
 
     // 3. Most popular - earned by organic reviews (never on commission-tier grounds).
     if (tour.aggregateReviewCount >= 10 && (tour.aggregateRating ?? 0) >= 4.5) {
@@ -205,8 +206,7 @@ export class ToursService {
 
     // 4. New - recently published with no reviews yet.
     if (tour.aggregateReviewCount === 0 && tour.publishedAt) {
-      const ageDays =
-        (now.getTime() - tour.publishedAt.getTime()) / 86_400_000;
+      const ageDays = (now.getTime() - tour.publishedAt.getTime()) / 86_400_000;
       if (ageDays < 30) return 'new';
     }
 
@@ -348,7 +348,12 @@ export class ToursService {
     page?: number;
     limit?: number;
   }) {
-    const { destinationSlug, locale = Locale.en, page = 1, limit = 20 } = params;
+    const {
+      destinationSlug,
+      locale = Locale.en,
+      page = 1,
+      limit = 20,
+    } = params;
     const term = params.q?.trim();
     if (!term || term.length < 2) {
       return {
@@ -371,7 +376,9 @@ export class ToursService {
       isActive: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
       ...(parsedDate && {
-        departures: { some: { date: parsedDate, status: DepartureStatus.OPEN } },
+        departures: {
+          some: { date: parsedDate, status: DepartureStatus.OPEN },
+        },
       }),
       OR: [
         { name: ci },
@@ -495,7 +502,8 @@ export class ToursService {
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categories = { some: { categoryId } };
     if (hubId) where.hubs = { some: { hubId } };
-    if (isLocalsFavourite !== undefined) where.isLocalsFavourite = isLocalsFavourite;
+    if (isLocalsFavourite !== undefined)
+      where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.basePrice = {};
@@ -587,7 +595,6 @@ export class ToursService {
     return { evaluated: tours.length, flagged };
   }
 
-  
   /**
    * Maps the requested sort to a Prisma orderBy. Full write-up:
    * technical-doc/03-implementation/TOUR-RANKING.md.
@@ -610,9 +617,15 @@ export class ToursService {
   private buildOrderBy(sort: TourSort): Prisma.TourOrderByWithRelationInput[] {
     switch (sort) {
       case TourSort.price_asc:
-        return [{ priceFrom: { sort: 'asc', nulls: 'last' } }, { basePrice: 'asc' }];
+        return [
+          { priceFrom: { sort: 'asc', nulls: 'last' } },
+          { basePrice: 'asc' },
+        ];
       case TourSort.price_desc:
-        return [{ priceFrom: { sort: 'desc', nulls: 'last' } }, { basePrice: 'desc' }];
+        return [
+          { priceFrom: { sort: 'desc', nulls: 'last' } },
+          { basePrice: 'desc' },
+        ];
       case TourSort.rating:
         return [
           { aggregateRating: { sort: 'desc', nulls: 'last' } },
@@ -658,7 +671,10 @@ export class ToursService {
       // minimal change (so paid tiers are not pushed down for cosmetic spacing).
       const counts = new Map<string | null, number>();
       for (const p of pool) {
-        counts.set(p.primaryCategoryId, (counts.get(p.primaryCategoryId) ?? 0) + 1);
+        counts.set(
+          p.primaryCategoryId,
+          (counts.get(p.primaryCategoryId) ?? 0) + 1,
+        );
       }
       let tightCat: string | null | undefined;
       let maxCount = 0;
@@ -670,10 +686,11 @@ export class ToursService {
         }
       }
 
-      const pickCat =
-        maxCount * 2 - 1 >= pool.length ? tightCat : undefined;
+      const pickCat = maxCount * 2 - 1 >= pool.length ? tightCat : undefined;
       let pick = pool.findIndex((p) =>
-        pickCat !== undefined ? p.primaryCategoryId === pickCat : p.primaryCategoryId !== blocked,
+        pickCat !== undefined
+          ? p.primaryCategoryId === pickCat
+          : p.primaryCategoryId !== blocked,
       );
       if (pick === -1) pick = 0; // only blocked items remain (infeasible) -> keep order
 
@@ -1876,7 +1893,7 @@ export class ToursService {
     if (userRole !== Role.ADMIN && tour.status !== TourStatus.ARCHIVED) {
       throw new BadRequestException(
         'Only ARCHIVED tours can be permanently deleted. Archive the tour first.',
-      ); 
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {

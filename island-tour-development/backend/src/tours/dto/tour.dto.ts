@@ -407,7 +407,10 @@ export class RecomputeDemandResponseDto {
   @ApiProperty({ example: 9, description: 'Number of tours evaluated' })
   evaluated!: number;
 
-  @ApiProperty({ example: 1, description: 'Number flagged as "likely to sell out"' })
+  @ApiProperty({
+    example: 1,
+    description: 'Number flagged as "likely to sell out"',
+  })
   flagged!: number;
 }
 
@@ -469,7 +472,8 @@ export class TourQueryDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Only tours flagged as a "locals\' favourite" (true) or not (false).',
+    description:
+      'Only tours flagged as a "locals\' favourite" (true) or not (false).',
   })
   @IsOptional()
   // Preserve `undefined` when the param is absent - otherwise the transform would
@@ -731,7 +735,7 @@ export class CreateTourDto {
       'Free-cancellation window (master rule #20: enum-bound, default 48)',
   })
   @IsOptional()
-  @IsIn(CANCELLATION_HOURS as unknown as number[], {
+  @IsIn(CANCELLATION_HOURS, {
     message: 'cancellationHours must be one of 24, 48, 72, 168',
   })
   cancellationHours?: number;
@@ -998,7 +1002,7 @@ export class UpdateTourDto {
       'Free-cancellation window (master rule #20: enum-bound, default 48)',
   })
   @IsOptional()
-  @IsIn(CANCELLATION_HOURS as unknown as number[], {
+  @IsIn(CANCELLATION_HOURS, {
     message: 'cancellationHours must be one of 24, 48, 72, 168',
   })
   cancellationHours?: number;

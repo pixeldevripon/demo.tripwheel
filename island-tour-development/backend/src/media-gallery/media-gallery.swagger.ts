@@ -186,8 +186,20 @@ export function ApiGetMyMediaDocs() {
         'Returns a paginated list of all media uploaded by the authenticated user, ' +
         'ordered by upload date descending.',
     }),
-    ApiQuery({ name: 'page', required: false, type: Number, example: 1, description: 'Page number (1-based)' }),
-    ApiQuery({ name: 'limit', required: false, type: Number, example: 20, description: 'Items per page (max 100)' }),
+    ApiQuery({
+      name: 'page',
+      required: false,
+      type: Number,
+      example: 1,
+      description: 'Page number (1-based)',
+    }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: Number,
+      example: 20,
+      description: 'Items per page (max 100)',
+    }),
     ApiResponse({
       status: 200,
       description: 'Paginated media gallery retrieved successfully',

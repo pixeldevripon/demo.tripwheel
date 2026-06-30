@@ -41,7 +41,6 @@ import {
   ApiUpdateOperatorStripeConfigDocs,
 } from './operators.swagger';
 
-
 @ApiTags('Operators')
 @Controller('operators')
 export class OperatorsController {
@@ -66,7 +65,6 @@ export class OperatorsController {
     return this.operatorsService.onboard(user.id, dto);
   }
 
-
   @Get()
   @RequirePermissions(Permission.MANAGE_OPERATORS)
   @ApiGetAllOperatorsDocs()
@@ -77,11 +75,8 @@ export class OperatorsController {
   @Get(':id')
   @RequirePermissions(Permission.VIEW_OPERATOR_PROFILE)
   @ApiGetOperatorByIdDocs()
-  findOne(
-    @Param('id') id: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.operatorsService.findOne(id, user.id, user.role as Role);
+  findOne(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.operatorsService.findOne(id, user.id, user.role);
   }
 
   @Patch(':id')
@@ -107,11 +102,7 @@ export class OperatorsController {
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.getCompanyInfo(
-      id,
-      user.id,
-      user.role as Role,
-    );
+    return this.operatorsService.getCompanyInfo(id, user.id, user.role);
   }
 
   @Patch(':id/company-info')
@@ -122,12 +113,7 @@ export class OperatorsController {
     @Body() dto: UpdateOperatorCompanyInfoDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.updateCompanyInfo(
-      id,
-      user.id,
-      user.role as Role,
-      dto,
-    );
+    return this.operatorsService.updateCompanyInfo(id, user.id, user.role, dto);
   }
 
   // ── Social Media ───────────────────────────────────────────────────────────
@@ -139,11 +125,7 @@ export class OperatorsController {
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.getSocialMedia(
-      id,
-      user.id,
-      user.role as Role,
-    );
+    return this.operatorsService.getSocialMedia(id, user.id, user.role);
   }
 
   @Patch(':id/social-media')
@@ -154,12 +136,7 @@ export class OperatorsController {
     @Body() dto: UpdateOperatorSocialMediaDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.updateSocialMedia(
-      id,
-      user.id,
-      user.role as Role,
-      dto,
-    );
+    return this.operatorsService.updateSocialMedia(id, user.id, user.role, dto);
   }
 
   // ── Stripe Configuration ───────────────────────────────────────────────────
@@ -171,11 +148,7 @@ export class OperatorsController {
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.getStripeConfig(
-      id,
-      user.id,
-      user.role as Role,
-    );
+    return this.operatorsService.getStripeConfig(id, user.id, user.role);
   }
 
   @Patch(':id/stripe-config')
@@ -189,7 +162,7 @@ export class OperatorsController {
     return this.operatorsService.updateStripeConfig(
       id,
       user.id,
-      user.role as Role,
+      user.role,
       dto,
     );
   }
@@ -203,11 +176,7 @@ export class OperatorsController {
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.operatorsService.getMollieConfig(
-      id,
-      user.id,
-      user.role as Role,
-    );
+    return this.operatorsService.getMollieConfig(id, user.id, user.role);
   }
 
   @Patch(':id/mollie-config')
@@ -221,7 +190,7 @@ export class OperatorsController {
     return this.operatorsService.updateMollieConfig(
       id,
       user.id,
-      user.role as Role,
+      user.role,
       dto,
     );
   }

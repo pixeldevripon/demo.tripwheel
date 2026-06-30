@@ -64,4 +64,3 @@ import { WorkersModule } from '@/workers/workers.module';
   providers: [AppService],
 })
 export class AppModule {}
-
