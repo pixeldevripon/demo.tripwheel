@@ -177,6 +177,13 @@ export const auth = betterAuth({
     bearer(), // enables Authorization: Bearer <token> alongside cookie auth
     ...(process.env.NODE_ENV !== 'production' ? [openAPI()] : []),
   ],
+
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: '.esenc.cloud',
+    },
+  },
 });
 
 export type AuthSession = typeof auth.$Infer.Session;
