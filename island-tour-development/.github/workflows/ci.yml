@@ -18,6 +18,9 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # Prisma needs DATABASE_URL to generate the client even without a real DB.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/island_tours
     steps:
       - uses: actions/checkout@v4
 
