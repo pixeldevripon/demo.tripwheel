@@ -7,7 +7,11 @@ import {
   markSlugsDeleted,
   renameEntitySlug,
 } from '@/common/utils/slug-registry.util';
-import { applyTranslation, faqSelect, translationSelect } from '@/common/utils/translation.util';
+import {
+  applyTranslation,
+  faqSelect,
+  translationSelect,
+} from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ToursService } from '@/tours/tours.service';
 import {
@@ -19,7 +23,12 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { CollectionStatus, CollectionType, Prisma, SlugEntityType } from '@prisma/client';
+import {
+  CollectionStatus,
+  CollectionType,
+  Prisma,
+  SlugEntityType,
+} from '@prisma/client';
 import { TourQueryDto, TourSort } from '@/tours/dto/tour.dto';
 import {
   CreateCollectionDto,
@@ -72,43 +81,64 @@ export class CollectionsService {
   } as const;
 
   private async findCollectionOrThrow(id: string) {
-    const collection = await this.prisma.collection.findUnique({ where: { id }, select: this.collectionSelect });
+    const collection = await this.prisma.collection.findUnique({
+      where: { id },
+      select: this.collectionSelect,
+    });
     if (!collection) throw new NotFoundException(`Collection ${id} not found`);
     return collection;
   }
 
   // ── Public read ─────────────────────────────────────────────────────────────
 
-  async getActiveByDestinationSlug(destinationSlug: string, locale: Locale = Locale.en) {
+  async getActiveByDestinationSlug(
+    destinationSlug: string,
+    locale: Locale = Locale.en,
+  ) {
     const destination = await this.prisma.destination.findUnique({
       where: { slug: destinationSlug },
       select: { id: true, isActive: true },
     });
-    if (!destination || !destination.isActive) throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    if (!destination || !destination.isActive)
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
 
     const data = await this.prisma.collection.findMany({
       where: { destinationId: destination.id, isActive: true },
       select: {
         ...this.collectionSelect,
-        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+        translations: {
+          where: { locale },
+          select: { name: true, isMachineTranslated: true },
+        },
       },
       orderBy: { name: 'asc' },
     });
-    return data.map(({ translations, ...c }) => applyTranslation(c, translations[0], locale));
+    return data.map(({ translations, ...c }) =>
+      applyTranslation(c, translations[0], locale),
+    );
   }
 
-  async getBySlug(destinationSlug: string, slug: string, locale: Locale = Locale.en) {
+  async getBySlug(
+    destinationSlug: string,
+    slug: string,
+    locale: Locale = Locale.en,
+  ) {
     const destination = await this.prisma.destination.findUnique({
       where: { slug: destinationSlug },
       select: { id: true, isActive: true },
     });
-    if (!destination || !destination.isActive) throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    if (!destination || !destination.isActive)
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
 
     const collection = await this.prisma.collection.findUnique({
       where: { destinationId_slug: { destinationId: destination.id, slug } },
-      select: { ...this.collectionSelect, translations: { where: { locale }, select: translationSelect } },
+      select: {
+        ...this.collectionSelect,
+        translations: { where: { locale }, select: translationSelect },
+      },
     });
-    if (!collection || !collection.isActive) throw new NotFoundException(`Collection "${slug}" not found`);
+    if (!collection || !collection.isActive)
+      throw new NotFoundException(`Collection "${slug}" not found`);
 
     const { translations, ...c } = collection;
     const t = translations[0];
@@ -136,7 +166,8 @@ export class CollectionsService {
       where: { slug: destinationSlug },
       select: { id: true },
     });
-    if (!destination) throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    if (!destination)
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
 
     return this.prisma.collection.findMany({
       where: { destinationId: destination.id },
@@ -156,14 +187,16 @@ export class CollectionsService {
     if (collection.collectionType === CollectionType.MANUAL) {
       return this.toursService.findPublicByIds(collection.tourIds);
     }
-    const fq = (collection.filterQuery ?? {}) as Record<string, any>;
+    const fq = (collection.filterQuery as Record<string, any>) ?? {};
     const query: TourQueryDto = {
       destinationId: collection.destinationId,
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : undefined,
       minPrice: typeof fq.minPrice === 'number' ? fq.minPrice : undefined,
       maxPrice: typeof fq.maxPrice === 'number' ? fq.maxPrice : undefined,
-      durationMin: typeof fq.durationMin === 'number' ? fq.durationMin : undefined,
-      durationMax: typeof fq.durationMax === 'number' ? fq.durationMax : undefined,
+      durationMin:
+        typeof fq.durationMin === 'number' ? fq.durationMin : undefined,
+      durationMax:
+        typeof fq.durationMax === 'number' ? fq.durationMax : undefined,
       ratingMin: typeof fq.ratingMin === 'number' ? fq.ratingMin : undefined,
       sort: this.toTourSort(collection.sortOrder),
       page: 1,
@@ -182,7 +215,9 @@ export class CollectionsService {
   }
 
   private toTourSort(value: string): TourSort {
-    return (Object.values(TourSort) as string[]).includes(value) ? (value as TourSort) : TourSort.recommended;
+    return (Object.values(TourSort) as string[]).includes(value)
+      ? (value as TourSort)
+      : TourSort.recommended;
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -194,19 +229,32 @@ export class CollectionsService {
       where: { id: dto.destinationId },
       select: { id: true, slug: true, isActive: true },
     });
-    if (!destination || !destination.isActive) throw new BadRequestException('Destination not found or is not active');
+    if (!destination || !destination.isActive)
+      throw new BadRequestException('Destination not found or is not active');
 
     // Cannibalization guard (V2 §6): a collection slug must not equal a (global) category slug.
-    const categoryClash = await this.prisma.category.findUnique({ where: { slug }, select: { id: true } });
+    const categoryClash = await this.prisma.category.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
     if (categoryClash) {
-      throw new ConflictException(`Slug "${slug}" collides with a category slug - choose a distinct collection slug`);
+      throw new ConflictException(
+        `Slug "${slug}" collides with a category slug - choose a distinct collection slug`,
+      );
     }
 
-    if (dto.collectionType === CollectionType.MANUAL && (!dto.tourIds || dto.tourIds.length === 0)) {
-      throw new BadRequestException('MANUAL collections require at least one tourId');
+    if (
+      dto.collectionType === CollectionType.MANUAL &&
+      (!dto.tourIds || dto.tourIds.length === 0)
+    ) {
+      throw new BadRequestException(
+        'MANUAL collections require at least one tourId',
+      );
     }
     if (dto.collectionType === CollectionType.DYNAMIC && !dto.filterQuery) {
-      throw new BadRequestException('DYNAMIC collections require a filterQuery');
+      throw new BadRequestException(
+        'DYNAMIC collections require a filterQuery',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -218,9 +266,13 @@ export class CollectionsService {
             slug,
             collectionType: dto.collectionType,
             ...(dto.status !== undefined && { status: dto.status }),
-            ...(dto.displayStyle !== undefined && { displayStyle: dto.displayStyle }),
+            ...(dto.displayStyle !== undefined && {
+              displayStyle: dto.displayStyle,
+            }),
             tourIds: dto.tourIds ?? [],
-            filterQuery: (dto.filterQuery ?? undefined) as Prisma.InputJsonValue | undefined,
+            filterQuery: (dto.filterQuery ?? undefined) as
+              | Prisma.InputJsonValue
+              | undefined,
             heroImage: dto.heroImage ?? null,
             sortOrder: dto.sortOrder ?? 'recommended',
             createdBy: adminId,
@@ -228,12 +280,17 @@ export class CollectionsService {
           select: this.collectionSelect,
         })
         .catch((err: any) => {
-          if (err?.code === 'P2002') throw new ConflictException(`Collection slug "${slug}" already exists for this destination`);
+          if (err?.code === 'P2002')
+            throw new ConflictException(
+              `Collection slug "${slug}" already exists for this destination`,
+            );
           throw err;
         });
 
       // Clear any cooled-down ghost so a previously force-deleted collection slug can be reused.
-      await clearCooledDownSlugs(tx, [{ destinationSlug: destination.slug, slug }]);
+      await clearCooledDownSlugs(tx, [
+        { destinationSlug: destination.slug, slug },
+      ]);
 
       await tx.slugRegistry
         .create({
@@ -245,18 +302,31 @@ export class CollectionsService {
           },
         })
         .catch((err: any) => {
-          if (err?.code === 'P2002') throw new ConflictException(`Slug "${slug}" is already taken at destination "${destination.slug}"`);
+          if (err?.code === 'P2002')
+            throw new ConflictException(
+              `Slug "${slug}" is already taken at destination "${destination.slug}"`,
+            );
           throw err;
         });
 
       // Seed CollectionTour rows (authoritative MANUAL membership) from the initial tourIds.
-      if (dto.collectionType === CollectionType.MANUAL && dto.tourIds && dto.tourIds.length > 0) {
+      if (
+        dto.collectionType === CollectionType.MANUAL &&
+        dto.tourIds &&
+        dto.tourIds.length > 0
+      ) {
         await tx.collectionTour.createMany({
-          data: dto.tourIds.map((tourId, index) => ({ collectionId: collection.id, tourId, position: index })),
+          data: dto.tourIds.map((tourId, index) => ({
+            collectionId: collection.id,
+            tourId,
+            position: index,
+          })),
         });
       }
 
-      this.logger.log(`Admin ${adminId} created collection "${dto.name}" (${collection.id})`);
+      this.logger.log(
+        `Admin ${adminId} created collection "${dto.name}" (${collection.id})`,
+      );
       return collection;
     });
   }
@@ -274,12 +344,26 @@ export class CollectionsService {
       const normalized = generateSlug(dto.slug);
       if (normalized !== current.slug) {
         // Cannibalization guard (V2 §6): a collection slug must not equal a category slug.
-        const categoryClash = await this.prisma.category.findUnique({ where: { slug: normalized }, select: { id: true } });
+        const categoryClash = await this.prisma.category.findUnique({
+          where: { slug: normalized },
+          select: { id: true },
+        });
         if (categoryClash) {
-          throw new ConflictException(`Slug "${normalized}" collides with a category slug - choose a distinct collection slug`);
+          throw new ConflictException(
+            `Slug "${normalized}" collides with a category slug - choose a distinct collection slug`,
+          );
         }
-        if (await isSlugTaken(this.prisma, current.destination.slug, normalized, id)) {
-          throw new ConflictException(`Slug "${normalized}" is already taken at this destination`);
+        if (
+          await isSlugTaken(
+            this.prisma,
+            current.destination.slug,
+            normalized,
+            id,
+          )
+        ) {
+          throw new ConflictException(
+            `Slug "${normalized}" is already taken at this destination`,
+          );
         }
         renameFrom = current.slug;
         renameTo = normalized;
@@ -303,16 +387,21 @@ export class CollectionsService {
             ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.tourIds !== undefined && { tourIds: dto.tourIds }),
-            ...(dto.filterQuery !== undefined && { filterQuery: dto.filterQuery as Prisma.InputJsonValue }),
+            ...(dto.filterQuery !== undefined && {
+              filterQuery: dto.filterQuery as Prisma.InputJsonValue,
+            }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
-            ...(dto.displayStyle !== undefined && { displayStyle: dto.displayStyle }),
+            ...(dto.displayStyle !== undefined && {
+              displayStyle: dto.displayStyle,
+            }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.collectionSelect,
         })
         .catch((err: any) => {
-          if (err?.code === 'P2025') throw new NotFoundException(`Collection ${id} not found`);
+          if (err?.code === 'P2025')
+            throw new NotFoundException(`Collection ${id} not found`);
           throw err;
         });
 
@@ -329,7 +418,8 @@ export class CollectionsService {
 
   async remove(id: string, adminId: string) {
     const collection = await this.findCollectionOrThrow(id);
-    if (collection.isSeeded) throw new ForbiddenException('Seeded collections cannot be deactivated');
+    if (collection.isSeeded)
+      throw new ForbiddenException('Seeded collections cannot be deactivated');
 
     await this.prisma.$transaction(async (tx) => {
       await tx.collection.update({ where: { id }, data: { isActive: false } });
@@ -344,7 +434,10 @@ export class CollectionsService {
 
   async forceDelete(id: string, adminId: string) {
     const collection = await this.findCollectionOrThrow(id);
-    if (collection.isSeeded) throw new ForbiddenException('Seeded collections cannot be permanently deleted');
+    if (collection.isSeeded)
+      throw new ForbiddenException(
+        'Seeded collections cannot be permanently deleted',
+      );
 
     await this.prisma.$transaction(async (tx) => {
       // Master slug-registry rule: hard delete starts the 90-day reuse cooldown.
@@ -386,7 +479,12 @@ export class CollectionsService {
     );
   }
 
-  async upsertTranslations(id: string, locale: Locale, dto: UpsertCollectionTranslationsDto, adminId: string) {
+  async upsertTranslations(
+    id: string,
+    locale: Locale,
+    dto: UpsertCollectionTranslationsDto,
+    adminId: string,
+  ) {
     await this.findCollectionOrThrow(id);
     const { fields, isMachineTranslated } = dto;
     const result = await this.prisma.collectionTranslation.upsert({
@@ -406,29 +504,46 @@ export class CollectionsService {
         isMachineTranslated: isMachineTranslated ?? false,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
-        ...(fields.curationNote !== undefined && { curationNote: fields.curationNote }),
-        ...(fields.eyebrowLabel !== undefined && { eyebrowLabel: fields.eyebrowLabel }),
-        ...(fields.h1Override !== undefined && { h1Override: fields.h1Override }),
-        ...(fields.breadcrumbLabel !== undefined && { breadcrumbLabel: fields.breadcrumbLabel }),
+        ...(fields.curationNote !== undefined && {
+          curationNote: fields.curationNote,
+        }),
+        ...(fields.eyebrowLabel !== undefined && {
+          eyebrowLabel: fields.eyebrowLabel,
+        }),
+        ...(fields.h1Override !== undefined && {
+          h1Override: fields.h1Override,
+        }),
+        ...(fields.breadcrumbLabel !== undefined && {
+          breadcrumbLabel: fields.breadcrumbLabel,
+        }),
       },
       select: { locale: true, ...this.collectionTranslationSelect },
     });
-    this.logger.log(`Admin ${adminId} upserted translation for collection ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} upserted translation for collection ${id} [${locale}]`,
+    );
     return result;
   }
 
   async deleteTranslations(id: string, locale: Locale, adminId: string) {
     if (locale === Locale.en) {
-      throw new BadRequestException('The English translation cannot be deleted. Update the collection name instead.');
+      throw new BadRequestException(
+        'The English translation cannot be deleted. Update the collection name instead.',
+      );
     }
     await this.findCollectionOrThrow(id);
     await this.prisma.collectionTranslation
       .delete({ where: { collectionId_locale: { collectionId: id, locale } } })
       .catch((err: any) => {
-        if (err?.code === 'P2025') throw new NotFoundException(`No translation found for locale "${locale}"`);
+        if (err?.code === 'P2025')
+          throw new NotFoundException(
+            `No translation found for locale "${locale}"`,
+          );
         throw err;
       });
-    this.logger.log(`Admin ${adminId} deleted translation for collection ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} deleted translation for collection ${id} [${locale}]`,
+    );
     return { message: `Translation for locale "${locale}" deleted` };
   }
 
@@ -438,24 +553,51 @@ export class CollectionsService {
     await this.findCollectionOrThrow(id);
     const row = await this.prisma.collectionPageContent.findUnique({
       where: { collectionId_locale: { collectionId: id, locale } },
-      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+      select: {
+        locale: true,
+        aboutText: true,
+        metaTitle: true,
+        metaDescription: true,
+      },
     });
-    return row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null };
+    return (
+      row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
+    );
   }
 
-  async upsertPageContent(id: string, locale: Locale, dto: UpsertCollectionPageContentDto, adminId: string) {
+  async upsertPageContent(
+    id: string,
+    locale: Locale,
+    dto: UpsertCollectionPageContentDto,
+    adminId: string,
+  ) {
     await this.findCollectionOrThrow(id);
     const result = await this.prisma.collectionPageContent.upsert({
       where: { collectionId_locale: { collectionId: id, locale } },
-      create: { collectionId: id, locale, aboutText: dto.aboutText, metaTitle: dto.metaTitle, metaDescription: dto.metaDescription },
+      create: {
+        collectionId: id,
+        locale,
+        aboutText: dto.aboutText,
+        metaTitle: dto.metaTitle,
+        metaDescription: dto.metaDescription,
+      },
       update: {
         ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
         ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
-        ...(dto.metaDescription !== undefined && { metaDescription: dto.metaDescription }),
+        ...(dto.metaDescription !== undefined && {
+          metaDescription: dto.metaDescription,
+        }),
       },
-      select: { locale: true, aboutText: true, metaTitle: true, metaDescription: true },
+      select: {
+        locale: true,
+        aboutText: true,
+        metaTitle: true,
+        metaDescription: true,
+      },
     });
-    this.logger.log(`Admin ${adminId} upserted page content for collection ${id} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} upserted page content for collection ${id} [${locale}]`,
+    );
     return result;
   }
 
@@ -464,7 +606,12 @@ export class CollectionsService {
   async getFaqs(id: string, query: FaqLocaleQueryDto) {
     await this.findCollectionOrThrow(id);
     return this.prisma.faq.findMany({
-      where: { pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: id, isActive: true, ...(query.locale && { locale: query.locale }) },
+      where: {
+        pageType: FAQ_PAGE_TYPE.COLLECTION,
+        entityId: id,
+        isActive: true,
+        ...(query.locale && { locale: query.locale }),
+      },
       select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
@@ -483,32 +630,55 @@ export class CollectionsService {
       },
       select: faqSelect,
     });
-    this.logger.log(`Admin ${adminId} created FAQ for collection ${id} [${dto.locale}]`);
+    this.logger.log(
+      `Admin ${adminId} created FAQ for collection ${id} [${dto.locale}]`,
+    );
     return faq;
   }
 
-  async updateFaq(id: string, faqId: string, dto: UpdateFaqDto, adminId: string) {
-    const faq = await this.prisma.faq.findFirst({ where: { id: faqId, pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: id } });
-    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for collection ${id}`);
+  async updateFaq(
+    id: string,
+    faqId: string,
+    dto: UpdateFaqDto,
+    adminId: string,
+  ) {
+    const faq = await this.prisma.faq.findFirst({
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: id },
+    });
+    if (!faq)
+      throw new NotFoundException(
+        `FAQ ${faqId} not found for collection ${id}`,
+      );
     const updated = await this.prisma.faq.update({
       where: { id: faqId },
       data: {
         ...(dto.question !== undefined && { question: dto.question }),
         ...(dto.answer !== undefined && { answer: dto.answer }),
-        ...(dto.displayOrder !== undefined && { displayOrder: dto.displayOrder }),
+        ...(dto.displayOrder !== undefined && {
+          displayOrder: dto.displayOrder,
+        }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
       select: faqSelect,
     });
-    this.logger.log(`Admin ${adminId} updated FAQ ${faqId} for collection ${id}`);
+    this.logger.log(
+      `Admin ${adminId} updated FAQ ${faqId} for collection ${id}`,
+    );
     return updated;
   }
 
   async deleteFaq(id: string, faqId: string, adminId: string) {
-    const faq = await this.prisma.faq.findFirst({ where: { id: faqId, pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: id } });
-    if (!faq) throw new NotFoundException(`FAQ ${faqId} not found for collection ${id}`);
+    const faq = await this.prisma.faq.findFirst({
+      where: { id: faqId, pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: id },
+    });
+    if (!faq)
+      throw new NotFoundException(
+        `FAQ ${faqId} not found for collection ${id}`,
+      );
     await this.prisma.faq.delete({ where: { id: faqId } });
-    this.logger.log(`Admin ${adminId} deleted FAQ ${faqId} for collection ${id}`);
+    this.logger.log(
+      `Admin ${adminId} deleted FAQ ${faqId} for collection ${id}`,
+    );
     return { message: 'FAQ deleted successfully' };
   }
 
@@ -525,14 +695,20 @@ export class CollectionsService {
    * to a dense 0..n by the submitted order) and keeps the legacy `tourIds[]` mirror in the
    * same order. Existing members not in the payload are removed (cascading their rationales).
    */
-  async replaceTours(id: string, dto: ReplaceCollectionToursDto, adminId: string) {
+  async replaceTours(
+    id: string,
+    dto: ReplaceCollectionToursDto,
+    adminId: string,
+  ) {
     const collection = await this.prisma.collection.findUnique({
       where: { id },
       select: { id: true, collectionType: true, destinationId: true },
     });
     if (!collection) throw new NotFoundException(`Collection ${id} not found`);
     if (collection.collectionType !== CollectionType.MANUAL) {
-      throw new BadRequestException('Membership can only be set on MANUAL collections');
+      throw new BadRequestException(
+        'Membership can only be set on MANUAL collections',
+      );
     }
 
     // Order the payload by position, then re-normalize positions to a dense 0..n sequence.
@@ -550,18 +726,26 @@ export class CollectionsService {
     if (found.length !== tourIds.length) {
       const foundSet = new Set(found.map((t) => t.id));
       const missing = tourIds.filter((t) => !foundSet.has(t));
-      throw new BadRequestException(`Tour(s) not found in this destination: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Tour(s) not found in this destination: ${missing.join(', ')}`,
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.collectionTour.deleteMany({ where: { collectionId: id } });
       await tx.collectionTour.createMany({
-        data: ordered.map((t, index) => ({ collectionId: id, tourId: t.tourId, position: index })),
+        data: ordered.map((t, index) => ({
+          collectionId: id,
+          tourId: t.tourId,
+          position: index,
+        })),
       });
       await tx.collection.update({ where: { id }, data: { tourIds } });
     });
 
-    this.logger.log(`Admin ${adminId} replaced membership for collection ${id} (${tourIds.length} tours)`);
+    this.logger.log(
+      `Admin ${adminId} replaced membership for collection ${id} (${tourIds.length} tours)`,
+    );
     return this.prisma.collectionTour.findMany({
       where: { collectionId: id },
       orderBy: { position: 'asc' },
@@ -577,7 +761,10 @@ export class CollectionsService {
     dto: UpsertCollectionTourRationaleDto,
     adminId: string,
   ) {
-    if (CollectionsService.wordCount(dto.rationale) > CollectionsService.RATIONALE_MAX_WORDS) {
+    if (
+      CollectionsService.wordCount(dto.rationale) >
+      CollectionsService.RATIONALE_MAX_WORDS
+    ) {
       throw new BadRequestException(
         `Collection rationale must be ${CollectionsService.RATIONALE_MAX_WORDS} words or fewer`,
       );
@@ -586,15 +773,22 @@ export class CollectionsService {
       where: { collectionId_tourId: { collectionId: id, tourId } },
       select: { id: true },
     });
-    if (!member) throw new NotFoundException(`Tour ${tourId} is not a member of collection ${id}`);
+    if (!member)
+      throw new NotFoundException(
+        `Tour ${tourId} is not a member of collection ${id}`,
+      );
 
     const result = await this.prisma.collectionTourRationale.upsert({
-      where: { collectionTourId_locale: { collectionTourId: member.id, locale } },
+      where: {
+        collectionTourId_locale: { collectionTourId: member.id, locale },
+      },
       create: { collectionTourId: member.id, locale, rationale: dto.rationale },
       update: { rationale: dto.rationale },
       select: { id: true, locale: true, rationale: true },
     });
-    this.logger.log(`Admin ${adminId} upserted rationale for collection ${id} tour ${tourId} [${locale}]`);
+    this.logger.log(
+      `Admin ${adminId} upserted rationale for collection ${id} tour ${tourId} [${locale}]`,
+    );
     return { ...result, tourId };
   }
 
@@ -613,10 +807,15 @@ export class CollectionsService {
     });
     if (!collection) throw new NotFoundException(`Collection ${id} not found`);
 
-    if (status === CollectionStatus.PUBLISHED && collection.status !== CollectionStatus.PUBLISHED) {
+    if (
+      status === CollectionStatus.PUBLISHED &&
+      collection.status !== CollectionStatus.PUBLISHED
+    ) {
       const missing = await this.collectPublishBlockers(collection);
       if (missing.length > 0) {
-        throw new UnprocessableEntityException(`Cannot publish collection: ${missing.join('; ')}`);
+        throw new UnprocessableEntityException(
+          `Cannot publish collection: ${missing.join('; ')}`,
+        );
       }
     }
 
@@ -639,10 +838,13 @@ export class CollectionsService {
     if (!collection.heroImage) missing.push('heroImage is not set');
 
     const enTranslation = await this.prisma.collectionTranslation.findUnique({
-      where: { collectionId_locale: { collectionId: collection.id, locale: Locale.en } },
+      where: {
+        collectionId_locale: { collectionId: collection.id, locale: Locale.en },
+      },
       select: { h1Override: true, overview: true },
     });
-    if (!enTranslation?.h1Override) missing.push('English H1 (h1Override) is missing');
+    if (!enTranslation?.h1Override)
+      missing.push('English H1 (h1Override) is missing');
     if (!enTranslation?.overview) missing.push('English overview is missing');
 
     if (collection.collectionType === CollectionType.MANUAL) {
@@ -650,7 +852,10 @@ export class CollectionsService {
         where: { collectionId: collection.id },
         select: {
           tourId: true,
-          translations: { where: { locale: Locale.en }, select: { rationale: true } },
+          translations: {
+            where: { locale: Locale.en },
+            select: { rationale: true },
+          },
         },
         orderBy: { position: 'asc' },
       });
@@ -659,7 +864,11 @@ export class CollectionsService {
       } else {
         const withoutRationale = members.filter((m) => {
           const r = m.translations[0]?.rationale;
-          return !r || CollectionsService.wordCount(r) > CollectionsService.RATIONALE_MAX_WORDS;
+          return (
+            !r ||
+            CollectionsService.wordCount(r) >
+              CollectionsService.RATIONALE_MAX_WORDS
+          );
         });
         if (withoutRationale.length > 0) {
           missing.push(
@@ -679,15 +888,26 @@ export class CollectionsService {
    * fallback en; DYNAMIC → filterQuery → tour listing with sortOrder), computes fast stats,
    * loads FAQs, and lists up to 3 related PUBLISHED collections in the same destination.
    */
-  async render(slug: string, destinationId: string, locale: Locale = Locale.en) {
+  async render(
+    slug: string,
+    destinationId: string,
+    locale: Locale = Locale.en,
+  ) {
     const collection = await this.prisma.collection.findUnique({
       where: { destinationId_slug: { destinationId, slug } },
       select: {
         ...this.collectionSelect,
-        translations: { where: { locale }, select: this.collectionTranslationSelect },
+        translations: {
+          where: { locale },
+          select: this.collectionTranslationSelect,
+        },
       },
     });
-    if (!collection || !collection.isActive || collection.status !== CollectionStatus.PUBLISHED) {
+    if (
+      !collection ||
+      !collection.isActive ||
+      collection.status !== CollectionStatus.PUBLISHED
+    ) {
       throw new NotFoundException(`Collection "${slug}" not found`);
     }
 
@@ -698,12 +918,17 @@ export class CollectionsService {
     const tours: Array<Record<string, unknown>> =
       collection.collectionType === CollectionType.MANUAL
         ? await this.resolveManualToursWithRationale(collection.id, locale)
-        : ((await this.resolveTours(collection)) as Array<Record<string, unknown>>);
+        : await this.resolveTours(collection);
 
     const fastStats = this.computeFastStats(tours);
 
     const faqs = await this.prisma.faq.findMany({
-      where: { pageType: FAQ_PAGE_TYPE.COLLECTION, entityId: collection.id, isActive: true, locale },
+      where: {
+        pageType: FAQ_PAGE_TYPE.COLLECTION,
+        entityId: collection.id,
+        isActive: true,
+        locale,
+      },
       select: faqSelect,
       orderBy: { displayOrder: 'asc' },
     });
@@ -735,7 +960,10 @@ export class CollectionsService {
   }
 
   /** MANUAL membership ordered by position, each card enriched with rationale[locale] (fallback en). */
-  private async resolveManualToursWithRationale(collectionId: string, locale: Locale) {
+  private async resolveManualToursWithRationale(
+    collectionId: string,
+    locale: Locale,
+  ) {
     const members = await this.prisma.collectionTour.findMany({
       where: { collectionId },
       orderBy: { position: 'asc' },
@@ -752,13 +980,20 @@ export class CollectionsService {
     const rationaleByTourId = new Map<string, string | null>();
     for (const m of members) {
       const exact = m.translations.find((r) => r.locale === locale)?.rationale;
-      const fallback = m.translations.find((r) => r.locale === Locale.en)?.rationale;
+      const fallback = m.translations.find(
+        (r) => r.locale === Locale.en,
+      )?.rationale;
       rationaleByTourId.set(m.tourId, exact ?? fallback ?? null);
     }
 
     const orderedIds = members.map((m) => m.tourId);
-    const cards = (await this.toursService.findPublicByIds(orderedIds)) as Array<{ id: string }>;
-    return cards.map((card) => ({ ...card, rationale: rationaleByTourId.get(card.id) ?? null }));
+    const cards = (await this.toursService.findPublicByIds(
+      orderedIds,
+    )) as Array<{ id: string }>;
+    return cards.map((card) => ({
+      ...card,
+      rationale: rationaleByTourId.get(card.id) ?? null,
+    }));
   }
 
   /** Fast stats: count of resolved tours + min(priceFrom) across them (master §7). */
