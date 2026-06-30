@@ -69,9 +69,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       # Seed only on the boot where you explicitly ask for it (first deploy).
       RUN_SEED: ${RUN_SEED:-false}
-    # Bind to loopback only; nginx on the host reverse-proxies + adds TLS.
+    # Port exposed to Coolify's Traefik proxy (or nginx if self-managed).
+    # Coolify's reverse proxy runs inside Docker so loopback binding is removed.
     ports:
-      - '127.0.0.1:${BACKEND_PORT:-5050}:5050'
+      - '${BACKEND_PORT:-5050}:5050'
     depends_on:
       postgres:
         condition: service_healthy

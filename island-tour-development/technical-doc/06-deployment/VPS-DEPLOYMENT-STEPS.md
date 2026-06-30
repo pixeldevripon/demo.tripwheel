@@ -412,10 +412,3 @@ docker compose exec redis redis-cli -a "$(grep REDIS_PASSWORD .env | cut -d= -f2
 | 502 from nginx | Backend not healthy or not on `127.0.0.1:5050`. Check `docker compose ps` and `docker compose logs backend`. |
 | certbot fails | DNS A record for `api` must resolve to the VPS and port 80 must be open (ufw) before running certbot. |
 | Backend keeps restarting | Usually a failed migration - `docker compose logs backend`. Postgres must be healthy first (compose handles ordering). |
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACD7fYREcLmBP88LaqWMf5UfkSRYRHmB5a9qsJrgzwQffgAAAJjAAeIKwAHi
-CgAAAAtzc2gtZWQyNTUxOQAAACD7fYREcLmBP88LaqWMf5UfkSRYRHmB5a9qsJrgzwQffg
-AAAECzxl790m6/5gIaD/e1E1krvDGw5C8IWMXYMtK/7Kih8ft9hERwuYE/zwtqpYx/lR+R
-JFhEeYHlr2qwmuDPBB9+AAAAE3JpcG9uQHRyaXB3aGVlbC5jb20BAg==
------END OPENSSH PRIVATE KEY-----

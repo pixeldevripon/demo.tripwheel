@@ -1,8 +1,15 @@
-name: Deploy backend (VPS)
+name: Deploy backend (Coolify)
 
-# Deploys the backend to the Hostinger VPS on every push to main that touches
-# backend code or the compose stack. The frontend deploys itself via Vercel's
-# Git integration, so it is intentionally not handled here.
+# Triggers a Coolify redeploy on every push to main that touches backend code
+# or the compose stack — but ONLY after CI passes (needs_ci gate below).
+# Coolify pulls the latest commit, rebuilds the backend image via docker-compose,
+# and runs migrations automatically via docker-entrypoint.sh.
+#
+# The frontend deploys automatically via Vercel's Git integration.
+#
+# Required GitHub secret:
+#   COOLIFY_WEBHOOK_URL  — the deploy webhook URL from Coolify
+#                          (Service → Settings → Deploy Webhook)
 on:
   push:
     branches: [main]
@@ -17,26 +24,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: SSH deploy
+  # Gate: wait for CI (lint + build + tests) to pass before deploying.
+  needs_ci:
+    name: Wait for CI
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Check CI status
+        uses: lewagon/wait-on-check-action@v1.3.4
         with:
-          host: ${{ secrets.VPS_SSH_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          # Pull the pushed commit, rebuild only the backend image, recreate the
-          # container. migrate deploy runs automatically in docker-entrypoint.sh.
-          script: |
-            set -e
-            cd "${{ secrets.VPS_APP_DIR }}"
-            git fetch --all --prune
-            git reset --hard ${{ github.sha }}
-            export BACKEND_IMAGE_TAG=${{ github.sha }}
-            docker compose build backend
-            docker compose up -d
-            docker image prune -f
-            docker compose ps
+          ref: ${{ github.sha }}
+          check-name: 'Backend (lint · build · test)'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+  deploy:
+    name: Trigger Coolify deploy
+    runs-on: ubuntu-latest
+    needs: needs_ci
+    steps:
+      - name: Trigger Coolify webhook
+        run: |
+          curl -fsSL \
+            -X GET \
+            "${{ secrets.COOLIFY_WEBHOOK_URL }}"
+        # Coolify's deploy webhook is a simple GET request.
+        # If your Coolify version requires POST + token, change to:
+        #   -X POST \
+        #   -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
