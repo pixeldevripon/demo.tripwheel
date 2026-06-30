@@ -57,6 +57,11 @@ export class HubLocalizedResponseDto extends HubResponseDto {
   @ApiProperty({ example: false }) isMachineTranslated!: boolean;
 }
 
+export class HubByDestinationResponseDto extends HubLocalizedResponseDto {
+  @ApiProperty({ example: 7, description: 'Published (LIVE) tours tagged with this hub in the destination.' })
+  publishedTourCount!: number;
+}
+
 export class HubDetailLocalizedResponseDto extends HubLocalizedResponseDto {
   @ApiPropertyOptional({ nullable: true, example: null }) overview!: string | null;
   @ApiPropertyOptional({ nullable: true, example: null }) h1Override!: string | null;

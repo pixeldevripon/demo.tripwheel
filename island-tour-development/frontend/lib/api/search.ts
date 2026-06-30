@@ -15,7 +15,7 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:505
  * any failure (including aborts) so callers never need a try/catch.
  */
 export async function searchToursClient(
-  params: { q: string; locale?: Locale; destinationSlug?: string; limit?: number },
+  params: { q: string; locale?: Locale; destinationSlug?: string; date?: string; limit?: number },
   signal?: AbortSignal,
 ): Promise<SearchResults> {
   const q = params.q.trim();
@@ -25,6 +25,7 @@ export async function searchToursClient(
   const qs = new URLSearchParams({ q });
   if (params.locale) qs.set('locale', params.locale);
   if (params.destinationSlug) qs.set('destinationSlug', params.destinationSlug);
+  if (params.date) qs.set('date', params.date);
   qs.set('limit', String(params.limit ?? 8));
 
   try {

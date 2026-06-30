@@ -20,7 +20,7 @@ import {
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -403,6 +403,14 @@ export enum TourSort {
   newest = 'newest',
 }
 
+export class RecomputeDemandResponseDto {
+  @ApiProperty({ example: 9, description: 'Number of tours evaluated' })
+  evaluated!: number;
+
+  @ApiProperty({ example: 1, description: 'Number flagged as "likely to sell out"' })
+  flagged!: number;
+}
+
 export class TourQueryDto {
   @ApiPropertyOptional({
     example: 'catamaran',
@@ -458,6 +466,19 @@ export class TourQueryDto {
   @IsOptional()
   @IsUUID()
   hubId?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Only tours flagged as a "locals\' favourite" (true) or not (false).',
+  })
+  @IsOptional()
+  // Preserve `undefined` when the param is absent - otherwise the transform would
+  // coerce it to `false` and silently exclude every favourite from unfiltered lists.
+  @Transform(({ value }) =>
+    value === undefined ? undefined : value === 'true' || value === true,
+  )
+  @IsBoolean()
+  isLocalsFavourite?: boolean;
 
   @ApiPropertyOptional({ enum: PricingModel })
   @IsOptional()

@@ -6,6 +6,7 @@
 
 import { BookingStatus, Locale, Prisma, ReviewModerationStatus } from '@prisma/client';
 import { ALL_LOCALES, DEMO_TOUR_REF, img, intBetween, log, pick, prisma, rng, roundRating, section, stub } from './_shared';
+import { SHOWCASE_MOST_POPULAR } from './tours';
 
 const COMMENTS_5 = [
   'Absolutely the highlight of our trip. The crew was warm, knowledgeable, and clearly proud of their island. We saw turtles up close and the lunch was delicious.',
@@ -50,6 +51,7 @@ export async function seedReviews(): Promise<void> {
       contactFirstName: true,
       contactLastName: true,
       contactCountry: true,
+      tour: { select: { slug: true } },
     },
   });
 
@@ -68,14 +70,19 @@ export async function seedReviews(): Promise<void> {
     if (!b.userId) continue;
     const r = rng(5000 + i);
 
+    // Badge showcase (master §3.6 "Most popular"): these tours must clear
+    // review_count >= 10 AND rating >= 4.5, so every review is an approved 5-star
+    // (they also receive >= 10 redeemed bookings in bookings-payments.ts).
+    const isMostPopular = SHOWCASE_MOST_POPULAR.has(b.tour.slug);
+
     // Skew positive: ~70% five-star, ~22% four, ~8% three.
     const roll = r();
-    const rating = roll > 0.3 ? 5 : roll > 0.08 ? 4 : 3;
+    const rating = isMostPopular ? 5 : roll > 0.3 ? 5 : roll > 0.08 ? 4 : 3;
 
     // Moderation: most approved; a few pending/rejected for queue realism.
     let moderationStatus: ReviewModerationStatus = ReviewModerationStatus.APPROVED;
-    if (i % 13 === 7) moderationStatus = ReviewModerationStatus.PENDING;
-    else if (i % 19 === 11) moderationStatus = ReviewModerationStatus.REJECTED;
+    if (!isMostPopular && i % 13 === 7) moderationStatus = ReviewModerationStatus.PENDING;
+    else if (!isMostPopular && i % 19 === 11) moderationStatus = ReviewModerationStatus.REJECTED;
 
     const initial = `${b.contactFirstName ?? 'Guest'} ${(b.contactLastName ?? 'T').charAt(0)}.`;
     const hasPhotos = r() > 0.7;

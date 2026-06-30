@@ -17,6 +17,7 @@ export class SearchController {
     return this.toursService.search({
       q: query.q,
       destinationSlug: query.destinationSlug,
+      date: query.date,
       locale: query.locale,
       page: query.page,
       limit: query.limit,

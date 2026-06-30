@@ -6,7 +6,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { DestinationActive } from '@/types/destination';
+import type { DestinationActive, DestinationDetail } from '@/types/destination';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
@@ -30,4 +30,24 @@ export async function getActiveDestinations(
     `/destinations/active${buildQuery({ locale })}`,
   );
   return data ?? [];
+}
+
+/**
+ * A single destination by slug (localized name + page fields). Returns `null`
+ * when the slug is unknown/inactive or the backend is unreachable - callers
+ * should `notFound()` on null.
+ *
+ * Cached hourly and tagged `destinations`; `slug` + `locale` are the cache key.
+ */
+export async function getDestinationBySlug(
+  slug: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DestinationDetail | null> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('destinations');
+
+  return publicGet<DestinationDetail>(
+    `/destinations/slug/${slug}${buildQuery({ locale })}`,
+  );
 }

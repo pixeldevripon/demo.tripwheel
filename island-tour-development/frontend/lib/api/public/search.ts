@@ -34,6 +34,8 @@ export async function searchTours(params: {
   q: string;
   locale?: Locale;
   destinationSlug?: string;
+  /** YYYY-MM-DD — restricts to tours with an OPEN departure on that date. */
+  date?: string;
   page?: number;
   limit?: number;
 }): Promise<SearchResults> {
@@ -44,9 +46,9 @@ export async function searchTours(params: {
   const q = params.q?.trim() ?? '';
   if (q.length < 2) return EMPTY(q);
 
-  const { locale = DEFAULT_LOCALE, destinationSlug, page, limit } = params;
+  const { locale = DEFAULT_LOCALE, destinationSlug, date, page, limit } = params;
   const data = await publicGet<SearchResults>(
-    `/search${buildQuery({ q, locale, destinationSlug, page, limit })}`,
+    `/search${buildQuery({ q, locale, destinationSlug, date, page, limit })}`,
   );
   return data ?? EMPTY(q);
 }

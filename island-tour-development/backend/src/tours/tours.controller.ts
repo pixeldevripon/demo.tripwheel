@@ -28,6 +28,7 @@ import {
   ApiGetTourBySlugDocs,
   ApiPauseTourDocs,
   ApiPublishTourDocs,
+  ApiRecomputeDemandDocs,
   ApiRestoreTourDocs,
   ApiUnpauseTourDocs,
   ApiUpdateTourDocs,
@@ -90,6 +91,18 @@ export class ToursController {
   @ApiAdminListToursDocs()
   findAllAdmin(@Query() query: AdminToursQueryDto) {
     return this.toursService.findAllAdmin(query);
+  }
+
+  /**
+   * Recompute the §3.7 "Likely to sell out" demand signal. Production runs this on
+   * a nightly schedule; this endpoint is the on-demand admin trigger. Omit `tourId`
+   * to sweep every LIVE tour.
+   */
+  @Post('admin/recompute-demand')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiRecomputeDemandDocs()
+  recomputeDemand(@Query('tourId') tourId?: string) {
+    return this.toursService.recomputeLikelyToSellOut(tourId);
   }
 
   // ── Create ────────────────────────────────────────────────────────────────────

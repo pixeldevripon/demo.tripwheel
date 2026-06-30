@@ -156,6 +156,7 @@ export class TiersService {
         where: { id },
         select: {
           id: true,
+          tourId: true,
           destinationId: true,
           status: true,
           tour: { select: { aggregateRating: true, aggregateReviewCount: true } },
@@ -182,11 +183,17 @@ export class TiersService {
         );
       }
 
-      return tx.spotlightRequest.update({
+      // If the approved window is already open, go straight to ACTIVE so the
+      // Sponsored badge (§3.6) shows immediately rather than waiting for the
+      // nightly lifecycle; otherwise APPROVED and the lifecycle flips it at startsAt.
+      const now = new Date();
+      const activeNow = startsAt <= now && endsAt > now;
+
+      const row = await tx.spotlightRequest.update({
         where: { id },
         data: {
-          status: SpotlightStatus.APPROVED,
-          approvedAt: new Date(),
+          status: activeNow ? SpotlightStatus.ACTIVE : SpotlightStatus.APPROVED,
+          approvedAt: now,
           approvedBy: adminUserId,
           startsAt,
           endsAt,
@@ -195,6 +202,12 @@ export class TiersService {
         },
         select: SPOTLIGHT_SELECT,
       });
+
+      // Mirror an ACTIVE spotlight onto the tour so deriveTourBadge -> 'sponsored'.
+      if (activeNow) {
+        await tx.tour.update({ where: { id: req.tourId }, data: { isSponsored: true } });
+      }
+      return row;
     });
 
     this.logger.log(`Spotlight ${id} APPROVED by admin ${adminUserId}`);
@@ -331,22 +344,49 @@ export class TiersService {
   async runSpotlightLifecycle(
     now: Date = new Date(),
   ): Promise<{ activated: number; expired: number }> {
-    const [activated, expired] = await this.prisma.$transaction([
-      this.prisma.spotlightRequest.updateMany({
+    return this.prisma.$transaction(async (tx) => {
+      // Capture the tours that change state so we can mirror `isSponsored` onto them
+      // (the §3.6 "Sponsored" badge shows while a tour holds an ACTIVE spotlight).
+      const activating = await tx.spotlightRequest.findMany({
+        where: { status: SpotlightStatus.APPROVED, startsAt: { lte: now } },
+        select: { tourId: true },
+      });
+      const expiring = await tx.spotlightRequest.findMany({
+        where: { status: SpotlightStatus.ACTIVE, endsAt: { lt: now } },
+        select: { tourId: true },
+      });
+
+      const activated = await tx.spotlightRequest.updateMany({
         where: { status: SpotlightStatus.APPROVED, startsAt: { lte: now } },
         data: { status: SpotlightStatus.ACTIVE },
-      }),
-      this.prisma.spotlightRequest.updateMany({
+      });
+      const expired = await tx.spotlightRequest.updateMany({
         where: { status: SpotlightStatus.ACTIVE, endsAt: { lt: now } },
         data: { status: SpotlightStatus.EXPIRED },
-      }),
-    ]);
-    if (activated.count || expired.count) {
-      this.logger.log(
-        `Spotlight lifecycle: ${activated.count} activated, ${expired.count} expired`,
-      );
-    }
-    return { activated: activated.count, expired: expired.count };
+      });
+
+      // Recompute isSponsored from ground truth for every affected tour: true iff it
+      // still has at least one ACTIVE spotlight (handles the rare multi-request case).
+      const affected = [
+        ...new Set([...activating, ...expiring].map((r) => r.tourId)),
+      ];
+      for (const tourId of affected) {
+        const active = await tx.spotlightRequest.count({
+          where: { tourId, status: SpotlightStatus.ACTIVE },
+        });
+        await tx.tour.update({
+          where: { id: tourId },
+          data: { isSponsored: active > 0 },
+        });
+      }
+
+      if (activated.count || expired.count) {
+        this.logger.log(
+          `Spotlight lifecycle: ${activated.count} activated, ${expired.count} expired`,
+        );
+      }
+      return { activated: activated.count, expired: expired.count };
+    });
   }
 
   // ── internals ──────────────────────────────────────────────────────────────

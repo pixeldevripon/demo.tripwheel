@@ -4,16 +4,36 @@
  * Wraps the shared <TourCard> grid with a section heading and a "Browse all"
  * footer CTA that matches Figma node 47361:19645.
  *
+ * ── Position / ordering logic (master §7.2 + §3.8) ──────────────────────────
+ * This component is presentation-only: it renders `tours` in the EXACT order it
+ * receives them and never re-sorts. Position is owned by the backend so every
+ * listing surface is consistent (full write-up:
+ * technical-doc/03-implementation/TOUR-RANKING.md):
+ *
+ *   1. Ranking (master §7.2): the API returns tours ordered
+ *        `tier_rank ASC, quality_score DESC, id ASC`
+ *      - the "Locals' favorites" / Recommended order. Paid tiers float up via
+ *      tier_rank alone (no separate sponsored sort key); the Sponsored badge is
+ *      cosmetic and does not change position.
+ *   2. Bookability (§7.2): non-live / not-bookable / no-30-day-availability tours
+ *      are filtered out server-side, so they never occupy a slot here.
+ *   3. Diversity pass (§3.8): the backend already broke up runs of >2 same-subtype
+ *      tours before sending the page - we must not undo it by re-sorting.
+ *
+ * This grid is the destination featured subset (tours flagged isLocalsFavourite,
+ * page.tsx requests `sort=recommended`). The peach-tint-card-#1 rule (§B.63) is an
+ * All-Tours-page concern and is intentionally NOT applied here.
+ *
  * Reuse pattern:
- *   import { DestinationListings } from '@/components/frontend/destination-listings';
+ *   import { DestinationListings } from '@/components/frontend/destination/destination-listings';
  */
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { Reveal } from './reveal';
-import type { TourCardDict, TourListing } from './tour-card';
-import { TourCard } from './tour-card';
+import { Reveal } from '../reveal';
+import type { TourCardDict, TourListing } from '../tour-card';
+import { TourCard } from '../tour-card';
 
 // Re-export so page files only need one import location.
 export type { TourCardDict, TourListing };

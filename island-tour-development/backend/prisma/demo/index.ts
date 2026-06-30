@@ -17,6 +17,7 @@ import { seedTours } from './tours';
 import { seedAvailability } from './availability';
 import { seedBookingsAndPayments } from './bookings-payments';
 import { seedReviews } from './reviews';
+import { seedDemandShowcase } from './demand-showcase';
 import { COLLECTION_SLUGS, seedCollections } from './collections';
 import { seedCommercial } from './commercial';
 import { seedEngagement } from './engagement';
@@ -44,6 +45,7 @@ export async function runDemoSeed(): Promise<void> {
   await seedAvailability(); // schedules + exceptions + departures
   await seedBookingsAndPayments(); // bookings + unit items + add-ons + payments
   await seedReviews(); // reviews + translations + aggregate recompute
+  await seedDemandShowcase(); // §3.7 sellout setup + likelyToSellOut recompute (badge showcase)
   await seedCollections(); // collections + membership + COLLECTION slug_registry
   await seedCommercial(); // spotlight + force-majeure + featured experiences
   await seedEngagement(); // wishlists + notifications

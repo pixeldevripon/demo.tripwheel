@@ -34,6 +34,7 @@ import {
   section,
 } from './_shared';
 import { loadDemoTravelers } from './users-operators';
+import { SHOWCASE_MOST_POPULAR, SHOWCASE_NEW } from './tours';
 
 // ── Pricing (mirror computeBookingPricing) ───────────────────────────────────────
 interface Line { ageBandId: string; quantity: number; priceRetail: Prisma.Decimal }
@@ -164,6 +165,15 @@ export async function seedBookingsAndPayments(): Promise<void> {
     ];
     if (tIdx % 2 === 0) plans.push({ status: BookingStatus.CANCELLED, when: 'past' });
     if (tIdx % 3 === 0) plans.push({ status: BookingStatus.EXPIRED, when: 'future' });
+
+    // Badge showcase (master §3.6): a NEW tour must have ZERO reviews, so it gets no
+    // bookings; a MOST_POPULAR tour needs >= 10 reviews, so it gets ~14 redeemed
+    // (one review each, minus a couple held back by moderation in seedReviews).
+    if (SHOWCASE_NEW.has(tour.slug)) {
+      plans.length = 0;
+    } else if (SHOWCASE_MOST_POPULAR.has(tour.slug)) {
+      for (let k = 0; k < 10; k++) plans.push({ status: BookingStatus.REDEEMED, when: 'past' });
+    }
 
     let pastCursor = 0;
     let futureCursor = 0;

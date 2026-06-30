@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { Reveal } from './reveal';
+import { Reveal } from '../reveal';
 
 export type ExploreType = { name: string; slug: string; tours: number; image?: string };
 

@@ -96,6 +96,14 @@ model Tour {
   isSponsored Boolean @default(false)
   isActive    Boolean @default(true)
 
+  // ── Demand signal (master §3.7) - powers the "Likely to sell out" badge.
+  // `likelyToSellOut` is the daily worker output (tour_age >= 90d AND >= 3 sellouts
+  // in 60d AND < 40% availability over the next 30d - see src/tours/demand-signal.ts).
+  // `likelyToSellOutOverride` is the manual CMS launch override (null = use the
+  // computed value; true/false = force). deriveTourBadge reads `override ?? computed`.
+  likelyToSellOut         Boolean  @default(false)
+  likelyToSellOutOverride Boolean?
+
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

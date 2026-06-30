@@ -80,26 +80,32 @@ async function main() {
 // The canonical 19 global categories (Platform Architecture V2 §3). Order = sortOrder.
 // "Catamaran Trip" is a boat_type attribute, "Private Charters" a booking_type attribute,
 // "Dolphin Encounters" a hub/wildlife theme - none are categories.
+// Curated Unsplash hero photos, one per category (best-effort topical match).
+// `unsplash(id)` builds a square 600x600 crop. Swap for self-hosted assets before
+// production (host whitelisted in frontend next.config under images.unsplash.com).
+const unsplash = (id: string) =>
+  `https://images.unsplash.com/${id}?w=600&h=600&fit=crop&auto=format&q=80`;
+
 const SEED_CATEGORIES = [
-  { name: 'Boat Tours & Cruises',      slug: 'boat-tours' },
-  { name: 'Snorkeling Tours',          slug: 'snorkeling' },
-  { name: 'Scuba Diving',              slug: 'scuba-diving' },
-  { name: 'Sunset Cruises',            slug: 'sunset-cruises' },
-  { name: 'Sightseeing Tours',         slug: 'sightseeing-tours' },
-  { name: 'Day Trips',                 slug: 'day-trips' },
-  { name: 'Off-Road Tours',            slug: 'off-road-tours' },
-  { name: 'Jet Ski Tours',             slug: 'jet-ski' },
-  { name: 'Parasailing',               slug: 'parasailing' },
-  { name: 'Water Sports',              slug: 'water-sports' },
-  { name: 'Fishing Trips',             slug: 'fishing-trips' },
-  { name: 'Nature & Wildlife Tours',   slug: 'nature-wildlife-tours' },
-  { name: 'Hiking Tours',              slug: 'hiking-tours' },
-  { name: 'Adventure Tours',           slug: 'adventure-tours' },
-  { name: 'Cultural & Historical Tours', slug: 'cultural-tours' },
-  { name: 'Food & Drink Tours',        slug: 'food-tours' },
-  { name: 'Attraction Tickets',        slug: 'attraction-tickets' },
-  { name: 'Luxury Experiences',        slug: 'luxury-experiences' },
-  { name: 'Workshops & Classes',       slug: 'workshops-classes' },
+  { name: 'Boat Tours & Cruises',      slug: 'boat-tours',            heroImage: unsplash('photo-1518837695005-2083093ee35b') },
+  { name: 'Snorkeling Tours',          slug: 'snorkeling',            heroImage: unsplash('photo-1473116763249-2faaef81ccda') },
+  { name: 'Scuba Diving',              slug: 'scuba-diving',          heroImage: unsplash('photo-1544551763-46a013bb70d5') },
+  { name: 'Sunset Cruises',            slug: 'sunset-cruises',        heroImage: unsplash('photo-1505228395891-9a51e7e86bf6') },
+  { name: 'Sightseeing Tours',         slug: 'sightseeing-tours',     heroImage: unsplash('photo-1500375592092-40eb2168fd21') },
+  { name: 'Day Trips',                 slug: 'day-trips',             heroImage: unsplash('photo-1507525428034-b723cf961d3e') },
+  { name: 'Off-Road Tours',            slug: 'off-road-tours',        heroImage: unsplash('photo-1530866495561-507c9faab2ed') },
+  { name: 'Jet Ski Tours',             slug: 'jet-ski',               heroImage: unsplash('photo-1530549387789-4c1017266635') },
+  { name: 'Parasailing',               slug: 'parasailing',           heroImage: unsplash('photo-1502933691298-84fc14542831') },
+  { name: 'Water Sports',              slug: 'water-sports',          heroImage: unsplash('photo-1502680390469-be75c86b636f') },
+  { name: 'Fishing Trips',             slug: 'fishing-trips',         heroImage: unsplash('photo-1559825481-12a05cc00344') },
+  { name: 'Nature & Wildlife Tours',   slug: 'nature-wildlife-tours', heroImage: unsplash('photo-1559827260-dc66d52bef19') },
+  { name: 'Hiking Tours',              slug: 'hiking-tours',          heroImage: unsplash('photo-1551632811-561732d1e306') },
+  { name: 'Adventure Tours',           slug: 'adventure-tours',       heroImage: unsplash('photo-1488646953014-85cb44e25828') },
+  { name: 'Cultural & Historical Tours', slug: 'cultural-tours',      heroImage: unsplash('photo-1583212292454-1fe6229603b7') },
+  { name: 'Food & Drink Tours',        slug: 'food-tours',            heroImage: unsplash('photo-1437846972679-9e6e537be46e') },
+  { name: 'Attraction Tickets',        slug: 'attraction-tickets',    heroImage: unsplash('photo-1540541338287-41700207dee6') },
+  { name: 'Luxury Experiences',        slug: 'luxury-experiences',    heroImage: unsplash('photo-1468413253725-0d5181091126') },
+  { name: 'Workshops & Classes',       slug: 'workshops-classes',     heroImage: unsplash('photo-1571896349842-33c89424de2d') },
 ];
 
 async function seedCategories() {
@@ -108,13 +114,29 @@ async function seedCategories() {
   for (const [idx, cat] of SEED_CATEGORIES.entries()) {
     const existing = await prisma.category.findUnique({ where: { slug: cat.slug } });
     if (existing) {
-      console.log(`  Category "${cat.name}" already exists. Skipping.`);
+      // Backfill the hero image onto rows seeded before images existed, without
+      // clobbering an image an admin may have set manually.
+      if (!existing.heroImage) {
+        await prisma.category.update({
+          where: { id: existing.id },
+          data: { heroImage: cat.heroImage },
+        });
+        console.log(`  Category "${cat.name}" already exists - backfilled heroImage.`);
+      } else {
+        console.log(`  Category "${cat.name}" already exists. Skipping.`);
+      }
       continue;
     }
 
     await prisma.$transaction(async (tx) => {
       const category = await tx.category.create({
-        data: { name: cat.name, slug: cat.slug, isSeeded: true, sortOrder: idx + 1 },
+        data: {
+          name: cat.name,
+          slug: cat.slug,
+          heroImage: cat.heroImage,
+          isSeeded: true,
+          sortOrder: idx + 1,
+        },
       });
 
       // slug_registry rows are deferred - created in seedDestinations()

@@ -26,6 +26,11 @@ export interface HubLocalized extends Hub {
   isMachineTranslated: boolean;
 }
 
+/** Returned by the destination-scoped, tour-gated public endpoint. */
+export interface HubByDestination extends HubLocalized {
+  publishedTourCount: number;
+}
+
 export interface HubDetail extends HubLocalized {
   overview: string | null;
   h1Override: string | null;

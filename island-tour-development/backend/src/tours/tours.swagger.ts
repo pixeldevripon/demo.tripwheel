@@ -11,6 +11,7 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Locale, PricingModel, TourStatus } from '@prisma/client';
 import {
   PaginatedToursResponseDto,
+  RecomputeDemandResponseDto,
   TourDetailResponseDto,
   TourPublicDetailResponseDto,
   TourResponseDto,
@@ -247,6 +248,21 @@ export function ApiDeleteTourDocs() {
 }
 
 // ── Admin list ────────────────────────────────────────────────────────────────
+
+export function ApiRecomputeDemandDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Recompute the "Likely to sell out" demand signal (admin only)',
+      description:
+        'Re-evaluates the master §3.7 demand signal (tour_age >= 90d AND >= 3 sellouts in 60d ' +
+        'AND < 40% availability over 30d) and writes tour.likelyToSellOut. Production runs this ' +
+        'nightly; this is the on-demand trigger. Omit tourId to sweep every LIVE tour.',
+    }),
+    ApiQuery({ name: 'tourId', required: false, type: String }),
+    ApiResponse({ status: 201, type: RecomputeDemandResponseDto }),
+    ...operatorErrors,
+  );
+}
 
 export function ApiAdminListToursDocs() {
   return applyDecorators(

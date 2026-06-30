@@ -1,4 +1,3 @@
-import { FILTER_CATEGORIES } from '@/app/(frontend)/[locale]/[destination]/tours/page';
 import { categoriesApi } from '@/lib/api/categories';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
@@ -159,6 +158,16 @@ const FALLBACK_RELATED: RelatedCategory[] = [
         slug: 'dolphin-experience',
         image: RELATED_IMAGES[2],
     },
+];
+
+// Quick-filter pills (placeholder until the per-attribute filter API is wired).
+const FILTER_CATEGORIES: FilterCategory[] = [
+    { label: 'Klein Curaçao', slug: 'klein-curacao' },
+    { label: 'Boat Tours', slug: 'boat-tours' },
+    { label: 'Snorkeling', slug: 'snorkeling' },
+    { label: 'Sunset Cruises', slug: 'sunset-cruises' },
+    { label: 'Off-Road Tours', slug: 'off-road-tours' },
+    { label: 'Under €100 (21)', slug: 'under-100' },
 ];
 
 // Quick-filter pills for the secondary "active tours" listing block (Figma

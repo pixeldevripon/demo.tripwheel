@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
                 hostname: 'fastly.picsum.photos',
                 pathname: '/**',
             },
+            // Curated category hero photos (seeded heroImage). Swap for self-hosted
+            // assets before production.
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+                pathname: '/**',
+            },
         ],
     },
 };

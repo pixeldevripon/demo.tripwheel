@@ -49,6 +49,7 @@ import {
   ApiGetFaqsDocs,
   ApiGetHubByIdDocs,
   ApiGetHubBySlugDocs,
+  ApiGetHubsByDestinationDocs,
   ApiGetPageContentDocs,
   ApiGetTranslationsByLocaleDocs,
   ApiRemoveAllowedCategoryDocs,
@@ -110,6 +111,17 @@ export class HubController {
   @Public()
   render(@Param('slug') slug: string, @Query() query: HubRenderQueryDto) {
     return this.hubService.render(slug, query);
+  }
+
+  // Static `destination/...` segment MUST precede the dynamic `:id` route below.
+  @Get('destination/:destinationSlug')
+  @Public()
+  @ApiGetHubsByDestinationDocs()
+  getActiveByDestination(
+    @Param('destinationSlug') destinationSlug: string,
+    @Query() query: LocaleQueryDto,
+  ) {
+    return this.hubService.getActiveByDestinationSlug(destinationSlug, query.locale);
   }
 
   @Get(':id')

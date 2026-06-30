@@ -8,6 +8,7 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { evaluateLikelyToSellOut } from './demand-signal';
 import {
   BadRequestException,
   ConflictException,
@@ -19,6 +20,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import {
   BandParticipation,
+  DepartureStatus,
   Role,
   SlugEntityType,
   TourStatus,
@@ -111,6 +113,8 @@ export class ToursService {
     spotsRemaining: true,
     lastBookedAt: true,
     isSponsored: true,
+    likelyToSellOut: true,
+    likelyToSellOutOverride: true,
     isActive: true,
     publishedAt: true,
     createdAt: true,
@@ -138,6 +142,75 @@ export class ToursService {
         categories?.find((c) => c.isPrimary)?.categoryId ?? null,
       hubIds: hubs?.map((h) => h.hubId) ?? [],
     };
+  }
+
+  /**
+   * Listing badge for a tour card (master §3.6 "Badges" + §3.7 "Demand
+   * signaling"). A card shows AT MOST ONE badge in its top-left slot; this
+   * resolves overlaps by priority and returns the frontend `TourBadge` key
+   * directly (no translation layer needed). Full write-up:
+   * `technical-doc/03-implementation/TOUR-BADGES.md`.
+   *
+   * Priority (first match wins):
+   *   1. 'sponsored'        Paid placement = an ACTIVE Destination Spotlight (master
+   *                         "paid placements P1-P3"; max 3 per destination). The
+   *                         spotlight lifecycle mirrors that onto `tour.isSponsored`
+   *                         (TiersService.runSpotlightLifecycle / approveSpotlight),
+   *                         which this reads. Master: "always shown on paid placement;
+   *                         transparency is a brand pillar" - so it outranks every
+   *                         earned badge. (Commission tier alone is NOT sponsored.)
+   *   2. 'likelyToSellOut'  Demand signal (§3.7), evaluated daily: tour_age >= 90d
+   *                         AND >= 3 sellouts in the last 60d AND < 40% availability
+   *                         over the next 30d. Computed by `evaluateLikelyToSellOut`
+   *                         (src/tours/demand-signal.ts) into `tour.likelyToSellOut`;
+   *                         the manual CMS launch override (`likelyToSellOutOverride`)
+   *                         wins when set. Read here as `override ?? computed`. It is
+   *                         the most selective badge (~5-10% of catalog), so it ranks
+   *                         above 'mostPopular'.
+   *   3. 'mostPopular'      Organic social proof: NOT sponsored, review_count >= 10
+   *                         AND rating >= 4.5. Master also caps it at "max 1 per
+   *                         category"; that listing-level dedup belongs to the
+   *                         ranking pass (§7.2) and is intentionally NOT applied
+   *                         here - this returns per-tour eligibility only.
+   *   4. 'new'              Freshness: published < 30 days ago AND review_count == 0.
+   *                         On the card it replaces the rating row.
+   *
+   * 2 and 4 are mutually exclusive (age >= 90 vs < 30); 3 and 4 are mutually
+   * exclusive (>= 10 reviews vs 0). The only real overlaps are 'sponsored' with any
+   * earned badge (sponsored wins) and 'likelyToSellOut' with 'mostPopular'.
+   */
+  private deriveTourBadge(
+    tour: {
+      isSponsored: boolean;
+      likelyToSellOut: boolean;
+      likelyToSellOutOverride: boolean | null;
+      publishedAt: Date | null;
+      aggregateRating: number | null;
+      aggregateReviewCount: number;
+    },
+    now: Date = new Date(),
+  ): 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null {
+    // 1. Sponsored (paid placement) - always shown, outranks earned badges.
+    if (tour.isSponsored) return 'sponsored';
+
+    // 2. Likely to sell out (§3.7) - the daily-evaluated demand signal stored on
+    //    `likelyToSellOut` (worker output, see src/tours/demand-signal.ts), with the
+    //    manual CMS launch override taking precedence (`override ?? computed`).
+    if (tour.likelyToSellOutOverride ?? tour.likelyToSellOut) return 'likelyToSellOut';
+
+    // 3. Most popular - earned by organic reviews (never on commission-tier grounds).
+    if (tour.aggregateReviewCount >= 10 && (tour.aggregateRating ?? 0) >= 4.5) {
+      return 'mostPopular';
+    }
+
+    // 4. New - recently published with no reviews yet.
+    if (tour.aggregateReviewCount === 0 && tour.publishedAt) {
+      const ageDays =
+        (now.getTime() - tour.publishedAt.getTime()) / 86_400_000;
+      if (ageDays < 30) return 'new';
+    }
+
+    return null;
   }
 
   private readonly heroImageSelect = {
@@ -270,6 +343,7 @@ export class ToursService {
   async search(params: {
     q?: string;
     destinationSlug?: string;
+    date?: string;
     locale?: Locale;
     page?: number;
     limit?: number;
@@ -285,11 +359,20 @@ export class ToursService {
         data: [] as ReturnType<typeof this.flattenSearchHit>[],
       };
     }
+    // Optional date filter: keep only tours with a bookable (OPEN) departure on
+    // that calendar date. Departure.date is a `@db.Date`, so we match midnight UTC.
+    const parsedDate =
+      params.date && !Number.isNaN(Date.parse(`${params.date}T00:00:00.000Z`))
+        ? new Date(`${params.date}T00:00:00.000Z`)
+        : null;
     const ci = { contains: term, mode: 'insensitive' as const };
     const where: Prisma.TourWhereInput = {
       status: TourStatus.LIVE,
       isActive: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
+      ...(parsedDate && {
+        departures: { some: { date: parsedDate, status: DepartureStatus.OPEN } },
+      }),
       OR: [
         { name: ci },
         {
@@ -330,7 +413,10 @@ export class ToursService {
       page,
       limit,
       query: term,
-      data: data.map((t) => this.flattenSearchHit(t)),
+      data: data.map((t) => ({
+        ...this.flattenSearchHit(t),
+        badge: this.deriveTourBadge(t),
+      })),
     };
   }
 
@@ -364,6 +450,7 @@ export class ToursService {
     'destinationId',
     'categoryId',
     'hubId',
+    'isLocalsFavourite',
     'pricingModel',
     'minPrice',
     'maxPrice',
@@ -382,6 +469,7 @@ export class ToursService {
       destinationId,
       categoryId,
       hubId,
+      isLocalsFavourite,
       pricingModel,
       minPrice,
       maxPrice,
@@ -389,18 +477,25 @@ export class ToursService {
       durationMax,
       ratingMin,
       sort = TourSort.recommended,
+      locale = Locale.en,
       page = 1,
       limit = 20,
     } = query;
 
+    // Bookability filter (master §7.2): a tour is excluded from every ranked result
+    // set when it is not live, not active, or not bookable. (The master's "no
+    // availability in the next 30 days" exclusion is carried by `isBookable`, which
+    // the nightly availability job clears - we avoid a per-request departures join.)
     const where: Prisma.TourWhereInput = {
       status: TourStatus.LIVE,
       isActive: true,
+      isBookable: true,
     };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
     if (categoryId) where.categories = { some: { categoryId } };
     if (hubId) where.hubs = { some: { hubId } };
+    if (isLocalsFavourite !== undefined) where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.basePrice = {};
@@ -430,6 +525,11 @@ export class ToursService {
         where,
         select: {
           ...this.tourSelect,
+          // Localized title for the card (falls back to the canonical name).
+          translations: { where: { locale }, select: { title: true } },
+          // Destination slug so a listing item can build its flat URL even when
+          // the list is not scoped to a single destination.
+          destination: { select: { slug: true } },
           images: {
             where: { isHero: true },
             select: this.heroImageSelect,
@@ -442,22 +542,77 @@ export class ToursService {
       }),
     ]);
 
-    return {
-      total,
-      page,
-      limit,
-      sort,
-      data: data.map((t) => this.flattenTour(t)),
-    };
+    const mapped = data.map(({ translations, destination, ...t }) => ({
+      ...this.flattenTour(t),
+      title: translations[0]?.title ?? t.name,
+      destinationSlug: destination?.slug ?? null,
+      badge: this.deriveTourBadge(t),
+    }));
+
+    // §3.8 diversity pass runs after ranking, on the default ("recommended") sort
+    // only - explicit price/rating sorts keep the exact order the user requested.
+    const ordered =
+      sort === TourSort.recommended ? this.applyDiversityPass(mapped) : mapped;
+
+    return { total, page, limit, sort, data: ordered };
   }
 
-  /** Maps the requested sort to a Prisma orderBy. */
+  /**
+   * Recomputes the §3.7 "Likely to sell out" demand signal and writes it to
+   * `tour.likelyToSellOut`. Production runs this daily (BullMQ nightly job, master
+   * §workers); it is also exposed as an admin endpoint for on-demand refresh. Pass
+   * `tourId` to evaluate a single tour, omit to sweep every LIVE tour. The manual
+   * `likelyToSellOutOverride` is NOT touched here - it is applied at read time.
+   */
+  async recomputeLikelyToSellOut(
+    tourId?: string,
+  ): Promise<{ evaluated: number; flagged: number }> {
+    const tours = await this.prisma.tour.findMany({
+      where: tourId ? { id: tourId } : { status: TourStatus.LIVE },
+      select: { id: true },
+    });
+    const now = new Date();
+    let flagged = 0;
+    for (const t of tours) {
+      const computed = await evaluateLikelyToSellOut(this.prisma, t.id, now);
+      if (computed) flagged++;
+      await this.prisma.tour.update({
+        where: { id: t.id },
+        data: { likelyToSellOut: computed },
+      });
+    }
+    this.logger.log(
+      `recomputeLikelyToSellOut: evaluated ${tours.length} tour(s), flagged ${flagged}`,
+    );
+    return { evaluated: tours.length, flagged };
+  }
+
+  
+  /**
+   * Maps the requested sort to a Prisma orderBy. Full write-up:
+   * technical-doc/03-implementation/TOUR-RANKING.md.
+   *
+   * The DEFAULT ("recommended", shown to travelers as "Locals' favorites") is the
+   * canonical platform ranking from master §7.2:
+   *
+   *     tier_rank ASC, quality_score DESC, id ASC
+   *
+   * - `tier_rank` (1=premium … 5=standard) is denormalized from the operator's
+   *   commission tier, so paid placements naturally float to the top - there is NO
+   *   separate "isSponsored" sort key (the Sponsored *badge* is cosmetic, §3.6).
+   * - `quality_score` (0-100) is a nightly job output, read-only here.
+   * - `id` is the stable final tie-break (same-tier collisions are expected and
+   *   valid; there is no per-category tier cap).
+   *
+   * This supersedes the earlier weighted formulas (conflict log B.17 / B.46). The
+   * §3.8 diversity pass runs AFTER this ordering, in `applyDiversityPass`.
+   */
   private buildOrderBy(sort: TourSort): Prisma.TourOrderByWithRelationInput[] {
     switch (sort) {
       case TourSort.price_asc:
-        return [{ basePrice: { sort: 'asc', nulls: 'last' } }];
+        return [{ priceFrom: { sort: 'asc', nulls: 'last' } }, { basePrice: 'asc' }];
       case TourSort.price_desc:
-        return [{ basePrice: { sort: 'desc', nulls: 'last' } }];
+        return [{ priceFrom: { sort: 'desc', nulls: 'last' } }, { basePrice: 'desc' }];
       case TourSort.rating:
         return [
           { aggregateRating: { sort: 'desc', nulls: 'last' } },
@@ -467,18 +622,64 @@ export class ToursService {
         return [{ publishedAt: 'desc' }];
       case TourSort.recommended:
       default:
-        // V2 weighted "Recommended" (bookings×0.4 + rating×0.3 + recency×0.2 + reviews×0.1).
-        // Prisma can't order by a computed expression, so we approximate with a multi-key
-        // ordering led by the booking count (the heaviest weight). For an exact score, add a
-        // materialized `recommendedScore` column updated by a periodic/worker job and order by it.
-        return [
-          { isSponsored: 'desc' },
-          { bookingCount: 'desc' },
-          { aggregateRating: { sort: 'desc', nulls: 'last' } },
-          { aggregateReviewCount: 'desc' },
-          { publishedAt: 'desc' },
-        ];
+        // Master §7.2 canonical order.
+        return [{ tierRank: 'asc' }, { qualityScore: 'desc' }, { id: 'asc' }];
     }
+  }
+
+  /**
+   * Diversity pass (master §3.8): after ranking, never allow more than 2 tours of
+   * the same subtype (primary category) consecutively. Runs on the already-ordered
+   * page in-place, preserving rank as much as possible: when a 3rd same-subtype tour
+   * would land back-to-back-to-back, the next tour of a DIFFERENT subtype is pulled
+   * up to break the run. Only reorders the default ("recommended") sort - explicit
+   * price/rating sorts are left exactly as the user asked. Page-local by design
+   * (it operates on the fetched page, not across pagination boundaries).
+   */
+  private applyDiversityPass<T extends { primaryCategoryId: string | null }>(
+    items: T[],
+  ): T[] {
+    const result: T[] = [];
+    const pool = [...items];
+    while (pool.length > 0) {
+      // The subtype that would form a 3-run if placed next (last two already match).
+      const blocked =
+        result.length >= 2 &&
+        result[result.length - 1].primaryCategoryId ===
+          result[result.length - 2].primaryCategoryId
+          ? result[result.length - 1].primaryCategoryId
+          : undefined;
+
+      // Default: keep strict rank order - take the earliest-ranked tour that won't
+      // form a 3-run. We deviate ONLY when the most-abundant remaining subtype is
+      // "tight" (count*2 - 1 >= remaining), i.e. it needs an every-other slot to
+      // stay interleavable; then we lead with it so it isn't stranded into a 3-run
+      // at the tail. This keeps tier_rank order intact except where §3.8 forces a
+      // minimal change (so paid tiers are not pushed down for cosmetic spacing).
+      const counts = new Map<string | null, number>();
+      for (const p of pool) {
+        counts.set(p.primaryCategoryId, (counts.get(p.primaryCategoryId) ?? 0) + 1);
+      }
+      let tightCat: string | null | undefined;
+      let maxCount = 0;
+      for (const [cat, c] of counts) {
+        if (cat === blocked) continue;
+        if (c > maxCount) {
+          maxCount = c;
+          tightCat = cat;
+        }
+      }
+
+      const pickCat =
+        maxCount * 2 - 1 >= pool.length ? tightCat : undefined;
+      let pick = pool.findIndex((p) =>
+        pickCat !== undefined ? p.primaryCategoryId === pickCat : p.primaryCategoryId !== blocked,
+      );
+      if (pick === -1) pick = 0; // only blocked items remain (infeasible) -> keep order
+
+      result.push(pool.splice(pick, 1)[0]);
+    }
+    return result;
   }
 
   /**

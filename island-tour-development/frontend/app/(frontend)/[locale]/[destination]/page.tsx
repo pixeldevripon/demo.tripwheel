@@ -2,17 +2,22 @@ import { DestinationAbout } from '@/components/frontend/destination-about';
 import {
     DestinationExploreTypes,
     type ExploreType,
-} from '@/components/frontend/destination-explore-types';
-import { DestinationHero } from '@/components/frontend/destination-hero';
+} from '@/components/frontend/destination/destination-explore-types';
+import { DestinationHero } from '@/components/frontend/destination/destination-hero';
 import { DestinationInstagram } from '@/components/frontend/destination-instagram';
 import {
     DestinationListings,
-} from '@/components/frontend/destination-listings';
-import type { TourListing } from '@/components/frontend/tour-card';
+} from '@/components/frontend/destination/destination-listings';
 import { FaqSection } from '@/components/frontend/faq-section';
+import {
+    getDestinationBySlug,
+    getDestinationCategories,
+    getDestinationHubs,
+    getDestinationTours,
+} from '@/lib/api/public';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { toSlug } from '@/lib/utils';
+import { searchHitToListing } from '@/lib/tours/listing';
 import { notFound } from 'next/navigation';
 
 // Destination display names (proper nouns - not translated, only resolved from the slug).
@@ -23,176 +28,6 @@ const DESTINATION_NAMES: Record<string, string> = {
     'saint-lucia': 'Saint Lucia',
     bonaire: 'Bonaire',
 };
-
-// Total published tours per destination (placeholder - comes from the API later).
-// Drives the conditional "See all {count} tours" CTA (count shown only when ≥ 20).
-const DESTINATION_TOUR_COUNTS: Record<string, number> = {
-    curacao: 87,
-    aruba: 64,
-    'sint-maarten': 38,
-    'saint-lucia': 22,
-    bonaire: 12,
-};
-
-// Popular searches per destination (placeholder - comes from the API later).
-const POPULAR: Record<string, { label: string; slug: string }[]> = {
-    curacao: [
-        { label: 'Klein Curaçao', slug: 'klein-curacao' },
-        { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-        { label: 'Off-Road Tours', slug: 'off-road-tours' },
-    ],
-};
-
-const DEFAULT_POPULAR = [
-    { label: 'Boat Tours', slug: 'boat-tours' },
-    { label: 'Snorkeling', slug: 'snorkeling' },
-    { label: 'Island Hopping', slug: 'island-hopping' },
-];
-
-// "Explore by type" cards (placeholder - comes from the API later).
-const EXPLORE_TYPES: ExploreType[] = [
-    {
-        name: 'Klein Curaçao',
-        slug: 'klein-curacao',
-        tours: 42,
-        image: '/images/home-page/islands/curacao.jpg',
-    },
-    {
-        name: 'Boat Tours',
-        slug: 'boat-tours',
-        tours: 42,
-        image: '/images/home-page/categories/catamaran-trips.jpg',
-    },
-    {
-        name: 'Sunset Cruises',
-        slug: 'sunset-cruises',
-        tours: 42,
-        image: '/images/home-page/islands/aruba.jpg',
-    },
-    {
-        name: 'Off-Road Tours',
-        slug: 'off-road-tours',
-        tours: 42,
-        image: '/images/home-page/categories/buggy-tours.jpg',
-    },
-    {
-        name: 'Snorkeling Trips',
-        slug: 'snorkeling',
-        tours: 42,
-        image: '/images/home-page/categories/snorkel-trips.jpg',
-    },
-    {
-        name: 'Private Charters',
-        slug: 'luxury-experiences',
-        tours: 42,
-        image: '/images/home-page/islands/saint-lucia.jpg',
-    },
-];
-
-// ── Locals' Favorites mock data (6 cards - replace with API data later) ─────
-// Matches Figma node 47361:19645 exactly.
-const TOURS: TourListing[] = [
-    {
-        id: 'tour-1',
-        images: [
-            '/images/tours/tour-1-1.jpg',
-            '/images/tours/tour-1-2.jpg',
-            '/images/tours/tour-1-3.jpg',
-        ],
-        badge: 'new',
-        title: 'Klein Curaçao Catamaran Day Trip with Open bar & BBQ included',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: false,
-    },
-    {
-        id: 'tour-2',
-        images: [
-            '/images/tours/tour-2-1.jpg',
-            '/images/tours/tour-2-3.jpg',
-        ],
-        badge: 'likelyToSellOut',
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Sunset Sailing Cruise along Spanish Water with Unlimited drinks & appetizers',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'tour-3',
-        images: [
-            '/images/tours/tour-3-1.jpg',
-            '/images/tours/tour-3-2.jpg',
-            '/images/tours/tour-3-3.jpg',
-        ],
-        badge: 'mostPopular',
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Sunset Sailing Cruise along Spanish Water with Unlimited drinks & appetizers',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'tour-4',
-        images: [
-            '/images/tours/tour-4-1.jpg',
-            '/images/tours/tour-4-2.jpg',
-            '/images/tours/tour-4-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Private Yacht Charter for up to 12 guests with Custom itinerary & snorkel gear',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 270,
-        priceUnit: 'perGroup',
-        freeCancellation: false,
-    },
-    {
-        id: 'tour-5',
-        images: [
-            '/images/tours/tour-5-1.jpg',
-            '/images/tours/tour-3-2.jpg',
-            '/images/tours/tour-3-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Snorkeling at Tugboat Beach with Small group (max 8)',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 270,
-        priceUnit: 'perGroup',
-        priceVaries: true,
-        freeCancellation: true,
-    },
-    {
-        id: 'tour-6',
-        images: [
-            '/images/tours/tour-6-1.jpg',
-            '/images/tours/tour-1-2.jpg',
-            '/images/tours/tour-6-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Sunset Sailing Cruise along Spanish Water with Unlimited drinks & appetizers',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-];
 
 /** Prerender the known destinations so `params` is static (no request-time dynamic hole). */
 export function generateStaticParams() {
@@ -211,40 +46,97 @@ export default async function DestinationPage({
     const { locale, destination } = await params;
     if (!isLocale(locale)) notFound();
 
-    const dict = await getDictionary(locale);
-    const destinationName =
-        DESTINATION_NAMES[destination] ??
-        destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const [dict, island, categories, hubs] = await Promise.all([
+        getDictionary(locale),
+        getDestinationBySlug(destination, locale),
+        getDestinationCategories(destination, locale),
+        getDestinationHubs(destination, locale),
+    ]);
+    // Unknown or not-yet-launched (inactive) island → 404. getDestinationBySlug
+    // resolves any slug, so we gate on isActive here for the public site.
+    if (!island || !island.isActive) notFound();
 
-    // Link each card to its flat tour URL (slug derived from the title until the
-    // public tour list API returns real slugs).
-    const tours = TOURS.map(tour => ({
-        ...tour,
-        href: localizeHref(locale as Locale, `/${destination}/${toSlug(tour.title)}`),
+    const destinationName = island.name;
+
+    // Hubs (e.g. Klein Curaçao) and categories share the same flat
+    // `/{destination}/{slug}` discovery URL, so both feed the hero "Popular" row
+    // and the "Explore by type" cards - hubs always lead.
+    const exploreTypes: ExploreType[] = [
+        ...hubs.map(hub => ({
+            name: hub.name,
+            slug: hub.slug,
+            tours: hub.publishedTourCount,
+            image: hub.heroImage ?? undefined,
+        })),
+        ...categories.map(category => ({
+            name: category.name,
+            slug: category.slug,
+            tours: category.publishedTourCount,
+            image: category.heroImage ?? undefined,
+        })),
+    ];
+
+    // Hero "Popular" quick links - same hubs-first ordering, capped at 4.
+    const activities = exploreTypes.slice(0, 4).map(item => ({
+        label: item.name,
+        href: localizeHref(locale, `/${destination}/${item.slug}`),
     }));
+
+    // Card labels for the typeahead live in the shared listings dictionary.
+    const search = {
+        ...dict.search,
+        pickupAvailable: dict.destination.listings.pickupAvailable,
+        freeCancellation: dict.destination.listings.freeCancellation,
+        from: dict.destination.listings.from,
+    };
+
+    // "Locals' favorites" grid - tours flagged isLocalsFavourite for this island
+    // (top 6, recommended order). The CTA count is the destination-wide LIVE total
+    // (a cheap limit:1 call), NOT the favourites count - "See all {count} tours"
+    // links to the full All Tours page.
+    const [favouriteTours, allTours] = await Promise.all([
+        getDestinationTours({
+            destinationId: island.id,
+            locale,
+            localsFavourite: true,
+            sort: 'recommended',
+            limit: 6,
+        }),
+        getDestinationTours({ destinationId: island.id, limit: 1 }),
+    ]);
+    const tours = favouriteTours.data.map(hit =>
+        searchHitToListing(hit, locale as Locale, dict.search),
+    );
 
     return (
         <>
             <DestinationHero
                 destinationName={destinationName}
                 dict={dict.destination.hero}
-                locale={locale as Locale}
-                popular={POPULAR[destination] ?? DEFAULT_POPULAR}
-            />
-            <DestinationExploreTypes
-                dict={dict.destination.exploreTypes}
+                search={search}
                 locale={locale as Locale}
                 destinationSlug={destination}
-                categories={EXPLORE_TYPES}
+                activities={activities}
+                image={island.heroImage ?? undefined}
             />
-            <DestinationListings
-                dict={dict.destination.listings}
-                tours={tours}
-                destinationName={destinationName}
-                locale={locale as Locale}
-                destinationSlug={destination}
-                totalCount={DESTINATION_TOUR_COUNTS[destination] ?? TOURS.length}
-            />
+            {exploreTypes.length > 0 && (
+                <DestinationExploreTypes
+                    dict={dict.destination.exploreTypes}
+                    locale={locale as Locale}
+                    destinationSlug={destination}
+                    categories={exploreTypes}
+                />
+            )}
+            {tours.length > 0 && (
+                <DestinationListings
+                    dict={dict.destination.listings}
+                    tours={tours}
+                    destinationName={destinationName}
+                    locale={locale as Locale}
+                    destinationSlug={destination}
+                    totalCount={allTours.total}
+                />
+            )}
             <DestinationInstagram dict={dict.destination.instagram} />
 
             <FaqSection dict={dict.home.faq} />

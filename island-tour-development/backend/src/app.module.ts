@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
@@ -25,12 +26,14 @@ import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { WishlistModule } from '@/wishlist/wishlist.module';
+import { WorkersModule } from '@/workers/workers.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     MailModule,
@@ -55,6 +58,7 @@ import { WishlistModule } from '@/wishlist/wishlist.module';
     ReviewsModule,
     NotificationsModule,
     WishlistModule,
+    WorkersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

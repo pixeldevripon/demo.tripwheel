@@ -37,7 +37,7 @@ export default async function SearchPage({
     searchParams,
 }: {
     params: Promise<{ locale: string }>;
-    searchParams: Promise<{ q?: string; page?: string; destination?: string }>;
+    searchParams: Promise<{ q?: string; page?: string; destination?: string; date?: string }>;
 }) {
     const [{ locale }, sp] = await Promise.all([params, searchParams]);
     if (!isLocale(locale)) notFound();
@@ -47,6 +47,8 @@ export default async function SearchPage({
     const query = (sp.q ?? '').trim();
     const page = Math.max(1, Number.parseInt(sp.page ?? '1', 10) || 1);
     const destination = sp.destination?.trim() || undefined;
+    // Only honor a well-formed YYYY-MM-DD (the backend 400s on anything else).
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? '') ? sp.date : undefined;
 
     // Card labels live in the shared listings dictionary (the canonical TourCard
     // label set); the search section only adds page chrome + duration units.
@@ -65,6 +67,7 @@ export default async function SearchPage({
                   q: query,
                   locale: locale as Locale,
                   destinationSlug: destination,
+                  date,
                   page,
                   limit: PAGE_SIZE,
               })
@@ -74,8 +77,8 @@ export default async function SearchPage({
         results?.data.map((hit) => searchHitToListing(hit, locale as Locale, t)) ?? [];
     const totalPages = results ? Math.max(1, Math.ceil(results.total / PAGE_SIZE)) : 0;
 
-    // "Remove filter" link → same query without the destination scope.
-    const searchAllHref = `${localizeHref(locale as Locale, '/search')}?q=${encodeURIComponent(query)}`;
+    // "Remove filter" link → same query (and date) without the destination scope.
+    const searchAllHref = `${localizeHref(locale as Locale, '/search')}?q=${encodeURIComponent(query)}${date ? `&date=${date}` : ''}`;
 
     return (
         <section className='it-section bg-it-white'>

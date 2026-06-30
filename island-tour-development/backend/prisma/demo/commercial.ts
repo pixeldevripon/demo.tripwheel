@@ -25,20 +25,35 @@ export async function seedCommercial(): Promise<void> {
   const liveDests = await prisma.destination.findMany({ where: { isActive: true }, select: { id: true, slug: true } });
   let spotlightCount = 0;
   const existingSpotlight = await prisma.spotlightRequest.count({ where: { tour: { reference: DEMO_TOUR_REF } } });
+  // The ACTIVE spotlight per destination lands on the badge-showcase "Sponsored"
+  // lead (an isLocalsFavourite tour, so it shows in the grid). This mirrors the
+  // production flow: an ACTIVE Destination Spotlight is what sets tour.isSponsored
+  // -> the "Sponsored" badge (master §3.6 "paid placements"). REQUESTED/REJECTED go
+  // on other top tours to populate the admin queue.
+  const SPOTLIGHT_ACTIVE_SLUG: Record<string, string> = {
+    curacao: 'klein-curacao-full-day-catamaran',
+    aruba: 'utv-off-road-desert-and-beach-adventure',
+    'sint-maarten': 'sunset-catamaran-cruise-with-drinks',
+  };
   for (const dest of existingSpotlight > 0 ? [] : liveDests) {
-    const tours = await prisma.tour.findMany({
-      where: { reference: DEMO_TOUR_REF, destinationId: dest.id },
-      orderBy: [{ tierRank: 'asc' }, { qualityScore: 'desc' }],
-      take: 3,
+    const activeTour = await prisma.tour.findFirst({
+      where: { reference: DEMO_TOUR_REF, destinationId: dest.id, slug: SPOTLIGHT_ACTIVE_SLUG[dest.slug] },
       select: { id: true, operatorId: true },
     });
-    if (tours.length === 0) continue;
+    // Other top tours (excluding the ACTIVE one) for the REQUESTED/REJECTED samples.
+    const others = await prisma.tour.findMany({
+      where: { reference: DEMO_TOUR_REF, destinationId: dest.id, NOT: { slug: SPOTLIGHT_ACTIVE_SLUG[dest.slug] } },
+      orderBy: [{ tierRank: 'asc' }, { qualityScore: 'desc' }],
+      take: 2,
+      select: { id: true, operatorId: true },
+    });
+    if (!activeTour) continue;
 
-    // ACTIVE
+    // ACTIVE - and mirror onto the tour exactly as runSpotlightLifecycle does in prod.
     await prisma.spotlightRequest.create({
       data: {
-        tourId: tours[0].id,
-        operatorId: tours[0].operatorId,
+        tourId: activeTour.id,
+        operatorId: activeTour.operatorId,
         destinationId: dest.id,
         status: SpotlightStatus.ACTIVE,
         approvedAt: dayOffset(-7),
@@ -50,14 +65,15 @@ export async function seedCommercial(): Promise<void> {
         note: 'Approved for the summer push.',
       },
     });
+    await prisma.tour.update({ where: { id: activeTour.id }, data: { isSponsored: true } });
     spotlightCount++;
 
-    if (tours[1]) {
+    if (others[0]) {
       // REQUESTED (pending admin)
       await prisma.spotlightRequest.create({
         data: {
-          tourId: tours[1].id,
-          operatorId: tours[1].operatorId,
+          tourId: others[0].id,
+          operatorId: others[0].operatorId,
           destinationId: dest.id,
           status: SpotlightStatus.REQUESTED,
           requestedStartsAt: dayOffset(14),
@@ -67,12 +83,12 @@ export async function seedCommercial(): Promise<void> {
       });
       spotlightCount++;
     }
-    if (tours[2]) {
+    if (others[1]) {
       // REJECTED
       await prisma.spotlightRequest.create({
         data: {
-          tourId: tours[2].id,
-          operatorId: tours[2].operatorId,
+          tourId: others[1].id,
+          operatorId: others[1].operatorId,
           destinationId: dest.id,
           status: SpotlightStatus.REJECTED,
           requestedStartsAt: dayOffset(3),

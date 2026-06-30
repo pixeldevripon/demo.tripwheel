@@ -5,5 +5,8 @@
  * re-exports them so callers can `import { getActiveDestinations } from
  * '@/lib/api/public'`. Shared fetch primitives live in `./fetch`.
  */
+export * from './categories';
 export * from './destinations';
+export * from './hubs';
 export * from './search';
+export * from './tours';

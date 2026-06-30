@@ -1,0 +1,17 @@
+import { Module } from '@nestjs/common';
+
+import { TiersModule } from '@/tiers/tiers.module';
+import { ToursModule } from '@/tours/tours.module';
+
+import { NightlyJobsService } from './nightly-jobs.service';
+
+/**
+ * Scheduled background jobs (master §7 / §3.7). `ScheduleModule.forRoot()` is
+ * registered once in AppModule; this module owns the cron providers. Imports the
+ * feature modules whose services the jobs call (both export their service).
+ */
+@Module({
+  imports: [TiersModule, ToursModule],
+  providers: [NightlyJobsService],
+})
+export class WorkersModule {}

@@ -15,6 +15,7 @@ import {
   DeleteHubResponseDto,
   DeleteMessageResponseDto,
   FaqResponseDto,
+  HubByDestinationResponseDto,
   HubDetailLocalizedResponseDto,
   HubPageContentResponseDto,
   HubTranslationEntryDto,
@@ -74,6 +75,22 @@ export function ApiGetActiveHubsDocs() {
     ApiQuery({ name: 'destinationId', required: false, type: String }),
     localeParam,
     ApiResponse({ status: 200, type: [HubDetailLocalizedResponseDto] }),
+    ...publicErrors,
+  );
+}
+
+export function ApiGetHubsByDestinationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'List hubs that have ≥1 published tour in a destination (public)',
+      description:
+        'Tour-gated: only PUBLISHED + active hubs with at least one LIVE tour in the destination are ' +
+        'returned, each with publishedTourCount, ordered by name. Used for destination-page discovery rows.',
+    }),
+    ApiParam({ name: 'destinationSlug', example: 'curacao' }),
+    localeParam,
+    ApiResponse({ status: 200, type: [HubByDestinationResponseDto] }),
+    ApiResponse({ status: 404, description: 'Destination not found', type: NotFoundErrorDto }),
     ...publicErrors,
   );
 }

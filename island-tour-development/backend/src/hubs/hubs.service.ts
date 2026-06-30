@@ -168,6 +168,45 @@ export class HubService {
     );
   }
 
+  /**
+   * Destination-scoped, tour-gated public hub list (mirrors the category
+   * equivalent): only PUBLISHED + active hubs that have ≥1 LIVE tour tagged to
+   * them, each with `publishedTourCount`. Backs the destination page's discovery
+   * rows (hero "Popular" + "Explore by type") so every hub link resolves.
+   */
+  async getActiveByDestinationSlug(destinationSlug: string, locale: Locale = Locale.en) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { slug: destinationSlug },
+      select: { id: true, isActive: true },
+    });
+    if (!destination || !destination.isActive) {
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    }
+
+    const grouped = await this.prisma.tourHub.groupBy({
+      by: ['hubId'],
+      where: { tour: { destinationId: destination.id, status: TourStatus.LIVE, isActive: true } },
+      _count: { _all: true },
+    });
+    const countByHub = new Map(grouped.map((g) => [g.hubId, g._count._all]));
+    const hubIds = [...countByHub.keys()];
+    if (hubIds.length === 0) return [];
+
+    const hubs = await this.prisma.hub.findMany({
+      where: { id: { in: hubIds }, isActive: true, status: HubStatus.PUBLISHED },
+      select: {
+        ...this.hubSelect,
+        translations: { where: { locale }, select: { name: true, isMachineTranslated: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return hubs.map(({ translations, ...hub }) => ({
+      ...applyTranslation(hub, translations[0], locale),
+      publishedTourCount: countByHub.get(hub.id) ?? 0,
+    }));
+  }
+
   async getById(id: string, locale: Locale = Locale.en) {
     const hub = await this.prisma.hub.findUnique({
       where: { id },

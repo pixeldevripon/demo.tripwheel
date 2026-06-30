@@ -51,7 +51,8 @@ export function searchHitToListing(
       ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
       : undefined,
     images: hit.images.map((img) => img.url).filter(Boolean),
-    badge: null,
+    // Badge is derived server-side (master §3.6/§3.7); pass it through verbatim.
+    badge: hit.badge ?? null,
     rating: hasReviews ? hit.aggregateRating ?? undefined : undefined,
     reviewCount: hasReviews ? hit.aggregateReviewCount : undefined,
     title: hit.title,

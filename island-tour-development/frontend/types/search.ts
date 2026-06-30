@@ -25,6 +25,8 @@ export interface SearchHit {
   aggregateRating: number | null;
   aggregateReviewCount: number;
   isLocalsFavourite: boolean;
+  /** Listing badge (master §3.6/§3.7), at most one by priority; null = none. */
+  badge: 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null;
   images: { url: string; altText: string | null }[];
 }
 

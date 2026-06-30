@@ -21,6 +21,7 @@ export type TourCardDict = {
     new: string;
     likelyToSellOut: string;
     mostPopular: string;
+    sponsored: string;
     pickupAvailable: string;
     freeCancellation: string;
     priceVaries: string;
@@ -30,7 +31,15 @@ export type TourCardDict = {
 };
 
 // ── Data types ──────────────────────────────────────────────────────────────
-export type TourBadge = 'new' | 'likelyToSellOut' | 'mostPopular' | null;
+// Master §3.6 badge set (the single badge in the card's top-left slot). Derived
+// by the backend `deriveTourBadge` and passed through unchanged - full logic in
+// technical-doc/03-implementation/TOUR-BADGES.md.
+export type TourBadge =
+    | 'new'
+    | 'likelyToSellOut'
+    | 'mostPopular'
+    | 'sponsored'
+    | null;
 
 export type TourListing = {
     id: string;
@@ -61,7 +70,7 @@ export type TourListing = {
 // ── BadgeChip ───────────────────────────────────────────────────────────────
 interface BadgeChipProps {
     type: TourBadge;
-    dict: Pick<TourCardDict, 'new' | 'likelyToSellOut' | 'mostPopular'>;
+    dict: Pick<TourCardDict, 'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored'>;
     className?: string;
 }
 
@@ -71,7 +80,11 @@ export function BadgeChip({ type, dict, className = '' }: BadgeChipProps) {
     let label = '';
     let colorClass = '';
 
-    if (type === 'new') {
+    if (type === 'sponsored') {
+        label = dict.sponsored;
+        // Master §3.6: "Rounded rectangle, gray" - neutral, never brand orange.
+        colorClass = 'bg-it-surface text-it-heading';
+    } else if (type === 'new') {
         label = dict.new;
         // Figma: bg: #fdf6f0, text: #2c2c2c
         colorClass = 'bg-[#fdf6f0] text-[#2c2c2c]';
