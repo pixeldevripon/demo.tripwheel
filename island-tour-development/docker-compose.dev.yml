@@ -1,0 +1,55 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Island Tours - LOCAL DEV infrastructure (Postgres + Redis only)
+#
+# Spins up just the backing services with ports published to the host, so you
+# run the apps natively for hot-reload:
+#
+#   docker compose -f docker-compose.dev.yml up -d   # start pg + redis
+#   pnpm dev                                          # backend + frontend on host
+#
+# This is OPTIONAL - the app also runs against a natively-installed Postgres and
+# Redis. The backend picks Redis up via REDIS_HOST/REDIS_PORT (no UPSTASH_REDIS_URL),
+# which is exactly what these defaults match. Dev Redis is password-less for
+# convenience; leave REDIS_PASSWORD unset in backend/.env.
+#
+# Matching backend/.env values:
+#   DATABASE_URL="postgresql://island:island@localhost:5432/island_tours?schema=public"
+#   REDIS_HOST=localhost
+#   REDIS_PORT=6379
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-island}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-island}
+      POSTGRES_DB: ${POSTGRES_DB:-island_tours}
+    ports:
+      - '5432:5432'
+    volumes:
+      - island-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-island}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - island-dev-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  island-dev-postgres:
+  island-dev-redis:

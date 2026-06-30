@@ -35,10 +35,13 @@ export function buildRedisConnection() {
     };
   }
 
-  // Local / self-hosted Redis
+  // Local / self-hosted Redis (e.g. the `redis` service in docker-compose).
+  // REDIS_PASSWORD is optional: unset for a password-less dev Redis, set when
+  // the container runs with `--requirepass` (recommended in production).
   return {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
   };
 }

@@ -1,0 +1,28 @@
+# Build artifacts / deps - rebuilt inside the image
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+# Secrets - never bake env files into the image (compose injects env at runtime)
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Local tooling / VCS / editor noise
+.git
+.gitignore
+.vscode
+.idea
+*.log
+.DS_Store
+
+# Tests are not needed in the production image
+test
+**/*.spec.ts
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml

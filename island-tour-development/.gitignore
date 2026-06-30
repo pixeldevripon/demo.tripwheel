@@ -9,12 +9,11 @@ build/
 .next/
 out/
 
-# Environment files
+# Environment files - never commit real secrets; only *.example files are tracked
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!.env.*.example
 
 # Prisma
 backend/src/generated/
