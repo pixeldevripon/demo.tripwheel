@@ -53,6 +53,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
     image: island-tours-backend:${BACKEND_IMAGE_TAG:-latest}
     restart: unless-stopped
     # App secrets (Better Auth, Cloudinary, SMTP, Stripe-not-here, etc.).

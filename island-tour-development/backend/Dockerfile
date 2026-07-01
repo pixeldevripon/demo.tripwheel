@@ -29,6 +29,9 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 WORKDIR /app
 
+ARG DATABASE_URL="postgresql://user:password@localhost:5432/db"
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Install deps first (cached unless the manifest/lockfile changes).
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
