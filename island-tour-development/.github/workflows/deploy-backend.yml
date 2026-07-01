@@ -1,8 +1,5 @@
 name: Deploy backend (VPS)
 
-# Deploys the backend to the Hostinger VPS on every push to main that touches
-# backend code or the compose stack. The frontend deploys itself via Vercel's
-# Git integration, so it is intentionally not handled here.
 on:
   push:
     branches: [main]
@@ -28,15 +25,22 @@ jobs:
           username: ${{ secrets.VPS_SSH_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          # Pull the pushed commit, rebuild only the backend image, recreate the
-          # container. migrate deploy runs automatically in docker-entrypoint.sh.
           script: |
             set -e
             cd "${{ secrets.VPS_APP_DIR }}"
             git fetch --all --prune
             git reset --hard ${{ github.sha }}
+
+            echo "=== Deployed commit ==="
+            git log -1 --oneline
+
             export BACKEND_IMAGE_TAG=${{ github.sha }}
             docker compose build backend
-            docker compose up -d
+            docker compose up -d --force-recreate backend
             docker image prune -f
-            docker compose ps
+
+            echo "=== Container status ==="
+            docker compose ps backend
+
+            echo "=== Container start time ==="
+            docker inspect -f '{{.State.StartedAt}}' $(docker compose ps -q backend)
