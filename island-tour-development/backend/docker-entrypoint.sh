@@ -11,11 +11,11 @@
 set -e
 
 echo "[entrypoint] Applying database migrations (prisma migrate deploy)..."
-pnpm prisma:migrate:deploy
+npx prisma migrate deploy
 
 if [ "$RUN_SEED" = "true" ]; then
   echo "[entrypoint] RUN_SEED=true -> seeding database (prisma db seed)..."
-  pnpm prisma:seed
+  npx prisma db seed
 else
   echo "[entrypoint] RUN_SEED not set -> skipping seed."
 fi
