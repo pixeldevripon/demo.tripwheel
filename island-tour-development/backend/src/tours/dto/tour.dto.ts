@@ -373,6 +373,13 @@ export class TourFeatureInlineDto {
 }
 
 export class TourPublicDetailResponseDto extends TourResponseDto {
+  @ApiPropertyOptional({
+    example: 'Miss Ann',
+    nullable: true,
+    description: 'Operator display name (company name, else account name)',
+  })
+  operatorName!: string | null;
+
   @ApiProperty({ type: TourTranslationInlineDto, nullable: true })
   translation!: TourTranslationInlineDto | null;
 

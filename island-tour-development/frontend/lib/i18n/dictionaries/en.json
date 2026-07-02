@@ -256,29 +256,83 @@
       "alsoWorthTitle": "Also worth your time on {destination}",
       "faq": {
         "items": [
-          { "q": "Is Klein Curaçao worth it?", "a": "Yes. Most visitors find the day trip well worth it for one of the longest, most beautiful white-sand beaches in the Caribbean. It's a full day on the sand and in the water, perfect for sunbathing, swimming and snorkeling, with a protected reef and sea turtles in the shallows. The island is completely undeveloped, with no crowds beyond the day boats. We've yet to meet anyone who regretted going." },
-          { "q": "What is there to do on Klein Curaçao?", "a": "Swim and snorkel the protected south-shore reef, sunbathe on over a kilometre of white sand, climb the 1877 pink lighthouse, and walk the north shore past three shipwrecks. Look for the hawksbill, loggerhead and green turtles that nest here. There are no shops or attractions, the island itself is the experience." },
-          { "q": "How much does a Klein Curaçao trip cost?", "a": "Day trips start from around $120 per person and vary by boat and what's included, breakfast, lunch, an open bar and snorkel gear are bundled differently across operators. Private charters are priced per group. The price on each listing is the full per-person fare." },
-          { "q": "How long is the boat trip to Klein Curaçao?", "a": "The crossing takes roughly 1 to 2 hours each way depending on the boat, sailing catamarans and yachts are slower than the powerboats and RIBs. You sail out against the trade winds and return with them, so the way back is usually smoother and quicker." },
-          { "q": "Will I get seasick on the way to Klein Curaçao?", "a": "It can be choppy heading out into the trade winds, so it's possible. Sit toward the back and centre of the boat, keep your eyes on the horizon, and take a remedy before you sail if you're prone to it. Most stomachs settle once you're moving." },
-          { "q": "What should I bring to Klein Curaçao?", "a": "Water shoes, reef-safe sunscreen, a hat and sunglasses, a towel and some cash. The sun is fierce and bounces off the sand and water, so reapply often. There's barely any phone signal, so download anything you need before you go." },
-          { "q": "Are there toilets on Klein Curaçao?", "a": "Yes. Most boats have a toilet on board, and several operators have a beach house on the island with toilets and showers. Facilities are basic, the island is otherwise undeveloped." },
-          { "q": "Is Klein Curaçao suitable for families with young children?", "a": "Yes. The calm, shallow, reef-protected south shore is ideal for children, and the steadier motorboats and family boats make for an easier crossing. Bring water shoes and sun protection, and note there's no shade beyond the palapas and beach houses." },
-          { "q": "What happens if the weather is bad on my Klein Curaçao trip?", "a": "If an operator cancels for weather or rough seas, you're rebooked for another day or refunded in full. Every listing also carries a free-cancellation window, so you can change your plans within it at no cost." }
+          {
+            "q": "Is Klein Curaçao worth it?",
+            "a": "Yes. Most visitors find the day trip well worth it for one of the longest, most beautiful white-sand beaches in the Caribbean. It's a full day on the sand and in the water, perfect for sunbathing, swimming and snorkeling, with a protected reef and sea turtles in the shallows. The island is completely undeveloped, with no crowds beyond the day boats. We've yet to meet anyone who regretted going."
+          },
+          {
+            "q": "What is there to do on Klein Curaçao?",
+            "a": "Swim and snorkel the protected south-shore reef, sunbathe on over a kilometre of white sand, climb the 1877 pink lighthouse, and walk the north shore past three shipwrecks. Look for the hawksbill, loggerhead and green turtles that nest here. There are no shops or attractions, the island itself is the experience."
+          },
+          {
+            "q": "How much does a Klein Curaçao trip cost?",
+            "a": "Day trips start from around $120 per person and vary by boat and what's included, breakfast, lunch, an open bar and snorkel gear are bundled differently across operators. Private charters are priced per group. The price on each listing is the full per-person fare."
+          },
+          {
+            "q": "How long is the boat trip to Klein Curaçao?",
+            "a": "The crossing takes roughly 1 to 2 hours each way depending on the boat, sailing catamarans and yachts are slower than the powerboats and RIBs. You sail out against the trade winds and return with them, so the way back is usually smoother and quicker."
+          },
+          {
+            "q": "Will I get seasick on the way to Klein Curaçao?",
+            "a": "It can be choppy heading out into the trade winds, so it's possible. Sit toward the back and centre of the boat, keep your eyes on the horizon, and take a remedy before you sail if you're prone to it. Most stomachs settle once you're moving."
+          },
+          {
+            "q": "What should I bring to Klein Curaçao?",
+            "a": "Water shoes, reef-safe sunscreen, a hat and sunglasses, a towel and some cash. The sun is fierce and bounces off the sand and water, so reapply often. There's barely any phone signal, so download anything you need before you go."
+          },
+          {
+            "q": "Are there toilets on Klein Curaçao?",
+            "a": "Yes. Most boats have a toilet on board, and several operators have a beach house on the island with toilets and showers. Facilities are basic, the island is otherwise undeveloped."
+          },
+          {
+            "q": "Is Klein Curaçao suitable for families with young children?",
+            "a": "Yes. The calm, shallow, reef-protected south shore is ideal for children, and the steadier motorboats and family boats make for an easier crossing. Bring water shoes and sun protection, and note there's no shade beyond the palapas and beach houses."
+          },
+          {
+            "q": "What happens if the weather is bad on my Klein Curaçao trip?",
+            "a": "If an operator cancels for weather or rough seas, you're rebooked for another day or refunded in full. Every listing also carries a free-cancellation window, so you can change your plans within it at no cost."
+          }
         ]
       },
       "titlePattern": "{hub} day trips",
       "tripsHeading": "{count} {hub} day trips. Pick yours.",
       "tripsSubtitle": "Select a date, or compare below first",
-      "charters": { "heading": "{count} private charters. Yours alone.", "subtitle": "Exclusively for your group, plus the crew.", "dayCharters": "Day charters", "overnightCharters": "Overnight charters" },
-      "picks": { "heading": "We've been on every boat", "subtitle": "Our top picks - one for every type of traveler", "bookTrip": "Book this Trip", "footerNote": "Our honest picks not paid placements.", "seeAllTours": "See All Tours", "best": "BEST OVERALL", "popular": "MOST POPULAR", "families": "BEST FOR FAMILIES" },
+      "charters": {
+        "heading": "{count} private charters. Yours alone.",
+        "subtitle": "Exclusively for your group, plus the crew.",
+        "dayCharters": "Day charters",
+        "overnightCharters": "Overnight charters"
+      },
+      "picks": {
+        "heading": "We've been on every boat",
+        "subtitle": "Our top picks - one for every type of traveler",
+        "bookTrip": "Book this Trip",
+        "footerNote": "Our honest picks not paid placements.",
+        "seeAllTours": "See All Tours",
+        "best": "BEST OVERALL",
+        "popular": "MOST POPULAR",
+        "families": "BEST FOR FAMILIES"
+      },
       "sponsored": "Sponsored",
-      "tabs": { "trips": "Trips", "privateCharters": "Private charters", "compare": "Compare", "discover": "Discover" },
+      "tabs": {
+        "trips": "Trips",
+        "privateCharters": "Private charters",
+        "compare": "Compare",
+        "discover": "Discover"
+      },
       "tagline": "Where islanders send their visitors",
       "selectDate": "Select date",
       "checkAvailability": "Check Availability",
-      "comparison": { "title": "Which trip is right for you?", "subtitle": "All six boats go to Klein Curaçao. Soft drinks and a BBQ lunch included. Here's what's different once you're there.", "book": "Book" },
-      "discover": { "titlePattern": "Discover {hub}", "subtitle": "A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.", "bookTrip": "Book your trip" }
+      "comparison": {
+        "title": "Which trip is right for you?",
+        "subtitle": "All six boats go to Klein Curaçao. Soft drinks and a BBQ lunch included. Here's what's different once you're there.",
+        "book": "Book"
+      },
+      "discover": {
+        "titlePattern": "Discover {hub}",
+        "subtitle": "A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.",
+        "bookTrip": "Book your trip"
+      }
     },
     "tour": {
       "save": "Save",
@@ -308,7 +362,20 @@
         "subtitle": "Verified guest reviews from real travelers",
         "seeAll": "See all reviews",
         "verified": "Verified",
-        "readMore": "Read More"
+        "readMore": "Read More",
+        "readLess": "Read less"
+      },
+      "reviewsSection": {
+        "subtitle": "Every review from a confirmed booking. No exceptions.",
+        "reviewsCount": "{count} reviews",
+        "sortBy": "Sort by:",
+        "sortNewest": "Most recent",
+        "sortRatingHigh": "Highest rated",
+        "sortRatingLow": "Lowest rated",
+        "sortHelpful": "Most helpful",
+        "showMore": "Show more reviews",
+        "loading": "Loading...",
+        "empty": "No reviews yet. Be the first to book and review this tour."
       },
       "sections": {
         "overview": "Overview",

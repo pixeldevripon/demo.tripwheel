@@ -110,6 +110,10 @@ function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
     categories: [{ categoryId: 'cat-1', isPrimary: true }],
     hubs: [],
     translations: [],
+    operator: {
+      companyInfo: { companyName: 'Miss Ann' },
+      user: { name: 'Op Owner' },
+    },
     ...overrides,
   };
 }

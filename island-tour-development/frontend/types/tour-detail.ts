@@ -211,6 +211,9 @@ export interface PublicTourDetail {
   createdAt: string;
   updatedAt: string;
 
+  /** Operator display name (company name, else account name). */
+  operatorName: string | null;
+
   // Relations (localized, EN fallback applied server-side)
   translation: PublicTourTranslation | null;
   images: PublicTourImage[];

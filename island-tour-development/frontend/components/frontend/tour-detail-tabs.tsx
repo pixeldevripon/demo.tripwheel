@@ -1,6 +1,8 @@
 'use client';
 
+import { useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
+import { smoothScrollToId } from '@/lib/motion/smooth-scroll';
 
 export type TourTab = {
     /** DOM id of the section this tab scrolls to. */
@@ -22,6 +24,7 @@ export type TourTab = {
 export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     const barRef = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState(tabs[0]?.id ?? '');
+    const reduce = useReducedMotion();
 
     // Scrollspy: the active tab is the last section whose top has passed the bar.
     useEffect(() => {
@@ -41,11 +44,8 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
 
     const goTo = (id: string) => {
         setActive(id);
-        const el = document.getElementById(id);
-        if (!el) return;
         const offset = (barRef.current?.offsetHeight ?? 0) + 96;
-        const top = el.getBoundingClientRect().top + window.scrollY - offset;
-        window.scrollTo({ top, behavior: 'smooth' });
+        smoothScrollToId(id, offset, !!reduce);
     };
 
     return (

@@ -1,4 +1,11 @@
+'use client';
+
 import Image from 'next/image';
+import { useState } from 'react';
+import { type Locale } from '@/lib/constants/locales';
+import { fetchTourReviews } from '@/lib/api/reviews';
+import { toFullReview } from '@/lib/reviews/review-view';
+import type { ReviewSort } from '@/types/review';
 
 export type ReviewHistogramRow = { stars: number; count: number };
 
@@ -11,8 +18,8 @@ export type FullReview = {
     name: string;
     date: string;
     text: string;
-    /** Number of attached photo thumbnails (placeholder squares). */
-    photos?: number;
+    /** Attached photo URLs. */
+    photos?: string[];
     /** Optional operator response. */
     response?: ReviewResponse;
 };
@@ -23,9 +30,24 @@ export type TourReviewsSectionDict = {
     /** "{count} reviews" */
     reviewsCount: string;
     sortBy: string;
-    sortValue: string;
+    sortNewest: string;
+    sortRatingHigh: string;
+    sortRatingLow: string;
+    sortHelpful: string;
     showMore: string;
+    loading: string;
+    empty: string;
 };
+
+const SORT_OPTIONS: { value: ReviewSort; labelKey: keyof TourReviewsSectionDict }[] = [
+    { value: 'newest', labelKey: 'sortNewest' },
+    { value: 'rating_desc', labelKey: 'sortRatingHigh' },
+    { value: 'rating_asc', labelKey: 'sortRatingLow' },
+    { value: 'helpful', labelKey: 'sortHelpful' },
+];
+
+// Cap the customer-photo strip so a long review set doesn't render hundreds of tiles.
+const PHOTO_STRIP_LIMIT = 12;
 
 function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
     return (
@@ -46,28 +68,93 @@ function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
 
 /**
  * Full reviews section (Figma node 47936:3804) - the `#tour-reviews` target of
- * the detail tab nav. Unlike the other detail sections it is NOT collapsible.
+ * the detail tab nav (the preview strip's "See all reviews" scrolls here). Unlike
+ * the other detail sections it is NOT collapsible.
  *
- * Header + aggregate rating histogram, a sort control, a scrollable strip of
- * customer photos, the review cards (a featured card may carry photo thumbnails
- * and an operator response), and a "Show more" button. Static/presentational
- * until the reviews module + tour-by-slug API are wired.
+ * Dynamic + paginated: seeded server-side with the first page, it fetches further
+ * pages on "Show more" and re-fetches from page 1 when the sort changes, hitting
+ * the public `GET /reviews` endpoint directly (no auth). Header aggregate + star
+ * histogram come from the tour payload; the customer-photo strip is aggregated
+ * from the loaded reviews. Renders an empty state when the tour has no reviews.
  */
 export function TourReviewsSection({
+    tourId,
+    locale,
     rating,
     reviewCount,
     histogram,
-    photoCount,
-    reviews,
+    initialReviews,
+    total,
+    pageSize,
+    hostLabel,
     dict,
 }: {
+    tourId: string;
+    locale: Locale;
     rating: number;
     reviewCount: number;
     histogram: ReviewHistogramRow[];
-    photoCount: number;
-    reviews: FullReview[];
+    initialReviews: FullReview[];
+    total: number;
+    pageSize: number;
+    hostLabel: string;
     dict: TourReviewsSectionDict;
 }) {
+    const [reviews, setReviews] = useState<FullReview[]>(initialReviews);
+    const [sort, setSort] = useState<ReviewSort>('newest');
+    const [loadedPages, setLoadedPages] = useState(1);
+    const [loading, setLoading] = useState(false);
+
+    const hasMore = reviews.length < total;
+    const photoStrip = reviews
+        .flatMap(r => r.photos ?? [])
+        .slice(0, PHOTO_STRIP_LIMIT);
+
+    async function loadPage(page: number, nextSort: ReviewSort, append: boolean) {
+        setLoading(true);
+        try {
+            const res = await fetchTourReviews({
+                tourId,
+                locale,
+                sort: nextSort,
+                page,
+                limit: pageSize,
+            });
+            const mapped = res.data.map(r => toFullReview(r, locale, hostLabel));
+            setReviews(prev => (append ? [...prev, ...mapped] : mapped));
+            setLoadedPages(page);
+        } catch {
+            // Keep whatever is already shown; the button/control stays for retry.
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function handleSortChange(next: ReviewSort) {
+        if (next === sort || loading) return;
+        setSort(next);
+        void loadPage(1, next, false);
+    }
+
+    function handleShowMore() {
+        if (loading || !hasMore) return;
+        void loadPage(loadedPages + 1, sort, true);
+    }
+
+    // Empty state - keep the heading (it's the tab-nav target) and show a message.
+    if (total === 0) {
+        return (
+            <section id='tour-reviews' className='flex scroll-mt-36 flex-col gap-4'>
+                <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    {dict.title}
+                </h2>
+                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    {dict.empty}
+                </p>
+            </section>
+        );
+    }
+
     return (
         <section id='tour-reviews' className='flex scroll-mt-36 flex-col gap-8'>
             {/* Header + rating summary */}
@@ -133,29 +220,47 @@ export function TourReviewsSection({
                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.sortBy}
                 </span>
-                <button
-                    type='button'
-                    className='flex cursor-pointer items-center gap-4 rounded-it-full border border-it-border bg-it-white px-6 py-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    {dict.sortValue}
+                <div className='relative'>
+                    <select
+                        value={sort}
+                        onChange={e => handleSortChange(e.target.value as ReviewSort)}
+                        disabled={loading}
+                        aria-label={dict.sortBy}
+                        className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                        {SORT_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>
+                                {dict[opt.labelKey]}
+                            </option>
+                        ))}
+                    </select>
                     <Image
                         src='/icons/caret-down.svg'
                         alt=''
                         width={20}
                         height={20}
-                        className='size-5 shrink-0'
+                        className='pointer-events-none absolute top-1/2 right-4 size-5 shrink-0 -translate-y-1/2'
                     />
-                </button>
+                </div>
             </div>
 
-            {/* Customer photo strip */}
-            <div className='flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                {Array.from({ length: photoCount }).map((_, i) => (
-                    <div
-                        key={i}
-                        className='size-20 shrink-0 rounded-it-full bg-it-border'
-                    />
-                ))}
-            </div>
+            {/* Customer photo strip - real review photos */}
+            {photoStrip.length > 0 && (
+                <div className='flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                    {photoStrip.map((src, i) => (
+                        <div
+                            key={`${src}-${i}`}
+                            className='relative size-20 shrink-0 overflow-hidden rounded-it-full bg-it-border'>
+                            <Image
+                                src={src}
+                                alt=''
+                                fill
+                                sizes='80px'
+                                className='object-cover'
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Review cards */}
             <div className='flex flex-col gap-4'>
@@ -165,11 +270,15 @@ export function TourReviewsSection({
             </div>
 
             {/* Show more */}
-            <button
-                type='button'
-                className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5'>
-                {dict.showMore}
-            </button>
+            {hasMore && (
+                <button
+                    type='button'
+                    onClick={handleShowMore}
+                    disabled={loading}
+                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
+                    {loading ? dict.loading : dict.showMore}
+                </button>
+            )}
         </section>
     );
 }
@@ -194,15 +303,22 @@ function ReviewCard({ review }: { review: FullReview }) {
                 </p>
             </div>
 
-            {(review.photos || review.response) && (
+            {((review.photos && review.photos.length > 0) || review.response) && (
                 <div className='flex flex-col gap-4'>
-                    {review.photos ? (
-                        <div className='flex gap-2'>
-                            {Array.from({ length: review.photos }).map((_, i) => (
+                    {review.photos && review.photos.length > 0 ? (
+                        <div className='flex flex-wrap gap-2'>
+                            {review.photos.map((src, i) => (
                                 <div
-                                    key={i}
-                                    className='size-10 shrink-0 rounded-[10px] bg-it-border'
-                                />
+                                    key={`${src}-${i}`}
+                                    className='relative size-20 shrink-0 overflow-hidden rounded-[10px] bg-it-border'>
+                                    <Image
+                                        src={src}
+                                        alt=''
+                                        fill
+                                        sizes='80px'
+                                        className='object-cover'
+                                    />
+                                </div>
                             ))}
                         </div>
                     ) : null}

@@ -256,29 +256,83 @@
       "alsoWorthTitle": "Ebenfalls einen Besuch wert auf {destination}",
       "faq": {
         "items": [
-          { "q": "Lohnt sich Klein Curaçao?", "a": "Ja. Die meisten Besucher finden den Tagesausflug absolut lohnenswert, einer der längsten und schönsten weißen Sandstrände der Karibik. Ein ganzer Tag am Strand und im Wasser, perfekt zum Sonnenbaden, Schwimmen und Schnorcheln, mit einem geschützten Riff und Meeresschildkröten im flachen Wasser. Die Insel ist völlig unbebaut, ohne Menschenmengen außer den Tagesbooten. Wir haben noch niemanden getroffen, der es bereut hat." },
-          { "q": "Was kann man auf Klein Curaçao unternehmen?", "a": "Schwimmen und Schnorcheln am geschützten Riff der Südküste, Sonnenbaden auf über einem Kilometer weißem Sand, den rosa Leuchtturm von 1877 erklimmen und an der Nordküste an drei Schiffswracks vorbeispazieren. Halte Ausschau nach den Karett-, Unechten und Grünen Meeresschildkröten, die hier nisten. Es gibt keine Geschäfte oder Attraktionen, die Insel selbst ist das Erlebnis." },
-          { "q": "Was kostet ein Ausflug nach Klein Curaçao?", "a": "Tagesausflüge beginnen bei etwa 120 $ pro Person und variieren je nach Boot und Leistungen, Frühstück, Mittagessen, eine Open Bar und Schnorchelausrüstung sind bei den Anbietern unterschiedlich enthalten. Private Charter werden pro Gruppe berechnet. Der Preis auf jeder Anzeige ist der vollständige Preis pro Person." },
-          { "q": "Wie lange dauert die Bootsfahrt nach Klein Curaçao?", "a": "Die Überfahrt dauert je nach Boot etwa 1 bis 2 Stunden pro Strecke, Segelkatamarane und Yachten sind langsamer als die Powerboote und RIBs. Auf dem Hinweg fährt man gegen die Passatwinde und kommt mit ihnen zurück, daher ist die Rückfahrt meist ruhiger und schneller." },
-          { "q": "Werde ich auf dem Weg nach Klein Curaçao seekrank?", "a": "Auf dem Hinweg in die Passatwinde kann es ruppig werden, also ist es möglich. Setze dich nach hinten in die Mitte des Boots, halte den Blick auf den Horizont und nimm vor der Fahrt ein Mittel ein, wenn du anfällig bist. Die meisten Mägen beruhigen sich, sobald es losgeht." },
-          { "q": "Was sollte ich nach Klein Curaçao mitbringen?", "a": "Wasserschuhe, rifffreundliche Sonnencreme, Hut und Sonnenbrille, ein Handtuch und etwas Bargeld. Die Sonne ist intensiv und reflektiert von Sand und Wasser, also häufig nachcremen. Es gibt kaum Handyempfang, lade also alles vorher herunter, was du brauchst." },
-          { "q": "Gibt es Toiletten auf Klein Curaçao?", "a": "Ja. Die meisten Boote haben eine Toilette an Bord, und mehrere Anbieter haben ein Strandhaus auf der Insel mit Toiletten und Duschen. Die Einrichtungen sind einfach, die Insel ist ansonsten unbebaut." },
-          { "q": "Ist Klein Curaçao für Familien mit kleinen Kindern geeignet?", "a": "Ja. Die ruhige, flache, riffgeschützte Südküste ist ideal für Kinder, und die stabileren Motorboote und Familienboote machen die Überfahrt einfacher. Bring Wasserschuhe und Sonnenschutz mit und beachte, dass es außer den Palapas und Strandhäusern keinen Schatten gibt." },
-          { "q": "Was passiert, wenn das Wetter bei meinem Ausflug schlecht ist?", "a": "Wenn ein Anbieter wegen Wetter oder rauer See absagt, wirst du auf einen anderen Tag umgebucht oder vollständig erstattet. Jede Anzeige hat außerdem ein kostenloses Stornofenster, sodass du deine Pläne darin kostenlos ändern kannst." }
+          {
+            "q": "Lohnt sich Klein Curaçao?",
+            "a": "Ja. Die meisten Besucher finden den Tagesausflug absolut lohnenswert, einer der längsten und schönsten weißen Sandstrände der Karibik. Ein ganzer Tag am Strand und im Wasser, perfekt zum Sonnenbaden, Schwimmen und Schnorcheln, mit einem geschützten Riff und Meeresschildkröten im flachen Wasser. Die Insel ist völlig unbebaut, ohne Menschenmengen außer den Tagesbooten. Wir haben noch niemanden getroffen, der es bereut hat."
+          },
+          {
+            "q": "Was kann man auf Klein Curaçao unternehmen?",
+            "a": "Schwimmen und Schnorcheln am geschützten Riff der Südküste, Sonnenbaden auf über einem Kilometer weißem Sand, den rosa Leuchtturm von 1877 erklimmen und an der Nordküste an drei Schiffswracks vorbeispazieren. Halte Ausschau nach den Karett-, Unechten und Grünen Meeresschildkröten, die hier nisten. Es gibt keine Geschäfte oder Attraktionen, die Insel selbst ist das Erlebnis."
+          },
+          {
+            "q": "Was kostet ein Ausflug nach Klein Curaçao?",
+            "a": "Tagesausflüge beginnen bei etwa 120 $ pro Person und variieren je nach Boot und Leistungen, Frühstück, Mittagessen, eine Open Bar und Schnorchelausrüstung sind bei den Anbietern unterschiedlich enthalten. Private Charter werden pro Gruppe berechnet. Der Preis auf jeder Anzeige ist der vollständige Preis pro Person."
+          },
+          {
+            "q": "Wie lange dauert die Bootsfahrt nach Klein Curaçao?",
+            "a": "Die Überfahrt dauert je nach Boot etwa 1 bis 2 Stunden pro Strecke, Segelkatamarane und Yachten sind langsamer als die Powerboote und RIBs. Auf dem Hinweg fährt man gegen die Passatwinde und kommt mit ihnen zurück, daher ist die Rückfahrt meist ruhiger und schneller."
+          },
+          {
+            "q": "Werde ich auf dem Weg nach Klein Curaçao seekrank?",
+            "a": "Auf dem Hinweg in die Passatwinde kann es ruppig werden, also ist es möglich. Setze dich nach hinten in die Mitte des Boots, halte den Blick auf den Horizont und nimm vor der Fahrt ein Mittel ein, wenn du anfällig bist. Die meisten Mägen beruhigen sich, sobald es losgeht."
+          },
+          {
+            "q": "Was sollte ich nach Klein Curaçao mitbringen?",
+            "a": "Wasserschuhe, rifffreundliche Sonnencreme, Hut und Sonnenbrille, ein Handtuch und etwas Bargeld. Die Sonne ist intensiv und reflektiert von Sand und Wasser, also häufig nachcremen. Es gibt kaum Handyempfang, lade also alles vorher herunter, was du brauchst."
+          },
+          {
+            "q": "Gibt es Toiletten auf Klein Curaçao?",
+            "a": "Ja. Die meisten Boote haben eine Toilette an Bord, und mehrere Anbieter haben ein Strandhaus auf der Insel mit Toiletten und Duschen. Die Einrichtungen sind einfach, die Insel ist ansonsten unbebaut."
+          },
+          {
+            "q": "Ist Klein Curaçao für Familien mit kleinen Kindern geeignet?",
+            "a": "Ja. Die ruhige, flache, riffgeschützte Südküste ist ideal für Kinder, und die stabileren Motorboote und Familienboote machen die Überfahrt einfacher. Bring Wasserschuhe und Sonnenschutz mit und beachte, dass es außer den Palapas und Strandhäusern keinen Schatten gibt."
+          },
+          {
+            "q": "Was passiert, wenn das Wetter bei meinem Ausflug schlecht ist?",
+            "a": "Wenn ein Anbieter wegen Wetter oder rauer See absagt, wirst du auf einen anderen Tag umgebucht oder vollständig erstattet. Jede Anzeige hat außerdem ein kostenloses Stornofenster, sodass du deine Pläne darin kostenlos ändern kannst."
+          }
         ]
       },
       "titlePattern": "Tagesausflüge nach {hub}",
       "tripsHeading": "{count} Tagesausflüge nach {hub}. Triff deine Wahl.",
       "tripsSubtitle": "Wähle ein Datum oder vergleiche zuerst unten",
-      "charters": { "heading": "{count} private Charter. Ganz für dich.", "subtitle": "Exklusiv für deine Gruppe, plus die Crew.", "dayCharters": "Tagescharter", "overnightCharters": "Übernachtungscharter" },
-      "picks": { "heading": "Wir waren auf jedem Boot", "subtitle": "Unsere Favoriten - einer für jeden Reisetyp", "bookTrip": "Diese Tour buchen", "footerNote": "Unsere ehrliche Auswahl, keine bezahlten Platzierungen.", "seeAllTours": "Alle Touren ansehen", "best": "INSGESAMT BESTE", "popular": "AM BELIEBTESTEN", "families": "BESTE FÜR FAMILIEN" },
+      "charters": {
+        "heading": "{count} private Charter. Ganz für dich.",
+        "subtitle": "Exklusiv für deine Gruppe, plus die Crew.",
+        "dayCharters": "Tagescharter",
+        "overnightCharters": "Übernachtungscharter"
+      },
+      "picks": {
+        "heading": "Wir waren auf jedem Boot",
+        "subtitle": "Unsere Favoriten - einer für jeden Reisetyp",
+        "bookTrip": "Diese Tour buchen",
+        "footerNote": "Unsere ehrliche Auswahl, keine bezahlten Platzierungen.",
+        "seeAllTours": "Alle Touren ansehen",
+        "best": "INSGESAMT BESTE",
+        "popular": "AM BELIEBTESTEN",
+        "families": "BESTE FÜR FAMILIEN"
+      },
       "sponsored": "Gesponsert",
-      "tabs": { "trips": "Touren", "privateCharters": "Private Charter", "compare": "Vergleichen", "discover": "Entdecken" },
+      "tabs": {
+        "trips": "Touren",
+        "privateCharters": "Private Charter",
+        "compare": "Vergleichen",
+        "discover": "Entdecken"
+      },
       "tagline": "Wohin Einheimische ihre Besucher schicken",
       "selectDate": "Datum auswählen",
       "checkAvailability": "Verfügbarkeit prüfen",
-      "comparison": { "title": "Welcher Ausflug passt zu dir?", "subtitle": "Alle sechs Boote fahren nach Klein Curaçao. Softdrinks und ein BBQ-Mittagessen inklusive. Das ist der Unterschied, sobald du dort bist.", "book": "Buchen" },
-      "discover": { "titlePattern": "Entdecke {hub}", "subtitle": "Eine flache, unbewohnte Insel von 1,7 km², 10 km vor der Südostküste von Curaçao. Keine Geschäfte, kein Empfang, nur Sand, Riff und Geschichte.", "bookTrip": "Buche deinen Trip" }
+      "comparison": {
+        "title": "Welcher Ausflug passt zu dir?",
+        "subtitle": "Alle sechs Boote fahren nach Klein Curaçao. Softdrinks und ein BBQ-Mittagessen inklusive. Das ist der Unterschied, sobald du dort bist.",
+        "book": "Buchen"
+      },
+      "discover": {
+        "titlePattern": "Entdecke {hub}",
+        "subtitle": "Eine flache, unbewohnte Insel von 1,7 km², 10 km vor der Südostküste von Curaçao. Keine Geschäfte, kein Empfang, nur Sand, Riff und Geschichte.",
+        "bookTrip": "Buche deinen Trip"
+      }
     },
     "tour": {
       "save": "Speichern",
@@ -308,7 +362,20 @@
         "subtitle": "Verifizierte Bewertungen von echten Reisenden",
         "seeAll": "Alle Bewertungen ansehen",
         "verified": "Verifiziert",
-        "readMore": "Mehr lesen"
+        "readMore": "Mehr lesen",
+        "readLess": "Weniger anzeigen"
+      },
+      "reviewsSection": {
+        "subtitle": "Jede Bewertung stammt aus einer bestätigten Buchung. Ohne Ausnahme.",
+        "reviewsCount": "{count} Bewertungen",
+        "sortBy": "Sortieren nach:",
+        "sortNewest": "Neueste",
+        "sortRatingHigh": "Beste Bewertung",
+        "sortRatingLow": "Schlechteste Bewertung",
+        "sortHelpful": "Hilfreichste",
+        "showMore": "Mehr Bewertungen anzeigen",
+        "loading": "Wird geladen...",
+        "empty": "Noch keine Bewertungen. Sei der Erste, der diese Tour bucht und bewertet."
       },
       "sections": {
         "overview": "Überblick",

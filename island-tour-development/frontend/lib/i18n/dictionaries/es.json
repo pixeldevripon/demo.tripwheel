@@ -256,29 +256,83 @@
       "alsoWorthTitle": "También vale la pena en {destination}",
       "faq": {
         "items": [
-          { "q": "¿Merece la pena Klein Curaçao?", "a": "Sí. La mayoría de los visitantes encuentran la excursión de un día muy gratificante, una de las playas de arena blanca más largas y bonitas del Caribe. Un día entero en la arena y en el agua, perfecto para tomar el sol, nadar y hacer snorkel, con un arrecife protegido y tortugas marinas en aguas poco profundas. La isla está completamente sin urbanizar, sin multitudes más allá de los barcos del día. Aún no hemos conocido a nadie que se arrepintiera de ir." },
-          { "q": "¿Qué hay que hacer en Klein Curaçao?", "a": "Nadar y hacer snorkel en el arrecife protegido de la costa sur, tomar el sol en más de un kilómetro de arena blanca, subir al faro rosa de 1877 y recorrer la costa norte junto a tres naufragios. Busca las tortugas carey, boba y verde que anidan aquí. No hay tiendas ni atracciones, la isla en sí es la experiencia." },
-          { "q": "¿Cuánto cuesta una excursión a Klein Curaçao?", "a": "Las excursiones de un día desde unos 120 $ por persona y varían según el barco y lo incluido, desayuno, almuerzo, barra libre y equipo de snorkel se incluyen de forma distinta según el operador. Los chárteres privados se cobran por grupo. El precio de cada anuncio es la tarifa completa por persona." },
-          { "q": "¿Cuánto dura el viaje en barco a Klein Curaçao?", "a": "La travesía dura aproximadamente de 1 a 2 horas por trayecto según el barco, los catamaranes de vela y los yates son más lentos que las lanchas y las semirrígidas. Se navega contra los vientos alisios a la ida y con ellos a la vuelta, por lo que el regreso suele ser más suave y rápido." },
-          { "q": "¿Me marearé de camino a Klein Curaçao?", "a": "A la ida puede haber oleaje frente a los vientos alisios, así que es posible. Siéntate hacia la parte trasera y central del barco, mantén la vista en el horizonte y toma algo antes de zarpar si eres propenso. La mayoría de los estómagos se calman una vez en marcha." },
-          { "q": "¿Qué debo llevar a Klein Curaçao?", "a": "Escarpines, protector solar respetuoso con el arrecife, gorra y gafas de sol, una toalla y algo de efectivo. El sol es intenso y se refleja en la arena y el agua, así que vuelve a aplicarlo a menudo. Apenas hay cobertura móvil, así que descarga lo que necesites antes de ir." },
-          { "q": "¿Hay baños en Klein Curaçao?", "a": "Sí. La mayoría de los barcos tienen baño a bordo, y varios operadores tienen una casa de playa en la isla con baños y duchas. Las instalaciones son básicas, la isla está por lo demás sin urbanizar." },
-          { "q": "¿Es Klein Curaçao adecuado para familias con niños pequeños?", "a": "Sí. La costa sur, tranquila, poco profunda y protegida por el arrecife, es ideal para niños, y los barcos a motor y familiares más estables facilitan la travesía. Lleva escarpines y protección solar, y ten en cuenta que no hay sombra más allá de las palapas y las casas de playa." },
-          { "q": "¿Qué pasa si hace mal tiempo el día de mi excursión?", "a": "Si un operador cancela por el tiempo o la mar gruesa, se te reubica otro día o se te reembolsa por completo. Cada anuncio incluye además una ventana de cancelación gratuita, así que puedes cambiar tus planes sin coste dentro de ese plazo." }
+          {
+            "q": "¿Merece la pena Klein Curaçao?",
+            "a": "Sí. La mayoría de los visitantes encuentran la excursión de un día muy gratificante, una de las playas de arena blanca más largas y bonitas del Caribe. Un día entero en la arena y en el agua, perfecto para tomar el sol, nadar y hacer snorkel, con un arrecife protegido y tortugas marinas en aguas poco profundas. La isla está completamente sin urbanizar, sin multitudes más allá de los barcos del día. Aún no hemos conocido a nadie que se arrepintiera de ir."
+          },
+          {
+            "q": "¿Qué hay que hacer en Klein Curaçao?",
+            "a": "Nadar y hacer snorkel en el arrecife protegido de la costa sur, tomar el sol en más de un kilómetro de arena blanca, subir al faro rosa de 1877 y recorrer la costa norte junto a tres naufragios. Busca las tortugas carey, boba y verde que anidan aquí. No hay tiendas ni atracciones, la isla en sí es la experiencia."
+          },
+          {
+            "q": "¿Cuánto cuesta una excursión a Klein Curaçao?",
+            "a": "Las excursiones de un día desde unos 120 $ por persona y varían según el barco y lo incluido, desayuno, almuerzo, barra libre y equipo de snorkel se incluyen de forma distinta según el operador. Los chárteres privados se cobran por grupo. El precio de cada anuncio es la tarifa completa por persona."
+          },
+          {
+            "q": "¿Cuánto dura el viaje en barco a Klein Curaçao?",
+            "a": "La travesía dura aproximadamente de 1 a 2 horas por trayecto según el barco, los catamaranes de vela y los yates son más lentos que las lanchas y las semirrígidas. Se navega contra los vientos alisios a la ida y con ellos a la vuelta, por lo que el regreso suele ser más suave y rápido."
+          },
+          {
+            "q": "¿Me marearé de camino a Klein Curaçao?",
+            "a": "A la ida puede haber oleaje frente a los vientos alisios, así que es posible. Siéntate hacia la parte trasera y central del barco, mantén la vista en el horizonte y toma algo antes de zarpar si eres propenso. La mayoría de los estómagos se calman una vez en marcha."
+          },
+          {
+            "q": "¿Qué debo llevar a Klein Curaçao?",
+            "a": "Escarpines, protector solar respetuoso con el arrecife, gorra y gafas de sol, una toalla y algo de efectivo. El sol es intenso y se refleja en la arena y el agua, así que vuelve a aplicarlo a menudo. Apenas hay cobertura móvil, así que descarga lo que necesites antes de ir."
+          },
+          {
+            "q": "¿Hay baños en Klein Curaçao?",
+            "a": "Sí. La mayoría de los barcos tienen baño a bordo, y varios operadores tienen una casa de playa en la isla con baños y duchas. Las instalaciones son básicas, la isla está por lo demás sin urbanizar."
+          },
+          {
+            "q": "¿Es Klein Curaçao adecuado para familias con niños pequeños?",
+            "a": "Sí. La costa sur, tranquila, poco profunda y protegida por el arrecife, es ideal para niños, y los barcos a motor y familiares más estables facilitan la travesía. Lleva escarpines y protección solar, y ten en cuenta que no hay sombra más allá de las palapas y las casas de playa."
+          },
+          {
+            "q": "¿Qué pasa si hace mal tiempo el día de mi excursión?",
+            "a": "Si un operador cancela por el tiempo o la mar gruesa, se te reubica otro día o se te reembolsa por completo. Cada anuncio incluye además una ventana de cancelación gratuita, así que puedes cambiar tus planes sin coste dentro de ese plazo."
+          }
         ]
       },
       "titlePattern": "Excursiones de un día a {hub}",
       "tripsHeading": "{count} excursiones de un día a {hub}. Elige la tuya.",
       "tripsSubtitle": "Selecciona una fecha o compara primero abajo",
-      "charters": { "heading": "{count} chárteres privados. Solo para ti.", "subtitle": "Exclusivamente para tu grupo, más la tripulación.", "dayCharters": "Chárteres de día", "overnightCharters": "Chárteres de noche" },
-      "picks": { "heading": "Hemos estado en cada barco", "subtitle": "Nuestras mejores opciones, una para cada tipo de viajero", "bookTrip": "Reservar este viaje", "footerNote": "Nuestras elecciones honestas, no anuncios pagados.", "seeAllTours": "Ver todos los tours", "best": "MEJOR EN GENERAL", "popular": "MÁS POPULAR", "families": "MEJOR PARA FAMILIAS" },
+      "charters": {
+        "heading": "{count} chárteres privados. Solo para ti.",
+        "subtitle": "Exclusivamente para tu grupo, más la tripulación.",
+        "dayCharters": "Chárteres de día",
+        "overnightCharters": "Chárteres de noche"
+      },
+      "picks": {
+        "heading": "Hemos estado en cada barco",
+        "subtitle": "Nuestras mejores opciones, una para cada tipo de viajero",
+        "bookTrip": "Reservar este viaje",
+        "footerNote": "Nuestras elecciones honestas, no anuncios pagados.",
+        "seeAllTours": "Ver todos los tours",
+        "best": "MEJOR EN GENERAL",
+        "popular": "MÁS POPULAR",
+        "families": "MEJOR PARA FAMILIAS"
+      },
       "sponsored": "Patrocinado",
-      "tabs": { "trips": "Viajes", "privateCharters": "Chárteres privados", "compare": "Comparar", "discover": "Descubrir" },
+      "tabs": {
+        "trips": "Viajes",
+        "privateCharters": "Chárteres privados",
+        "compare": "Comparar",
+        "discover": "Descubrir"
+      },
       "tagline": "A donde los locales envían a sus visitantes",
       "selectDate": "Seleccionar fecha",
       "checkAvailability": "Ver disponibilidad",
-      "comparison": { "title": "¿Qué excursión es la ideal para ti?", "subtitle": "Los seis barcos van a Klein Curazao. Refrescos y un almuerzo barbacoa incluidos. Esto es lo que cambia una vez que llegas.", "book": "Reservar" },
-      "discover": { "titlePattern": "Descubre {hub}", "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.", "bookTrip": "Reserva tu excursión" }
+      "comparison": {
+        "title": "¿Qué excursión es la ideal para ti?",
+        "subtitle": "Los seis barcos van a Klein Curazao. Refrescos y un almuerzo barbacoa incluidos. Esto es lo que cambia una vez que llegas.",
+        "book": "Reservar"
+      },
+      "discover": {
+        "titlePattern": "Descubre {hub}",
+        "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.",
+        "bookTrip": "Reserva tu excursión"
+      }
     },
     "tour": {
       "save": "Guardar",
@@ -308,7 +362,20 @@
         "subtitle": "Opiniones verificadas de viajeros reales",
         "seeAll": "Ver todas las opiniones",
         "verified": "Verificado",
-        "readMore": "Leer más"
+        "readMore": "Leer más",
+        "readLess": "Leer menos"
+      },
+      "reviewsSection": {
+        "subtitle": "Cada reseña proviene de una reserva confirmada. Sin excepciones.",
+        "reviewsCount": "{count} reseñas",
+        "sortBy": "Ordenar por:",
+        "sortNewest": "Más recientes",
+        "sortRatingHigh": "Mejor valoradas",
+        "sortRatingLow": "Peor valoradas",
+        "sortHelpful": "Más útiles",
+        "showMore": "Mostrar más reseñas",
+        "loading": "Cargando...",
+        "empty": "Aún no hay reseñas. Sé el primero en reservar y reseñar este tour."
       },
       "sections": {
         "overview": "Resumen",

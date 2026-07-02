@@ -942,6 +942,15 @@ export class ToursService {
       },
       select: {
         ...this.tourSelect,
+        // Operator display name for the public detail page (review response
+        // author, "Supplied by" on the cancellation policy). companyName wins,
+        // else the account name.
+        operator: {
+          select: {
+            companyInfo: { select: { companyName: true } },
+            user: { select: { name: true } },
+          },
+        },
         images: {
           select: {
             id: true,
@@ -1106,6 +1115,7 @@ export class ToursService {
       pickupLocations,
       features,
       languages,
+      operator,
       ...rest
     } = tour;
 
@@ -1192,6 +1202,8 @@ export class ToursService {
 
     return {
       ...this.flattenTour(rest),
+      operatorName:
+        operator?.companyInfo?.companyName ?? operator?.user?.name ?? null,
       translation: resolvedTranslation,
       ageBands: rest.ageBands,
       inclusions: resolvedInclusions,

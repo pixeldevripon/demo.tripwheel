@@ -1,6 +1,7 @@
 import Image from 'next/image';
-import Link from 'next/link';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { type Locale } from '@/lib/constants/locales';
+import { ExpandableText } from './expandable-text';
+import { SmoothScrollLink } from './smooth-scroll-link';
 
 export type TourReview = {
     id: string;
@@ -20,6 +21,7 @@ export type TourReviewsDict = {
     seeAll: string;
     verified: string;
     readMore: string;
+    readLess: string;
 };
 
 /**
@@ -35,24 +37,16 @@ export function TourReviews({
     rating,
     reviewCount,
     reviews,
-    destinationSlug,
-    tourSlug,
     locale,
     dict,
 }: {
     rating: number | null;
     reviewCount: number;
     reviews: TourReview[];
-    destinationSlug: string;
-    tourSlug: string;
     locale: Locale;
     dict: TourReviewsDict;
 }) {
     const muted = 'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
-    const seeAllHref = localizeHref(
-        locale,
-        `/${destinationSlug}/${tourSlug}/reviews`,
-    );
 
     return (
         <section className='flex flex-col gap-6'>
@@ -78,8 +72,9 @@ export function TourReviews({
                             </span>
                         )}
                     </div>
-                    <Link
-                        href={seeAllHref}
+                    <SmoothScrollLink
+                        targetId='tour-reviews'
+                        offset={144}
                         className='group inline-flex items-center gap-1 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline'>
                         {dict.seeAll}
                         <Image
@@ -89,7 +84,7 @@ export function TourReviews({
                             height={24}
                             className='size-6 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5'
                         />
-                    </Link>
+                    </SmoothScrollLink>
                 </div>
                 <p className={`m-0 ${muted}`}>{dict.subtitle}</p>
             </div>
@@ -159,17 +154,14 @@ function ReviewCard({
                 </div>
             </div>
 
-            {/* Excerpt with an inline "Read More" right after the text (Figma:
-                the link sits at the end of the truncated copy, not on its own
-                row). A single space separates them. */}
-            <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                {review.text}{' '}
-                <button
-                    type='button'
-                    className='cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-primary'>
-                    {dict.readMore}
-                </button>
-            </p>
+            {/* Excerpt with an inline, dynamic "Read More" / "Read less" toggle
+                right after the text (Figma: the link sits at the end of the
+                truncated copy, not on its own row). */}
+            <ExpandableText
+                text={review.text}
+                moreLabel={dict.readMore}
+                lessLabel={dict.readLess}
+            />
         </article>
     );
 }

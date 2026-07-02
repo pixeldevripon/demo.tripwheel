@@ -4,18 +4,21 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { toSlug } from '@/lib/utils';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getDestinationCategories } from '@/lib/api/public/categories';
+import { getTourReviews } from '@/lib/api/public/reviews';
+import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
 import { formatDuration } from '@/lib/tours/listing';
+import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { TourListing } from './tour-card';
 import { TourRelatedSection } from './tour-related-section';
 import { ToursBreadcrumb, type BreadcrumbAnchor } from './tours-breadcrumb';
 import { TourSection } from './tour-section';
 import { TourMeetingCard } from './tour-meeting-card';
-import { TourReviewsSection, type FullReview } from './tour-reviews-section';
+import { TourReviewsSection } from './tour-reviews-section';
 import { TourHeader } from './tour-header';
 import { TourGallery, type TourGalleryMeta } from './tour-gallery';
 import { TourBookingCard } from './tour-booking-card';
-import { TourReviews, type TourReview } from './tour-reviews';
+import { TourReviews } from './tour-reviews';
 import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
 
 /**
@@ -57,29 +60,6 @@ function formatLanguageCodes(codes: string[]): string {
     if (upper.length <= 2) return upper.join(', ');
     return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
 }
-
-// Review preview cards (Figma node 47936:3499) - placeholder until the reviews
-// module + tour-by-slug API are wired.
-const MOCK_REVIEWS: TourReview[] = [
-    {
-        id: 'rev-1',
-        name: 'Lina N.',
-        country: 'Netherlands',
-        date: 'March 12, 2026',
-        rating: 5,
-        text: 'Amazing snorkel spot. It was outstanding. The crew was friendly, the reef was full of life, and the sunset on the way back was...',
-        verified: true,
-    },
-    {
-        id: 'rev-2',
-        name: 'Marco R.',
-        country: 'Germany',
-        date: 'March 8, 2026',
-        rating: 5,
-        text: 'Perfectly organised from pickup to drop-off. The gear was in great condition and the guide pointed out turtles and rays we would never have...',
-        verified: true,
-    },
-];
 
 // Overview section content (Figma node 47936:3606) - placeholder editorial copy
 // until the tour-by-slug API returns the localized overview / local tip.
@@ -214,49 +194,6 @@ const MOCK_CANCELLATION = {
     operatorName: 'Miss Ann',
 };
 
-// Full "Reviews" section (Figma node 47936:3804) - placeholder until the reviews
-// module + tour-by-slug API are wired.
-const MOCK_REVIEW_SUMMARY = {
-    rating: 4.8,
-    reviewCount: 47,
-    histogram: [
-        { stars: 5, count: 38 },
-        { stars: 4, count: 7 },
-        { stars: 3, count: 2 },
-        { stars: 2, count: 0 },
-        { stars: 1, count: 0 },
-    ],
-    photoCount: 9,
-};
-const MOCK_FULL_REVIEWS: FullReview[] = [
-    {
-        id: 'fr-1',
-        rating: 5,
-        name: 'Lina N.',
-        date: 'March 12, 2026',
-        text: 'Easily the best day of our trip. Captain Mike knew every reef and we swam with three green turtles at the first stop. The BBQ lunch on the beach was fresh and generous, and the whole crew made it feel personal rather than packaged.',
-        photos: 3,
-        response: {
-            text: "Thank you, Lina! Glad you enjoyed Director's Bay. Hope to welcome you back soon.",
-            name: 'Miss Ann',
-            date: 'March 14, 2026',
-        },
-    },
-    {
-        id: 'fr-2',
-        rating: 5,
-        name: 'Marco R.',
-        date: 'March 8, 2026',
-        text: 'Perfectly organised from pickup to drop-off. The snorkel gear was in great condition and the crossing was smooth. Worth booking the morning departure as recommended - calm water and no crowds at the reef.',
-    },
-    {
-        id: 'fr-3',
-        rating: 5,
-        name: 'Sophie L.',
-        date: 'March 5, 2026',
-        text: 'A relaxed, beautiful day on the water. Small group so it never felt crowded, and the unlimited drinks on the sail back were a nice touch. Would happily do it again.',
-    },
-];
 
 // Related tours (Figma node 47936:3964) - "More {category} tours in
 // {destination}" + "More to explore in {destination}". Placeholder card sets
@@ -363,6 +300,7 @@ export async function TourPage({
     dict,
 }: TourPageProps) {
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    console.log('Tour detail:', detail);
     if (!detail) notFound();
 
     const tourDict = dict.destination.tour;
@@ -429,6 +367,29 @@ export async function TourPage({
         });
     }
 
+    // Reviews. Aggregate + histogram come off the tour payload (same source as
+    // the header rating); the individual cards come from the public reviews list
+    // (first page here, paginated client-side by the section). The preview strip
+    // shows the two newest. A review's operator IS the tour's operator, so the
+    // operator response author is the tour's operator name.
+    const reviewHostLabel = detail.operatorName ?? '';
+    const reviewList = await getTourReviews({
+        tourId: detail.id,
+        locale,
+        limit: REVIEWS_PAGE_SIZE,
+    });
+    const previewReviews = reviewList.data
+        .slice(0, 2)
+        .map(r => toTourReview(r, locale));
+    const fullReviews = reviewList.data.map(r =>
+        toFullReview(r, locale, reviewHostLabel),
+    );
+    // [5-star … 1-star] counts -> histogram rows.
+    const reviewHistogram = [5, 4, 3, 2, 1].map((stars, i) => ({
+        stars,
+        count: detail.ratingDistribution[i] ?? 0,
+    }));
+
     // In-page tab nav over the detail sections. Each tab scrolls to its `#id`
     // section; sections are added incrementally (each is collapsible, separated
     // by a hairline), so a tab whose section is not built yet is inert.
@@ -489,15 +450,15 @@ export async function TourPage({
                                 meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
-                            <TourReviews
-                                rating={rating}
-                                reviewCount={reviewCount}
-                                reviews={MOCK_REVIEWS}
-                                destinationSlug={destinationSlug}
-                                tourSlug={slug}
-                                locale={locale}
-                                dict={tourDict.reviews}
-                            />
+                            {reviewList.total > 0 && (
+                                <TourReviews
+                                    rating={rating}
+                                    reviewCount={reviewCount}
+                                    reviews={previewReviews}
+                                    locale={locale}
+                                    dict={tourDict.reviews}
+                                />
+                            )}
                         </div>
                         <div className='lg:sticky lg:top-24'>
                             <TourBookingCard dict={tourDict.booking} />
@@ -686,20 +647,20 @@ export async function TourPage({
 
                             <div className='h-px w-full bg-it-heading/10' />
 
-                            {/* Full reviews section - not collapsible. */}
+                            {/* Full reviews section - dynamic + paginated. */}
                             <TourReviewsSection
-                                rating={MOCK_REVIEW_SUMMARY.rating}
-                                reviewCount={MOCK_REVIEW_SUMMARY.reviewCount}
-                                histogram={MOCK_REVIEW_SUMMARY.histogram}
-                                photoCount={MOCK_REVIEW_SUMMARY.photoCount}
-                                reviews={MOCK_FULL_REVIEWS}
+                                tourId={detail.id}
+                                locale={locale}
+                                rating={rating ?? 0}
+                                reviewCount={reviewCount}
+                                histogram={reviewHistogram}
+                                initialReviews={fullReviews}
+                                total={reviewList.total}
+                                pageSize={REVIEWS_PAGE_SIZE}
+                                hostLabel={reviewHostLabel}
                                 dict={{
                                     title: tourDict.sections.reviews,
-                                    subtitle: 'Every review from a confirmed booking. No exceptions.',
-                                    reviewsCount: '{count} reviews',
-                                    sortBy: 'Sort by:',
-                                    sortValue: 'Most recent',
-                                    showMore: 'Show 10 more reviews',
+                                    ...tourDict.reviewsSection,
                                 }}
                             />
                         </div>
