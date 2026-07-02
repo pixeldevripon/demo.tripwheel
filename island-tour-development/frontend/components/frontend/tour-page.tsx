@@ -4,6 +4,7 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { toSlug } from '@/lib/utils';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getDestinationCategories } from '@/lib/api/public/categories';
+import { formatDuration } from '@/lib/tours/listing';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { TourListing } from './tour-card';
 import { TourRelatedSection } from './tour-related-section';
@@ -36,26 +37,26 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  * related tours.
  */
 
-// Remaining not-yet-wired sections read from this mock. The header/breadcrumb/
-// title fields (title, rating, reviewCount, isLocalsFavourite, locationLabel)
-// now come from the live tour; only `images` here still feeds the gallery.
-const MOCK_TOUR = {
-    images: [
-        '/images/tours/tour-1-1.jpg',
-        '/images/tours/tour-1-2.jpg',
-        '/images/tours/tour-1-3.jpg',
-        '/images/tours/tour-2-1.jpg',
-        '/images/tours/tour-2-3.jpg',
-    ],
-};
-
-// Gallery meta pills (duration / pickup / languages) - placeholder values until
-// the tour-by-slug API is wired. Icons are the platform's Figma SVG exports.
-const MOCK_GALLERY_META: TourGalleryMeta[] = [
-    { icon: '/icons/clock.svg', label: '8 hours' },
-    { icon: '/icons/car.svg', label: 'Pickup available' },
-    { icon: '/icons/nav-globe.svg', label: 'EN, NL, +2' },
+// Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
+// gallery must never receive an empty set (its mobile slider indexes image[0]),
+// so an image-less tour falls back to these placeholders.
+const FALLBACK_GALLERY_IMAGES = [
+    '/images/tours/tour-1-1.jpg',
+    '/images/tours/tour-1-2.jpg',
+    '/images/tours/tour-1-3.jpg',
+    '/images/tours/tour-2-1.jpg',
+    '/images/tours/tour-2-3.jpg',
 ];
+
+/**
+ * Compact language pill from ISO 639-1 codes: "EN", "EN, NL", "EN, NL, +2".
+ * (The gallery meta strip, Figma node 47940:12742.)
+ */
+function formatLanguageCodes(codes: string[]): string {
+    const upper = codes.map(c => c.toUpperCase());
+    if (upper.length <= 2) return upper.join(', ');
+    return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
+}
 
 // Review preview cards (Figma node 47936:3499) - placeholder until the reviews
 // module + tour-by-slug API are wired.
@@ -364,7 +365,6 @@ export async function TourPage({
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
     if (!detail) notFound();
 
-    const tour = MOCK_TOUR;
     const tourDict = dict.destination.tour;
 
     // Live header / breadcrumb / title values (localized with EN fallback applied
@@ -396,6 +396,37 @@ export async function TourPage({
                 href: `/${destinationSlug}/${primary.slug}`,
             };
         }
+    }
+
+    // Gallery (Figma node 47940:12742): live images in displayOrder (backend-
+    // ordered), with a placeholder fallback so the slider never gets an empty set.
+    const galleryImages =
+        detail.images.length > 0
+            ? detail.images.map(img => img.url)
+            : FALLBACK_GALLERY_IMAGES;
+
+    // Meta strip pills - only the applicable ones render (duration / pickup /
+    // languages), all localized.
+    const galleryMeta: TourGalleryMeta[] = [];
+    const durationLabel = formatDuration(
+        detail.durationMinutesFrom,
+        detail.durationMinutesTo,
+        dict.search,
+    );
+    if (durationLabel) {
+        galleryMeta.push({ icon: '/icons/clock.svg', label: durationLabel });
+    }
+    if (detail.pickupModel !== 'NONE') {
+        galleryMeta.push({
+            icon: '/icons/car.svg',
+            label: dict.destination.listings.pickupAvailable,
+        });
+    }
+    if (detail.languages.length > 0) {
+        galleryMeta.push({
+            icon: '/icons/nav-globe.svg',
+            label: formatLanguageCodes(detail.languages),
+        });
     }
 
     // In-page tab nav over the detail sections. Each tab scrolls to its `#id`
@@ -453,9 +484,9 @@ export async function TourPage({
                     <div className='flex flex-col gap-10 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-6'>
                         <div className='flex flex-col gap-10'>
                             <TourGallery
-                                images={tour.images}
+                                images={galleryImages}
                                 title={title}
-                                meta={MOCK_GALLERY_META}
+                                meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
                             <TourReviews
