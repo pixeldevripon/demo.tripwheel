@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Tabs as TabsPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { useDragScroll } from "@/hooks/use-drag-scroll"
 
 function Tabs({
   className,
@@ -47,8 +48,13 @@ function TabsList({
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
   VariantProps<typeof tabsListVariants>) {
+  // Drag-to-scroll + wheel-to-horizontal so mouse-only users can reach tabs
+  // that overflow the row (the scrollbar is hidden). No-ops when tabs fit.
+  const scrollRef = useDragScroll<HTMLDivElement>()
+
   return (
     <TabsPrimitive.List
+      ref={scrollRef}
       data-slot="tabs-list"
       data-variant={variant}
       className={cn(tabsListVariants({ variant }), className)}

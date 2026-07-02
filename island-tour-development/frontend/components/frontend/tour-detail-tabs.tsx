@@ -3,6 +3,7 @@
 import { useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { smoothScrollToId } from '@/lib/motion/smooth-scroll';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
 
 export type TourTab = {
     /** DOM id of the section this tab scrolls to. */
@@ -23,6 +24,7 @@ export type TourTab = {
  */
 export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     const barRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useDragScroll<HTMLDivElement>();
     const [active, setActive] = useState(tabs[0]?.id ?? '');
     const reduce = useReducedMotion();
 
@@ -52,7 +54,9 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
         <div
             ref={barRef}
             className='sticky top-18 z-30 bg-it-white md:top-20'>
-            <div className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+            <div
+                ref={scrollRef}
+                className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (

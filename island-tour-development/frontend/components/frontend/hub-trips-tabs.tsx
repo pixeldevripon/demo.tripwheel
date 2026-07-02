@@ -1,5 +1,7 @@
 'use client';
 
+import { useDragScroll } from '@/hooks/use-drag-scroll';
+
 export type HubTripsTab = { key: string; label: string };
 
 /**
@@ -17,8 +19,11 @@ export function HubTripsTabs({
     active: number;
     onChange: (index: number) => void;
 }) {
+    const scrollRef = useDragScroll<HTMLDivElement>();
     return (
-        <div className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div
+            ref={scrollRef}
+            className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
             {tabs.map((tab, i) => (
                 <button
                     key={tab.key}
