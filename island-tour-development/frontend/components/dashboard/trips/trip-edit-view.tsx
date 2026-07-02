@@ -30,6 +30,7 @@ import { TripDetailShell } from './trip-detail-shell';
 import { TripDetailsTab } from './trip-details-tab';
 import { TripExclusionsTab } from './trip-exclusions-tab';
 import { TripFeaturesTab } from './trip-features-tab';
+import { TripHighlightsTab } from './trip-highlights-tab';
 import { TripImagesTab } from './trip-images-tab';
 import { TripInclusionsTab } from './trip-inclusions-tab';
 import { TripLocationsTab } from './trip-locations-tab';
@@ -75,6 +76,7 @@ function ReadinessItem({ label, passed }: ReadinessItemProps) {
 const VALID_TABS = [
     'details',
     'images',
+    'highlights',
     'inclusions',
     'exclusions',
     'features',
@@ -141,6 +143,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
     }
 
     const imageCount = trip?.imageCount ?? 0;
+    const highlightCount = trip?.highlightCount ?? 0;
     const hasHero = !!trip?.heroImage;
     const hasEnOverview = !!enTranslation?.overview?.trim();
 
@@ -149,6 +152,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
     const readinessChecks = [
         { label: 'At least 5 images uploaded', passed: imageCount >= 5 },
         { label: 'Hero image set', passed: hasHero },
+        { label: 'At least 3 highlights added', passed: highlightCount >= 3 },
         { label: 'English overview filled', passed: hasEnOverview },
         { label: 'Price set (base price or age band)', passed: hasPrice },
     ];
@@ -304,6 +308,12 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                                 <span className='ml-1.5 size-1.5 rounded-full bg-destructive' />
                             )}
                         </TabsTrigger>
+                        <TabsTrigger value='highlights'>
+                            Highlights
+                            {highlightCount < 3 && (
+                                <span className='ml-1.5 size-1.5 rounded-full bg-destructive' />
+                            )}
+                        </TabsTrigger>
                         <TabsTrigger value='inclusions'>Inclusions</TabsTrigger>
                         <TabsTrigger value='exclusions'>Exclusions</TabsTrigger>
                         <TabsTrigger value='features'>Features</TabsTrigger>
@@ -325,6 +335,10 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
                 <TabsContent value='images'>
                     <TripImagesTab trip={trip} />
+                </TabsContent>
+
+                <TabsContent value='highlights'>
+                    <TripHighlightsTab tripId={id} />
                 </TabsContent>
 
                 <TabsContent value='inclusions'>

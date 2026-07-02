@@ -63,7 +63,7 @@ export function ApiGetTourBySlugDocs() {
         '- Hub-anchored: `?destinationSlug=curacao&hubSlug=mambo-beach&slug=sunset-cruise`',
         '',
         'Returns the full tour with translation (locale → EN fallback), all images,',
-        'inclusions, age bands, active add-ons, languages, and upcoming',
+        'highlights, inclusions, age bands, active add-ons, languages, and upcoming',
         'AVAILABLE schedules (next 30). Only LIVE + isActive tours are returned.',
       ].join('\n'),
     }),
@@ -241,14 +241,14 @@ export function ApiPublishTourDocs() {
     ApiOperation({
       summary: 'Publish a draft tour (DRAFT → LIVE)',
       description:
-        'All publish blocks must pass: ≥5 images, hero image set, EN overview present, a price, ≥1 category with one primary. All failing blocks are returned together.',
+        'All publish blocks must pass: ≥5 images, hero image set, EN overview present, ≥3 highlights, a price, ≥1 category with one primary. All failing blocks are returned together.',
     }),
     tourIdParam,
     ApiResponse({ status: 200, type: TourResponseDto }),
     ApiResponse({
       status: 400,
       description:
-        'One or more publish blocks not met (images, hero, overview, price, category)',
+        'One or more publish blocks not met (images, hero, overview, highlights, price, category)',
       type: BadRequestErrorDto,
     }),
     ...operatorErrors,

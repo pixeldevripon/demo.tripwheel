@@ -23,17 +23,20 @@ import {
   CreateTourAgeBandDto,
   UpdateTourAgeBandDto,
   CreateTourFeatureDto,
+  CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
   CreateTourLocationDto,
   UpdatePickupLocationDto,
   UpdateTourAddOnDto,
   UpdateTourFeatureDto,
+  UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
   UpdateTourLocationDto,
   UpsertFeatureTranslationDto,
+  UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
   UpsertLocationTranslationDto,
@@ -50,8 +53,10 @@ import {
   ApiAddLocationDocs,
   ApiAddPickupLocationDocs,
   ApiAddAgeBandDocs,
+  ApiAddHighlightDocs,
   ApiDeleteExclusionTranslationDocs,
   ApiDeleteFeatureTranslationDocs,
+  ApiDeleteHighlightTranslationDocs,
   ApiDeleteInclusionTranslationDocs,
   ApiDeleteLocationTranslationDocs,
   ApiDeletePickupLocationTranslationDocs,
@@ -61,6 +66,7 @@ import {
   ApiGetAllTourTranslationsDocs,
   ApiGetExclusionsDocs,
   ApiGetFeaturesDocs,
+  ApiGetHighlightsDocs,
   ApiGetImagesDocs,
   ApiGetInclusionsDocs,
   ApiGetLanguagesDocs,
@@ -71,6 +77,7 @@ import {
   ApiRemoveAgeBandDocs,
   ApiRemoveExclusionDocs,
   ApiRemoveFeatureDocs,
+  ApiRemoveHighlightDocs,
   ApiRemoveImageDocs,
   ApiRemoveInclusionDocs,
   ApiRemoveLanguageDocs,
@@ -80,12 +87,14 @@ import {
   ApiUpdateAgeBandDocs,
   ApiUpdateExclusionDocs,
   ApiUpdateFeatureDocs,
+  ApiUpdateHighlightDocs,
   ApiUpdateImageDocs,
   ApiUpdateInclusionDocs,
   ApiUpdateLocationDocs,
   ApiUpdatePickupLocationDocs,
   ApiUpsertExclusionTranslationDocs,
   ApiUpsertFeatureTranslationDocs,
+  ApiUpsertHighlightTranslationDocs,
   ApiUpsertInclusionTranslationDocs,
   ApiUpsertLocationTranslationDocs,
   ApiUpsertPickupLocationTranslationDocs,
@@ -319,6 +328,106 @@ export class TourChildrenController {
     return this.tourChildrenService.removeLanguage(
       tourId,
       languageId,
+      user.id,
+      user.role,
+    );
+  }
+
+  // ── Highlights ────────────────────────────────────────────────────────────────
+
+  @Get('highlights')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiGetHighlightsDocs()
+  getHighlights(
+    @Param('tourId') tourId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.getHighlights(tourId, user.id, user.role);
+  }
+
+  @Post('highlights')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiAddHighlightDocs()
+  addHighlight(
+    @Param('tourId') tourId: string,
+    @Body() dto: CreateTourHighlightDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.addHighlight(
+      tourId,
+      dto,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Patch('highlights/:highlightId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpdateHighlightDocs()
+  updateHighlight(
+    @Param('tourId') tourId: string,
+    @Param('highlightId') highlightId: string,
+    @Body() dto: UpdateTourHighlightDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.updateHighlight(
+      tourId,
+      highlightId,
+      dto,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Delete('highlights/:highlightId')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiRemoveHighlightDocs()
+  removeHighlight(
+    @Param('tourId') tourId: string,
+    @Param('highlightId') highlightId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.removeHighlight(
+      tourId,
+      highlightId,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Patch('highlights/:highlightId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiUpsertHighlightTranslationDocs()
+  upsertHighlightTranslation(
+    @Param('tourId') tourId: string,
+    @Param('highlightId') highlightId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertHighlightTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.upsertHighlightTranslation(
+      tourId,
+      highlightId,
+      locale,
+      dto,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Delete('highlights/:highlightId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiDeleteHighlightTranslationDocs()
+  deleteHighlightTranslation(
+    @Param('tourId') tourId: string,
+    @Param('highlightId') highlightId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.tourChildrenService.deleteHighlightTranslation(
+      tourId,
+      highlightId,
+      locale,
       user.id,
       user.role,
     );

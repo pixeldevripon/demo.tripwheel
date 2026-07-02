@@ -11,11 +11,12 @@ export type PaymentModel = 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OP
 export type TourBookingType = 'PRIVATE' | 'SHARED';
 export type FitnessLevel = 'EASY' | 'MODERATE' | 'CHALLENGING';
 export type ExclusionType = 'PAID_ADVANCE' | 'PAID_ONSITE' | 'UNAVAILABLE' | 'NOT_PERMITTED';
-// Feature types (master E.3). INCLUSION/EXCLUSION have dedicated tables/tabs;
+// Feature types (master E.3). INCLUSION/EXCLUSION/HIGHLIGHT have dedicated tables/tabs;
 // the dashboard Features tab only manages the informational + terms variants below.
 export type FeatureType =
   | 'INCLUSION'
   | 'EXCLUSION'
+  | 'HIGHLIGHT'
   | 'PREBOOKING_INFORMATION'
   | 'PREARRIVAL_INFORMATION'
   | 'REDEMPTION_INSTRUCTION'
@@ -124,6 +125,7 @@ export interface TripListItem {
   // Detail-only counts + hero
   heroImage?: TripHeroImage | null;
   imageCount?: number;
+  highlightCount?: number;
   inclusionCount?: number;
   exclusionCount?: number;
 
@@ -197,6 +199,20 @@ export interface TourLanguage {
   id: string;
   tourId: string;
   language: string;
+}
+
+export interface TourHighlightTranslation {
+  locale: string;
+  text: string;
+  isMachineTranslated: boolean;
+}
+
+export interface TourHighlight {
+  id: string;
+  tourId: string;
+  displayOrder: number;
+  imageUrl?: string | null;
+  translations: TourHighlightTranslation[];
 }
 
 export interface TourInclusionTranslation {
@@ -476,6 +492,22 @@ export interface UpdateTourAgeBandPayload {
   priceNet?: string;
   isDefault?: boolean;
   displayOrder?: number;
+}
+
+export interface CreateTourHighlightPayload {
+  text: string;
+  displayOrder?: number;
+  imageUrl?: string;
+}
+
+export interface UpdateTourHighlightPayload {
+  displayOrder?: number;
+  imageUrl?: string | null;
+}
+
+export interface UpsertHighlightTranslationPayload {
+  text: string;
+  isMachineTranslated?: boolean;
 }
 
 export interface CreateTourInclusionPayload {

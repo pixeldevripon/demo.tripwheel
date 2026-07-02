@@ -8,6 +8,7 @@ import {
   MOCK_AGE_BANDS,
   MOCK_EXCLUSIONS,
   MOCK_FEATURES,
+  MOCK_HIGHLIGHTS,
   MOCK_IMAGES,
   MOCK_INCLUSIONS,
   MOCK_LANGUAGES,
@@ -26,6 +27,7 @@ import type {
   AdminTripsQueryParams,
   CreateTourAddOnPayload,
   CreateTourAgeBandPayload,
+  CreateTourHighlightPayload,
   CreateTourInclusionPayload,
   CreateTourExclusionPayload,
   CreateTourFeaturePayload,
@@ -36,6 +38,7 @@ import type {
   MyTripsQueryParams,
   UpdateTourAddOnPayload,
   UpdateTourAgeBandPayload,
+  UpdateTourHighlightPayload,
   UpdateTourImagePayload,
   UpdateTourInclusionPayload,
   UpdateTourExclusionPayload,
@@ -44,6 +47,7 @@ import type {
   UpdatePickupLocationPayload,
   UpdateTourSchedulePayload,
   UpdateTripPayload,
+  UpsertHighlightTranslationPayload,
   UpsertInclusionTranslationPayload,
   UpsertExclusionTranslationPayload,
   UpsertFeatureTranslationPayload,
@@ -62,6 +66,7 @@ export const tripKeys = {
   addOns: (tripId: string) => [...tripKeys.all, 'addons', tripId] as const,
   ageBands: (tripId: string) => [...tripKeys.all, 'age-bands', tripId] as const,
   languages: (tripId: string) => [...tripKeys.all, 'languages', tripId] as const,
+  highlights: (tripId: string) => [...tripKeys.all, 'highlights', tripId] as const,
   inclusions: (tripId: string) => [...tripKeys.all, 'inclusions', tripId] as const,
   exclusions: (tripId: string) => [...tripKeys.all, 'exclusions', tripId] as const,
   features: (tripId: string) => [...tripKeys.all, 'features', tripId] as const,
@@ -141,6 +146,14 @@ export function useLanguages(tripId: string) {
   return useQuery({
     queryKey: tripKeys.languages(tripId),
     queryFn: () => (isMockTripId(tripId) ? (MOCK_LANGUAGES[tripId] ?? []) : tripsApi.getLanguages(tripId)),
+    enabled: !!tripId,
+  });
+}
+
+export function useHighlights(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.highlights(tripId),
+    queryFn: () => (isMockTripId(tripId) ? (MOCK_HIGHLIGHTS[tripId] ?? []) : tripsApi.getHighlights(tripId)),
     enabled: !!tripId,
   });
 }
@@ -426,6 +439,73 @@ export function useRemoveLanguage() {
       tripsApi.removeLanguage(tripId, languageId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.languages(variables.tripId) });
+    },
+  });
+}
+
+// Mutations - Highlights
+export function useAddHighlight() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourHighlightPayload }) =>
+      tripsApi.addHighlight(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpdateHighlight() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, highlightId, payload }: { tripId: string; highlightId: string; payload: UpdateTourHighlightPayload }) =>
+      tripsApi.updateHighlight(tripId, highlightId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveHighlight() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, highlightId }: { tripId: string; highlightId: string }) =>
+      tripsApi.removeHighlight(tripId, highlightId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useUpsertHighlightTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      highlightId,
+      locale,
+      payload,
+    }: {
+      tripId: string;
+      highlightId: string;
+      locale: string;
+      payload: UpsertHighlightTranslationPayload;
+    }) => tripsApi.upsertHighlightTranslation(tripId, highlightId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
+    },
+  });
+}
+
+export function useDeleteHighlightTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, highlightId, locale }: { tripId: string; highlightId: string; locale: string }) =>
+      tripsApi.deleteHighlightTranslation(tripId, highlightId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
     },
   });
 }

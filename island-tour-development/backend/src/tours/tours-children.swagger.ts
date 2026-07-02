@@ -16,6 +16,8 @@ import {
   TourExclusionTranslationDto,
   TourFeatureResponseDto,
   TourFeatureTranslationDto,
+  TourHighlightResponseDto,
+  TourHighlightTranslationDto,
   TourImageResponseDto,
   TourInclusionResponseDto,
   TourInclusionTranslationDto,
@@ -228,6 +230,72 @@ export function ApiRemoveLanguageDocs() {
     ApiOperation({ summary: 'Remove a language from a tour' }),
     tourIdParam,
     ApiParam({ name: 'languageId', description: 'Language UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Highlights ────────────────────────────────────────────────────────────────
+
+export function ApiGetHighlightsDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'List highlights for a tour (all translations)' }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: [TourHighlightResponseDto] }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiAddHighlightDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Add a highlight to a tour (creates EN translation atomically)',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 201, type: TourHighlightResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpdateHighlightDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Update a highlight display order' }),
+    tourIdParam,
+    ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
+    ApiResponse({ status: 200, type: TourHighlightResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiRemoveHighlightDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Remove a highlight and all its translations' }),
+    tourIdParam,
+    ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiUpsertHighlightTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Upsert a highlight translation for a locale' }),
+    tourIdParam,
+    ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
+    ApiResponse({ status: 200, type: TourHighlightTranslationDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiDeleteHighlightTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Delete a highlight translation (non-EN locales only)',
+    }),
+    tourIdParam,
+    ApiParam({ name: 'highlightId', description: 'Highlight UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, example: 'nl' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
     ...operatorErrors,
   );

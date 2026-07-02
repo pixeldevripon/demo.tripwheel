@@ -392,6 +392,70 @@ export class AddTourLanguageDto {
   language!: string;
 }
 
+// ── Highlight DTOs ────────────────────────────────────────────────────────────
+
+export class TourHighlightTranslationDto {
+  @ApiProperty({ example: 'en' }) locale!: string;
+  @ApiProperty() text!: string;
+  @ApiProperty() isMachineTranslated!: boolean;
+}
+
+export class TourHighlightResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty() displayOrder!: number;
+  @ApiPropertyOptional() imageUrl?: string | null;
+  @ApiProperty({ type: [TourHighlightTranslationDto] })
+  translations!: TourHighlightTranslationDto[];
+}
+
+export class CreateTourHighlightDto {
+  @ApiProperty({
+    example: 'Watch the sunset from the water with cocktails in hand',
+  })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(100)
+  text!: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string;
+}
+
+export class UpdateTourHighlightDto {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
+  @IsOptional()
+  @IsUrl()
+  imageUrl?: string | null;
+}
+
+export class UpsertHighlightTranslationDto {
+  @ApiProperty({ example: 'Zie de zonsondergang vanaf het water' })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(100)
+  text!: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isMachineTranslated?: boolean;
+}
+
 // ── Inclusion DTOs ────────────────────────────────────────────────────────────
 
 export class TourInclusionTranslationDto {

@@ -35,7 +35,8 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *   - title + header band (node 47936:3370): H1, rating / locals' favorite /
  *     location meta, Save / Share pills
  *   - gallery images/meta, review preview + full paginated section
- *   - overview: localized `overview` prose + optional `localTip` callout
+ *   - overview: localized `overview` prose + highlights bullets + optional
+ *     `localTip` callout
  *
  * Still on MOCK data (wired in later steps): inclusions/exclusions, itinerary,
  * meeting, info, cancellation, related tours.
@@ -352,12 +353,15 @@ export async function TourPage({
     }
 
     // Overview (Figma node 47936:3606): the localized `overview` prose (paragraph
-    // breaks only - split into <p> blocks) and an optional "local tip" callout
-    // from `localTip`. There is no separate highlights list in the data model
-    // (the tour_highlights table was removed); the master models Overview as prose.
+    // breaks only - split into <p> blocks), the tour's highlights as a bullet list
+    // (localized, ordered by displayOrder - backend-ordered), and an optional
+    // "local tip" callout from `localTip`.
     const overviewParagraphs = (detail.translation?.overview ?? '')
         .split(/\n{2,}|\n/)
         .map(p => p.trim())
+        .filter(Boolean);
+    const highlights = detail.highlights
+        .map(h => h.text)
         .filter(Boolean);
     const localTip = detail.translation?.localTip ?? null;
 
@@ -474,13 +478,20 @@ export async function TourPage({
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
-                                {overviewParagraphs.length > 0 && (
+                                {(overviewParagraphs.length > 0 || highlights.length > 0) && (
                                     <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                         {overviewParagraphs.map((p, i) => (
                                             <p key={i} className='m-0'>
                                                 {p}
                                             </p>
                                         ))}
+                                        {highlights.length > 0 && (
+                                            <ul className='m-0 list-disc pl-5'>
+                                                {highlights.map((h, i) => (
+                                                    <li key={i}>{h}</li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
                                 )}
                                 {/* Local tip callout - label full strength, tip at 60%. */}

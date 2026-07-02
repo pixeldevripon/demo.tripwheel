@@ -297,7 +297,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [ ] LD19 Meeting & Pickup stacked, Maps text link, no embedded map — meeting_point fields not present
 - [ ] LD20 One SVG icon library, no emoji in production
 - [ ] LD21 No per-tour FAQ; site-level `/help` FAQPage — polymorphic FAQ exists; `/help` page not built
-- [ ] LD22 Highlights removed from the platform (no highlights entity); Overview stands alone, optional local tip — `local_tip` not present
+- [ ] LD22 Highlights merged into Overview, bullets, optional local tip — `local_tip` not present
 - [ ] LD23 Important Info 3 subsections; `not_suitable_for` field — field not present
 - [ ] LD24 Tiered deposit 20–30% via `deposit_pct`
 - [x] LD25 Single-day tours only in v1 — no multi-day logic
@@ -330,7 +330,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### E.3 tours — localized content
 
-- [x] overview, included_items, gallery (is_hero/focal) — child tables + `TripTranslation` (highlights removed from platform)
+- [x] overview, highlights, included_items, gallery (is_hero/focal) — child tables + `TripTranslation`
 - [x] short_description, what_to_bring, know_before_you_go, not_suitable_for, local_tip, meeting_point_text — `TourTranslation` + trip-children translation DTO/service
 - [x] category_display (plural noun phrase for "More {x} in {destination}") — `TourTranslation.categoryDisplay`
 - [x] meta_title, meta_description (per locale), what_to_expect_intro — `TourTranslation`; og_image — Tour column

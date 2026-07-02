@@ -110,6 +110,7 @@ function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
     categories: [{ categoryId: 'cat-1', isPrimary: true }],
     hubs: [],
     translations: [],
+    highlights: [],
     operator: {
       companyInfo: { companyName: 'Miss Ann' },
       user: { name: 'Op Owner' },
@@ -545,7 +546,7 @@ describe('ToursService', () => {
       expect(prisma.tour.findMany).not.toHaveBeenCalled();
     });
 
-    it('searches across name/translations/category/hub and flattens results', async () => {
+    it('searches across name/translations/category/hub/highlights and flattens results', async () => {
       prisma.tour.count.mockResolvedValue(1);
       prisma.tour.findMany.mockResolvedValue([
         makeTour({
@@ -621,6 +622,7 @@ describe('ToursService', () => {
           { id: 'i4' },
           { id: 'i5' },
         ],
+        highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
         translations: [{ overview: 'A lovely cruise overview.' }],
       });
 

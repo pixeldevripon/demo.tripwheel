@@ -33,6 +33,7 @@ import type {
   TourAgeBand,
   TourExclusion,
   TourFeature,
+  TourHighlight,
   TourImage,
   TourInclusion,
   TourLanguage,
@@ -86,6 +87,7 @@ interface TripSeed {
   meetingPointLng: number;
   departureCity: string;
   images: { url: string; alt: string }[]; // first = hero
+  highlights: string[];
   inclusions: { label: string; icon: string }[];
   exclusions: { label: string; icon: string; type?: ExclusionType; priceText?: string }[];
   features: { type: FeatureType; text: string }[];
@@ -129,6 +131,7 @@ interface TripSeed {
 
 export const MOCK_TRIPS: TripListItem[] = [];
 export const MOCK_IMAGES: Record<string, TourImage[]> = {};
+export const MOCK_HIGHLIGHTS: Record<string, TourHighlight[]> = {};
 export const MOCK_INCLUSIONS: Record<string, TourInclusion[]> = {};
 export const MOCK_EXCLUSIONS: Record<string, TourExclusion[]> = {};
 export const MOCK_FEATURES: Record<string, TourFeature[]> = {};
@@ -224,6 +227,7 @@ function buildTrip(seed: TripSeed) {
 
     heroImage: hero ? { id: `${seed.id}-img-1`, url: hero.url, altText: hero.alt } : null,
     imageCount: seed.images.length,
+    highlightCount: seed.highlights.length,
     inclusionCount: seed.inclusions.length,
     exclusionCount: seed.exclusions.length,
   };
@@ -241,6 +245,15 @@ function buildTrip(seed: TripSeed) {
     displayOrder: i,
     width: 1200,
     height: 800,
+  }));
+
+  // Highlights (single text + EN translation)
+  MOCK_HIGHLIGHTS[seed.id] = seed.highlights.map((text, i) => ({
+    id: `${seed.id}-hl-${i + 1}`,
+    tourId: seed.id,
+    displayOrder: i,
+    imageUrl: i === 0 ? seed.images[0]?.url ?? null : null,
+    translations: [{ locale: 'en', text, isMachineTranslated: false }],
   }));
 
   // Inclusions
@@ -437,6 +450,12 @@ const SEEDS: TripSeed[] = [
       img('catamaran4', 'Turquoise water and sailboat'),
       img('catamaran5', 'Sunset over the ocean'),
     ],
+    highlights: [
+      'Sail along the south coast on a luxury catamaran',
+      'Snorkel a protected reef teeming with tropical fish',
+      'Unlimited drinks from the open bar',
+      'Watch the sunset with live island music',
+    ],
     inclusions: [
       { label: 'Hotel pickup & drop-off', icon: 'transport' },
       { label: 'Open bar (rum punch, beer, soft drinks)', icon: 'drink' },
@@ -524,6 +543,7 @@ const SEEDS: TripSeed[] = [
       img('snorkel4', 'Sea turtle swimming'),
       img('snorkel5', 'Beach gear laid out'),
     ],
+    highlights: ['Guided reef snorkel with a marine biologist', 'Spot sea turtles and parrotfish', 'Small groups of max 8 guests', 'All equipment provided'],
     inclusions: [
       { label: 'Snorkel mask, fins & vest', icon: 'gear' },
       { label: 'Certified guide', icon: 'guide' },
@@ -604,6 +624,7 @@ const SEEDS: TripSeed[] = [
       img('hike4', 'Trail through the park'),
       img('hike5', 'Sunrise over Curaçao'),
     ],
+    highlights: ['Summit Curaçao’s highest peak at sunrise', 'Panoramic island views', 'Spot rare orchids and wild orchids', 'Expert local guide'],
     inclusions: [
       { label: 'Park entrance fee', icon: 'ticket' },
       { label: 'Experienced guide', icon: 'guide' },
@@ -682,6 +703,7 @@ const SEEDS: TripSeed[] = [
       img('klein4', 'Snorkeling near the shore'),
       img('klein5', 'Shipwreck on the beach'),
     ],
+    highlights: ['Full day on a pristine uninhabited island', 'Snorkel crystal-clear waters', 'BBQ lunch on the beach', 'Visit the historic lighthouse'],
     inclusions: [
       { label: 'Round-trip boat transfer', icon: 'transport' },
       { label: 'BBQ lunch', icon: 'food' },
@@ -760,6 +782,7 @@ const SEEDS: TripSeed[] = [
       img('jeep4', 'Desert landscape with cacti'),
       img('jeep5', 'Group at a scenic overlook'),
     ],
+    highlights: ['Off-road 4x4 adventure through Arikok Park', 'Swim in the secluded Natural Pool (Conchi)', 'Visit the Quadirikiri caves', 'See the Alto Vista chapel'],
     inclusions: [
       { label: '4x4 transport with driver-guide', icon: 'transport' },
       { label: 'Park entrance', icon: 'ticket' },
@@ -836,6 +859,7 @@ const SEEDS: TripSeed[] = [
       img('sail2', 'Couple toasting on deck'),
       img('sail3', 'Palm Beach coastline'),
     ],
+    highlights: ['Romantic 2.5-hour sunset sail', 'Unlimited drinks and canapés', 'Live acoustic music'],
     inclusions: [
       { label: 'Open bar', icon: 'drink' },
       { label: 'Canapés', icon: 'food' },
@@ -905,6 +929,7 @@ const SEEDS: TripSeed[] = [
       img('sxm3', 'Beach with turquoise water'),
       img('sxm4', 'French side market'),
     ],
+    highlights: ['Visit both the Dutch and French sides', 'Stop at three different beaches', 'Panoramic photo viewpoints', 'Free time in Marigot market'],
     inclusions: [
       { label: 'Air-conditioned transport', icon: 'transport' },
       { label: 'Local guide', icon: 'guide' },
@@ -982,6 +1007,7 @@ const SEEDS: TripSeed[] = [
       img('maho3', 'Crowd watching planes'),
       img('maho4', 'Sunset at Maho Beach'),
     ],
+    highlights: ['Watch jumbo jets land just meters overhead', 'Beachfront BBQ lunch', 'Reserved shaded seating', 'Flight-schedule briefing from your host'],
     inclusions: [
       { label: 'BBQ lunch', icon: 'food' },
       { label: 'One welcome drink', icon: 'drink' },
@@ -1053,6 +1079,7 @@ const SEEDS: TripSeed[] = [
       img('kayak3', 'Snorkeler near the cave'),
       img('kayak4', 'Coastal cliffs of Curaçao'),
     ],
+    highlights: ['Kayak to the hidden Blue Room cave', 'Snorkel inside the glowing blue grotto', 'Paddle along dramatic cliffs', 'Small adventurous groups'],
     inclusions: [
       { label: 'Kayak & paddle', icon: 'gear' },
       { label: 'Snorkel gear', icon: 'gear' },
@@ -1125,6 +1152,7 @@ const SEEDS: TripSeed[] = [
       img('food3', 'Floating market stalls'),
       img('food4', 'Street art in Otrobanda'),
     ],
+    highlights: ['Taste 6 local dishes at family-run spots', 'Stroll the UNESCO-listed Handelskade', 'Visit the floating market', 'Learn the island’s Afro-Caribbean history'],
     inclusions: [
       { label: 'Six food tastings', icon: 'food' },
       { label: 'Local drinks', icon: 'drink' },

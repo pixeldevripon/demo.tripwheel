@@ -18,17 +18,20 @@ import {
   CreateTourAddOnDto,
   CreateTourAgeBandDto,
   UpdateTourAgeBandDto,
+  CreateTourHighlightDto,
   CreateTourInclusionDto,
   CreateTourExclusionDto,
   CreateTourLocationDto,
   UpdatePickupLocationDto,
   UpdateTourAddOnDto,
   UpdateTourFeatureDto,
+  UpdateTourHighlightDto,
   UpdateTourImageDto,
   UpdateTourInclusionDto,
   UpdateTourExclusionDto,
   UpdateTourLocationDto,
   UpsertFeatureTranslationDto,
+  UpsertHighlightTranslationDto,
   UpsertInclusionTranslationDto,
   UpsertExclusionTranslationDto,
   UpsertLocationTranslationDto,
@@ -579,6 +582,205 @@ export class TourChildrenService {
       `User ${requesterId} removed language ${languageId} from tour ${tourId}`,
     );
     return { message: 'Language removed successfully' };
+  }
+
+  // ── Highlights ────────────────────────────────────────────────────────────────
+
+  private readonly highlightSelect = {
+    id: true,
+    tourId: true,
+    displayOrder: true,
+    imageUrl: true,
+    translations: {
+      select: { locale: true, text: true, isMachineTranslated: true },
+    },
+  } as const;
+
+  async getHighlights(
+    tourId: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+    return this.prisma.tourHighlight.findMany({
+      where: { tourId },
+      select: this.highlightSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  async addHighlight(
+    tourId: string,
+    dto: CreateTourHighlightDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const highlight = await tx.tourHighlight.create({
+        data: {
+          tourId,
+          displayOrder: dto.displayOrder ?? 0,
+          imageUrl: dto.imageUrl ?? null,
+        },
+        select: { id: true, tourId: true, displayOrder: true, imageUrl: true },
+      });
+      await tx.tourHighlightTranslation.create({
+        data: {
+          highlightId: highlight.id,
+          locale: LocaleEnum.en,
+          text: dto.text,
+        },
+      });
+      return tx.tourHighlight.findUnique({
+        where: { id: highlight.id },
+        select: this.highlightSelect,
+      });
+    });
+
+    this.logger.log(`User ${requesterId} added highlight to tour ${tourId}`);
+    return result;
+  }
+
+  async updateHighlight(
+    tourId: string,
+    highlightId: string,
+    dto: UpdateTourHighlightDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourHighlight.findFirst({
+      where: { id: highlightId, tourId },
+      select: { id: true },
+    });
+    if (!existing)
+      throw new NotFoundException(
+        `Highlight ${highlightId} not found on tour ${tourId}`,
+      );
+
+    const updated = await this.prisma.tourHighlight.update({
+      where: { id: highlightId },
+      data: {
+        ...(dto.displayOrder !== undefined && {
+          displayOrder: dto.displayOrder,
+        }),
+        ...('imageUrl' in dto && { imageUrl: dto.imageUrl ?? null }),
+      },
+      select: this.highlightSelect,
+    });
+
+    this.logger.log(
+      `User ${requesterId} updated highlight ${highlightId} on tour ${tourId}`,
+    );
+    return updated;
+  }
+
+  async removeHighlight(
+    tourId: string,
+    highlightId: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const existing = await this.prisma.tourHighlight.findFirst({
+      where: { id: highlightId, tourId },
+      select: { id: true },
+    });
+    if (!existing)
+      throw new NotFoundException(
+        `Highlight ${highlightId} not found on tour ${tourId}`,
+      );
+
+    await this.prisma.tourHighlight.delete({ where: { id: highlightId } });
+    this.logger.log(
+      `User ${requesterId} removed highlight ${highlightId} from tour ${tourId}`,
+    );
+    return { message: 'Highlight removed successfully' };
+  }
+
+  async upsertHighlightTranslation(
+    tourId: string,
+    highlightId: string,
+    locale: Locale,
+    dto: UpsertHighlightTranslationDto,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    const highlight = await this.prisma.tourHighlight.findFirst({
+      where: { id: highlightId, tourId },
+      select: { id: true },
+    });
+    if (!highlight)
+      throw new NotFoundException(
+        `Highlight ${highlightId} not found on tour ${tourId}`,
+      );
+
+    const result = await this.prisma.tourHighlightTranslation.upsert({
+      where: { highlightId_locale: { highlightId, locale } },
+      create: {
+        highlightId,
+        locale,
+        text: dto.text,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      update: {
+        text: dto.text,
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+      },
+      select: { locale: true, text: true, isMachineTranslated: true },
+    });
+
+    this.logger.log(
+      `User ${requesterId} upserted highlight translation [${locale}] for highlight ${highlightId}`,
+    );
+    return result;
+  }
+
+  async deleteHighlightTranslation(
+    tourId: string,
+    highlightId: string,
+    locale: Locale,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    await this.assertTourAccess(tourId, requesterId, requesterRole);
+
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English highlight text cannot be deleted. Update the text instead.',
+      );
+    }
+
+    const highlight = await this.prisma.tourHighlight.findFirst({
+      where: { id: highlightId, tourId },
+      select: { id: true },
+    });
+    if (!highlight)
+      throw new NotFoundException(
+        `Highlight ${highlightId} not found on tour ${tourId}`,
+      );
+
+    await this.prisma.tourHighlightTranslation
+      .delete({ where: { highlightId_locale: { highlightId, locale } } })
+      .catch((err: any) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException(
+            `No translation found for locale "${locale}"`,
+          );
+        }
+        throw err;
+      });
+
+    this.logger.log(
+      `User ${requesterId} deleted highlight translation [${locale}] for highlight ${highlightId}`,
+    );
+    return { message: `Translation for locale "${locale}" deleted` };
   }
 
   // ── Inclusions ────────────────────────────────────────────────────────────────

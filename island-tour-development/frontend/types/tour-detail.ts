@@ -43,6 +43,12 @@ export interface PublicTourTranslation {
   isMachineTranslated: boolean;
 }
 
+export interface PublicTourHighlight {
+  id: string;
+  displayOrder: number;
+  text: string;
+}
+
 export interface PublicTourImage {
   id: string;
   url: string;
@@ -217,6 +223,7 @@ export interface PublicTourDetail {
   // Relations (localized, EN fallback applied server-side)
   translation: PublicTourTranslation | null;
   images: PublicTourImage[];
+  highlights: PublicTourHighlight[];
   inclusions: PublicTourInclusion[];
   exclusions: PublicTourExclusion[];
   addOns: PublicTourAddOn[];
