@@ -314,7 +314,7 @@ describe('TiersService', () => {
       prisma.spotlightRequest.updateMany
         .mockResolvedValueOnce({ count: 2 }) // activated
         .mockResolvedValueOnce({ count: 1 }); // expired
-        
+
       const res = await svc.runSpotlightLifecycle(new Date('2026-07-15'));
       expect(res).toEqual({ activated: 2, expired: 1 });
 
@@ -333,7 +333,7 @@ describe('TiersService', () => {
       prisma.spotlightRequest.updateMany
         .mockResolvedValueOnce({ count: 0 })
         .mockResolvedValueOnce({ count: 0 });
-        
+
       expect(await svc.runSpotlightLifecycle()).toEqual({
         activated: 0,
         expired: 0,

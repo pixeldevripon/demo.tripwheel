@@ -22,9 +22,12 @@
     "prisma:migrate:reset": "cd backend && pnpm prisma:migrate:reset",
     "prisma:studio": "cd backend && pnpm prisma:studio",
     "prisma:seed": "cd backend && pnpm prisma:seed",
-    "prisma:format": "cd backend && pnpm prisma:format"
+    "prisma:format": "cd backend && pnpm prisma:format",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8"
   }
 }

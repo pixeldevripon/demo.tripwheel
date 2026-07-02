@@ -138,8 +138,7 @@ const DERIVED_FEATURE_I18N: Record<Locale, DerivedFeatureStrings> = {
       'This tour is not wheelchair accessible. Contact us to discuss accessibility.',
     bookingInstant:
       'Instant confirmation. You will receive your voucher by email immediately after booking.',
-    bookingOperator:
-      'Your booking is confirmed by the operator after review.',
+    bookingOperator: 'Your booking is confirmed by the operator after review.',
   },
   nl: {
     cancellation:

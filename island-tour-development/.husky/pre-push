@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# ──────────────────────────────────────────────────────────────────────────────
+# Pre-push guard: mirror the CI pipeline (lint + tests + build) locally so a
+# push never fails GitHub Actions after the fact.
+#
+# Order matches .github/workflows/ci.yml (cheapest checks first, fail fast):
+#   1. prisma generate  - backend lint/build/test need the generated client types
+#   2. lint             - backend + frontend (concurrently; fails if either fails)
+#   3. backend tests    - mocked unit specs, no DB/Redis required
+#   4. build            - backend (nest) + frontend (next)
+#
+# Skip in a genuine emergency:  git push --no-verify
+# ──────────────────────────────────────────────────────────────────────────────
+set -e
+
+echo "==> [1/4] Prisma client (backend types)..."
+pnpm prisma:generate
+
+echo "==> [2/4] Lint (backend + frontend)..."
+pnpm lint
+
+echo "==> [3/4] Backend unit tests..."
+pnpm test:backend
+
+echo "==> [4/4] Build (backend + frontend)..."
+pnpm build
+
+echo "==> All pre-push checks passed. Pushing."
