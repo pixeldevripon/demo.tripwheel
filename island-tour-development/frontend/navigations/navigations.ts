@@ -54,29 +54,60 @@ const dashboardNav: NavItem[] = [
                 title: 'Add New Trip',
                 url: 'trips/new',
                 permissions: [Permission.CREATE_TRIP],
+            }, // ─── Destinations ──────────────────────────────────────────────────────────
+            {
+                title: 'Destinations',
+                icon: Globe,
+                url: 'destinations',
+                permissions: [
+                    Permission.VIEW_DESTINATIONS,
+                    Permission.CREATE_DESTINATION,
+                ],
+            },
+            {
+                title: 'Hubs',
+                icon: Waypoints,
+                url: 'hubs',
+                permissions: [Permission.MANAGE_HUBS],
+            }, // ─── Categories ────────────────────────────────────────────────────────────
+            {
+                title: 'Categories',
+                url: 'categories',
+                icon: Tag,
+                permissions: [Permission.CREATE_CATEGORY],
+            },
+            {
+                title: 'Attributes',
+                url: 'attributes',
+                icon: SlidersHorizontal,
+                permissions: [Permission.MANAGE_SYSTEM],
+            },
+            {
+                title: 'Collections',
+                url: 'collections',
+                icon: Layers,
+                permissions: [
+                    Permission.VIEW_COLLECTIONS,
+                    Permission.CREATE_COLLECTION,
+                ],
+            },
+            // ─── Spotlight (admin approval queue) ───────────────────────────────────────
+            {
+                title: 'Spotlight',
+                url: 'spotlight',
+                icon: Sparkles,
+                permissions: [Permission.APPROVE_SPOTLIGHT],
             },
         ],
     },
 
-    // ─── Destinations ──────────────────────────────────────────────────────────
+    // ─── Media ─────────────────────────────────────────────────────────────────
     {
-        title: 'Destinations',
-        icon: Globe,
-        url: 'destinations',
-        permissions: [
-            Permission.VIEW_DESTINATIONS,
-            Permission.CREATE_DESTINATION,
-        ],
+        title: 'Media',
+        url: 'media',
+        icon: ImageIcon,
+        permissions: [Permission.UPLOAD_MEDIA, Permission.MANAGE_MEDIA],
     },
-    {
-        title: 'Hubs',
-        icon: Waypoints,
-        url: 'hubs',
-        permissions: [Permission.MANAGE_HUBS],
-    },
-
-
-
     // ─── Bookings ──────────────────────────────────────────────────────────────
     {
         title: 'Bookings',
@@ -92,7 +123,6 @@ const dashboardNav: NavItem[] = [
         icon: CreditCard,
         permissions: [Permission.VIEW_PAYMENTS],
     },
-
     // ─── Users / Customers ─────────────────────────────────────────────────────
     {
         title: 'Users',
@@ -108,6 +138,31 @@ const dashboardNav: NavItem[] = [
                 title: 'Add User',
                 url: 'users/new',
                 permissions: [Permission.CREATE_USER],
+            },
+            // ─── Profile ───────────────────────────────────────────────────────────────
+            {
+                title: 'Your Profile',
+                url: 'profile',
+                icon: CircleUser,
+                permissions: [Permission.VIEW_PROFILE],
+            },
+        ],
+    },
+    // ─── Tour Operators ──────────────────────────────────────────────────────
+    {
+        title: 'Tour Operators',
+        icon: Store,
+        permissions: [Permission.MANAGE_OPERATORS],
+        items: [
+            {
+                title: 'All Tour Operators',
+                url: 'tour-operators',
+                permissions: [Permission.MANAGE_OPERATORS],
+            },
+            {
+                title: 'Add Tour Operator',
+                url: 'tour-operators/new',
+                permissions: [Permission.MANAGE_OPERATORS],
             },
         ],
     },
@@ -136,69 +191,6 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.VIEW_REVIEWS],
     },
 
-    // ─── Spotlight (admin approval queue) ───────────────────────────────────────
-    {
-        title: 'Spotlight',
-        url: 'spotlight',
-        icon: Sparkles,
-        permissions: [Permission.APPROVE_SPOTLIGHT],
-    },
-
-    // ─── Tour Operators ──────────────────────────────────────────────────────
-    {
-        title: 'Tour Operators',
-        icon: Store,
-        permissions: [Permission.MANAGE_OPERATORS],
-        items: [
-            {
-                title: 'All Tour Operators',
-                url: 'tour-operators',
-                permissions: [Permission.MANAGE_OPERATORS],
-            },
-            {
-                title: 'Add Tour Operator',
-                url: 'tour-operators/new',
-                permissions: [Permission.MANAGE_OPERATORS],
-            },
-        ],
-    },
-
-    // ─── Categories ────────────────────────────────────────────────────────────
-    {
-        title: 'Categories',
-        url: 'categories',
-        icon: Tag,
-        permissions: [Permission.CREATE_CATEGORY],
-    },
-    {
-        title: 'Attributes',
-        url: 'attributes',
-        icon: SlidersHorizontal,
-        permissions: [Permission.MANAGE_SYSTEM],
-    },
-    {
-        title: 'Collections',
-        url: 'collections',
-        icon: Layers,
-        permissions: [Permission.VIEW_COLLECTIONS, Permission.CREATE_COLLECTION],
-    },
-
-    // ─── Media ─────────────────────────────────────────────────────────────────
-    {
-        title: 'Media',
-        url: 'media',
-        icon: ImageIcon,
-        permissions: [Permission.UPLOAD_MEDIA, Permission.MANAGE_MEDIA],
-    },
-
-    // ─── Profile ───────────────────────────────────────────────────────────────
-    {
-        title: 'My Profile',
-        url: 'profile',
-        icon: CircleUser,
-        permissions: [Permission.VIEW_PROFILE],
-    },
-
     // ─── Settings ──────────────────────────────────────────────────────────────
     // Visible to admins (system settings) and operators (own company + payments).
     {
@@ -221,5 +213,15 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+
+
+
+
+
+
+
+
+
+
 
 

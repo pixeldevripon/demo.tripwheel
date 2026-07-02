@@ -1,6 +1,9 @@
 import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { toSlug } from '@/lib/utils';
+import { getTourBySlug } from '@/lib/api/public/tours';
+import { getDestinationCategories } from '@/lib/api/public/categories';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { TourListing } from './tour-card';
 import { TourRelatedSection } from './tour-related-section';
@@ -17,33 +20,26 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
 /**
  * Tour detail page - the TOUR branch of the polymorphic `[slug]` route
  * (`/{locale}/{destination}/{tour-slug}/`, always flat - ROUTING-AND-RESOLUTION
- * §5.2). The tour resolves by its flat slug; the page is built section-by-section
- * against Figma (node 47936:3354).
+ * §5.2). The tour resolves by its flat slug via `getTourBySlug`; the page is
+ * built section-by-section against Figma (node 47936:3354) and wired to the API
+ * one section at a time. Localized fields fall back to canonical English on the
+ * backend; slugs are English at every locale.
  *
- * The public by-slug tour endpoint is not wired yet, so the page runs on MOCK
- * data (same convention as HubPage) until `tripsApi.getBySlug` exists. Localized
- * fields fall back to canonical English on the backend; slugs are English at
- * every locale.
- *
- * Built so far:
+ * Wired to the live tour (`GET /tours/slug/:slug`):
  *   - reusable breadcrumb (flat `Home › {Destination} › {Tour}` - master §9,
- *     auto-anchored to a primary hub/category when real data is wired)
+ *     hub/category anchor added once related-entity resolution lands)
  *   - title + header band (node 47936:3370): H1, rating / locals' favorite /
  *     location meta, Save / Share pills
+ *
+ * Still on MOCK data (wired in later steps): gallery images/meta, review cards,
+ * overview, inclusions/exclusions, itinerary, meeting, info, cancellation,
+ * related tours.
  */
 
-// Representative tour matching the Figma wireframe - placeholder until the public
-// tour-by-slug API is wired. `breadcrumbLabel` is the shorter, title-cased crumb
-// (distinct from the H1).
+// Remaining not-yet-wired sections read from this mock. The header/breadcrumb/
+// title fields (title, rating, reviewCount, isLocalsFavourite, locationLabel)
+// now come from the live tour; only `images` here still feeds the gallery.
 const MOCK_TOUR = {
-    title: 'Curaçao: Sunset reef snorkel & boat tour',
-    breadcrumbLabel: 'Sunset Reef Snorkel & Boat Tour',
-    rating: 4.8,
-    reviewCount: 1738,
-    isLocalsFavourite: true,
-    locationLabel: 'Willemstad, Curaçao',
-    // No primary hub/category anchor in this wireframe → flat breadcrumb.
-    anchor: null as BreadcrumbAnchor | null,
     images: [
         '/images/tours/tour-1-1.jpg',
         '/images/tours/tour-1-2.jpg',
@@ -365,8 +361,42 @@ export async function TourPage({
     locale,
     dict,
 }: TourPageProps) {
+    const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    if (!detail) notFound();
+
     const tour = MOCK_TOUR;
     const tourDict = dict.destination.tour;
+
+    // Live header / breadcrumb / title values (localized with EN fallback applied
+    // server-side). `title` prefers the localized translation, then the canonical
+    // name; `breadcrumbLabel` is the shorter English crumb, falling back to title.
+    const title = detail.translation?.title ?? detail.name;
+    const breadcrumbLabel = detail.breadcrumbLabel ?? title;
+    const rating = detail.aggregateRating;
+    const reviewCount = detail.aggregateReviewCount;
+    const isLocalsFavourite = detail.isLocalsFavourite;
+    const locationLabel = detail.departureCity
+        ? `${detail.departureCity}, ${destinationName}`
+        : destinationName;
+    // Breadcrumb variant (master §2.7): anchor on the tour's primary attachment.
+    // The only relation flagged primary in the data model is the isPrimary
+    // category (`TourCategory.isPrimary`), so a tour is category-anchored
+    // (`Home › Destination › Category › Tour`) and falls back to flat when it has
+    // no primary category. The hub-anchored variant is reserved for a primary-hub
+    // attachment, which the schema doesn't express yet. The primary category of a
+    // LIVE tour always appears in the destination's tour-gated category list (it
+    // has ≥1 published tour - this one), so its crumb link never 404s.
+    let anchor: BreadcrumbAnchor | null = null;
+    if (detail.primaryCategoryId) {
+        const categories = await getDestinationCategories(destinationSlug, locale);
+        const primary = categories.find(c => c.id === detail.primaryCategoryId);
+        if (primary) {
+            anchor = {
+                label: primary.name,
+                href: `/${destinationSlug}/${primary.slug}`,
+            };
+        }
+    }
 
     // In-page tab nav over the detail sections. Each tab scrolls to its `#id`
     // section; sections are added incrementally (each is collapsible, separated
@@ -396,18 +426,18 @@ export async function TourPage({
                 locale={locale}
                 destinationName={destinationName}
                 destinationSlug={destinationSlug}
-                anchor={tour.anchor}
+                anchor={anchor}
                 dict={{
                     home: dict.destination.allTours.breadcrumb.home,
-                    current: tour.breadcrumbLabel,
+                    current: breadcrumbLabel,
                 }}
             />
             <TourHeader
-                title={tour.title}
-                rating={tour.rating}
-                reviewCount={tour.reviewCount}
-                isLocalsFavourite={tour.isLocalsFavourite}
-                locationLabel={tour.locationLabel}
+                title={title}
+                rating={rating}
+                reviewCount={reviewCount}
+                isLocalsFavourite={isLocalsFavourite}
+                locationLabel={locationLabel}
                 locale={locale}
                 dict={{
                     save: tourDict.save,
@@ -424,13 +454,13 @@ export async function TourPage({
                         <div className='flex flex-col gap-10'>
                             <TourGallery
                                 images={tour.images}
-                                title={tour.title}
+                                title={title}
                                 meta={MOCK_GALLERY_META}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
                             <TourReviews
-                                rating={tour.rating}
-                                reviewCount={tour.reviewCount}
+                                rating={rating}
+                                reviewCount={reviewCount}
                                 reviews={MOCK_REVIEWS}
                                 destinationSlug={destinationSlug}
                                 tourSlug={slug}

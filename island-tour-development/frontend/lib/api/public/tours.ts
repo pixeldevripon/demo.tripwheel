@@ -9,6 +9,7 @@ import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
 
 import type { SearchHit } from '@/types/search';
+import type { PublicTourDetail } from '@/types/tour-detail';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
@@ -50,4 +51,30 @@ export async function getDestinationTours(params: {
     })}`,
   );
   return res ?? { total: 0, data: [] };
+}
+
+/**
+ * A single LIVE tour by its flat slug, scoped to a destination
+ * (`/{locale}/{destinationSlug}/{slug}/` - ROUTING-AND-RESOLUTION.md §5.2). The
+ * backend filters `status: LIVE, isActive: true` and returns localized fields
+ * with a field-by-field English fallback already applied. Returns `null` when
+ * the tour is unknown/unpublished or the backend is unreachable - callers should
+ * `notFound()` on null.
+ *
+ * Cached hourly and tagged `tours`; `slug` + `destinationSlug` + `locale` are the
+ * cache key. Slugs are English at every locale.
+ */
+export async function getTourBySlug(params: {
+  slug: string;
+  destinationSlug: string;
+  locale?: Locale;
+}): Promise<PublicTourDetail | null> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('tours');
+
+  const { slug, destinationSlug, locale = DEFAULT_LOCALE } = params;
+  return publicGet<PublicTourDetail>(
+    `/tours/slug/${slug}${buildQuery({ destinationSlug, locale })}`,
+  );
 }

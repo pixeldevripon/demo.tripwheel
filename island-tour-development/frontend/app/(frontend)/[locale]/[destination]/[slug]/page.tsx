@@ -160,11 +160,10 @@ export default async function EntityPage({
     const dict = await getDictionary(locale);
     const destinationName = await resolveDestinationName(destination, locale);
 
-    // Tours are the flat catch-all entity. The public tour-by-slug endpoint is
-    // not wired yet, so a slug the registry can't resolve is treated as a TOUR
-    // and renders the (mock) tour page rather than 404. TEMPORARY: once
-    // `tripsApi.getBySlug` exists, restore `if (!resolution) notFound()` and let
-    // the registry's TOUR rows drive this branch.
+    // Tours are the flat catch-all entity: a slug the registry can't resolve is
+    // treated as a TOUR, and `TourPage` fetches it by slug (`getTourBySlug`) and
+    // 404s itself when the tour doesn't exist / isn't LIVE. So an unknown slug
+    // still 404s - just one level down, inside the TOUR branch.
     const entityType = resolution?.entityType ?? 'TOUR';
 
     switch (entityType) {
