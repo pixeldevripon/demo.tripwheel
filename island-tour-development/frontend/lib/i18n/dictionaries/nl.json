@@ -385,6 +385,11 @@
         "info": "Belangrijke info",
         "cancellation": "Annuleringsbeleid",
         "reviews": "Reviews"
+      },
+      "exclusion": {
+        "availablePrice": "beschikbaar - {price}",
+        "available": "beschikbaar",
+        "payOnDay": "betaal ter plaatse"
       }
     },
     "categoryAboutTitle": "Over {category} in {destination}",

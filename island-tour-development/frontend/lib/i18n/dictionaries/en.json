@@ -385,6 +385,11 @@
         "info": "Important Info",
         "cancellation": "Cancellation Policy",
         "reviews": "Reviews"
+      },
+      "exclusion": {
+        "availablePrice": "available - {price}",
+        "available": "available",
+        "payOnDay": "pay on the day"
       }
     },
     "categoryAboutTitle": "About {category} in {destination}",

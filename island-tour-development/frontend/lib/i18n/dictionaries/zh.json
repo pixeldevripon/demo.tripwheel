@@ -385,6 +385,11 @@
         "info": "重要信息",
         "cancellation": "取消政策",
         "reviews": "评价"
+      },
+      "exclusion": {
+        "availablePrice": "可选 - {price}",
+        "available": "可选",
+        "payOnDay": "现场支付"
       }
     },
     "categoryAboutTitle": "关于{destination}的{category}",

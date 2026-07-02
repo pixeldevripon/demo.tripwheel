@@ -385,6 +385,11 @@
         "info": "Wichtige Infos",
         "cancellation": "Stornierungsbedingungen",
         "reviews": "Bewertungen"
+      },
+      "exclusion": {
+        "availablePrice": "verfügbar - {price}",
+        "available": "verfügbar",
+        "payOnDay": "vor Ort zahlen"
       }
     },
     "categoryAboutTitle": "Über {category} in {destination}",

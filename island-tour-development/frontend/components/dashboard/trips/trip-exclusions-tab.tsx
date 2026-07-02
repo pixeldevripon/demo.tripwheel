@@ -30,7 +30,7 @@ import {
   useRemoveExclusion,
   useUpsertExclusionTranslation,
 } from '@/hooks/trips/use-trips';
-import type { TourExclusion } from '@/types/trip';
+import type { ExclusionType, TourExclusion } from '@/types/trip';
 import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
 
 const ICON_OPTIONS = [
@@ -71,11 +71,16 @@ interface ExclusionItemProps {
 
 function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
+  const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
   const { mutate: removeExclusion, isPending: isRemoving } = useRemoveExclusion();
   const { mutate: updateExclusion, isPending: isUpdatingImage } = useUpdateExclusion();
+  const { mutate: saveHandling, isPending: isSavingHandling } = useUpdateExclusion();
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertExclusionTranslation();
 
   const enTranslation = exclusion.translations.find((t) => t.locale === 'en');
+  const isPaidType = typeVal === 'PAID_ADVANCE' || typeVal === 'PAID_ONSITE';
+  const typeLabel = EXCLUSION_TYPE_OPTIONS.find((o) => o.value === exclusion.type)?.label;
 
   function handleImageSelect(url: string) {
     updateExclusion(
@@ -93,6 +98,29 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
       {
         onSuccess: () => toast.success('Image removed.'),
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove image.'),
+      }
+    );
+  }
+
+  // Persist the structured handling of this exclusion (LD18): how the excluded
+  // item is dealt with (`type`) and, for paid add-ons, the operator's price note
+  // (`priceText`). The public "What's Included" column derives its "(available -
+  // $X)" / "(pay on the day)" suffix from exactly these two fields, so keeping
+  // them editable here is what lets operators shape that copy. `priceText` is
+  // cleared when the type is not a paid one.
+  function handleSaveHandling() {
+    saveHandling(
+      {
+        tripId,
+        exclusionId: exclusion.id,
+        payload: {
+          type: (typeVal || undefined) as ExclusionType | undefined,
+          priceText: isPaidType ? priceVal || null : null,
+        },
+      },
+      {
+        onSuccess: () => toast.success('Handling saved.'),
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save.'),
       }
     );
   }
@@ -123,6 +151,12 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
           </div>
 
           <p className="text-sm truncate">{enTranslation?.label ?? '(no EN translation)'}</p>
+          {typeLabel && (
+            <Badge variant="outline" className="text-xs shrink-0 hidden md:inline-flex">
+              {typeLabel}
+              {exclusion.priceText ? ` · ${exclusion.priceText}` : ''}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -130,10 +164,10 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title={expanded ? 'Hide translations' : 'Set translations'}
+            title={expanded ? 'Hide details' : 'Edit handling & translations'}
           >
             {expanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
-            <span className="hidden sm:inline">Translations</span>
+            <span className="hidden sm:inline">Edit</span>
           </button>
           <Button
             type="button"
@@ -149,7 +183,46 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
       </div>
 
       {expanded && (
-        <div className="pt-3 border-t space-y-3">
+        <div className="pt-3 border-t space-y-4">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Handling</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+                </Label>
+                <Select
+                  value={typeVal || ''}
+                  onValueChange={(val) => setTypeVal(val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="How it's handled..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXCLUSION_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {isPaidType && (
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Price Text</Label>
+                  <Input
+                    value={priceVal}
+                    onChange={(e) => setPriceVal(e.target.value)}
+                    placeholder="e.g. $15 per person"
+                  />
+                </Field>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="outline" onClick={handleSaveHandling} disabled={isSavingHandling}>
+                {isSavingHandling ? 'Saving...' : 'Save handling'}
+              </Button>
+            </div>
+          </div>
+
           <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations</p>
           {ALL_LOCALES.map((locale) => {
             const existing = exclusion.translations.find((t) => t.locale === locale);

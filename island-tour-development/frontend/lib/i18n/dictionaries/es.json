@@ -385,6 +385,11 @@
         "info": "Información importante",
         "cancellation": "Política de cancelación",
         "reviews": "Opiniones"
+      },
+      "exclusion": {
+        "availablePrice": "disponible - {price}",
+        "available": "disponible",
+        "payOnDay": "pagar en el lugar"
       }
     },
     "categoryAboutTitle": "Sobre {category} en {destination}",

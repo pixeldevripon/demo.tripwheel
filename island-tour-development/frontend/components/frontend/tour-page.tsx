@@ -9,6 +9,7 @@ import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
 import { formatDuration } from '@/lib/tours/listing';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import type { PublicTourExclusion } from '@/types/tour-detail';
 import type { TourListing } from './tour-card';
 import { TourRelatedSection } from './tour-related-section';
 import { ToursBreadcrumb, type BreadcrumbAnchor } from './tours-breadcrumb';
@@ -37,9 +38,11 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *   - gallery images/meta, review preview + full paginated section
  *   - overview: localized `overview` prose + highlights bullets + optional
  *     local-tip callout (`localTipTitle` headline + `localTipBody` description)
+ *   - what's included: localized `inclusions` (green check) + `exclusions`
+ *     (orange cross), with the add-on/price suffix derived from exclusion type
  *
- * Still on MOCK data (wired in later steps): inclusions/exclusions, itinerary,
- * meeting, info, cancellation, related tours.
+ * Still on MOCK data (wired in later steps): itinerary, meeting, info,
+ * cancellation, related tours.
  */
 
 // Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
@@ -64,24 +67,24 @@ function formatLanguageCodes(codes: string[]): string {
 }
 
 // "What's Included" section (Figma node 47936:3621) - two columns: included
-// (green check) and not included / add-ons (orange cross). Placeholder until the
-// tour-by-slug API returns inclusions/exclusions.
-const MOCK_INCLUDED = [
-    'Round-trip yacht',
-    'BBQ lunch & drinks',
-    'Snorkel gear',
-    'Captain & crew',
-    'Bottled water',
-    'Towels',
-];
-const MOCK_EXCLUDED = [
-    'Hotel transfer (available - from $17 pp)',
-    'Massage on board (available - $50)',
-    'Scuba dive (available - $80)',
-    'Alcoholic beverages (pay on the day)',
-    'WiFi on board',
-    'Outside food & drinks not permitted',
-];
+// (green check) and not included / add-ons (orange cross). An exclusion's suffix
+// is derived from its `type` + optional `priceText`: paid add-ons with a price
+// read "(available - $X)", pay-on-site items with no price read "(pay on the
+// day)", pay-in-advance items with no price read "(available)", and
+// unavailable / not-permitted items carry no suffix (the label says it).
+function exclusionSuffix(
+    exclusion: PublicTourExclusion,
+    dict: Dictionary['destination']['tour']['exclusion'],
+): string {
+    const { type, priceText } = exclusion;
+    const isPaid = type === 'PAID_ADVANCE' || type === 'PAID_ONSITE';
+    if (isPaid && priceText) {
+        return ` (${dict.availablePrice.replace('{price}', priceText)})`;
+    }
+    if (type === 'PAID_ONSITE') return ` (${dict.payOnDay})`;
+    if (type === 'PAID_ADVANCE') return ` (${dict.available})`;
+    return '';
+}
 
 // "What to Expect" section (Figma node 47936:3707) - intro + a numbered timeline.
 // Placeholder until the tour-by-slug API returns the itinerary.
@@ -286,6 +289,8 @@ export async function TourPage({
     dict,
 }: TourPageProps) {
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    console.log('tour details',detail);
+    
     if (!detail) notFound();
 
     const tourDict = dict.destination.tour;
@@ -366,6 +371,18 @@ export async function TourPage({
         .filter(Boolean);
     const localTipTitle = detail.translation?.localTipTitle ?? null;
     const localTipBody = detail.translation?.localTipBody ?? null;
+
+    // "What's Included" - included column (green check) + not-included / add-ons
+    // column (orange cross). Both come off the tour payload, already localized
+    // and ordered by `displayOrder`; the exclusion suffix (price / "pay on the
+    // day") is derived from its type.
+    const includedItems = detail.inclusions.filter(i => i.label);
+    const excludedItems = detail.exclusions
+        .filter(e => e.label)
+        .map(e => ({
+            id: e.id,
+            label: `${e.label}${exclusionSuffix(e, tourDict.exclusion)}`,
+        }));
 
     // Reviews. Aggregate + histogram come off the tour payload (same source as
     // the header rating); the individual cards come from the public reviews list
@@ -522,46 +539,55 @@ export async function TourPage({
 
                             <div className='h-px w-full bg-it-heading/10' />
 
-                            <TourSection
-                                id='tour-included'
-                                title={tourDict.sections.included}>
-                                <div className='grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-16 md:gap-y-0'>
-                                    <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                        {MOCK_INCLUDED.map(item => (
-                                            <li
-                                                key={item}
-                                                className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                <Image
-                                                    src='/icons/check-green.svg'
-                                                    alt=''
-                                                    width={20}
-                                                    height={20}
-                                                    className='size-5 shrink-0'
-                                                />
-                                                {item}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                        {MOCK_EXCLUDED.map(item => (
-                                            <li
-                                                key={item}
-                                                className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                <Image
-                                                    src='/icons/exclude-cross.svg'
-                                                    alt=''
-                                                    width={20}
-                                                    height={20}
-                                                    className='size-5 shrink-0'
-                                                />
-                                                {item}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </TourSection>
+                            {(includedItems.length > 0 ||
+                                excludedItems.length > 0) && (
+                                <>
+                                    <TourSection
+                                        id='tour-included'
+                                        title={tourDict.sections.included}>
+                                        <div className='grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-16 md:gap-y-0'>
+                                            {includedItems.length > 0 && (
+                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
+                                                    {includedItems.map(item => (
+                                                        <li
+                                                            key={item.id}
+                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                            <Image
+                                                                src='/icons/check-green.svg'
+                                                                alt=''
+                                                                width={20}
+                                                                height={20}
+                                                                className='size-5 shrink-0'
+                                                            />
+                                                            {item.label}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                            {excludedItems.length > 0 && (
+                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
+                                                    {excludedItems.map(item => (
+                                                        <li
+                                                            key={item.id}
+                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                            <Image
+                                                                src='/icons/exclude-cross.svg'
+                                                                alt=''
+                                                                width={20}
+                                                                height={20}
+                                                                className='size-5 shrink-0'
+                                                            />
+                                                            {item.label}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </TourSection>
 
-                            <div className='h-px w-full bg-it-heading/10' />
+                                    <div className='h-px w-full bg-it-heading/10' />
+                                </>
+                            )}
 
                             <TourSection
                                 id='tour-expect'
