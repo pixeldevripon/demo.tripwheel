@@ -34,10 +34,11 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *     hub/category anchor added once related-entity resolution lands)
  *   - title + header band (node 47936:3370): H1, rating / locals' favorite /
  *     location meta, Save / Share pills
+ *   - gallery images/meta, review preview + full paginated section
+ *   - overview: localized `overview` prose + optional `localTip` callout
  *
- * Still on MOCK data (wired in later steps): gallery images/meta, review cards,
- * overview, inclusions/exclusions, itinerary, meeting, info, cancellation,
- * related tours.
+ * Still on MOCK data (wired in later steps): inclusions/exclusions, itinerary,
+ * meeting, info, cancellation, related tours.
  */
 
 // Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
@@ -60,22 +61,6 @@ function formatLanguageCodes(codes: string[]): string {
     if (upper.length <= 2) return upper.join(', ');
     return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
 }
-
-// Overview section content (Figma node 47936:3606) - placeholder editorial copy
-// until the tour-by-slug API returns the localized overview / local tip.
-const MOCK_OVERVIEW = {
-    intro: "The boat trip locals tell their friends to book. You'll sail the south coast on the original Klein Curaçao yacht with a crew that's been running this route for 40 years they know exactly where the turtles are and which reef has the best visibility this week.",
-    highlights: [
-        'Reach Klein Curaçao in 1h15',
-        'Snorkel with sea turtles',
-        'BBQ lunch and drinks',
-        'Private beach house & shower',
-        'Max 30 travelers - never crowded',
-    ],
-    // Tip line 1 is full strength; line 2 (subtext) is the same colour at 60%.
-    tipTitle: 'Book the morning departure',
-    tipBody: 'Afternoon wind picks up and the water gets choppier.',
-};
 
 // "What's Included" section (Figma node 47936:3621) - two columns: included
 // (green check) and not included / add-ons (orange cross). Placeholder until the
@@ -300,7 +285,6 @@ export async function TourPage({
     dict,
 }: TourPageProps) {
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
-    console.log('Tour detail:', detail);
     if (!detail) notFound();
 
     const tourDict = dict.destination.tour;
@@ -366,6 +350,16 @@ export async function TourPage({
             label: formatLanguageCodes(detail.languages),
         });
     }
+
+    // Overview (Figma node 47936:3606): the localized `overview` prose (paragraph
+    // breaks only - split into <p> blocks) and an optional "local tip" callout
+    // from `localTip`. There is no separate highlights list in the data model
+    // (the tour_highlights table was removed); the master models Overview as prose.
+    const overviewParagraphs = (detail.translation?.overview ?? '')
+        .split(/\n{2,}|\n/)
+        .map(p => p.trim())
+        .filter(Boolean);
+    const localTip = detail.translation?.localTip ?? null;
 
     // Reviews. Aggregate + histogram come off the tour payload (same source as
     // the header rating); the individual cards come from the public reviews list
@@ -480,28 +474,31 @@ export async function TourPage({
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
-                                <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    <p className='m-0'>{MOCK_OVERVIEW.intro}</p>
-                                    <ul className='m-0 list-disc pl-5'>
-                                        {MOCK_OVERVIEW.highlights.map(h => (
-                                            <li key={h}>{h}</li>
+                                {overviewParagraphs.length > 0 && (
+                                    <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                        {overviewParagraphs.map((p, i) => (
+                                            <p key={i} className='m-0'>
+                                                {p}
+                                            </p>
                                         ))}
-                                    </ul>
-                                </div>
-                                {/* Local tip callout - title full strength, body at 60%. */}
-                                <div className='flex items-start gap-2 rounded-[8px] border border-it-primary/30 bg-it-primary/5 p-6'>
-                                    <Image
-                                        src='/icons/tip-bulb.svg'
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className='size-6 shrink-0'
-                                    />
-                                    <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                        <span className='text-[#8b390e]'>{MOCK_OVERVIEW.tipTitle}</span>
-                                        <span className='text-[#8b390e]/60'>{MOCK_OVERVIEW.tipBody}</span>
-                                    </p>
-                                </div>
+                                    </div>
+                                )}
+                                {/* Local tip callout - label full strength, tip at 60%. */}
+                                {localTip && (
+                                    <div className='flex items-start gap-2 rounded-[8px] border border-it-primary/30 bg-it-primary/5 p-6'>
+                                        <Image
+                                            src='/icons/tip-bulb.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-6 shrink-0'
+                                        />
+                                        <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                            <span className='text-[#8b390e]'>{tourDict.localTipLabel}</span>
+                                            <span className='text-[#8b390e]/60'>{localTip}</span>
+                                        </p>
+                                    </div>
+                                )}
                             </TourSection>
 
                             <div className='h-px w-full bg-it-heading/10' />
