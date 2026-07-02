@@ -189,10 +189,28 @@ describe('serializeTour', () => {
     expect(out.description).toBe('Full description.');
     expect(out.durationMinutesFrom).toBe(240);
 
+    // Highlights/inclusions/exclusions first, then the structured-backed terms
+    // synthesized from tour fields (cancellationHours=48, wheelchairAccessible
+    // falsy, instantConfirmation=true, checkInMinutesBefore unset → no pre-arrival).
     expect(out.features).toEqual([
       { type: 'HIGHLIGHT', shortDescription: 'Two pristine reef stops' },
       { type: 'INCLUSION', shortDescription: 'Snorkel gear & guide' },
       { type: 'EXCLUSION', shortDescription: 'Gratuities' },
+      {
+        type: 'CANCELLATION_TERM',
+        shortDescription:
+          'Free cancellation up to 48 hours before the start time for a full refund.',
+      },
+      {
+        type: 'ACCESSIBILITY_INFORMATION',
+        shortDescription:
+          'This tour is not wheelchair accessible. Contact us to discuss accessibility.',
+      },
+      {
+        type: 'BOOKING_TERM',
+        shortDescription:
+          'Instant confirmation. You will receive your voucher by email immediately after booking.',
+      },
     ]);
 
     const media = out.media as Record<string, unknown>[];

@@ -103,6 +103,160 @@ function isoCutoff(amount: number, unit: string): string {
   }
 }
 
+// ── Derived OCTO features ─────────────────────────────────────────────────────
+// Four FeatureTypes duplicate structured tour fields the platform owns
+// (cancellation window, check-in lead, wheelchair access, instant confirmation).
+// Operators no longer hand-write these in the Features tab; the OCTO content feed
+// synthesizes them here from the structured fields so the feed stays complete and
+// can never disagree with the public site (single source of truth). Any legacy
+// TourFeature rows of these types are filtered out before this runs.
+const DERIVED_FEATURE_TYPES = new Set<string>([
+  'CANCELLATION_TERM',
+  'PREARRIVAL_INFORMATION',
+  'ACCESSIBILITY_INFORMATION',
+  'BOOKING_TERM',
+]);
+
+interface DerivedFeatureStrings {
+  cancellation: string; // "{hours}" placeholder
+  prearrival: string; // "{minutes}" placeholder
+  accessibleYes: string;
+  accessibleNo: string;
+  bookingInstant: string;
+  bookingOperator: string;
+}
+
+const DERIVED_FEATURE_I18N: Record<Locale, DerivedFeatureStrings> = {
+  en: {
+    cancellation:
+      'Free cancellation up to {hours} hours before the start time for a full refund.',
+    prearrival:
+      'Please arrive {minutes} minutes before the start time. Bring your booking confirmation.',
+    accessibleYes:
+      'This tour is wheelchair accessible. Contact us for specific needs.',
+    accessibleNo:
+      'This tour is not wheelchair accessible. Contact us to discuss accessibility.',
+    bookingInstant:
+      'Instant confirmation. You will receive your voucher by email immediately after booking.',
+    bookingOperator:
+      'Your booking is confirmed by the operator after review.',
+  },
+  nl: {
+    cancellation:
+      'Gratis annuleren tot {hours} uur voor de starttijd voor volledige terugbetaling.',
+    prearrival:
+      'Kom {minutes} minuten voor de starttijd aan. Neem je boekingsbevestiging mee.',
+    accessibleYes:
+      'Deze tour is rolstoeltoegankelijk. Neem contact op voor specifieke wensen.',
+    accessibleNo:
+      'Deze tour is niet rolstoeltoegankelijk. Neem contact op om toegankelijkheid te bespreken.',
+    bookingInstant:
+      'Directe bevestiging. Je ontvangt je voucher direct na de boeking per e-mail.',
+    bookingOperator:
+      'Je boeking wordt na beoordeling door de aanbieder bevestigd.',
+  },
+  de: {
+    cancellation:
+      'Kostenlose Stornierung bis {hours} Stunden vor Beginn für eine volle Rückerstattung.',
+    prearrival:
+      'Bitte {minutes} Minuten vor Beginn eintreffen. Bring deine Buchungsbestätigung mit.',
+    accessibleYes:
+      'Diese Tour ist rollstuhlgerecht. Kontaktiere uns für spezielle Bedürfnisse.',
+    accessibleNo:
+      'Diese Tour ist nicht rollstuhlgerecht. Kontaktiere uns, um die Barrierefreiheit zu besprechen.',
+    bookingInstant:
+      'Sofortige Bestätigung. Du erhältst deinen Gutschein direkt nach der Buchung per E-Mail.',
+    bookingOperator:
+      'Deine Buchung wird nach Prüfung durch den Anbieter bestätigt.',
+  },
+  fr: {
+    cancellation:
+      "Annulation gratuite jusqu'à {hours} heures avant le début pour un remboursement intégral.",
+    prearrival:
+      "Merci d'arriver {minutes} minutes avant le début. Apportez votre confirmation de réservation.",
+    accessibleYes:
+      'Cette visite est accessible en fauteuil roulant. Contactez-nous pour des besoins spécifiques.',
+    accessibleNo:
+      "Cette visite n'est pas accessible en fauteuil roulant. Contactez-nous pour en discuter.",
+    bookingInstant:
+      'Confirmation immédiate. Vous recevrez votre bon par e-mail juste après la réservation.',
+    bookingOperator:
+      "Votre réservation est confirmée par l'opérateur après vérification.",
+  },
+  es: {
+    cancellation:
+      'Cancelación gratuita hasta {hours} horas antes del inicio para un reembolso completo.',
+    prearrival:
+      'Llega {minutes} minutos antes del inicio. Lleva tu confirmación de reserva.',
+    accessibleYes:
+      'Este tour es accesible para sillas de ruedas. Contáctanos para necesidades específicas.',
+    accessibleNo:
+      'Este tour no es accesible para sillas de ruedas. Contáctanos para hablar sobre accesibilidad.',
+    bookingInstant:
+      'Confirmación inmediata. Recibirás tu bono por correo justo después de reservar.',
+    bookingOperator: 'Tu reserva la confirma el operador tras revisarla.',
+  },
+  pt: {
+    cancellation:
+      'Cancelamento gratuito até {hours} horas antes do início para reembolso total.',
+    prearrival:
+      'Chegue {minutes} minutos antes do início. Leve a sua confirmação de reserva.',
+    accessibleYes:
+      'Este passeio é acessível a cadeiras de rodas. Contacte-nos para necessidades específicas.',
+    accessibleNo:
+      'Este passeio não é acessível a cadeiras de rodas. Contacte-nos para falar sobre acessibilidade.',
+    bookingInstant:
+      'Confirmação imediata. Receberá o seu voucher por e-mail logo após a reserva.',
+    bookingOperator: 'A sua reserva é confirmada pelo operador após análise.',
+  },
+  zh: {
+    cancellation: '在开始时间前 {hours} 小时可免费取消并获全额退款。',
+    prearrival: '请在开始时间前 {minutes} 分钟到达，并携带您的预订确认。',
+    accessibleYes: '本行程可供轮椅通行。如有特殊需求请联系我们。',
+    accessibleNo: '本行程不提供轮椅通行。如需了解无障碍安排请联系我们。',
+    bookingInstant: '即时确认。预订后您将立即收到电子邮件凭证。',
+    bookingOperator: '您的预订将在运营商审核后确认。',
+  },
+};
+
+function buildDerivedFeatures(
+  tour: OctoTourPayload,
+  locale: Locale,
+): { type: string; shortDescription: string }[] {
+  const s = DERIVED_FEATURE_I18N[locale] ?? DERIVED_FEATURE_I18N.en;
+  const out = [
+    {
+      type: 'CANCELLATION_TERM',
+      shortDescription: s.cancellation.replace(
+        '{hours}',
+        String(tour.cancellationHours),
+      ),
+    },
+    {
+      type: 'ACCESSIBILITY_INFORMATION',
+      shortDescription: tour.wheelchairAccessible
+        ? s.accessibleYes
+        : s.accessibleNo,
+    },
+    {
+      type: 'BOOKING_TERM',
+      shortDescription: tour.instantConfirmation
+        ? s.bookingInstant
+        : s.bookingOperator,
+    },
+  ];
+  if (tour.checkInMinutesBefore != null) {
+    out.push({
+      type: 'PREARRIVAL_INFORMATION',
+      shortDescription: s.prearrival.replace(
+        '{minutes}',
+        String(tour.checkInMinutesBefore),
+      ),
+    });
+  }
+  return out;
+}
+
 // ── unit (= one age band) ───────────────────────────────────────────────────────
 function serializeUnit(
   band: OctoTourPayload['ageBands'][number],
@@ -195,10 +349,15 @@ function serializeContent(
       type: 'EXCLUSION' as const,
       shortDescription: pick(e.translations, locale)?.label ?? null,
     })),
-    ...tour.features.map((f) => ({
-      type: f.type,
-      shortDescription: pick(f.translations, locale)?.text ?? null,
-    })),
+    // Free-text feature types only; the four structured-backed types
+    // (cancellation/pre-arrival/accessibility/booking) are synthesized below.
+    ...tour.features
+      .filter((f) => !DERIVED_FEATURE_TYPES.has(f.type))
+      .map((f) => ({
+        type: f.type,
+        shortDescription: pick(f.translations, locale)?.text ?? null,
+      })),
+    ...buildDerivedFeatures(tour, locale),
   ].filter((f) => f.shortDescription !== null);
 
   const media = tour.images.map((img) => ({

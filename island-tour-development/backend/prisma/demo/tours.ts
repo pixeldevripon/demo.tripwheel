@@ -1920,25 +1920,23 @@ export async function seedTours(): Promise<void> {
         });
       }
 
-      // Features (booking + cancellation + accessibility terms)
+      // Features (free-text notes only). The structured-backed terms
+      // (booking/cancellation/accessibility/pre-arrival) are no longer stored as
+      // features — they are derived into the OCTO feed from the tour's structured
+      // fields (cancellationHours, instantConfirmation, wheelchairAccessible,
+      // checkInMinutesBefore). See octo-tour.serializer.ts.
       const features: { type: FeatureType; text: string }[] = [
         {
-          type: FeatureType.BOOKING_TERM,
-          text: 'Instant confirmation. You will receive your voucher by email immediately after booking.',
+          type: FeatureType.PREBOOKING_INFORMATION,
+          text: 'Bookings close 24 hours before departure. A minimum of 2 guests is required for the tour to run.',
         },
         {
-          type: FeatureType.CANCELLATION_TERM,
-          text: `Free cancellation up to ${bp.cancellationHours ?? 48} hours before the start time for a full refund.`,
+          type: FeatureType.REDEMPTION_INSTRUCTION,
+          text: 'Show your emailed voucher (printed or on your phone) to the crew at the meeting point.',
         },
         {
-          type: FeatureType.ACCESSIBILITY_INFORMATION,
-          text: bp.flags?.wheelchairAccessible
-            ? 'This tour is wheelchair accessible. Contact us for specific needs.'
-            : 'This tour is not wheelchair accessible. Contact us to discuss accessibility.',
-        },
-        {
-          type: FeatureType.PREARRIVAL_INFORMATION,
-          text: 'Please arrive 30 minutes before the start time. Bring your booking confirmation.',
+          type: FeatureType.ADDITIONAL_INFORMATION,
+          text: 'Bring reef-safe sunscreen, a towel, and a change of clothes. Lockers are available at the marina.',
         },
       ];
       for (let i = 0; i < features.length; i++) {
