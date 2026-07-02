@@ -40,9 +40,15 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *     local-tip callout (`localTipTitle` headline + `localTipBody` description)
  *   - what's included: localized `inclusions` (green check) + `exclusions`
  *     (orange cross), with the add-on/price suffix derived from exclusion type
+ *   - what to expect: localized `whatToExpectIntro` + a numbered timeline built
+ *     from the tour's ordered `locations`
+ *   - meeting & pickup: START location + `meetingPointText` + map link, optional
+ *     hotel pickup (`pickupModel`/`pickupLocations`), departure `startTimes`
+ *   - important info: localized `notSuitableFor` / `knowBeforeYouGo` /
+ *     `whatToBring` bullet lists (each group hidden when empty)
+ *   - cancellation policy: templated from `cancellationHours` + operator name
  *
- * Still on MOCK data (wired in later steps): itinerary, meeting, info,
- * cancellation, related tours.
+ * Still on MOCK data (wired in later steps): related tours.
  */
 
 // Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
@@ -66,6 +72,19 @@ function formatLanguageCodes(codes: string[]): string {
     return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
 }
 
+// A wall-clock "HH:MM" start time formatted for the locale (12h + AM/PM in en,
+// 24h in most others). Built on a fixed UTC date so only the clock time shows.
+function formatClockTime(hhmm: string, locale: string): string {
+    const [h, m] = hhmm.split(':').map(Number);
+    if (Number.isNaN(h)) return hhmm;
+    const date = new Date(Date.UTC(2000, 0, 1, h, m || 0));
+    return new Intl.DateTimeFormat(locale, {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+    }).format(date);
+}
+
 // "What's Included" section (Figma node 47936:3621) - two columns: included
 // (green check) and not included / add-ons (orange cross). An exclusion's suffix
 // is derived from its `type` + optional `priceText`: paid add-ons with a price
@@ -85,104 +104,6 @@ function exclusionSuffix(
     if (type === 'PAID_ADVANCE') return ` (${dict.available})`;
     return '';
 }
-
-// "What to Expect" section (Figma node 47936:3707) - intro + a numbered timeline.
-// Placeholder until the tour-by-slug API returns the itinerary.
-const MOCK_EXPECT = {
-    intro: 'The Miss Ann sets sail from Spanish Water Marina at 8:30 AM. Over 8 hours, Captain Mike guides you through three remote snorkel spots, with BBQ lunch on a private Klein Curaçao beach in between.',
-    steps: [
-        {
-            title: 'Departure from Spanish Water Marina - 8:30 AM',
-            detail: "Captain's welcome with breakfast pastries and rum punch",
-        },
-        {
-            title: 'Snorkel stop at Tugboat Reef - 9:30 AM',
-            detail: 'Three coves with green turtles and parrotfish',
-        },
-        {
-            title: 'BBQ lunch on Klein Curaçao beach - 11:30 AM',
-            detail: 'Grilled mahi-mahi, fresh salads, and unlimited drinks',
-        },
-        {
-            title: 'Beach time & lighthouse walk - 1:00 PM',
-            detail: 'Free time to swim or walk the abandoned lighthouse path',
-        },
-        {
-            title: 'Return sail to Curaçao - 3:00 PM',
-            detail: 'Drinks on the way back, arriving in marina around 4:30 PM',
-        },
-    ],
-};
-
-// "Meeting & Pickup" section (Figma node 47936:3746) - placeholder until the
-// tour-by-slug API returns the meeting point / pickup / departure details.
-const MOCK_MEETING = {
-    meeting: {
-        label: 'MEETING POINT',
-        title: 'Spanish Water Marina',
-        detail: 'Caracasbaaiweg 1, Willemstad, Curaçao',
-    },
-    mapLink: {
-        label: 'Open in Google Maps',
-        href: 'https://www.google.com/maps/search/?api=1&query=Spanish+Water+Marina+Cura%C3%A7ao',
-    },
-    pickup: {
-        label: 'HOTEL PICKUP (OPTIONAL)',
-        title: 'Available from select Willemstad hotels',
-        detail: '7:45-8:15 AM window\nConfirm pickup location at booking',
-    },
-    departure: {
-        label: 'DEPARTURE TIME',
-        title: '8:30 AM',
-        detail: 'Please arrive 15 minutes early for check-in',
-    },
-};
-
-// "Important Info" section (Figma node 47936:3779) - labeled bulleted lists.
-// Placeholder until the tour-by-slug API returns notSuitableFor / knowBeforeYouGo
-// / whatToBring.
-const MOCK_INFO_GROUPS = [
-    {
-        title: 'Not suitable for (conditional)',
-        items: [
-            'Minimum age 8 years; younger children cannot board the vessel',
-            'Not suitable for pregnant guests in 2nd or 3rd trimester',
-            'Moderate swimming ability recommended (life vests provided for non-swimmers)',
-        ],
-    },
-    {
-        title: 'Know before you go',
-        items: [
-            'Wheelchair-accessible vessel via boarding ramp at Spanish Water marina',
-            'Weather-dependent - captain confirms 24h in advance if rescheduling required',
-            'Small group, max 12 travelers',
-            'Captain speaks English, Dutch, and Papiamentu',
-            'Vegetarian and pescatarian options with 48h advance notice',
-            'Snorkel masks included: bring your own if you prefer',
-            'No outside food or alcoholic beverages on board',
-            'No glass containers on board',
-            'Route may adjust based on sea conditions',
-        ],
-    },
-    {
-        title: 'What to bring',
-        items: [
-            'Reef-safe sunscreen - protects coral and protects your skin',
-            'Cash for tips (optional)',
-        ],
-    },
-];
-
-// "Cancellation Policy" section (Figma node 47936:3794) - placeholder until the
-// tour-by-slug API returns the cancellation window + operator.
-const MOCK_CANCELLATION = {
-    title: 'Plans change. No problem.',
-    body: "Free cancellation up to 48 hours before your tour starts. Full refund, no forms, no questions asked.\n\nIf you cancel less than 48 hours before the tour start time, unfortunately we can't refund or change the booking",
-    // "Supplied by" is muted; the operator name is dark.
-    suppliedByPrefix: 'Supplied by',
-    operatorName: 'Miss Ann',
-};
-
 
 // Related tours (Figma node 47936:3964) - "More {category} tours in
 // {destination}" + "More to explore in {destination}". Placeholder card sets
@@ -383,6 +304,108 @@ export async function TourPage({
             id: e.id,
             label: `${e.label}${exclusionSuffix(e, tourDict.exclusion)}`,
         }));
+
+    // "What to Expect" - localized intro paragraph + a numbered timeline built
+    // from the tour's locations (START -> ITINERARY_ITEM -> END -> POI, already
+    // ordered by `displayOrder` on the backend). Each step is a location title +
+    // its short description; a step with no title is skipped.
+    const expectIntro = detail.translation?.whatToExpectIntro ?? null;
+    const expectSteps = detail.locations
+        .filter(l => l.title)
+        .map(l => ({ id: l.id, title: l.title, detail: l.shortDescription }));
+
+    // "Meeting & Pickup" (Figma 47936:3746). Meeting point = the START location
+    // (title) + the free-text `meetingPointText`; the map link uses the tour's
+    // meeting coords (falling back to the START location's). Hotel pickup shows
+    // only when the tour offers it (`pickupModel != NONE` and a pickup location
+    // exists). Departure lists the tour's start times (locale-formatted) + the
+    // check-in lead time. Any block with no data is omitted.
+    const meetDict = tourDict.meeting;
+    const startLocation = detail.locations.find(l => l.types.includes('START'));
+    const meetingText = detail.translation?.meetingPointText ?? null;
+    const meetingTitle =
+        startLocation?.title || detail.departureCity || detail.name;
+    const meetingDetail = meetingText || startLocation?.shortDescription || '';
+    const meetingBlock =
+        meetingTitle || meetingDetail
+            ? {
+                  label: meetDict.meetingPoint,
+                  title: meetingTitle,
+                  detail: meetingDetail,
+              }
+            : null;
+
+    const meetingLat = detail.meetingPointLat ?? startLocation?.latitude ?? null;
+    const meetingLng = detail.meetingPointLng ?? startLocation?.longitude ?? null;
+    const mapLink =
+        meetingLat != null && meetingLng != null
+            ? {
+                  label: meetDict.openInMaps,
+                  href: `https://www.google.com/maps/search/?api=1&query=${meetingLat},${meetingLng}`,
+              }
+            : null;
+
+    const pickupLoc =
+        detail.pickupModel !== 'NONE' ? detail.pickupLocations[0] : undefined;
+    const pickupBlock = pickupLoc
+        ? {
+              label: meetDict.hotelPickup,
+              title: pickupLoc.title || pickupLoc.name,
+              detail: [
+                  pickupLoc.windowStart && pickupLoc.windowEnd
+                      ? meetDict.pickupWindow
+                            .replace('{start}', pickupLoc.windowStart)
+                            .replace('{end}', pickupLoc.windowEnd)
+                      : null,
+                  pickupLoc.directions,
+              ]
+                  .filter(Boolean)
+                  .join('\n'),
+          }
+        : null;
+
+    const departureBlock =
+        detail.startTimes.length > 0
+            ? {
+                  label: meetDict.departureTime,
+                  title: detail.startTimes
+                      .map(t => formatClockTime(t, locale))
+                      .join(', '),
+                  detail: detail.checkInMinutesBefore
+                      ? meetDict.checkInEarly.replace(
+                            '{minutes}',
+                            String(detail.checkInMinutesBefore),
+                        )
+                      : '',
+              }
+            : null;
+
+    // "Important Info" - three labeled bullet lists off the localized
+    // translation (each string[] a set of bullets). A group with no bullets is
+    // omitted (notSuitableFor is frequently empty).
+    const infoDict = tourDict.info;
+    const infoGroups = [
+        {
+            title: infoDict.notSuitableFor,
+            items: detail.translation?.notSuitableFor ?? [],
+        },
+        {
+            title: infoDict.knowBeforeYouGo,
+            items: detail.translation?.knowBeforeYouGo ?? [],
+        },
+        {
+            title: infoDict.whatToBring,
+            items: detail.translation?.whatToBring ?? [],
+        },
+    ].filter(g => g.items.length > 0);
+
+    // "Cancellation Policy" - templated from the tour's free-cancellation window
+    // (`cancellationHours`, NOT NULL, enum-bound) + the supplying operator name.
+    const cancelDict = tourDict.cancellation;
+    const cancellationBody = cancelDict.body.replace(
+        /\{hours\}/g,
+        String(detail.cancellationHours),
+    );
 
     // Reviews. Aggregate + histogram come off the tour payload (same source as
     // the header rating); the individual cards come from the public reviews list
@@ -589,80 +612,103 @@ export async function TourPage({
                                 </>
                             )}
 
-                            <TourSection
-                                id='tour-expect'
-                                title={tourDict.sections.expect}>
-                                <p className='m-0 max-w-172 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    {MOCK_EXPECT.intro}
-                                </p>
-                                {/* Numbered timeline - orange step badges joined
-                                    by a vertical connector. */}
-                                <ol className='m-0 flex list-none flex-col p-0'>
-                                    {MOCK_EXPECT.steps.map((step, i) => (
-                                        <li
-                                            key={step.title}
-                                            className={`relative flex gap-4 ${
-                                                i < MOCK_EXPECT.steps.length - 1 ? 'pb-8' : ''
-                                            }`}>
-                                            {i < MOCK_EXPECT.steps.length - 1 && (
-                                                <span
-                                                    aria-hidden='true'
-                                                    className='absolute top-10 bottom-0 left-5 w-px -translate-x-1/2 bg-it-heading/15'
-                                                />
-                                            )}
-                                            <span className='relative z-10 grid size-10 shrink-0 place-items-center rounded-it-full bg-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                                {i + 1}
-                                            </span>
-                                            <div className='flex flex-col gap-1 pt-1'>
-                                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                    {step.title}
-                                                </span>
-                                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                                    {step.detail}
-                                                </span>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ol>
-                            </TourSection>
-
-                            <div className='h-px w-full bg-it-heading/10' />
-
-                            <TourSection
-                                id='tour-meeting'
-                                title={tourDict.sections.meeting}>
-                                <TourMeetingCard
-                                    meeting={MOCK_MEETING.meeting}
-                                    mapLink={MOCK_MEETING.mapLink}
-                                    pickup={MOCK_MEETING.pickup}
-                                    departure={MOCK_MEETING.departure}
-                                />
-                            </TourSection>
-
-                            <div className='h-px w-full bg-it-heading/10' />
-
-                            <TourSection
-                                id='tour-info'
-                                title={tourDict.sections.info}>
-                                <div className='flex flex-col gap-6'>
-                                    {MOCK_INFO_GROUPS.map(group => (
-                                        <div
-                                            key={group.title}
-                                            className='flex flex-col gap-2'>
-                                            <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                {group.title}
-                                            </h3>
-                                            <ul className='m-0 list-disc pl-5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                                {group.items.map(item => (
-                                                    <li key={item}>{item}</li>
+                            {(expectIntro || expectSteps.length > 0) && (
+                                <>
+                                    <TourSection
+                                        id='tour-expect'
+                                        title={tourDict.sections.expect}>
+                                        {expectIntro && (
+                                            <p className='m-0 max-w-172 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                {expectIntro}
+                                            </p>
+                                        )}
+                                        {/* Numbered timeline - orange step badges
+                                            joined by a vertical connector. */}
+                                        {expectSteps.length > 0 && (
+                                            <ol className='m-0 flex list-none flex-col p-0'>
+                                                {expectSteps.map((step, i) => (
+                                                    <li
+                                                        key={step.id}
+                                                        className={`relative flex gap-4 ${
+                                                            i < expectSteps.length - 1 ? 'pb-8' : ''
+                                                        }`}>
+                                                        {i < expectSteps.length - 1 && (
+                                                            <span
+                                                                aria-hidden='true'
+                                                                className='absolute top-10 bottom-0 left-5 w-px -translate-x-1/2 bg-it-heading/15'
+                                                            />
+                                                        )}
+                                                        <span className='relative z-10 grid size-10 shrink-0 place-items-center rounded-it-full bg-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                            {i + 1}
+                                                        </span>
+                                                        <div className='flex flex-col gap-1 pt-1'>
+                                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                                {step.title}
+                                                            </span>
+                                                            {step.detail && (
+                                                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                                    {step.detail}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </li>
                                                 ))}
-                                            </ul>
-                                        </div>
-                                    ))}
-                                </div>
-                            </TourSection>
+                                            </ol>
+                                        )}
+                                    </TourSection>
 
-                            <div className='h-px w-full bg-it-heading/10' />
+                                    <div className='h-px w-full bg-it-heading/10' />
+                                </>
+                            )}
+
+                            {meetingBlock && (
+                                <>
+                                    <TourSection
+                                        id='tour-meeting'
+                                        title={tourDict.sections.meeting}>
+                                        <TourMeetingCard
+                                            meeting={meetingBlock}
+                                            mapLink={mapLink}
+                                            pickup={pickupBlock}
+                                            departure={departureBlock}
+                                        />
+                                    </TourSection>
+
+                                    <div className='h-px w-full bg-it-heading/10' />
+                                </>
+                            )}
+
+                            {infoGroups.length > 0 && (
+                                <>
+                                    <TourSection
+                                        id='tour-info'
+                                        title={tourDict.sections.info}>
+                                        <div className='flex flex-col gap-6'>
+                                            {infoGroups.map(group => (
+                                                <div
+                                                    key={group.title}
+                                                    className='flex flex-col gap-2'>
+                                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        {group.title}
+                                                    </h3>
+                                                    <ul className='m-0 list-disc pl-5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                        {group.items.map(
+                                                            (item, i) => (
+                                                                <li
+                                                                    key={`${group.title}-${i}`}>
+                                                                    {item}
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </TourSection>
+
+                                    <div className='h-px w-full bg-it-heading/10' />
+                                </>
+                            )}
 
                             <TourSection
                                 id='tour-cancellation'
@@ -670,20 +716,22 @@ export async function TourPage({
                                 <div className='flex flex-col gap-4'>
                                     <div className='flex flex-col gap-2'>
                                         <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {MOCK_CANCELLATION.title}
+                                            {cancelDict.title}
                                         </h3>
                                         <p className='m-0 whitespace-pre-line text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                            {MOCK_CANCELLATION.body}
+                                            {cancellationBody}
                                         </p>
                                     </div>
-                                    <span className='self-end font-medium text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                        <span className='text-it-text-muted'>
-                                            {MOCK_CANCELLATION.suppliedByPrefix}
-                                        </span>{' '}
-                                        <span className='text-it-heading'>
-                                            {MOCK_CANCELLATION.operatorName}
+                                    {detail.operatorName && (
+                                        <span className='self-end font-medium text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                            <span className='text-it-text-muted'>
+                                                {cancelDict.suppliedBy}
+                                            </span>{' '}
+                                            <span className='text-it-heading'>
+                                                {detail.operatorName}
+                                            </span>
                                         </span>
-                                    </span>
+                                    )}
                                 </div>
                             </TourSection>
 

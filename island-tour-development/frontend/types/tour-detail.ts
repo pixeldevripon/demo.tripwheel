@@ -31,9 +31,9 @@ export interface PublicTourTranslation {
   overview: string | null;
   description: string | null;
   shortDescription: string | null;
-  whatToBring: string | null;
-  knowBeforeYouGo: string | null;
-  notSuitableFor: string | null;
+  whatToBring: string[];
+  knowBeforeYouGo: string[];
+  notSuitableFor: string[];
   whatToExpectIntro: string | null;
   categoryDisplay: string | null;
   localTipTitle: string | null;

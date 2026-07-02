@@ -390,6 +390,24 @@
         "availablePrice": "disponible - {price}",
         "available": "disponible",
         "payOnDay": "à payer sur place"
+      },
+      "meeting": {
+        "meetingPoint": "Point de rencontre",
+        "hotelPickup": "Prise en charge à l'hôtel",
+        "departureTime": "Heure de départ",
+        "openInMaps": "Ouvrir dans Google Maps",
+        "pickupWindow": "Créneau {start}-{end}",
+        "checkInEarly": "Merci d'arriver {minutes} minutes en avance pour l'enregistrement."
+      },
+      "info": {
+        "notSuitableFor": "Ne convient pas pour",
+        "knowBeforeYouGo": "Bon à savoir",
+        "whatToBring": "À apporter"
+      },
+      "cancellation": {
+        "title": "Les plans changent. Pas de problème.",
+        "body": "Annulation gratuite jusqu'à {hours} heures avant le début de votre visite. Remboursement intégral, sans formulaire ni question.\n\nEn cas d'annulation moins de {hours} heures avant l'heure de départ, nous ne pouvons malheureusement ni rembourser ni modifier la réservation.",
+        "suppliedBy": "Fourni par"
       }
     },
     "categoryAboutTitle": "À propos de {category} à {destination}",

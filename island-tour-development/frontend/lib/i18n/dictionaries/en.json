@@ -390,6 +390,24 @@
         "availablePrice": "available - {price}",
         "available": "available",
         "payOnDay": "pay on the day"
+      },
+      "meeting": {
+        "meetingPoint": "Meeting point",
+        "hotelPickup": "Hotel pickup",
+        "departureTime": "Departure time",
+        "openInMaps": "Open in Google Maps",
+        "pickupWindow": "{start}-{end} window",
+        "checkInEarly": "Please arrive {minutes} minutes early for check-in."
+      },
+      "info": {
+        "notSuitableFor": "Not suitable for",
+        "knowBeforeYouGo": "Know before you go",
+        "whatToBring": "What to bring"
+      },
+      "cancellation": {
+        "title": "Plans change. No problem.",
+        "body": "Free cancellation up to {hours} hours before your tour starts. Full refund, no forms, no questions asked.\n\nIf you cancel less than {hours} hours before the tour start time, unfortunately we can't refund or change the booking.",
+        "suppliedBy": "Supplied by"
       }
     },
     "categoryAboutTitle": "About {category} in {destination}",

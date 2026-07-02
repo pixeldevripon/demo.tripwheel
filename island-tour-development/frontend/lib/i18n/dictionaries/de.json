@@ -390,6 +390,24 @@
         "availablePrice": "verfügbar - {price}",
         "available": "verfügbar",
         "payOnDay": "vor Ort zahlen"
+      },
+      "meeting": {
+        "meetingPoint": "Treffpunkt",
+        "hotelPickup": "Hotelabholung",
+        "departureTime": "Abfahrtszeit",
+        "openInMaps": "In Google Maps öffnen",
+        "pickupWindow": "Zeitfenster {start}-{end}",
+        "checkInEarly": "Bitte {minutes} Minuten früher zum Check-in kommen."
+      },
+      "info": {
+        "notSuitableFor": "Nicht geeignet für",
+        "knowBeforeYouGo": "Gut zu wissen",
+        "whatToBring": "Was mitzubringen ist"
+      },
+      "cancellation": {
+        "title": "Pläne ändern sich. Kein Problem.",
+        "body": "Kostenlose Stornierung bis {hours} Stunden vor Beginn deiner Tour. Volle Rückerstattung, keine Formulare, keine Fragen.\n\nBei Stornierung weniger als {hours} Stunden vor der Startzeit können wir die Buchung leider nicht erstatten oder ändern.",
+        "suppliedBy": "Angeboten von"
       }
     },
     "categoryAboutTitle": "Über {category} in {destination}",

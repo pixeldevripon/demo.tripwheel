@@ -390,6 +390,24 @@
         "availablePrice": "disponível - {price}",
         "available": "disponível",
         "payOnDay": "pagar no local"
+      },
+      "meeting": {
+        "meetingPoint": "Ponto de encontro",
+        "hotelPickup": "Recolha no hotel",
+        "departureTime": "Hora de partida",
+        "openInMaps": "Abrir no Google Maps",
+        "pickupWindow": "Janela {start}-{end}",
+        "checkInEarly": "Chegue {minutes} minutos antes para o check-in."
+      },
+      "info": {
+        "notSuitableFor": "Não indicado para",
+        "knowBeforeYouGo": "Bom saber",
+        "whatToBring": "O que levar"
+      },
+      "cancellation": {
+        "title": "Os planos mudam. Sem problema.",
+        "body": "Cancelamento gratuito até {hours} horas antes do início do seu passeio. Reembolso total, sem formulários nem perguntas.\n\nSe cancelar com menos de {hours} horas antes da hora de início, infelizmente não podemos reembolsar nem alterar a reserva.",
+        "suppliedBy": "Fornecido por"
       }
     },
     "categoryAboutTitle": "Sobre {category} em {destination}",

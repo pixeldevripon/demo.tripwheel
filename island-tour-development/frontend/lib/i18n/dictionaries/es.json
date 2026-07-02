@@ -390,6 +390,24 @@
         "availablePrice": "disponible - {price}",
         "available": "disponible",
         "payOnDay": "pagar en el lugar"
+      },
+      "meeting": {
+        "meetingPoint": "Punto de encuentro",
+        "hotelPickup": "Recogida en el hotel",
+        "departureTime": "Hora de salida",
+        "openInMaps": "Abrir en Google Maps",
+        "pickupWindow": "Franja {start}-{end}",
+        "checkInEarly": "Llega {minutes} minutos antes para el registro."
+      },
+      "info": {
+        "notSuitableFor": "No apto para",
+        "knowBeforeYouGo": "Antes de ir",
+        "whatToBring": "Qué llevar"
+      },
+      "cancellation": {
+        "title": "Los planes cambian. No hay problema.",
+        "body": "Cancelación gratuita hasta {hours} horas antes del inicio de tu tour. Reembolso completo, sin formularios ni preguntas.\n\nSi cancelas con menos de {hours} horas de antelación a la hora de inicio, lamentablemente no podemos reembolsar ni cambiar la reserva.",
+        "suppliedBy": "Ofrecido por"
       }
     },
     "categoryAboutTitle": "Sobre {category} en {destination}",

@@ -390,6 +390,24 @@
         "availablePrice": "beschikbaar - {price}",
         "available": "beschikbaar",
         "payOnDay": "betaal ter plaatse"
+      },
+      "meeting": {
+        "meetingPoint": "Ontmoetingspunt",
+        "hotelPickup": "Ophalen bij hotel",
+        "departureTime": "Vertrektijd",
+        "openInMaps": "Openen in Google Maps",
+        "pickupWindow": "{start}-{end} venster",
+        "checkInEarly": "Kom {minutes} minuten eerder voor het inchecken."
+      },
+      "info": {
+        "notSuitableFor": "Niet geschikt voor",
+        "knowBeforeYouGo": "Goed om te weten",
+        "whatToBring": "Wat mee te nemen"
+      },
+      "cancellation": {
+        "title": "Plannen veranderen. Geen probleem.",
+        "body": "Gratis annuleren tot {hours} uur voor aanvang van je tour. Volledige terugbetaling, geen formulieren, geen vragen.\n\nAnnuleer je minder dan {hours} uur voor de starttijd, dan kunnen we de boeking helaas niet terugbetalen of wijzigen.",
+        "suppliedBy": "Aangeboden door"
       }
     },
     "categoryAboutTitle": "Over {category} in {destination}",

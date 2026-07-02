@@ -60,35 +60,47 @@ export function TourMeetingCard({
     departure,
 }: {
     meeting: TourMeetingInfo;
-    mapLink: MapLink;
-    pickup: TourMeetingInfo;
-    departure: TourMeetingInfo;
+    /** Google Maps link, shown under the meeting point when coordinates exist. */
+    mapLink?: MapLink | null;
+    /** Hotel-pickup block, shown only when the tour offers pickup. */
+    pickup?: TourMeetingInfo | null;
+    /** Departure-time block (right column), shown when start times exist. */
+    departure?: TourMeetingInfo | null;
 }) {
     return (
         <div className='rounded-[16px] border border-it-border bg-it-surface p-6'>
             <div className='flex flex-col gap-10 md:flex-row md:gap-10'>
                 <div className='flex flex-1 flex-col gap-10'>
                     <InfoBlock icon='/icons/meeting-location.svg' info={meeting}>
-                        <a
-                            href={mapLink.href}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='flex w-fit items-center gap-1 pl-8 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline'>
-                            {mapLink.label}
-                            <Image
-                                src='/icons/cta-arrow-right.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6 shrink-0'
-                            />
-                        </a>
+                        {mapLink && (
+                            <a
+                                href={mapLink.href}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='flex w-fit items-center gap-1 pl-8 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline'>
+                                {mapLink.label}
+                                <Image
+                                    src='/icons/cta-arrow-right.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className='size-6 shrink-0'
+                                />
+                            </a>
+                        )}
                     </InfoBlock>
-                    <InfoBlock icon='/icons/meeting-car.svg' info={pickup} />
+                    {pickup && (
+                        <InfoBlock icon='/icons/meeting-car.svg' info={pickup} />
+                    )}
                 </div>
-                <div className='md:w-68.5'>
-                    <InfoBlock icon='/icons/meeting-clock.svg' info={departure} />
-                </div>
+                {departure && (
+                    <div className='md:w-68.5'>
+                        <InfoBlock
+                            icon='/icons/meeting-clock.svg'
+                            info={departure}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
