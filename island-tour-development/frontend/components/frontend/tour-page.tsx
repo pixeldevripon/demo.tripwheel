@@ -36,7 +36,7 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *     location meta, Save / Share pills
  *   - gallery images/meta, review preview + full paginated section
  *   - overview: localized `overview` prose + highlights bullets + optional
- *     `localTip` callout
+ *     local-tip callout (`localTipTitle` headline + `localTipBody` description)
  *
  * Still on MOCK data (wired in later steps): inclusions/exclusions, itinerary,
  * meeting, info, cancellation, related tours.
@@ -355,7 +355,8 @@ export async function TourPage({
     // Overview (Figma node 47936:3606): the localized `overview` prose (paragraph
     // breaks only - split into <p> blocks), the tour's highlights as a bullet list
     // (localized, ordered by displayOrder - backend-ordered), and an optional
-    // "local tip" callout from `localTip`.
+    // "local tip" callout - a bold headline (`localTipTitle`) over a muted
+    // description (`localTipBody`), both localized.
     const overviewParagraphs = (detail.translation?.overview ?? '')
         .split(/\n{2,}|\n/)
         .map(p => p.trim())
@@ -363,7 +364,8 @@ export async function TourPage({
     const highlights = detail.highlights
         .map(h => h.text)
         .filter(Boolean);
-    const localTip = detail.translation?.localTip ?? null;
+    const localTipTitle = detail.translation?.localTipTitle ?? null;
+    const localTipBody = detail.translation?.localTipBody ?? null;
 
     // Reviews. Aggregate + histogram come off the tour payload (same source as
     // the header rating); the individual cards come from the public reviews list
@@ -494,8 +496,10 @@ export async function TourPage({
                                         )}
                                     </div>
                                 )}
-                                {/* Local tip callout - label full strength, tip at 60%. */}
-                                {localTip && (
+                                {/* Local tip callout (Figma node): bold headline
+                                    over a muted description. Renders when either
+                                    line is present; each line only if it exists. */}
+                                {(localTipTitle || localTipBody) && (
                                     <div className='flex items-start gap-2 rounded-[8px] border border-it-primary/30 bg-it-primary/5 p-6'>
                                         <Image
                                             src='/icons/tip-bulb.svg'
@@ -505,8 +509,12 @@ export async function TourPage({
                                             className='size-6 shrink-0'
                                         />
                                         <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                            <span className='text-[#8b390e]'>{tourDict.localTipLabel}</span>
-                                            <span className='text-[#8b390e]/60'>{localTip}</span>
+                                            {localTipTitle && (
+                                                <span className='text-[#8b390e]'>{localTipTitle}</span>
+                                            )}
+                                            {localTipBody && (
+                                                <span className='text-[#8b390e]/60'>{localTipBody}</span>
+                                            )}
                                         </p>
                                     </div>
                                 )}

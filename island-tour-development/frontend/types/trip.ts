@@ -318,7 +318,8 @@ export interface TripTranslation {
   notSuitableFor: string[];
   whatToExpectIntro: string | null;
   categoryDisplay: string | null;
-  localTip: string | null;
+  localTipTitle: string | null;
+  localTipBody: string | null;
   meetingPointText: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
@@ -561,7 +562,8 @@ export interface UpsertTripTranslationPayload {
   notSuitableFor?: string[];
   whatToExpectIntro?: string | null;
   categoryDisplay?: string | null;
-  localTip?: string | null;
+  localTipTitle?: string | null;
+  localTipBody?: string | null;
   meetingPointText?: string | null;
   metaTitle?: string | null;
   metaDescription?: string | null;

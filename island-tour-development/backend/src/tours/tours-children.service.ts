@@ -1828,7 +1828,8 @@ export class TourChildrenService {
     notSuitableFor: true,
     whatToExpectIntro: true,
     categoryDisplay: true,
-    localTip: true,
+    localTipTitle: true,
+    localTipBody: true,
     meetingPointText: true,
     metaTitle: true,
     metaDescription: true,
@@ -1874,7 +1875,8 @@ export class TourChildrenService {
         notSuitableFor: [],
         whatToExpectIntro: null,
         categoryDisplay: null,
-        localTip: null,
+        localTipTitle: null,
+        localTipBody: null,
         meetingPointText: null,
         metaTitle: null,
         metaDescription: null,
@@ -1907,7 +1909,8 @@ export class TourChildrenService {
         notSuitableFor: dto.notSuitableFor ?? [],
         whatToExpectIntro: dto.whatToExpectIntro ?? null,
         categoryDisplay: dto.categoryDisplay ?? null,
-        localTip: dto.localTip ?? null,
+        localTipTitle: dto.localTipTitle ?? null,
+        localTipBody: dto.localTipBody ?? null,
         meetingPointText: dto.meetingPointText ?? null,
         metaTitle: dto.metaTitle ?? null,
         metaDescription: dto.metaDescription ?? null,
@@ -1933,7 +1936,12 @@ export class TourChildrenService {
         ...(dto.categoryDisplay !== undefined && {
           categoryDisplay: dto.categoryDisplay,
         }),
-        ...(dto.localTip !== undefined && { localTip: dto.localTip }),
+        ...(dto.localTipTitle !== undefined && {
+          localTipTitle: dto.localTipTitle,
+        }),
+        ...(dto.localTipBody !== undefined && {
+          localTipBody: dto.localTipBody,
+        }),
         ...(dto.meetingPointText !== undefined && {
           meetingPointText: dto.meetingPointText,
         }),

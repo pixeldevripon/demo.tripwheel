@@ -36,7 +36,8 @@ export interface PublicTourTranslation {
   notSuitableFor: string | null;
   whatToExpectIntro: string | null;
   categoryDisplay: string | null;
-  localTip: string | null;
+  localTipTitle: string | null;
+  localTipBody: string | null;
   meetingPointText: string | null;
   metaTitle: string | null;
   metaDescription: string | null;

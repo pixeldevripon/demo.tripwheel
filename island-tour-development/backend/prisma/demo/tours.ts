@@ -1621,8 +1621,9 @@ function localizedTranslations(bp: Blueprint, categoryDisplay: string) {
   const c = CATEGORY_CONTENT[bp.primaryCategory];
   const meeting = `Meet at the ${DEST_META[bp.destinationSlug].city} departure point; look for the ${OPERATORS.find((o) => o.key === bp.operatorKey)?.companyName} flag.`;
   const description = `${bp.overview} ${bp.overview} This experience is run by a local operator who knows ${DEST_META[bp.destinationSlug].city} inside out, with small-group attention and a focus on safety, sustainability, and showing you the island the way locals love it.`;
-  const localTip =
-    'Book the earliest slot for the calmest water and the best light for photos.';
+  const localTipTitle = 'Book the morning departure';
+  const localTipBody =
+    'The earliest slot has the calmest water, the best light for photos, and the smallest crowds.';
   const intro = `Here is what a typical ${bp.name} looks like, step by step.`;
   return ALL_LOCALES.map((locale) => {
     const isEn = locale === Locale.en;
@@ -1645,7 +1646,8 @@ function localizedTranslations(bp: Blueprint, categoryDisplay: string) {
         : c.notSuitableFor.map((t) => stub(locale, t)),
       whatToExpectIntro: isEn ? intro : stub(locale, intro),
       categoryDisplay: isEn ? categoryDisplay : stub(locale, categoryDisplay),
-      localTip: isEn ? localTip : stub(locale, localTip),
+      localTipTitle: isEn ? localTipTitle : stub(locale, localTipTitle),
+      localTipBody: isEn ? localTipBody : stub(locale, localTipBody),
       meetingPointText: isEn ? meeting : stub(locale, meeting),
       metaTitle: isEn
         ? `${bp.name} | Island Tours`

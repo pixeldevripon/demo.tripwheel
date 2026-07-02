@@ -33,7 +33,8 @@ const tripTranslationSchema = z.object({
   notSuitableFor: z.string().max(2000).optional().or(z.literal('')),
   whatToExpectIntro: z.string().max(1000).optional().or(z.literal('')),
   categoryDisplay: z.string().max(120).optional().or(z.literal('')),
-  localTip: z.string().max(2000).optional().or(z.literal('')),
+  localTipTitle: z.string().max(120).optional().or(z.literal('')),
+  localTipBody: z.string().max(2000).optional().or(z.literal('')),
   meetingPointText: z.string().max(2000).optional().or(z.literal('')),
   metaTitle: z.string().max(70).optional().or(z.literal('')),
   metaDescription: z.string().max(170).optional().or(z.literal('')),
@@ -51,7 +52,8 @@ const EMPTY_FORM: TripTranslationFormValues = {
   notSuitableFor: '',
   whatToExpectIntro: '',
   categoryDisplay: '',
-  localTip: '',
+  localTipTitle: '',
+  localTipBody: '',
   meetingPointText: '',
   metaTitle: '',
   metaDescription: '',
@@ -104,7 +106,8 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       notSuitableFor: arrayToLines(translation?.notSuitableFor),
       whatToExpectIntro: translation?.whatToExpectIntro ?? '',
       categoryDisplay: translation?.categoryDisplay ?? '',
-      localTip: translation?.localTip ?? '',
+      localTipTitle: translation?.localTipTitle ?? '',
+      localTipBody: translation?.localTipBody ?? '',
       meetingPointText: translation?.meetingPointText ?? '',
       metaTitle: translation?.metaTitle ?? '',
       metaDescription: translation?.metaDescription ?? '',
@@ -126,7 +129,8 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           notSuitableFor: linesToArray(values.notSuitableFor),
           whatToExpectIntro: values.whatToExpectIntro || null,
           categoryDisplay: values.categoryDisplay || null,
-          localTip: values.localTip || null,
+          localTipTitle: values.localTipTitle || null,
+          localTipBody: values.localTipBody || null,
           meetingPointText: values.meetingPointText || null,
           metaTitle: values.metaTitle || null,
           metaDescription: values.metaDescription || null,
@@ -157,7 +161,8 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
             notSuitableFor: [],
             whatToExpectIntro: null,
             categoryDisplay: null,
-            localTip: null,
+            localTipTitle: null,
+            localTipBody: null,
             meetingPointText: null,
             metaTitle: null,
             metaDescription: null,
@@ -292,8 +297,15 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Local Tip</Label>
-        <Textarea {...register('localTip')} rows={2} placeholder="An insider tip from the operator" />
+        <Label className="text-xs font-semibold uppercase">Local Tip - Title</Label>
+        <Input {...register('localTipTitle')} placeholder="e.g. Book the morning departure" />
+        <FieldDescription>Short headline for the local-tip callout.</FieldDescription>
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">Local Tip - Description</Label>
+        <Textarea {...register('localTipBody')} rows={2} placeholder="e.g. Afternoon wind picks up and the water gets choppier." />
+        <FieldDescription>Supporting line shown under the tip title.</FieldDescription>
       </Field>
 
       <Field>

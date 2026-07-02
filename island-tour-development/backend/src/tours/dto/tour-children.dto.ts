@@ -1077,7 +1077,8 @@ export class TourTranslationResponseDto {
   @ApiProperty({ type: [String] }) notSuitableFor!: string[];
   @ApiPropertyOptional() whatToExpectIntro!: string | null;
   @ApiPropertyOptional() categoryDisplay!: string | null;
-  @ApiPropertyOptional() localTip!: string | null;
+  @ApiPropertyOptional() localTipTitle!: string | null;
+  @ApiPropertyOptional() localTipBody!: string | null;
   @ApiPropertyOptional() meetingPointText!: string | null;
   @ApiPropertyOptional() metaTitle!: string | null;
   @ApiPropertyOptional() metaDescription!: string | null;
@@ -1166,12 +1167,23 @@ export class UpsertTourTranslationDto {
   categoryDisplay?: string;
 
   @ApiPropertyOptional({
-    example: 'Ask the crew about the hidden cove on the west side.',
+    example: 'Book the morning departure',
+    description: 'Local-tip callout headline (LD22, Figma)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  localTipTitle?: string;
+
+  @ApiPropertyOptional({
+    example: 'Afternoon wind picks up and the water gets choppier.',
+    description:
+      'Local-tip callout description shown under the title (LD22, Figma)',
   })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  localTip?: string;
+  localTipBody?: string;
 
   @ApiPropertyOptional({
     example: 'Meet at the main dock, Pier 3, 15 minutes before departure.',

@@ -469,7 +469,8 @@ model TourTranslation {
   notSuitableFor      String[] @default([]) // 1–6 bullets when present; hidden when empty (master string[])
   whatToExpectIntro   String? // intro paragraph above the numbered itinerary on the "What to Expect" tab (Figma)
   categoryDisplay     String? // plural noun phrase for "More {x} in {destination}" (LD33); CMS validates plural
-  localTip            String?
+  localTipTitle       String? // "local tip" callout headline, e.g. "Book the morning departure" (LD22, Figma)
+  localTipBody        String? // "local tip" callout description, e.g. "Afternoon wind picks up…" (LD22, Figma)
   meetingPointText    String? // localized meeting-point description (geo on Tour)
   metaTitle           String? // SEO (master E.3 SEO block, localized)
   metaDescription     String? // SEO (master E.3 SEO block, localized)
