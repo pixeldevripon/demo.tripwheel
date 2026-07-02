@@ -20,8 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import { ImageThumb } from './image-thumb';
 import { TranslationRow } from './translation-row';
 import {
   useExclusions,
@@ -56,7 +54,6 @@ const addExclusionSchema = z.object({
   icon: z.string().optional(),
   type: z.enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE']).optional().or(z.literal('')),
   priceText: z.string().max(120).optional(),
-  imageUrl: z.string().optional(),
   displayOrder: z.string().optional(),
 });
 
@@ -74,33 +71,12 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
   const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
   const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
   const { mutate: removeExclusion, isPending: isRemoving } = useRemoveExclusion();
-  const { mutate: updateExclusion, isPending: isUpdatingImage } = useUpdateExclusion();
   const { mutate: saveHandling, isPending: isSavingHandling } = useUpdateExclusion();
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertExclusionTranslation();
 
   const enTranslation = exclusion.translations.find((t) => t.locale === 'en');
   const isPaidType = typeVal === 'PAID_ADVANCE' || typeVal === 'PAID_ONSITE';
   const typeLabel = EXCLUSION_TYPE_OPTIONS.find((o) => o.value === exclusion.type)?.label;
-
-  function handleImageSelect(url: string) {
-    updateExclusion(
-      { tripId, exclusionId: exclusion.id, payload: { imageUrl: url } },
-      {
-        onSuccess: () => toast.success('Image saved.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save image.'),
-      }
-    );
-  }
-
-  function handleImageRemove() {
-    updateExclusion(
-      { tripId, exclusionId: exclusion.id, payload: { imageUrl: null } },
-      {
-        onSuccess: () => toast.success('Image removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove image.'),
-      }
-    );
-  }
 
   // Persist the structured handling of this exclusion (LD18): how the excluded
   // item is dealt with (`type`) and, for paid add-ons, the operator's price note
@@ -140,16 +116,6 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Badge variant="secondary" className="text-xs shrink-0">{exclusion.icon}</Badge>
-
-          <div onClick={(e) => e.stopPropagation()}>
-            <ImageThumb
-              imageUrl={exclusion.imageUrl}
-              onSelect={handleImageSelect}
-              onRemove={handleImageRemove}
-              disabled={isUpdatingImage}
-            />
-          </div>
-
           <p className="text-sm truncate">{enTranslation?.label ?? '(no EN translation)'}</p>
           {typeLabel && (
             <Badge variant="outline" className="text-xs shrink-0 hidden md:inline-flex">
@@ -270,10 +236,9 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
     formState: { errors },
   } = useForm<AddExclusionFormValues>({
     resolver: zodResolver(addExclusionSchema),
-    defaultValues: { label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String(count) },
+    defaultValues: { label: '', icon: 'x', type: '', priceText: '', displayOrder: String(count) },
   });
 
-  const imageUrlValue = watch('imageUrl');
   const typeValue = watch('type');
   const isPaidType = typeValue === 'PAID_ADVANCE' || typeValue === 'PAID_ONSITE';
 
@@ -289,14 +254,13 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             (values.type === 'PAID_ADVANCE' || values.type === 'PAID_ONSITE') && values.priceText
               ? values.priceText
               : undefined,
-          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Exclusion added.');
-          reset({ label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
+          reset({ label: '', icon: 'x', type: '', priceText: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add exclusion.'),
       }
@@ -374,15 +338,6 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
               </Field>
             )}
           </div>
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Image <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-            </Label>
-            <ImageSelectorField
-              value={imageUrlValue || null}
-              onChange={(url) => setValue('imageUrl', url ?? '')}
-            />
-          </Field>
           <div className="flex justify-end">
             <Button type="submit" size="sm" disabled={isAdding}>
               {isAdding ? 'Adding...' : 'Add Exclusion'}

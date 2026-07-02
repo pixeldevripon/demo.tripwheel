@@ -13,13 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import { ImageThumb } from './image-thumb';
 import { TranslationRow } from './translation-row';
 import {
   useHighlights,
   useAddHighlight,
-  useUpdateHighlight,
   useRemoveHighlight,
   useUpsertHighlightTranslation,
 } from '@/hooks/trips/use-trips';
@@ -28,7 +25,6 @@ import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
 
 const addHighlightSchema = z.object({
   text: z.string().min(5, 'At least 5 characters').max(100, 'Max 100 characters'),
-  imageUrl: z.string().optional(),
   displayOrder: z.string().optional(),
 });
 
@@ -44,30 +40,9 @@ interface HighlightItemProps {
 function HighlightItem({ highlight, tripId }: HighlightItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { mutate: removeHighlight, isPending: isRemoving } = useRemoveHighlight();
-  const { mutate: updateHighlight, isPending: isUpdatingImage } = useUpdateHighlight();
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertHighlightTranslation();
 
   const enTranslation = highlight.translations.find((t) => t.locale === 'en');
-
-  function handleImageSelect(url: string) {
-    updateHighlight(
-      { tripId, highlightId: highlight.id, payload: { imageUrl: url } },
-      {
-        onSuccess: () => toast.success('Image saved.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save image.'),
-      }
-    );
-  }
-
-  function handleImageRemove() {
-    updateHighlight(
-      { tripId, highlightId: highlight.id, payload: { imageUrl: null } },
-      {
-        onSuccess: () => toast.success('Image removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove image.'),
-      }
-    );
-  }
 
   function handleDelete() {
     removeHighlight(
@@ -85,17 +60,6 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
         {/* Left: order + thumbnail + text */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-muted-foreground shrink-0">#{highlight.displayOrder}</span>
-
-          {/* Avatar-size image thumbnail - stops propagation internally */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <ImageThumb
-              imageUrl={highlight.imageUrl}
-              onSelect={handleImageSelect}
-              onRemove={handleImageRemove}
-              disabled={isUpdatingImage}
-            />
-          </div>
-
           <p className="text-sm truncate">{enTranslation?.text ?? '(no EN translation)'}</p>
         </div>
 
@@ -168,15 +132,11 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<AddHighlightFormValues>({
     resolver: zodResolver(addHighlightSchema),
-    defaultValues: { text: '', imageUrl: '', displayOrder: String(count) },
+    defaultValues: { text: '', displayOrder: String(count) },
   });
-
-  const imageUrlValue = watch('imageUrl');
 
   function onAdd(values: AddHighlightFormValues) {
     addHighlight(
@@ -184,14 +144,13 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
         tripId,
         payload: {
           text: values.text,
-          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Highlight added.');
-          reset({ text: '', imageUrl: '', displayOrder: String((highlights?.length ?? 0) + 1) });
+          reset({ text: '', displayOrder: String((highlights?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add highlight.'),
       }
@@ -239,15 +198,6 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
               aria-invalid={!!errors.text}
             />
             <FieldError>{errors.text?.message}</FieldError>
-          </Field>
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Image <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-            </Label>
-            <ImageSelectorField
-              value={imageUrlValue || null}
-              onChange={(url) => setValue('imageUrl', url ?? '')}
-            />
           </Field>
           <Field>
             <Label className="text-xs font-semibold uppercase">Display Order</Label>

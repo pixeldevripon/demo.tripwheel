@@ -20,13 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import { ImageThumb } from './image-thumb';
 import { TranslationRow } from './translation-row';
 import {
   useInclusions,
   useAddInclusion,
-  useUpdateInclusion,
   useRemoveInclusion,
   useUpsertInclusionTranslation,
 } from '@/hooks/trips/use-trips';
@@ -47,7 +44,6 @@ const ICON_OPTIONS = [
 const addInclusionSchema = z.object({
   label: z.string().min(2, 'At least 2 characters').max(100),
   icon: z.string().optional(),
-  imageUrl: z.string().optional(),
   displayOrder: z.string().optional(),
 });
 
@@ -63,30 +59,9 @@ interface InclusionItemProps {
 function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
   const [expanded, setExpanded] = useState(false);
   const { mutate: removeInclusion, isPending: isRemoving } = useRemoveInclusion();
-  const { mutate: updateInclusion, isPending: isUpdatingImage } = useUpdateInclusion();
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertInclusionTranslation();
 
   const enTranslation = inclusion.translations.find((t) => t.locale === 'en');
-
-  function handleImageSelect(url: string) {
-    updateInclusion(
-      { tripId, inclusionId: inclusion.id, payload: { imageUrl: url } },
-      {
-        onSuccess: () => toast.success('Image saved.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save image.'),
-      }
-    );
-  }
-
-  function handleImageRemove() {
-    updateInclusion(
-      { tripId, inclusionId: inclusion.id, payload: { imageUrl: null } },
-      {
-        onSuccess: () => toast.success('Image removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove image.'),
-      }
-    );
-  }
 
   function handleDelete() {
     removeInclusion(
@@ -104,17 +79,6 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
         {/* Left: icon badge + thumbnail + label */}
         <div className="flex items-center gap-2 min-w-0">
           <Badge variant="secondary" className="text-xs shrink-0">{inclusion.icon}</Badge>
-
-          {/* Avatar-size image thumbnail - stops propagation internally */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <ImageThumb
-              imageUrl={inclusion.imageUrl}
-              onSelect={handleImageSelect}
-              onRemove={handleImageRemove}
-              disabled={isUpdatingImage}
-            />
-          </div>
-
           <p className="text-sm truncate">{enTranslation?.label ?? '(no EN translation)'}</p>
         </div>
 
@@ -187,15 +151,12 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<AddInclusionFormValues>({
     resolver: zodResolver(addInclusionSchema),
-    defaultValues: { label: '', icon: 'check', imageUrl: '', displayOrder: String(count) },
+    defaultValues: { label: '', icon: 'check', displayOrder: String(count) },
   });
-
-  const imageUrlValue = watch('imageUrl');
 
   function onAdd(values: AddInclusionFormValues) {
     addInclusion(
@@ -204,14 +165,13 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
         payload: {
           label: values.label,
           icon: values.icon || 'check',
-          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Inclusion added.');
-          reset({ label: '', icon: 'check', imageUrl: '', displayOrder: String((inclusions?.length ?? 0) + 1) });
+          reset({ label: '', icon: 'check', displayOrder: String((inclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add inclusion.'),
       }
@@ -264,15 +224,6 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
                 ))}
               </SelectContent>
             </Select>
-          </Field>
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Image <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-            </Label>
-            <ImageSelectorField
-              value={imageUrlValue || null}
-              onChange={(url) => setValue('imageUrl', url ?? '')}
-            />
           </Field>
           <div className="flex justify-end">
             <Button type="submit" size="sm" disabled={isAdding}>

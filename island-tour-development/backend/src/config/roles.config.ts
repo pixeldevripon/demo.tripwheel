@@ -21,6 +21,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.DELETE_OPERATOR,
     Permission.MANAGE_SYSTEM,
     Permission.MANAGE_TRIPS,
+    Permission.MANAGE_AVAILABILITY,
     Permission.CREATE_CONTENT,
     Permission.VIEW_CONTENT,
     Permission.EDIT_CONTENT,
@@ -212,6 +213,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_PROFILE,
     Permission.EDIT_PROFILE,
     Permission.MANAGE_TRIPS,
+    Permission.MANAGE_AVAILABILITY,
     Permission.VIEW_CATEGORIES,
   ],
 

@@ -22,17 +22,33 @@ import {
 } from '@/hooks/trips/use-trips';
 import type { TourSchedule } from '@/types/trip';
 
-// 0 = Sunday … 6 = Saturday (matches the availability module).
+// 0 = Monday … 6 = Sunday (matches the backend AvailabilitySchedule.weekday).
 const WEEKDAYS = [
-  { value: 0, label: 'Sun' },
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
+  { value: 0, label: 'Mon' },
+  { value: 1, label: 'Tue' },
+  { value: 2, label: 'Wed' },
+  { value: 3, label: 'Thu' },
+  { value: 4, label: 'Fri' },
+  { value: 5, label: 'Sat' },
+  { value: 6, label: 'Sun' },
 ];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function weekdayLabel(weekday: number): string {
+  return WEEKDAYS.find((w) => w.value === weekday)?.label ?? String(weekday);
+}
+
+// 'YYYY-MM-DD' → '2 Jul 2026' (falls back to the raw string if unparseable).
+function formatDay(day: string): string {
+  const parsed = new Date(day + 'T00:00:00');
+  return Number.isNaN(parsed.getTime()) ? day : format(parsed, 'd MMM yyyy');
+}
+
+// Validity window: "From 2 Jul 2026" when open-ended, else "2 Jul → 30 Sep 2026".
+function validityLabel(schedule: TourSchedule): string {
+  const from = formatDay(schedule.validFrom);
+  return schedule.validUntil ? `${from} → ${formatDay(schedule.validUntil)}` : `From ${from}`;
+}
 
 // ── Reusable Calendar date-picker field ───────────────────────────────────────
 
@@ -86,14 +102,7 @@ function DatePickerField({ value, onChange, placeholder = 'Pick a date', clearab
   );
 }
 
-function formatWeekdays(weekdays: number[]): string {
-  return [...weekdays]
-    .sort((a, b) => a - b)
-    .map((d) => WEEKDAYS.find((w) => w.value === d)?.label ?? d)
-    .join(' · ');
-}
-
-// ── Schedule list row ─────────────────────────────────────────────────────────
+// ── Schedule list row (one weekday × one start time) ──────────────────────────
 
 interface ScheduleRowProps {
   schedule: TourSchedule;
@@ -104,11 +113,13 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   const { mutate: updateSchedule, isPending: isUpdating } = useUpdateSchedule();
   const { mutate: removeSchedule, isPending: isRemoving } = useRemoveSchedule();
 
+  const isActive = schedule.status === 'ACTIVE';
+
   function handleToggleActive() {
     updateSchedule(
-      { tripId, scheduleId: schedule.id, payload: { isActive: !schedule.isActive } },
+      { tripId, scheduleId: schedule.id, payload: { status: isActive ? 'PAUSED' : 'ACTIVE' } },
       {
-        onSuccess: () => toast.success(`Schedule ${!schedule.isActive ? 'activated' : 'paused'}.`),
+        onSuccess: () => toast.success(`Schedule ${isActive ? 'paused' : 'activated'}.`),
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update.'),
       }
     );
@@ -125,30 +136,25 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 ring-1 ring-foreground/10 px-3 py-3">
-      <div className="flex items-center gap-4 min-w-0 flex-1">
-        <span className={`size-1.5 rounded-full shrink-0 ${schedule.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+    <div className="flex items-center justify-between gap-3 ring-1 ring-foreground/10 px-3 py-3">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <span className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
         <div className="min-w-0">
-          <p className="text-sm font-medium">{formatWeekdays(schedule.weekdays)}</p>
-          <p className="text-xs text-muted-foreground">
-            {schedule.startTimes.join(', ')}
-            {(schedule.seasonStart || schedule.seasonEnd) && (
-              <span className="ml-2">
-                ({schedule.seasonStart ?? '…'} → {schedule.seasonEnd ?? '…'})
-              </span>
-            )}
+          <p className="text-sm font-medium">
+            {weekdayLabel(schedule.weekday)} · {schedule.startTime}
           </p>
+          <p className="text-xs text-muted-foreground truncate">{validityLabel(schedule)}</p>
         </div>
-        <div className="text-xs text-muted-foreground shrink-0">
-          <span className="font-medium text-foreground">{schedule.capacity}</span> cap
-        </div>
-        {schedule.priceOverride && (
-          <Badge variant="outline" className="text-xs shrink-0">${schedule.priceOverride}</Badge>
-        )}
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="font-medium text-foreground">
+            {schedule.capacityOverride ?? 'default'}
+          </span>{' '}
+          cap
+        </span>
         <Button size="xs" variant="outline" onClick={handleToggleActive} disabled={isUpdating}>
-          {schedule.isActive ? 'Pause' : 'Activate'}
+          {isActive ? 'Pause' : 'Activate'}
         </Button>
         <Button
           size="icon-sm"
@@ -172,15 +178,19 @@ interface TripSchedulesTabProps {
 
 export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
   const { data: schedules, isLoading } = useSchedules(tripId);
-  const { mutate: createSchedule, isPending: isCreating } = useCreateSchedule();
+  const { mutateAsync: createSchedule, isPending: isCreating } = useCreateSchedule();
 
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [startTimes, setStartTimes] = useState<string[]>([]);
   const [timeInput, setTimeInput] = useState('09:00');
-  const [capacity, setCapacity] = useState('12');
-  const [seasonStart, setSeasonStart] = useState('');
-  const [seasonEnd, setSeasonEnd] = useState('');
-  const [priceOverride, setPriceOverride] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [validFrom, setValidFrom] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+
+  // One backend row per weekday × start time, so display them sorted for scanability.
+  const sortedSchedules = [...(schedules ?? [])].sort(
+    (a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime),
+  );
 
   function toggleWeekday(day: number) {
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
@@ -201,38 +211,42 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
     setWeekdays([]);
     setStartTimes([]);
     setTimeInput('09:00');
-    setCapacity('12');
-    setSeasonStart('');
-    setSeasonEnd('');
-    setPriceOverride('');
+    setCapacity('');
+    setValidFrom('');
+    setValidUntil('');
   }
 
-  function handleCreate() {
+  // The backend stores one schedule per (weekday, startTime), so a grouped
+  // selection fans out into weekdays × startTimes create calls.
+  async function handleCreate() {
     if (weekdays.length === 0) { toast.error('Select at least one weekday.'); return; }
     if (startTimes.length === 0) { toast.error('Add at least one start time.'); return; }
-    const cap = Number(capacity);
-    if (!Number.isInteger(cap) || cap < 1) { toast.error('Capacity must be at least 1.'); return; }
+    const cap = capacity.trim() ? Number(capacity) : undefined;
+    if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
+      toast.error('Capacity override must be a whole number of at least 1.');
+      return;
+    }
 
-    createSchedule(
-      {
-        tripId,
-        payload: {
-          weekdays,
-          startTimes,
-          capacity: cap,
-          seasonStart: seasonStart || undefined,
-          seasonEnd: seasonEnd || undefined,
-          priceOverride: priceOverride ? Number(priceOverride) : undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success('Schedule added.');
-          resetForm();
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add schedule.'),
+    try {
+      for (const weekday of weekdays) {
+        for (const startTime of startTimes) {
+          await createSchedule({
+            tripId,
+            payload: {
+              weekday,
+              startTime,
+              capacityOverride: cap,
+              validFrom: validFrom || undefined,
+              validUntil: validUntil || undefined,
+            },
+          });
+        }
       }
-    );
+      toast.success(`Added ${weekdays.length * startTimes.length} schedule(s).`);
+      resetForm();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add schedule.');
+    }
   }
 
   return (
@@ -243,8 +257,8 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
             Recurring Schedules
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Weekly departure patterns. Departures are materialised from these rules by the
-            availability engine.
+            Weekly departure patterns (one rule per weekday and start time). Departures are
+            materialised from these rules by the availability engine.
           </p>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
@@ -254,9 +268,9 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
                 <Skeleton key={i} className="h-14 w-full rounded-none" />
               ))}
             </div>
-          ) : (schedules?.length ?? 0) > 0 ? (
+          ) : sortedSchedules.length > 0 ? (
             <div className="space-y-2">
-              {schedules!.map((schedule) => (
+              {sortedSchedules.map((schedule) => (
                 <ScheduleRow key={schedule.id} schedule={schedule} tripId={tripId} />
               ))}
             </div>
@@ -294,6 +308,9 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
               <Label className="text-xs font-semibold uppercase">
                 Start Times <span className="text-destructive">*</span>
               </Label>
+              <p className="text-xs text-muted-foreground -mt-1 mb-1">
+                Each time must be one of the tour&apos;s declared start times.
+              </p>
               {startTimes.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {startTimes.map((t) => (
@@ -325,36 +342,26 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
               </div>
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label className="text-xs font-semibold uppercase">
-                  Capacity <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Price Override (optional)</Label>
-                <Input
-                  value={priceOverride}
-                  onChange={(e) => setPriceOverride(e.target.value)}
-                  placeholder="e.g. 79.99"
-                />
-              </Field>
-            </div>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Capacity Override (optional)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                placeholder="Leave blank to use the tour's max party size"
+                className="max-w-xs"
+              />
+            </Field>
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Season Start (optional)</Label>
-                <DatePickerField value={seasonStart} onChange={setSeasonStart} placeholder="No start limit" clearable />
+                <Label className="text-xs font-semibold uppercase">Valid From (optional)</Label>
+                <DatePickerField value={validFrom} onChange={setValidFrom} placeholder="Defaults to today" clearable />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Season End (optional)</Label>
-                <DatePickerField value={seasonEnd} onChange={setSeasonEnd} placeholder="No end limit" clearable />
+                <Label className="text-xs font-semibold uppercase">Valid Until (optional)</Label>
+                <DatePickerField value={validUntil} onChange={setValidUntil} placeholder="Open-ended" clearable />
               </Field>
             </div>
 

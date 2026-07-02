@@ -64,18 +64,18 @@ export const attributesApi = {
     return apiFetch<{ message: string }>(`/attributes/${key}`, { method: 'DELETE' });
   },
 
-  // ── Per-tour values ──
+  // ── Per-tour values ── (backend controller is `tours/:tourId/attributes`)
   getForTrip(tripId: string): Promise<TourAttribute[]> {
-    return apiFetch<TourAttribute[]>(`/trips/${tripId}/attributes`);
+    return apiFetch<TourAttribute[]>(`/tours/${tripId}/attributes`);
   },
   setForTrip(tripId: string, payload: SetTourAttributesPayload): Promise<TourAttribute[]> {
-    return apiFetch<TourAttribute[]>(`/trips/${tripId}/attributes`, {
+    return apiFetch<TourAttribute[]>(`/tours/${tripId}/attributes`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   removeForTrip(tripId: string, key: string): Promise<{ message: string }> {
-    return apiFetch<{ message: string }>(`/trips/${tripId}/attributes/${key}`, {
+    return apiFetch<{ message: string }>(`/tours/${tripId}/attributes/${key}`, {
       method: 'DELETE',
     });
   },

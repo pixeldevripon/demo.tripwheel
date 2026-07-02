@@ -1,26 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tripsApi } from '@/lib/api/trips';
-// MOCK FALLBACK: sample tours shown when the backend returns no tours, so every
-// dashboard tab can be explored fully populated. Remove this import + the
-// `isMockTripId` / mock branches below to disable.
-import {
-  MOCK_ADDONS,
-  MOCK_AGE_BANDS,
-  MOCK_EXCLUSIONS,
-  MOCK_FEATURES,
-  MOCK_HIGHLIGHTS,
-  MOCK_IMAGES,
-  MOCK_INCLUSIONS,
-  MOCK_LANGUAGES,
-  MOCK_LOCATIONS,
-  MOCK_PICKUPS,
-  MOCK_SCHEDULES,
-  MOCK_TRANSLATIONS,
-  getMockTranslation,
-  getMockTripById,
-  isMockTripId,
-  mockPaginatedTrips,
-} from '@/lib/mock/trip-fixtures';
 import type {
   AddTourImagePayload,
   AddTourLanguagePayload,
@@ -81,15 +60,7 @@ export const tripKeys = {
 export function useMyTrips(params: MyTripsQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: tripKeys.myTrips(params),
-    queryFn: async () => {
-      try {
-        const res = await tripsApi.getMyTrips(params);
-        if (res.data.length > 0) return res;
-      } catch {
-        /* fall through to sample data */
-      }
-      return mockPaginatedTrips(params);
-    },
+    queryFn: () => tripsApi.getMyTrips(params),
     enabled,
   });
 }
@@ -97,15 +68,7 @@ export function useMyTrips(params: MyTripsQueryParams = {}, enabled = true) {
 export function useAdminTrips(params: AdminTripsQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: tripKeys.adminTrips(params),
-    queryFn: async () => {
-      try {
-        const res = await tripsApi.getAdminTrips(params);
-        if (res.data.length > 0) return res;
-      } catch {
-        /* fall through to sample data */
-      }
-      return mockPaginatedTrips(params);
-    },
+    queryFn: () => tripsApi.getAdminTrips(params),
     enabled,
   });
 }
@@ -113,7 +76,7 @@ export function useAdminTrips(params: AdminTripsQueryParams = {}, enabled = true
 export function useTrip(id: string) {
   return useQuery({
     queryKey: tripKeys.detail(id),
-    queryFn: () => (isMockTripId(id) ? getMockTripById(id)! : tripsApi.getById(id)),
+    queryFn: () => tripsApi.getById(id),
     enabled: !!id,
   });
 }
@@ -121,7 +84,7 @@ export function useTrip(id: string) {
 export function useImages(tripId: string) {
   return useQuery({
     queryKey: tripKeys.images(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_IMAGES[tripId] ?? []) : tripsApi.getImages(tripId)),
+    queryFn: () => tripsApi.getImages(tripId),
     enabled: !!tripId,
   });
 }
@@ -129,7 +92,7 @@ export function useImages(tripId: string) {
 export function useAddOns(tripId: string) {
   return useQuery({
     queryKey: tripKeys.addOns(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_ADDONS[tripId] ?? []) : tripsApi.getAddOns(tripId)),
+    queryFn: () => tripsApi.getAddOns(tripId),
     enabled: !!tripId,
   });
 }
@@ -137,7 +100,7 @@ export function useAddOns(tripId: string) {
 export function useAgeBands(tripId: string) {
   return useQuery({
     queryKey: tripKeys.ageBands(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_AGE_BANDS[tripId] ?? []) : tripsApi.getAgeBands(tripId)),
+    queryFn: () => tripsApi.getAgeBands(tripId),
     enabled: !!tripId,
   });
 }
@@ -145,7 +108,7 @@ export function useAgeBands(tripId: string) {
 export function useLanguages(tripId: string) {
   return useQuery({
     queryKey: tripKeys.languages(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_LANGUAGES[tripId] ?? []) : tripsApi.getLanguages(tripId)),
+    queryFn: () => tripsApi.getLanguages(tripId),
     enabled: !!tripId,
   });
 }
@@ -153,7 +116,7 @@ export function useLanguages(tripId: string) {
 export function useHighlights(tripId: string) {
   return useQuery({
     queryKey: tripKeys.highlights(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_HIGHLIGHTS[tripId] ?? []) : tripsApi.getHighlights(tripId)),
+    queryFn: () => tripsApi.getHighlights(tripId),
     enabled: !!tripId,
   });
 }
@@ -161,7 +124,7 @@ export function useHighlights(tripId: string) {
 export function useInclusions(tripId: string) {
   return useQuery({
     queryKey: tripKeys.inclusions(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_INCLUSIONS[tripId] ?? []) : tripsApi.getInclusions(tripId)),
+    queryFn: () => tripsApi.getInclusions(tripId),
     enabled: !!tripId,
   });
 }
@@ -169,7 +132,7 @@ export function useInclusions(tripId: string) {
 export function useExclusions(tripId: string) {
   return useQuery({
     queryKey: tripKeys.exclusions(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_EXCLUSIONS[tripId] ?? []) : tripsApi.getExclusions(tripId)),
+    queryFn: () => tripsApi.getExclusions(tripId),
     enabled: !!tripId,
   });
 }
@@ -177,7 +140,7 @@ export function useExclusions(tripId: string) {
 export function useFeatures(tripId: string) {
   return useQuery({
     queryKey: tripKeys.features(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_FEATURES[tripId] ?? []) : tripsApi.getFeatures(tripId)),
+    queryFn: () => tripsApi.getFeatures(tripId),
     enabled: !!tripId,
   });
 }
@@ -185,7 +148,7 @@ export function useFeatures(tripId: string) {
 export function useLocations(tripId: string) {
   return useQuery({
     queryKey: tripKeys.locations(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_LOCATIONS[tripId] ?? []) : tripsApi.getLocations(tripId)),
+    queryFn: () => tripsApi.getLocations(tripId),
     enabled: !!tripId,
   });
 }
@@ -193,7 +156,7 @@ export function useLocations(tripId: string) {
 export function usePickupLocations(tripId: string) {
   return useQuery({
     queryKey: tripKeys.pickupLocations(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_PICKUPS[tripId] ?? []) : tripsApi.getPickupLocations(tripId)),
+    queryFn: () => tripsApi.getPickupLocations(tripId),
     enabled: !!tripId,
   });
 }
@@ -201,7 +164,7 @@ export function usePickupLocations(tripId: string) {
 export function useTripTranslations(tripId: string) {
   return useQuery({
     queryKey: tripKeys.translations(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_TRANSLATIONS[tripId] ?? []) : tripsApi.getTranslations(tripId)),
+    queryFn: () => tripsApi.getTranslations(tripId),
     enabled: !!tripId,
   });
 }
@@ -209,7 +172,7 @@ export function useTripTranslations(tripId: string) {
 export function useTripTranslationByLocale(tripId: string, locale: string) {
   return useQuery({
     queryKey: tripKeys.translationByLocale(tripId, locale),
-    queryFn: () => (isMockTripId(tripId) ? getMockTranslation(tripId, locale) : tripsApi.getTranslationByLocale(tripId, locale)),
+    queryFn: () => tripsApi.getTranslationByLocale(tripId, locale),
     enabled: !!tripId,
   });
 }
@@ -217,7 +180,7 @@ export function useTripTranslationByLocale(tripId: string, locale: string) {
 export function useSchedules(tripId: string) {
   return useQuery({
     queryKey: tripKeys.schedules(tripId),
-    queryFn: () => (isMockTripId(tripId) ? (MOCK_SCHEDULES[tripId] ?? []) : tripsApi.getSchedules(tripId)),
+    queryFn: () => tripsApi.getSchedules(tripId),
     enabled: !!tripId,
   });
 }

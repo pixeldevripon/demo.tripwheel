@@ -77,7 +77,6 @@ const VALID_TABS = [
     'images',
     'highlights',
     'inclusions',
-    'exclusions',
     'itinerary',
     'pickups',
     'pricing',
@@ -312,8 +311,9 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                                 <span className='ml-1.5 size-1.5 rounded-full bg-destructive' />
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value='inclusions'>Inclusions</TabsTrigger>
-                        <TabsTrigger value='exclusions'>Exclusions</TabsTrigger>
+                        <TabsTrigger value='inclusions'>
+                            Inclusions &amp; Exclusions
+                        </TabsTrigger>
                         <TabsTrigger value='itinerary'>Itinerary</TabsTrigger>
                         <TabsTrigger value='pickups'>Pickups</TabsTrigger>
                         <TabsTrigger value='pricing'>Pricing</TabsTrigger>
@@ -338,11 +338,8 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                     <TripHighlightsTab tripId={id} />
                 </TabsContent>
 
-                <TabsContent value='inclusions'>
+                <TabsContent value='inclusions' className='space-y-6'>
                     <TripInclusionsTab tripId={id} />
-                </TabsContent>
-
-                <TabsContent value='exclusions'>
                     <TripExclusionsTab tripId={id} />
                 </TabsContent>
 

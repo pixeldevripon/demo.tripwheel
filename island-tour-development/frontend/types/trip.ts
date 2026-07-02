@@ -328,16 +328,20 @@ export interface TripTranslation {
 }
 
 // Recurring schedule (availability module - `/availability/schedules`).
+// Availability schedule status (backend AvailabilityScheduleStatus enum).
+export type AvailabilityScheduleStatus = 'ACTIVE' | 'PAUSED';
+
+// One recurring rule = one weekday + one start time (the backend models these
+// flat, one row per weekday × startTime — NOT grouped).
 export interface TourSchedule {
   id: string;
   tourId: string;
-  weekdays: number[]; // 0=Sun … 6=Sat
-  startTimes: string[]; // 'HH:MM'
-  capacity: number;
-  seasonStart: string | null;
-  seasonEnd: string | null;
-  priceOverride: string | null;
-  isActive: boolean;
+  weekday: number; // 0=Monday … 6=Sunday (matches AvailabilitySchedule.weekday)
+  startTime: string; // 'HH:MM'
+  capacityOverride: number | null; // null = Tour.maxPartySize default
+  validFrom: string; // 'YYYY-MM-DD'
+  validUntil: string | null;
+  status: AvailabilityScheduleStatus;
 }
 
 // ── Query params ────────────────────────────────────────────────────────────────
@@ -662,20 +666,19 @@ export interface AddTourLanguagePayload {
 
 // Recurring-schedule payloads (availability module).
 export interface CreateTourSchedulePayload {
-  weekdays: number[];
-  startTimes: string[];
-  capacity: number;
-  seasonStart?: string;
-  seasonEnd?: string;
-  priceOverride?: number;
+  weekday: number; // 0=Monday … 6=Sunday
+  startTime: string; // 'HH:MM' — must be one of the tour's startTimes
+  capacityOverride?: number; // omit = Tour.maxPartySize default
+  validFrom?: string; // 'YYYY-MM-DD' — defaults to today
+  validUntil?: string; // 'YYYY-MM-DD' — omit = open-ended
+  status?: AvailabilityScheduleStatus;
 }
 
 export interface UpdateTourSchedulePayload {
-  weekdays?: number[];
-  startTimes?: string[];
-  capacity?: number;
-  seasonStart?: string;
-  seasonEnd?: string;
-  priceOverride?: number;
-  isActive?: boolean;
+  weekday?: number;
+  startTime?: string;
+  capacityOverride?: number | null;
+  validFrom?: string;
+  validUntil?: string | null;
+  status?: AvailabilityScheduleStatus;
 }
