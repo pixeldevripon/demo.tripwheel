@@ -24,7 +24,7 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:505
  */
 export async function resolveSlug(
     destinationSlug: string,
-    slug: string,
+    slug: string
 ): Promise<SlugResolution | null> {
     // Public and immutable-by-slug, so cache it (Cache Components `use cache`,
     // not the legacy fetch cache). Bust on the rare isActive toggle via the tag.
@@ -33,13 +33,22 @@ export async function resolveSlug(
     cacheTag(`slug:${destinationSlug}:${slug}`);
 
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
-    const res = await fetch(`${BASE_URL}/slug-registry/resolve?${query}`, {
-        headers: { 'Content-Type': 'application/json' },
-    });
+    try {
+        const res = await fetch(`${BASE_URL}/slug-registry/resolve?${query}`, {
+            headers: { 'Content-Type': 'application/json' },
+        });
 
-    if (res.status === 404) return null;
-    if (!res.ok) {
-        throw new Error(`Slug resolve failed for "${destinationSlug}/${slug}" (${res.status})`);
+        if (res.status === 404) return null;
+        if (!res.ok) {
+            throw new Error(
+                `Slug resolve failed for "${destinationSlug}/${slug}" (${res.status})`
+            );
+        }
+        return res.json() as Promise<SlugResolution>;
+    } catch {
+        // Handle ECONNREFUSED when backend is down during build so Next.js can
+        // gracefully fall back to 404/not-found instead of crashing the build.
+        return null;
     }
-    return res.json() as Promise<SlugResolution>;
 }
+

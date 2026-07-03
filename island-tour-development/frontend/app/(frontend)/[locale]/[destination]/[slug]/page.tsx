@@ -38,6 +38,36 @@ async function resolveDestinationName(
 
 type PageParams = { locale: string; destination: string; slug: string };
 
+const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+];
+
+const LAUNCH_CATEGORY_SLUGS = [
+    'boat-tours',
+    'snorkeling',
+    'scuba-diving',
+    'sunset-cruises',
+    'sightseeing-tours',
+    'day-trips',
+    'off-road-tours',
+    'jet-ski',
+    'parasailing',
+    'water-sports',
+    'fishing-trips',
+    'nature-wildlife-tours',
+    'hiking-tours',
+    'adventure-tours',
+    'cultural-tours',
+    'food-tours',
+    'attraction-tickets',
+    'luxury-experiences',
+    'workshops-classes',
+];
+
 /**
  * Prerender the destination × category combos from the backend (gating-consistent
  * with the public category loader, so every prerendered path actually renders).
@@ -46,14 +76,37 @@ type PageParams = { locale: string; destination: string; slug: string };
  * those paths render on demand too (covered by the route's `loading.tsx`).
  */
 export async function generateStaticParams() {
-    const destinations = await getActiveDestinations();
-    const combos = await Promise.all(
-        destinations.map(async (d) => {
-            const cats = await getDestinationCategories(d.slug, DEFAULT_LOCALE);
-            return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
-        }),
-    );
-    return combos.flat();
+    try {
+        const destinations = await getActiveDestinations();
+        if (destinations && destinations.length > 0) {
+            const combos = await Promise.all(
+                destinations.map(async (d) => {
+                    const cats = await getDestinationCategories(d.slug, DEFAULT_LOCALE);
+                    return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
+                }),
+            );
+            const flatCombos = combos.flat();
+            if (flatCombos.length > 0) {
+                return flatCombos;
+            }
+        }
+    } catch {
+        // Fallback if backend is unavailable during build
+    }
+    
+    // Return permutations of launch destinations and categories
+    const fallbackCombos: { destination: string; slug: string }[] = [];
+    for (const destination of LAUNCH_DESTINATION_SLUGS) {
+        for (const slug of LAUNCH_CATEGORY_SLUGS) {
+            fallbackCombos.push({ destination, slug });
+        }
+        // Also add the reserved 'tours' slug and the seeded hub
+        fallbackCombos.push({ destination, slug: 'tours' });
+        if (destination === 'curacao') {
+            fallbackCombos.push({ destination, slug: 'klein-curacao' });
+        }
+    }
+    return fallbackCombos;
 }
 
 /**

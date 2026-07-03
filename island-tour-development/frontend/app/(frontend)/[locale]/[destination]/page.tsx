@@ -15,10 +15,25 @@ import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
+const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+];
+
 /** Prerender the active destinations from the backend (public cached loader). */
 export async function generateStaticParams() {
-    const destinations = await getActiveDestinations();
-    return destinations.map(d => ({ destination: d.slug }));
+    try {
+        const destinations = await getActiveDestinations();
+        if (destinations && destinations.length > 0) {
+            return destinations.map(d => ({ destination: d.slug }));
+        }
+    } catch {
+        // Fallback if backend is unavailable during build
+    }
+    return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
 }
 
 /**
