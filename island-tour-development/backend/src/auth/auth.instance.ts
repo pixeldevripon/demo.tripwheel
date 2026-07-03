@@ -179,9 +179,15 @@ export const auth = betterAuth({
   ],
 
   advanced: {
+    // Cross-subdomain cookies are only correct in production, where the app and
+    // API live on sibling subdomains (app.esenc.cloud / api.esenc.cloud) and a
+    // `Domain=.esenc.cloud` cookie is shared between them. On localhost the
+    // browser rejects a `.esenc.cloud`-scoped cookie outright, so the session
+    // token is never stored and every dashboard load bounces back to /login.
+    // Gating on NODE_ENV keeps prod behaviour while fixing local sign-in.
     crossSubDomainCookies: {
-      enabled: true,
-      domain: '.esenc.cloud',
+      enabled: process.env.NODE_ENV === 'production',
+      domain: process.env.COOKIE_DOMAIN ?? '.esenc.cloud',
     },
   },
 });

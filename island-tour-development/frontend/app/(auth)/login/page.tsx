@@ -1,3 +1,4 @@
+import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = {
@@ -7,8 +8,8 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <AuthShell heading="Welcome">
       <LoginForm />
-    </div>
+    </AuthShell>
   );
 }

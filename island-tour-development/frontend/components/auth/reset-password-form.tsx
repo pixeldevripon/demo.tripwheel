@@ -1,22 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    Field,
-    FieldError,
-    FieldGroup,
-    FieldLabel,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
@@ -32,23 +17,23 @@ export function ResetPasswordForm() {
 
     if (!token) {
         return (
-            <Card className='w-full max-w-md mx-auto'>
-                <CardHeader>
-                    <CardTitle>Invalid reset link</CardTitle>
-                    <CardDescription>
-                        This password reset link is invalid or has expired.{' '}
-                        <a
-                            href='/forgot-password'
-                            className='underline hover:text-primary'>
-                            Request a new one.
-                        </a>
-                    </CardDescription>
-                </CardHeader>
-            </Card>
+            <div className='mx-auto w-full max-w-sm space-y-3'>
+                <p className='text-sm font-semibold text-slate-900'>
+                    Invalid reset link
+                </p>
+                <p className='text-sm text-slate-500'>
+                    This password reset link is invalid or has expired.{' '}
+                    <Link
+                        href='/forgot-password'
+                        className='font-semibold text-it-primary transition-colors hover:text-it-primary-hover'>
+                        Request a new one.
+                    </Link>
+                </p>
+            </div>
         );
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
 
@@ -83,63 +68,71 @@ export function ResetPasswordForm() {
     };
 
     return (
-        <Card className='w-full max-w-md mx-auto'>
-            <CardHeader>
-                <CardTitle>Set new password</CardTitle>
-                <CardDescription>
-                    Your new password must be at least 12 characters.
-                </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-                <CardContent>
-                    <FieldGroup>
-                        <Field data-invalid={!!error}>
-                            <FieldLabel htmlFor='password'>
-                                New password
-                            </FieldLabel>
-                            <Input
-                                id='password'
-                                type='password'
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                                minLength={12}
-                                aria-invalid={!!error}
-                            />
-                        </Field>
-                        <Field data-invalid={!!error}>
-                            <FieldLabel htmlFor='confirm-password'>
-                                Confirm new password
-                            </FieldLabel>
-                            <Input
-                                id='confirm-password'
-                                type='password'
-                                value={confirmPassword}
-                                onChange={e =>
-                                    setConfirmPassword(e.target.value)
-                                }
-                                required
-                                minLength={12}
-                                aria-invalid={!!error}
-                            />
-                            {error && <FieldError>{error}</FieldError>}
-                        </Field>
-                    </FieldGroup>
-                </CardContent>
-                <CardFooter className='flex flex-col gap-4 mt-4'>
-                    <Button type='submit' className='w-full' disabled={loading}>
-                        {loading ? 'Saving...' : 'Reset password'}
-                    </Button>
-                    <div className='text-sm text-center text-muted-foreground'>
-                        <a
-                            href='/login'
-                            className='underline hover:text-primary'>
-                            Back to sign in
-                        </a>
-                    </div>
-                </CardFooter>
-            </form>
-        </Card>
+        <form onSubmit={handleSubmit} className='mx-auto w-full max-w-sm'>
+            <p className='mb-6 text-sm text-slate-500'>
+                Your new password must be at least 12 characters.
+            </p>
+
+            <div className='space-y-5'>
+                <div className='relative'>
+                    <label
+                        htmlFor='password'
+                        className='absolute -top-2 left-4 z-10 bg-white px-1.5 text-[11px] font-medium text-slate-500'>
+                        New password
+                    </label>
+                    <input
+                        id='password'
+                        type='password'
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder='••••••••••••'
+                        required
+                        minLength={12}
+                        aria-invalid={!!error}
+                        className='h-13 w-full rounded-2xl border border-slate-200 bg-white px-5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-it-primary focus:ring-2 focus:ring-it-primary-subtle autofill:shadow-[inset_0_0_0_1000px_#ffffff] autofill:[-webkit-text-fill-color:#0f172a]'
+                    />
+                </div>
+
+                <div className='relative'>
+                    <label
+                        htmlFor='confirm-password'
+                        className='absolute -top-2 left-4 z-10 bg-white px-1.5 text-[11px] font-medium text-slate-500'>
+                        Confirm new password
+                    </label>
+                    <input
+                        id='confirm-password'
+                        type='password'
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        placeholder='••••••••••••'
+                        required
+                        minLength={12}
+                        aria-invalid={!!error}
+                        className='h-13 w-full rounded-2xl border border-slate-200 bg-white px-5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-it-primary focus:ring-2 focus:ring-it-primary-subtle autofill:shadow-[inset_0_0_0_1000px_#ffffff] autofill:[-webkit-text-fill-color:#0f172a]'
+                    />
+                </div>
+
+                {error && (
+                    <p role='alert' className='text-sm text-red-500'>
+                        {error}
+                    </p>
+                )}
+
+                <button
+                    type='submit'
+                    disabled={loading}
+                    className='h-13 w-full cursor-pointer rounded-full bg-it-primary text-sm font-bold tracking-wide text-it-primary-fg shadow-lg shadow-it-primary/25 transition-colors hover:bg-it-primary-hover disabled:cursor-not-allowed disabled:opacity-60'>
+                    {loading ? 'Saving...' : 'Reset password'}
+                </button>
+            </div>
+
+            <p className='mt-8 text-center text-sm text-slate-500'>
+                <Link
+                    href='/login'
+                    className='font-semibold text-it-primary transition-colors hover:text-it-primary-hover'>
+                    Back to sign in
+                </Link>
+            </p>
+        </form>
     );
 }
-

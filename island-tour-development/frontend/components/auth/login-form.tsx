@@ -1,22 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    Field,
-    FieldError,
-    FieldGroup,
-    FieldLabel,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { signIn } from '@/lib/auth-client';
+import { CheckIcon } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -26,7 +12,7 @@ export function LoginForm() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
+    const emailLooksValid = /^\S+@\S+\.\S+$/.test(email);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -52,63 +38,64 @@ export function LoginForm() {
     };
 
     return (
-        <Card className='w-full max-w-md mx-auto'>
-            <CardHeader>
-                <CardTitle>Sign In</CardTitle>
-                <CardDescription>
-                    Enter your email and password to access your account.
-                </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-                <CardContent>
-                    <FieldGroup>
-                        <Field data-invalid={!!error}>
-                            <FieldLabel htmlFor='email'>Email</FieldLabel>
-                            <Input
-                                id='email'
-                                type='email'
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                placeholder='name@example.com'
-                                required
-                                aria-invalid={!!error}
-                            />
-                        </Field>
+        <form onSubmit={handleSubmit} className='mx-auto w-full max-w-sm'>
+            <div className='space-y-5'>
+                <div className='relative'>
+                    <input
+                        id='email'
+                        type='email'
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder='name@example.com'
+                        required
+                        aria-invalid={!!error}
+                        aria-label='Email'
+                        className='h-13 w-full rounded-2xl border border-slate-200 bg-white px-5 pr-12 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-it-primary focus:ring-2 focus:ring-it-primary-subtle autofill:shadow-[inset_0_0_0_1000px_#ffffff] autofill:[-webkit-text-fill-color:#0f172a]'
+                    />
+                    {emailLooksValid && (
+                        <span className='absolute top-1/2 right-4 flex size-5 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-400 text-emerald-500'>
+                            <CheckIcon className='size-3' strokeWidth={3} />
+                        </span>
+                    )}
+                </div>
 
-                        <Field data-invalid={!!error}>
-                            <div className='flex items-center justify-between'>
-                                <FieldLabel htmlFor='password'>
-                                    Password
-                                </FieldLabel>
-                                <a
-                                    href='/forgot-password'
-                                    className='text-xs text-muted-foreground underline hover:text-primary'>
-                                    Forgot password?
-                                </a>
-                            </div>
-                            <Input
-                                id='password'
-                                type='password'
-                                value={password}
-                                placeholder='Password'
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                                aria-invalid={!!error}
-                            />
-                            {error && <FieldError>{error}</FieldError>}
-                        </Field>
-                    </FieldGroup>
-                </CardContent>
-                <CardFooter className='flex flex-col gap-4 mt-4'>
-                    <Button
-                        type='submit'
-                        className='w-full'
-                        disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
-                    </Button>
-                </CardFooter>
-            </form>
-        </Card>
+                <div className='relative'>
+                    <label
+                        htmlFor='password'
+                        className='absolute -top-2 left-4 z-10 bg-white px-1.5 text-[11px] font-medium text-slate-500'>
+                        Password
+                    </label>
+                    <input
+                        id='password'
+                        type='password'
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder='••••••••'
+                        required
+                        aria-invalid={!!error}
+                        className='h-13 w-full rounded-2xl border border-slate-200 bg-white px-5 pr-20 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-it-primary focus:ring-2 focus:ring-it-primary-subtle autofill:shadow-[inset_0_0_0_1000px_#ffffff] autofill:[-webkit-text-fill-color:#0f172a]'
+                    />
+                    <Link
+                        href='/forgot-password'
+                        className='absolute top-1/2 right-5 -translate-y-1/2 text-sm font-semibold text-it-primary transition-colors hover:text-it-primary-hover'>
+                        Forgot?
+                    </Link>
+                </div>
+
+                {error && (
+                    <p role='alert' className='text-sm text-red-500'>
+                        {error}
+                    </p>
+                )}
+
+                <button
+                    type='submit'
+                    disabled={loading}
+                    className='h-13 w-full cursor-pointer rounded-full bg-it-primary text-sm font-bold tracking-wide text-it-primary-fg shadow-lg shadow-it-primary/25 transition-colors hover:bg-it-primary-hover disabled:cursor-not-allowed disabled:opacity-60'>
+                    {loading ? 'Signing in...' : 'Log in'}
+                </button>
+            </div>
+        </form>
     );
 }
 

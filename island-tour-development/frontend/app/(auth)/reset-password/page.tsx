@@ -1,5 +1,6 @@
-import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Reset Password - Island Tours",
@@ -8,11 +9,13 @@ export const metadata = {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <AuthShell heading="Reset">
       {/* Suspense required because ResetPasswordForm uses useSearchParams() */}
-      <Suspense fallback={<div className="text-muted-foreground text-sm">Loading...</div>}>
+      <Suspense
+        fallback={<div className="text-sm text-slate-500">Loading...</div>}
+      >
         <ResetPasswordForm />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }
