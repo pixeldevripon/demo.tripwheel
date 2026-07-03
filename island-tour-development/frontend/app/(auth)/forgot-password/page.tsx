@@ -1,4 +1,3 @@
-import { AuthShell } from "@/components/auth/auth-shell";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
 export const metadata = {
@@ -7,9 +6,5 @@ export const metadata = {
 };
 
 export default function ForgotPasswordPage() {
-  return (
-    <AuthShell heading="Recover">
-      <ForgotPasswordForm />
-    </AuthShell>
-  );
+  return <ForgotPasswordForm />;
 }

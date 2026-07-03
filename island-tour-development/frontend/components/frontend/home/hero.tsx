@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
+import { Reveal } from '../reveal';
 import { HeroSearch } from './hero-search';
 import type { HeroDestination } from './lib/hero.types';
 
@@ -34,17 +35,17 @@ export function Hero({
             <div className='it-container w-full flex justify-center'>
                 <div className='flex flex-col items-center gap-10 w-full max-w-220.25'>
                     {/* Heading + subtitle */}
-                    <div className='flex flex-col items-center gap-1 text-center'>
+                    <Reveal className='flex flex-col items-center gap-1 text-center'>
                         <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
                             {dict.title}
                         </h1>
                         <p className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
                             {dict.subtitle}
                         </p>
-                    </div>
+                    </Reveal>
 
                     {/* Search block */}
-                    <div className='flex flex-col items-center gap-4 w-full max-w-171.25'>
+                    <Reveal delay={0.3} className='flex flex-col items-center gap-4 w-full max-w-171.25'>
                         <HeroSearch
                             destinations={destinations}
                             locale={locale}
@@ -60,7 +61,10 @@ export function Hero({
                                 {popular.map((island, i) => (
                                     <span key={island.slug}>
                                         <Link
-                                            href={localizeHref(locale, `/${island.slug}`)}
+                                            href={localizeHref(
+                                                locale,
+                                                `/${island.slug}`
+                                            )}
                                             className='text-it-hero-heading no-underline transition-colors hover:text-it-primary'>
                                             {island.name}
                                         </Link>
@@ -74,9 +78,10 @@ export function Hero({
                                 ))}
                             </p>
                         )}
-                    </div>
+                    </Reveal>
                 </div>
             </div>
         </section>
     );
 }
+

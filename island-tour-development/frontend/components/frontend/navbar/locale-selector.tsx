@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
 import {
     ALL_LOCALES,
@@ -33,6 +33,7 @@ export function LocaleSelector({
     const pathname = usePathname();
     const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const ref = useRef<HTMLDivElement>(null);
     useClickOutside(ref, () => setOpen(false), open);
 
@@ -45,7 +46,11 @@ export function LocaleSelector({
         const nextPath = segments.join('/') || `/${next}`;
 
         document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-        router.push(nextPath);
+        // scroll: false keeps the reader where they are; startTransition swaps the
+        // localized content in place instead of flashing a loading state.
+        startTransition(() => {
+            router.push(nextPath, { scroll: false });
+        });
     }
 
     const menuWidth = variant === 'desktop' ? 'min-w-45' : 'min-w-48';
@@ -56,7 +61,8 @@ export function LocaleSelector({
                 onClick={() => setOpen(v => !v)}
                 aria-label={dict.language}
                 aria-expanded={open}
-                className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
+                aria-busy={isPending}
+                className={`flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
                 <Image
                     src='/icons/nav-globe.svg'
                     alt=''

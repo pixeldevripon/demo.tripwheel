@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import {
     ALL_CURRENCIES,
     ALL_LOCALES,
@@ -81,6 +81,7 @@ function SelectorPill({
     ariaLabel,
     children,
     pillRef,
+    busy = false,
 }: {
     icon: React.ReactNode;
     label: string;
@@ -89,6 +90,7 @@ function SelectorPill({
     ariaLabel: string;
     children: React.ReactNode;
     pillRef: React.RefObject<HTMLDivElement | null>;
+    busy?: boolean;
 }) {
     return (
         <div ref={pillRef} className='relative w-full'>
@@ -96,8 +98,9 @@ function SelectorPill({
                 type='button'
                 aria-label={ariaLabel}
                 aria-expanded={open}
+                aria-busy={busy}
                 onClick={onToggle}
-                className='flex h-12.5 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 py-3'>
+                className={`flex h-12.5 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 py-3 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
                 <span className='flex items-center gap-2'>
                     {icon}
                     <span className='text-sm leading-[1.6] tracking-[-0.012em] text-it-heading lg:text-base'>
@@ -191,6 +194,7 @@ function LanguageSelector({ locale, label }: { locale: Locale; label: string }) 
     const pathname = usePathname();
     const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -206,14 +210,20 @@ function LanguageSelector({ locale, label }: { locale: Locale; label: string }) 
         if (next === locale) return;
         const segments = pathname.split('/');
         segments[1] = next;
+        const nextPath = segments.join('/') || `/${next}`;
         document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-        router.push(segments.join('/') || `/${next}`);
+        // scroll: false keeps the reader in the footer; startTransition swaps the
+        // localized content in place instead of flashing a loading state.
+        startTransition(() => {
+            router.push(nextPath, { scroll: false });
+        });
     }
 
     return (
         <SelectorPill
             pillRef={ref}
             ariaLabel={label}
+            busy={isPending}
             label={`${LOCALE_NATIVE_LABELS[locale]} (${locale.toUpperCase()})`}
             open={open}
             onToggle={() => setOpen((v) => !v)}
