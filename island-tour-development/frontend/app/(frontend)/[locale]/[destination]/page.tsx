@@ -1,42 +1,35 @@
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { DestinationAbout } from '@/components/frontend/destination-about';
-import {
-    DestinationExploreTypes,
-    type ExploreType,
-} from '@/components/frontend/destination/destination-explore-types';
-import { DestinationHero } from '@/components/frontend/destination/destination-hero';
 import { DestinationInstagram } from '@/components/frontend/destination-instagram';
-import {
-    DestinationListings,
-} from '@/components/frontend/destination/destination-listings';
 import { FaqSection } from '@/components/frontend/faq-section';
 import {
-    getDestinationBySlug,
-    getDestinationCategories,
-    getDestinationHubs,
-    getDestinationTours,
-} from '@/lib/api/public';
-import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
+    DestinationHeroSection,
+    DestinationLocalFavourites,
+} from '@/components/frontend/destination/destination-page-sections';
+import {
+    DestinationHeroSkeleton,
+    DestinationListingsSkeleton,
+} from '@/components/skelitons/destination-page-skeleton';
+import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
+import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { searchHitToListing } from '@/lib/tours/listing';
-import { notFound } from 'next/navigation';
 
-// Destination display names (proper nouns - not translated, only resolved from the slug).
-const DESTINATION_NAMES: Record<string, string> = {
-    curacao: 'Curaçao',
-    aruba: 'Aruba',
-    'sint-maarten': 'Sint Maarten',
-    'saint-lucia': 'Saint Lucia',
-    bonaire: 'Bonaire',
-};
-
-/** Prerender the known destinations so `params` is static (no request-time dynamic hole). */
-export function generateStaticParams() {
-    return Object.keys(DESTINATION_NAMES).map(destination => ({ destination }));
+/** Prerender the active destinations from the backend (public cached loader). */
+export async function generateStaticParams() {
+    const destinations = await getActiveDestinations();
+    return destinations.map(d => ({ destination: d.slug }));
 }
 
 /**
  * Destination page - `/[locale]/[destination]` (e.g. /en/curacao).
- * Hero is built; the rest of the page follows section by section.
+ *
+ * The route resolves the island + dictionary (fast cached loaders) and gates a
+ * 404 for unknown/inactive islands, then streams each data-heavy section into its
+ * own `<Suspense>` boundary behind a section-mirroring skeleton (Cache Components
+ * PPR): hero + explore (hubs/categories) and locals' favorites (tours). The
+ * About / Instagram / FAQ sections need only the name + dictionary, so they render
+ * in the static shell. The route's `loading.tsx` covers the initial resolve.
  */
 export default async function DestinationPage({
     params,
@@ -46,11 +39,9 @@ export default async function DestinationPage({
     const { locale, destination } = await params;
     if (!isLocale(locale)) notFound();
 
-    const [dict, island, categories, hubs] = await Promise.all([
+    const [dict, island] = await Promise.all([
         getDictionary(locale),
         getDestinationBySlug(destination, locale),
-        getDestinationCategories(destination, locale),
-        getDestinationHubs(destination, locale),
     ]);
     // Unknown or not-yet-launched (inactive) island → 404. getDestinationBySlug
     // resolves any slug, so we gate on isActive here for the public site.
@@ -58,88 +49,32 @@ export default async function DestinationPage({
 
     const destinationName = island.name;
 
-    // Hubs (e.g. Klein Curaçao) and categories share the same flat
-    // `/{destination}/{slug}` discovery URL, so both feed the hero "Popular" row
-    // and the "Explore by type" cards - hubs always lead.
-    const exploreTypes: ExploreType[] = [
-        ...hubs.map(hub => ({
-            name: hub.name,
-            slug: hub.slug,
-            tours: hub.publishedTourCount,
-            image: hub.heroImage ?? undefined,
-        })),
-        ...categories.map(category => ({
-            name: category.name,
-            slug: category.slug,
-            tours: category.publishedTourCount,
-            image: category.heroImage ?? undefined,
-        })),
-    ];
-
-    // Hero "Popular" quick links - same hubs-first ordering, capped at 4.
-    const activities = exploreTypes.slice(0, 4).map(item => ({
-        label: item.name,
-        href: localizeHref(locale, `/${destination}/${item.slug}`),
-    }));
-
-    // Card labels for the typeahead live in the shared listings dictionary.
-    const search = {
-        ...dict.search,
-        pickupAvailable: dict.destination.listings.pickupAvailable,
-        freeCancellation: dict.destination.listings.freeCancellation,
-        from: dict.destination.listings.from,
-    };
-
-    // "Locals' favorites" grid - tours flagged isLocalsFavourite for this island
-    // (top 6, recommended order). The CTA count is the destination-wide LIVE total
-    // (a cheap limit:1 call), NOT the favourites count - "See all {count} tours"
-    // links to the full All Tours page.
-    const [favouriteTours, allTours] = await Promise.all([
-        getDestinationTours({
-            destinationId: island.id,
-            locale,
-            localsFavourite: true,
-            sort: 'recommended',
-            limit: 6,
-        }),
-        getDestinationTours({ destinationId: island.id, limit: 1 }),
-    ]);
-    const tours = favouriteTours.data.map(hit =>
-        searchHitToListing(hit, locale as Locale, dict.search),
-    );
-
     return (
         <>
-            <DestinationHero
-                destinationName={destinationName}
-                dict={dict.destination.hero}
-                search={search}
-                locale={locale as Locale}
-                destinationSlug={destination}
-                activities={activities}
-                image={island.heroImage ?? undefined}
-            />
-            {exploreTypes.length > 0 && (
-                <DestinationExploreTypes
-                    dict={dict.destination.exploreTypes}
+            <Suspense fallback={<DestinationHeroSkeleton />}>
+                <DestinationHeroSection
+                    destination={destination}
                     locale={locale as Locale}
-                    destinationSlug={destination}
-                    categories={exploreTypes}
-                />
-            )}
-            {tours.length > 0 && (
-                <DestinationListings
-                    dict={dict.destination.listings}
-                    tours={tours}
+                    dict={dict}
                     destinationName={destinationName}
-                    locale={locale as Locale}
-                    destinationSlug={destination}
-                    totalCount={allTours.total}
+                    heroImage={island.heroImage ?? undefined}
                 />
-            )}
+            </Suspense>
+
+            <Suspense fallback={<DestinationListingsSkeleton />}>
+                <DestinationLocalFavourites
+                    destination={destination}
+                    locale={locale as Locale}
+                    dict={dict}
+                    islandId={island.id}
+                    destinationName={destinationName}
+                />
+            </Suspense>
+
             <DestinationInstagram dict={dict.destination.instagram} />
 
             <FaqSection dict={dict.home.faq} />
+
             <DestinationAbout
                 destinationName={destinationName}
                 dict={dict.destination.about}
@@ -147,4 +82,3 @@ export default async function DestinationPage({
         </>
     );
 }
-

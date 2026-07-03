@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import type { Locale } from '@/lib/constants/locales';
 
-import { Reveal } from '../reveal';
+import { motion, useReducedMotion } from 'framer-motion';
 import { DestinationHeroSearch } from './destination-hero-search';
 import type { ActivityLink, DestinationHeroDict } from './lib/destination-hero.types';
 
@@ -35,6 +35,18 @@ export function DestinationHero({
     /** Optional background photo - falls back to the shared home-hero gradient. */
     image?: string;
 }) {
+    const reduceMotion = useReducedMotion();
+    // Entrance animation plays on mount (not scroll) - the hero is above the fold
+    // and streamed, where `whileInView` can fail to fire and leave it invisible.
+    const enter = (delay: number) => ({
+        initial: reduceMotion ? false : { opacity: 0, y: 40 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+            duration: 0.6,
+            delay,
+            ease: [0.21, 0.47, 0.32, 0.98] as const,
+        },
+    });
     return (
         // Same shell as the home hero: bottom-anchored on mobile, centred on desktop.
         // z-20 keeps the search typeahead (which overflows the hero) above the next
@@ -48,17 +60,20 @@ export function DestinationHero({
             )}
 
             <div className='it-container w-full flex justify-center'>
-                <Reveal
+                <motion.div
+                    {...enter(0.2)}
                     className='relative z-10 flex w-full max-w-170.75 flex-col items-center gap-10'>
                     {/* Heading group - title + subtitle, gap 4 */}
-                    <Reveal delay={0.3} className='flex flex-col items-center gap-1 text-center'>
+                    <motion.div
+                        {...enter(0.3)}
+                        className='flex flex-col items-center gap-1 text-center'>
                         <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
                             {destinationName} {dict.toursActivities}
                         </h1>
                         <p className='m-0 max-w-138 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
                             {dict.subtitle}
                         </p>
-                    </Reveal>
+                    </motion.div>
 
                     {/* Search group - pill + activities, gap 16 */}
                     <div className='flex w-full flex-col items-center gap-4'>
@@ -86,7 +101,7 @@ export function DestinationHero({
                             </p>
                         )}
                     </div>
-                </Reveal>
+                </motion.div>
             </div>
         </section>
     );

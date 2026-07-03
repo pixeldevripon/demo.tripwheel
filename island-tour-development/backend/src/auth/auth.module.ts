@@ -26,13 +26,20 @@ import { authPrismaClient } from '@/auth/auth.instance';
     ThrottlerModule.forRoot({
       // In test, use a single permissive throttler so E2E suites don't hit 429s.
       // Production uses three tiers: burst / sustained / hourly.
+      //
+      // Limits carry headroom for server-side rendering: the Next.js frontend
+      // fetches every public page's data from a SINGLE origin (the SSR/build
+      // server), so `next build` prerendering all destination × category pages
+      // bursts hundreds of requests from one IP. Without headroom that trips the
+      // limiter and fails the build. (A stricter alternative is to keep these low
+      // and `@SkipThrottle()` only the public read endpoints - see note below.)
       throttlers:
         process.env.NODE_ENV === 'test'
           ? [{ name: 'test', ttl: 60_000, limit: 10_000 }]
           : [
-              { name: 'short', ttl: 1_000, limit: 20 }, // burst: 20 req/s
-              { name: 'medium', ttl: 60_000, limit: 300 }, // sustained: 300 req/min
-              { name: 'long', ttl: 3_600_000, limit: 3_000 }, // hourly cap: 3 000 req/hr
+              { name: 'short', ttl: 1_000, limit: 100 }, // burst: 100 req/s
+              { name: 'medium', ttl: 60_000, limit: 3_000 }, // sustained: 3 000 req/min
+              { name: 'long', ttl: 3_600_000, limit: 30_000 }, // hourly cap: 30 000 req/hr
             ],
     }),
   ],
