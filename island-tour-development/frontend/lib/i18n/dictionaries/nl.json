@@ -408,6 +408,10 @@
         "title": "Plannen veranderen. Geen probleem.",
         "body": "Gratis annuleren tot {hours} uur voor aanvang van je tour. Volledige terugbetaling, geen formulieren, geen vragen.\n\nAnnuleer je minder dan {hours} uur voor de starttijd, dan kunnen we de boeking helaas niet terugbetalen of wijzigen.",
         "suppliedBy": "Aangeboden door"
+      },
+      "related": {
+        "moreInCategory": "Meer {category}-tours in {destination}",
+        "moreToExplore": "Meer te ontdekken in {destination}"
       }
     },
     "categoryAboutTitle": "Over {category} in {destination}",

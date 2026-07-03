@@ -408,6 +408,10 @@
         "title": "计划有变？没问题。",
         "body": "在行程开始前 {hours} 小时可免费取消，全额退款，无需填表，无需理由。\n\n若在开始时间前不足 {hours} 小时取消，很抱歉我们无法退款或更改预订。",
         "suppliedBy": "提供方"
+      },
+      "related": {
+        "moreInCategory": "{destination}的更多{category}行程",
+        "moreToExplore": "在{destination}发现更多"
       }
     },
     "categoryAboutTitle": "关于{destination}的{category}",

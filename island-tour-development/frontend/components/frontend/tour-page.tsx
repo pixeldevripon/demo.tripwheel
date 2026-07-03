@@ -1,16 +1,14 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { toSlug } from '@/lib/utils';
-import { getTourBySlug } from '@/lib/api/public/tours';
+import { type Locale } from '@/lib/constants/locales';
+import { getTourBySlug, getDestinationTours } from '@/lib/api/public/tours';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getTourReviews } from '@/lib/api/public/reviews';
 import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
-import { formatDuration } from '@/lib/tours/listing';
+import { formatDuration, searchHitToListing } from '@/lib/tours/listing';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { PublicTourExclusion } from '@/types/tour-detail';
-import type { TourListing } from './tour-card';
 import { TourRelatedSection } from './tour-related-section';
 import { ToursBreadcrumb, type BreadcrumbAnchor } from './tours-breadcrumb';
 import { TourSection } from './tour-section';
@@ -47,8 +45,8 @@ import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
  *   - important info: localized `notSuitableFor` / `knowBeforeYouGo` /
  *     `whatToBring` bullet lists (each group hidden when empty)
  *   - cancellation policy: templated from `cancellationHours` + operator name
- *
- * Still on MOCK data (wired in later steps): related tours.
+ *   - related tours: two `getDestinationTours` grids (same primary category +
+ *     destination-wide), both excluding the current tour
  */
 
 // Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
@@ -105,92 +103,6 @@ function exclusionSuffix(
     return '';
 }
 
-// Related tours (Figma node 47936:3964) - "More {category} tours in
-// {destination}" + "More to explore in {destination}". Placeholder card sets
-// (href built at render from locale + destination + slug).
-const MOCK_SIMILAR_TOURS: TourListing[] = [
-    {
-        id: 'rel-1',
-        images: ['/images/tours/tour-2-1.jpg', '/images/tours/tour-2-3.jpg'],
-        badge: 'mostPopular',
-        rating: 4.9,
-        reviewCount: 642,
-        title: 'Tugboat & Reef Snorkel with Small Group',
-        duration: '3 hours',
-        pickupAvailable: true,
-        price: 55,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'rel-2',
-        images: ['/images/tours/tour-5-1.jpg', '/images/tours/tour-3-2.jpg'],
-        badge: null,
-        rating: 4.7,
-        reviewCount: 318,
-        title: 'Mushroom Forest & Blue Room Cave Snorkel',
-        duration: '4 hours',
-        pickupAvailable: true,
-        price: 69,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'rel-3',
-        images: ['/images/tours/tour-3-1.jpg', '/images/tours/tour-3-3.jpg'],
-        badge: 'likelyToSellOut',
-        rating: 4.8,
-        reviewCount: 1204,
-        title: 'Sunset Snorkel & Turtle Encounter at Playa Piskado',
-        duration: '2.5 hours',
-        pickupAvailable: false,
-        price: 49,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-];
-const MOCK_MORE_TOURS: TourListing[] = [
-    {
-        id: 'more-1',
-        images: ['/images/tours/tour-4-1.jpg', '/images/tours/tour-4-2.jpg'],
-        badge: 'new',
-        rating: 4.9,
-        reviewCount: 89,
-        title: 'Private Yacht Charter with Custom Itinerary',
-        duration: 'Full day',
-        pickupAvailable: true,
-        price: 1200,
-        priceUnit: 'perGroup',
-        freeCancellation: true,
-    },
-    {
-        id: 'more-2',
-        images: ['/images/tours/tour-6-1.jpg', '/images/tours/tour-6-3.jpg'],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 530,
-        title: 'Christoffel National Park Sunrise Hike',
-        duration: '5 hours',
-        pickupAvailable: true,
-        price: 75,
-        priceUnit: 'per',
-        freeCancellation: false,
-    },
-    {
-        id: 'more-3',
-        images: ['/images/tours/tour-1-1.jpg', '/images/tours/tour-1-3.jpg'],
-        badge: null,
-        rating: 4.7,
-        reviewCount: 411,
-        title: 'Willemstad Food & Culture Walking Tour',
-        duration: '3 hours',
-        pickupAvailable: false,
-        price: 42,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-];
-
 interface TourPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
     destinationSlug: string;
@@ -210,8 +122,6 @@ export async function TourPage({
     dict,
 }: TourPageProps) {
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
-    console.log('tour details',detail);
-    
     if (!detail) notFound();
 
     const tourDict = dict.destination.tour;
@@ -236,10 +146,12 @@ export async function TourPage({
     // LIVE tour always appears in the destination's tour-gated category list (it
     // has ≥1 published tour - this one), so its crumb link never 404s.
     let anchor: BreadcrumbAnchor | null = null;
+    let primaryCategoryName: string | null = null;
     if (detail.primaryCategoryId) {
         const categories = await getDestinationCategories(destinationSlug, locale);
         const primary = categories.find(c => c.id === detail.primaryCategoryId);
         if (primary) {
+            primaryCategoryName = primary.name;
             anchor = {
                 label: primary.name,
                 href: `/${destinationSlug}/${primary.slug}`,
@@ -443,14 +355,47 @@ export async function TourPage({
         { id: 'tour-reviews', label: tourDict.sections.reviews },
     ];
 
-    // Link each related card to its flat tour URL (slug derived from the title
-    // until the related-tours API is wired).
-    const linkTours = (tours: TourListing[]) =>
-        tours.map(t => ({
-            ...t,
-            href: localizeHref(locale, `/${destinationSlug}/${toSlug(t.title)}`),
-        }));
-    const primaryCategory = 'Snorkeling';
+    // Related tours (Figma node 47936:3964). Two grids scoped to this destination,
+    // both excluding the current tour: same primary category ("More {category}
+    // tours in {destination}") and destination-wide ("More to explore in
+    // {destination}"), the latter also dropping any tour already shown in the
+    // first. Fetch a few extra per grid to absorb the self-exclusion, then slice.
+    // Empty grids self-hide (TourRelatedSection returns null on []).
+    const RELATED_COUNT = 3;
+    const [similarRes, moreRes] = await Promise.all([
+        detail.primaryCategoryId
+            ? getDestinationTours({
+                  destinationId: detail.destinationId,
+                  categoryId: detail.primaryCategoryId,
+                  locale,
+                  sort: 'recommended',
+                  limit: RELATED_COUNT + 4,
+              })
+            : null,
+        getDestinationTours({
+            destinationId: detail.destinationId,
+            locale,
+            sort: 'recommended',
+            limit: RELATED_COUNT + 8,
+        }),
+    ]);
+    const similarTours = (similarRes?.data ?? [])
+        .filter(hit => hit.id !== detail.id)
+        .slice(0, RELATED_COUNT)
+        .map(hit => searchHitToListing(hit, locale, dict.search));
+    const shownSimilarIds = new Set(similarTours.map(t => t.id));
+    const moreTours = moreRes.data
+        .filter(hit => hit.id !== detail.id && !shownSimilarIds.has(hit.id))
+        .slice(0, RELATED_COUNT)
+        .map(hit => searchHitToListing(hit, locale, dict.search));
+
+    const similarTitle = tourDict.related.moreInCategory
+        .replace('{category}', primaryCategoryName ?? '')
+        .replace('{destination}', destinationName);
+    const moreTitle = tourDict.related.moreToExplore.replace(
+        '{destination}',
+        destinationName,
+    );
 
     return (
         <>
@@ -763,13 +708,13 @@ export async function TourPage({
             <section className='it-section pt-0! bg-it-white'>
                 <div className='it-container flex flex-col gap-16 md:gap-24'>
                     <TourRelatedSection
-                        title={`More ${primaryCategory} tours in ${destinationName}`}
-                        tours={linkTours(MOCK_SIMILAR_TOURS)}
+                        title={similarTitle}
+                        tours={similarTours}
                         dict={dict.destination.listings}
                     />
                     <TourRelatedSection
-                        title={`More to explore in ${destinationName}`}
-                        tours={linkTours(MOCK_MORE_TOURS)}
+                        title={moreTitle}
+                        tours={moreTours}
                         dict={dict.destination.listings}
                     />
                 </div>

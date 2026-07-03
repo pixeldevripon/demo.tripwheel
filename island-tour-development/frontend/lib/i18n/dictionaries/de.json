@@ -408,6 +408,10 @@
         "title": "Pläne ändern sich. Kein Problem.",
         "body": "Kostenlose Stornierung bis {hours} Stunden vor Beginn deiner Tour. Volle Rückerstattung, keine Formulare, keine Fragen.\n\nBei Stornierung weniger als {hours} Stunden vor der Startzeit können wir die Buchung leider nicht erstatten oder ändern.",
         "suppliedBy": "Angeboten von"
+      },
+      "related": {
+        "moreInCategory": "Weitere {category}-Touren in {destination}",
+        "moreToExplore": "Mehr entdecken in {destination}"
       }
     },
     "categoryAboutTitle": "Über {category} in {destination}",

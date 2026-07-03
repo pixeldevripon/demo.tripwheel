@@ -408,6 +408,10 @@
         "title": "Os planos mudam. Sem problema.",
         "body": "Cancelamento gratuito até {hours} horas antes do início do seu passeio. Reembolso total, sem formulários nem perguntas.\n\nSe cancelar com menos de {hours} horas antes da hora de início, infelizmente não podemos reembolsar nem alterar a reserva.",
         "suppliedBy": "Fornecido por"
+      },
+      "related": {
+        "moreInCategory": "Mais tours de {category} em {destination}",
+        "moreToExplore": "Mais para explorar em {destination}"
       }
     },
     "categoryAboutTitle": "Sobre {category} em {destination}",

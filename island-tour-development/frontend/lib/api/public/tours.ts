@@ -21,9 +21,10 @@ export interface TourListResult {
 
 /**
  * LIVE tours for a destination (by id), ordered `recommended` by default. Pass
- * `localsFavourite` to restrict to flagged tours, `limit: 1` to cheaply read the
- * destination-wide `total`. Returns `{ total: 0, data: [] }` if the backend is
- * unreachable.
+ * `localsFavourite` to restrict to flagged tours, `categoryId` to restrict to a
+ * single category (e.g. related "same-category" grids), `limit: 1` to cheaply
+ * read the destination-wide `total`. Returns `{ total: 0, data: [] }` if the
+ * backend is unreachable.
  *
  * Cached hourly and tagged `tours`; every param is part of the cache key.
  */
@@ -31,6 +32,7 @@ export async function getDestinationTours(params: {
   destinationId: string;
   locale?: Locale;
   localsFavourite?: boolean;
+  categoryId?: string;
   sort?: 'recommended' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
   limit?: number;
   page?: number;
@@ -39,12 +41,14 @@ export async function getDestinationTours(params: {
   cacheLife('hours');
   cacheTag('tours');
 
-  const { destinationId, locale = DEFAULT_LOCALE, localsFavourite, sort, limit, page } = params;
+  const { destinationId, locale = DEFAULT_LOCALE, localsFavourite, categoryId, sort, limit, page } =
+    params;
   const res = await publicGet<TourListResult>(
     `/tours${buildQuery({
       destinationId,
       locale,
       isLocalsFavourite: localsFavourite,
+      categoryId,
       sort,
       limit,
       page,
