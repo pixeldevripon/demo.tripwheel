@@ -3,7 +3,6 @@ import { notFound, redirect } from 'next/navigation';
 import { CategoryPage } from '@/components/frontend/category-page';
 import { HubPage } from '@/components/frontend/hub-page';
 import { TourPage } from '@/components/frontend/tour-page';
-import { categoriesApi } from '@/lib/api/categories';
 import {
     ALL_LOCALES,
     DEFAULT_LOCALE,
@@ -12,84 +11,49 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { destinationsApi } from '@/lib/api/destinations';
+import {
+    getActiveDestinations,
+    getCategoryBySlugForDestination,
+    getCategoryPageContent,
+    getDestinationBySlug,
+    getDestinationCategories,
+} from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
 
 /**
- * Localized destination display name from the backend. A successful slug resolve
- * already implies the destination is active (deactivating an island tombstones
- * all its registry rows - §5.10), so on any fetch error we fall back to a
- * prettified slug rather than 404.
+ * Localized destination display name from the public cached loader. On any fetch
+ * error we fall back to a prettified slug rather than 404 - a successful slug
+ * resolve already implies the destination is active (§5.10).
  */
-// English slugs strip diacritics, so title-casing `curacao` yields "Curacao".
-// Map launch destinations to their proper display names for the fallback path
-// (the backend `name` already carries diacritics when reachable).
-const DESTINATION_DISPLAY_NAMES: Record<string, string> = {
-    curacao: 'Curaçao',
-    aruba: 'Aruba',
-    'sint-maarten': 'Sint Maarten',
-    'saint-lucia': 'Saint Lucia',
-    bahamas: 'Bahamas',
-};
-
 async function resolveDestinationName(
     destination: string,
     locale: Locale,
 ): Promise<string> {
-    const dest = await destinationsApi.getBySlug(destination, locale).catch(() => null);
+    const dest = await getDestinationBySlug(destination, locale);
     return (
         dest?.name ??
-        DESTINATION_DISPLAY_NAMES[destination] ??
         destination.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     );
 }
 
 type PageParams = { locale: string; destination: string; slug: string };
 
-// Fallback combos for static generation if the backend is unreachable at build.
-// Pairing the launch destinations with a few canonical category slugs guarantees
-// `generateStaticParams` is never empty, which keeps `[destination]`/`[slug]` in
-// static-generation mode (so the shared `[locale]` layout's `await params` is not
-// treated as request-time data and the static shell prerenders without blocking).
-const LAUNCH_DESTINATION_SLUGS = [
-    'curacao',
-    'aruba',
-    'sint-maarten',
-    'saint-lucia',
-    'bahamas',
-];
-const FALLBACK_CATEGORY_SLUGS = ['boat-tours', 'snorkeling', 'sunset-cruises'];
-
 /**
  * Prerender the destination × category combos from the backend (gating-consistent
- * with `getActiveByDestination`, so every prerendered path actually renders).
- * Non-listed slugs (hubs, etc.) render on demand via the default `dynamicParams`.
- *
- * This must stay non-empty: providing ≥1 sample keeps the dynamic segments in
- * static-generation mode, which is what stops the `[locale]` layout from blocking
- * on `params` under Cache Components.
+ * with the public category loader, so every prerendered path actually renders).
+ * Tours and other slugs (hubs, etc.) render on demand via the default
+ * `dynamicParams`; if the backend is unreachable at build this returns `[]` and
+ * those paths render on demand too (covered by the route's `loading.tsx`).
  */
 export async function generateStaticParams() {
-    try {
-        const destinations = await destinationsApi.getActive();
-        if (destinations.length > 0) {
-            const combos = await Promise.all(
-                destinations.map(async (d) => {
-                    const cats = await categoriesApi
-                        .getActiveByDestination(d.slug, DEFAULT_LOCALE)
-                        .catch(() => []);
-                    return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
-                }),
-            );
-            const flat = combos.flat();
-            if (flat.length > 0) return flat;
-        }
-    } catch {
-        // backend unavailable at build - fall through to launch combos
-    }
-    return LAUNCH_DESTINATION_SLUGS.flatMap((destination) =>
-        FALLBACK_CATEGORY_SLUGS.map((slug) => ({ destination, slug })),
+    const destinations = await getActiveDestinations();
+    const combos = await Promise.all(
+        destinations.map(async (d) => {
+            const cats = await getDestinationCategories(d.slug, DEFAULT_LOCALE);
+            return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
+        }),
     );
+    return combos.flat();
 }
 
 /**
@@ -117,17 +81,17 @@ export async function generateMetadata({
 
     if (resolution.entityType === 'CATEGORY' && resolution.entityId) {
         const [category, pageContent] = await Promise.all([
-            categoriesApi.getBySlugForDestination(destination, slug, locale as Locale),
-            categoriesApi.getPageContent(resolution.entityId, locale as Locale),
+            getCategoryBySlugForDestination(destination, slug, locale as Locale),
+            getCategoryPageContent(resolution.entityId, locale as Locale),
         ]);
         if (!category) return { alternates };
 
         const destinationName = await resolveDestinationName(destination, locale as Locale);
         return {
             title:
-                pageContent.metaTitle ??
+                pageContent?.metaTitle ??
                 `${category.name} in ${destinationName} | Island Tours`,
-            description: pageContent.metaDescription ?? category.overview ?? undefined,
+            description: pageContent?.metaDescription ?? category.overview ?? undefined,
             alternates,
         };
     }

@@ -1,3 +1,5 @@
+import { cacheLife, cacheTag } from 'next/cache';
+
 import type { SlugResolution } from '@/types/slug-registry';
 
 /**
@@ -24,11 +26,15 @@ export async function resolveSlug(
     destinationSlug: string,
     slug: string,
 ): Promise<SlugResolution | null> {
+    // Public and immutable-by-slug, so cache it (Cache Components `use cache`,
+    // not the legacy fetch cache). Bust on the rare isActive toggle via the tag.
+    'use cache';
+    cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+    cacheTag(`slug:${destinationSlug}:${slug}`);
+
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
     const res = await fetch(`${BASE_URL}/slug-registry/resolve?${query}`, {
         headers: { 'Content-Type': 'application/json' },
-        // Public, immutable-by-slug → safe to cache; bust on the rare isActive toggle.
-        next: { revalidate: 300, tags: [`slug:${destinationSlug}:${slug}`] },
     });
 
     if (res.status === 404) return null;
