@@ -1,0 +1,103 @@
+import { connection } from 'next/server';
+import { type Locale } from '@/lib/constants/locales';
+import { getTourBySlug, getDestinationTours } from '@/lib/api/public/tours';
+import { getDestinationCategories } from '@/lib/api/public/categories';
+import { searchHitToListing } from '@/lib/tours/listing';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { TourRelatedSection } from './tour-related-section';
+
+interface TourRelatedToursProps {
+    destinationSlug: string;
+    slug: string;
+    destinationName: string;
+    locale: Locale;
+    dict: Dictionary;
+}
+
+/**
+ * Related tours (Figma node 47936:3964). Two grids scoped to this destination,
+ * both excluding the current tour: same primary category ("More {category} tours
+ * in {destination}") and destination-wide ("More to explore in {destination}"),
+ * the latter also dropping any tour already shown in the first.
+ *
+ * `await connection()` marks it dynamic so its `<Suspense>` skeleton streams under
+ * Cache Components (the data loaders stay cached). Reuses the cached
+ * `getTourBySlug` (deduped with the main content) to get the tour's ids. Renders
+ * nothing when both grids are empty.
+ */
+export async function TourRelatedTours({
+    destinationSlug,
+    slug,
+    destinationName,
+    locale,
+    dict,
+}: TourRelatedToursProps) {
+    await connection();
+    const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    if (!detail) return null;
+
+    // Localized primary-category name for the same-category grid's heading.
+    let primaryCategoryName: string | null = null;
+    if (detail.primaryCategoryId) {
+        const categories = await getDestinationCategories(destinationSlug, locale);
+        primaryCategoryName =
+            categories.find(c => c.id === detail.primaryCategoryId)?.name ?? null;
+    }
+
+    // Fetch a few extra per grid to absorb the self-exclusion, then slice.
+    const RELATED_COUNT = 3;
+    const [similarRes, moreRes] = await Promise.all([
+        detail.primaryCategoryId
+            ? getDestinationTours({
+                  destinationId: detail.destinationId,
+                  categoryId: detail.primaryCategoryId,
+                  locale,
+                  sort: 'recommended',
+                  limit: RELATED_COUNT + 4,
+              })
+            : null,
+        getDestinationTours({
+            destinationId: detail.destinationId,
+            locale,
+            sort: 'recommended',
+            limit: RELATED_COUNT + 8,
+        }),
+    ]);
+    const similarTours = (similarRes?.data ?? [])
+        .filter(hit => hit.id !== detail.id)
+        .slice(0, RELATED_COUNT)
+        .map(hit => searchHitToListing(hit, locale, dict.search));
+    const shownSimilarIds = new Set(similarTours.map(t => t.id));
+    const moreTours = moreRes.data
+        .filter(hit => hit.id !== detail.id && !shownSimilarIds.has(hit.id))
+        .slice(0, RELATED_COUNT)
+        .map(hit => searchHitToListing(hit, locale, dict.search));
+
+    if (similarTours.length === 0 && moreTours.length === 0) return null;
+
+    const tourDict = dict.destination.tour;
+    const similarTitle = tourDict.related.moreInCategory
+        .replace('{category}', primaryCategoryName ?? '')
+        .replace('{destination}', destinationName);
+    const moreTitle = tourDict.related.moreToExplore.replace(
+        '{destination}',
+        destinationName,
+    );
+
+    return (
+        <section className='it-section pt-0! bg-it-white'>
+            <div className='it-container flex flex-col gap-16 md:gap-24'>
+                <TourRelatedSection
+                    title={similarTitle}
+                    tours={similarTours}
+                    dict={dict.destination.listings}
+                />
+                <TourRelatedSection
+                    title={moreTitle}
+                    tours={moreTours}
+                    dict={dict.destination.listings}
+                />
+            </div>
+        </section>
+    );
+}
