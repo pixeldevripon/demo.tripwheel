@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import { Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 import { Reveal } from './reveal';
 
 type CardKey =
@@ -67,6 +67,8 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
 
     const [selected, setSelected] = useState(START);
     const [playing, setPlaying] = useState<number | null>(null);
+    const [paused, setPaused] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     // Height varies by each slide's live distance from the carousel centre
     const applyHeights = useCallback(() => {
@@ -101,7 +103,16 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
 
     const handlePlay = (index: number) => {
         setPlaying(index);
+        setPaused(false);
         autoplay.current.stop();
+    };
+
+    // Toggle the currently mounted video between play and pause (same button)
+    const toggleVideo = () => {
+        const v = videoRef.current;
+        if (!v) return;
+        if (v.paused) void v.play();
+        else v.pause();
     };
 
     // 3 dots - left / centre / right
@@ -139,16 +150,32 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                             style={{ height: H_MIN }}
                                         >
                                             {isPlaying ? (
-                                                <video
-                                                    src={card.video as string}
-                                                    poster={card.image ?? undefined}
-                                                    autoPlay
-                                                    controls
-                                                    loop
-                                                    muted={false}
-                                                    playsInline
-                                                    className='absolute inset-0 size-full object-cover'
-                                                />
+                                                <>
+                                                    <video
+                                                        ref={videoRef}
+                                                        src={card.video as string}
+                                                        poster={card.image ?? undefined}
+                                                        autoPlay
+                                                        loop
+                                                        muted={false}
+                                                        playsInline
+                                                        onPlay={() => setPaused(false)}
+                                                        onPause={() => setPaused(true)}
+                                                        className='absolute inset-0 size-full object-cover'
+                                                    />
+                                                    <button
+                                                        type='button'
+                                                        aria-label={`${paused ? 'Play' : 'Pause'} ${title} video`}
+                                                        onClick={toggleVideo}
+                                                        className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'
+                                                    >
+                                                        {paused ? (
+                                                            <Play className='size-3.5 fill-it-white text-it-white' />
+                                                        ) : (
+                                                            <Pause className='size-3.5 fill-it-white text-it-white' />
+                                                        )}
+                                                    </button>
+                                                </>
                                             ) : (
                                                 <>
                                                     {hasMedia ? (
