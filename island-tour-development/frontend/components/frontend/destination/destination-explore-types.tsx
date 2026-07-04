@@ -5,8 +5,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { MountReveal } from '../mount-reveal';
 
 export type ExploreType = { name: string; slug: string; tours: number; image?: string };
 
@@ -44,21 +44,14 @@ export function DestinationExploreTypes({
         };
     }, [emblaApi, onSelect]);
 
-    const reduceMotion = useReducedMotion();
-
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
                 {/* Entrance plays on mount (not scroll): this section is streamed
                     and often above the fold, where whileInView can fail to fire. */}
-                <motion.div
-                    initial={reduceMotion ? false : { opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                        duration: 0.6,
-                        delay: 0.2,
-                        ease: [0.21, 0.47, 0.32, 0.98],
-                    }}
+                <MountReveal
+                    delay={0.2}
+                    yOffset={40}
                     className='flex flex-col gap-10 md:gap-12'>
                     <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         {dict.title}
@@ -122,7 +115,7 @@ export function DestinationExploreTypes({
                             />
                         </button>
                     </div>
-                </motion.div>
+                </MountReveal>
             </div>
         </section>
     );

@@ -142,6 +142,6 @@ export async function DestinationLocalFavourites({
             locale={locale}
             destinationSlug={destination}
             totalCount={allTours.total}
-        />
+        />  
     );
 }
