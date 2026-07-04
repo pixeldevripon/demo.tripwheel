@@ -1,6 +1,6 @@
 import { cacheLife } from 'next/cache';
 import { ToursDatePill } from '@/components/frontend/tours-date-pill';
-import { Reveal } from './reveal';
+import { MountReveal } from './mount-reveal';
 
 export type ToursHeaderDict = {
     /** Title template - e.g. "All {destination} tours & activities in {year}" */
@@ -57,7 +57,7 @@ export async function ToursHeader({
     const count = dict.availableCount.replace('{count}', String(total));
 
     return (
-        <Reveal className='flex flex-col gap-4 md:gap-2'>
+        <MountReveal className='flex flex-col gap-4 md:gap-2'>
             <div className='flex flex-col gap-2 md:gap-1'>
                 <h1 className='m-0 font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                     {title}
@@ -74,6 +74,6 @@ export async function ToursHeader({
                 </p>
                 <ToursDatePill selectDateLabel={selectDateLabel} className='md:hidden' />
             </div>
-        </Reveal>
+        </MountReveal>
     );
 }
