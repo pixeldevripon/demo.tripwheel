@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from 'next/cache';
 
 import type { SlugResolution } from '@/types/slug-registry';
+import { publicFetch } from './public/fetch';
 
 /**
  * Slug-registry resolver - the single lookup that disambiguates the polymorphic
@@ -15,12 +16,12 @@ import type { SlugResolution } from '@/types/slug-registry';
  * 7 locales for a given `(destination, slug)` pair.
  */
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
 /**
  * Resolve a `(destinationSlug, slug)` pair to its entity.
  * Returns `null` on a `404` (unknown or inactive slug) so callers can render
- * `notFound()` authoritatively. Throws on any other transport/server error.
+ * `notFound()` authoritatively. Also returns `null` on any transport/server
+ * error (e.g. backend down during build) after `publicFetch` has retried a
+ * transient 429/503, so a spike degrades to not-found rather than crashing.
  */
 export async function resolveSlug(
     destinationSlug: string,
@@ -34,17 +35,9 @@ export async function resolveSlug(
 
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
     try {
-        const res = await fetch(`${BASE_URL}/slug-registry/resolve?${query}`, {
-            headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (res.status === 404) return null;
-        if (!res.ok) {
-            throw new Error(
-                `Slug resolve failed for "${destinationSlug}/${slug}" (${res.status})`
-            );
-        }
-        return res.json() as Promise<SlugResolution>;
+        const res = await publicFetch(`/slug-registry/resolve?${query}`);
+        if (res.status === 404 || !res.ok) return null;
+        return (await res.json()) as SlugResolution;
     } catch {
         // Handle ECONNREFUSED when backend is down during build so Next.js can
         // gracefully fall back to 404/not-found instead of crashing the build.

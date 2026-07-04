@@ -29,6 +29,15 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
 };
 
 const OPTIONAL: Record<string, (v: string) => string | null> = {
+  // Shared secret the trusted SSR/build server sends as `x-internal-api-key` to
+  // bypass the per-IP throttle (see AuthModule). Must match the frontend's
+  // server-only INTERNAL_API_SECRET. Server-only - never expose as NEXT_PUBLIC_.
+  INTERNAL_API_SECRET: (v) => {
+    if (v.length < 16) return 'must be at least 16 characters';
+    if (v.includes('change-me') || v === 'secret')
+      return 'placeholder detected - generate a real secret: openssl rand -base64 32';
+    return null;
+  },
   ADMIN_PASSWORD: (v) => {
     if (
       v === 'yourPassword' ||
@@ -97,6 +106,18 @@ export function validateEnv(): void {
     // Warn but don't fail - email features will be disabled
     console.warn(
       '⚠  No SMTP config found - email sending (verification, password reset) will be disabled.',
+    );
+  }
+
+  // ── Trusted-origin bypass check ──────────────────────────────────────────────
+  // Without the shared secret, the SSR/build server is throttled as an anonymous
+  // client and a production `next build` can 429 mid-prerender.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.INTERNAL_API_SECRET
+  ) {
+    console.warn(
+      '⚠  INTERNAL_API_SECRET not set - the SSR/build server will be rate-limited as an anonymous client. Set it (and the matching value on the frontend) to exempt trusted first-party requests.',
     );
   }
 
