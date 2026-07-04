@@ -48,8 +48,10 @@ export async function generateStaticParams() {
  */
 export default async function AllToursPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ locale: string; destination: string }>;
+    searchParams: Promise<{ page?: string | string[] }>;
 }) {
     const { locale, destination } = await params;
     if (!isLocale(locale)) notFound();
@@ -93,6 +95,7 @@ export default async function AllToursPage({
                                 destination={destination}
                                 locale={locale as Locale}
                                 dict={dict}
+                                searchParams={searchParams}
                             />
                         </Suspense>
                     </div>

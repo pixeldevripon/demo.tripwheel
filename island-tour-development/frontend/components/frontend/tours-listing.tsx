@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Pagination } from './pagination';
 import { Reveal } from './reveal';
@@ -11,19 +12,42 @@ import type { TourCardDict, TourListing } from './tour-card';
  * Matches Figma node 47167:4083 (3-col grid, gap-x 24 / gap-y 40) + the
  * centered pagination row beneath it (node 47167:4317).
  *
- * Pagination is currently presentational - page state is tracked locally; the
- * data fetch per page is wired when the trips API lands.
+ * Pagination has two modes:
+ *   - URL-driven (pass `currentPage`): writes `?page=N` and the server refetches
+ *     that page, so the grid + count reflect real backend data (All Tours page).
+ *   - Local-state (omit `currentPage`): presentational only, for grids not yet
+ *     wired to a paged API (e.g. the category page's placeholder set).
  */
 export function ToursListing({
     tours,
     dict,
     pageCount,
+    currentPage,
 }: {
     tours: TourListing[];
     dict: TourCardDict;
     pageCount: number;
+    /** Active 1-based page. When provided, pagination navigates via `?page=`. */
+    currentPage?: number;
 }) {
-    const [page, setPage] = useState(1);
+    const router = useRouter();
+    const pathname = usePathname();
+    const [localPage, setLocalPage] = useState(1);
+
+    const isUrlDriven = currentPage !== undefined;
+    const page = currentPage ?? localPage;
+
+    function goToPage(next: number) {
+        if (!isUrlDriven) {
+            setLocalPage(next);
+            return;
+        }
+        // Page 1 drops the param to keep the canonical URL clean. (Filters are
+        // not yet in the URL, so we rebuild from the pathname rather than reading
+        // useSearchParams - which would force a Suspense boundary on every
+        // consumer, including the category page.)
+        router.push(next <= 1 ? pathname : `${pathname}?page=${next}`);
+    }
 
     return (
         <Reveal className='flex flex-col gap-12 sm:gap-18'>
@@ -39,7 +63,7 @@ export function ToursListing({
             </div>
 
             {/* ── Pagination ─────────────────────────────────────────────── */}
-            <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+            <Pagination page={page} pageCount={pageCount} onPageChange={goToPage} />
         </Reveal>
     );
 }
