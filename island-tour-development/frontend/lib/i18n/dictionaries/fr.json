@@ -183,6 +183,10 @@
         "clearAll": "Tout effacer",
         "sortBy": "Trier par :"
       },
+      "emptyState": {
+        "title": "Aucune excursion ne correspond à vos filtres",
+        "description": "Essayez d'ajuster ou d'effacer vos filtres pour voir plus d'excursions."
+      },
       "sort": {
         "localsFavorites": "Favoris des locaux",
         "priceLowHigh": "Prix (croissant)",

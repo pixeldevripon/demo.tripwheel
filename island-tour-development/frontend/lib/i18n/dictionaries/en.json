@@ -183,6 +183,10 @@
         "clearAll": "Clear all",
         "sortBy": "Sort by:"
       },
+      "emptyState": {
+        "title": "No tours match your filters",
+        "description": "Try adjusting or clearing your filters to see more tours."
+      },
       "sort": {
         "localsFavorites": "Locals' Favorites",
         "priceLowHigh": "Price (Low to High)",

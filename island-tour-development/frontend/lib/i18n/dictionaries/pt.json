@@ -183,6 +183,10 @@
         "clearAll": "Limpar tudo",
         "sortBy": "Ordenar por:"
       },
+      "emptyState": {
+        "title": "Nenhum tour corresponde aos seus filtros",
+        "description": "Tente ajustar ou limpar os filtros para ver mais tours."
+      },
       "sort": {
         "localsFavorites": "Favoritos dos locais",
         "priceLowHigh": "Preço (do menor ao maior)",

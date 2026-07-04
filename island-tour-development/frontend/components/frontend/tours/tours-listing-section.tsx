@@ -182,6 +182,11 @@ export async function ToursListingSection({
                 dict={dict.destination.listings}
                 pageCount={pageCount}
                 currentPage={page}
+                emptyState={{
+                    title: dict.destination.allTours.emptyState.title,
+                    description: dict.destination.allTours.emptyState.description,
+                    clearLabel: dict.destination.allTours.toolbar.clearAll,
+                }}
             />
         </div>
     );

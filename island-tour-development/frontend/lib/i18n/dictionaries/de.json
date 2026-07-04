@@ -183,6 +183,10 @@
         "clearAll": "Alle löschen",
         "sortBy": "Sortieren nach:"
       },
+      "emptyState": {
+        "title": "Keine Touren entsprechen deinen Filtern",
+        "description": "Passe deine Filter an oder setze sie zurück, um mehr Touren zu sehen."
+      },
       "sort": {
         "localsFavorites": "Favoriten der Locals",
         "priceLowHigh": "Preis (aufsteigend)",

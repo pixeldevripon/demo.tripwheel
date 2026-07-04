@@ -183,6 +183,10 @@
         "clearAll": "Alles wissen",
         "sortBy": "Sorteren op:"
       },
+      "emptyState": {
+        "title": "Geen tours komen overeen met je filters",
+        "description": "Pas je filters aan of wis ze om meer tours te zien."
+      },
       "sort": {
         "localsFavorites": "Favorieten van locals",
         "priceLowHigh": "Prijs (laag naar hoog)",

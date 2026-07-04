@@ -6,6 +6,10 @@ import { Pagination } from './pagination';
 import { Reveal } from './reveal';
 import { TourCard } from './tour-card';
 import type { TourCardDict, TourListing } from './tour-card';
+import {
+    ToursEmptyState,
+    type ToursEmptyStateDict,
+} from './tours-empty-state';
 
 /**
  * Paginated tour grid for the All Tours page - reuses the shared <TourCard>.
@@ -23,12 +27,15 @@ export function ToursListing({
     dict,
     pageCount,
     currentPage,
+    emptyState,
 }: {
     tours: TourListing[];
     dict: TourCardDict;
     pageCount: number;
     /** Active 1-based page. When provided, pagination navigates via `?page=`. */
     currentPage?: number;
+    /** Empty-filtering-result copy. When provided, a zero-result grid shows it. */
+    emptyState?: ToursEmptyStateDict;
 }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -47,6 +54,18 @@ export function ToursListing({
         // useSearchParams - which would force a Suspense boundary on every
         // consumer, including the category page.)
         router.push(next <= 1 ? pathname : `${pathname}?page=${next}`);
+    }
+
+    // Zero filtered results: show the reusable empty screen instead of a blank
+    // grid + lone pagination. In URL-driven mode, offer a "clear all" that resets
+    // to the bare pathname (drops every filter param).
+    if (tours.length === 0 && emptyState) {
+        return (
+            <ToursEmptyState
+                dict={emptyState}
+                onClear={isUrlDriven ? () => router.push(pathname) : undefined}
+            />
+        );
     }
 
     return (

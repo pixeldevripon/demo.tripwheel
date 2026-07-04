@@ -183,6 +183,10 @@
         "clearAll": "清除全部",
         "sortBy": "排序方式："
       },
+      "emptyState": {
+        "title": "没有符合筛选条件的行程",
+        "description": "请调整或清除筛选条件以查看更多行程。"
+      },
       "sort": {
         "localsFavorites": "当地人最爱",
         "priceLowHigh": "价格（从低到高）",
