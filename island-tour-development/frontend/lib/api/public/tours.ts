@@ -33,6 +33,8 @@ export async function getDestinationTours(params: {
   locale?: Locale;
   localsFavourite?: boolean;
   categoryId?: string;
+  /** Multi-select category filter (CSV of ids); a tour in ANY matches. */
+  categoryIds?: string;
   sort?: 'recommended' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
   /** Price range filter (on `basePrice`). */
   minPrice?: number;
@@ -42,6 +44,16 @@ export async function getDestinationTours(params: {
   /** Duration filter in minutes (on `durationMinutesFrom`). */
   durationMin?: number;
   durationMax?: number;
+  /** Free-cancellation cutoff ceiling in hours (cancellationHours <= value). */
+  cancellationMaxHours?: number;
+  /** Restrict to tours that offer pickup (pickupModel != NONE). */
+  pickupAvailable?: boolean;
+  /** Availability anchor date (YYYY-MM-DD). Enables `guests`/`timeOfDay`. */
+  date?: string;
+  /** Party size; only applied together with `date`. */
+  guests?: number;
+  /** Time-of-day buckets CSV (morning|afternoon|evening); needs `date`. */
+  timeOfDay?: string;
   limit?: number;
   page?: number;
 }): Promise<TourListResult> {
@@ -54,12 +66,18 @@ export async function getDestinationTours(params: {
     locale = DEFAULT_LOCALE,
     localsFavourite,
     categoryId,
+    categoryIds,
     sort,
     minPrice,
     maxPrice,
     ratingMin,
     durationMin,
     durationMax,
+    cancellationMaxHours,
+    pickupAvailable,
+    date,
+    guests,
+    timeOfDay,
     limit,
     page,
   } = params;
@@ -69,12 +87,18 @@ export async function getDestinationTours(params: {
       locale,
       isLocalsFavourite: localsFavourite,
       categoryId,
+      categoryIds,
       sort,
       minPrice,
       maxPrice,
       ratingMin,
       durationMin,
       durationMax,
+      cancellationMaxHours,
+      pickupAvailable,
+      date,
+      guests,
+      timeOfDay,
       limit,
       page,
     })}`,

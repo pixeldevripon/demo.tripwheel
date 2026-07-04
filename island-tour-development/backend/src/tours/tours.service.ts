@@ -21,6 +21,7 @@ import type { Prisma } from '@prisma/client';
 import {
   BandParticipation,
   DepartureStatus,
+  PickupModel,
   Role,
   SlugEntityType,
   TourStatus,
@@ -457,6 +458,7 @@ export class ToursService {
     'search',
     'destinationId',
     'categoryId',
+    'categoryIds',
     'hubId',
     'isLocalsFavourite',
     'pricingModel',
@@ -465,17 +467,79 @@ export class ToursService {
     'durationMin',
     'durationMax',
     'ratingMin',
+    'cancellationMaxHours',
+    'pickupAvailable',
+    'date',
+    'guests',
+    'timeOfDay',
     'locale',
     'page',
     'limit',
     'sort',
   ]);
 
+  // Time-of-day buckets by departure start hour (UTC, from the `@db.Time` column).
+  // Contiguous and gapless so every start time falls in exactly one bucket.
+  private static readonly TIME_BUCKETS: Record<string, [number, number]> = {
+    morning: [0, 12], // < 12:00
+    afternoon: [12, 17], // 12:00-16:59
+    evening: [17, 24], // >= 17:00
+  };
+
+  /**
+   * Date-anchored availability filter: the distinct ids of tours (optionally
+   * scoped to a destination) that have a bookable OPEN departure on `date` with
+   * enough remaining capacity for `guests`, in one of the `timeOfDay` buckets (if
+   * any). Returns `[]` when nothing is available - the caller then yields zero
+   * results, which is correct.
+   *
+   * Capacity (`capacity - bookedCount >= guests`) and the start-hour bucketing are
+   * done in app code because Prisma cannot compare two columns in a `where` (same
+   * approach as `AvailabilityService.checkAvailability`).
+   */
+  private async findDateAvailableTourIds(params: {
+    destinationId?: string;
+    date: Date;
+    guests: number;
+    timeOfDay: string[];
+  }): Promise<string[]> {
+    const { destinationId, date, guests, timeOfDay } = params;
+    const buckets = timeOfDay
+      .map((k) => ToursService.TIME_BUCKETS[k])
+      .filter((b): b is [number, number] => Boolean(b));
+
+    const departures = await this.prisma.departure.findMany({
+      where: {
+        date,
+        status: DepartureStatus.OPEN,
+        ...(destinationId && { tour: { destinationId } }),
+      },
+      select: {
+        tourId: true,
+        capacity: true,
+        bookedCount: true,
+        startTime: true,
+      },
+    });
+
+    const ids = new Set<string>();
+    for (const d of departures) {
+      if (d.capacity - d.bookedCount < guests) continue;
+      if (buckets.length > 0) {
+        const hour = d.startTime.getUTCHours();
+        if (!buckets.some(([lo, hi]) => hour >= lo && hour < hi)) continue;
+      }
+      ids.add(d.tourId);
+    }
+    return [...ids];
+  }
+
   async findAll(query: TourQueryDto, rawQuery: Record<string, unknown> = {}) {
     const {
       search,
       destinationId,
       categoryId,
+      categoryIds,
       hubId,
       isLocalsFavourite,
       pricingModel,
@@ -484,6 +548,11 @@ export class ToursService {
       durationMin,
       durationMax,
       ratingMin,
+      cancellationMaxHours,
+      pickupAvailable,
+      date,
+      guests,
+      timeOfDay,
       sort = TourSort.recommended,
       locale = Locale.en,
       page = 1,
@@ -501,7 +570,12 @@ export class ToursService {
     };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (destinationId) where.destinationId = destinationId;
-    if (categoryId) where.categories = { some: { categoryId } };
+    // Category filter: multi-select `categoryIds` (OR across the set) takes
+    // precedence over the legacy single `categoryId`. A tour in ANY of the
+    // selected categories matches.
+    if (categoryIds && categoryIds.length > 0)
+      where.categories = { some: { categoryId: { in: categoryIds } } };
+    else if (categoryId) where.categories = { some: { categoryId } };
     if (hubId) where.hubs = { some: { hubId } };
     if (isLocalsFavourite !== undefined)
       where.isLocalsFavourite = isLocalsFavourite;
@@ -519,6 +593,31 @@ export class ToursService {
         where.durationMinutesFrom.lte = durationMax;
     }
     if (ratingMin !== undefined) where.aggregateRating = { gte: ratingMin };
+    // Free-cancellation window: "I want to cancel up to N hours before" ->
+    // only tours whose cutoff is <= N (cancellationHours is the hours-before
+    // deadline; a smaller value is more flexible).
+    if (cancellationMaxHours !== undefined)
+      where.cancellationHours = { lte: cancellationMaxHours };
+    // Pickup available = the tour offers pickup at all (any model but NONE).
+    if (pickupAvailable) where.pickupModel = { not: PickupModel.NONE };
+
+    // Date-anchored availability filter (master §7.2): when a date is given, keep
+    // only tours with an OPEN departure that day that fits `guests` and (if set)
+    // the `timeOfDay` buckets. `guests`/`timeOfDay` do nothing without a date.
+    // Departure.date is `@db.Date`, matched at midnight UTC.
+    const parsedDate =
+      date && !Number.isNaN(Date.parse(`${date}T00:00:00.000Z`))
+        ? new Date(`${date}T00:00:00.000Z`)
+        : null;
+    if (parsedDate) {
+      const availableTourIds = await this.findDateAvailableTourIds({
+        destinationId,
+        date: parsedDate,
+        guests: guests ?? 1,
+        timeOfDay: timeOfDay ?? [],
+      });
+      where.id = { in: availableTourIds };
+    }
 
     // Dynamic attribute filters (V2 §7): any non-reserved query key that maps to a
     // filterable dictionary attribute. Comma = OR within a key; multiple keys = AND.

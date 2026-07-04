@@ -474,6 +474,67 @@ export class TourQueryDto {
   @Max(5)
   ratingMin?: number;
 
+  @ApiPropertyOptional({
+    example: 24,
+    description:
+      'Free-cancellation cutoff ceiling in hours: only tours you can cancel up to this many hours before (cancellationHours <= value). Lower = more flexible.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  cancellationMaxHours?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Only tours that offer pickup (pickupModel != NONE).',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined ? undefined : value === 'true' || value === true,
+  )
+  @IsBoolean()
+  pickupAvailable?: boolean;
+
+  @ApiPropertyOptional({
+    example: '2026-07-20',
+    description:
+      'Availability anchor (YYYY-MM-DD). When set, only tours with a bookable (OPEN) departure on that date are returned; `guests` and `timeOfDay` refine that same-day availability. Without a date, guests/timeOfDay are ignored.',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'date must be in YYYY-MM-DD format',
+  })
+  date?: string;
+
+  @ApiPropertyOptional({
+    example: 2,
+    description:
+      'Total party size. Only applied together with `date`: keeps tours whose departure that day has capacity - bookedCount >= guests.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  guests?: number;
+
+  @ApiPropertyOptional({
+    example: 'morning,afternoon',
+    description:
+      'Time-of-day buckets (CSV of morning|afternoon|evening). Only applied together with `date`: keeps tours with a matching-time departure that day. morning < 12:00, afternoon 12:00-16:59, evening >= 17:00.',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : value,
+  )
+  @IsIn(['morning', 'afternoon', 'evening'], { each: true })
+  timeOfDay?: string[];
+
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()
   @IsUUID()
@@ -483,6 +544,23 @@ export class TourQueryDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-a,uuid-b',
+    description:
+      'Multi-select category filter (CSV of ids). A tour in ANY of these matches. Takes precedence over categoryId.',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : value,
+  )
+  @IsUUID('all', { each: true })
+  categoryIds?: string[];
 
   @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   @IsOptional()

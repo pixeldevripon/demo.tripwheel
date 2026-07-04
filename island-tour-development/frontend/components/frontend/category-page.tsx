@@ -14,6 +14,7 @@ import { FaqSection } from './faq-section';
 import { Reveal } from './reveal';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
+import { DEFAULT_GUESTS } from '@/lib/tours/filters';
 import { type FilterCategory, ToursFilterBar } from './tours-filter-bar';
 import { EMPTY_FILTERS } from './tours-filter-modal';
 import { ToursHeader } from './tours-header';
@@ -315,10 +316,10 @@ export async function CategoryPage({
                                 filterDict={t.filterModal}
                                 hasReviews
                                 categories={FILTER_CATEGORIES}
-                                guestCount={2}
+                                guests={DEFAULT_GUESTS}
                                 shown={Math.min(MOCK_TOURS.length, total)}
                                 total={total}
-                                selectedCategory={category.slug}
+                                selectedCategories={[category.slug]}
                                 sort='localsFavorites'
                                 activeFilters={EMPTY_FILTERS}
                             />

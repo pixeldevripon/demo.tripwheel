@@ -1,6 +1,6 @@
 'use client';
 
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -16,7 +16,9 @@ import {
 } from '@/components/frontend/tours-filter-modal';
 import {
     buildToursHref,
+    DEFAULT_GUESTS,
     type ToursFilterState,
+    type ToursGuests,
     type ToursSortValue,
 } from '@/lib/tours/filters';
 
@@ -67,17 +69,19 @@ interface ToursFilterBarProps {
     hasReviews?: boolean;
     /** Quick-filter category pills (horizontally scrollable). */
     categories: FilterCategory[];
-    /** Initial guest count on the adults pill (min 1). */
-    guestCount: number;
     /** Result counter - shown vs total. */
     shown: number;
     total: number;
     /**
      * Current filter/sort state, derived server-side from the URL. The bar is
      * controlled by these props and navigates (`?...`) on change; the server then
-     * refetches. Date + guests are still local UI (not yet URL-backed).
+     * refetches. Time-of-day flows through `activeFilters.times` (the modal).
      */
-    selectedCategory?: string;
+    selectedCategories: string[];
+    /** Availability anchor date (YYYY-MM-DD), or undefined. */
+    selectedDate?: string;
+    /** Guest breakdown (URL-derived); commits on the popover closing. */
+    guests: ToursGuests;
     sort: SortValue;
     activeFilters: TourFilters;
 }
@@ -100,10 +104,11 @@ export function ToursFilterBar({
     filterDict,
     hasReviews = false,
     categories,
-    guestCount,
     shown,
     total,
-    selectedCategory,
+    selectedCategories,
+    selectedDate,
+    guests,
     sort,
     activeFilters,
 }: ToursFilterBarProps) {
@@ -113,38 +118,56 @@ export function ToursFilterBar({
     // The bar is controlled by the URL-derived props; a change rebuilds the query
     // and navigates (always resetting to page 1), and the server refetches.
     const currentState: ToursFilterState = {
-        category: selectedCategory,
+        categories: selectedCategories,
         sort,
         price: activeFilters.price,
         rating: activeFilters.rating,
         durations: activeFilters.durations,
+        cancellation: activeFilters.cancellation,
+        pickup: activeFilters.pickupAvailable,
+        date: selectedDate ?? null,
+        guests,
+        timeOfDay: activeFilters.times,
         page: 1,
     };
     const applyState = (next: Partial<ToursFilterState>) =>
         router.push(buildToursHref(pathname, { ...currentState, ...next, page: 1 }));
 
-    // Single selected category rendered as the removable chip in row 2.
-    const selectedChip = selectedCategory
-        ? categories.find((c) => c.slug === selectedCategory)
+    // Selected categories rendered as removable chips in row 2 (multi-select).
+    const chips = categories.filter((c) => selectedCategories.includes(c.slug));
+
+    // Date - URL-backed. Parse the anchor to a Date for the calendar; selecting a
+    // day navigates immediately (single action).
+    const date = selectedDate
+        ? parse(selectedDate, 'yyyy-MM-dd', new Date())
         : undefined;
-    const chips = selectedChip ? [selectedChip] : [];
-
-    // Date picker + guest stepper state (search controls - not yet URL-backed).
-    const [date, setDate] = useState<Date | undefined>(undefined);
     const [dateOpen, setDateOpen] = useState(false);
-    const [guests, setGuests] = useState({
-        adults: Math.max(1, guestCount),
-        children: 0,
-        infants: 0,
-    });
-    const [guestsOpen, setGuestsOpen] = useState(false);
 
-    type GuestType = keyof typeof guests;
+    // Guests - URL-backed, but edited as a local draft so a burst of +/- clicks
+    // is committed as ONE navigation when the popover closes (not per click).
+    const [guestsOpen, setGuestsOpen] = useState(false);
+    const [guestDraft, setGuestDraft] = useState<ToursGuests>(guests);
+
+    type GuestType = keyof ToursGuests;
     const stepGuest = (type: GuestType, delta: number) =>
-        setGuests((g) => ({
+        setGuestDraft((g) => ({
             ...g,
             [type]: Math.min(20, Math.max(type === 'adults' ? 1 : 0, g[type] + delta)),
         }));
+
+    // Open: seed the draft from the URL value. Close: commit if it changed.
+    const onGuestsOpenChange = (open: boolean) => {
+        setGuestsOpen(open);
+        if (open) {
+            setGuestDraft(guests);
+        } else if (
+            guestDraft.adults !== guests.adults ||
+            guestDraft.children !== guests.children ||
+            guestDraft.infants !== guests.infants
+        ) {
+            applyState({ guests: guestDraft });
+        }
+    };
 
     // Chip summary - only non-zero types, e.g. "2 adults & 3 children".
     const guestParts = (['adults', 'children', 'infants'] as const)
@@ -171,24 +194,31 @@ export function ToursFilterBar({
     ];
     const [sortOpen, setSortOpen] = useState(false);
 
-    // Single-select: toggling the active category clears it, otherwise selects it.
+    // Multi-select: toggling an active category removes it, otherwise adds it.
     function toggleCategory(cat: FilterCategory) {
-        applyState({
-            category: selectedCategory === cat.slug ? undefined : cat.slug,
-        });
+        const next = selectedCategories.includes(cat.slug)
+            ? selectedCategories.filter((s) => s !== cat.slug)
+            : [...selectedCategories, cat.slug];
+        applyState({ categories: next });
     }
 
-    function removeChip(_slug: string) {
-        applyState({ category: undefined });
+    function removeChip(slug: string) {
+        applyState({ categories: selectedCategories.filter((s) => s !== slug) });
     }
 
-    // Clear all applied filters (category + modal filters); sort is preserved.
+    // Clear all applied filters (categories + modal filters + availability); sort
+    // is preserved.
     function clearAll() {
         applyState({
-            category: undefined,
+            categories: [],
             price: EMPTY_FILTERS.price,
             rating: EMPTY_FILTERS.rating,
             durations: EMPTY_FILTERS.durations,
+            timeOfDay: EMPTY_FILTERS.times,
+            cancellation: EMPTY_FILTERS.cancellation,
+            pickup: EMPTY_FILTERS.pickupAvailable,
+            date: null,
+            guests: DEFAULT_GUESTS,
         });
     }
 
@@ -231,7 +261,11 @@ export function ToursFilterBar({
                                     mode='single'
                                     selected={date}
                                     onSelect={(selected) => {
-                                        setDate(selected);
+                                        applyState({
+                                            date: selected
+                                                ? format(selected, 'yyyy-MM-dd')
+                                                : null,
+                                        });
                                         setDateOpen(false);
                                     }}
                                     disabled={{ before: new Date() }}
@@ -242,7 +276,7 @@ export function ToursFilterBar({
                         </Popover>
 
                         {/* Guests - stepper popover */}
-                        <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
+                        <Popover open={guestsOpen} onOpenChange={onGuestsOpenChange}>
                             <PopoverTrigger asChild>
                                 <button
                                     type='button'
@@ -281,18 +315,18 @@ export function ToursFilterBar({
                                                     <button
                                                         type='button'
                                                         aria-label={`Decrease ${type}`}
-                                                        disabled={guests[type] <= min}
+                                                        disabled={guestDraft[type] <= min}
                                                         onClick={() => stepGuest(type, -1)}
                                                         className='grid size-8 place-items-center rounded-full border border-it-heading/20 bg-it-white text-it-heading transition-colors hover:bg-it-surface disabled:cursor-not-allowed disabled:opacity-30'>
                                                         <Minus className='size-4' strokeWidth={1.5} />
                                                     </button>
                                                     <span className='min-w-5 text-center text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                        {guests[type]}
+                                                        {guestDraft[type]}
                                                     </span>
                                                     <button
                                                         type='button'
                                                         aria-label={`Increase ${type}`}
-                                                        disabled={guests[type] >= 20}
+                                                        disabled={guestDraft[type] >= 20}
                                                         onClick={() => stepGuest(type, 1)}
                                                         className='grid size-8 place-items-center rounded-full border border-it-heading/20 bg-it-white text-it-heading transition-colors hover:bg-it-surface disabled:cursor-not-allowed disabled:opacity-30'>
                                                         <Plus className='size-4' strokeWidth={1.5} />
@@ -340,6 +374,9 @@ export function ToursFilterBar({
                                     price: f.price,
                                     rating: f.rating,
                                     durations: f.durations,
+                                    timeOfDay: f.times,
+                                    cancellation: f.cancellation,
+                                    pickup: f.pickupAvailable,
                                 });
                                 setFilterOpen(false);
                             }}
@@ -352,7 +389,7 @@ export function ToursFilterBar({
                 {/* Category quick-filter pills */}
                 <div className='flex shrink-0 items-center gap-2'>
                     {categories.map((cat) => {
-                        const active = selectedCategory === cat.slug;
+                        const active = selectedCategories.includes(cat.slug);
                         return (
                             <button
                                 key={cat.slug}

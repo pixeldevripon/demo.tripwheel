@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  DepartureStatus,
   PickupModel,
   PricingModel,
   Role,
@@ -58,6 +59,7 @@ function createMockPrismaService() {
     },
     tourHub: { deleteMany: jest.fn(), createMany: jest.fn() },
     tourAgeBand: { findMany: jest.fn(), findFirst: jest.fn() },
+    departure: { findMany: jest.fn() },
     slugRegistry: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -533,6 +535,146 @@ describe('ToursService', () => {
           },
         },
       ]);
+    });
+
+    // ── Phase 2: cheap params ─────────────────────────────────────────────────
+
+    it('filters multi-category via `in` (categoryIds takes precedence over categoryId)', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      await service.findAll({
+        categoryId: 'cat-single',
+        categoryIds: ['cat-a', 'cat-b'],
+        page: 1,
+        limit: 20,
+      });
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.categories).toEqual({
+        some: { categoryId: { in: ['cat-a', 'cat-b'] } },
+      });
+    });
+
+    it('filters by free-cancellation ceiling and pickup availability', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      await service.findAll({
+        cancellationMaxHours: 24,
+        pickupAvailable: true,
+        page: 1,
+        limit: 20,
+      });
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.cancellationHours).toEqual({ lte: 24 });
+      expect(call.where.pickupModel).toEqual({ not: PickupModel.NONE });
+    });
+
+    it('does NOT apply pickup filter when pickupAvailable is falsey', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      await service.findAll({ page: 1, limit: 20 });
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.pickupModel).toBeUndefined();
+    });
+
+    // ── Phase 3: date-anchored availability ───────────────────────────────────
+
+    it('date filter keeps only tours with a fitting OPEN departure (capacity math)', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      // t-ok has 3 seats left (>= 2); t-full has 1 seat left (< 2) -> excluded.
+      prisma.departure.findMany.mockResolvedValue([
+        {
+          tourId: 't-ok',
+          capacity: 10,
+          bookedCount: 7,
+          startTime: new Date('1970-01-01T09:00:00.000Z'),
+        },
+        {
+          tourId: 't-full',
+          capacity: 10,
+          bookedCount: 9,
+          startTime: new Date('1970-01-01T09:00:00.000Z'),
+        },
+      ]);
+
+      await service.findAll({
+        destinationId: 'dest-1',
+        date: '2026-07-20',
+        guests: 2,
+        page: 1,
+        limit: 20,
+      });
+
+      const depCall = prisma.departure.findMany.mock.calls[0][0];
+      expect(depCall.where).toEqual(
+        expect.objectContaining({
+          date: new Date('2026-07-20T00:00:00.000Z'),
+          status: DepartureStatus.OPEN,
+          tour: { destinationId: 'dest-1' },
+        }),
+      );
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.id).toEqual({ in: ['t-ok'] });
+    });
+
+    it('date filter narrows by time-of-day bucket (evening excludes a morning departure)', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      prisma.departure.findMany.mockResolvedValue([
+        {
+          tourId: 't-morning',
+          capacity: 10,
+          bookedCount: 0,
+          startTime: new Date('1970-01-01T09:00:00.000Z'), // 09:00 -> morning
+        },
+        {
+          tourId: 't-evening',
+          capacity: 10,
+          bookedCount: 0,
+          startTime: new Date('1970-01-01T18:00:00.000Z'), // 18:00 -> evening
+        },
+      ]);
+
+      await service.findAll({
+        date: '2026-07-20',
+        guests: 1,
+        timeOfDay: ['evening'],
+        page: 1,
+        limit: 20,
+      });
+
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.id).toEqual({ in: ['t-evening'] });
+    });
+
+    it('date with no availability yields an empty id set (zero results)', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      prisma.departure.findMany.mockResolvedValue([]);
+
+      await service.findAll({
+        date: '2026-07-20',
+        guests: 4,
+        page: 1,
+        limit: 20,
+      });
+
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.id).toEqual({ in: [] });
+    });
+
+    it('ignores guests/timeOfDay when no date is provided (no departure query)', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      await service.findAll({
+        guests: 4,
+        timeOfDay: ['morning'],
+        page: 1,
+        limit: 20,
+      });
+      expect(prisma.departure.findMany).not.toHaveBeenCalled();
+      const call = prisma.tour.findMany.mock.calls[0][0];
+      expect(call.where.id).toBeUndefined();
     });
   });
 

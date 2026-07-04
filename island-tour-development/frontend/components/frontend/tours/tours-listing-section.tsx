@@ -50,11 +50,13 @@ export async function ToursListingSection({
     const filters = parseToursFilters(await searchParams);
 
     // Categories back both the quick-filter chips and the slug -> id resolution
-    // for the `categoryId` backend filter. Cheap cached call.
+    // for the `categoryIds` backend filter (multi-select). Cheap cached call.
     const categories = await getDestinationCategories(destination, locale);
-    const categoryId = filters.category
-        ? categories.find(c => c.slug === filters.category)?.id
-        : undefined;
+    const categoryIds =
+        filters.categories
+            .map(slug => categories.find(c => c.slug === slug)?.id)
+            .filter((id): id is string => Boolean(id))
+            .join(',') || undefined;
 
     const query = filtersToTourQuery(filters);
     const fetchPage = (p: number) =>
@@ -63,7 +65,7 @@ export async function ToursListingSection({
             locale,
             limit: TOURS_LIMIT,
             page: p,
-            categoryId,
+            categoryIds,
             ...query,
         });
 
@@ -98,16 +100,20 @@ export async function ToursListingSection({
                 filterDict={dict.destination.allTours.filterModal}
                 hasReviews
                 categories={filterCategories}
-                guestCount={2}
-                shown={tours.length}
+                shown={tours?.length}
                 total={total}
-                selectedCategory={filters.category}
+                selectedCategories={filters.categories}
+                selectedDate={filters.date ?? undefined}
+                guests={filters.guests}
                 sort={filters.sort}
                 activeFilters={{
                     ...EMPTY_FILTERS,
                     price: filters.price,
                     rating: filters.rating,
                     durations: filters.durations,
+                    times: filters.timeOfDay,
+                    cancellation: filters.cancellation,
+                    pickupAvailable: filters.pickup,
                 }}
             />
 

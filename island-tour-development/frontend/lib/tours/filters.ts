@@ -3,10 +3,10 @@
  * section to parse the request and by the client toolbar to build hrefs).
  *
  * The URL query is the single source of truth for filter + sort + page state, so
- * the server refetches the filtered/sorted page and streams it. Only the subset
- * the backend supports today is wired (Phase 1): category (single), sort, price,
- * rating, duration. Date / guests / time-of-day / cancellation / pickup are not
- * yet in the URL (they need backend listing support).
+ * the server refetches the filtered/sorted page and streams it. Wired to the
+ * backend `GET /tours` params: category (multi-select), sort, price, rating,
+ * duration (Phase 1) + free-cancellation cutoff and pickup (Phase 2). Date /
+ * guests / time-of-day are Phase 3 (availability-aware, not yet in the URL).
  */
 
 // Price slider bounds (canonical source; the filter modal re-exports these).
@@ -27,20 +27,55 @@ export type ToursSortValue = 'localsFavorites' | 'priceLowHigh' | 'priceHighLow'
 /** Backend `sort` enum values the listing endpoint accepts. */
 export type ToursBackendSort = 'recommended' | 'price_asc' | 'price_desc';
 
+/** Guest breakdown carried in the toolbar's guests stepper. */
+export interface ToursGuests {
+    adults: number;
+    children: number;
+    infants: number;
+}
+
+export const DEFAULT_GUESTS: ToursGuests = { adults: 2, children: 0, infants: 0 };
+
+/** Time-of-day bucket keys (match the filter modal + backend). */
+export const TIME_OF_DAY_KEYS = ['morning', 'afternoon', 'evening'];
+
 export interface ToursFilterState {
-    /** Selected category slug (single-select), or undefined for all. */
-    category?: string;
+    /** Selected category slugs (multi-select); empty for all. */
+    categories: string[];
     sort: ToursSortValue;
     price: [number, number];
     /** Minimum rating key: '3' | '4' | '4.5', or null. */
     rating: string | null;
     /** Selected duration bucket keys. */
     durations: string[];
+    /** Free-cancellation cutoff key: '24h' | '48h' | '72h', or null. */
+    cancellation: string | null;
+    /** Restrict to tours that offer pickup. */
+    pickup: boolean;
+    /** Availability anchor date (YYYY-MM-DD), or null. */
+    date: string | null;
+    /** Guest breakdown (only affects results together with a date). */
+    guests: ToursGuests;
+    /** Time-of-day buckets (only affect results together with a date). */
+    timeOfDay: string[];
     /** 1-based page. */
     page: number;
 }
 
+/** Backend seat count (pax) from a guest breakdown - infants are lap-held. */
+export function guestsToPax(g: ToursGuests): number {
+    return g.adults + g.children;
+}
+
 const RATING_KEYS = ['3', '4', '4.5'];
+const CANCELLATION_KEYS = ['24h', '48h', '72h'];
+
+/** Free-cancellation key -> the backend `cancellationMaxHours` ceiling. */
+const CANCELLATION_TO_HOURS: Record<string, number> = {
+    '24h': 24,
+    '48h': 48,
+    '72h': 72,
+};
 
 // UI sort <-> URL param <-> backend enum.
 const SORT_TO_PARAM: Record<ToursSortValue, string | null> = {
@@ -71,7 +106,10 @@ function toNumber(v: string | undefined, fallback: number): number {
 export function parseToursFilters(
     sp: Record<string, string | string[] | undefined>,
 ): ToursFilterState {
-    const category = first(sp.category) || undefined;
+    const categoryRaw = first(sp.category);
+    const categories = categoryRaw
+        ? categoryRaw.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
 
     const sortParam = first(sp.sort);
     const sort = (sortParam && PARAM_TO_SORT[sortParam]) || 'localsFavorites';
@@ -91,10 +129,47 @@ export function parseToursFilters(
         ? durationRaw.split(',').filter(k => k in DURATION_BUCKETS)
         : [];
 
+    const cancellationRaw = first(sp.cancellation);
+    const cancellation =
+        cancellationRaw && CANCELLATION_KEYS.includes(cancellationRaw)
+            ? cancellationRaw
+            : null;
+
+    const pickupRaw = first(sp.pickup);
+    const pickup = pickupRaw === '1' || pickupRaw === 'true';
+
+    const dateRaw = first(sp.date);
+    const date = dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : null;
+
+    const clampGuest = (v: string | undefined, fallback: number, min: number) =>
+        Math.min(20, Math.max(min, Math.round(toNumber(v, fallback))));
+    const guests: ToursGuests = {
+        adults: clampGuest(first(sp.adults), DEFAULT_GUESTS.adults, 1),
+        children: clampGuest(first(sp.children), DEFAULT_GUESTS.children, 0),
+        infants: clampGuest(first(sp.infants), DEFAULT_GUESTS.infants, 0),
+    };
+
+    const timeRaw = first(sp.timeOfDay);
+    const timeOfDay = timeRaw
+        ? timeRaw.split(',').filter(k => TIME_OF_DAY_KEYS.includes(k))
+        : [];
+
     const pageNum = Number(first(sp.page));
     const page = Number.isInteger(pageNum) && pageNum >= 1 ? pageNum : 1;
 
-    return { category, sort, price, rating, durations, page };
+    return {
+        categories,
+        sort,
+        price,
+        rating,
+        durations,
+        cancellation,
+        pickup,
+        date,
+        guests,
+        timeOfDay,
+        page,
+    };
 }
 
 /**
@@ -129,12 +204,30 @@ export function filtersToTourQuery(state: ToursFilterState): {
     ratingMin?: number;
     durationMin?: number;
     durationMax?: number;
+    cancellationMaxHours?: number;
+    pickupAvailable?: boolean;
+    date?: string;
+    guests?: number;
+    timeOfDay?: string;
 } {
+    // Availability params (date / guests / timeOfDay) only take effect together
+    // with a date - matching the backend's date-anchored filter.
+    const dateActive = Boolean(state.date);
     return {
         sort: SORT_TO_BACKEND[state.sort],
         minPrice: state.price[0] > PRICE_MIN ? state.price[0] : undefined,
         maxPrice: state.price[1] < PRICE_MAX ? state.price[1] : undefined,
         ratingMin: state.rating ? Number(state.rating) : undefined,
+        cancellationMaxHours: state.cancellation
+            ? CANCELLATION_TO_HOURS[state.cancellation]
+            : undefined,
+        pickupAvailable: state.pickup || undefined,
+        date: state.date ?? undefined,
+        guests: dateActive ? guestsToPax(state.guests) : undefined,
+        timeOfDay:
+            dateActive && state.timeOfDay.length
+                ? state.timeOfDay.join(',')
+                : undefined,
         ...durationsToRange(state.durations),
     };
 }
@@ -142,13 +235,26 @@ export function filtersToTourQuery(state: ToursFilterState): {
 /** Build the All Tours href for a filter state (drops defaults + page 1). */
 export function buildToursHref(pathname: string, state: ToursFilterState): string {
     const params = new URLSearchParams();
-    if (state.category) params.set('category', state.category);
+    if (state.categories.length)
+        params.set('category', state.categories.join(','));
     const sortParam = SORT_TO_PARAM[state.sort];
     if (sortParam) params.set('sort', sortParam);
     if (state.price[0] > PRICE_MIN) params.set('minPrice', String(state.price[0]));
     if (state.price[1] < PRICE_MAX) params.set('maxPrice', String(state.price[1]));
     if (state.rating) params.set('rating', state.rating);
     if (state.durations.length) params.set('duration', state.durations.join(','));
+    if (state.cancellation) params.set('cancellation', state.cancellation);
+    if (state.pickup) params.set('pickup', '1');
+    if (state.date) params.set('date', state.date);
+    // Guest counts are encoded only when they differ from the default, keeping the
+    // URL clean; they survive navigation so the stepper value is preserved.
+    if (state.guests.adults !== DEFAULT_GUESTS.adults)
+        params.set('adults', String(state.guests.adults));
+    if (state.guests.children !== DEFAULT_GUESTS.children)
+        params.set('children', String(state.guests.children));
+    if (state.guests.infants !== DEFAULT_GUESTS.infants)
+        params.set('infants', String(state.guests.infants));
+    if (state.timeOfDay.length) params.set('timeOfDay', state.timeOfDay.join(','));
     if (state.page > 1) params.set('page', String(state.page));
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
