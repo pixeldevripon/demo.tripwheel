@@ -695,7 +695,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     slug: 'klein-curacao-full-day-catamaran',
     name: 'Klein Curaçao Full-Day Catamaran',
     primaryCategory: 'boat-tours',
-    extraCategories: ['snorkeling', 'day-trips'],
+    extraCategories: ['snorkeling', 'day-trips', 'catamaran-cruises'],
     hubSlugs: ['klein-curacao'],
     overview:
       'Sail to the uninhabited island of Klein Curaçao aboard a spacious catamaran. Spend the day on powder-white sand, snorkel over shipwrecks and turtle grounds, and enjoy a freshly grilled lunch on the beach before the relaxed sail home.',
@@ -727,6 +727,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     slug: 'klein-curacao-luxury-yacht-charter',
     name: 'Klein Curaçao Luxury Yacht Charter',
     primaryCategory: 'boat-tours',
+    extraCategories: ['yacht-charters'],
     hubSlugs: ['klein-curacao'],
     overview:
       'Charter a private yacht for your group and cruise to Klein Curaçao in style. Your crew handles everything, from snorkel stops to a chilled lunch on board, while you enjoy the island on your own schedule.',
@@ -788,6 +789,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     slug: 'sunset-sail-with-open-bar',
     name: 'Sunset Sail with Open Bar',
     primaryCategory: 'boat-tours',
+    extraCategories: ['sailing-trips'],
     overview:
       'Toast the golden hour on a relaxed catamaran sail along the Willemstad coast. Sip from the open bar, watch the sky turn pink over the colourful waterfront, and let the trade winds carry you back to harbour.',
     shortDescription: 'Evening catamaran sail with open bar and skyline views.',

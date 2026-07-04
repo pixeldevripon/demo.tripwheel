@@ -6,12 +6,22 @@
 
 import 'dotenv/config';
 import { cleanDemo, runDemoSeed } from './demo/index';
+import {
+  linkBoatSubCategoriesToExistingTours,
+  seedSubCategories,
+} from './demo/sub-categories';
 import { prisma } from './demo/_shared';
 
 async function main() {
   const clean = process.argv.includes('--clean');
+  // Targeted mode: (re)seed only the filter-only sub-categories + tag existing
+  // demo tours, without re-running the whole (non-idempotent) demo seed.
+  const subCategoriesOnly = process.argv.includes('--subcategories');
   if (clean) {
     await cleanDemo();
+  } else if (subCategoriesOnly) {
+    await seedSubCategories();
+    await linkBoatSubCategoriesToExistingTours();
   } else {
     await runDemoSeed();
   }

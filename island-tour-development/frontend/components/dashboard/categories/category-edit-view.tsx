@@ -3,6 +3,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { CategoryDetailShell } from './category-detail-shell';
 import { CategoryForm } from './category-form';
+import { CategorySubcategoriesManager } from './category-subcategories-manager';
 import { useCategory } from '@/hooks/categories/use-categories';
 
 interface CategoryEditViewProps {
@@ -26,7 +27,14 @@ export function CategoryEditView({ id }: CategoryEditViewProps) {
           <Skeleton className="h-10 w-full rounded-none" />
         </div>
       ) : category ? (
-        <CategoryForm category={category} />
+        <div className="space-y-6">
+          <CategoryForm category={category} />
+          {/* Sub-categories are single-level, so only top-level categories
+              manage children here. */}
+          {!category.parentCategoryId && (
+            <CategorySubcategoriesManager parent={category} />
+          )}
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground">Category not found.</p>
       )}

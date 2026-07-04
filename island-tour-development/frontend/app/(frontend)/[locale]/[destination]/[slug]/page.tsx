@@ -166,8 +166,10 @@ export async function generateMetadata({
  */
 export default async function EntityPage({
     params,
+    searchParams,
 }: {
     params: Promise<PageParams>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
     const { locale, destination, slug } = await params;
     if (!isLocale(locale)) notFound();
@@ -194,6 +196,7 @@ export default async function EntityPage({
                     destinationName={destinationName}
                     locale={locale}
                     dict={dict}
+                    searchParams={searchParams}
                 />
             );
 

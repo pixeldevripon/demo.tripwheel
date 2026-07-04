@@ -17,6 +17,8 @@ import {
 import {
     buildToursHref,
     DEFAULT_GUESTS,
+    PRICE_MAX,
+    PRICE_MIN,
     type ToursFilterState,
     type ToursGuests,
     type ToursSortValue,
@@ -69,6 +71,11 @@ interface ToursFilterBarProps {
     hasReviews?: boolean;
     /** Quick-filter category pills (horizontally scrollable). */
     categories: FilterCategory[];
+    /**
+     * Hide category selection entirely (the category page, where the category is
+     * fixed by the route): no category pills row, no category chips.
+     */
+    lockCategory?: boolean;
     /** Result counter - shown vs total. */
     shown: number;
     total: number;
@@ -84,6 +91,14 @@ interface ToursFilterBarProps {
     guests: ToursGuests;
     sort: SortValue;
     activeFilters: TourFilters;
+    /** Effective price ceiling (per destination/category); slider + URL max. */
+    priceMax?: number;
+    /**
+     * Active dynamic attribute filters (from the URL). No modal UI sets these, but
+     * the toolbar preserves them across navigations so URL/deep-link attribute
+     * filters survive sort/category/price changes.
+     */
+    attributes?: Record<string, string[]>;
 }
 
 /* ── Shared atom styles ────────────────────────────────────────────── */
@@ -104,6 +119,7 @@ export function ToursFilterBar({
     filterDict,
     hasReviews = false,
     categories,
+    lockCategory = false,
     shown,
     total,
     selectedCategories,
@@ -111,6 +127,8 @@ export function ToursFilterBar({
     guests,
     sort,
     activeFilters,
+    priceMax = PRICE_MAX,
+    attributes = {},
 }: ToursFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -128,10 +146,13 @@ export function ToursFilterBar({
         date: selectedDate ?? null,
         guests,
         timeOfDay: activeFilters.times,
+        attributes,
         page: 1,
     };
     const applyState = (next: Partial<ToursFilterState>) =>
-        router.push(buildToursHref(pathname, { ...currentState, ...next, page: 1 }));
+        router.push(
+            buildToursHref(pathname, { ...currentState, ...next, page: 1 }, priceMax)
+        );
 
     // Selected categories rendered as removable chips in row 2 (multi-select).
     const chips = categories.filter((c) => selectedCategories.includes(c.slug));
@@ -181,7 +202,7 @@ export function ToursFilterBar({
     // Filters modal state - the Filters pill opens it; the URL-derived filters
     // drive the badge.
     const [filterOpen, setFilterOpen] = useState(false);
-    const activeFilterCount = countActiveFilters(activeFilters);
+    const activeFilterCount = countActiveFilters(activeFilters, priceMax);
 
     // Default option carries the "(Default)" suffix only inside the dropdown.
     const sortOptions: { value: SortValue; label: string }[] = [
@@ -211,12 +232,13 @@ export function ToursFilterBar({
     function clearAll() {
         applyState({
             categories: [],
-            price: EMPTY_FILTERS.price,
+            price: [PRICE_MIN, priceMax],
             rating: EMPTY_FILTERS.rating,
             durations: EMPTY_FILTERS.durations,
             timeOfDay: EMPTY_FILTERS.times,
             cancellation: EMPTY_FILTERS.cancellation,
             pickup: EMPTY_FILTERS.pickupAvailable,
+            attributes: {},
             date: null,
             guests: DEFAULT_GUESTS,
         });
@@ -368,6 +390,7 @@ export function ToursFilterBar({
                             onClose={() => setFilterOpen(false)}
                             dict={filterDict}
                             hasReviews={hasReviews}
+                            priceMax={priceMax}
                             value={activeFilters}
                             onApply={(f) => {
                                 applyState({
@@ -383,29 +406,37 @@ export function ToursFilterBar({
                         />
                     </div>
 
-                    <span className='h-8.5 w-px shrink-0 bg-it-heading/20' aria-hidden='true' />
+                    {!lockCategory && (
+                        <span
+                            className='h-8.5 w-px shrink-0 bg-it-heading/20'
+                            aria-hidden='true'
+                        />
+                    )}
                 </div>
 
-                {/* Category quick-filter pills */}
-                <div className='flex shrink-0 items-center gap-2'>
-                    {categories.map((cat) => {
-                        const active = selectedCategories.includes(cat.slug);
-                        return (
-                            <button
-                                key={cat.slug}
-                                type='button'
-                                aria-pressed={active}
-                                onClick={() => toggleCategory(cat)}
-                                className={`${PILL_BASE} ${
-                                    active
-                                        ? 'bg-it-heading/10'
-                                        : 'border border-it-heading/10 bg-it-white hover:bg-it-surface'
-                                }`}>
-                                {cat.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                {/* Category quick-filter pills - hidden on the category page (route
+                    fixes the category). */}
+                {!lockCategory && (
+                    <div className='flex shrink-0 items-center gap-2'>
+                        {categories.map((cat) => {
+                            const active = selectedCategories.includes(cat.slug);
+                            return (
+                                <button
+                                    key={cat.slug}
+                                    type='button'
+                                    aria-pressed={active}
+                                    onClick={() => toggleCategory(cat)}
+                                    className={`${PILL_BASE} ${
+                                        active
+                                            ? 'bg-it-heading/10'
+                                            : 'border border-it-heading/10 bg-it-white hover:bg-it-surface'
+                                    }`}>
+                                    {cat.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* ── Row 2 - counter + chips + clear all · sort ──────────────────

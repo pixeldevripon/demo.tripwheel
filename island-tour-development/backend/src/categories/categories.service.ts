@@ -216,7 +216,14 @@ export class CategoryService {
     if (categoryIds.length === 0) return [];
 
     const categories = await this.prisma.category.findMany({
-      where: { id: { in: categoryIds }, isActive: true },
+      // Only TOP-LEVEL categories appear in destination nav / hero / All-Tours
+      // pills. Sub-categories (parentCategoryId set) are refinement filters shown
+      // only on their parent's category page.
+      where: {
+        id: { in: categoryIds },
+        isActive: true,
+        parentCategoryId: null,
+      },
       select: {
         ...this.categorySelect,
         translations: {
@@ -273,6 +280,15 @@ export class CategoryService {
       );
     }
 
+    // Sub-categories (V2 §3) with >=1 published tour at this destination -
+    // tour-gated + localized, for the on-page refine pills. Empty at launch
+    // (sub-categories are unused), so the category page simply shows no pills.
+    const subCategories = await this.getSubCategoriesForDestination(
+      category.id,
+      destination.id,
+      locale,
+    );
+
     const { translations, ...cat } = category;
     const t = translations[0];
     return {
@@ -281,10 +297,87 @@ export class CategoryService {
       h1Override: t?.h1Override ?? null,
       breadcrumbLabel: t?.breadcrumbLabel ?? null,
       publishedTourCount,
+      subCategories,
     };
   }
 
+  /**
+   * Active sub-categories of `parentId` that have >=1 published tour at the given
+   * destination, localized + ordered by sortOrder. Backs the category page's
+   * refine pills. Returns `[]` when the parent has no (tour-gated) children.
+   */
+  private async getSubCategoriesForDestination(
+    parentId: string,
+    destinationId: string,
+    locale: Locale,
+  ) {
+    const children = await this.prisma.category.findMany({
+      where: { parentCategoryId: parentId, isActive: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        translations: { where: { locale }, select: { name: true } },
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+    if (children.length === 0) return [];
+
+    const grouped = await this.prisma.tourCategory.groupBy({
+      by: ['categoryId'],
+      where: {
+        categoryId: { in: children.map((c) => c.id) },
+        tour: {
+          destinationId,
+          status: TourStatus.LIVE,
+          isActive: true,
+        },
+      },
+      _count: { _all: true },
+    });
+    const countBy = new Map(grouped.map((g) => [g.categoryId, g._count._all]));
+
+    return children
+      .filter((c) => (countBy.get(c.id) ?? 0) > 0)
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.translations[0]?.name ?? c.name,
+        publishedTourCount: countBy.get(c.id) ?? 0,
+      }));
+  }
+
+  /**
+   * Validate a requested parent (single-level nesting): it must exist, must NOT
+   * itself be a sub-category, and must not be the category being edited. No-op
+   * for a null/empty parent (top-level). Throws BadRequestException otherwise.
+   */
+  private async assertValidParent(
+    parentCategoryId: string | null | undefined,
+    selfId?: string,
+  ): Promise<void> {
+    if (!parentCategoryId) return;
+    if (selfId && parentCategoryId === selfId) {
+      throw new BadRequestException('A category cannot be its own parent');
+    }
+    const parent = await this.prisma.category.findUnique({
+      where: { id: parentCategoryId },
+      select: { parentCategoryId: true },
+    });
+    if (!parent) {
+      throw new BadRequestException(
+        `Parent category ${parentCategoryId} not found`,
+      );
+    }
+    if (parent.parentCategoryId) {
+      throw new BadRequestException(
+        'Sub-categories are limited to one level: the selected parent is itself a sub-category',
+      );
+    }
+  }
+
   async create(dto: CreateCategoryDto, adminId: string) {
+    await this.assertValidParent(dto.parentCategoryId);
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     return this.prisma.$transaction(async (tx) => {
@@ -313,10 +406,16 @@ export class CategoryService {
           throw err;
         });
 
-      const destinations = await tx.destination.findMany({
-        where: { isActive: true },
-        select: { slug: true },
-      });
+      // Sub-categories (parentCategoryId set) are FILTER-ONLY refinements: they
+      // have no standalone page, so no slug_registry rows are written. Only
+      // top-level categories reserve a slug per destination.
+      const isSubCategory = Boolean(dto.parentCategoryId);
+      const destinations = isSubCategory
+        ? []
+        : await tx.destination.findMany({
+            where: { isActive: true },
+            select: { slug: true },
+          });
 
       if (destinations.length > 0) {
         // Clear any cooled-down ghosts so a previously force-deleted category slug can be reused.
@@ -338,7 +437,9 @@ export class CategoryService {
       }
 
       this.logger.log(
-        `Admin ${adminId} created category "${dto.name}" (${category.id}), seeded ${destinations.length} slug_registry row(s)`,
+        `Admin ${adminId} created ${
+          isSubCategory ? 'sub-category (filter-only)' : 'category'
+        } "${dto.name}" (${category.id}), seeded ${destinations.length} slug_registry row(s)`,
       );
 
       return category;
@@ -346,6 +447,40 @@ export class CategoryService {
   }
 
   async update(id: string, dto: UpdateCategoryDto, adminId: string) {
+    // Parent-transition rules. A brand-new category may be created as a
+    // sub-category (create() handles that, skipping slug_registry), but an
+    // EXISTING top-level category must never be demoted into a sub-category -
+    // that would silently destroy its page. Promotion (sub -> top-level) is
+    // allowed and restores the slug_registry rows.
+    let promoteToTopLevel = false;
+    if (dto.parentCategoryId !== undefined) {
+      await this.assertValidParent(dto.parentCategoryId, id);
+      const current = await this.prisma.category.findUnique({
+        where: { id },
+        select: { parentCategoryId: true },
+      });
+      if (!current) throw new NotFoundException(`Category ${id} not found`);
+      const wasSub = Boolean(current.parentCategoryId);
+      const willBeSub = Boolean(dto.parentCategoryId);
+
+      if (!wasSub && willBeSub) {
+        throw new BadRequestException(
+          'An existing top-level category cannot be converted into a sub-category. Create a new sub-category instead.',
+        );
+      }
+      if (willBeSub) {
+        const childCount = await this.prisma.category.count({
+          where: { parentCategoryId: id },
+        });
+        if (childCount > 0) {
+          throw new BadRequestException(
+            'Cannot nest a category that already has sub-categories',
+          );
+        }
+      }
+      promoteToTopLevel = wasSub && !willBeSub;
+    }
+
     // Resolve a slug rename up-front. A category slug is global, so the rename re-points its
     // registry row in EVERY destination and writes a 301 per destination (master rules).
     let renameFrom: string | undefined;
@@ -431,6 +566,33 @@ export class CategoryService {
           where: { entityType: SlugEntityType.CATEGORY, entityId: id },
           data: { isActive: dto.isActive },
         });
+      }
+
+      if (promoteToTopLevel) {
+        // Promoted to top-level (e.g. Detach): reserve its slug per active
+        // destination, as in create. (Demotion is rejected up-front, so a
+        // top-level category never loses its page.)
+        const destinations = await tx.destination.findMany({
+          where: { isActive: true },
+          select: { slug: true },
+        });
+        if (destinations.length > 0) {
+          await clearCooledDownSlugs(
+            tx,
+            destinations.map((dest) => ({
+              destinationSlug: dest.slug,
+              slug: updated.slug,
+            })),
+          );
+          await tx.slugRegistry.createMany({
+            data: destinations.map((dest) => ({
+              destinationSlug: dest.slug,
+              slug: updated.slug,
+              entityType: SlugEntityType.CATEGORY,
+              entityId: id,
+            })),
+          });
+        }
       }
 
       this.logger.log(`Admin ${adminId} updated category ${id}`);

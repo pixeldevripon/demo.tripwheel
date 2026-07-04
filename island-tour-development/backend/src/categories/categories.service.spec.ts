@@ -66,6 +66,10 @@ function createMockPrismaService() {
     },
     destination: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    tourCategory: {
+      groupBy: jest.fn(),
     },
     slugRegistry: {
       createMany: jest.fn(),
@@ -477,6 +481,101 @@ describe('CategoryService', () => {
       await expect(service.getById('missing-id', Locale.en)).rejects.toThrow(
         'missing-id',
       );
+    });
+  });
+
+  // ── getBySlugForDestination (sub-category pills) ─────────────────────────────
+
+  describe('getBySlugForDestination', () => {
+    beforeEach(() => {
+      prisma.destination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        isActive: true,
+      });
+      prisma.category.findUnique.mockResolvedValue({
+        ...makeCategoryRecord({ id: 'cat-1' }),
+        translations: [makeTranslationRecord({ locale: Locale.en })],
+      });
+      prisma.tour.count.mockResolvedValue(5); // parent has published tours
+    });
+
+    it('returns only sub-categories that have >=1 published tour here', async () => {
+      // Two active children; only 'sub-a' has published tours at this destination.
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'sub-a', slug: 'catamaran', name: 'Catamaran', translations: [] },
+        { id: 'sub-b', slug: 'speedboat', name: 'Speedboat', translations: [] },
+      ]);
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'sub-a', _count: { _all: 3 } },
+      ]);
+
+      const result = await service.getBySlugForDestination(
+        'curacao',
+        'boat-tours',
+        Locale.en,
+      );
+
+      expect(result.subCategories).toEqual([
+        {
+          id: 'sub-a',
+          slug: 'catamaran',
+          name: 'Catamaran',
+          publishedTourCount: 3,
+        },
+      ]);
+    });
+
+    it('returns an empty sub-category list when the category has no children', async () => {
+      prisma.category.findMany.mockResolvedValue([]);
+
+      const result = await service.getBySlugForDestination(
+        'curacao',
+        'boat-tours',
+        Locale.en,
+      );
+
+      expect(result.subCategories).toEqual([]);
+      expect(prisma.tourCategory.groupBy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── single-level nesting guard ───────────────────────────────────────────────
+
+  describe('parent nesting guard', () => {
+    it('rejects creating a sub-category under another sub-category', async () => {
+      // The chosen parent is itself a child (has a parentCategoryId).
+      prisma.category.findUnique.mockResolvedValue({
+        parentCategoryId: 'grandparent',
+      });
+      await expect(
+        service.create(
+          { name: 'Deep', parentCategoryId: 'a-sub-category' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects converting an existing top-level category into a sub-category', async () => {
+      // assertValidParent sees a top-level parent; self is currently top-level
+      // (parentCategoryId null) -> demotion is rejected.
+      prisma.category.findUnique.mockResolvedValue({ parentCategoryId: null });
+      await expect(
+        service.update('cat-1', { parentCategoryId: 'top-parent' }, 'admin-1'),
+      ).rejects.toThrow(BadRequestException);
+      // Never reaches the update mutation.
+      expect(prisma.category.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects re-parenting a sub-category that already has its own children', async () => {
+      // 1st findUnique = the requested parent (top-level, valid);
+      // 2nd findUnique = self (already a sub, so demotion check passes).
+      prisma.category.findUnique
+        .mockResolvedValueOnce({ parentCategoryId: null })
+        .mockResolvedValueOnce({ parentCategoryId: 'existing-parent' });
+      prisma.category.count.mockResolvedValue(2); // self has children
+      await expect(
+        service.update('cat-1', { parentCategoryId: 'top-parent' }, 'admin-1'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

@@ -7,7 +7,9 @@ import {
 import { ToursListing } from '@/components/frontend/tours-listing';
 import { EMPTY_FILTERS } from '@/components/frontend/tours-filter-modal';
 import {
+    getCategoryFacets,
     getDestinationCategories,
+    getDestinationFacets,
     getDestinationTours,
 } from '@/lib/api/public';
 import type { Locale } from '@/lib/constants/locales';
@@ -15,6 +17,7 @@ import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
     filtersToTourQuery,
     parseToursFilters,
+    PRICE_MAX,
 } from '@/lib/tours/filters';
 import { searchHitToListing } from '@/lib/tours/listing';
 
@@ -37,6 +40,18 @@ interface ListingSectionProps {
     dict: Dictionary;
     /** Route search params (forwarded unresolved so the shell stays prerendered). */
     searchParams: Promise<Record<string, string | string[] | undefined>>;
+    /**
+     * Category-page mode: the listing is scoped to this category (fixed by the
+     * route). Its `subCategories` become the quick-filter pills - selecting them
+     * narrows to those sub-categories, otherwise the whole category tree (parent +
+     * subs) is shown. Omit on the All Tours page (free category multi-select).
+     */
+    lockedCategory?: {
+        id: string;
+        /** Category slug - used to fetch category-scoped facets. */
+        slug: string;
+        subCategories: { id: string; slug: string; name: string }[];
+    };
 }
 
 export async function ToursListingSection({
@@ -45,20 +60,67 @@ export async function ToursListingSection({
     locale,
     dict,
     searchParams,
+    lockedCategory,
 }: ListingSectionProps) {
     await connection();
-    const filters = parseToursFilters(await searchParams);
 
-    // Categories back both the quick-filter chips and the slug -> id resolution
-    // for the `categoryIds` backend filter (multi-select). Cheap cached call.
-    const categories = await getDestinationCategories(destination, locale);
-    const categoryIds =
-        filters.categories
-            .map(slug => categories.find(c => c.slug === slug)?.id)
-            .filter((id): id is string => Boolean(id))
-            .join(',') || undefined;
+    // Faceted filters (price bounds + attribute sections). Category-scoped on the
+    // category page, destination-wide on All Tours. Cheap cached call; a null
+    // (backend down / unknown) falls back to static bounds + no attribute sections.
+    const facets = lockedCategory
+        ? await getCategoryFacets(destination, lockedCategory.slug)
+        : await getDestinationFacets(destination);
+    const priceMax =
+        facets?.priceRange?.max != null
+            ? Math.max(10, Math.ceil(facets.priceRange.max / 10) * 10)
+            : PRICE_MAX;
 
-    const query = filtersToTourQuery(filters);
+    const filters = parseToursFilters(await searchParams, priceMax);
+
+    // Resolve the pills + the backend `categoryIds` filter.
+    //  - All Tours: pills = the destination's categories; the URL selection maps
+    //    slug -> id (free multi-select).
+    //  - Category page: pills = this category's sub-categories. Selected subs
+    //    narrow the results; with none selected we show the whole tree
+    //    (parent + all subs) so tours tagged on either level still appear.
+    let filterCategories: FilterCategory[];
+    let selectedCategories: string[];
+    let categoryIds: string | undefined;
+    let lockCategory: boolean;
+
+    if (lockedCategory) {
+        const subs = lockedCategory.subCategories;
+        const subIdBySlug = new Map(subs.map(s => [s.slug, s.id]));
+        selectedCategories = filters.categories.filter(slug =>
+            subIdBySlug.has(slug),
+        );
+        const selectedSubIds = selectedCategories.map(
+            slug => subIdBySlug.get(slug)!,
+        );
+        categoryIds =
+            (selectedSubIds.length
+                ? selectedSubIds
+                : [lockedCategory.id, ...subs.map(s => s.id)]
+            ).join(',') || undefined;
+        filterCategories = subs.map(s => ({ label: s.name, slug: s.slug }));
+        // No sub-categories -> nothing to select, so hide the pills row.
+        lockCategory = subs.length === 0;
+    } else {
+        const categories = await getDestinationCategories(destination, locale);
+        selectedCategories = filters.categories;
+        categoryIds =
+            filters.categories
+                .map(slug => categories.find(c => c.slug === slug)?.id)
+                .filter((id): id is string => Boolean(id))
+                .join(',') || undefined;
+        filterCategories = categories.map(category => ({
+            label: category.name,
+            slug: category.slug,
+        }));
+        lockCategory = false;
+    }
+
+    const query = filtersToTourQuery(filters, priceMax);
     const fetchPage = (p: number) =>
         getDestinationTours({
             destinationId,
@@ -66,6 +128,7 @@ export async function ToursListingSection({
             limit: TOURS_LIMIT,
             page: p,
             categoryIds,
+            attributes: filters.attributes,
             ...query,
         });
 
@@ -86,12 +149,6 @@ export async function ToursListingSection({
         searchHitToListing(hit, locale, dict.search),
     );
 
-    // Real category quick-filter pills (tour-gated, so each links somewhere live).
-    const filterCategories: FilterCategory[] = categories.map(category => ({
-        label: category.name,
-        slug: category.slug,
-    }));
-
     return (
         <div className='flex flex-col gap-8'>
             <ToursFilterBar
@@ -100,9 +157,12 @@ export async function ToursListingSection({
                 filterDict={dict.destination.allTours.filterModal}
                 hasReviews
                 categories={filterCategories}
+                lockCategory={lockCategory}
+                priceMax={priceMax}
+                attributes={filters.attributes}
                 shown={tours?.length}
                 total={total}
-                selectedCategories={filters.categories}
+                selectedCategories={selectedCategories}
                 selectedDate={filters.date ?? undefined}
                 guests={filters.guests}
                 sort={filters.sort}

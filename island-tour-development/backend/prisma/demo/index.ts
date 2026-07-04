@@ -13,6 +13,7 @@ import {
   prisma,
 } from './_shared';
 import { seedUsersAndOperators } from './users-operators';
+import { DEMO_SUBCATEGORY_SLUGS, seedSubCategories } from './sub-categories';
 import { seedTours } from './tours';
 import { seedAvailability } from './availability';
 import { seedBookingsAndPayments } from './bookings-payments';
@@ -37,10 +38,13 @@ async function assertBaseSeed(): Promise<void> {
 }
 
 export async function runDemoSeed(): Promise<void> {
-  console.log('\n════════════ DEMO SEED (removable; not for production) ════════════');
+  console.log(
+    '\n════════════ DEMO SEED (removable; not for production) ════════════',
+  );
   await assertBaseSeed();
 
   await seedUsersAndOperators(); // users + operators + configs
+  await seedSubCategories(); // filter-only sub-categories (before tours, no slug_registry)
   await seedTours(); // tours + all children + TOUR slug_registry
   await seedAvailability(); // schedules + exceptions + departures
   await seedBookingsAndPayments(); // bookings + unit items + add-ons + payments
@@ -53,8 +57,12 @@ export async function runDemoSeed(): Promise<void> {
   await seedSettings(); // singletons + webhooks + media
 
   console.log('\n════════════ DEMO SEED COMPLETE ════════════');
-  console.log(`Demo login password: see DEMO_PASSWORD env (default DemoPass123!).`);
-  console.log(`Operator logins: op.<key>@${DEMO_EMAIL_DOMAIN} · Traveler logins: traveler.<key>@${DEMO_EMAIL_DOMAIN}\n`);
+  console.log(
+    `Demo login password: see DEMO_PASSWORD env (default DemoPass123!).`,
+  );
+  console.log(
+    `Operator logins: op.<key>@${DEMO_EMAIL_DOMAIN} · Traveler logins: traveler.<key>@${DEMO_EMAIL_DOMAIN}\n`,
+  );
 }
 
 export async function cleanDemo(): Promise<void> {
@@ -67,12 +75,23 @@ export async function cleanDemo(): Promise<void> {
   });
 
   // 1) Reviews + bookings on demo tours (cascades translations, payments, items, add-ons).
-  await prisma.review.deleteMany({ where: { tour: { reference: DEMO_TOUR_REF } } });
-  await prisma.booking.deleteMany({ where: { tour: { reference: DEMO_TOUR_REF } } });
+  await prisma.review.deleteMany({
+    where: { tour: { reference: DEMO_TOUR_REF } },
+  });
+  await prisma.booking.deleteMany({
+    where: { tour: { reference: DEMO_TOUR_REF } },
+  });
 
   // 2) Collections (demo slugs) + their slug_registry rows.
-  await prisma.collection.deleteMany({ where: { slug: { in: COLLECTION_SLUGS } } });
-  await prisma.slugRegistry.deleteMany({ where: { slug: { in: COLLECTION_SLUGS }, entityType: SlugEntityType.COLLECTION } });
+  await prisma.collection.deleteMany({
+    where: { slug: { in: COLLECTION_SLUGS } },
+  });
+  await prisma.slugRegistry.deleteMany({
+    where: {
+      slug: { in: COLLECTION_SLUGS },
+      entityType: SlugEntityType.COLLECTION,
+    },
+  });
 
   // 3) Demo-only commercial tables.
   await prisma.featuredExperience.deleteMany({});
@@ -81,29 +100,63 @@ export async function cleanDemo(): Promise<void> {
   // 4) TOUR slug_registry rows, then the demo tours (cascades all tour children,
   //    schedules, exceptions, departures, spotlight requests, wishlists, etc.).
   for (const t of demoTours) {
-    await prisma.slugRegistry.deleteMany({ where: { destinationSlug: t.destination.slug, slug: t.slug, entityType: SlugEntityType.TOUR } });
+    await prisma.slugRegistry.deleteMany({
+      where: {
+        destinationSlug: t.destination.slug,
+        slug: t.slug,
+        entityType: SlugEntityType.TOUR,
+      },
+    });
   }
   await prisma.tour.deleteMany({ where: { reference: DEMO_TOUR_REF } });
 
+  // 4b) Demo sub-categories (filter-only; no slug_registry). Drop any lingering
+  //     tour links first, then the category rows.
+  await prisma.tourCategory.deleteMany({
+    where: { category: { slug: { in: DEMO_SUBCATEGORY_SLUGS } } },
+  });
+  await prisma.category.deleteMany({
+    where: { slug: { in: DEMO_SUBCATEGORY_SLUGS } },
+  });
+
   // 5) Notification subscriptions (cascades deliveries) + lead webhook points.
-  await prisma.notificationSubscription.deleteMany({ where: { url: { contains: DEMO_WEBHOOK_HOST } } });
-  await prisma.webhookPoint.deleteMany({ where: { url: { contains: DEMO_WEBHOOK_HOST } } });
+  await prisma.notificationSubscription.deleteMany({
+    where: { url: { contains: DEMO_WEBHOOK_HOST } },
+  });
+  await prisma.webhookPoint.deleteMany({
+    where: { url: { contains: DEMO_WEBHOOK_HOST } },
+  });
 
   // 6) Demo media.
-  await prisma.mediaGallery.deleteMany({ where: { publicId: { startsWith: 'demo/' } } });
+  await prisma.mediaGallery.deleteMany({
+    where: { publicId: { startsWith: 'demo/' } },
+  });
 
   // 7) Operators (configs first; companyInfo cascades) for demo accounts.
-  const demoOps = await prisma.operator.findMany({ where: { user: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } }, select: { id: true } });
+  const demoOps = await prisma.operator.findMany({
+    where: { user: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } },
+    select: { id: true },
+  });
   const opIds = demoOps.map((o) => o.id);
   if (opIds.length) {
-    await prisma.operatorSocialMedia.deleteMany({ where: { operatorId: { in: opIds } } });
-    await prisma.operatorStripeConfig.deleteMany({ where: { operatorId: { in: opIds } } });
-    await prisma.operatorMollieConfig.deleteMany({ where: { operatorId: { in: opIds } } });
+    await prisma.operatorSocialMedia.deleteMany({
+      where: { operatorId: { in: opIds } },
+    });
+    await prisma.operatorStripeConfig.deleteMany({
+      where: { operatorId: { in: opIds } },
+    });
+    await prisma.operatorMollieConfig.deleteMany({
+      where: { operatorId: { in: opIds } },
+    });
     await prisma.operator.deleteMany({ where: { id: { in: opIds } } });
   }
 
   // 8) Demo users (cascades sessions, accounts, remaining wishlists).
-  await prisma.user.deleteMany({ where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } });
+  await prisma.user.deleteMany({
+    where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } },
+  });
 
-  console.log('Demo graph removed. (Entity editorial content + settings singletons left in place — they are idempotent on re-seed.)\n');
+  console.log(
+    'Demo graph removed. (Entity editorial content + settings singletons left in place — they are idempotent on re-seed.)\n',
+  );
 }

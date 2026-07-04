@@ -7,6 +7,7 @@
  */
 export * from './categories';
 export * from './destinations';
+export * from './filters';
 export * from './hubs';
 export * from './search';
 export * from './tours';

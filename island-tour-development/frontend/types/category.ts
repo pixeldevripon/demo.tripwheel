@@ -23,8 +23,18 @@ export interface CategoryByDestination extends CategoryLocalized {
   publishedTourCount: number;
 }
 
+/** A tour-gated sub-category (V2 §3) for the category page's refine pills. */
+export interface SubCategoryByDestination {
+  id: string;
+  slug: string;
+  name: string;
+  publishedTourCount: number;
+}
+
 export interface CategoryDetailByDestination extends CategoryDetail {
   publishedTourCount: number;
+  /** Active sub-categories with >=1 published tour here (empty at launch). */
+  subCategories: SubCategoryByDestination[];
 }
 
 export interface CategoryLocalized extends Category {

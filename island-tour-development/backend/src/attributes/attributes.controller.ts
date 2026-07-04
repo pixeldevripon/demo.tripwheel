@@ -94,6 +94,15 @@ export class AttributeDictionaryController {
 export class FiltersController {
   constructor(private readonly attributesService: AttributesService) {}
 
+  // Destination-wide facets (no category) - powers the All Tours filter modal.
+  // Declared before the two-param route for clarity; segment count disambiguates.
+  @Get(':destinationSlug')
+  @Public()
+  @ApiGetFiltersDocs()
+  getDestinationFilters(@Param('destinationSlug') destinationSlug: string) {
+    return this.attributesService.getDestinationFilters(destinationSlug);
+  }
+
   @Get(':destinationSlug/:categorySlug')
   @Public()
   @ApiGetFiltersDocs()

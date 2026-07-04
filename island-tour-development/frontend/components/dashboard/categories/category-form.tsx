@@ -108,7 +108,11 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
   const isActiveValue = watch('isActive');
   const nameValue = watch('name');
 
-  const parentOptions = (activeCategories ?? []).filter(c => c.id !== category?.id);
+  // Only top-level categories may be parents (single-level nesting): exclude self
+  // and any category that already has a parent.
+  const parentOptions = (activeCategories ?? []).filter(
+    c => c.id !== category?.id && !c.parentCategoryId,
+  );
 
   const [slugTouched, setSlugTouched] = useState(false);
   useEffect(() => {
@@ -266,27 +270,36 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
               <FieldDescription>Tokens: {'{category}'}, {'{destination}'}.</FieldDescription>
             </Field>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Parent Category</Label>
-              <Select
-                value={parentValue || '__none__'}
-                onValueChange={v =>
-                  setValue('parentCategoryId', v === '__none__' ? '' : v)
-                }>
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {parentOptions.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldDescription>Optional - for future sub-categories.</FieldDescription>
-            </Field>
+            {/* Parent is chosen only at CREATE time: a brand-new category can be
+                made a filter-only sub-category, but an existing top-level category
+                is never demoted (that would break its page). Re-parenting happens
+                via the parent's Sub-categories manager (create / detach). */}
+            {!isEditMode && (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Parent Category</Label>
+                <Select
+                  value={parentValue || '__none__'}
+                  onValueChange={v =>
+                    setValue('parentCategoryId', v === '__none__' ? '' : v)
+                  }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {parentOptions.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  Optional. Setting a parent makes this a filter-only sub-category
+                  (no standalone page).
+                </FieldDescription>
+              </Field>
+            )}
 
             {isEditMode && (
               <Field>

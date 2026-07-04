@@ -54,6 +54,12 @@ export async function getDestinationTours(params: {
   guests?: number;
   /** Time-of-day buckets CSV (morning|afternoon|evening); needs `date`. */
   timeOfDay?: string;
+  /**
+   * Dynamic attribute filters (AttributeDefinition.key -> selected values), sent
+   * as raw `?key=v1,v2` params. The backend's `buildAttributeFilters` applies them
+   * (comma = OR within a key, multiple keys = AND).
+   */
+  attributes?: Record<string, string[]>;
   limit?: number;
   page?: number;
 }): Promise<TourListResult> {
@@ -78,9 +84,15 @@ export async function getDestinationTours(params: {
     date,
     guests,
     timeOfDay,
+    attributes,
     limit,
     page,
   } = params;
+  // Flatten attribute filters to `key: 'v1,v2'` so they ride the raw query string
+  // (buildQuery drops empty values).
+  const attributeParams = Object.fromEntries(
+    Object.entries(attributes ?? {}).map(([k, v]) => [k, v.join(',')]),
+  );
   const res = await publicGet<TourListResult>(
     `/tours${buildQuery({
       destinationId,
@@ -99,6 +111,7 @@ export async function getDestinationTours(params: {
       date,
       guests,
       timeOfDay,
+      ...attributeParams,
       limit,
       page,
     })}`,

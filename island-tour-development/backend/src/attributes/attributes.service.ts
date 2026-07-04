@@ -148,34 +148,61 @@ export class AttributesService {
   // ── Available filters for a category page (V2 §7) ───────────────────────────
 
   /**
-   * Returns the filterable attributes applicable to a (destination, category) page,
-   * each with the values present in the current published-tour set and their counts,
-   * plus price/duration ranges. Powers the filter sidebar.
+   * Filters for a category page (destination + category): filterable attributes
+   * scoped to the category, plus price/duration ranges. Powers the category page
+   * filter modal.
    */
   async getFilters(destinationSlug: string, categorySlug: string) {
-    const [destination, category] = await Promise.all([
-      this.prisma.destination.findUnique({
-        where: { slug: destinationSlug },
-        select: { id: true, isActive: true },
-      }),
-      this.prisma.category.findUnique({
-        where: { slug: categorySlug },
-        select: { id: true, slug: true, isActive: true },
-      }),
-    ]);
+    return this.buildFilters(destinationSlug, categorySlug);
+  }
+
+  /**
+   * Destination-wide filters (no category): price/duration ranges + attribute
+   * value counts across EVERY live tour in the destination. Powers the All Tours
+   * page filter modal (dynamic price bounds + attribute sections).
+   */
+  async getDestinationFilters(destinationSlug: string) {
+    return this.buildFilters(destinationSlug);
+  }
+
+  /**
+   * Shared builder: filterable attributes (+ value counts), price and duration
+   * ranges over the destination's published-tour set. With `categorySlug` the set
+   * is narrowed to that category and the attribute list is scoped to it; without
+   * it, the whole destination is covered.
+   */
+  private async buildFilters(destinationSlug: string, categorySlug?: string) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { slug: destinationSlug },
+      select: { id: true, isActive: true },
+    });
     if (!destination || !destination.isActive)
       throw new NotFoundException(`Destination "${destinationSlug}" not found`);
-    if (!category || !category.isActive)
-      throw new NotFoundException(`Category "${categorySlug}" not found`);
+
+    let category: { id: string; slug: string } | null = null;
+    if (categorySlug !== undefined) {
+      const found = await this.prisma.category.findUnique({
+        where: { slug: categorySlug },
+        select: { id: true, slug: true, isActive: true },
+      });
+      if (!found || !found.isActive)
+        throw new NotFoundException(`Category "${categorySlug}" not found`);
+      category = { id: found.id, slug: found.slug };
+    }
 
     const defs = await this.prisma.attributeDefinition.findMany({
       where: {
         isActive: true,
         isFilterable: true,
-        OR: [
-          { appliesToCategories: { isEmpty: true } },
-          { appliesToCategories: { has: category.slug } },
-        ],
+        // Category page: scope to attributes global or applicable to the category.
+        // Destination-wide: include every filterable attribute (empty-value ones
+        // are simply returned with no values for the client to skip).
+        ...(category && {
+          OR: [
+            { appliesToCategories: { isEmpty: true } },
+            { appliesToCategories: { has: category.slug } },
+          ],
+        }),
       },
       select: this.definitionSelect,
       orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
@@ -186,7 +213,7 @@ export class AttributesService {
         destinationId: destination.id,
         status: TourStatus.LIVE,
         isActive: true,
-        categories: { some: { categoryId: category.id } },
+        ...(category && { categories: { some: { categoryId: category.id } } }),
       },
       select: { id: true, basePrice: true, durationMinutesFrom: true },
     });
@@ -262,7 +289,7 @@ export class AttributesService {
 
     return {
       destination: destinationSlug,
-      category: categorySlug,
+      category: categorySlug ?? null,
       total: tours.length,
       priceRange,
       durationRange,

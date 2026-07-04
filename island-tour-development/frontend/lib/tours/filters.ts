@@ -58,9 +58,39 @@ export interface ToursFilterState {
     guests: ToursGuests;
     /** Time-of-day buckets (only affect results together with a date). */
     timeOfDay: string[];
+    /**
+     * Dynamic attribute filters keyed by AttributeDefinition.key -> selected
+     * values (e.g. `{ boat_type: ['catamaran'] }`). The backend supports these as
+     * raw `?key=v1,v2` params (comma = OR within a key, multiple keys = AND).
+     * There is no modal UI for them (removed by request); they still flow
+     * URL -> backend and are PRESERVED across toolbar navigations, so attribute
+     * filtering works via URL / deep links.
+     */
+    attributes: Record<string, string[]>;
     /** 1-based page. */
     page: number;
 }
+
+/**
+ * URL params owned by the fixed filter model. Everything else is treated as a
+ * dynamic attribute filter (mirrors the backend's reserved-key convention).
+ */
+const RESERVED_PARAM_KEYS = new Set([
+    'category',
+    'sort',
+    'minPrice',
+    'maxPrice',
+    'rating',
+    'duration',
+    'cancellation',
+    'pickup',
+    'date',
+    'adults',
+    'children',
+    'infants',
+    'timeOfDay',
+    'page',
+]);
 
 /** Backend seat count (pax) from a guest breakdown - infants are lap-held. */
 export function guestsToPax(g: ToursGuests): number {
@@ -105,6 +135,7 @@ function toNumber(v: string | undefined, fallback: number): number {
 /** Parse the raw route search params into a normalized filter state. */
 export function parseToursFilters(
     sp: Record<string, string | string[] | undefined>,
+    priceMax: number = PRICE_MAX,
 ): ToursFilterState {
     const categoryRaw = first(sp.category);
     const categories = categoryRaw
@@ -115,10 +146,10 @@ export function parseToursFilters(
     const sort = (sortParam && PARAM_TO_SORT[sortParam]) || 'localsFavorites';
 
     const min = toNumber(first(sp.minPrice), PRICE_MIN);
-    const max = toNumber(first(sp.maxPrice), PRICE_MAX);
+    const max = toNumber(first(sp.maxPrice), priceMax);
     const price: [number, number] = [
         Math.max(PRICE_MIN, Math.min(min, max)),
-        Math.min(PRICE_MAX, Math.max(min, max)),
+        Math.min(priceMax, Math.max(min, max)),
     ];
 
     const ratingRaw = first(sp.rating);
@@ -154,6 +185,17 @@ export function parseToursFilters(
         ? timeRaw.split(',').filter(k => TIME_OF_DAY_KEYS.includes(k))
         : [];
 
+    // Any non-reserved query key is a dynamic attribute filter (comma-separated
+    // values). Mirrors the backend's RESERVED_QUERY_KEYS convention.
+    const attributes: Record<string, string[]> = {};
+    for (const [key, raw] of Object.entries(sp)) {
+        if (RESERVED_PARAM_KEYS.has(key)) continue;
+        const val = first(raw);
+        if (!val) continue;
+        const values = val.split(',').map(v => v.trim()).filter(Boolean);
+        if (values.length) attributes[key] = values;
+    }
+
     const pageNum = Number(first(sp.page));
     const page = Number.isInteger(pageNum) && pageNum >= 1 ? pageNum : 1;
 
@@ -168,6 +210,7 @@ export function parseToursFilters(
         date,
         guests,
         timeOfDay,
+        attributes,
         page,
     };
 }
@@ -197,7 +240,10 @@ export function durationsToRange(keys: string[]): {
  * (everything except `categoryId`, which the server resolves from the slug).
  * Defaults are omitted so an unset price/rating never over-filters.
  */
-export function filtersToTourQuery(state: ToursFilterState): {
+export function filtersToTourQuery(
+    state: ToursFilterState,
+    priceMax: number = PRICE_MAX,
+): {
     sort: ToursBackendSort;
     minPrice?: number;
     maxPrice?: number;
@@ -216,7 +262,7 @@ export function filtersToTourQuery(state: ToursFilterState): {
     return {
         sort: SORT_TO_BACKEND[state.sort],
         minPrice: state.price[0] > PRICE_MIN ? state.price[0] : undefined,
-        maxPrice: state.price[1] < PRICE_MAX ? state.price[1] : undefined,
+        maxPrice: state.price[1] < priceMax ? state.price[1] : undefined,
         ratingMin: state.rating ? Number(state.rating) : undefined,
         cancellationMaxHours: state.cancellation
             ? CANCELLATION_TO_HOURS[state.cancellation]
@@ -233,14 +279,18 @@ export function filtersToTourQuery(state: ToursFilterState): {
 }
 
 /** Build the All Tours href for a filter state (drops defaults + page 1). */
-export function buildToursHref(pathname: string, state: ToursFilterState): string {
+export function buildToursHref(
+    pathname: string,
+    state: ToursFilterState,
+    priceMax: number = PRICE_MAX,
+): string {
     const params = new URLSearchParams();
     if (state.categories.length)
         params.set('category', state.categories.join(','));
     const sortParam = SORT_TO_PARAM[state.sort];
     if (sortParam) params.set('sort', sortParam);
     if (state.price[0] > PRICE_MIN) params.set('minPrice', String(state.price[0]));
-    if (state.price[1] < PRICE_MAX) params.set('maxPrice', String(state.price[1]));
+    if (state.price[1] < priceMax) params.set('maxPrice', String(state.price[1]));
     if (state.rating) params.set('rating', state.rating);
     if (state.durations.length) params.set('duration', state.durations.join(','));
     if (state.cancellation) params.set('cancellation', state.cancellation);
@@ -255,6 +305,10 @@ export function buildToursHref(pathname: string, state: ToursFilterState): strin
     if (state.guests.infants !== DEFAULT_GUESTS.infants)
         params.set('infants', String(state.guests.infants));
     if (state.timeOfDay.length) params.set('timeOfDay', state.timeOfDay.join(','));
+    // Dynamic attribute filters as raw `key=v1,v2` params (preserved across nav).
+    for (const [key, values] of Object.entries(state.attributes)) {
+        if (values.length) params.set(key, values.join(','));
+    }
     if (state.page > 1) params.set('page', String(state.page));
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;

@@ -47,15 +47,21 @@ export const EMPTY_FILTERS: TourFilters = {
     rating: null,
 };
 
-/** Count active filters - drives the toolbar badge. */
-export function countActiveFilters(f: TourFilters): number {
+/**
+ * Count active filters - drives the toolbar badge. `priceMax` is the effective
+ * (per-destination) price ceiling so a full-range slider isn't counted.
+ */
+export function countActiveFilters(
+    f: TourFilters,
+    priceMax: number = PRICE_MAX,
+): number {
     return (
         f.durations.length +
         f.times.length +
         (f.cancellation ? 1 : 0) +
         (f.pickupAvailable ? 1 : 0) +
         (f.rating ? 1 : 0) +
-        (f.price[0] > PRICE_MIN || f.price[1] < PRICE_MAX ? 1 : 0)
+        (f.price[0] > PRICE_MIN || f.price[1] < priceMax ? 1 : 0)
     );
 }
 
@@ -144,10 +150,11 @@ function Stars({ rating }: { rating: number }) {
     );
 }
 
-export function PriceRange({ value, onChange }: { value: [number, number]; onChange: (v: [number, number]) => void }) {
+export function PriceRange({ value, onChange, max = PRICE_MAX }: { value: [number, number]; onChange: (v: [number, number]) => void; max?: number }) {
     const trackRef = useRef<HTMLDivElement>(null);
     const [drag, setDrag] = useState<null | 0 | 1>(null);
-    const pct = (v: number) => ((v - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;
+    const span = Math.max(1, max - PRICE_MIN);
+    const pct = (v: number) => ((v - PRICE_MIN) / span) * 100;
 
     useEffect(() => {
         if (drag === null) return;
@@ -156,7 +163,7 @@ export function PriceRange({ value, onChange }: { value: [number, number]; onCha
             if (!track) return;
             const rect = track.getBoundingClientRect();
             const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-            const raw = Math.round((PRICE_MIN + ratio * (PRICE_MAX - PRICE_MIN)) / 10) * 10;
+            const raw = Math.round((PRICE_MIN + ratio * span) / 10) * 10;
             if (drag === 0) onChange([Math.min(raw, value[1]), value[1]]);
             else onChange([value[0], Math.max(raw, value[0])]);
         };
@@ -167,7 +174,7 @@ export function PriceRange({ value, onChange }: { value: [number, number]; onCha
             window.removeEventListener('pointermove', move);
             window.removeEventListener('pointerup', up);
         };
-    }, [drag, value, onChange]);
+    }, [drag, value, onChange, span]);
 
     return (
         <div ref={trackRef} className='relative flex h-4 items-center'>
@@ -215,6 +222,8 @@ interface ToursFilterModalProps {
     onApply: (filters: TourFilters) => void;
     /** Ratings section stays hidden until tours in this catalogue have reviews. */
     hasReviews?: boolean;
+    /** Effective price ceiling for this destination/category (slider max). */
+    priceMax?: number;
 }
 
 export function ToursFilterModal({
@@ -224,6 +233,7 @@ export function ToursFilterModal({
     value,
     onApply,
     hasReviews = false,
+    priceMax = PRICE_MAX,
 }: ToursFilterModalProps) {
     const [draft, setDraft] = useState<TourFilters>(value);
 
@@ -295,7 +305,10 @@ export function ToursFilterModal({
                         initial={{ opacity: 0, scale: 0.97, y: 12 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.97, y: 12 }}
-                        transition={{ duration: 0.22, ease: [0.21, 0.47, 0.32, 0.98] }}
+                        transition={{
+                            duration: 0.22,
+                            ease: [0.21, 0.47, 0.32, 0.98],
+                        }}
                         className='relative flex max-h-[90vh] w-full max-w-[752px] flex-col overflow-y-auto rounded-it-lg bg-it-white p-8'>
                         {/* Header */}
                         <div className='flex items-center justify-between border-b border-it-heading/10 pb-6'>
@@ -321,7 +334,10 @@ export function ToursFilterModal({
                         <Section title={dict.price}>
                             <PriceRange
                                 value={draft.price}
-                                onChange={(price) => setDraft((d) => ({ ...d, price }))}
+                                max={priceMax}
+                                onChange={price =>
+                                    setDraft(d => ({ ...d, price }))
+                                }
                             />
                             <div className='flex items-center justify-between text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                 <span>${draft.price[0]}</span>
@@ -332,12 +348,16 @@ export function ToursFilterModal({
                         {/* Duration */}
                         <Section title={dict.duration}>
                             <div className='grid grid-cols-1 gap-x-12 gap-y-2.5 sm:grid-cols-2'>
-                                {durationItems.map((item) => (
+                                {durationItems.map(item => (
                                     <Checkbox
                                         key={item.key}
                                         label={item.label}
-                                        checked={draft.durations.includes(item.key)}
-                                        onChange={() => toggleArray('durations', item.key)}
+                                        checked={draft.durations.includes(
+                                            item.key
+                                        )}
+                                        onChange={() =>
+                                            toggleArray('durations', item.key)
+                                        }
                                     />
                                 ))}
                             </div>
@@ -346,12 +366,14 @@ export function ToursFilterModal({
                         {/* Time of day */}
                         <Section title={dict.timeOfDay}>
                             <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                {timeItems.map((item) => (
+                                {timeItems.map(item => (
                                     <Checkbox
                                         key={item.key}
                                         label={item.label}
                                         checked={draft.times.includes(item.key)}
-                                        onChange={() => toggleArray('times', item.key)}
+                                        onChange={() =>
+                                            toggleArray('times', item.key)
+                                        }
                                     />
                                 ))}
                             </div>
@@ -364,22 +386,25 @@ export function ToursFilterModal({
                                     {dict.freeCancellation}
                                 </h3>
                                 <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    {dict.freeCancellationNote}
+                                    {dict.freeCancellationNote} { " "}
+                                    {dict.cancellationLabel}
                                 </p>
                             </div>
-                            <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                {dict.cancellationLabel}
-                            </p>
                             <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                {cancellationItems.map((item) => (
+                                {cancellationItems.map(item => (
                                     <Radio
                                         key={item.key}
                                         label={item.label}
-                                        checked={draft.cancellation === item.key}
+                                        checked={
+                                            draft.cancellation === item.key
+                                        }
                                         onChange={() =>
-                                            setDraft((d) => ({
+                                            setDraft(d => ({
                                                 ...d,
-                                                cancellation: d.cancellation === item.key ? null : item.key,
+                                                cancellation:
+                                                    d.cancellation === item.key
+                                                        ? null
+                                                        : item.key,
                                             }))
                                         }
                                     />
@@ -395,7 +420,12 @@ export function ToursFilterModal({
                                 </h3>
                                 <Toggle
                                     on={draft.pickupAvailable}
-                                    onChange={() => setDraft((d) => ({ ...d, pickupAvailable: !d.pickupAvailable }))}
+                                    onChange={() =>
+                                        setDraft(d => ({
+                                            ...d,
+                                            pickupAvailable: !d.pickupAvailable,
+                                        }))
+                                    }
                                 />
                             </div>
                         </Section>
@@ -404,20 +434,27 @@ export function ToursFilterModal({
                         {hasReviews && (
                             <Section title={dict.ratings}>
                                 <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                    {ratingItems.map((item) => (
+                                    {ratingItems.map(item => (
                                         <Radio
                                             key={item.key}
                                             checked={draft.rating === item.key}
                                             onChange={() =>
-                                                setDraft((d) => ({
+                                                setDraft(d => ({
                                                     ...d,
-                                                    rating: d.rating === item.key ? null : item.key,
+                                                    rating:
+                                                        d.rating === item.key
+                                                            ? null
+                                                            : item.key,
                                                 }))
                                             }
                                             label={
                                                 <>
-                                                    <Stars rating={item.stars} />
-                                                    <span className='ml-1.5'>{item.label}</span>
+                                                    <Stars
+                                                        rating={item.stars}
+                                                    />
+                                                    <span className='ml-1.5'>
+                                                        {item.label}
+                                                    </span>
                                                 </>
                                             }
                                         />
@@ -447,3 +484,4 @@ export function ToursFilterModal({
         </AnimatePresence>
     );
 }
+

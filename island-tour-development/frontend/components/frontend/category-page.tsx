@@ -1,8 +1,11 @@
+import { Suspense } from 'react';
 import { categoriesApi } from '@/lib/api/categories';
+import { getDestinationBySlug } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
+import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
 import { CategoryAbout } from './category-about';
 import { CategoryFilterBar } from './category-filter-bar';
 import { CategoryTrustStrip } from './category-trust-strip';
@@ -14,11 +17,10 @@ import { FaqSection } from './faq-section';
 import { Reveal } from './reveal';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
-import { DEFAULT_GUESTS } from '@/lib/tours/filters';
-import { type FilterCategory, ToursFilterBar } from './tours-filter-bar';
-import { EMPTY_FILTERS } from './tours-filter-modal';
+import { type FilterCategory } from './tours-filter-bar';
 import { ToursHeader } from './tours-header';
 import { ToursListing } from './tours-listing';
+import { ToursListingSection } from './tours/tours-listing-section';
 
 /**
  * Category page - the CATEGORY branch of the polymorphic `[slug]` route
@@ -162,16 +164,6 @@ const FALLBACK_RELATED: RelatedCategory[] = [
     },
 ];
 
-// Quick-filter pills (placeholder until the per-attribute filter API is wired).
-const FILTER_CATEGORIES: FilterCategory[] = [
-    { label: 'Klein Curaçao', slug: 'klein-curacao' },
-    { label: 'Boat Tours', slug: 'boat-tours' },
-    { label: 'Snorkeling', slug: 'snorkeling' },
-    { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-    { label: 'Off-Road Tours', slug: 'off-road-tours' },
-    { label: 'Under €100 (21)', slug: 'under-100' },
-];
-
 // Quick-filter pills for the secondary "active tours" listing block (Figma
 // 47171:1499) - distinct from the top listing's FILTER_CATEGORIES. Placeholder
 // until the per-attribute filter API is wired.
@@ -195,6 +187,8 @@ interface CategoryPageProps {
     destinationName: string;
     locale: Locale;
     dict: Dictionary;
+    /** Route search params (forwarded unresolved so the shell stays prerenderable). */
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function CategoryPage({
@@ -204,22 +198,26 @@ export async function CategoryPage({
     destinationName,
     locale,
     dict,
+    searchParams,
 }: CategoryPageProps) {
-    // Fetch localized detail (gated), editorial content, FAQs, and the active
-    // categories (for the localized quick-filter pills) in parallel. The detail
-    // gate is authoritative - a `null` means 0 published tours → notFound().
-    const [category, pageContent, faqs, activeCategories] = await Promise.all([
-        categoriesApi.getBySlugForDestination(
-            destinationSlug,
-            categorySlug,
-            locale
-        ),
-        categoriesApi.getPageContent(categoryId, locale),
-        categoriesApi.getFaqs(categoryId, locale),
-        categoriesApi
-            .getActiveByDestination(destinationSlug, locale)
-            .catch(() => []),
-    ]);
+    // Fetch localized detail (gated), editorial content, FAQs, the active
+    // categories (for related links) and the destination (for its id, used to
+    // scope the dynamic listing) in parallel. The detail gate is authoritative -
+    // a `null` means 0 published tours → notFound().
+    const [category, pageContent, faqs, activeCategories, destination] =
+        await Promise.all([
+            categoriesApi.getBySlugForDestination(
+                destinationSlug,
+                categorySlug,
+                locale
+            ),
+            categoriesApi.getPageContent(categoryId, locale),
+            categoriesApi.getFaqs(categoryId, locale),
+            categoriesApi
+                .getActiveByDestination(destinationSlug, locale)
+                .catch(() => []),
+            getDestinationBySlug(destinationSlug, locale),
+        ]);
 
     if (!category) notFound();
 
@@ -308,28 +306,32 @@ export async function CategoryPage({
                             aria-hidden='true'
                         />
 
-                        {/* ── Toolbar + grid ────────────────────────────────── */}
-                        <div className='flex flex-col gap-8'>
-                            <ToursFilterBar
-                                dict={t.toolbar}
-                                sortDict={t.sort}
-                                filterDict={t.filterModal}
-                                hasReviews
-                                categories={FILTER_CATEGORIES}
-                                guests={DEFAULT_GUESTS}
-                                shown={Math.min(MOCK_TOURS.length, total)}
-                                total={total}
-                                selectedCategories={[category.slug]}
-                                sort='localsFavorites'
-                                activeFilters={EMPTY_FILTERS}
-                            />
-
+                        {/* ── Toolbar + grid ──────────────────────────────────
+                            Streamed, URL-driven listing locked to this category
+                            (reuses the All Tours section; toolbar hides category
+                            selection since the route fixes it). */}
+                        {destination ? (
+                            <Suspense fallback={<ToursListingSkeleton />}>
+                                <ToursListingSection
+                                    destinationId={destination.id}
+                                    destination={destinationSlug}
+                                    locale={locale}
+                                    dict={dict}
+                                    searchParams={searchParams}
+                                    lockedCategory={{
+                                        id: categoryId,
+                                        slug: category.slug,
+                                        subCategories: category.subCategories,
+                                    }}
+                                />
+                            </Suspense>
+                        ) : (
                             <ToursListing
                                 tours={tours}
                                 dict={dict.destination.listings}
                                 pageCount={6}
                             />
-                        </div>
+                        )}
                     </div>
                 </div>
             </section>
