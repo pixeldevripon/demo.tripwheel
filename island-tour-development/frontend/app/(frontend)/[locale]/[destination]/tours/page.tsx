@@ -51,7 +51,7 @@ export default async function AllToursPage({
     searchParams,
 }: {
     params: Promise<{ locale: string; destination: string }>;
-    searchParams: Promise<{ page?: string | string[] }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
     const { locale, destination } = await params;
     if (!isLocale(locale)) notFound();

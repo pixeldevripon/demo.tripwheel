@@ -15,6 +15,7 @@ import { Reveal } from './reveal';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
 import { type FilterCategory, ToursFilterBar } from './tours-filter-bar';
+import { EMPTY_FILTERS } from './tours-filter-modal';
 import { ToursHeader } from './tours-header';
 import { ToursListing } from './tours-listing';
 
@@ -240,11 +241,6 @@ export async function CategoryPage({
             .replace('{destination}', destinationName);
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
 
-    const currentChip: FilterCategory = {
-        label: category.name,
-        slug: category.slug,
-    };
-
     // "You might also like" - sibling categories at this destination (current one
     // excluded), up to 3. Falls back to the placeholder set until the backend
     // returns siblings.
@@ -322,8 +318,9 @@ export async function CategoryPage({
                                 guestCount={2}
                                 shown={Math.min(MOCK_TOURS.length, total)}
                                 total={total}
-                                initialSelected={[category.slug]}
-                                initialChips={[currentChip]}
+                                selectedCategory={category.slug}
+                                sort='localsFavorites'
+                                activeFilters={EMPTY_FILTERS}
                             />
 
                             <ToursListing

@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { PRICE_MAX, PRICE_MIN } from '@/lib/tours/filters';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -33,8 +34,9 @@ export type TourFilters = {
     rating: string | null;
 };
 
-export const PRICE_MIN = 0;
-export const PRICE_MAX = 560;
+// Canonical bounds live in `@/lib/tours/filters` (shared with the server); re-export
+// so existing consumers importing them from here keep working.
+export { PRICE_MAX, PRICE_MIN } from '@/lib/tours/filters';
 
 export const EMPTY_FILTERS: TourFilters = {
     price: [PRICE_MIN, PRICE_MAX],

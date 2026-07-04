@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,6 +14,11 @@ import {
     type ToursFilterModalDict,
     ToursFilterModal,
 } from '@/components/frontend/tours-filter-modal';
+import {
+    buildToursHref,
+    type ToursFilterState,
+    type ToursSortValue,
+} from '@/lib/tours/filters';
 
 /* ── Dictionary shapes ─────────────────────────────────────────────── */
 
@@ -40,7 +46,7 @@ export type ToursToolbarDict = {
     sortBy: string;
 };
 
-export type SortValue = 'localsFavorites' | 'priceLowHigh' | 'priceHighLow';
+export type SortValue = ToursSortValue;
 
 export type ToursSortDict = {
     localsFavorites: string;
@@ -66,10 +72,14 @@ interface ToursFilterBarProps {
     /** Result counter - shown vs total. */
     shown: number;
     total: number;
-    /** Category slugs pre-selected (highlighted) on first render. */
-    initialSelected?: string[];
-    /** Applied-filter chips shown on first render. */
-    initialChips?: FilterCategory[];
+    /**
+     * Current filter/sort state, derived server-side from the URL. The bar is
+     * controlled by these props and navigates (`?...`) on change; the server then
+     * refetches. Date + guests are still local UI (not yet URL-backed).
+     */
+    selectedCategory?: string;
+    sort: SortValue;
+    activeFilters: TourFilters;
 }
 
 /* ── Shared atom styles ────────────────────────────────────────────── */
@@ -93,15 +103,33 @@ export function ToursFilterBar({
     guestCount,
     shown,
     total,
-    initialSelected = [],
-    initialChips = [],
+    selectedCategory,
+    sort,
+    activeFilters,
 }: ToursFilterBarProps) {
-    const [selected, setSelected] = useState<Set<string>>(
-        () => new Set(initialSelected),
-    );
-    const [chips, setChips] = useState<FilterCategory[]>(initialChips);
+    const router = useRouter();
+    const pathname = usePathname();
 
-    // Date picker + guest stepper state (search controls).
+    // The bar is controlled by the URL-derived props; a change rebuilds the query
+    // and navigates (always resetting to page 1), and the server refetches.
+    const currentState: ToursFilterState = {
+        category: selectedCategory,
+        sort,
+        price: activeFilters.price,
+        rating: activeFilters.rating,
+        durations: activeFilters.durations,
+        page: 1,
+    };
+    const applyState = (next: Partial<ToursFilterState>) =>
+        router.push(buildToursHref(pathname, { ...currentState, ...next, page: 1 }));
+
+    // Single selected category rendered as the removable chip in row 2.
+    const selectedChip = selectedCategory
+        ? categories.find((c) => c.slug === selectedCategory)
+        : undefined;
+    const chips = selectedChip ? [selectedChip] : [];
+
+    // Date picker + guest stepper state (search controls - not yet URL-backed).
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [dateOpen, setDateOpen] = useState(false);
     const [guests, setGuests] = useState({
@@ -127,10 +155,10 @@ export function ToursFilterBar({
             ? guestParts[0]
             : `${guestParts.slice(0, -1).join(', ')} & ${guestParts.at(-1)}`;
 
-    // Filters modal state - the Filters pill opens it; applied filters drive the badge.
+    // Filters modal state - the Filters pill opens it; the URL-derived filters
+    // drive the badge.
     const [filterOpen, setFilterOpen] = useState(false);
-    const [appliedFilters, setAppliedFilters] = useState<TourFilters>(EMPTY_FILTERS);
-    const activeFilterCount = countActiveFilters(appliedFilters);
+    const activeFilterCount = countActiveFilters(activeFilters);
 
     // Default option carries the "(Default)" suffix only inside the dropdown.
     const sortOptions: { value: SortValue; label: string }[] = [
@@ -141,35 +169,27 @@ export function ToursFilterBar({
         { value: 'priceLowHigh', label: sortDict.priceLowHigh },
         { value: 'priceHighLow', label: sortDict.priceHighLow },
     ];
-    const [sort, setSort] = useState<SortValue>('localsFavorites');
     const [sortOpen, setSortOpen] = useState(false);
 
+    // Single-select: toggling the active category clears it, otherwise selects it.
     function toggleCategory(cat: FilterCategory) {
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(cat.slug)) next.delete(cat.slug);
-            else next.add(cat.slug);
-            return next;
-        });
-        setChips((prev) =>
-            prev.some((c) => c.slug === cat.slug)
-                ? prev.filter((c) => c.slug !== cat.slug)
-                : [...prev, cat],
-        );
-    }
-
-    function removeChip(slug: string) {
-        setChips((prev) => prev.filter((c) => c.slug !== slug));
-        setSelected((prev) => {
-            const next = new Set(prev);
-            next.delete(slug);
-            return next;
+        applyState({
+            category: selectedCategory === cat.slug ? undefined : cat.slug,
         });
     }
 
+    function removeChip(_slug: string) {
+        applyState({ category: undefined });
+    }
+
+    // Clear all applied filters (category + modal filters); sort is preserved.
     function clearAll() {
-        setChips([]);
-        setSelected(new Set());
+        applyState({
+            category: undefined,
+            price: EMPTY_FILTERS.price,
+            rating: EMPTY_FILTERS.rating,
+            durations: EMPTY_FILTERS.durations,
+        });
     }
 
     const counterLabel = dict.resultsCount
@@ -314,9 +334,13 @@ export function ToursFilterBar({
                             onClose={() => setFilterOpen(false)}
                             dict={filterDict}
                             hasReviews={hasReviews}
-                            value={appliedFilters}
+                            value={activeFilters}
                             onApply={(f) => {
-                                setAppliedFilters(f);
+                                applyState({
+                                    price: f.price,
+                                    rating: f.rating,
+                                    durations: f.durations,
+                                });
                                 setFilterOpen(false);
                             }}
                         />
@@ -328,7 +352,7 @@ export function ToursFilterBar({
                 {/* Category quick-filter pills */}
                 <div className='flex shrink-0 items-center gap-2'>
                     {categories.map((cat) => {
-                        const active = selected.has(cat.slug);
+                        const active = selectedCategory === cat.slug;
                         return (
                             <button
                                 key={cat.slug}
@@ -381,7 +405,7 @@ export function ToursFilterBar({
                         )}
                     </div>
 
-                    {chips.length > 0 && (
+                    {(chips.length > 0 || activeFilterCount > 0) && (
                         <button
                             type='button'
                             onClick={clearAll}
@@ -420,7 +444,7 @@ export function ToursFilterBar({
                                     key={opt.value}
                                     type='button'
                                     onClick={() => {
-                                        setSort(opt.value);
+                                        applyState({ sort: opt.value });
                                         setSortOpen(false);
                                     }}
                                     className={`flex w-full cursor-pointer items-center border-none bg-transparent px-4 py-2 text-left text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:bg-it-surface ${

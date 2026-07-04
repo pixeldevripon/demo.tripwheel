@@ -34,6 +34,14 @@ export async function getDestinationTours(params: {
   localsFavourite?: boolean;
   categoryId?: string;
   sort?: 'recommended' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
+  /** Price range filter (on `basePrice`). */
+  minPrice?: number;
+  maxPrice?: number;
+  /** Minimum aggregate rating (0-5). */
+  ratingMin?: number;
+  /** Duration filter in minutes (on `durationMinutesFrom`). */
+  durationMin?: number;
+  durationMax?: number;
   limit?: number;
   page?: number;
 }): Promise<TourListResult> {
@@ -41,8 +49,20 @@ export async function getDestinationTours(params: {
   cacheLife('hours');
   cacheTag('tours');
 
-  const { destinationId, locale = DEFAULT_LOCALE, localsFavourite, categoryId, sort, limit, page } =
-    params;
+  const {
+    destinationId,
+    locale = DEFAULT_LOCALE,
+    localsFavourite,
+    categoryId,
+    sort,
+    minPrice,
+    maxPrice,
+    ratingMin,
+    durationMin,
+    durationMax,
+    limit,
+    page,
+  } = params;
   const res = await publicGet<TourListResult>(
     `/tours${buildQuery({
       destinationId,
@@ -50,6 +70,11 @@ export async function getDestinationTours(params: {
       isLocalsFavourite: localsFavourite,
       categoryId,
       sort,
+      minPrice,
+      maxPrice,
+      ratingMin,
+      durationMin,
+      durationMax,
       limit,
       page,
     })}`,
