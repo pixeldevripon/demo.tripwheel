@@ -3,10 +3,8 @@ import { notFound } from 'next/navigation';
 
 import { ToursBreadcrumb } from '@/components/frontend/tours-breadcrumb';
 import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
-import {
-    ToursHeaderSection,
-    ToursListingSection,
-} from '@/components/frontend/tours/tours-page-sections';
+import { ToursHeaderSection } from '@/components/frontend/tours/tours-header-section';
+import { ToursListingSection } from '@/components/frontend/tours/tours-listing-section';
 import {
     ToursHeaderSkeleton,
     ToursListingSkeleton,
