@@ -119,12 +119,21 @@ The backend picks the new password up automatically because compose injects
 - **Redis:** `backend/src/common/utils/redis.util.ts` → `buildRedisConnection()`. If `UPSTASH_REDIS_URL` is set it parses host/port/password from it (TLS when `rediss://`); otherwise it uses `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD`. Used only by **BullMQ** (media upload + notification queues + nightly workers) — there is no separate cache/session Redis.
 - **Validation:** `backend/src/env.validate.ts` runs at boot (called from `main.ts`) and requires *either* `UPSTASH_REDIS_URL` *or* both `REDIS_HOST`+`REDIS_PORT`.
 
-> ⚠️ **Security flag found during analysis:** `backend/.env` is committed with real-looking
-> secrets (`INTERNAL_API_SECRET`, a commented Upstash token), and `backend/.env.example`
-> contains a non-placeholder `DATABASE_URL` and a stray `redis://pixelvega:...` line.
-> `.gitignore`/`.dockerignore` exclude `.env` from the image, but if these were ever
-> committed to git history you should **rotate those secrets** and scrub history. Never
-> reuse the values from these files in production.
+> ✅ **Security cleanup (resolved).** A prior version of this repo had real-looking
+> secrets in tracked files. This has been addressed:
+> - **Keys rotated** — the previously exposed secrets (`INTERNAL_API_SECRET`, the Upstash
+>   token, DB credentials) have been regenerated, so the old values are now dead.
+> - **`backend/.env.test` untracked** — it contained a real `DATABASE_URL`/`BETTER_AUTH_SECRET`;
+>   it's now removed from git (kept locally, covered by `.gitignore`).
+> - **`backend/.env.example` scrubbed** — the non-placeholder `DATABASE_URL` and the stray
+>   `redis://pixelvega:...` line were replaced with placeholders.
+> - **Only `*.example` templates remain tracked.** `backend/.env` (real secrets) was never
+>   tracked; `.gitignore`/`.dockerignore` keep all real env files out of the repo and image.
+>
+> Remaining (optional): the old values still exist in **git history**. Since the keys are
+> rotated they're harmless, but if you ever want a clean history use `git filter-repo`/BFG
+> to purge the old `.env.test` blobs and force-push. Never reuse any value from these files
+> in production — always generate fresh secrets.
 
 ---
 
