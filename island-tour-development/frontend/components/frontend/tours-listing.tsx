@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useToursNavOptional } from '@/components/frontend/tours/tours-browser';
 import { Pagination } from './pagination';
 import { Reveal } from './reveal';
 import { TourCard } from './tour-card';
@@ -39,6 +40,7 @@ export function ToursListing({
 }) {
     const router = useRouter();
     const pathname = usePathname();
+    const nav = useToursNavOptional();
     const [localPage, setLocalPage] = useState(1);
 
     const isUrlDriven = currentPage !== undefined;
@@ -49,11 +51,20 @@ export function ToursListing({
             setLocalPage(next);
             return;
         }
-        // Page 1 drops the param to keep the canonical URL clean. (Filters are
-        // not yet in the URL, so we rebuild from the pathname rather than reading
-        // useSearchParams - which would force a Suspense boundary on every
-        // consumer, including the category page.)
-        router.push(next <= 1 ? pathname : `${pathname}?page=${next}`);
+        // Preserve the current filter query and only swap `page` (page 1 drops
+        // the param to keep the URL canonical). Route through the shared nav
+        // transition when present so the grid dims non-blockingly instead of
+        // freezing; fall back to a plain push outside a <ToursBrowser>.
+        const params = new URLSearchParams(window.location.search);
+        if (next <= 1) params.delete('page');
+        else params.set('page', String(next));
+        const qs = params.toString();
+        const href = qs ? `${pathname}?${qs}` : pathname;
+        if (nav) {
+            nav.startNav(() => router.push(href));
+        } else {
+            router.push(href);
+        }
     }
 
     // Zero filtered results: show the reusable empty screen instead of a blank

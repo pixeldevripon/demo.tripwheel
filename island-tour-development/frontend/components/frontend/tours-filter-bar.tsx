@@ -4,7 +4,7 @@ import { format, parse } from 'date-fns';
 import { Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useOptimistic, useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -14,6 +14,7 @@ import {
     type ToursFilterModalDict,
     ToursFilterModal,
 } from '@/components/frontend/tours-filter-modal';
+import { useToursNav } from '@/components/frontend/tours/tours-browser';
 import {
     buildToursHref,
     DEFAULT_GUESTS,
@@ -132,6 +133,14 @@ export function ToursFilterBar({
 }: ToursFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const { startNav } = useToursNav();
+
+    // Categories render optimistically: a chip toggle flips its own state on
+    // click (inside the nav transition) and only settles back to the server truth
+    // once the filtered page has streamed - so the click never feels stuck while
+    // the round-trip is in flight.
+    const [optimisticCategories, setOptimisticCategories] =
+        useOptimistic(selectedCategories);
 
     // The bar is controlled by the URL-derived props; a change rebuilds the query
     // and navigates (always resetting to page 1), and the server refetches.
@@ -149,13 +158,33 @@ export function ToursFilterBar({
         attributes,
         page: 1,
     };
-    const applyState = (next: Partial<ToursFilterState>) =>
-        router.push(
-            buildToursHref(pathname, { ...currentState, ...next, page: 1 }, priceMax)
+    // Navigate inside a transition (non-blocking); `replace` + `scroll: false`
+    // keeps filter changes out of history and avoids a jump to the top. When the
+    // change touches categories, flip the optimistic set in the same transition.
+    const applyState = (next: Partial<ToursFilterState>) => {
+        const href = buildToursHref(
+            pathname,
+            { ...currentState, ...next, page: 1 },
+            priceMax,
+        );
+        startNav(() => {
+            if (next.categories) setOptimisticCategories(next.categories);
+            router.replace(href, { scroll: false });
+        });
+    };
+    // Prefetch the target page on hover/focus so the result is often already
+    // warm (RSC payload + cached `getDestinationTours`) by the time it's clicked.
+    const prefetchState = (next: Partial<ToursFilterState>) =>
+        router.prefetch(
+            buildToursHref(
+                pathname,
+                { ...currentState, ...next, page: 1 },
+                priceMax,
+            ),
         );
 
     // Selected categories rendered as removable chips in row 2 (multi-select).
-    const chips = categories.filter((c) => selectedCategories.includes(c.slug));
+    const chips = categories.filter((c) => optimisticCategories.includes(c.slug));
 
     // Date - URL-backed. Parse the anchor to a Date for the calendar; selecting a
     // day navigates immediately (single action).
@@ -216,15 +245,19 @@ export function ToursFilterBar({
     const [sortOpen, setSortOpen] = useState(false);
 
     // Multi-select: toggling an active category removes it, otherwise adds it.
+    // Built from the optimistic set so a burst of rapid clicks accumulates
+    // correctly before any server round-trip settles.
     function toggleCategory(cat: FilterCategory) {
-        const next = selectedCategories.includes(cat.slug)
-            ? selectedCategories.filter((s) => s !== cat.slug)
-            : [...selectedCategories, cat.slug];
+        const next = optimisticCategories.includes(cat.slug)
+            ? optimisticCategories.filter((s) => s !== cat.slug)
+            : [...optimisticCategories, cat.slug];
         applyState({ categories: next });
     }
 
     function removeChip(slug: string) {
-        applyState({ categories: selectedCategories.filter((s) => s !== slug) });
+        applyState({
+            categories: optimisticCategories.filter((s) => s !== slug),
+        });
     }
 
     // Clear all applied filters (categories + modal filters + availability); sort
@@ -419,13 +452,21 @@ export function ToursFilterBar({
                 {!lockCategory && (
                     <div className='flex shrink-0 items-center gap-2'>
                         {categories.map((cat) => {
-                            const active = selectedCategories.includes(cat.slug);
+                            const active = optimisticCategories.includes(cat.slug);
+                            // Prefetch the toggled-on result (the common intent).
+                            const prefetch = () =>
+                                !active &&
+                                prefetchState({
+                                    categories: [...optimisticCategories, cat.slug],
+                                });
                             return (
                                 <button
                                     key={cat.slug}
                                     type='button'
                                     aria-pressed={active}
                                     onClick={() => toggleCategory(cat)}
+                                    onPointerEnter={prefetch}
+                                    onFocus={prefetch}
                                     className={`${PILL_BASE} ${
                                         active
                                             ? 'bg-it-heading/10'

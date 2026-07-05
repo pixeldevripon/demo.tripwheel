@@ -4,6 +4,7 @@ import {
     type FilterCategory,
     ToursFilterBar,
 } from '@/components/frontend/tours-filter-bar';
+import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
 import { ToursListing } from '@/components/frontend/tours-listing';
 import { EMPTY_FILTERS } from '@/components/frontend/tours-filter-modal';
 import {
@@ -64,12 +65,20 @@ export async function ToursListingSection({
 }: ListingSectionProps) {
     await connection();
 
-    // Faceted filters (price bounds + attribute sections). Category-scoped on the
-    // category page, destination-wide on All Tours. Cheap cached call; a null
-    // (backend down / unknown) falls back to static bounds + no attribute sections.
-    const facets = lockedCategory
-        ? await getCategoryFacets(destination, lockedCategory.slug)
-        : await getDestinationFacets(destination);
+    // Faceted filters (price bounds + attribute sections) and the destination's
+    // categories are independent cached loaders, so fetch them together instead
+    // of serially. Facets are category-scoped on the category page,
+    // destination-wide on All Tours; a null (backend down / unknown) falls back
+    // to static bounds + no attribute sections. `destinationCategories` is only
+    // needed on All Tours (the category page derives pills from its sub-tree).
+    const [facets, destinationCategories] = await Promise.all([
+        lockedCategory
+            ? getCategoryFacets(destination, lockedCategory.slug)
+            : getDestinationFacets(destination),
+        lockedCategory
+            ? Promise.resolve(null)
+            : getDestinationCategories(destination, locale),
+    ]);
     const priceMax =
         facets?.priceRange?.max != null
             ? Math.max(10, Math.ceil(facets.priceRange.max / 10) * 10)
@@ -106,7 +115,7 @@ export async function ToursListingSection({
         // No sub-categories -> nothing to select, so hide the pills row.
         lockCategory = subs.length === 0;
     } else {
-        const categories = await getDestinationCategories(destination, locale);
+        const categories = destinationCategories ?? [];
         selectedCategories = filters.categories;
         categoryIds =
             filters.categories
@@ -150,44 +159,48 @@ export async function ToursListingSection({
     );
 
     return (
-        <div className='flex flex-col gap-8'>
-            <ToursFilterBar
-                dict={dict.destination.allTours.toolbar}
-                sortDict={dict.destination.allTours.sort}
-                filterDict={dict.destination.allTours.filterModal}
-                hasReviews
-                categories={filterCategories}
-                lockCategory={lockCategory}
-                priceMax={priceMax}
-                attributes={filters.attributes}
-                shown={tours?.length}
-                total={total}
-                selectedCategories={selectedCategories}
-                selectedDate={filters.date ?? undefined}
-                guests={filters.guests}
-                sort={filters.sort}
-                activeFilters={{
-                    ...EMPTY_FILTERS,
-                    price: filters.price,
-                    rating: filters.rating,
-                    durations: filters.durations,
-                    times: filters.timeOfDay,
-                    cancellation: filters.cancellation,
-                    pickupAvailable: filters.pickup,
-                }}
-            />
-
-            <ToursListing
-                tours={tours}
-                dict={dict.destination.listings}
-                pageCount={pageCount}
-                currentPage={page}
-                emptyState={{
-                    title: dict.destination.allTours.emptyState.title,
-                    description: dict.destination.allTours.emptyState.description,
-                    clearLabel: dict.destination.allTours.toolbar.clearAll,
-                }}
-            />
-        </div>
+        <ToursBrowser
+            toolbar={
+                <ToursFilterBar
+                    dict={dict.destination.allTours.toolbar}
+                    sortDict={dict.destination.allTours.sort}
+                    filterDict={dict.destination.allTours.filterModal}
+                    hasReviews
+                    categories={filterCategories}
+                    lockCategory={lockCategory}
+                    priceMax={priceMax}
+                    attributes={filters.attributes}
+                    shown={tours?.length}
+                    total={total}
+                    selectedCategories={selectedCategories}
+                    selectedDate={filters.date ?? undefined}
+                    guests={filters.guests}
+                    sort={filters.sort}
+                    activeFilters={{
+                        ...EMPTY_FILTERS,
+                        price: filters.price,
+                        rating: filters.rating,
+                        durations: filters.durations,
+                        times: filters.timeOfDay,
+                        cancellation: filters.cancellation,
+                        pickupAvailable: filters.pickup,
+                    }}
+                />
+            }
+            results={
+                <ToursListing
+                    tours={tours}
+                    dict={dict.destination.listings}
+                    pageCount={pageCount}
+                    currentPage={page}
+                    emptyState={{
+                        title: dict.destination.allTours.emptyState.title,
+                        description:
+                            dict.destination.allTours.emptyState.description,
+                        clearLabel: dict.destination.allTours.toolbar.clearAll,
+                    }}
+                />
+            }
+        />
     );
 }

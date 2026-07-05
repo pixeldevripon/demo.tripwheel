@@ -327,6 +327,21 @@
         letter-spacing: var(--it-tracking-tightest);
         color: var(--it-ink);
     }
+
+    /* Chrome/Safari paint the autofill background a hard-coded blue-grey and it
+     * cannot be overridden with background-color. Repaint it with an inset
+     * box-shadow the size of the field, and restore the token text colour. The
+     * long transition delay keeps the fill from flashing back on focus. */
+    .frontend-root input:-webkit-autofill,
+    .frontend-root input:-webkit-autofill:hover,
+    .frontend-root input:-webkit-autofill:focus,
+    .frontend-root input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px var(--it-white) inset;
+        box-shadow: 0 0 0 1000px var(--it-white) inset;
+        -webkit-text-fill-color: var(--it-ink);
+        caret-color: var(--it-ink);
+        transition: background-color 5000s ease-in-out 0s;
+    }
 }
 /* ── Scrollbar (frontend pages only) ────────────────────────────────────────
  * Scoped via html:has(.frontend-root) so the dashboard keeps its own scrollbar.
