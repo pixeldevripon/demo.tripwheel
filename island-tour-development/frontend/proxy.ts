@@ -10,6 +10,10 @@ import {
 /**
  * Path prefixes that are NOT part of the localized public site - they must
  * never receive a `/{locale}` prefix (admin panel, auth flows, API, onboarding).
+ *
+ * The login-surfaces group (app/(login)/*) is intentionally locale-free: the
+ * traveler surface resolves locale via Accept-Language/cookie without a prefix
+ * (spec 2.1), and the operator/admin/apply surfaces are single-locale.
  */
 const NON_LOCALIZED_PREFIXES = [
     '/dashboard',
@@ -17,6 +21,10 @@ const NON_LOCALIZED_PREFIXES = [
     '/forgot-password',
     '/reset-password',
     '/onboarding',
+    '/bookings',
+    '/portal',
+    '/staff',
+    '/apply',
     '/api',
 ];
 

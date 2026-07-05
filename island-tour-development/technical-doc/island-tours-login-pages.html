@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<!--
+  Island Tours, Login surfaces: interactive mockup (traveler, operator, admin)
+  Companion to island-tours-login-design-spec.md (proposal v0.1, July 3, 2026)
+  Sample data only. Not generated from the master; where this mockup and the master disagree, the master wins.
+  Design tokens per master section 3. No em-dashes, no emoji, Lucide-style line icons.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Island Tours, Login surfaces (mockup)</title>
+<style>
+  :root{
+    --orange:#E8611A;
+    --orange-soft:#FDF6F0;
+    --ink:#1F2937;
+    --muted:#6B7280;
+    --border:#E5E7EB;
+    --green:#16A34A;
+    --error:#B91C1C;
+    --bg:#FFFFFF;
+    --bg-soft:#FAF9F7;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(31,41,55,.05),0 4px 16px rgba(31,41,55,.07);
+    --shadow-hover:0 2px 4px rgba(31,41,55,.06),0 10px 28px rgba(31,41,55,.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg-soft);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  .icon{width:18px;height:18px;stroke:var(--muted);stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .icon.sm{width:15px;height:15px}
+  .logo{display:flex;flex-direction:column;line-height:.92;font-weight:800;letter-spacing:.06em;font-size:14px;text-transform:uppercase}
+
+  /* ===== generic form bits ===== */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:650;margin-bottom:6px}
+  .field input{width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font:inherit;background:var(--bg);color:var(--ink)}
+  .field input:focus{outline:2px solid var(--orange);outline-offset:0;border-color:transparent}
+  .field .helper{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:64px}
+  .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12.5px;font-weight:650;color:var(--muted);padding:6px 10px;border-radius:8px}
+  .pw-toggle:hover{background:var(--bg-soft);color:var(--ink)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:999px;padding:13px 20px;font-size:15px;font-weight:650;transition:filter .15s}
+  .btn.primary{background:var(--orange);color:#fff}
+  .btn.primary:hover{filter:brightness(.95)}
+  .btn.white{background:#fff;border:1px solid var(--border);color:var(--ink)}
+  .btn.white:hover{box-shadow:var(--shadow)}
+  .form-error{display:none;align-items:flex-start;gap:8px;background:#FEF2F2;border:1px solid #FECACA;color:var(--error);border-radius:10px;padding:10px 13px;font-size:13.5px;margin-bottom:16px}
+  .form-error.on{display:flex}
+  .form-error .icon{stroke:var(--error);width:16px;height:16px;margin-top:2px}
+  .quiet-link{font-size:13.5px;font-weight:600;color:var(--muted)}
+  .quiet-link:hover{color:var(--orange)}
+  .center{text-align:center}
+  .success-panel{display:none;text-align:center;padding:8px 0 4px}
+  .success-panel.on{display:block}
+  .success-icon{width:52px;height:52px;border-radius:999px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+  .success-icon .icon{stroke:var(--green);width:24px;height:24px}
+  .mock-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--border);border-radius:6px;padding:2px 8px;margin-top:10px}
+
+  /* ===== TRAVELER ===== */
+  .surface{display:none;min-height:100vh}
+  .surface.on{display:block}
+  .t-top{display:flex;align-items:center;justify-content:space-between;padding:20px 28px}
+  .t-wa{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:var(--bg)}
+  .t-wa:hover{box-shadow:var(--shadow)}
+  .t-wrap{display:flex;justify-content:center;padding:5vh 20px 40px}
+  .t-card{width:100%;max-width:440px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 30px 28px}
+  .t-card h1{font-size:26px;font-weight:650;letter-spacing:-.01em}
+  .t-card .sub{color:var(--muted);font-size:14.5px;margin:8px 0 24px}
+  .t-links{display:flex;justify-content:center;margin-top:18px}
+  .t-cross{display:flex;justify-content:center;margin-top:26px}
+  .t-foot{display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 20px 34px;color:var(--muted);font-size:12.5px}
+  .t-foot .signoff{font-weight:800;font-size:15px;color:var(--ink)}
+  .t-foot .legal{display:flex;gap:14px}
+  .t-foot .legal a:hover{color:var(--orange)}
+  .panel{display:none}
+  .panel.on{display:block}
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);margin-bottom:14px}
+  .back-link:hover{color:var(--ink)}
+  .info-note{display:flex;gap:8px;background:var(--bg-soft);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--muted);margin-top:16px}
+  .info-note .icon{width:16px;height:16px;margin-top:2px}
+
+  /* ===== OPERATOR ===== */
+  .o-grid{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}
+  .o-brand{position:relative;background:linear-gradient(155deg,#2E86AB 0%,#1B5E7E 55%,#123F55 100%);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:36px 40px}
+  .o-brand::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 60% at 15% 0%,rgba(255,255,255,.14),transparent 60%)}
+  .o-brand>*{position:relative;z-index:1}
+  .o-brand .logo{font-size:16px}
+  .o-brand .portal-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75;margin-top:6px}
+  .o-brand-mid h2{font-size:26px;font-weight:650;letter-spacing:-.01em;max-width:380px;line-height:1.3}
+  .o-brand-mid p{opacity:.85;margin-top:10px;max-width:360px;font-size:14.5px}
+  .o-phish{display:flex;gap:9px;align-items:flex-start;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:12px 14px;font-size:13px;max-width:420px}
+  .o-phish .icon{stroke:#fff;width:17px;height:17px;margin-top:2px}
+  .o-form-side{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px;background:var(--bg-soft)}
+  .o-card{width:100%;max-width:400px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:30px 28px 26px}
+  .o-card h1{font-size:23px;font-weight:650}
+  .o-card .sub{color:var(--muted);font-size:14px;margin:6px 0 22px}
+  .o-row{display:flex;align-items:center;justify-content:space-between;margin:2px 0 18px}
+  .o-links{display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:20px}
+  .o-phish-m{display:none;margin-top:18px;max-width:400px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E3A5F;border-radius:12px;padding:11px 14px;font-size:12.5px}
+  .code-input{display:flex;justify-content:center;margin:6px 0 4px}
+  .code-input input{width:200px;text-align:center;font-size:24px;letter-spacing:.35em;font-weight:650;border:1px solid var(--border);border-radius:12px;padding:12px 8px 12px 18px;font-variant-numeric:tabular-nums}
+  .code-input input:focus{outline:2px solid var(--orange);border-color:transparent}
+  .twofa-links{display:flex;flex-direction:column;gap:9px;align-items:center;margin-top:16px}
+  .remember{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);margin:16px 0}
+  .remember input{accent-color:var(--orange);width:16px;height:16px}
+  .resend{font-size:13px;color:var(--muted);text-align:center;margin-top:14px}
+  .resend button{font-weight:650;color:var(--muted)}
+  .resend button.ready{color:var(--orange)}
+  .wa-sent{display:none;align-items:center;gap:8px;justify-content:center;font-size:13px;color:var(--green);font-weight:600;margin-top:10px}
+  .wa-sent.on{display:flex}
+
+  /* ===== ADMIN ===== */
+  .a-wrap{min-height:100vh;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+  .a-logo{color:#fff;opacity:.85;margin-bottom:26px}
+  .a-card{width:100%;max-width:380px;background:var(--bg);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.4);padding:30px 28px 26px;text-align:center}
+  .a-card h1{font-size:19px;font-weight:650;margin-bottom:20px}
+  .g-mark{width:18px;height:18px;flex:none}
+  .a-fine{font-size:12px;color:var(--muted);margin-top:16px;line-height:1.5}
+  .a-denied{display:none;align-items:flex-start;gap:8px;text-align:left;background:#FEF2F2;border:1px solid #FECACA;color:var(--error);border-radius:10px;padding:10px 13px;font-size:13px;margin-top:16px}
+  .a-denied.on{display:flex}
+  .a-denied .icon{stroke:var(--error);width:16px;height:16px;margin-top:2px}
+  .a-note{color:rgba(255,255,255,.68);font-size:12px;margin-top:22px;text-align:center;max-width:340px}
+
+  /* ===== MOCKUP CHROME ===== */
+  .mock-bar{position:fixed;bottom:20px;right:20px;z-index:90;background:#111827;color:#fff;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.35);flex-wrap:wrap}
+  .mock-bar .tag{opacity:.6;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10.5px;margin-right:2px}
+  .mock-btn{border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:600;color:#fff}
+  .mock-btn.on{background:#fff;color:#111827}
+  .notes-panel{position:fixed;top:20px;right:20px;width:330px;max-height:calc(100vh - 110px);overflow:auto;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-hover);padding:18px;z-index:85;display:none}
+  body.notes .notes-panel{display:block}
+  .notes-panel h4{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .note-item{display:flex;gap:10px;font-size:12.5px;line-height:1.5;padding:7px 0;border-top:1px solid var(--bg-soft)}
+  .note-num,.note-chip{width:19px;height:19px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .note-chip{display:none;vertical-align:middle;margin-right:7px;box-shadow:0 0 0 3px rgba(232,97,26,.18)}
+  body.notes .note-chip{display:inline-flex}
+  body.notes [data-note-host]{outline:1.5px dashed rgba(232,97,26,.5);outline-offset:4px;border-radius:4px}
+
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  @media (max-width:860px){
+    .o-grid{grid-template-columns:1fr}
+    .o-brand{display:none}
+    .o-phish-m{display:block}
+    .notes-panel{width:calc(100vw - 40px)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TRAVELER ============ -->
+<div class="surface on" id="sTraveler">
+  <div class="t-top">
+    <a class="logo" href="#" aria-label="Island Tours home"><span>Island</span><span>Tours</span></a>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="t-wa" href="#" aria-label="Change language">
+        <svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+        EN
+      </a>
+      <a class="t-wa" href="#" data-note-host><span class="note-chip">2</span>
+        <svg class="icon sm" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.4A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+        WhatsApp us
+      </a>
+    </div>
+  </div>
+  <div class="t-wrap">
+    <div class="t-card" data-note-host><span class="note-chip">1</span>
+
+      <!-- login panel -->
+      <div class="panel on" id="tLogin">
+        <h1>Your bookings</h1>
+        <p class="sub">Log in with the email you booked with and your booking reference.</p>
+        <div class="form-error" id="tError" role="alert">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+          <span>That email and reference don't match. Check your confirmation email, or <a href="#" style="text-decoration:underline">WhatsApp us</a> and we'll fix it.</span>
+        </div>
+        <form id="tForm" data-note-host><span class="note-chip">3</span>
+          <div class="field">
+            <label for="tEmail">Email</label>
+            <input id="tEmail" type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="tError">
+          </div>
+          <div class="field">
+            <label for="tRef">Booking reference</label>
+            <input id="tRef" type="text" name="reference" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="IT-2026-K3M9P" aria-describedby="tError">
+            <div class="helper">Top of your confirmation email.</div>
+          </div>
+          <button class="btn primary" type="submit">Show my bookings</button>
+        </form>
+        <div class="t-links"><button class="quiet-link" id="tLostLink">Lost your reference?</button></div>
+        <div class="success-panel" id="tSuccess">
+          <div class="success-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></div>
+          <strong>Logged in.</strong>
+          <p class="sub" style="margin:6px 0 0">The bookings list opens here: bookings, invoices, and your saved tours.</p>
+          <span class="mock-tag">Mockup endpoint</span>
+        </div>
+      </div>
+
+      <!-- lost reference panel -->
+      <div class="panel" id="tLost" data-note-host><span class="note-chip">4</span>
+        <button class="back-link" id="tBack">
+          <svg class="icon sm" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>
+          Back
+        </button>
+        <h1>We'll email it to you</h1>
+        <p class="sub">Enter the email you booked with.</p>
+        <form id="tLostForm">
+          <div class="field">
+            <label for="tLostEmail">Email</label>
+            <input id="tLostEmail" type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+          </div>
+          <button class="btn primary" type="submit">Email me my reference</button>
+        </form>
+        <div class="info-note" id="tLostDone" style="display:none">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+          If that email has bookings with us, the reference is on its way.
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="t-cross" data-note-host><span class="note-chip">5</span>
+    <a class="quiet-link" href="#" id="toOperator">Tour operator? Log in to the operator portal →</a>
+  </div>
+  <div class="t-foot">
+    <div class="signoff">Built by Islanders.</div>
+    <div class="legal"><a href="#">Terms</a><a href="#">Privacy Policy</a><a href="#">Help</a></div>
+  </div>
+</div>
+
+<!-- ============ OPERATOR ============ -->
+<div class="surface" id="sOperator">
+  <div class="o-grid">
+    <div class="o-brand">
+      <div>
+        <div class="logo"><span>Island</span><span>Tours</span></div>
+        <div class="portal-tag">Operator portal</div>
+      </div>
+      <div class="o-brand-mid">
+        <h2>Your tours, availability, and bookings. One place, every day.</h2>
+        <p>Close a date in one tap, keep your content current, and see every booking the moment it lands.</p>
+      </div>
+      <div class="o-phish" data-note-host><span class="note-chip">9</span>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6Z"/></svg>
+        <span>We'll never ask for your password or codes by email, text, or phone.</span>
+      </div>
+    </div>
+    <div class="o-form-side">
+      <div class="o-card" data-note-host><span class="note-chip">6</span>
+
+        <!-- step 1: credentials -->
+        <div class="panel on" id="oStep1">
+          <h1>Operator portal</h1>
+          <p class="sub">Manage your tours, availability, and bookings.</p>
+          <div class="form-error" id="oError1" role="alert">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+            <span>That email and password don't match.</span>
+          </div>
+          <form id="oForm1">
+            <div class="field">
+              <label for="oEmail">Email</label>
+              <input id="oEmail" type="email" name="email" autocomplete="username" inputmode="email" placeholder="you@yourcompany.com">
+            </div>
+            <div class="field">
+              <label for="oPw">Password</label>
+              <div class="pw-wrap">
+                <input id="oPw" type="password" name="password" autocomplete="current-password">
+                <button class="pw-toggle" type="button" id="oPwToggle" aria-live="polite">Show</button>
+              </div>
+            </div>
+            <div class="o-row">
+              <span></span>
+              <a class="quiet-link" href="#" id="oForgot">Forgot your password?</a>
+            </div>
+            <button class="btn primary" type="submit">Log in</button>
+          </form>
+          <div class="info-note" id="oResetDone" style="display:none">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+            If that email has an operator account, a reset link is on its way.
+          </div>
+          <div class="o-links">
+            <a class="quiet-link" href="#">New here? Apply to list your tours →</a>
+            <a class="quiet-link" href="#" id="toTraveler">Looking for your booking? Go to island.tours/bookings →</a>
+          </div>
+        </div>
+
+        <!-- step 2: 2FA -->
+        <div class="panel" id="oStep2" data-note-host><span class="note-chip">7</span>
+          <button class="back-link" id="oBack">
+            <svg class="icon sm" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>
+            Back
+          </button>
+          <h1>Enter your code</h1>
+          <p class="sub" id="o2faSub">The 6-digit code from your authenticator app.</p>
+          <div class="form-error" id="oError2" role="alert">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+            <span id="oError2Text">That code didn't work. Your app makes a new one every 30 seconds, try the newest.</span>
+          </div>
+          <form id="oForm2" novalidate>
+            <div class="field" style="margin-bottom:6px">
+              <label for="oCode" id="oCodeLabel" style="text-align:center">6-digit code</label>
+            </div>
+            <div class="code-input">
+              <input id="oCode" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="\d{6}" maxlength="6" placeholder="000000" aria-describedby="oError2">
+            </div>
+            <label class="remember" data-note-host><span class="note-chip">8</span>
+              <input type="checkbox"> Remember this device for 30 days
+            </label>
+            <button class="btn primary" type="submit">Verify</button>
+          </form>
+          <div class="twofa-links">
+            <button class="quiet-link" id="oWa">Send the code to WhatsApp instead <span class="mock-tag" style="margin:0 0 0 4px">v1.1</span></button>
+            <button class="quiet-link" id="oBackup">Use a backup code</button>
+          </div>
+          <div class="resend" id="oResendWrap" style="display:none" aria-live="polite">
+            <button id="oResend" disabled>Send a new code in <span id="oTimer">30</span>s</button>
+          </div>
+          <div class="success-panel" id="oSuccess">
+            <div class="success-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></div>
+            <strong>Logged in.</strong>
+            <p class="sub" style="margin:6px 0 0">The portal opens on the availability screen with one-tap Close today.</p>
+            <span class="mock-tag">Mockup endpoint</span>
+          </div>
+        </div>
+
+      </div>
+      <div class="o-phish-m">We'll never ask for your password or codes by email, text, or phone.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN ============ -->
+<div class="surface" id="sAdmin">
+  <div class="a-wrap">
+    <div class="a-logo logo"><span>Island</span><span>Tours</span></div>
+    <div class="a-card" data-note-host><span class="note-chip">10</span>
+      <h1>Staff access</h1>
+      <button class="btn white" id="aGoogle">
+        <svg class="g-mark" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.7 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.5-4.1 7-10.2 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.6a14.5 14.5 0 0 1 0-9.2l-7.9-6.2a24 24 0 0 0 0 21.6l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.6l-7.6-5.9c-2.1 1.4-4.7 2.3-7.6 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+      <div class="a-denied" id="aDenied" role="alert" data-note-host><span class="note-chip">11</span>
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+        <span>This Google account doesn't have staff access. Ask an admin to add you.</span>
+      </div>
+      <div class="success-panel" id="aSuccess">
+        <div class="success-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></div>
+        <strong>Logged in.</strong>
+        <p style="font-size:13px;color:var(--muted);margin-top:6px">Role and domain checked server-side, session 12 hours.</p>
+        <span class="mock-tag">Mockup endpoint</span>
+      </div>
+      <p class="a-fine">Island Tours staff only. Every login and action is logged.</p>
+    </div>
+    <p class="a-note" data-note-host><span class="note-chip">12</span>admin.island.tours · linked from nowhere, noindex, authorization always server-side</p>
+  </div>
+</div>
+
+<!-- ============ MOCKUP CHROME ============ -->
+<div class="mock-bar">
+  <span class="tag">Mockup</span>
+  <button class="mock-btn on" id="mTraveler">Traveler</button>
+  <button class="mock-btn" id="mOperator">Operator</button>
+  <button class="mock-btn" id="mAdmin">Admin</button>
+  <button class="mock-btn" id="mNotes">Notes</button>
+</div>
+
+<aside class="notes-panel" aria-label="Spec notes">
+  <h4>Spec notes (proposal v0.1)</h4>
+  <div class="note-item"><span class="note-num">1</span><div>Traveler login implements master 6.4 verbatim: email plus booking reference, no passwords, no sign-up, rate-limited. Takeover chrome (checkout family): no nav, no distractions. Spec 2.</div></div>
+  <div class="note-item"><span class="note-num">2</span><div>WhatsApp is the human fallback on every surface ("Customer support" is a banned phrase). Lockout copy routes here too. Spec 1.7, 2.3.</div></div>
+  <div class="note-item"><span class="note-num">3</span><div>Form mechanics bundle: labels above fields, autocomplete attributes, inputmode, paste allowed. Error is generic on purpose: no account enumeration, identical message, status, and timing. Try a submit to see it; second try logs in (demo). Spec 1.1, 1.3, 2.4.</div></div>
+  <div class="note-item"><span class="note-num">4</span><div>Lost-reference recovery mirrors the airline and Expedia convention. The response is always positive ("if that email has bookings...") so the flow leaks nothing. Spec 2.3.</div></div>
+  <div class="note-item"><span class="note-num">5</span><div>Wrong-door routing: one quiet cross-link each way between traveler and operator surfaces, separate URLs per OTA convention. Admin is linked from nowhere. Spec 5.</div></div>
+  <div class="note-item"><span class="note-num">6</span><div>Operator portal on operators.island.tours: per-person seats, roles, owner-gated payouts. Email plus password (NIST rules: no composition rules, no rotation, paste and managers allowed) then mandatory 2FA. Spec 3.1, 3.2.</div></div>
+  <div class="note-item"><span class="note-num">7</span><div>2FA v1: authenticator app plus backup codes, white-glove enrolled at onboarding. WhatsApp code fallback is v1.1 (Meta template approval; shown here as demo). No SMS anywhere (NIST restricted channel, pumping fraud, island deliverability), no email codes. Codes: 5 attempts max, WhatsApp codes valid 10 minutes. Enrollment screens (QR, manual key, backup codes) are specced in 3.5. Demo: submit credentials, then any 6 digits verify. Spec 3.2.</div></div>
+  <div class="note-item"><span class="note-num">8</span><div>Daily-use friction solved with device trust (30 days) plus a 14-day rolling session, never with fewer factors. FareHarbor and Booking.com pattern. Spec 3.2.5.</div></div>
+  <div class="note-item"><span class="note-num">9</span><div>Anti-phishing line, adapted from the 6.5 email anti-fraud line: operators learn the same sentence travelers get. Pinned on the brand panel and repeated in the portal footer. The Booking.com partner-phishing economy is the cautionary tale. Spec 3.2.8.</div></div>
+  <div class="note-item"><span class="note-num">10</span><div>Staff: Google Workspace SSO only, no app-level passwords. MFA and passkeys enforced once, at the IdP. hd claim plus allowlist verified server-side. Demo: first click shows the denied state, second logs in. Spec 4.1.</div></div>
+  <div class="note-item"><span class="note-num">11</span><div>The denied message may be specific: identity is already verified by Google at this point, so no enumeration risk. Spec 4.2.</div></div>
+  <div class="note-item"><span class="note-num">12</span><div>Obscurity is a courtesy, not a control: the subdomain isolates cookies and CSP, authorization lives in RLS and the allowlist. Every login and action writes an audit line. Spec 4.1, 1.6.</div></div>
+</aside>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){return document.getElementById(id);}
+
+  /* surface switching */
+  var surfaces = {mTraveler:"sTraveler", mOperator:"sOperator", mAdmin:"sAdmin"};
+  Object.keys(surfaces).forEach(function(btnId){
+    $(btnId).addEventListener("click", function(){ setSurface(btnId); });
+  });
+  function setSurface(btnId){
+    Object.keys(surfaces).forEach(function(b){
+      $(b).classList.toggle("on", b === btnId);
+      $(surfaces[b]).classList.toggle("on", b === btnId);
+    });
+    window.scrollTo({top:0});
+  }
+  $("toOperator").addEventListener("click", function(e){ e.preventDefault(); setSurface("mOperator"); });
+  $("toTraveler").addEventListener("click", function(e){ e.preventDefault(); setSurface("mTraveler"); });
+  $("mNotes").addEventListener("click", function(){
+    document.body.classList.toggle("notes");
+    this.classList.toggle("on");
+  });
+
+  /* traveler: first submit = generic error demo, second = success */
+  var tTried = false;
+  $("tForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!tTried){ tTried = true; $("tError").classList.add("on"); return; }
+    $("tError").classList.remove("on");
+    $("tForm").style.display = "none";
+    document.querySelector("#tLogin .sub").style.display = "none";
+    document.querySelector("#tLogin .t-links") && (document.querySelector("#tLogin .t-links").style.display = "none");
+    var links = document.querySelectorAll("#tLogin .t-links, #tLogin .quiet-link");
+    links.forEach(function(el){ el.style.display = "none"; });
+    $("tSuccess").classList.add("on");
+  });
+  $("tLostLink").addEventListener("click", function(){
+    $("tLogin").classList.remove("on"); $("tLost").classList.add("on");
+  });
+  $("tBack").addEventListener("click", function(){
+    $("tLost").classList.remove("on"); $("tLogin").classList.add("on");
+  });
+  $("tLostForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    $("tLostDone").style.display = "flex";
+  });
+
+  /* operator: step 1 -> step 2 -> success; per-channel modes; resend timer only for WhatsApp */
+  var timerId = null;
+  var oMode = "totp";
+  var errTexts = {
+    totp: "That code didn't work. Your app makes a new one every 30 seconds, try the newest.",
+    wa: "That code didn't work. WhatsApp codes are valid for 10 minutes.",
+    backup: "That backup code didn't work. Each one works once."
+  };
+  $("oForm1").addEventListener("submit", function(e){
+    e.preventDefault();
+    $("oError1").classList.remove("on");
+    $("oStep1").classList.remove("on");
+    $("oStep2").classList.add("on");
+    $("oCode").focus();
+  });
+  $("oForgot").addEventListener("click", function(e){
+    e.preventDefault();
+    $("oResetDone").style.display = "flex";
+  });
+  $("oBack").addEventListener("click", function(){
+    $("oStep2").classList.remove("on");
+    $("oStep1").classList.add("on");
+    stopTimer();
+  });
+  $("oPwToggle").addEventListener("click", function(){
+    var pw = $("oPw");
+    var showing = pw.type === "text";
+    pw.type = showing ? "password" : "text";
+    this.textContent = showing ? "Show" : "Hide";
+  });
+  $("oForm2").addEventListener("submit", function(e){
+    e.preventDefault();
+    var raw = $("oCode").value;
+    var ok = oMode === "backup" ? raw.replace(/[^A-Za-z0-9]/g,"").length >= 8 : raw.replace(/\D/g,"").length >= 6;
+    if(!ok){
+      $("oError2Text").textContent = errTexts[oMode];
+      $("oError2").classList.add("on");
+      return;
+    }
+    $("oError2").classList.remove("on");
+    $("oForm2").style.display = "none";
+    document.querySelector("#oStep2 .twofa-links").style.display = "none";
+    $("oResendWrap").style.display = "none";
+    $("o2faSub").style.display = "none";
+    $("oSuccess").classList.add("on");
+    stopTimer();
+  });
+  $("oWa").addEventListener("click", function(){
+    oMode = "wa";
+    $("o2faSub").textContent = "Code sent to the WhatsApp number ending in 43.";
+    $("oCodeLabel").textContent = "6-digit code";
+    $("oCode").placeholder = "000000"; $("oCode").maxLength = 6; $("oCode").value = "";
+    $("oError2").classList.remove("on");
+    $("oResendWrap").style.display = "block";
+    startTimer();
+    $("oCode").focus();
+  });
+  $("oBackup").addEventListener("click", function(){
+    oMode = "backup";
+    $("o2faSub").textContent = "Enter one of your backup codes.";
+    $("oCodeLabel").textContent = "Backup code";
+    $("oCode").placeholder = "XXXX-XXXX"; $("oCode").maxLength = 9; $("oCode").value = "";
+    $("oError2").classList.remove("on");
+    $("oResendWrap").style.display = "none";
+    stopTimer();
+    $("oCode").focus();
+  });
+  function startTimer(){
+    stopTimer();
+    var s = 30;
+    var btn = $("oResend"), t = $("oTimer");
+    btn.disabled = true; btn.classList.remove("ready");
+    btn.innerHTML = 'Send a new code in <span id="oTimer">30</span>s';
+    t = $("oTimer");
+    timerId = setInterval(function(){
+      s--;
+      if(s <= 0){
+        stopTimer();
+        btn.disabled = false;
+        btn.classList.add("ready");
+        btn.textContent = "Send a new code";
+        return;
+      }
+      $("oTimer") && ($("oTimer").textContent = s);
+    }, 1000);
+  }
+  function stopTimer(){ if(timerId){ clearInterval(timerId); timerId = null; } }
+
+  /* admin: first click denied demo, second success */
+  var aTried = false;
+  $("aGoogle").addEventListener("click", function(){
+    if(!aTried){ aTried = true; $("aDenied").classList.add("on"); return; }
+    $("aDenied").classList.remove("on");
+    $("aGoogle").style.display = "none";
+    $("aSuccess").classList.add("on");
+  });
+})();
+</script>
+</body>
+</html>
