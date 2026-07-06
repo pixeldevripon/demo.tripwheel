@@ -1,20 +1,17 @@
-import { Suspense } from 'react';
+import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
 import { categoriesApi } from '@/lib/api/categories';
 import { getDestinationBySlug } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
-import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
+import { Suspense } from 'react';
 import { CategoryAbout } from './category-about';
-import { CategoryFilterBar } from './category-filter-bar';
-import { CategoryTrustStrip } from './category-trust-strip';
 import {
     CategoryYouMightLike,
     type RelatedCategory,
 } from './category-you-might-like';
 import { FaqSection } from './faq-section';
-import { Reveal } from './reveal';
 import type { TourListing } from './tour-card';
 import { ToursBreadcrumb } from './tours-breadcrumb';
 import { type FilterCategory } from './tours-filter-bar';
@@ -346,17 +343,17 @@ export async function CategoryPage({
 
             {/* ── Big section (Figma 47171:1499): trust strip + a second
                 "active tours" header/filter/listing block. ── */}
-            <section className='it-section max-md:pt-8! pb-8! md:pb-14! bg-it-white'>
+            {/*      <section className='it-section max-md:pt-8! pb-8! md:pb-14! bg-it-white'>
                 <div className='it-container'>
-                    {/* 56px between the header/filter block and the grid. */}
+                   
                     <div className='flex flex-col gap-14'>
-                        {/* 40px between the trust strip and the header/filter. */}
+                        
                         <div className='flex flex-col max-md:-mb-4 gap-10'>
                             <CategoryTrustStrip
                                 dict={dict.destination.categoryTrust}
                             />
 
-                            {/* Header + filter toolbar (Figma 2147227767) - 24px mobile / 40px md+. */}
+                         
                             <Reveal className='flex flex-col gap-6 md:gap-10'>
                                 <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                     Boat tours active
@@ -369,7 +366,7 @@ export async function CategoryPage({
                             </Reveal>
                         </div>
 
-                        {/* Listing grid - 6 cards, no pagination (Figma 2147227769). */}
+                       
                         <ToursListing
                             tours={tours}
                             dict={dict.destination.listings}
@@ -377,7 +374,7 @@ export async function CategoryPage({
                         />
                     </div>
                 </div>
-            </section>
+            </section> */}
 
             {/* Editorial "about" section (Figma 47171:5647). */}
             <CategoryAbout
@@ -392,5 +389,4 @@ export async function CategoryPage({
         </>
     );
 }
-
 
