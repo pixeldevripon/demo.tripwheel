@@ -55,8 +55,6 @@ const categorySchema = z.object({
     .string()
     .optional()
     .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= 0), 'Must be 0 or greater'),
-  metaTitleTemplate: z.string().optional(),
-  metaDescriptionTemplate: z.string().optional(),
   parentCategoryId: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -95,8 +93,6 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
       description: category?.description ?? '',
       icon: category?.icon ?? '',
       sortOrder: category?.sortOrder?.toString() ?? '0',
-      metaTitleTemplate: category?.metaTitleTemplate ?? '',
-      metaDescriptionTemplate: category?.metaDescriptionTemplate ?? '',
       parentCategoryId: category?.parentCategoryId ?? '',
       isActive: category?.isActive ?? true,
     },
@@ -133,8 +129,6 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             description: values.description || null,
             icon: values.icon || null,
             sortOrder: values.sortOrder ? Number(values.sortOrder) : 0,
-            metaTitleTemplate: values.metaTitleTemplate || null,
-            metaDescriptionTemplate: values.metaDescriptionTemplate || null,
             parentCategoryId: values.parentCategoryId || null,
             isActive: values.isActive,
           },
@@ -160,8 +154,6 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           description: values.description || null,
           icon: values.icon || null,
           sortOrder: values.sortOrder ? Number(values.sortOrder) : 0,
-          metaTitleTemplate: values.metaTitleTemplate || null,
-          metaDescriptionTemplate: values.metaDescriptionTemplate || null,
           parentCategoryId: values.parentCategoryId || null,
         },
         {
@@ -257,18 +249,6 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 <FieldError>{errors.sortOrder?.message}</FieldError>
               </Field>
             </div>
-
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meta Title Template</Label>
-              <Input {...register('metaTitleTemplate')} placeholder="{category} in {destination}" />
-              <FieldDescription>Tokens: {'{category}'}, {'{destination}'}.</FieldDescription>
-            </Field>
-
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meta Description Template</Label>
-              <Textarea {...register('metaDescriptionTemplate')} rows={2} placeholder="Browse {category} in {destination}…" />
-              <FieldDescription>Tokens: {'{category}'}, {'{destination}'}.</FieldDescription>
-            </Field>
 
             {/* Parent is chosen only at CREATE time: a brand-new category can be
                 made a filter-only sub-category, but an existing top-level category

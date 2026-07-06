@@ -130,18 +130,7 @@ test.describe('Categories - new fields on create form', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 4. Meta templates
-  // -------------------------------------------------------------------------
-  test('Meta Title Template input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="metaTitleTemplate"]')).toBeVisible();
-  });
-
-  test('Meta Description Template textarea is visible', async ({ page }) => {
-    await expect(page.locator('textarea[name="metaDescriptionTemplate"]')).toBeVisible();
-  });
-
-  // -------------------------------------------------------------------------
-  // 5. Parent Category select
+  // 4. Parent Category select
   // -------------------------------------------------------------------------
   test('Parent Category select is rendered', async ({ page }) => {
     await page.waitForLoadState('networkidle');
@@ -150,7 +139,7 @@ test.describe('Categories - new fields on create form', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 6. Regression: slug auto-generates from name
+  // 5. Regression: slug auto-generates from name
   // -------------------------------------------------------------------------
   test('slug auto-generates from name', async ({ page }) => {
     await page.locator('input[name="name"]').fill('Water Sports');
@@ -158,7 +147,7 @@ test.describe('Categories - new fields on create form', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 7. Happy path: all new fields can be filled and form submits without error
+  // 6. Happy path: all new fields can be filled and form submits without error
   // -------------------------------------------------------------------------
   test('form with name + description + sort order submits via POST and navigates to edit', async ({ page }) => {
     await page.route('**/api/v1/categories', (route) => {

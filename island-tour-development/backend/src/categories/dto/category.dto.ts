@@ -32,6 +32,13 @@ export class CategoryResponseDto {
   heroImage!: string | null;
 
   @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours-og.jpg',
+    nullable: true,
+    description: 'Open Graph image for social sharing.',
+  })
+  ogImage!: string | null;
+
+  @ApiPropertyOptional({
     example: 'Catamaran sailing, snorkelling and island cruises.',
     nullable: true,
   })
@@ -42,18 +49,6 @@ export class CategoryResponseDto {
 
   @ApiProperty({ example: 1 })
   sortOrder!: number;
-
-  @ApiPropertyOptional({
-    example: '{category} in {destination}',
-    nullable: true,
-  })
-  metaTitleTemplate!: string | null;
-
-  @ApiPropertyOptional({
-    example: 'Book {category} in {destination}. Instant confirmation.',
-    nullable: true,
-  })
-  metaDescriptionTemplate!: string | null;
 
   @ApiPropertyOptional({ example: null, nullable: true })
   parentCategoryId!: string | null;
@@ -401,6 +396,15 @@ export class CreateCategoryDto {
   @IsString()
   heroImage?: string | null;
 
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours-og.jpg',
+    nullable: true,
+    description: 'Open Graph image for social sharing.',
+  })
+  @IsOptional()
+  @IsString()
+  ogImage?: string | null;
+
   // ── V2 fields ──────────────────────────────────────────────────────────────
   @ApiPropertyOptional({
     example: 'Catamaran sailing, snorkelling and island cruises.',
@@ -425,18 +429,6 @@ export class CreateCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
-
-  @ApiPropertyOptional({ example: '{category} in {destination}' })
-  @IsOptional()
-  @IsString()
-  metaTitleTemplate?: string;
-
-  @ApiPropertyOptional({
-    example: 'Book {category} in {destination}. Instant confirmation.',
-  })
-  @IsOptional()
-  @IsString()
-  metaDescriptionTemplate?: string;
 
   @ApiPropertyOptional({
     description:
@@ -473,6 +465,15 @@ export class UpdateCategoryDto {
   heroImage?: string | null;
 
   @ApiPropertyOptional({
+    example: 'https://cdn.example.com/boat-tours-og.jpg',
+    nullable: true,
+    description: 'Open Graph image for social sharing.',
+  })
+  @IsOptional()
+  @IsString()
+  ogImage?: string | null;
+
+  @ApiPropertyOptional({
     example: 'Catamaran sailing, snorkelling and island cruises.',
   })
   @IsOptional()
@@ -489,18 +490,6 @@ export class UpdateCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
-
-  @ApiPropertyOptional({ example: '{category} in {destination}' })
-  @IsOptional()
-  @IsString()
-  metaTitleTemplate?: string;
-
-  @ApiPropertyOptional({
-    example: 'Book {category} in {destination}. Instant confirmation.',
-  })
-  @IsOptional()
-  @IsString()
-  metaDescriptionTemplate?: string;
 
   @ApiPropertyOptional({
     description:

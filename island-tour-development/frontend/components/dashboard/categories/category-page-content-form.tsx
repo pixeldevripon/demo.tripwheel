@@ -7,11 +7,10 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldDescription, FieldError } from '@/components/ui/field';
+import { Field, FieldDescription } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useCategoryPageContent,
@@ -19,10 +18,11 @@ import {
 } from '@/hooks/categories/use-categories';
 import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 
+// metaTitle / metaDescription are managed in the dedicated SEO tab; this form
+// only edits the editorial aboutText (the upsert merges field-by-field, so the
+// meta fields are untouched by saves here).
 const pageContentSchema = z.object({
   aboutText: z.string().optional().or(z.literal('')),
-  metaTitle: z.string().optional().or(z.literal('')),
-  metaDescription: z.string().max(160, 'Meta description must be 160 characters or fewer').optional().or(z.literal('')),
 });
 
 type PageContentFormValues = z.infer<typeof pageContentSchema>;
@@ -36,30 +36,14 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
   const { data: content, isLoading } = useCategoryPageContent(categoryId, locale);
   const { mutate: upsert, isPending } = useUpsertCategoryPageContent();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<PageContentFormValues>({
+  const { register, handleSubmit, reset } = useForm<PageContentFormValues>({
     resolver: zodResolver(pageContentSchema),
-    defaultValues: {
-      aboutText: '',
-      metaTitle: '',
-      metaDescription: '',
-    },
+    defaultValues: { aboutText: '' },
   });
-
-  const metaDescValue = watch('metaDescription') ?? '';
 
   useEffect(() => {
     if (content) {
-      reset({
-        aboutText: content.aboutText ?? '',
-        metaTitle: content.metaTitle ?? '',
-        metaDescription: content.metaDescription ?? '',
-      });
+      reset({ aboutText: content.aboutText ?? '' });
     }
   }, [content, reset]);
 
@@ -68,11 +52,7 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
       {
         id: categoryId,
         locale,
-        payload: {
-          aboutText: values.aboutText || null,
-          metaTitle: values.metaTitle || null,
-          metaDescription: values.metaDescription || null,
-        },
+        payload: { aboutText: values.aboutText || null },
       },
       {
         onSuccess: () => toast.success(`${LOCALE_LABELS[locale]} page content saved.`),
@@ -85,7 +65,7 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 2 }).map((_, i) => (
           <Skeleton key={i} className="h-10 w-full rounded-none" />
         ))}
       </div>
@@ -102,39 +82,9 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
           rows={8}
         />
         <FieldDescription>
-          Rich editorial content displayed on the category&apos;s about section.
+          Rich editorial content displayed on the category&apos;s about section. Meta title and
+          description are managed in the SEO tab.
         </FieldDescription>
-      </Field>
-
-      <Field>
-        <Label className="text-xs font-semibold uppercase">Meta Title</Label>
-        <Input
-          {...register('metaTitle')}
-          placeholder="SEO page title"
-          aria-invalid={!!errors.metaTitle}
-        />
-        <FieldError>{errors.metaTitle?.message}</FieldError>
-        <FieldDescription>Appears in browser tab and search engine results.</FieldDescription>
-      </Field>
-
-      <Field>
-        <Label className="text-xs font-semibold uppercase">Meta Description</Label>
-        <Textarea
-          {...register('metaDescription')}
-          placeholder="Brief description for search engines (max 160 characters)"
-          rows={3}
-          aria-invalid={!!errors.metaDescription}
-        />
-        <div className="flex items-center justify-between">
-          <FieldError>{errors.metaDescription?.message}</FieldError>
-          <span
-            className={`text-xs tabular-nums ${
-              metaDescValue.length > 160 ? 'text-destructive' : 'text-muted-foreground'
-            }`}
-          >
-            {metaDescValue.length}/160
-          </span>
-        </div>
       </Field>
 
       <div className="flex justify-end pt-2">

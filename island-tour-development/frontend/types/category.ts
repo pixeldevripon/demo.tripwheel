@@ -6,11 +6,10 @@ export interface Category {
   name: string;
   slug: string;
   heroImage: string | null;
+  ogImage: string | null;
   description: string | null;
   icon: string | null;
   sortOrder: number;
-  metaTitleTemplate: string | null;
-  metaDescriptionTemplate: string | null;
   parentCategoryId: string | null;
   isSeeded: boolean;
   isActive: boolean;
@@ -91,11 +90,10 @@ export interface CreateCategoryPayload {
   name: string;
   slug?: string;
   heroImage?: string | null;
+  ogImage?: string | null;
   description?: string | null;
   icon?: string | null;
   sortOrder?: number;
-  metaTitleTemplate?: string | null;
-  metaDescriptionTemplate?: string | null;
   parentCategoryId?: string | null;
 }
 
@@ -108,11 +106,10 @@ export interface UpdateCategoryPayload {
    */
   slug?: string;
   heroImage?: string | null;
+  ogImage?: string | null;
   description?: string | null;
   icon?: string | null;
   sortOrder?: number;
-  metaTitleTemplate?: string | null;
-  metaDescriptionTemplate?: string | null;
   parentCategoryId?: string | null;
   isActive?: boolean;
 }

@@ -9,6 +9,7 @@
  */
 
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -181,10 +182,19 @@ describe('CategoryService', () => {
   beforeEach(async () => {
     prisma = createMockPrismaService();
 
+    const mockFaqGroups = {
+      getGroups: jest.fn(),
+      createGroup: jest.fn(),
+      upsertTranslation: jest.fn(),
+      updateGroup: jest.fn(),
+      deleteGroup: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CategoryService,
         { provide: PrismaService, useValue: prisma },
+        { provide: FaqGroupService, useValue: mockFaqGroups },
       ],
     }).compile();
 

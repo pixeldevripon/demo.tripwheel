@@ -41,6 +41,24 @@ function faqsFor(label: string): { q: string; a: string }[] {
   ];
 }
 
+function categoryFaqsFor(label: string): { q: string; a: string }[] {
+  const lower = label.toLowerCase();
+  return [
+    {
+      q: `How do I choose the right ${lower.replace(/s$/, '')} for my trip?`,
+      a: `Compare ${lower} by price, duration, and traveller rating. Every listing shows exactly what is included, so you can pick the one that fits your group and budget.`,
+    },
+    {
+      q: `Do ${lower} need to be booked in advance?`,
+      a: `Popular departures sell out in high season, so booking ahead is recommended. Every tour on Island Tours confirms instantly, so there is no waiting for approval.`,
+    },
+    {
+      q: `Can I cancel a booking if my plans change?`,
+      a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked.`,
+    },
+  ];
+}
+
 async function ensureFaqs(
   pageType: FaqPageType,
   entityId: string,
@@ -51,7 +69,8 @@ async function ensureFaqs(
     select: { id: true },
   });
   if (existing) return 0;
-  const items = faqsFor(label);
+  const items =
+    pageType === 'category' ? categoryFaqsFor(label) : faqsFor(label);
   const rows: Prisma.FaqCreateManyInput[] = [];
   items.forEach((item, idx) => {
     // One faqGroupId per logical FAQ links its per-locale rows (English is the base).
@@ -140,6 +159,17 @@ export async function seedEntityContent(): Promise<void> {
   for (const c of categories) {
     const overview = `Browse the best ${c.name.toLowerCase()} across the islands — each one vetted, instantly bookable, and backed by free cancellation.`;
     const about = `Looking for ${c.name.toLowerCase()}? You are in the right place. Compare options by price, duration, and traveller rating, then book the one that fits your trip.`;
+    const h1 = `Best ${c.name}`;
+    // Fill the entity-level gaps the prod seed leaves empty (OG image, canonical
+    // description). Icon stays null - the frontend falls back to
+    // CATEGORY_ICON_BY_SLUG.
+    await prisma.category.update({
+      where: { id: c.id },
+      data: {
+        ogImage: img(`cat-${c.slug}-og`, 1200, 630),
+        description: overview,
+      },
+    });
     await prisma.categoryTranslation.createMany({
       data: ALL_LOCALES.map((locale) => ({
         categoryId: c.id,
@@ -147,6 +177,7 @@ export async function seedEntityContent(): Promise<void> {
         // EN row keeps name null (falls back to Category.name); others get a stub name.
         name: locale === Locale.en ? null : stub(locale, c.name),
         overview: locale === Locale.en ? overview : stub(locale, overview),
+        h1Override: locale === Locale.en ? h1 : stub(locale, h1),
         breadcrumbLabel: locale === Locale.en ? null : stub(locale, c.name),
         isMachineTranslated: locale !== Locale.en,
       })),
@@ -168,6 +199,7 @@ export async function seedEntityContent(): Promise<void> {
       skipDuplicates: true,
     });
     catPc += ALL_LOCALES.length;
+    faqRows += await ensureFaqs('category', c.id, c.name);
   }
 
   // ── Hubs (klein-curacao and any other seeded hub) ──

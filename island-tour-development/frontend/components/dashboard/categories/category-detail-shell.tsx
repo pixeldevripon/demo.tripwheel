@@ -2,7 +2,6 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumb } from '@/components/dashboard/breadcrumb';
-import { CategorySubNav } from './category-sub-nav';
 
 interface CategoryDetailShellProps {
   id: string;
@@ -42,8 +41,6 @@ export function CategoryDetailShell({
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
-
-      <CategorySubNav categoryId={id} />
 
       <div className="max-w-6xl">
         {children}

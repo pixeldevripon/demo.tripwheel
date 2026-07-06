@@ -7,6 +7,7 @@ import {
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import { Locale } from '@/common/constants/locales';
+import { FaqGroupResponseDto } from '@/common/faq/dto/faq-group.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
@@ -161,7 +162,7 @@ export function ApiCreateCategoryDocs() {
       summary: 'Create a new category (Admin/Editor)',
       description:
         'Atomically creates the category and inserts one slug_registry row per active destination. ' +
-        'Accepts the V2 fields: description, icon, sortOrder, metaTitleTemplate, metaDescriptionTemplate, parentCategoryId.',
+        'Accepts the V2 fields: description, icon, sortOrder, parentCategoryId.',
     }),
     ApiResponse({ status: 201, type: CategoryResponseDto }),
     ApiResponse({
@@ -178,8 +179,8 @@ export function ApiUpdateCategoryDocs() {
     ApiOperation({
       summary: 'Update category fields (Admin/Editor)',
       description:
-        'Updates any of: name, heroImage, description, icon, sortOrder, metaTitleTemplate, ' +
-        'metaDescriptionTemplate, parentCategoryId, isActive. Slug is immutable. ' +
+        'Updates any of: name, heroImage, description, icon, sortOrder, ' +
+        'parentCategoryId, isActive. Slug is immutable. ' +
         'If isActive changes, all slug_registry rows update accordingly.',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
@@ -368,6 +369,75 @@ export function ApiDeleteFaqDocs() {
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+// ── Grouped FAQ (add in English, then translate) ──────────────────────────────
+
+export function ApiGetFaqGroupsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get FAQs grouped by locale for a category (Admin/Editor)',
+      description:
+        'Returns each logical FAQ once, with its per-locale translations nested. Powers the dashboard "add in English, then translate" editor.',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiResponse({ status: 200, type: [FaqGroupResponseDto] }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiCreateFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Create a FAQ (English base) for a category (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiResponse({ status: 201, type: FaqGroupResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update a FAQ group (display order / active) (Admin/Editor)',
+      description: 'Applies to every locale row of the FAQ at once.',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiResponse({ status: 200, type: FaqGroupResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiDeleteFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Delete a FAQ and all its translations (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertFaqTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Add or update a FAQ translation for one locale (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Category UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: FaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

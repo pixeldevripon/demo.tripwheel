@@ -2,9 +2,11 @@ import { CategoryEditView } from '@/components/dashboard/categories/category-edi
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
-export default async function EditCategoryPage({ params }: Props) {
+export default async function EditCategoryPage({ params, searchParams }: Props) {
   const { id } = await params;
-  return <CategoryEditView id={id} />;
+  const { tab } = await searchParams;
+  return <CategoryEditView id={id} initialTab={tab} />;
 }

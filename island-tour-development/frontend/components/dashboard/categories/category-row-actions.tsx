@@ -9,6 +9,7 @@ import {
   LanguagesIcon,
   FileTextIcon,
   HelpCircleIcon,
+  SearchIcon,
   ToggleLeftIcon,
   ToggleRightIcon,
   Trash2Icon,
@@ -95,22 +96,32 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/categories/${category.id}/translations`)}
+            onClick={() =>
+              router.push(`/dashboard/categories/${category.id}/edit?tab=translations`)
+            }
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/categories/${category.id}/page-content`)}
+            onClick={() =>
+              router.push(`/dashboard/categories/${category.id}/edit?tab=page-content`)
+            }
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/categories/${category.id}/faqs`)}
+            onClick={() => router.push(`/dashboard/categories/${category.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/categories/${category.id}/edit?tab=seo`)}
+          >
+            <SearchIcon />
+            SEO
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

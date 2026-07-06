@@ -1,5 +1,11 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
+import {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import {
   applyTranslation,
   faqSelect,
@@ -37,18 +43,20 @@ import {
 export class CategoryService {
   private readonly logger = new Logger(CategoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly faqGroups: FaqGroupService,
+  ) {}
 
   private readonly categorySelect = {
     id: true,
     name: true,
     slug: true,
     heroImage: true,
+    ogImage: true,
     description: true,
     icon: true,
     sortOrder: true,
-    metaTitleTemplate: true,
-    metaDescriptionTemplate: true,
     parentCategoryId: true,
     isActive: true,
     isSeeded: true,
@@ -387,11 +395,10 @@ export class CategoryService {
             name: dto.name,
             slug,
             heroImage: dto.heroImage ?? null,
+            ogImage: dto.ogImage ?? null,
             description: dto.description ?? null,
             icon: dto.icon ?? null,
             sortOrder: dto.sortOrder ?? 0,
-            metaTitleTemplate: dto.metaTitleTemplate ?? null,
-            metaDescriptionTemplate: dto.metaDescriptionTemplate ?? null,
             parentCategoryId: dto.parentCategoryId ?? null,
             createdBy: adminId,
           },
@@ -537,17 +544,12 @@ export class CategoryService {
             ...(renameTo && { slug: renameTo }),
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+            ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
             ...(dto.description !== undefined && {
               description: dto.description,
             }),
             ...(dto.icon !== undefined && { icon: dto.icon }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
-            ...(dto.metaTitleTemplate !== undefined && {
-              metaTitleTemplate: dto.metaTitleTemplate,
-            }),
-            ...(dto.metaDescriptionTemplate !== undefined && {
-              metaDescriptionTemplate: dto.metaDescriptionTemplate,
-            }),
             ...(dto.parentCategoryId !== undefined && {
               parentCategoryId: dto.parentCategoryId,
             }),
@@ -888,5 +890,61 @@ export class CategoryService {
 
     this.logger.log(`Admin ${adminId} deleted FAQ ${faqId} for category ${id}`);
     return { message: 'FAQ deleted successfully' };
+  }
+
+  // ── Grouped FAQ (add in English, then translate) ────────────────────────────
+  // Thin wrappers over the shared FaqGroupService; each verifies the category
+  // exists first so 404s are accurate, then delegates the grouped-FAQ logic.
+
+  async getFaqGroups(id: string) {
+    await this.findCategoryOrThrow(id);
+    return this.faqGroups.getGroups(FAQ_PAGE_TYPE.CATEGORY, id);
+  }
+
+  async createFaqGroup(id: string, dto: CreateFaqGroupDto, adminId: string) {
+    await this.findCategoryOrThrow(id);
+    this.logger.log(`Admin ${adminId} created FAQ for category ${id}`);
+    return this.faqGroups.createGroup(FAQ_PAGE_TYPE.CATEGORY, id, dto);
+  }
+
+  async upsertFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertFaqTranslationDto,
+    adminId: string,
+  ) {
+    await this.findCategoryOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} upserted FAQ ${groupId} [${locale}] for category ${id}`,
+    );
+    return this.faqGroups.upsertTranslation(
+      FAQ_PAGE_TYPE.CATEGORY,
+      id,
+      groupId,
+      locale,
+      dto,
+    );
+  }
+
+  async updateFaqGroup(
+    id: string,
+    groupId: string,
+    dto: UpdateFaqGroupDto,
+    adminId: string,
+  ) {
+    await this.findCategoryOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} updated FAQ ${groupId} for category ${id}`,
+    );
+    return this.faqGroups.updateGroup(FAQ_PAGE_TYPE.CATEGORY, id, groupId, dto);
+  }
+
+  async deleteFaqGroup(id: string, groupId: string, adminId: string) {
+    await this.findCategoryOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} deleted FAQ ${groupId} for category ${id}`,
+    );
+    return this.faqGroups.deleteGroup(FAQ_PAGE_TYPE.CATEGORY, id, groupId);
   }
 }
