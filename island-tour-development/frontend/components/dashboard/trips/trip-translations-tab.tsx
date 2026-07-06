@@ -36,8 +36,6 @@ const tripTranslationSchema = z.object({
   localTipTitle: z.string().max(120).optional().or(z.literal('')),
   localTipBody: z.string().max(2000).optional().or(z.literal('')),
   meetingPointText: z.string().max(2000).optional().or(z.literal('')),
-  metaTitle: z.string().max(70).optional().or(z.literal('')),
-  metaDescription: z.string().max(170).optional().or(z.literal('')),
 });
 
 type TripTranslationFormValues = z.infer<typeof tripTranslationSchema>;
@@ -55,8 +53,6 @@ const EMPTY_FORM: TripTranslationFormValues = {
   localTipTitle: '',
   localTipBody: '',
   meetingPointText: '',
-  metaTitle: '',
-  metaDescription: '',
 };
 
 /** Textarea text (one item per line) → trimmed, de-blanked string array. */
@@ -109,8 +105,6 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       localTipTitle: translation?.localTipTitle ?? '',
       localTipBody: translation?.localTipBody ?? '',
       meetingPointText: translation?.meetingPointText ?? '',
-      metaTitle: translation?.metaTitle ?? '',
-      metaDescription: translation?.metaDescription ?? '',
     });
   }, [translation, reset, isEnglish, tripName]);
 
@@ -132,8 +126,6 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           localTipTitle: values.localTipTitle || null,
           localTipBody: values.localTipBody || null,
           meetingPointText: values.meetingPointText || null,
-          metaTitle: values.metaTitle || null,
-          metaDescription: values.metaDescription || null,
         },
       },
       {
@@ -164,8 +156,6 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
             localTipTitle: null,
             localTipBody: null,
             meetingPointText: null,
-            metaTitle: null,
-            metaDescription: null,
           },
         },
         {
@@ -313,20 +303,8 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
         <Textarea {...register('meetingPointText')} rows={2} placeholder="e.g. Meet at the main dock, Pier 3, 15 minutes before departure" />
       </Field>
 
-      <div className="border-t pt-5 space-y-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search engine listing (SEO)</p>
-        <Field>
-          <Label className="text-xs font-semibold uppercase">Meta Title</Label>
-          <Input {...register('metaTitle')} placeholder="Overrides the page <title>" aria-invalid={!!errors.metaTitle} />
-          <FieldDescription>Keep under 70 characters. Leave blank to auto-generate.</FieldDescription>
-          <FieldError>{errors.metaTitle?.message}</FieldError>
-        </Field>
-        <Field>
-          <Label className="text-xs font-semibold uppercase">Meta Description</Label>
-          <Textarea {...register('metaDescription')} rows={2} placeholder="Search-result snippet" aria-invalid={!!errors.metaDescription} />
-          <FieldDescription>Keep under 170 characters.</FieldDescription>
-          <FieldError>{errors.metaDescription?.message}</FieldError>
-        </Field>
+      <div className="border-t pt-4 text-xs text-muted-foreground">
+        Meta title &amp; description have moved to the <span className="font-semibold text-foreground">SEO</span> tab.
       </div>
 
       <div className="flex items-center justify-between pt-2">

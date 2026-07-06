@@ -25,6 +25,7 @@ import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
 
 const addHighlightSchema = z.object({
   text: z.string().min(5, 'At least 5 characters').max(100, 'Max 100 characters'),
+  imageUrl: z.string().optional().or(z.literal('')),
   displayOrder: z.string().optional(),
 });
 
@@ -135,7 +136,7 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
     formState: { errors },
   } = useForm<AddHighlightFormValues>({
     resolver: zodResolver(addHighlightSchema),
-    defaultValues: { text: '', displayOrder: String(count) },
+    defaultValues: { text: '', imageUrl: '', displayOrder: String(count) },
   });
 
   function onAdd(values: AddHighlightFormValues) {
@@ -144,13 +145,14 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
         tripId,
         payload: {
           text: values.text,
+          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Highlight added.');
-          reset({ text: '', displayOrder: String((highlights?.length ?? 0) + 1) });
+          reset({ text: '', imageUrl: '', displayOrder: String((highlights?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add highlight.'),
       }
@@ -198,6 +200,10 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
               aria-invalid={!!errors.text}
             />
             <FieldError>{errors.text?.message}</FieldError>
+          </Field>
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Image URL</Label>
+            <Input {...register('imageUrl')} placeholder="Optional image URL" />
           </Field>
           <Field>
             <Label className="text-xs font-semibold uppercase">Display Order</Label>

@@ -1,15 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, StarIcon } from 'lucide-react';
+import { Trash2Icon, StarIcon, ChevronDownIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,19 +31,45 @@ import {
   useUpdateAgeBand,
   useRemoveAgeBand,
 } from '@/hooks/trips/use-trips';
-import type { TourAddOn, TourAgeBand } from '@/types/trip';
+import type {
+  AddOnUnit,
+  AgeBandType,
+  BandParticipation,
+  TourAddOn,
+  TourAgeBand,
+} from '@/types/trip';
 
 // ── Age Bands ─────────────────────────────────────────────────────────────────
 
 const priceRegex = /^\d+(\.\d{1,2})?$/;
 
+/** Age-type options (AgeBandType enum). The type drives the API's typed pricing
+ *  object (pricing.adult, pricing.child, ...) so it is required on every band. */
+const AGE_BAND_TYPES: { value: AgeBandType; label: string }[] = [
+  { value: 'ADULT', label: 'Adult' },
+  { value: 'CHILD', label: 'Child' },
+  { value: 'INFANT', label: 'Infant' },
+  { value: 'YOUTH', label: 'Youth' },
+  { value: 'SENIOR', label: 'Senior' },
+];
+
+/** Participation options (BandParticipation enum). Spectators are banded ride-alongs
+ *  (Figma "Bringing Spectators?") - they count toward capacity but skip the activity. */
+const PARTICIPATION_TYPES: { value: BandParticipation; label: string }[] = [
+  { value: 'PARTICIPANT', label: 'Participant' },
+  { value: 'SPECTATOR', label: 'Spectator' },
+];
+
 const addAgeBandSchema = z
   .object({
+    bandType: z.enum(['ADULT', 'CHILD', 'INFANT', 'YOUTH', 'SENIOR']),
+    participation: z.enum(['PARTICIPANT', 'SPECTATOR']),
     label: z.string().min(1, 'Label is required').max(60),
     minAge: z.string().optional().or(z.literal('')),
     maxAge: z.string().optional().or(z.literal('')),
     price: z.string().regex(priceRegex, 'Must be a valid price'),
     priceOriginal: z.string().regex(priceRegex, 'Must be a valid price').optional().or(z.literal('')),
+    priceNet: z.string().regex(priceRegex, 'Must be a valid price').optional().or(z.literal('')),
     isDefault: z.boolean(),
     displayOrder: z.coerce.number().int().min(0).optional(),
   })
@@ -52,11 +79,14 @@ const addAgeBandSchema = z
   );
 
 type AddAgeBandFormValues = {
+  bandType: AgeBandType;
+  participation: BandParticipation;
   label: string;
   minAge: string;
   maxAge: string;
   price: string;
   priceOriginal: string;
+  priceNet: string;
   isDefault: boolean;
   displayOrder: string;
 };
@@ -77,6 +107,17 @@ interface AgeBandRowProps {
 function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
   const { mutate: updateAgeBand, isPending: isUpdating } = useUpdateAgeBand();
   const { mutate: removeAgeBand, isPending: isRemoving } = useRemoveAgeBand();
+  const [editing, setEditing] = useState(false);
+
+  // Local edit state, seeded from the band (numbers/prices as strings for inputs).
+  const [bandType, setBandType] = useState<AgeBandType>(ageBand.bandType);
+  const [participation, setParticipation] = useState<BandParticipation>(ageBand.participation);
+  const [label, setLabel] = useState(ageBand.label);
+  const [price, setPrice] = useState(ageBand.price);
+  const [minAge, setMinAge] = useState(ageBand.minAge != null ? String(ageBand.minAge) : '');
+  const [maxAge, setMaxAge] = useState(ageBand.maxAge != null ? String(ageBand.maxAge) : '');
+  const [priceOriginal, setPriceOriginal] = useState(ageBand.priceOriginal ?? '');
+  const [priceNet, setPriceNet] = useState(ageBand.priceNet ?? '');
 
   function handleSetDefault() {
     if (ageBand.isDefault) return;
@@ -99,40 +140,163 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
     );
   }
 
+  function handleSaveEdit() {
+    if (!priceRegex.test(price)) {
+      toast.error('Price must be a valid number.');
+      return;
+    }
+    updateAgeBand(
+      {
+        tripId,
+        ageBandId: ageBand.id,
+        payload: {
+          bandType,
+          participation,
+          label,
+          price,
+          minAge: minAge !== '' ? Number(minAge) : undefined,
+          maxAge: maxAge !== '' ? Number(maxAge) : undefined,
+          priceOriginal: priceOriginal || undefined,
+          priceNet: priceNet || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Age band updated.');
+          setEditing(false);
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update.'),
+      }
+    );
+  }
+
   return (
-    <div className="flex items-center justify-between gap-2 ring-1 ring-foreground/10 px-3 py-2">
-      <div className="flex items-center gap-3 min-w-0">
-        {ageBand.isDefault ? (
-          <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
-        ) : (
-          <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground" />
-        )}
-        <span className="text-sm font-medium truncate">{ageBand.label}</span>
-        <Badge variant="outline" className="text-xs">{formatAgeRange(ageBand.minAge, ageBand.maxAge)}</Badge>
-        <span className="text-sm text-muted-foreground">${ageBand.price}</span>
-        {ageBand.priceOriginal && (
-          <span className="text-xs text-muted-foreground line-through">${ageBand.priceOriginal}</span>
-        )}
+    <div className="ring-1 ring-foreground/10 px-3 py-2 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          {ageBand.isDefault ? (
+            <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+          ) : (
+            <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground" />
+          )}
+          <span className="text-sm font-medium truncate">{ageBand.label}</span>
+          <Badge variant="secondary" className="text-xs capitalize">{ageBand.bandType.toLowerCase()}</Badge>
+          {ageBand.participation === 'SPECTATOR' && (
+            <Badge variant="outline" className="text-xs">Spectator</Badge>
+          )}
+          <Badge variant="outline" className="text-xs">{formatAgeRange(ageBand.minAge, ageBand.maxAge)}</Badge>
+          <span className="text-sm text-muted-foreground">${ageBand.price}</span>
+          {ageBand.priceOriginal && (
+            <span className="text-xs text-muted-foreground line-through">${ageBand.priceOriginal}</span>
+          )}
+          {ageBand.priceNet && (
+            <span className="text-xs text-muted-foreground">net ${ageBand.priceNet}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={handleSetDefault}
+            disabled={isUpdating || ageBand.isDefault}
+          >
+            {ageBand.isDefault ? 'Default' : 'Set Default'}
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setEditing((v) => !v)}
+            aria-label={editing ? 'Collapse age band' : 'Edit age band'}
+            aria-expanded={editing}
+          >
+            <ChevronDownIcon
+              className={`size-3.5 transition-transform ${editing ? 'rotate-180' : ''}`}
+            />
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={isRemoving}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2Icon className="size-3.5" />
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Button
-          size="xs"
-          variant="outline"
-          onClick={handleSetDefault}
-          disabled={isUpdating || ageBand.isDefault}
-        >
-          {ageBand.isDefault ? 'Default' : 'Set Default'}
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleDelete}
-          disabled={isRemoving}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
-          <Trash2Icon className="size-3.5" />
-        </Button>
-      </div>
+
+      {editing && (
+        <div className="pt-3 border-t space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Age Type</Label>
+              <Select value={bandType} onValueChange={(v) => setBandType(v as AgeBandType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_BAND_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Participation</Label>
+              <Select value={participation} onValueChange={(v) => setParticipation(v as BandParticipation)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PARTICIPATION_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Label</Label>
+              <Input value={label} onChange={(e) => setLabel(e.target.value)} />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Price</Label>
+              <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="79.00" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Min Age</Label>
+              <Input value={minAge} onChange={(e) => setMinAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Max Age</Label>
+              <Input value={maxAge} onChange={(e) => setMaxAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Original Price</Label>
+              <Input value={priceOriginal} onChange={(e) => setPriceOriginal(e.target.value)} placeholder="Optional" />
+              <FieldDescription>Optional pre-discount price, shown struck through to signal a deal.</FieldDescription>
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Net Price</Label>
+              <Input value={priceNet} onChange={(e) => setPriceNet(e.target.value)} placeholder="Optional" />
+              <FieldDescription>Optional operator net (what you keep). Internal only - not shown to travelers.</FieldDescription>
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={isUpdating}>
+              {isUpdating ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -166,11 +330,49 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
   const { mutate: updateAddOn, isPending: isUpdating } = useUpdateAddOn();
   const { mutate: removeAddOn, isPending: isRemoving } = useRemoveAddOn();
 
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(addOn.name);
+  const [price, setPrice] = useState(addOn.price);
+  const [description, setDescription] = useState(addOn.description ?? '');
+  const [unit, setUnit] = useState<AddOnUnit>(addOn.unit);
+  const [maxQuantity, setMaxQuantity] = useState(String(addOn.maxQuantity));
+
   function handleToggleActive() {
     updateAddOn(
       { tripId, addOnId: addOn.id, payload: { isActive: !addOn.isActive } },
       {
         onSuccess: () => toast.success(`Add-on ${!addOn.isActive ? 'activated' : 'deactivated'}.`),
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update.'),
+      }
+    );
+  }
+
+  function handleSaveEdit() {
+    if (!name.trim()) {
+      toast.error('Name is required.');
+      return;
+    }
+    if (!priceRegex.test(price)) {
+      toast.error('Price must be a valid number (e.g. 19.99).');
+      return;
+    }
+    updateAddOn(
+      {
+        tripId,
+        addOnId: addOn.id,
+        payload: {
+          name: name.trim(),
+          description: description.trim(),
+          price,
+          unit,
+          maxQuantity: maxQuantity !== '' ? Number(maxQuantity) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Add-on updated.');
+          setEditing(false);
+        },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update.'),
       }
     );
@@ -187,32 +389,90 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 ring-1 ring-foreground/10 px-3 py-2">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className={`size-1.5 rounded-full shrink-0 ${addOn.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
-        <span className="text-sm font-medium truncate">{addOn.name}</span>
-        <span className="text-sm text-muted-foreground">${addOn.price}</span>
-        <Badge variant="outline" className="text-xs">{addOn.unit === 'PER_PERSON' ? '/person' : 'flat'}</Badge>
+    <div className="ring-1 ring-foreground/10 px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`size-1.5 rounded-full shrink-0 ${addOn.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+          <span className="text-sm font-medium truncate">{addOn.name}</span>
+          <span className="text-sm text-muted-foreground">${addOn.price}</span>
+          <Badge variant="outline" className="text-xs">{addOn.unit === 'PER_PERSON' ? '/person' : 'flat'}</Badge>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={handleToggleActive}
+            disabled={isUpdating}
+          >
+            {addOn.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => setEditing((v) => !v)}
+            aria-label={editing ? 'Collapse add-on' : 'Edit add-on'}
+            aria-expanded={editing}
+          >
+            <ChevronDownIcon
+              className={`size-3.5 transition-transform ${editing ? 'rotate-180' : ''}`}
+            />
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={isRemoving}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2Icon className="size-3.5" />
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Button
-          size="xs"
-          variant="outline"
-          onClick={handleToggleActive}
-          disabled={isUpdating}
-        >
-          {addOn.isActive ? 'Deactivate' : 'Activate'}
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleDelete}
-          disabled={isRemoving}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
-          <Trash2Icon className="size-3.5" />
-        </Button>
-      </div>
+
+      {editing && (
+        <div className="pt-3 mt-2 border-t space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Snorkel Equipment" />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Price</Label>
+              <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="19.99" />
+            </Field>
+          </div>
+          <Field>
+            <Label className="text-xs font-semibold uppercase">Description</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Pricing Unit</Label>
+              <Select value={unit} onValueChange={(v) => setUnit(v as AddOnUnit)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PER_PERSON">Per Person</SelectItem>
+                  <SelectItem value="FLAT">Flat Rate</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Max Quantity</Label>
+              <Input value={maxQuantity} onChange={(e) => setMaxQuantity(e.target.value)} type="number" min={1} placeholder="10" />
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={isUpdating}>
+              {isUpdating ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -237,22 +497,28 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
   } = useForm<AddAgeBandFormValues>({
     resolver: zodResolver(addAgeBandSchema) as unknown as Resolver<AddAgeBandFormValues>,
     defaultValues: {
+      bandType: 'ADULT',
+      participation: 'PARTICIPANT',
       label: '',
       minAge: '',
       maxAge: '',
       price: '',
       priceOriginal: '',
+      priceNet: '',
       isDefault: false,
       displayOrder: '0',
     },
   });
 
   const ageBandDefaults: AddAgeBandFormValues = {
+    bandType: 'ADULT',
+    participation: 'PARTICIPANT',
     label: '',
     minAge: '',
     maxAge: '',
     price: '',
     priceOriginal: '',
+    priceNet: '',
     isDefault: false,
     displayOrder: '0',
   };
@@ -262,11 +528,14 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
       {
         tripId,
         payload: {
+          bandType: values.bandType,
+          participation: values.participation,
           label: values.label,
           minAge: values.minAge !== '' ? Number(values.minAge) : undefined,
           maxAge: values.maxAge !== '' ? Number(values.maxAge) : undefined,
           price: values.price,
           priceOriginal: values.priceOriginal || undefined,
+          priceNet: values.priceNet || undefined,
           isDefault: values.isDefault,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
@@ -356,10 +625,57 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
             <p className="text-xs font-semibold uppercase text-muted-foreground">Add Age Band</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
+                <Label className="text-xs font-semibold uppercase">Age Type</Label>
+                <Controller
+                  name="bandType"
+                  control={ageBandControl}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={!!ageBandErrors.bandType}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AGE_BAND_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError>{ageBandErrors.bandType?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Participation</Label>
+                <Controller
+                  name="participation"
+                  control={ageBandControl}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={!!ageBandErrors.participation}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PARTICIPATION_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError>{ageBandErrors.participation?.message}</FieldError>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
                 <Label className="text-xs font-semibold uppercase">Label</Label>
                 <Input
                   {...registerAgeBand('label')}
-                  placeholder="e.g. Adult"
+                  placeholder="e.g. Adult (13+)"
                   aria-invalid={!!ageBandErrors.label}
                 />
                 <FieldError>{ageBandErrors.label?.message}</FieldError>
@@ -375,7 +691,7 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
               </Field>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <Field>
                 <Label className="text-xs font-semibold uppercase">Min Age</Label>
                 <Input
@@ -400,14 +716,28 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
                 />
                 <FieldError>{ageBandErrors.maxAge?.message}</FieldError>
               </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <Field>
                 <Label className="text-xs font-semibold uppercase">Original Price</Label>
                 <Input
                   {...registerAgeBand('priceOriginal')}
-                  placeholder="Optional"
+                  placeholder="Optional (strikethrough)"
                   aria-invalid={!!ageBandErrors.priceOriginal}
                 />
+                <FieldDescription>Optional pre-discount price, shown struck through to signal a deal.</FieldDescription>
                 <FieldError>{ageBandErrors.priceOriginal?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Net Price</Label>
+                <Input
+                  {...registerAgeBand('priceNet')}
+                  placeholder="Optional (operator net)"
+                  aria-invalid={!!ageBandErrors.priceNet}
+                />
+                <FieldDescription>Optional operator net (what you keep). Internal only - not shown to travelers.</FieldDescription>
+                <FieldError>{ageBandErrors.priceNet?.message}</FieldError>
               </Field>
             </div>
 

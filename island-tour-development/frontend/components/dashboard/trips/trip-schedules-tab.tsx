@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   useSchedules,
@@ -187,10 +188,20 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
 
-  // One backend row per weekday × start time, so display them sorted for scanability.
-  const sortedSchedules = [...(schedules ?? [])].sort(
-    (a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime),
-  );
+  // One backend row per weekday × start time. Group by weekday so the list is
+  // scannable one day at a time (tabbed), each day's times sorted.
+  const schedulesByWeekday = new Map<number, TourSchedule[]>();
+  for (const s of schedules ?? []) {
+    const list = schedulesByWeekday.get(s.weekday) ?? [];
+    list.push(s);
+    schedulesByWeekday.set(s.weekday, list);
+  }
+  for (const list of schedulesByWeekday.values()) {
+    list.sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }
+  // Weekdays that actually have schedules, in Mon…Sun order.
+  const activeWeekdays = WEEKDAYS.filter((w) => schedulesByWeekday.has(w.value));
+  const totalSchedules = schedules?.length ?? 0;
 
   function toggleWeekday(day: number) {
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
@@ -268,12 +279,26 @@ export function TripSchedulesTab({ tripId }: TripSchedulesTabProps) {
                 <Skeleton key={i} className="h-14 w-full rounded-none" />
               ))}
             </div>
-          ) : sortedSchedules.length > 0 ? (
-            <div className="space-y-2">
-              {sortedSchedules.map((schedule) => (
-                <ScheduleRow key={schedule.id} schedule={schedule} tripId={tripId} />
+          ) : totalSchedules > 0 ? (
+            <Tabs defaultValue={String(activeWeekdays[0]?.value ?? 0)} className="w-full">
+              <TabsList>
+                {activeWeekdays.map((w) => (
+                  <TabsTrigger key={w.value} value={String(w.value)}>
+                    {w.label}
+                    <span className="ml-1.5 rounded-full bg-muted-foreground/15 px-1.5 text-[10px] font-semibold tabular-nums">
+                      {schedulesByWeekday.get(w.value)?.length ?? 0}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {activeWeekdays.map((w) => (
+                <TabsContent key={w.value} value={String(w.value)} className="mt-4 space-y-2">
+                  {(schedulesByWeekday.get(w.value) ?? []).map((schedule) => (
+                    <ScheduleRow key={schedule.id} schedule={schedule} tripId={tripId} />
+                  ))}
+                </TabsContent>
               ))}
-            </div>
+            </Tabs>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">No schedules yet.</p>
           )}

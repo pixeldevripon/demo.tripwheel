@@ -29,6 +29,7 @@ import { TripAttributesTab } from './trip-attributes-tab';
 import { TripDetailShell } from './trip-detail-shell';
 import { TripDetailsTab } from './trip-details-tab';
 import { TripExclusionsTab } from './trip-exclusions-tab';
+import { TripFeaturesTab } from './trip-features-tab';
 import { TripHighlightsTab } from './trip-highlights-tab';
 import { TripImagesTab } from './trip-images-tab';
 import { TripInclusionsTab } from './trip-inclusions-tab';
@@ -37,6 +38,7 @@ import { TripPickupLocationsTab } from './trip-pickup-locations-tab';
 import { TripPricingTab } from './trip-pricing-tab';
 import { TripPromotionTab } from './trip-promotion-tab';
 import { TripSchedulesTab } from './trip-schedules-tab';
+import { TripSeoTab } from './trip-seo-tab';
 import { TripTranslationsTab } from './trip-translations-tab';
 
 const statusVariant: Record<
@@ -73,17 +75,22 @@ function ReadinessItem({ label, passed }: ReadinessItemProps) {
 }
 
 const VALID_TABS = [
+    // Set up & make sellable
     'details',
+    'pricing',
+    'schedules',
+    // Build the listing page
     'images',
     'highlights',
     'inclusions',
     'itinerary',
     'pickups',
-    'pricing',
+    'info',
+    // Grow & polish
     'attributes',
-    'schedules',
     'promotion',
     'translations',
+    'seo',
 ] as const;
 
 interface TripEditViewProps {
@@ -271,6 +278,22 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 </div>
             )}
 
+            {/* Not-bookable notice: a LIVE tour is excluded from public listings
+                until it has availability in the next 30 days (isBookable). This
+                keeps that state visible so a published tour is never silently missing. */}
+            {trip.status === 'LIVE' && !trip.isBookable && (
+                <div className='mb-4 bg-amber-50 border border-amber-200 px-4 py-3'>
+                    <p className='text-xs font-semibold uppercase text-amber-700'>
+                        Published, not yet listed
+                    </p>
+                    <p className='text-sm text-amber-700 mt-1'>
+                        This tour has no availability in the next 30 days, so it
+                        will not appear in public listings yet. Add departures in
+                        the Schedules tab and it will list automatically.
+                    </p>
+                </div>
+            )}
+
             {/* Publish readiness */}
             {trip.status === 'DRAFT' && (
                 <Card
@@ -299,6 +322,8 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 <div className='pb-2 mb-6'>
                     <TabsList>
                         <TabsTrigger value='details'>Details</TabsTrigger>
+                        <TabsTrigger value='pricing'>Pricing</TabsTrigger>
+                        <TabsTrigger value='schedules'>Schedules</TabsTrigger>
                         <TabsTrigger value='images'>
                             Images
                             {imageCount < 5 && (
@@ -316,20 +341,30 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                         </TabsTrigger>
                         <TabsTrigger value='itinerary'>Itinerary</TabsTrigger>
                         <TabsTrigger value='pickups'>Pickups</TabsTrigger>
-                        <TabsTrigger value='pricing'>Pricing</TabsTrigger>
+                        <TabsTrigger value='info'>Info &amp; Terms</TabsTrigger>
                         <TabsTrigger value='attributes'>Attributes</TabsTrigger>
-                        <TabsTrigger value='schedules'>Schedules</TabsTrigger>
                         <TabsTrigger value='promotion'>Promotion</TabsTrigger>
                         <TabsTrigger value='translations'>
                             Translations
                         </TabsTrigger>
+                        <TabsTrigger value='seo'>SEO</TabsTrigger>
                     </TabsList>
                 </div>
 
+                {/* Set up & make sellable */}
                 <TabsContent value='details'>
                     <TripDetailsTab trip={trip} onWarnings={setWarnings} />
                 </TabsContent>
 
+                <TabsContent value='pricing'>
+                    <TripPricingTab tripId={id} />
+                </TabsContent>
+
+                <TabsContent value='schedules'>
+                    <TripSchedulesTab tripId={id} />
+                </TabsContent>
+
+                {/* Build the listing page */}
                 <TabsContent value='images'>
                     <TripImagesTab trip={trip} />
                 </TabsContent>
@@ -351,16 +386,13 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                     <TripPickupLocationsTab tripId={id} />
                 </TabsContent>
 
-                <TabsContent value='pricing'>
-                    <TripPricingTab tripId={id} />
+                <TabsContent value='info'>
+                    <TripFeaturesTab tripId={id} />
                 </TabsContent>
 
+                {/* Grow & polish */}
                 <TabsContent value='attributes'>
                     <TripAttributesTab trip={trip} />
-                </TabsContent>
-
-                <TabsContent value='schedules'>
-                    <TripSchedulesTab tripId={id} />
                 </TabsContent>
 
                 <TabsContent value='promotion'>
@@ -369,6 +401,10 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
                 <TabsContent value='translations'>
                     <TripTranslationsTab tripId={id} tripName={trip.name} />
+                </TabsContent>
+
+                <TabsContent value='seo'>
+                    <TripSeoTab trip={trip} />
                 </TabsContent>
             </Tabs>
 

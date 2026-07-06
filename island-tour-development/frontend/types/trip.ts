@@ -11,6 +11,15 @@ export type PaymentModel = 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OP
 export type TourBookingType = 'PRIVATE' | 'SHARED';
 export type FitnessLevel = 'EASY' | 'MODERATE' | 'CHALLENGING';
 export type ExclusionType = 'PAID_ADVANCE' | 'PAID_ONSITE' | 'UNAVAILABLE' | 'NOT_PERMITTED';
+// Typed per-traveler pricing bands (master E.3). Lets the API compose pricing.adult etc.
+export type AgeBandType = 'ADULT' | 'CHILD' | 'INFANT' | 'YOUTH' | 'SENIOR';
+// Whether a priced band takes part in the activity or only rides along (Figma "Bringing Spectators?").
+export type BandParticipation = 'PARTICIPANT' | 'SPECTATOR';
+// OCTO product attributes (master E.3 / §1.4).
+export type OctoAvailabilityType = 'START_TIME' | 'OPENING_HOURS';
+export type DeliveryFormat = 'PDF_URL' | 'QRCODE' | 'CODE128' | 'PKPASS_URL';
+export type DeliveryMethod = 'VOUCHER' | 'TICKET';
+export type RedemptionMethod = 'DIGITAL' | 'PRINT' | 'MANIFEST';
 // Feature types (master E.3). INCLUSION/EXCLUSION/HIGHLIGHT have dedicated tables/tabs;
 // the dashboard Features tab only manages the informational + terms variants below.
 export type FeatureType =
@@ -66,6 +75,18 @@ export interface TripListItem {
   checkInMinutesBefore: number | null;
   instantConfirmation: boolean;
 
+  // OCTO product attributes (master E.3 §1.4)
+  timeZone: string;
+  availabilityType: OctoAvailabilityType;
+  instantDelivery: boolean;
+  availabilityRequired: boolean;
+  allowFreesale: boolean;
+  deliveryFormats: DeliveryFormat[];
+  deliveryMethods: DeliveryMethod[];
+  redemptionMethod: RedemptionMethod;
+  // The tour's slot set ('HH:MM'); availability schedules switch these on per weekday
+  startTimes: string[];
+
   // Booking / payment (master E.3)
   paymentModel: PaymentModel;
   depositPct: string;
@@ -109,6 +130,10 @@ export interface TripListItem {
   bookingCountToday: number;
   spotsRemaining: number | null;
   lastBookedAt: string | null;
+  // Demand signal (master §3.7). `likelyToSellOut` is the computed daily value;
+  // `likelyToSellOutOverride` is the manual CMS launch override (null = use computed).
+  likelyToSellOut: boolean;
+  likelyToSellOutOverride: boolean | null;
 
   isSponsored: boolean;
   isActive: boolean;
@@ -185,6 +210,8 @@ export interface TourAddOn {
 export interface TourAgeBand {
   id: string;
   tourId: string;
+  bandType: AgeBandType;
+  participation: BandParticipation;
   label: string;
   minAge: number | null;
   maxAge: number | null;
@@ -383,6 +410,16 @@ export interface CreateTripPayload {
   paymentModel?: PaymentModel;
   instantConfirmation?: boolean;
   bookingType?: TourBookingType;
+  // OCTO product attributes (master E.3 §1.4)
+  timeZone?: string;
+  availabilityType?: OctoAvailabilityType;
+  instantDelivery?: boolean;
+  availabilityRequired?: boolean;
+  allowFreesale?: boolean;
+  deliveryFormats?: DeliveryFormat[];
+  deliveryMethods?: DeliveryMethod[];
+  redemptionMethod?: RedemptionMethod;
+  startTimes?: string[];
   meetingPointLat?: number;
   meetingPointLng?: number;
   departureCity?: string;
@@ -421,6 +458,16 @@ export interface UpdateTripPayload {
   paymentModel?: PaymentModel;
   instantConfirmation?: boolean;
   bookingType?: TourBookingType;
+  // OCTO product attributes (master E.3 §1.4)
+  timeZone?: string;
+  availabilityType?: OctoAvailabilityType;
+  instantDelivery?: boolean;
+  availabilityRequired?: boolean;
+  allowFreesale?: boolean;
+  deliveryFormats?: DeliveryFormat[];
+  deliveryMethods?: DeliveryMethod[];
+  redemptionMethod?: RedemptionMethod;
+  startTimes?: string[];
   meetingPointLat?: number;
   meetingPointLng?: number;
   departureCity?: string;
@@ -431,6 +478,8 @@ export interface UpdateTripPayload {
   familyFriendly?: boolean;
   suitableForBeginners?: boolean;
   isLocalsFavourite?: boolean;
+  // Manual demand-badge override (null = use the computed daily signal)
+  likelyToSellOutOverride?: boolean | null;
   checkInMinutesBefore?: number;
   reference?: string | null;
   ogImage?: string | null;
@@ -478,6 +527,8 @@ export interface UpdateTourAddOnPayload {
 }
 
 export interface CreateTourAgeBandPayload {
+  bandType: AgeBandType;
+  participation?: BandParticipation;
   label: string;
   minAge?: number;
   maxAge?: number;
@@ -489,6 +540,8 @@ export interface CreateTourAgeBandPayload {
 }
 
 export interface UpdateTourAgeBandPayload {
+  bandType?: AgeBandType;
+  participation?: BandParticipation;
   label?: string;
   minAge?: number;
   maxAge?: number;

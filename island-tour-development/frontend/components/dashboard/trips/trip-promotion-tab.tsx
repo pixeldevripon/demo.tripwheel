@@ -20,6 +20,7 @@ import {
 import { DatePickerField } from '@/components/dashboard/date-picker-field';
 import { useRole } from '@/contexts/role-context';
 import { useChangeTier, useRequestSpotlight, useTourSpotlight } from '@/hooks/tiers/use-tiers';
+import { useUpdateTrip } from '@/hooks/trips/use-trips';
 import { formatDate } from '@/lib/utils';
 import type { TripListItem } from '@/types/trip';
 import type { SpotlightStatus, TierKey } from '@/types/tier';
@@ -43,6 +44,10 @@ const spotlightStatusVariant: Record<SpotlightStatus, 'default' | 'secondary' | 
 /** Statuses that block submitting a new request (one is already live/pending). */
 const BLOCKING_STATUSES: SpotlightStatus[] = ['REQUESTED', 'APPROVED', 'ACTIVE'];
 
+// The demand-badge override is not needed in the dashboard right now, so it is
+// hidden from the UI. Flip to true to bring the admin control back.
+const SHOW_DEMAND_BADGE_OVERRIDE = false;
+
 interface TripPromotionTabProps {
   trip: TripListItem;
 }
@@ -50,12 +55,76 @@ interface TripPromotionTabProps {
 export function TripPromotionTab({ trip }: TripPromotionTabProps) {
   const { can } = useRole();
   const canEdit = can('EDIT_TRIP');
+  // The demand-badge override is an editorial/launch control - admin-only.
+  const canManage = can('MANAGE_TRIPS');
 
   return (
     <div className="space-y-6">
       <TierCard trip={trip} canEdit={canEdit} />
       <SpotlightCard trip={trip} canEdit={canEdit} />
+      {SHOW_DEMAND_BADGE_OVERRIDE && canManage && <DemandBadgeCard trip={trip} />}
     </div>
+  );
+}
+
+// ── Demand badge override (admin) ──────────────────────────────────────────────
+// `likelyToSellOut` is recomputed nightly (§3.7). This override forces the badge on
+// or off for launch, or defers to the computed value (null).
+function DemandBadgeCard({ trip }: { trip: TripListItem }) {
+  const { mutate: updateTrip, isPending } = useUpdateTrip();
+
+  const value: 'auto' | 'on' | 'off' =
+    trip.likelyToSellOutOverride == null
+      ? 'auto'
+      : trip.likelyToSellOutOverride
+        ? 'on'
+        : 'off';
+
+  function handleChange(next: 'auto' | 'on' | 'off') {
+    if (next === value) return;
+    const likelyToSellOutOverride =
+      next === 'auto' ? null : next === 'on';
+    updateTrip(
+      { id: trip.id, payload: { likelyToSellOutOverride } },
+      {
+        onSuccess: () => toast.success('Demand badge override updated.'),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Failed to update override.'),
+      }
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle className="text-sm">Demand Badge Override</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-5">
+        <div className="flex items-center gap-3 text-sm">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Computed now</p>
+          <Badge variant={trip.likelyToSellOut ? 'default' : 'secondary'}>
+            {trip.likelyToSellOut ? 'Likely to sell out' : 'Normal demand'}
+          </Badge>
+        </div>
+        <Field className="w-full sm:w-72">
+          <Label className="text-xs font-semibold uppercase">Override</Label>
+          <Select value={value} onValueChange={(v) => handleChange(v as 'auto' | 'on' | 'off')} disabled={isPending}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Automatic (use computed value)</SelectItem>
+              <SelectItem value="on">Force on (show badge)</SelectItem>
+              <SelectItem value="off">Force off (hide badge)</SelectItem>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            The &ldquo;Likely to sell out&rdquo; badge is recomputed nightly. Use this to force it on
+            or off for launch, or leave on Automatic to defer to the computed value.
+          </FieldDescription>
+        </Field>
+      </CardContent>
+    </Card>
   );
 }
 

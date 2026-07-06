@@ -842,6 +842,9 @@ export function useCreateSchedule() {
       tripsApi.createSchedule(tripId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
+      // Schedule changes re-materialise departures and can flip isBookable, which
+      // drives the "not yet listed" banner - refresh the trip detail too.
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
 }
@@ -859,6 +862,7 @@ export function useUpdateSchedule() {
     }) => tripsApi.updateSchedule(scheduleId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
 }
@@ -870,6 +874,7 @@ export function useRemoveSchedule() {
       tripsApi.removeSchedule(scheduleId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
 }

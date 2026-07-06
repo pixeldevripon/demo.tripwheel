@@ -99,7 +99,8 @@ export async function TourDetailContent({
     await connection();
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
     if (!detail) notFound();
-
+    console.log(`details`,detail);
+    
     const tourDict = dict.destination.tour;
 
     // Live header / breadcrumb / title values (localized with EN fallback applied

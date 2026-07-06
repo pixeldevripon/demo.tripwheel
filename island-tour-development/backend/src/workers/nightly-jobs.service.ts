@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { AvailabilityService } from '@/availability/availability.service';
 import { TiersService } from '@/tiers/tiers.service';
 import { ToursService } from '@/tours/tours.service';
 
@@ -26,6 +27,7 @@ export class NightlyJobsService {
   constructor(
     private readonly tours: ToursService,
     private readonly tiers: TiersService,
+    private readonly availability: AvailabilityService,
   ) {}
 
   // 03:00 UTC daily. "Evaluated daily" is the master's cadence for both the
@@ -42,14 +44,23 @@ export class NightlyJobsService {
   async run(): Promise<{
     spotlight: { activated: number; expired: number };
     demand: { evaluated: number; flagged: number };
+    materialized: { evaluated: number; failed: number };
+    bookable: { evaluated: number; bookable: number };
   }> {
     this.logger.log('Nightly jobs: starting');
     const spotlight = await this.tiers.runSpotlightLifecycle();
     const demand = await this.tours.recomputeLikelyToSellOut();
+    // Master: "a nightly job materializes 12 rolling months". Project schedules +
+    // exceptions into departures FIRST, then recompute the §7.2 bookability gate
+    // (EXISTS an open departure within 30 days) off the fresh departures.
+    const materialized = await this.availability.materializeAllLive();
+    const bookable = await this.availability.recomputeAllBookable();
     this.logger.log(
       `Nightly jobs: spotlight(activated=${spotlight.activated}, expired=${spotlight.expired}) ` +
-        `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged})`,
+        `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged}) ` +
+        `materialized(evaluated=${materialized.evaluated}, failed=${materialized.failed}) ` +
+        `bookable(evaluated=${bookable.evaluated}, bookable=${bookable.bookable})`,
     );
-    return { spotlight, demand };
+    return { spotlight, demand, materialized, bookable };
   }
 }

@@ -1,4 +1,5 @@
 - [Test Setup Patterns](test-setup-patterns.md) — How to bootstrap the NestJS test app, mirror main.ts config, and use PrismaClient for cleanup
-- [Auth Testing Patterns](auth-testing-patterns.md) — Better Auth cookie extraction, sign-up/sign-in helpers, session lifecycle patterns
-- [Path Alias Handling](path-alias-handling.md) — @/ alias not resolved in jest-e2e.json; test files must use relative imports
+- [Auth Testing Patterns](auth-testing-patterns.md) — Sign-up is DISABLED; use the internalAdapter user-provisioning pattern + real sign-in for cookies
+- [Path Alias Handling](path-alias-handling.md) — jest-e2e.json now has a moduleNameMapper for @/, but keep using relative imports in test files (unverified at runtime)
+- [Tours Domain Cleanup Order](tours-domain-cleanup-order.md) — FK-safe delete order for Tour/Hub/Category/Destination/Operator/User e2e fixtures
 - [Playwright Conventions](playwright-conventions.md) — Frontend Playwright setup: auth via storageState, page.route() mocking, selector patterns, file layout

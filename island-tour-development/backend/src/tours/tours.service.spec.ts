@@ -27,6 +27,7 @@ import {
   TourStatus,
 } from '@prisma/client';
 import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
+import { AvailabilityService } from '@/availability/availability.service';
 import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
@@ -133,10 +134,17 @@ describe('ToursService', () => {
   let service: ToursService;
   let prisma: ReturnType<typeof createMockPrismaService>;
 
+  let availability: { computeIsBookable: jest.Mock };
+
   beforeEach(async () => {
     prisma = createMockPrismaService();
+    availability = { computeIsBookable: jest.fn().mockResolvedValue(true) };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ToursService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        ToursService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: AvailabilityService, useValue: availability },
+      ],
     }).compile();
     service = module.get(ToursService);
     jest.clearAllMocks();
@@ -371,19 +379,17 @@ describe('ToursService', () => {
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prisma.hub.findUnique.mockResolvedValue({
         id: 'hub-1',
+        name: 'Playa Piscado',
         destinationId: 'dest-1',
         isActive: true,
+        allowedCategories: [{ category: { id: 'cat-1', name: 'Boat Tours' } }],
       });
-      prisma.hubAllowedCategory.count.mockResolvedValue(1);
 
       await service.create(
         { ...baseCreateDto, hubIds: ['hub-1'] },
         'user-1',
         Role.TOUR_OPERATOR,
       );
-      expect(prisma.hubAllowedCategory.count).toHaveBeenCalledWith({
-        where: { hubId: 'hub-1', categoryId: { in: ['cat-1'] } },
-      });
       expect(prisma.tour.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -397,8 +403,10 @@ describe('ToursService', () => {
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prisma.hub.findUnique.mockResolvedValue({
         id: 'hub-1',
+        name: 'Wrong Island Hub',
         destinationId: 'dest-OTHER',
         isActive: true,
+        allowedCategories: [{ category: { id: 'cat-1', name: 'Boat Tours' } }],
       });
       await expect(
         service.create(
@@ -410,13 +418,16 @@ describe('ToursService', () => {
     });
 
     it('rejects a hub when none of the tour categories are allowed', async () => {
-      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      prisma.category.findMany.mockResolvedValue([
+        { id: 'cat-1', name: 'Boat Tours' },
+      ]);
       prisma.hub.findUnique.mockResolvedValue({
         id: 'hub-1',
+        name: 'Snorkel Bay',
         destinationId: 'dest-1',
         isActive: true,
+        allowedCategories: [{ category: { id: 'cat-OTHER', name: 'Diving' } }],
       });
-      prisma.hubAllowedCategory.count.mockResolvedValue(0);
       await expect(
         service.create(
           { ...baseCreateDto, hubIds: ['hub-1'] },
@@ -782,9 +793,14 @@ describe('ToursService', () => {
       );
       expect(prisma.tour.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { status: TourStatus.LIVE, publishedAt: expect.any(Date) },
+          data: {
+            status: TourStatus.LIVE,
+            publishedAt: expect.any(Date),
+            isBookable: true,
+          },
         }),
       );
+      expect(availability.computeIsBookable).toHaveBeenCalledWith('tour-1');
       expect(result.categoryIds).toEqual(['cat-1']);
     });
 

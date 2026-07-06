@@ -54,6 +54,7 @@ const addExclusionSchema = z.object({
   icon: z.string().optional(),
   type: z.enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE']).optional().or(z.literal('')),
   priceText: z.string().max(120).optional(),
+  imageUrl: z.string().optional().or(z.literal('')),
   displayOrder: z.string().optional(),
 });
 
@@ -70,6 +71,8 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
   const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
+  // Image URL is hidden from the UI but preserved on save (sent unchanged).
+  const [imageUrlVal] = useState<string>(exclusion.imageUrl ?? '');
   const { mutate: removeExclusion, isPending: isRemoving } = useRemoveExclusion();
   const { mutate: saveHandling, isPending: isSavingHandling } = useUpdateExclusion();
   const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertExclusionTranslation();
@@ -92,6 +95,7 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
         payload: {
           type: (typeVal || undefined) as ExclusionType | undefined,
           priceText: isPaidType ? priceVal || null : null,
+          imageUrl: imageUrlVal || null,
         },
       },
       {
@@ -236,7 +240,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
     formState: { errors },
   } = useForm<AddExclusionFormValues>({
     resolver: zodResolver(addExclusionSchema),
-    defaultValues: { label: '', icon: 'x', type: '', priceText: '', displayOrder: String(count) },
+    defaultValues: { label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String(count) },
   });
 
   const typeValue = watch('type');
@@ -254,13 +258,14 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             (values.type === 'PAID_ADVANCE' || values.type === 'PAID_ONSITE') && values.priceText
               ? values.priceText
               : undefined,
+          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Exclusion added.');
-          reset({ label: '', icon: 'x', type: '', priceText: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
+          reset({ label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add exclusion.'),
       }

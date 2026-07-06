@@ -150,6 +150,20 @@ export class TourResponseDto {
   })
   isLocalsFavourite!: boolean;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'Computed daily demand signal (§3.7) powering the "Likely to sell out" badge',
+  })
+  likelyToSellOut!: boolean;
+  @ApiPropertyOptional({
+    example: null,
+    description:
+      'Manual CMS launch override for the demand badge. null = use the computed value; true/false = force it',
+    nullable: true,
+  })
+  likelyToSellOutOverride!: boolean | null;
+
   // ── Commercial tier (master §7) - read-only, system-managed. Examples reflect the
   // default standard-tier tour: tierKey=standard → commissionTier 20.0, tierRank 5, depositPct 20.0. ──
   @ApiProperty({
@@ -1123,6 +1137,50 @@ export class UpdateTourDto {
   })
   startTimes?: string[];
 
+  // ── OCTO / delivery (editable from the details tab's OCTO & Delivery card) ──
+  @ApiPropertyOptional({ enum: OctoAvailabilityType })
+  @IsOptional()
+  @IsEnum(OctoAvailabilityType)
+  availabilityType?: OctoAvailabilityType;
+
+  @ApiPropertyOptional({ enum: RedemptionMethod })
+  @IsOptional()
+  @IsEnum(RedemptionMethod)
+  redemptionMethod?: RedemptionMethod;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  instantDelivery?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  availabilityRequired?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  allowFreesale?: boolean;
+
+  @ApiPropertyOptional({ enum: DeliveryFormat, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(DeliveryFormat, { each: true })
+  deliveryFormats?: DeliveryFormat[];
+
+  @ApiPropertyOptional({ enum: DeliveryMethod, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(DeliveryMethod, { each: true })
+  deliveryMethods?: DeliveryMethod[];
+
+  @ApiPropertyOptional({ example: 'America/Curacao' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  timeZone?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
@@ -1198,6 +1256,16 @@ export class UpdateTourDto {
   @IsOptional()
   @IsBoolean()
   isLocalsFavourite?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Manual CMS launch override for the "Likely to sell out" demand badge. null = use the computed daily signal; true/false = force it.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  likelyToSellOutOverride?: boolean | null;
 
   @ApiPropertyOptional({
     example: 'OP-SKU-1024',

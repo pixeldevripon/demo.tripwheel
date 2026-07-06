@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -52,6 +53,18 @@ import type {
 
 const MS_PER_DAY = 86_400_000;
 
+// 0 = Monday … 6 = Sunday (matches AvailabilitySchedule.weekday). Used for
+// human-readable conflict messages.
+const WEEKDAY_NAMES = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
 /** Tour fields needed to resolve local time + the live booking cutoff. */
 interface TourClock {
   timeZone: string;
@@ -80,25 +93,68 @@ export class AvailabilityService {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     await this.assertStartTimeInSlotSet(dto.tourId, dto.startTime);
     const clock = await this.tourClock(dto.tourId);
-    const row = await this.prisma.availabilitySchedule.create({
-      data: {
-        tourId: dto.tourId,
-        weekday: dto.weekday,
-        startTime: hhmmToTime(dto.startTime),
-        capacityOverride: dto.capacityOverride ?? null,
-        validFrom: dto.validFrom
-          ? dayDate(dto.validFrom)
-          : dayDate(dateKey(localNow(clock.timeZone))),
-        validUntil: dto.validUntil ? dayDate(dto.validUntil) : null,
-        ...(dto.status && { status: dto.status }),
-      },
-    });
+    let row;
+    try {
+      row = await this.prisma.availabilitySchedule.create({
+        data: {
+          tourId: dto.tourId,
+          weekday: dto.weekday,
+          startTime: hhmmToTime(dto.startTime),
+          capacityOverride: dto.capacityOverride ?? null,
+          validFrom: dto.validFrom
+            ? dayDate(dto.validFrom)
+            : dayDate(dateKey(localNow(clock.timeZone))),
+          validUntil: dto.validUntil ? dayDate(dto.validUntil) : null,
+          ...(dto.status && { status: dto.status }),
+        },
+      });
+    } catch (err) {
+      throw this.scheduleConflict(err, dto.weekday, dto.startTime);
+    }
     this.logger.log(`Schedule ${row.id} created for tour ${dto.tourId}`);
+    // Project the new rule into departures now (and refresh the listing gate) so
+    // the tour becomes bookable immediately rather than waiting for the nightly
+    // job (master: departures are the single truth; §7.2 bookability).
+    await this.syncTourAvailability(dto.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: dto.tourId,
       operatorId,
     });
     return mapSchedule(row);
+  }
+
+  /**
+   * Maps a Prisma unique-constraint violation (duplicate weekday+startTime rule)
+   * to a clear 409, and re-throws anything else unchanged.
+   */
+  private scheduleConflict(
+    err: unknown,
+    weekday: number,
+    startTime: string,
+  ): Error {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    ) {
+      const day = WEEKDAY_NAMES[weekday];
+      return new ConflictException(
+        day && startTime
+          ? `A schedule for ${day} at ${startTime} already exists for this tour.`
+          : 'A schedule for that weekday and start time already exists for this tour.',
+      );
+    }
+    return err instanceof Error ? err : new Error(String(err));
+  }
+
+  /**
+   * Re-materialise the tour's near-term departures from its current
+   * schedules/exceptions and refresh `isBookable`. Reconcile is additive and
+   * protects booked / manually-edited / API departures, so it is safe to call on
+   * every schedule mutation.
+   */
+  private async syncTourAvailability(tourId: string): Promise<void> {
+    await this.materializer.materializeTour(tourId);
+    await this.refreshIsBookable(tourId);
   }
 
   async updateSchedule(
@@ -119,21 +175,28 @@ export class AvailabilityService {
     );
     if (dto.startTime)
       await this.assertStartTimeInSlotSet(existing.tourId, dto.startTime);
-    const row = await this.prisma.availabilitySchedule.update({
-      where: { id },
-      data: {
-        ...(dto.weekday !== undefined && { weekday: dto.weekday }),
-        ...(dto.startTime && { startTime: hhmmToTime(dto.startTime) }),
-        ...(dto.capacityOverride !== undefined && {
-          capacityOverride: dto.capacityOverride ?? null,
-        }),
-        ...(dto.validFrom && { validFrom: dayDate(dto.validFrom) }),
-        ...(dto.validUntil !== undefined && {
-          validUntil: dto.validUntil ? dayDate(dto.validUntil) : null,
-        }),
-        ...(dto.status && { status: dto.status }),
-      },
-    });
+    let row;
+    try {
+      row = await this.prisma.availabilitySchedule.update({
+        where: { id },
+        data: {
+          ...(dto.weekday !== undefined && { weekday: dto.weekday }),
+          ...(dto.startTime && { startTime: hhmmToTime(dto.startTime) }),
+          ...(dto.capacityOverride !== undefined && {
+            capacityOverride: dto.capacityOverride ?? null,
+          }),
+          ...(dto.validFrom && { validFrom: dayDate(dto.validFrom) }),
+          ...(dto.validUntil !== undefined && {
+            validUntil: dto.validUntil ? dayDate(dto.validUntil) : null,
+          }),
+          ...(dto.status && { status: dto.status }),
+        },
+      });
+    } catch (err) {
+      throw this.scheduleConflict(err, row?.weekday ?? -1, dto.startTime ?? '');
+    }
+    // Status/time/validity changes alter which departures should exist.
+    await this.syncTourAvailability(existing.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       operatorId,
@@ -154,6 +217,9 @@ export class AvailabilityService {
     );
     await this.prisma.availabilitySchedule.delete({ where: { id } });
     this.logger.log(`Schedule ${id} deleted`);
+    // Removing a rule should retire its future (unbooked) departures and refresh
+    // the listing gate.
+    await this.syncTourAvailability(existing.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       operatorId,
@@ -288,6 +354,8 @@ export class AvailabilityService {
       dto.from,
       dto.to,
     );
+    // Departures changed - the listing gate depends on isBookable, so refresh it.
+    await this.refreshIsBookable(dto.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: dto.tourId,
       operatorId,
@@ -358,6 +426,8 @@ export class AvailabilityService {
       },
     });
     this.logger.log(`Departure ${id} manually edited`);
+    // A cancel / sold-out / reopen can flip the tour's bookability - refresh the flag.
+    await this.refreshIsBookable(existing.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       localDate: dateKey(existing.date),
@@ -463,6 +533,75 @@ export class AvailabilityService {
       });
       return isDepartureBookable(live);
     });
+  }
+
+  /**
+   * Recomputes {@link computeIsBookable} and persists it to `tour.isBookable`.
+   * The public listing (`ToursService.findAll`) gates on this flag, so it must be
+   * refreshed whenever the tour's departures change (materialize / departure edit)
+   * and when it is published. Returns the new value.
+   */
+  async refreshIsBookable(tourId: string): Promise<boolean> {
+    const bookable = await this.computeIsBookable(tourId);
+    await this.prisma.tour.update({
+      where: { id: tourId },
+      data: { isBookable: bookable },
+    });
+    return bookable;
+  }
+
+  /**
+   * Nightly recompute of `isBookable` across every LIVE tour (master §6/§7.2:
+   * "exclude tours with no availability in the next 30 days"). Idempotent; safe to
+   * run on demand. Returns how many were evaluated and how many are now bookable.
+   */
+  async recomputeAllBookable(): Promise<{
+    evaluated: number;
+    bookable: number;
+  }> {
+    const tours = await this.prisma.tour.findMany({
+      where: { status: TourStatus.LIVE, isActive: true },
+      select: { id: true },
+    });
+    let bookable = 0;
+    for (const t of tours) {
+      if (await this.refreshIsBookable(t.id)) bookable++;
+    }
+    this.logger.log(
+      `isBookable recompute: evaluated=${tours.length} bookable=${bookable}`,
+    );
+    return { evaluated: tours.length, bookable };
+  }
+
+  /**
+   * Nightly materialisation of a rolling 12-month window for every LIVE tour
+   * (master: "a nightly job materializes 12 rolling months"). Reconcile protects
+   * booked / manually-edited / API departures. Run before {@link recomputeAllBookable}
+   * so the flag reflects freshly-projected departures. Failures per tour are logged
+   * and skipped so one bad tour never aborts the batch.
+   */
+  async materializeAllLive(): Promise<{ evaluated: number; failed: number }> {
+    const tours = await this.prisma.tour.findMany({
+      where: { status: TourStatus.LIVE, isActive: true },
+      select: { id: true },
+    });
+    // 12 rolling months (kept just under the materialiser's 365-day cap).
+    const to = dateKey(new Date(Date.now() + 364 * MS_PER_DAY));
+    let failed = 0;
+    for (const t of tours) {
+      try {
+        await this.materializer.materializeTour(t.id, undefined, to);
+      } catch (err) {
+        failed++;
+        this.logger.warn(
+          `materializeAllLive: tour ${t.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    this.logger.log(
+      `materializeAllLive: evaluated=${tours.length} failed=${failed}`,
+    );
+    return { evaluated: tours.length, failed };
   }
 
   // ── internals ──────────────────────────────────────────────────────────────

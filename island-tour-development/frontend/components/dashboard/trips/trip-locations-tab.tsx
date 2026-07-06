@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -36,20 +36,33 @@ function typeLabel(value: string): string {
   return LOCATION_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
-const numeric = z.string().optional();
+/** A form string that, when non-empty, must parse to a number within bounds. */
+const numberString = (opts: { min?: number; max?: number; int?: boolean; message: string }) =>
+  z
+    .string()
+    .optional()
+    .refine((v) => {
+      if (v == null || v.trim() === '') return true;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return false;
+      if (opts.int && !Number.isInteger(n)) return false;
+      if (opts.min != null && n < opts.min) return false;
+      if (opts.max != null && n > opts.max) return false;
+      return true;
+    }, opts.message);
 
 const locationFieldsSchema = {
   types: z.array(z.string()).min(1, 'Select at least one type'),
-  latitude: numeric,
-  longitude: numeric,
+  latitude: numberString({ min: -90, max: 90, message: 'Latitude must be a number between -90 and 90.' }),
+  longitude: numberString({ min: -180, max: 180, message: 'Longitude must be a number between -180 and 180.' }),
   streetAddress: z.string().max(160).optional().or(z.literal('')),
   addressLocality: z.string().max(120).optional().or(z.literal('')),
   addressRegion: z.string().max(120).optional().or(z.literal('')),
   postalCode: z.string().max(40).optional().or(z.literal('')),
   addressCountry: z.string().max(80).optional().or(z.literal('')),
-  minutesTo: numeric,
-  minutesAt: numeric,
-  displayOrder: numeric,
+  minutesTo: numberString({ min: 0, int: true, message: 'Enter minutes as a whole number (0 or more).' }),
+  minutesAt: numberString({ min: 0, int: true, message: 'Enter minutes as a whole number (0 or more).' }),
+  displayOrder: numberString({ min: 0, int: true, message: 'Enter a whole number (0 or more).' }),
 };
 
 const addLocationSchema = z.object({
@@ -81,7 +94,12 @@ function LocationItem({ location, tripId }: LocationItemProps) {
 
   const enTranslation = location.translations.find((t) => t.locale === 'en');
 
-  const { register, handleSubmit, control } = useForm<EditLocationFormValues>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<EditLocationFormValues>({
     resolver: zodResolver(editLocationSchema),
     defaultValues: {
       types: location.types,
@@ -189,11 +207,13 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <Label className="text-xs font-semibold uppercase">Latitude</Label>
-                <Input {...register('latitude')} placeholder="12.1091" />
+                <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
+                <FieldError>{errors.latitude?.message}</FieldError>
               </Field>
               <Field>
                 <Label className="text-xs font-semibold uppercase">Longitude</Label>
-                <Input {...register('longitude')} placeholder="-68.9316" />
+                <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
+                <FieldError>{errors.longitude?.message}</FieldError>
               </Field>
             </div>
             <Field>
@@ -220,16 +240,21 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Mins To</Label>
-                <Input {...register('minutesTo')} type="number" min={0} placeholder="Travel" />
+                <Label className="text-xs font-semibold uppercase">Travel (mins)</Label>
+                <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
+                <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
+                <FieldError>{errors.minutesTo?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Mins At</Label>
-                <Input {...register('minutesAt')} type="number" min={0} placeholder="Dwell" />
+                <Label className="text-xs font-semibold uppercase">At Stop (mins)</Label>
+                <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
+                <FieldDescription>Minutes spent at this stop.</FieldDescription>
+                <FieldError>{errors.minutesAt?.message}</FieldError>
               </Field>
               <Field>
                 <Label className="text-xs font-semibold uppercase">Order</Label>
-                <Input {...register('displayOrder')} type="number" min={0} />
+                <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
+                <FieldError>{errors.displayOrder?.message}</FieldError>
               </Field>
             </div>
             <div className="flex justify-end">
@@ -404,25 +429,32 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
           <div className="grid grid-cols-2 gap-3">
             <Field>
               <Label className="text-xs font-semibold uppercase">Latitude</Label>
-              <Input {...register('latitude')} placeholder="12.1091" />
+              <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
+              <FieldError>{errors.latitude?.message}</FieldError>
             </Field>
             <Field>
               <Label className="text-xs font-semibold uppercase">Longitude</Label>
-              <Input {...register('longitude')} placeholder="-68.9316" />
+              <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
+              <FieldError>{errors.longitude?.message}</FieldError>
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Mins To</Label>
-              <Input {...register('minutesTo')} type="number" min={0} placeholder="Travel" />
+              <Label className="text-xs font-semibold uppercase">Travel (mins)</Label>
+              <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
+              <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
+              <FieldError>{errors.minutesTo?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Mins At</Label>
-              <Input {...register('minutesAt')} type="number" min={0} placeholder="Dwell" />
+              <Label className="text-xs font-semibold uppercase">At Stop (mins)</Label>
+              <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
+              <FieldDescription>Minutes spent at this stop.</FieldDescription>
+              <FieldError>{errors.minutesAt?.message}</FieldError>
             </Field>
             <Field>
               <Label className="text-xs font-semibold uppercase">Order</Label>
-              <Input {...register('displayOrder')} type="number" min={0} />
+              <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
+              <FieldError>{errors.displayOrder?.message}</FieldError>
             </Field>
           </div>
           <div className="flex justify-end">

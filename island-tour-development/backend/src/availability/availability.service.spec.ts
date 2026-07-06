@@ -19,7 +19,7 @@ function day(date: string) {
 
 function mockPrisma() {
   return {
-    tour: { findUnique: jest.fn(), findFirst: jest.fn() },
+    tour: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     operator: { findUnique: jest.fn(), create: jest.fn() },
     availabilitySchedule: {
       create: jest.fn(),
@@ -34,7 +34,9 @@ function mockPrisma() {
       findMany: jest.fn(),
     },
     departure: {
-      findMany: jest.fn(),
+      // Default [] so the post-mutation refreshIsBookable() -> computeIsBookable()
+      // read has a value in tests that don't set departures explicitly.
+      findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       update: jest.fn(),
     },

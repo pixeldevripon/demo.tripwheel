@@ -5,11 +5,16 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { XIcon } from 'lucide-react';
+import { ChevronDownIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,8 +31,27 @@ import { useUpdateTrip, useLanguages, useAddLanguage, useRemoveLanguage } from '
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
-import type { TripListItem } from '@/types/trip';
+import type {
+  TripListItem,
+  OctoAvailabilityType,
+  DeliveryFormat,
+  DeliveryMethod,
+  RedemptionMethod,
+} from '@/types/trip';
+
+const DELIVERY_FORMAT_OPTIONS: { value: DeliveryFormat; label: string }[] = [
+  { value: 'PDF_URL', label: 'PDF URL' },
+  { value: 'QRCODE', label: 'QR code' },
+  { value: 'CODE128', label: 'Code 128' },
+  { value: 'PKPASS_URL', label: 'PKPASS URL' },
+];
+
+const DELIVERY_METHOD_OPTIONS: { value: DeliveryMethod; label: string }[] = [
+  { value: 'VOUCHER', label: 'Voucher' },
+  { value: 'TICKET', label: 'Ticket' },
+];
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const COMMON_LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -223,9 +247,17 @@ const detailsSchema = z.object({
   isLocalsFavourite: z.boolean(),
   checkInMinutesBefore: z.coerce.number().int().min(0).max(240).optional().or(z.literal('')),
   reference: z.string().max(120).optional().or(z.literal('')),
-  ogImage: z.string().max(500).optional().or(z.literal('')),
   h1Override: z.string().max(200).optional().or(z.literal('')),
   breadcrumbLabel: z.string().max(60).optional().or(z.literal('')),
+  availabilityType: z.enum(['START_TIME', 'OPENING_HOURS']),
+  redemptionMethod: z.enum(['DIGITAL', 'PRINT', 'MANIFEST']),
+  instantDelivery: z.boolean(),
+  availabilityRequired: z.boolean(),
+  allowFreesale: z.boolean(),
+  deliveryFormats: z.array(z.enum(['PDF_URL', 'QRCODE', 'CODE128', 'PKPASS_URL'])),
+  deliveryMethods: z.array(z.enum(['VOUCHER', 'TICKET'])),
+  timeZone: z.string().max(60).optional().or(z.literal('')),
+  startTimes: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
   isActive: z.boolean().optional(),
 });
 
@@ -262,9 +294,17 @@ type DetailsFormValues = {
   isLocalsFavourite: boolean;
   checkInMinutesBefore: string;
   reference: string;
-  ogImage: string;
   h1Override: string;
   breadcrumbLabel: string;
+  availabilityType: OctoAvailabilityType;
+  redemptionMethod: RedemptionMethod;
+  instantDelivery: boolean;
+  availabilityRequired: boolean;
+  allowFreesale: boolean;
+  deliveryFormats: DeliveryFormat[];
+  deliveryMethods: DeliveryMethod[];
+  timeZone: string;
+  startTimes: string[];
   isActive: boolean;
 };
 
@@ -309,9 +349,17 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     isLocalsFavourite: trip.isLocalsFavourite,
     checkInMinutesBefore: trip.checkInMinutesBefore != null ? String(trip.checkInMinutesBefore) : '',
     reference: trip.reference ?? '',
-    ogImage: trip.ogImage ?? '',
     h1Override: trip.h1Override ?? '',
     breadcrumbLabel: trip.breadcrumbLabel ?? '',
+    availabilityType: trip.availabilityType,
+    redemptionMethod: trip.redemptionMethod,
+    instantDelivery: trip.instantDelivery,
+    availabilityRequired: trip.availabilityRequired,
+    allowFreesale: trip.allowFreesale,
+    deliveryFormats: trip.deliveryFormats ?? [],
+    deliveryMethods: trip.deliveryMethods ?? [],
+    timeZone: trip.timeZone ?? '',
+    startTimes: trip.startTimes ?? [],
     isActive: trip.isActive,
   };
 }
@@ -354,6 +402,10 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const familyFriendly = watch('familyFriendly');
   const suitableForBeginners = watch('suitableForBeginners');
   const isLocalsFavourite = watch('isLocalsFavourite');
+  const instantDelivery = watch('instantDelivery');
+  const availabilityRequired = watch('availabilityRequired');
+  const allowFreesale = watch('allowFreesale');
+  const [startTimeDraft, setStartTimeDraft] = useState('');
 
   // Keep primary valid within the selected set.
   useEffect(() => {
@@ -401,9 +453,17 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           isLocalsFavourite: values.isLocalsFavourite,
           checkInMinutesBefore: values.checkInMinutesBefore !== '' ? Number(values.checkInMinutesBefore) : undefined,
           reference: values.reference || null,
-          ogImage: values.ogImage || null,
           h1Override: values.h1Override || null,
           breadcrumbLabel: values.breadcrumbLabel || null,
+          availabilityType: values.availabilityType,
+          redemptionMethod: values.redemptionMethod,
+          instantDelivery: values.instantDelivery,
+          availabilityRequired: values.availabilityRequired,
+          allowFreesale: values.allowFreesale,
+          deliveryFormats: values.deliveryFormats,
+          deliveryMethods: values.deliveryMethods,
+          timeZone: values.timeZone || undefined,
+          startTimes: values.startTimes,
           isActive: values.isActive,
         },
       },
@@ -850,7 +910,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             <Label className="text-xs font-semibold uppercase">H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
             <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
             <FieldDescription>
-              English-only SEO tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
+              English-only heading tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
             </FieldDescription>
           </Field>
 
@@ -858,21 +918,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
             <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
             <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
-          </Field>
-
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Social Share Image (OG)</Label>
-            <Controller
-              name="ogImage"
-              control={control}
-              render={({ field }) => (
-                <ImageSelectorField
-                  value={field.value || null}
-                  onChange={(url) => field.onChange(url ?? '')}
-                />
-              )}
-            />
-            <FieldDescription>Image shown when this trip is shared on social media. Falls back to the hero image when empty.</FieldDescription>
           </Field>
 
           <Field>
@@ -905,6 +950,242 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
     </Card>
 
     <LanguagesCard tripId={trip.id} />
+
+    {/* OCTO & Delivery: advanced integration fields, low priority for now.
+        Collapsed by default; edits still save through the same form. */}
+    <Collapsible>
+      <Card className="gap-0 py-0">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="group/octo flex w-full items-center justify-between gap-2 px-8 py-6 text-left"
+          >
+            <span className="font-heading text-lg font-semibold uppercase tracking-wider">
+              OCTO &amp; Delivery
+            </span>
+            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/octo:rotate-180" />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t">
+          <CardContent className="pt-6 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Availability Type</Label>
+                <Controller
+                  name="availabilityType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="START_TIME">Start time</SelectItem>
+                        <SelectItem value="OPENING_HOURS">Opening hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Redemption Method</Label>
+                <Controller
+                  name="redemptionMethod"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DIGITAL">Digital</SelectItem>
+                        <SelectItem value="PRINT">Print</SelectItem>
+                        <SelectItem value="MANIFEST">Manifest</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="instantDelivery"
+                  checked={instantDelivery}
+                  onCheckedChange={(c) => setValue('instantDelivery', !!c)}
+                />
+                <Label htmlFor="instantDelivery" className="text-xs font-semibold uppercase cursor-pointer">
+                  Instant delivery
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="availabilityRequired"
+                  checked={availabilityRequired}
+                  onCheckedChange={(c) => setValue('availabilityRequired', !!c)}
+                />
+                <Label htmlFor="availabilityRequired" className="text-xs font-semibold uppercase cursor-pointer">
+                  Availability required
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="allowFreesale"
+                  checked={allowFreesale}
+                  onCheckedChange={(c) => setValue('allowFreesale', !!c)}
+                />
+                <Label htmlFor="allowFreesale" className="text-xs font-semibold uppercase cursor-pointer">
+                  Allow freesale
+                </Label>
+              </div>
+            </div>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Delivery Formats</Label>
+              <Controller
+                name="deliveryFormats"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    {DELIVERY_FORMAT_OPTIONS.map((opt) => {
+                      const checked = field.value.includes(opt.value);
+                      return (
+                        <div key={opt.value} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`deliveryFormat-${opt.value}`}
+                            checked={checked}
+                            onCheckedChange={(c) =>
+                              field.onChange(
+                                c
+                                  ? [...field.value, opt.value]
+                                  : field.value.filter((v) => v !== opt.value)
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={`deliveryFormat-${opt.value}`}
+                            className="text-xs font-semibold uppercase cursor-pointer"
+                          >
+                            {opt.label}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Delivery Methods</Label>
+              <Controller
+                name="deliveryMethods"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    {DELIVERY_METHOD_OPTIONS.map((opt) => {
+                      const checked = field.value.includes(opt.value);
+                      return (
+                        <div key={opt.value} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`deliveryMethod-${opt.value}`}
+                            checked={checked}
+                            onCheckedChange={(c) =>
+                              field.onChange(
+                                c
+                                  ? [...field.value, opt.value]
+                                  : field.value.filter((v) => v !== opt.value)
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={`deliveryMethod-${opt.value}`}
+                            className="text-xs font-semibold uppercase cursor-pointer"
+                          >
+                            {opt.label}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Time Zone</Label>
+              <Input {...register('timeZone')} placeholder="e.g. America/Curacao" />
+              <FieldDescription>IANA time zone identifier for the tour&apos;s local time.</FieldDescription>
+            </Field>
+
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Start Times</Label>
+              <Controller
+                name="startTimes"
+                control={control}
+                render={({ field }) => {
+                  function addTime() {
+                    const value = startTimeDraft.trim();
+                    if (!TIME_PATTERN.test(value)) {
+                      toast.error('Enter a valid time in HH:MM (24-hour).');
+                      return;
+                    }
+                    if (field.value.includes(value)) {
+                      toast.error('That start time is already added.');
+                      return;
+                    }
+                    field.onChange([...field.value, value].sort());
+                    setStartTimeDraft('');
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {field.value.map((time) => (
+                            <Badge key={time} variant="secondary" className="gap-1.5 pr-1">
+                              <span>{time}</span>
+                              <button
+                                type="button"
+                                onClick={() => field.onChange(field.value.filter((t) => t !== time))}
+                                className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
+                                aria-label={`Remove ${time}`}
+                              >
+                                <XIcon className="size-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-end gap-2">
+                        <Input
+                          value={startTimeDraft}
+                          onChange={(e) => setStartTimeDraft(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTime())}
+                          placeholder="HH:MM (e.g. 09:30)"
+                          className="max-w-45"
+                        />
+                        <Button type="button" size="sm" onClick={addTime}>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+              <FieldDescription>
+                The tour&apos;s start times. Availability schedules switch these on per weekday.
+              </FieldDescription>
+            </Field>
+          </CardContent>
+          <div className="flex justify-end px-8 pb-8">
+            <Button type="button" onClick={handleSubmit(onSubmit)} disabled={isPending}>
+              {isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
     </div>
   );
 }

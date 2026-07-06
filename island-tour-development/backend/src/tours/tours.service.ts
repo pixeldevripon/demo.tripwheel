@@ -8,6 +8,7 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { AvailabilityService } from '@/availability/availability.service';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import {
   BadRequestException,
@@ -40,7 +41,10 @@ import {
 export class ToursService {
   private readonly logger = new Logger(ToursService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly availability: AvailabilityService,
+  ) {}
 
   private readonly tourSelect = {
     id: true,
@@ -1479,28 +1483,12 @@ export class ToursService {
       // Hub validation inside transaction (TOCTOU-safe). A hub is allowed if it belongs to
       // the destination AND at least one of the tour's categories is in its allowed list.
       for (const hubId of hubIds) {
-        const hub = await tx.hub.findUnique({
-          where: { id: hubId },
-          select: { id: true, destinationId: true, isActive: true },
-        });
-        if (!hub || !hub.isActive) {
-          throw new BadRequestException(
-            `Hub ${hubId} not found or is not active`,
-          );
-        }
-        if (hub.destinationId !== dto.destinationId) {
-          throw new BadRequestException(
-            `Hub ${hubId} does not belong to the specified destination`,
-          );
-        }
-        const allowedCount = await tx.hubAllowedCategory.count({
-          where: { hubId, categoryId: { in: categoryIds } },
-        });
-        if (allowedCount === 0) {
-          throw new BadRequestException(
-            `None of the tour's categories are allowed in hub ${hubId}`,
-          );
-        }
+        await this.assertHubAllowsCategories(
+          tx,
+          hubId,
+          dto.destinationId,
+          categoryIds,
+        );
       }
 
       const tour = await tx.tour
@@ -1744,6 +1732,28 @@ export class ToursService {
             cancellationHours: dto.cancellationHours,
           }),
           ...(dto.startTimes !== undefined && { startTimes: dto.startTimes }),
+          ...(dto.availabilityType !== undefined && {
+            availabilityType: dto.availabilityType,
+          }),
+          ...(dto.redemptionMethod !== undefined && {
+            redemptionMethod: dto.redemptionMethod,
+          }),
+          ...(dto.instantDelivery !== undefined && {
+            instantDelivery: dto.instantDelivery,
+          }),
+          ...(dto.availabilityRequired !== undefined && {
+            availabilityRequired: dto.availabilityRequired,
+          }),
+          ...(dto.allowFreesale !== undefined && {
+            allowFreesale: dto.allowFreesale,
+          }),
+          ...(dto.deliveryFormats !== undefined && {
+            deliveryFormats: dto.deliveryFormats,
+          }),
+          ...(dto.deliveryMethods !== undefined && {
+            deliveryMethods: dto.deliveryMethods,
+          }),
+          ...(dto.timeZone !== undefined && { timeZone: dto.timeZone }),
           ...(dto.paymentModel !== undefined && {
             paymentModel: dto.paymentModel,
           }),
@@ -1785,6 +1795,9 @@ export class ToursService {
           }),
           ...(dto.isLocalsFavourite !== undefined && {
             isLocalsFavourite: dto.isLocalsFavourite,
+          }),
+          ...(dto.likelyToSellOutOverride !== undefined && {
+            likelyToSellOutOverride: dto.likelyToSellOutOverride,
           }),
           ...(dto.reference !== undefined && { reference: dto.reference }),
           ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
@@ -1844,27 +1857,12 @@ export class ToursService {
             })
           ).map((c) => c.categoryId);
         for (const hubId of hubIds) {
-          const hub = await tx.hub.findUnique({
-            where: { id: hubId },
-            select: { id: true, destinationId: true, isActive: true },
-          });
-          if (!hub || !hub.isActive)
-            throw new BadRequestException(
-              `Hub ${hubId} not found or is not active`,
-            );
-          if (hub.destinationId !== tour.destinationId) {
-            throw new BadRequestException(
-              `Hub ${hubId} does not belong to the destination`,
-            );
-          }
-          const allowedCount = await tx.hubAllowedCategory.count({
-            where: { hubId, categoryId: { in: effectiveCategoryIds } },
-          });
-          if (allowedCount === 0) {
-            throw new BadRequestException(
-              `None of the tour's categories are allowed in hub ${hubId}`,
-            );
-          }
+          await this.assertHubAllowsCategories(
+            tx,
+            hubId,
+            tour.destinationId,
+            effectiveCategoryIds,
+          );
         }
         await tx.tourHub.deleteMany({ where: { tourId: id } });
         await tx.tourHub.createMany({
@@ -1931,14 +1929,81 @@ export class ToursService {
 
     if (errors.length > 0) throw new BadRequestException(errors);
 
+    // Compute bookability at publish time so the tour appears in listings
+    // immediately if it already has availability (the public grid gates on
+    // isBookable). If it has no bookable departure yet, it stays hidden until the
+    // operator adds availability - the dashboard surfaces this so it is not silent.
+    const bookable = await this.availability.computeIsBookable(id);
     const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TourStatus.LIVE, publishedAt: new Date() },
+      data: {
+        status: TourStatus.LIVE,
+        publishedAt: new Date(),
+        isBookable: bookable,
+      },
       select: this.tourSelect,
     });
 
-    this.logger.log(`User ${userId} published tour ${id}`);
+    this.logger.log(
+      `User ${userId} published tour ${id} (bookable=${bookable})`,
+    );
     return this.flattenTour(updated);
+  }
+
+  /**
+   * Validates a hub can be attached to a tour with the given categories (inside a
+   * transaction, TOCTOU-safe). A hub is valid when it exists, is active, belongs to
+   * the tour's destination, AND shares at least one category with the tour's allowed
+   * list. On failure it throws a message that names the hub and the exact category
+   * mismatch (the tour's categories vs the hub's allowed categories) so the operator
+   * knows precisely what to change - never a raw hub UUID.
+   */
+  private async assertHubAllowsCategories(
+    tx: Prisma.TransactionClient,
+    hubId: string,
+    destinationId: string,
+    categoryIds: string[],
+  ): Promise<void> {
+    const hub = await tx.hub.findUnique({
+      where: { id: hubId },
+      select: {
+        id: true,
+        name: true,
+        destinationId: true,
+        isActive: true,
+        allowedCategories: {
+          select: { category: { select: { id: true, name: true } } },
+        },
+      },
+    });
+    if (!hub || !hub.isActive) {
+      throw new BadRequestException(`Hub ${hubId} not found or is not active`);
+    }
+    if (hub.destinationId !== destinationId) {
+      throw new BadRequestException(
+        `Hub "${hub.name}" belongs to a different destination and cannot be attached to this tour.`,
+      );
+    }
+    const allowed = hub.allowedCategories.map((a) => a.category);
+    const allowedIds = new Set(allowed.map((c) => c.id));
+    if (!categoryIds.some((cid) => allowedIds.has(cid))) {
+      const tourCatNames = (
+        await tx.category.findMany({
+          where: { id: { in: categoryIds } },
+          select: { name: true },
+        })
+      ).map((c) => c.name);
+      const allowedNames = allowed.map((c) => c.name);
+      throw new BadRequestException(
+        allowedNames.length
+          ? `Hub "${hub.name}" only accepts tours in these categories: ${allowedNames.join(
+              ', ',
+            )}. This tour's categories (${tourCatNames.join(
+              ', ',
+            )}) don't match any of them. Add a matching category to the tour or remove this hub.`
+          : `Hub "${hub.name}" has no allowed categories configured yet, so no tour can be attached to it. Ask an admin to set the hub's allowed categories first.`,
+      );
+    }
   }
 
   async pause(id: string, userId: string, userRole: Role) {
@@ -1967,13 +2032,17 @@ export class ToursService {
       throw new BadRequestException('Tour must be PAUSED to unpause');
     }
 
+    // Re-derive bookability on resume (availability may have changed while paused).
+    const bookable = await this.availability.computeIsBookable(id);
     const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TourStatus.LIVE },
+      data: { status: TourStatus.LIVE, isBookable: bookable },
       select: this.tourSelect,
     });
 
-    this.logger.log(`User ${userId} unpaused tour ${id}`);
+    this.logger.log(
+      `User ${userId} unpaused tour ${id} (bookable=${bookable})`,
+    );
     return this.flattenTour(updated);
   }
 

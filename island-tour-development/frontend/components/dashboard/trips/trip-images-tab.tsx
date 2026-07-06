@@ -3,6 +3,17 @@
 import MediaSelector from '@/components/dashboard/media/media-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     useAddImage,
@@ -11,13 +22,32 @@ import {
     useUpdateImage,
 } from '@/hooks/trips/use-trips';
 import type { MediaItem } from '@/types/media';
-import type { TripListItem } from '@/types/trip';
-import { ImageIcon, PlusIcon, StarIcon, Trash2Icon } from 'lucide-react';
+import type {
+    TourImage,
+    TripListItem,
+    UpdateTourImagePayload,
+} from '@/types/trip';
+import {
+    ArrowDownIcon,
+    ArrowUpIcon,
+    ImageIcon,
+    PencilIcon,
+    PlusIcon,
+    StarIcon,
+    Trash2Icon,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface TripImagesTabProps {
     trip: TripListItem;
+}
+
+// Clamp a raw focal-point string to the 0..1 range the backend expects.
+function clampFocal(raw: string): number {
+    const n = Number.parseFloat(raw);
+    if (Number.isNaN(n)) return 0.5;
+    return Math.min(1, Math.max(0, n));
 }
 
 export function TripImagesTab({ trip }: TripImagesTabProps) {
@@ -27,9 +57,15 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
     const { mutate: removeImage } = useRemoveImage();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectorOpen, setSelectorOpen] = useState(false);
+    const [editing, setEditing] = useState<TourImage | null>(null);
 
     const count = images?.length ?? 0;
     const hasHero = images?.some(img => img.isHero) ?? false;
+
+    // Stable display order: the reorder controls act on this sorted view.
+    const ordered = [...(images ?? [])].sort(
+        (a, b) => a.displayOrder - b.displayOrder
+    );
 
     function handleMediaSelect(items: MediaItem[]) {
         const remaining = 24 - count;
@@ -108,6 +144,65 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
         );
     }
 
+    // Swap displayOrder with the neighbour in the given direction.
+    function handleMove(index: number, direction: 'up' | 'down') {
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= ordered.length) return;
+
+        const current = ordered[index];
+        const neighbour = ordered[targetIndex];
+
+        updateImage(
+            {
+                tripId: trip.id,
+                imageId: current.id,
+                payload: { displayOrder: neighbour.displayOrder },
+            },
+            {
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to reorder image.'
+                    ),
+            }
+        );
+        updateImage(
+            {
+                tripId: trip.id,
+                imageId: neighbour.id,
+                payload: { displayOrder: current.displayOrder },
+            },
+            {
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to reorder image.'
+                    ),
+            }
+        );
+    }
+
+    function handleSaveEdit(payload: UpdateTourImagePayload) {
+        if (!editing) return;
+        updateImage(
+            { tripId: trip.id, imageId: editing.id, payload },
+            {
+                onSuccess: () => {
+                    toast.success('Image details updated.');
+                    setEditing(null);
+                },
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to update image.'
+                    ),
+            }
+        );
+    }
+
     return (
         <div className='space-y-6'>
             {/* Status + action row */}
@@ -146,50 +241,21 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                         />
                     ))}
                 </div>
-            ) : images && images.length > 0 ? (
+            ) : ordered.length > 0 ? (
                 <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
-                    {images.map(img => (
-                        <div
+                    {ordered.map((img, index) => (
+                        <ImageCard
                             key={img.id}
-                            className='relative group ring-1 ring-foreground/10 overflow-hidden rounded-none'>
-                            <div className='aspect-video bg-muted'>
-                                <img
-                                    src={img.url}
-                                    alt={img.altText ?? 'Trip image'}
-                                    className='size-full object-cover'
-                                />
-                            </div>
-                            <div className='p-2 space-y-1'>
-                                {img.isHero && (
-                                    <div className='flex items-center gap-1'>
-                                        <StarIcon className='size-3 text-amber-500 fill-amber-500' />
-                                        <span className='text-xs text-amber-600 font-medium'>
-                                            Hero
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className='absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                                {!img.isHero && (
-                                    <Button
-                                        size='xs'
-                                        variant='secondary'
-                                        onClick={() => handleSetHero(img.id)}
-                                        disabled={isUpdating}
-                                        title='Set as hero'>
-                                        <StarIcon className='size-3' />
-                                    </Button>
-                                )}
-                                <Button
-                                    size='xs'
-                                    variant='destructive'
-                                    onClick={() => handleDelete(img.id)}
-                                    disabled={deletingId === img.id}
-                                    title='Remove image'>
-                                    <Trash2Icon className='size-3' />
-                                </Button>
-                            </div>
-                        </div>
+                            img={img}
+                            index={index}
+                            total={ordered.length}
+                            isUpdating={isUpdating}
+                            isDeleting={deletingId === img.id}
+                            onSetHero={handleSetHero}
+                            onDelete={handleDelete}
+                            onMove={handleMove}
+                            onEdit={() => setEditing(img)}
+                        />
                     ))}
                 </div>
             ) : (
@@ -212,7 +278,246 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                 multiple
                 maxFiles={24 - count}
             />
+
+            <ImageEditDialog
+                image={editing}
+                isSaving={isUpdating}
+                onOpenChange={open => {
+                    if (!open) setEditing(null);
+                }}
+                onSave={handleSaveEdit}
+            />
         </div>
     );
 }
 
+// ── Image card ──────────────────────────────────────────────────────────────
+
+interface ImageCardProps {
+    img: TourImage;
+    index: number;
+    total: number;
+    isUpdating: boolean;
+    isDeleting: boolean;
+    onSetHero: (imageId: string) => void;
+    onDelete: (imageId: string) => void;
+    onMove: (index: number, direction: 'up' | 'down') => void;
+    onEdit: () => void;
+}
+
+function ImageCard({
+    img,
+    index,
+    total,
+    isUpdating,
+    isDeleting,
+    onSetHero,
+    onDelete,
+    onMove,
+    onEdit,
+}: ImageCardProps) {
+    return (
+        <div className='relative group ring-1 ring-foreground/10 overflow-hidden rounded-none'>
+            <div className='aspect-video bg-muted'>
+                <img
+                    src={img.url}
+                    alt={img.altText ?? 'Trip image'}
+                    className='size-full object-cover'
+                />
+            </div>
+            <div className='p-2 space-y-1'>
+                <div className='flex items-center justify-between gap-2'>
+                    {img.isHero ? (
+                        <div className='flex items-center gap-1'>
+                            <StarIcon className='size-3 text-amber-500 fill-amber-500' />
+                            <span className='text-xs text-amber-600 font-medium'>
+                                Hero
+                            </span>
+                        </div>
+                    ) : (
+                        <span className='text-xs text-muted-foreground'>
+                            #{index + 1}
+                        </span>
+                    )}
+                    {img.altText && (
+                        <span className='text-xs text-muted-foreground truncate'>
+                            {img.altText}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Reorder controls (bottom-left on hover) */}
+            <div className='absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <Button
+                    size='icon-xs'
+                    variant='secondary'
+                    onClick={() => onMove(index, 'up')}
+                    disabled={isUpdating || index === 0}
+                    title='Move earlier'>
+                    <ArrowUpIcon className='size-3' />
+                </Button>
+                <Button
+                    size='icon-xs'
+                    variant='secondary'
+                    onClick={() => onMove(index, 'down')}
+                    disabled={isUpdating || index === total - 1}
+                    title='Move later'>
+                    <ArrowDownIcon className='size-3' />
+                </Button>
+            </div>
+
+            {/* Edit / hero / delete (top-right on hover) */}
+            <div className='absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <Button
+                    size='icon-xs'
+                    variant='secondary'
+                    onClick={onEdit}
+                    disabled={isUpdating}
+                    title='Edit alt text and focal point'>
+                    <PencilIcon className='size-3' />
+                </Button>
+                {!img.isHero && (
+                    <Button
+                        size='icon-xs'
+                        variant='secondary'
+                        onClick={() => onSetHero(img.id)}
+                        disabled={isUpdating}
+                        title='Set as hero'>
+                        <StarIcon className='size-3' />
+                    </Button>
+                )}
+                <Button
+                    size='icon-xs'
+                    variant='destructive'
+                    onClick={() => onDelete(img.id)}
+                    disabled={isDeleting}
+                    title='Remove image'>
+                    <Trash2Icon className='size-3' />
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+// ── Edit dialog (alt text + focal point) ──────────────────────────────────────
+
+interface ImageEditDialogProps {
+    image: TourImage | null;
+    isSaving: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSave: (payload: UpdateTourImagePayload) => void;
+}
+
+function ImageEditDialog({
+    image,
+    isSaving,
+    onOpenChange,
+    onSave,
+}: ImageEditDialogProps) {
+    const [altText, setAltText] = useState('');
+    const [focalX, setFocalX] = useState('0.5');
+    const [focalY, setFocalY] = useState('0.5');
+    // Re-seed the local form whenever a different image is opened.
+    const [seededId, setSeededId] = useState<string | null>(null);
+
+    if (image && image.id !== seededId) {
+        setSeededId(image.id);
+        setAltText(image.altText ?? '');
+        setFocalX(String(image.focalX ?? 0.5));
+        setFocalY(String(image.focalY ?? 0.5));
+    }
+
+    function handleSubmit() {
+        onSave({
+            altText: altText.trim() === '' ? undefined : altText.trim(),
+            focalX: clampFocal(focalX),
+            focalY: clampFocal(focalY),
+        });
+    }
+
+    return (
+        <Dialog open={image !== null} onOpenChange={onOpenChange}>
+            <DialogContent className='sm:max-w-md'>
+                <DialogHeader>
+                    <DialogTitle className='font-heading uppercase tracking-wider'>
+                        Edit Image
+                    </DialogTitle>
+                    <DialogDescription>
+                        Update the alt text and focal point. The focal point (0
+                        to 1) keeps the most important part of the image in view
+                        when it is cropped.
+                    </DialogDescription>
+                </DialogHeader>
+
+                {image && (
+                    <div className='space-y-4'>
+                        <div className='aspect-video bg-muted overflow-hidden'>
+                            <img
+                                src={image.url}
+                                alt={altText || 'Trip image'}
+                                className='size-full object-cover'
+                            />
+                        </div>
+
+                        <Field>
+                            <Label className='text-xs font-semibold uppercase'>
+                                Alt Text
+                            </Label>
+                            <Input
+                                value={altText}
+                                onChange={e => setAltText(e.target.value)}
+                                placeholder='Describe the image for accessibility'
+                            />
+                        </Field>
+
+                        <div className='grid grid-cols-2 gap-3'>
+                            <Field>
+                                <Label className='text-xs font-semibold uppercase'>
+                                    Focal X
+                                </Label>
+                                <Input
+                                    type='number'
+                                    min={0}
+                                    max={1}
+                                    step={0.1}
+                                    value={focalX}
+                                    onChange={e => setFocalX(e.target.value)}
+                                />
+                            </Field>
+                            <Field>
+                                <Label className='text-xs font-semibold uppercase'>
+                                    Focal Y
+                                </Label>
+                                <Input
+                                    type='number'
+                                    min={0}
+                                    max={1}
+                                    step={0.1}
+                                    value={focalY}
+                                    onChange={e => setFocalY(e.target.value)}
+                                />
+                            </Field>
+                        </div>
+                    </div>
+                )}
+
+                <DialogFooter>
+                    <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => onOpenChange(false)}
+                        disabled={isSaving}>
+                        Cancel
+                    </Button>
+                    <Button
+                        size='sm'
+                        onClick={handleSubmit}
+                        disabled={isSaving}>
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}

@@ -69,7 +69,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  // Some mutations (e.g. DELETE) reply 200/201 with an empty body. Parsing that
+  // as JSON throws "Unexpected end of JSON input", so read text first and only
+  // parse when there is content.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -517,7 +521,7 @@ export const tripsApi = {
     });
   },
 
-  removeSchedule(scheduleId: string): Promise<{ message: string }> {
-    return apiFetch<{ message: string }>(`/availability/schedules/${scheduleId}`, { method: 'DELETE' });
+  removeSchedule(scheduleId: string): Promise<void> {
+    return apiFetch<void>(`/availability/schedules/${scheduleId}`, { method: 'DELETE' });
   },
 };

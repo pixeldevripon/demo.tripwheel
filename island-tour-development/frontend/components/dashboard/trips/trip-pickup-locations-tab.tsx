@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -189,14 +189,17 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
               <Field>
                 <Label className="text-xs font-semibold uppercase">Mins Prior</Label>
                 <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
+                <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
               </Field>
               <Field>
                 <Label className="text-xs font-semibold uppercase">Window Start</Label>
                 <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
+                <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
               </Field>
               <Field>
                 <Label className="text-xs font-semibold uppercase">Window End</Label>
                 <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
+                <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
               </Field>
             </div>
             <div className="flex items-center justify-between">
@@ -369,14 +372,17 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
             <Field>
               <Label className="text-xs font-semibold uppercase">Mins Prior</Label>
               <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
+              <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
             </Field>
             <Field>
               <Label className="text-xs font-semibold uppercase">Window Start</Label>
               <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
+              <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
             </Field>
             <Field>
               <Label className="text-xs font-semibold uppercase">Window End</Label>
               <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
+              <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
             </Field>
           </div>
           <div className="flex justify-end">

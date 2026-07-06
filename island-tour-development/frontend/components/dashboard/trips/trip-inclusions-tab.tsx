@@ -44,6 +44,7 @@ const ICON_OPTIONS = [
 const addInclusionSchema = z.object({
   label: z.string().min(2, 'At least 2 characters').max(100),
   icon: z.string().optional(),
+  imageUrl: z.string().optional().or(z.literal('')),
   displayOrder: z.string().optional(),
 });
 
@@ -155,7 +156,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
     formState: { errors },
   } = useForm<AddInclusionFormValues>({
     resolver: zodResolver(addInclusionSchema),
-    defaultValues: { label: '', icon: 'check', displayOrder: String(count) },
+    defaultValues: { label: '', icon: 'check', imageUrl: '', displayOrder: String(count) },
   });
 
   function onAdd(values: AddInclusionFormValues) {
@@ -165,13 +166,14 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
         payload: {
           label: values.label,
           icon: values.icon || 'check',
+          imageUrl: values.imageUrl || undefined,
           displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
         },
       },
       {
         onSuccess: () => {
           toast.success('Inclusion added.');
-          reset({ label: '', icon: 'check', displayOrder: String((inclusions?.length ?? 0) + 1) });
+          reset({ label: '', icon: 'check', imageUrl: '', displayOrder: String((inclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add inclusion.'),
       }

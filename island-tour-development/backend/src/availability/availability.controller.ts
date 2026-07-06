@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -109,6 +111,7 @@ export class AvailabilityController {
   }
 
   @Delete('schedules/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.MANAGE_AVAILABILITY)
   @ApiDeleteScheduleDocs()
   deleteSchedule(
@@ -152,6 +155,7 @@ export class AvailabilityController {
   }
 
   @Delete('exceptions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions(Permission.MANAGE_AVAILABILITY)
   @ApiDeleteExceptionDocs()
   deleteException(
