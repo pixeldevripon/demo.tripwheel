@@ -287,9 +287,13 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                         Published, not yet listed
                     </p>
                     <p className='text-sm text-amber-700 mt-1'>
-                        This tour has no availability in the next 30 days, so it
-                        will not appear in public listings yet. Add departures in
-                        the Schedules tab and it will list automatically.
+                        This tour has no bookable availability in the next 30
+                        days, so it will not appear in public listings yet. Add
+                        recurring schedules in the Schedules tab and make sure
+                        each one has a capacity - set a Max Party Size on the
+                        Details tab (the default), or a capacity override per
+                        schedule. It will list automatically once bookable
+                        departures exist.
                     </p>
                 </div>
             )}
@@ -361,7 +365,10 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 </TabsContent>
 
                 <TabsContent value='schedules'>
-                    <TripSchedulesTab tripId={id} />
+                    <TripSchedulesTab
+                        tripId={id}
+                        maxPartySize={trip.maxPartySize}
+                    />
                 </TabsContent>
 
                 {/* Build the listing page */}

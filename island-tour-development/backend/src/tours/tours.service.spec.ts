@@ -134,11 +134,17 @@ describe('ToursService', () => {
   let service: ToursService;
   let prisma: ReturnType<typeof createMockPrismaService>;
 
-  let availability: { computeIsBookable: jest.Mock };
+  let availability: {
+    computeIsBookable: jest.Mock;
+    resyncTourAvailability: jest.Mock;
+  };
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
-    availability = { computeIsBookable: jest.fn().mockResolvedValue(true) };
+    availability = {
+      computeIsBookable: jest.fn().mockResolvedValue(true),
+      resyncTourAvailability: jest.fn().mockResolvedValue(undefined),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToursService,

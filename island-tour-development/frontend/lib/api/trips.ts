@@ -11,6 +11,7 @@ import type {
   CreateTourLocationPayload,
   CreatePickupLocationPayload,
   CreateTourSchedulePayload,
+  CreateTourExceptionPayload,
   CreateTripPayload,
   MyTripsQueryParams,
   PaginatedTrips,
@@ -25,6 +26,7 @@ import type {
   PickupLocation,
   TourLanguage,
   TourSchedule,
+  TourException,
   TripListItem,
   TripTranslation,
   TripUpdateResponse,
@@ -523,5 +525,21 @@ export const tripsApi = {
 
   removeSchedule(scheduleId: string): Promise<void> {
     return apiFetch<void>(`/availability/schedules/${scheduleId}`, { method: 'DELETE' });
+  },
+
+  // Exceptions (availability module - date-specific overrides keyed by tourId)
+  getExceptions(tripId: string): Promise<TourException[]> {
+    return apiFetch<TourException[]>(`/availability/exceptions${buildQuery({ tourId: tripId })}`);
+  },
+
+  createException(tripId: string, payload: CreateTourExceptionPayload): Promise<TourException> {
+    return apiFetch<TourException>(`/availability/exceptions`, {
+      method: 'POST',
+      body: JSON.stringify({ tourId: tripId, ...payload }),
+    });
+  },
+
+  removeException(exceptionId: string): Promise<void> {
+    return apiFetch<void>(`/availability/exceptions/${exceptionId}`, { method: 'DELETE' });
   },
 };

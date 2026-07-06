@@ -1881,6 +1881,18 @@ export class ToursService {
       updated.priceFrom = await this.recomputePriceFrom(id);
     }
 
+    // maxPartySize is the default departure capacity. When it changes, schedules
+    // that had no capacity override can now (or can no longer) materialise, so
+    // re-project departures and refresh the listing gate immediately instead of
+    // waiting for the nightly job. This is what makes a tour whose schedules were
+    // silently skipped for lack of capacity self-heal the moment a size is set.
+    if (
+      dto.maxPartySize !== undefined &&
+      dto.maxPartySize !== tour.maxPartySize
+    ) {
+      await this.availability.resyncTourAvailability(id);
+    }
+
     this.logger.log(`User ${requesterId} updated tour ${id}`);
     return { tour: this.flattenTour(updated), warnings };
   }

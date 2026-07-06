@@ -1,0 +1,204 @@
+import { Locale } from '@/common/constants/locales';
+import { faqSelect } from '@/common/utils/translation.util';
+import { PrismaService } from '@/prisma/prisma.service';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { FaqPageType } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import type {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from './dto/faq-group.dto';
+
+type FaqRow = {
+  id: string;
+  question: string;
+  answer: string;
+  displayOrder: number;
+  isActive: boolean;
+  locale: Locale;
+  faqGroupId: string | null;
+};
+
+/**
+ * FaqGroupService — shared grouped-FAQ logic for every entity that owns FAQs
+ * (destination, category, hub, collection). All operations are parameterized by
+ * `(pageType, entityId)`, so a module's service delegates here after it has
+ * verified the owning entity exists.
+ *
+ * A logical FAQ = one `faqGroupId` whose per-locale rows share the same question.
+ * The English row is the base and carries the group's displayOrder / isActive.
+ *
+ * Dependencies: PrismaService (@Global).
+ * Usage: inject via FaqModule; call from a module service that first checks the
+ *        entity exists (e.g. `findDestinationOrThrow`) so 404s are accurate.
+ */
+@Injectable()
+export class FaqGroupService {
+  private readonly logger = new Logger(FaqGroupService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  private buildGroup(rows: FaqRow[]) {
+    const groupId = rows[0].faqGroupId ?? rows[0].id;
+    const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
+    return {
+      faqGroupId: groupId,
+      displayOrder: base.displayOrder,
+      isActive: base.isActive,
+      // English first, then the remaining locales.
+      translations: [...rows].sort((a, b) =>
+        a.locale === Locale.en ? -1 : b.locale === Locale.en ? 1 : 0,
+      ),
+    };
+  }
+
+  private async getGroupRowsOrThrow(
+    pageType: FaqPageType,
+    entityId: string,
+    groupId: string,
+  ) {
+    const rows = (await this.prisma.faq.findMany({
+      where: { pageType, entityId, faqGroupId: groupId },
+      select: faqSelect,
+    })) as FaqRow[];
+    if (rows.length === 0)
+      throw new NotFoundException(`FAQ group ${groupId} not found`);
+    return rows;
+  }
+
+  async getGroups(pageType: FaqPageType, entityId: string) {
+    const rows = (await this.prisma.faq.findMany({
+      where: { pageType, entityId },
+      select: faqSelect,
+      orderBy: [{ displayOrder: 'asc' }, { locale: 'asc' }],
+    })) as FaqRow[];
+
+    // Lazily migrate legacy rows (created before grouping) so each becomes its own
+    // single-locale group and can be translated going forward.
+    const legacy = rows.filter((r) => !r.faqGroupId);
+    if (legacy.length > 0) {
+      await Promise.all(
+        legacy.map((r) =>
+          this.prisma.faq.update({
+            where: { id: r.id },
+            data: { faqGroupId: r.id },
+          }),
+        ),
+      );
+      legacy.forEach((r) => {
+        r.faqGroupId = r.id;
+      });
+    }
+
+    const groups = new Map<string, FaqRow[]>();
+    for (const row of rows) {
+      const key = row.faqGroupId as string;
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(row);
+      else groups.set(key, [row]);
+    }
+
+    return [...groups.values()]
+      .map((groupRows) => this.buildGroup(groupRows))
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  }
+
+  async createGroup(
+    pageType: FaqPageType,
+    entityId: string,
+    dto: CreateFaqGroupDto,
+  ) {
+    const faqGroupId = randomUUID();
+    const row = await this.prisma.faq.create({
+      data: {
+        pageType,
+        entityId,
+        faqGroupId,
+        locale: Locale.en,
+        question: dto.question,
+        answer: dto.answer,
+        displayOrder: dto.displayOrder ?? 0,
+      },
+      select: faqSelect,
+    });
+
+    this.logger.log(
+      `Created FAQ group ${faqGroupId} for ${pageType} ${entityId}`,
+    );
+    return this.buildGroup([row]);
+  }
+
+  async upsertTranslation(
+    pageType: FaqPageType,
+    entityId: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertFaqTranslationDto,
+  ) {
+    const rows = await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+    const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
+    const existing = rows.find((r) => r.locale === locale);
+
+    const row = existing
+      ? await this.prisma.faq.update({
+          where: { id: existing.id },
+          data: { question: dto.question, answer: dto.answer },
+          select: faqSelect,
+        })
+      : await this.prisma.faq.create({
+          data: {
+            pageType,
+            entityId,
+            faqGroupId: groupId,
+            locale,
+            question: dto.question,
+            answer: dto.answer,
+            // Group-level attributes are mirrored so every locale row stays in sync.
+            displayOrder: base.displayOrder,
+            isActive: base.isActive,
+          },
+          select: faqSelect,
+        });
+
+    this.logger.log(
+      `Upserted FAQ group ${groupId} translation [${locale}] for ${pageType} ${entityId}`,
+    );
+    return row;
+  }
+
+  async updateGroup(
+    pageType: FaqPageType,
+    entityId: string,
+    groupId: string,
+    dto: UpdateFaqGroupDto,
+  ) {
+    await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+
+    // displayOrder / isActive are group-level: apply to every locale row at once.
+    await this.prisma.faq.updateMany({
+      where: { pageType, entityId, faqGroupId: groupId },
+      data: {
+        ...(dto.displayOrder !== undefined && {
+          displayOrder: dto.displayOrder,
+        }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+
+    this.logger.log(`Updated FAQ group ${groupId} for ${pageType} ${entityId}`);
+    const rows = await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+    return this.buildGroup(rows);
+  }
+
+  async deleteGroup(pageType: FaqPageType, entityId: string, groupId: string) {
+    await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+
+    await this.prisma.faq.deleteMany({
+      where: { pageType, entityId, faqGroupId: groupId },
+    });
+
+    this.logger.log(`Deleted FAQ group ${groupId} for ${pageType} ${entityId}`);
+    return { message: 'FAQ deleted successfully' };
+  }
+}

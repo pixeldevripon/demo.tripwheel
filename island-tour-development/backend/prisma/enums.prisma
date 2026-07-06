@@ -512,6 +512,17 @@ enum FilterDisplayType {
   DROPDOWN
 }
 
+// Which entity page a FAQ belongs to (polymorphic discriminator on the shared Faq
+// table). Members are lowercase to match the existing stored values and the
+// FAQ_PAGE_TYPE constant.
+enum FaqPageType {
+  category
+  hub
+  destination
+  tour
+  collection
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

@@ -371,6 +371,24 @@ export interface TourSchedule {
   status: AvailabilityScheduleStatus;
 }
 
+// Date-specific override of the recurring pattern (the daily operational tool).
+// Materialized into departures alongside the schedules.
+export type TourExceptionType =
+  | 'CLOSE_DATE' // stop-sell the whole date
+  | 'CLOSE_SLOT' // stop-sell one slot on a date
+  | 'ADD_SLOT' // extra departure the weekly pattern does not produce
+  | 'SET_CAPACITY'; // override capacity for one slot (startTime set) or all (null)
+
+export interface TourException {
+  id: string;
+  tourId: string;
+  date: string; // 'YYYY-MM-DD'
+  startTime: string | null; // null = whole date
+  type: TourExceptionType;
+  capacity: number | null; // add_slot / set_capacity
+  note: string | null;
+}
+
 // ── Query params ────────────────────────────────────────────────────────────────
 export interface MyTripsQueryParams {
   search?: string;
@@ -734,4 +752,13 @@ export interface UpdateTourSchedulePayload {
   validFrom?: string;
   validUntil?: string | null;
   status?: AvailabilityScheduleStatus;
+}
+
+// Date-exception payload (availability module). `startTime`/`capacity` apply per type.
+export interface CreateTourExceptionPayload {
+  date: string; // 'YYYY-MM-DD'
+  type: TourExceptionType;
+  startTime?: string; // 'HH:MM' — required for close_slot/add_slot; omit = whole date
+  capacity?: number; // required for add_slot/set_capacity
+  note?: string;
 }

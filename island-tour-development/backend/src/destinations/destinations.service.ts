@@ -10,6 +10,12 @@ import {
   clearCooledDownDestinationSlugs,
   markDestinationSlugsDeleted,
 } from '@/common/utils/slug-registry.util';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
+import {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -35,7 +41,10 @@ import {
 export class DestinationService {
   private readonly logger = new Logger(DestinationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly faqGroups: FaqGroupService,
+  ) {}
 
   private readonly destinationSelect = {
     id: true,
@@ -590,5 +599,66 @@ export class DestinationService {
       `Admin ${adminId} deleted FAQ ${faqId} for destination ${id}`,
     );
     return { message: 'FAQ deleted successfully' };
+  }
+
+  // ── Grouped FAQ (add in English, then translate) ────────────────────────────
+  // Thin wrappers over the shared FaqGroupService; each verifies the destination
+  // exists first so 404s are accurate, then delegates the grouped-FAQ logic.
+
+  async getFaqGroups(id: string) {
+    await this.findDestinationOrThrow(id);
+    return this.faqGroups.getGroups(FAQ_PAGE_TYPE.DESTINATION, id);
+  }
+
+  async createFaqGroup(id: string, dto: CreateFaqGroupDto, adminId: string) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(`Admin ${adminId} created FAQ for destination ${id}`);
+    return this.faqGroups.createGroup(FAQ_PAGE_TYPE.DESTINATION, id, dto);
+  }
+
+  async upsertFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertFaqTranslationDto,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} upserted FAQ ${groupId} [${locale}] for destination ${id}`,
+    );
+    return this.faqGroups.upsertTranslation(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      locale,
+      dto,
+    );
+  }
+
+  async updateFaqGroup(
+    id: string,
+    groupId: string,
+    dto: UpdateFaqGroupDto,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} updated FAQ ${groupId} for destination ${id}`,
+    );
+    return this.faqGroups.updateGroup(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      dto,
+    );
+  }
+
+  async deleteFaqGroup(id: string, groupId: string, adminId: string) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} deleted FAQ ${groupId} for destination ${id}`,
+    );
+    return this.faqGroups.deleteGroup(FAQ_PAGE_TYPE.DESTINATION, id, groupId);
   }
 }

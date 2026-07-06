@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRole } from '@/contexts/role-context';
 import {
   useHub,
@@ -15,11 +16,36 @@ import type { HubStatus } from '@/types/hub';
 import { HUB_STATUS_LABELS } from '@/types/enums';
 import { ArchiveIcon, CheckIcon, PlayIcon, RotateCcwIcon, UndoIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { FaqManager } from '@/components/dashboard/faq/faq-manager';
 import { HubDetailShell } from './hub-detail-shell';
 import { HubForm } from './hub-form';
+import { HubTranslationForm } from './hub-translation-form';
+import { HubPageContentForm } from './hub-page-content-form';
+import { HubSeoTab } from './hub-seo-tab';
+import { HubContentSectionsManager } from './hub-content-sections-manager';
+import { HubOurPicksManager } from './hub-our-picks-manager';
+import { HubComparisonManager } from './hub-comparison-manager';
+import { HubAllowedCategoriesManager } from './hub-allowed-categories-manager';
+
+// Priority order: setup that unlocks the rest first (identity + the category
+// gate tours attach through), then the publish-required localized content
+// (translations + content sections), then editorial curation (picks/comparison),
+// then supplementary content and SEO polish last.
+const VALID_TABS = [
+  'details',
+  'allowed-categories',
+  'translations',
+  'content-sections',
+  'our-picks',
+  'comparison',
+  'page-content',
+  'faqs',
+  'seo',
+] as const;
 
 interface HubEditViewProps {
   id: string;
+  initialTab?: string;
 }
 
 const statusVariant: Record<HubStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -41,7 +67,9 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   );
 }
 
-export function HubEditView({ id }: HubEditViewProps) {
+export function HubEditView({ id, initialTab }: HubEditViewProps) {
+  const activeTab =
+    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
   const { data: hub, isLoading } = useHub(id, 'en');
   const { data: enTranslation } = useHubTranslationByLocale(id, 'en');
   const { data: contentSections } = useHubContentSections(id);
@@ -77,90 +105,159 @@ export function HubEditView({ id }: HubEditViewProps) {
   ];
   const allPassed = readinessChecks.every((c) => c.passed);
 
-  return (
-    <HubDetailShell id={id} name={hub?.name} isLoading={isLoading} subtitle="Edit hub details">
-      {isLoading ? (
+  if (isLoading) {
+    return (
+      <HubDetailShell id={id} name={undefined} isLoading subtitle="Edit hub">
         <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-none" />
-          <Skeleton className="h-10 w-full rounded-none" />
-          <Skeleton className="h-32 w-full rounded-none" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-none" />
+          ))}
         </div>
-      ) : hub ? (
-        <div className="space-y-6">
-          {/* Status + lifecycle actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Status
-              </span>
-              <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
-            </div>
+      </HubDetailShell>
+    );
+  }
 
-            {can('MANAGE_HUBS') && (
-              <div className="flex flex-wrap gap-2">
-                {hub.status === 'DRAFT' && (
-                  <Button size="sm" onClick={() => changeStatus('PUBLISHED', 'Hub published.')} disabled={isUpdating}>
-                    <PlayIcon className="size-3.5" />
-                    Publish
-                  </Button>
-                )}
-                {hub.status === 'PUBLISHED' && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => changeStatus('DRAFT', 'Hub moved to draft.')}
-                      disabled={isUpdating}
-                    >
-                      <UndoIcon className="size-3.5" />
-                      Move to Draft
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => changeStatus('ARCHIVED', 'Hub archived.')}
-                      disabled={isUpdating}
-                    >
-                      <ArchiveIcon className="size-3.5" />
-                      Archive
-                    </Button>
-                  </>
-                )}
-                {hub.status === 'ARCHIVED' && (
-                  <Button
-                    size="sm"
-                    onClick={() => changeStatus('DRAFT', 'Hub restored to draft.')}
-                    disabled={isUpdating}
-                  >
-                    <RotateCcwIcon className="size-3.5" />
-                    Restore to Draft
-                  </Button>
-                )}
-              </div>
-            )}
+  if (!hub) {
+    return (
+      <HubDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit hub">
+        <p className="text-sm text-muted-foreground">Hub not found.</p>
+      </HubDetailShell>
+    );
+  }
+
+  return (
+    <HubDetailShell id={id} name={hub.name} isLoading={false} subtitle="Edit hub">
+      <div className="space-y-6">
+        {/* Status + lifecycle actions */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Status
+            </span>
+            <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
           </div>
 
-          {/* Publish readiness (only relevant while not yet published) */}
-          {hub.status !== 'PUBLISHED' && (
-            <Card className={allPassed ? 'border-emerald-200' : 'border-amber-200'}>
+          {can('MANAGE_HUBS') && (
+            <div className="flex flex-wrap gap-2">
+              {hub.status === 'DRAFT' && (
+                <Button size="sm" onClick={() => changeStatus('PUBLISHED', 'Hub published.')} disabled={isUpdating}>
+                  <PlayIcon className="size-3.5" />
+                  Publish
+                </Button>
+              )}
+              {hub.status === 'PUBLISHED' && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => changeStatus('DRAFT', 'Hub moved to draft.')}
+                    disabled={isUpdating}
+                  >
+                    <UndoIcon className="size-3.5" />
+                    Move to Draft
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => changeStatus('ARCHIVED', 'Hub archived.')}
+                    disabled={isUpdating}
+                  >
+                    <ArchiveIcon className="size-3.5" />
+                    Archive
+                  </Button>
+                </>
+              )}
+              {hub.status === 'ARCHIVED' && (
+                <Button
+                  size="sm"
+                  onClick={() => changeStatus('DRAFT', 'Hub restored to draft.')}
+                  disabled={isUpdating}
+                >
+                  <RotateCcwIcon className="size-3.5" />
+                  Restore to Draft
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Publish readiness (only relevant while not yet published) */}
+        {hub.status !== 'PUBLISHED' && (
+          <Card className={allPassed ? 'border-emerald-200' : 'border-amber-200'}>
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-sm">Publish Readiness</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {readinessChecks.map((check) => (
+                  <ReadinessItem key={check.label} label={check.label} passed={check.passed} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs defaultValue={activeTab}>
+          <div className="pb-2 mb-6">
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="allowed-categories">Allowed Categories</TabsTrigger>
+              <TabsTrigger value="translations">Translations</TabsTrigger>
+              <TabsTrigger value="content-sections">Content Sections</TabsTrigger>
+              <TabsTrigger value="our-picks">Our Picks</TabsTrigger>
+              <TabsTrigger value="comparison">Comparison</TabsTrigger>
+              <TabsTrigger value="page-content">Page Content</TabsTrigger>
+              <TabsTrigger value="faqs">FAQs</TabsTrigger>
+              <TabsTrigger value="seo">SEO</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="details">
+            <HubForm hub={hub} />
+          </TabsContent>
+
+          <TabsContent value="allowed-categories">
+            <HubAllowedCategoriesManager hubId={id} />
+          </TabsContent>
+
+          <TabsContent value="translations">
+            <HubTranslationForm hubId={id} hubName={hub.name} />
+          </TabsContent>
+
+          <TabsContent value="content-sections">
+            <HubContentSectionsManager hubId={id} />
+          </TabsContent>
+
+          <TabsContent value="our-picks">
+            <HubOurPicksManager hubId={id} />
+          </TabsContent>
+
+          <TabsContent value="comparison">
+            <HubComparisonManager hubId={id} />
+          </TabsContent>
+
+          <TabsContent value="page-content">
+            <HubPageContentForm hubId={id} />
+          </TabsContent>
+
+          <TabsContent value="faqs">
+            <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="text-sm">Publish Readiness</CardTitle>
+                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+                  FAQs
+                </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {readinessChecks.map((check) => (
-                    <ReadinessItem key={check.label} label={check.label} passed={check.passed} />
-                  ))}
-                </div>
+              <CardContent className="pt-6">
+                <FaqManager basePath="/hubs" entityId={id} />
               </CardContent>
             </Card>
-          )}
+          </TabsContent>
 
-          <HubForm hub={hub} />
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Hub not found.</p>
-      )}
+          <TabsContent value="seo">
+            <HubSeoTab hub={hub} />
+          </TabsContent>
+        </Tabs>
+      </div>
     </HubDetailShell>
   );
 }

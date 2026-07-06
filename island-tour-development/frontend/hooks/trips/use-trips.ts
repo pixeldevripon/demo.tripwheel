@@ -13,6 +13,7 @@ import type {
   CreateTourLocationPayload,
   CreatePickupLocationPayload,
   CreateTourSchedulePayload,
+  CreateTourExceptionPayload,
   CreateTripPayload,
   MyTripsQueryParams,
   UpdateTourAddOnPayload,
@@ -54,6 +55,7 @@ export const tripKeys = {
   translations: (tripId: string) => [...tripKeys.all, 'translations', tripId] as const,
   translationByLocale: (tripId: string, locale: string) => [...tripKeys.translations(tripId), locale] as const,
   schedules: (tripId: string) => [...tripKeys.all, 'schedules', tripId] as const,
+  exceptions: (tripId: string) => [...tripKeys.all, 'exceptions', tripId] as const,
 };
 
 // Queries
@@ -181,6 +183,14 @@ export function useSchedules(tripId: string) {
   return useQuery({
     queryKey: tripKeys.schedules(tripId),
     queryFn: () => tripsApi.getSchedules(tripId),
+    enabled: !!tripId,
+  });
+}
+
+export function useExceptions(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.exceptions(tripId),
+    queryFn: () => tripsApi.getExceptions(tripId),
     enabled: !!tripId,
   });
 }
@@ -874,6 +884,32 @@ export function useRemoveSchedule() {
       tripsApi.removeSchedule(scheduleId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+// Mutations - Exceptions (date-specific overrides). Like schedules, these
+// re-materialise departures and can flip isBookable, so refresh the detail too.
+export function useCreateException() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourExceptionPayload }) =>
+      tripsApi.createException(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+    },
+  });
+}
+
+export function useRemoveException() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ exceptionId }: { tripId: string; exceptionId: string }) =>
+      tripsApi.removeException(exceptionId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });

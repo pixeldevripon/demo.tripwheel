@@ -3,7 +3,11 @@
  * Focus: ownership scoping, live status mapping (check/calendar) against the
  * master §E.9 departure model, manual departure edits, and the isBookable helper.
  */
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AvailabilityService } from './availability.service';
 
@@ -152,6 +156,46 @@ describe('AvailabilityService', () => {
           startTime: '10:30',
         }),
       ).rejects.toThrow(/slot set/);
+    });
+  });
+
+  // A schedule with no capacityOverride only materialises if the tour supplies a
+  // default (maxPartySize). Without either, the materialiser silently skips the
+  // slot and the tour never lists - so the write must be rejected up-front.
+  describe('resolvable-capacity guard', () => {
+    const noOverride = { ...createDto, capacityOverride: undefined };
+
+    it('rejects a create with no override when the tour has no maxPartySize', async () => {
+      // TOUR has no maxPartySize (undefined -> null), so capacity is unresolvable.
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.createSchedule('u1', Role.TOUR_OPERATOR, noOverride),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.availabilitySchedule.create).not.toHaveBeenCalled();
+    });
+
+    it('allows a create with no override when the tour has a maxPartySize default', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, maxPartySize: 20 });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.availabilitySchedule.create.mockResolvedValue(
+        scheduleRow({ capacityOverride: null }),
+      );
+      const res = await svc.createSchedule(
+        'u1',
+        Role.TOUR_OPERATOR,
+        noOverride,
+      );
+      expect(res.id).toBe('s1');
+      expect(prisma.availabilitySchedule.create).toHaveBeenCalled();
+    });
+
+    it('allows a create with an explicit override regardless of maxPartySize', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR); // no maxPartySize
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.availabilitySchedule.create.mockResolvedValue(scheduleRow());
+      const res = await svc.createSchedule('u1', Role.TOUR_OPERATOR, createDto);
+      expect(res.id).toBe('s1');
     });
   });
 

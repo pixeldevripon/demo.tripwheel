@@ -2,9 +2,11 @@ import { DestinationEditView } from '@/components/dashboard/destinations/destina
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
-export default async function EditDestinationPage({ params }: Props) {
+export default async function EditDestinationPage({ params, searchParams }: Props) {
   const { id } = await params;
-  return <DestinationEditView id={id} />;
+  const { tab } = await searchParams;
+  return <DestinationEditView id={id} initialTab={tab} />;
 }

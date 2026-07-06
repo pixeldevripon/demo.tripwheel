@@ -44,7 +44,6 @@ const hubSchema = z.object({
     .refine(v => !v || v.length >= 2, 'Slug must be at least 2 characters'),
   description: z.string().optional(),
   heroImage: z.string().optional(),
-  ogImage: z.string().optional(),
   hubType: z.enum(HUB_TYPE_VALUES as [string, ...string[]], { message: 'Hub type is required' }),
   latitude: z
     .string()
@@ -90,7 +89,6 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
       slug: hub?.slug ?? '',
       description: hub?.description ?? '',
       heroImage: hub?.heroImage ?? '',
-      ogImage: hub?.ogImage ?? '',
       hubType: hub?.hubType ?? undefined,
       latitude: hub?.latitude?.toString() ?? '',
       longitude: hub?.longitude?.toString() ?? '',
@@ -102,7 +100,6 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
   const destinationIdValue = watch('destinationId');
   const hubTypeValue = watch('hubType');
   const heroImageValue = watch('heroImage');
-  const ogImageValue = watch('ogImage');
 
   const num = (v: string | undefined) =>
     v === '' || v === undefined ? null : Number(v);
@@ -119,7 +116,6 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             description: values.description || null,
             // null when cleared (backend @IsUrl skips null via @IsOptional).
             heroImage: values.heroImage || null,
-            ogImage: values.ogImage || null,
             hubType: values.hubType as HubDetail['hubType'] ?? undefined,
             latitude: num(values.latitude),
             longitude: num(values.longitude),
@@ -143,7 +139,6 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           name: values.name,
           description: values.description || null,
           heroImage: values.heroImage || null,
-          ogImage: values.ogImage || null,
           hubType: values.hubType as NonNullable<HubDetail['hubType']>,
           latitude: num(values.latitude),
           longitude: num(values.longitude),
@@ -256,17 +251,6 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
               <FieldDescription>
                 Full-bleed hero - the hub&apos;s defining visual. Required before the hub can be
                 published.
-              </FieldDescription>
-            </Field>
-
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Open Graph Image</Label>
-              <ImageSelectorField
-                value={ogImageValue || null}
-                onChange={(url) => setValue('ogImage', url ?? '')}
-              />
-              <FieldDescription>
-                Social-share preview image (Open Graph). Falls back to the hero image when unset.
               </FieldDescription>
             </Field>
 

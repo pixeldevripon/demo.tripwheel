@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
   AttributeDataType,
+  Currency,
   FilterDisplayType,
   HubType,
   Prisma,
@@ -87,32 +88,110 @@ const unsplash = (id: string) =>
   `https://images.unsplash.com/${id}?w=600&h=600&fit=crop&auto=format&q=80`;
 
 const SEED_CATEGORIES = [
-  { name: 'Boat Tours & Cruises',      slug: 'boat-tours',            heroImage: unsplash('photo-1518837695005-2083093ee35b') },
-  { name: 'Snorkeling Tours',          slug: 'snorkeling',            heroImage: unsplash('photo-1473116763249-2faaef81ccda') },
-  { name: 'Scuba Diving',              slug: 'scuba-diving',          heroImage: unsplash('photo-1544551763-46a013bb70d5') },
-  { name: 'Sunset Cruises',            slug: 'sunset-cruises',        heroImage: unsplash('photo-1505228395891-9a51e7e86bf6') },
-  { name: 'Sightseeing Tours',         slug: 'sightseeing-tours',     heroImage: unsplash('photo-1500375592092-40eb2168fd21') },
-  { name: 'Day Trips',                 slug: 'day-trips',             heroImage: unsplash('photo-1507525428034-b723cf961d3e') },
-  { name: 'Off-Road Tours',            slug: 'off-road-tours',        heroImage: unsplash('photo-1530866495561-507c9faab2ed') },
-  { name: 'Jet Ski Tours',             slug: 'jet-ski',               heroImage: unsplash('photo-1530549387789-4c1017266635') },
-  { name: 'Parasailing',               slug: 'parasailing',           heroImage: unsplash('photo-1502933691298-84fc14542831') },
-  { name: 'Water Sports',              slug: 'water-sports',          heroImage: unsplash('photo-1502680390469-be75c86b636f') },
-  { name: 'Fishing Trips',             slug: 'fishing-trips',         heroImage: unsplash('photo-1559825481-12a05cc00344') },
-  { name: 'Nature & Wildlife Tours',   slug: 'nature-wildlife-tours', heroImage: unsplash('photo-1559827260-dc66d52bef19') },
-  { name: 'Hiking Tours',              slug: 'hiking-tours',          heroImage: unsplash('photo-1551632811-561732d1e306') },
-  { name: 'Adventure Tours',           slug: 'adventure-tours',       heroImage: unsplash('photo-1488646953014-85cb44e25828') },
-  { name: 'Cultural & Historical Tours', slug: 'cultural-tours',      heroImage: unsplash('photo-1583212292454-1fe6229603b7') },
-  { name: 'Food & Drink Tours',        slug: 'food-tours',            heroImage: unsplash('photo-1437846972679-9e6e537be46e') },
-  { name: 'Attraction Tickets',        slug: 'attraction-tickets',    heroImage: unsplash('photo-1540541338287-41700207dee6') },
-  { name: 'Luxury Experiences',        slug: 'luxury-experiences',    heroImage: unsplash('photo-1468413253725-0d5181091126') },
-  { name: 'Workshops & Classes',       slug: 'workshops-classes',     heroImage: unsplash('photo-1571896349842-33c89424de2d') },
+  {
+    name: 'Boat Tours & Cruises',
+    slug: 'boat-tours',
+    heroImage: unsplash('photo-1518837695005-2083093ee35b'),
+  },
+  {
+    name: 'Snorkeling Tours',
+    slug: 'snorkeling',
+    heroImage: unsplash('photo-1473116763249-2faaef81ccda'),
+  },
+  {
+    name: 'Scuba Diving',
+    slug: 'scuba-diving',
+    heroImage: unsplash('photo-1544551763-46a013bb70d5'),
+  },
+  {
+    name: 'Sunset Cruises',
+    slug: 'sunset-cruises',
+    heroImage: unsplash('photo-1505228395891-9a51e7e86bf6'),
+  },
+  {
+    name: 'Sightseeing Tours',
+    slug: 'sightseeing-tours',
+    heroImage: unsplash('photo-1500375592092-40eb2168fd21'),
+  },
+  {
+    name: 'Day Trips',
+    slug: 'day-trips',
+    heroImage: unsplash('photo-1507525428034-b723cf961d3e'),
+  },
+  {
+    name: 'Off-Road Tours',
+    slug: 'off-road-tours',
+    heroImage: unsplash('photo-1530866495561-507c9faab2ed'),
+  },
+  {
+    name: 'Jet Ski Tours',
+    slug: 'jet-ski',
+    heroImage: unsplash('photo-1530549387789-4c1017266635'),
+  },
+  {
+    name: 'Parasailing',
+    slug: 'parasailing',
+    heroImage: unsplash('photo-1502933691298-84fc14542831'),
+  },
+  {
+    name: 'Water Sports',
+    slug: 'water-sports',
+    heroImage: unsplash('photo-1502680390469-be75c86b636f'),
+  },
+  {
+    name: 'Fishing Trips',
+    slug: 'fishing-trips',
+    heroImage: unsplash('photo-1559825481-12a05cc00344'),
+  },
+  {
+    name: 'Nature & Wildlife Tours',
+    slug: 'nature-wildlife-tours',
+    heroImage: unsplash('photo-1559827260-dc66d52bef19'),
+  },
+  {
+    name: 'Hiking Tours',
+    slug: 'hiking-tours',
+    heroImage: unsplash('photo-1551632811-561732d1e306'),
+  },
+  {
+    name: 'Adventure Tours',
+    slug: 'adventure-tours',
+    heroImage: unsplash('photo-1488646953014-85cb44e25828'),
+  },
+  {
+    name: 'Cultural & Historical Tours',
+    slug: 'cultural-tours',
+    heroImage: unsplash('photo-1583212292454-1fe6229603b7'),
+  },
+  {
+    name: 'Food & Drink Tours',
+    slug: 'food-tours',
+    heroImage: unsplash('photo-1437846972679-9e6e537be46e'),
+  },
+  {
+    name: 'Attraction Tickets',
+    slug: 'attraction-tickets',
+    heroImage: unsplash('photo-1540541338287-41700207dee6'),
+  },
+  {
+    name: 'Luxury Experiences',
+    slug: 'luxury-experiences',
+    heroImage: unsplash('photo-1468413253725-0d5181091126'),
+  },
+  {
+    name: 'Workshops & Classes',
+    slug: 'workshops-classes',
+    heroImage: unsplash('photo-1571896349842-33c89424de2d'),
+  },
 ];
 
 async function seedCategories() {
   console.log('Seeding categories...');
 
   for (const [idx, cat] of SEED_CATEGORIES.entries()) {
-    const existing = await prisma.category.findUnique({ where: { slug: cat.slug } });
+    const existing = await prisma.category.findUnique({
+      where: { slug: cat.slug },
+    });
     if (existing) {
       // Backfill the hero image onto rows seeded before images existed, without
       // clobbering an image an admin may have set manually.
@@ -121,7 +200,9 @@ async function seedCategories() {
           where: { id: existing.id },
           data: { heroImage: cat.heroImage },
         });
-        console.log(`  Category "${cat.name}" already exists - backfilled heroImage.`);
+        console.log(
+          `  Category "${cat.name}" already exists - backfilled heroImage.`,
+        );
       } else {
         console.log(`  Category "${cat.name}" already exists. Skipping.`);
       }
@@ -157,18 +238,75 @@ async function seedCategories() {
 //   so the islands can be activated later without re-seeding. Flip isActive via the
 //   admin update endpoint, which cascades the flag onto the slug_registry rows.
 const SEED_DESTINATIONS = [
-  { name: 'Curaçao',      slug: 'curacao',      region: Region.CARIBBEAN, isActive: true },
-  { name: 'Aruba',        slug: 'aruba',        region: Region.CARIBBEAN, isActive: true },
-  { name: 'Sint Maarten', slug: 'sint-maarten', region: Region.CARIBBEAN, isActive: true },
-  { name: 'Saint Lucia',  slug: 'saint-lucia',  region: Region.CARIBBEAN, isActive: false },
-  { name: 'Bahamas',      slug: 'bahamas',      region: Region.CARIBBEAN, isActive: false },
+  {
+    name: 'Curaçao',
+    slug: 'curacao',
+    region: Region.CARIBBEAN,
+    isActive: true,
+    country: 'Curaçao',
+    latitude: 12.1696,
+    longitude: -68.99,
+    timezone: 'America/Curacao',
+    currency: Currency.USD,
+    language: 'nl',
+  },
+  {
+    name: 'Aruba',
+    slug: 'aruba',
+    region: Region.CARIBBEAN,
+    isActive: true,
+    country: 'Aruba',
+    latitude: 12.5211,
+    longitude: -69.9683,
+    timezone: 'America/Aruba',
+    currency: Currency.USD,
+    language: 'nl',
+  },
+  {
+    name: 'Sint Maarten',
+    slug: 'sint-maarten',
+    region: Region.CARIBBEAN,
+    isActive: true,
+    country: 'Sint Maarten',
+    latitude: 18.0425,
+    longitude: -63.0548,
+    timezone: 'America/Lower_Princes',
+    currency: Currency.USD,
+    language: 'nl',
+  },
+  {
+    name: 'Saint Lucia',
+    slug: 'saint-lucia',
+    region: Region.CARIBBEAN,
+    isActive: false,
+    country: 'Saint Lucia',
+    latitude: 13.9094,
+    longitude: -60.9789,
+    timezone: 'America/St_Lucia',
+    currency: Currency.USD,
+    language: 'en',
+  },
+  {
+    name: 'Bahamas',
+    slug: 'bahamas',
+    region: Region.CARIBBEAN,
+    isActive: false,
+    country: 'The Bahamas',
+    latitude: 25.0343,
+    longitude: -77.3963,
+    timezone: 'America/Nassau',
+    currency: Currency.USD,
+    language: 'en',
+  },
 ];
 
 async function seedDestinations() {
   console.log('Seeding destinations...');
 
   for (const dest of SEED_DESTINATIONS) {
-    const existing = await prisma.destination.findUnique({ where: { slug: dest.slug } });
+    const existing = await prisma.destination.findUnique({
+      where: { slug: dest.slug },
+    });
     if (existing) {
       console.log(`  Destination "${dest.name}" already exists. Skipping.`);
       continue;
@@ -180,6 +318,12 @@ async function seedDestinations() {
           name: dest.name,
           slug: dest.slug,
           region: dest.region,
+          country: dest.country,
+          latitude: dest.latitude,
+          longitude: dest.longitude,
+          timezone: dest.timezone,
+          currency: dest.currency,
+          language: dest.language,
           isSeeded: true,
           isActive: dest.isActive,
         },
@@ -252,12 +396,16 @@ async function seedHubs() {
     });
 
     if (!destination) {
-      console.warn(`  Destination "${hub.destinationSlug}" not found - skipping hub "${hub.name}"`);
+      console.warn(
+        `  Destination "${hub.destinationSlug}" not found - skipping hub "${hub.name}"`,
+      );
       continue;
     }
 
     const existing = await prisma.hub.findUnique({
-      where: { destinationId_slug: { destinationId: destination.id, slug: hub.slug } },
+      where: {
+        destinationId_slug: { destinationId: destination.id, slug: hub.slug },
+      },
     });
     if (existing) {
       console.log(`  Hub "${hub.name}" already exists. Skipping.`);
@@ -295,13 +443,18 @@ async function seedHubs() {
 
         if (categories.length > 0) {
           await tx.hubAllowedCategory.createMany({
-            data: categories.map((cat) => ({ hubId: created.id, categoryId: cat.id })),
+            data: categories.map((cat) => ({
+              hubId: created.id,
+              categoryId: cat.id,
+            })),
             skipDuplicates: true,
           });
         }
       }
 
-      console.log(`  Created hub "${hub.name}" (${created.id}) under destination "${hub.destinationSlug}"`);
+      console.log(
+        `  Created hub "${hub.name}" (${created.id}) under destination "${hub.destinationSlug}"`,
+      );
     });
   }
 
@@ -322,75 +475,334 @@ type AttrSeed = {
 
 const ATTRIBUTE_DEFS: AttrSeed[] = [
   // Global
-  { key: 'booking_type', displayName: 'Booking Type', dataType: AttributeDataType.ENUM, allowedValues: ['private', 'shared'] },
-  { key: 'duration_minutes', displayName: 'Duration', dataType: AttributeDataType.INTEGER, isSortable: true },
-  { key: 'pickup_available', displayName: 'Hotel Pickup', dataType: AttributeDataType.BOOLEAN },
-  { key: 'instant_confirmation', displayName: 'Instant Confirmation', dataType: AttributeDataType.BOOLEAN },
-  { key: 'free_cancellation', displayName: 'Free Cancellation', dataType: AttributeDataType.BOOLEAN },
-  { key: 'minimum_age', displayName: 'Minimum Age', dataType: AttributeDataType.INTEGER },
-  { key: 'guide_languages', displayName: 'Guide Languages', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['english', 'spanish', 'dutch', 'french', 'german', 'portuguese'] },
-  { key: 'wheelchair_accessible', displayName: 'Wheelchair Accessible', dataType: AttributeDataType.BOOLEAN },
-  { key: 'family_friendly', displayName: 'Family Friendly', dataType: AttributeDataType.BOOLEAN },
-  { key: 'suitable_for_beginners', displayName: 'Suitable for Beginners', dataType: AttributeDataType.BOOLEAN },
-  { key: 'food_included', displayName: 'Food Included', dataType: AttributeDataType.BOOLEAN },
-  { key: 'drinks_included', displayName: 'Drinks Included', dataType: AttributeDataType.BOOLEAN },
-  { key: 'equipment_included', displayName: 'Equipment Included', dataType: AttributeDataType.BOOLEAN },
-  { key: 'snorkeling_included', displayName: 'Snorkeling Included', dataType: AttributeDataType.BOOLEAN },
-  { key: 'sunset_tour', displayName: 'Sunset Tour', dataType: AttributeDataType.BOOLEAN },
-  { key: 'cancellation_window_hours', displayName: 'Cancellation Window (hours)', dataType: AttributeDataType.INTEGER, isFilterable: false },
-  { key: 'maximum_travelers', displayName: 'Maximum Travelers', dataType: AttributeDataType.INTEGER, isFilterable: false },
-  { key: 'meeting_point', displayName: 'Meeting Point', dataType: AttributeDataType.TEXT, isFilterable: false },
+  {
+    key: 'booking_type',
+    displayName: 'Booking Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['private', 'shared'],
+  },
+  {
+    key: 'duration_minutes',
+    displayName: 'Duration',
+    dataType: AttributeDataType.INTEGER,
+    isSortable: true,
+  },
+  {
+    key: 'pickup_available',
+    displayName: 'Hotel Pickup',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'instant_confirmation',
+    displayName: 'Instant Confirmation',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'free_cancellation',
+    displayName: 'Free Cancellation',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'minimum_age',
+    displayName: 'Minimum Age',
+    dataType: AttributeDataType.INTEGER,
+  },
+  {
+    key: 'guide_languages',
+    displayName: 'Guide Languages',
+    dataType: AttributeDataType.ENUM_MULTI,
+    allowedValues: [
+      'english',
+      'spanish',
+      'dutch',
+      'french',
+      'german',
+      'portuguese',
+    ],
+  },
+  {
+    key: 'wheelchair_accessible',
+    displayName: 'Wheelchair Accessible',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'family_friendly',
+    displayName: 'Family Friendly',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'suitable_for_beginners',
+    displayName: 'Suitable for Beginners',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'food_included',
+    displayName: 'Food Included',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'drinks_included',
+    displayName: 'Drinks Included',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'equipment_included',
+    displayName: 'Equipment Included',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'snorkeling_included',
+    displayName: 'Snorkeling Included',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'sunset_tour',
+    displayName: 'Sunset Tour',
+    dataType: AttributeDataType.BOOLEAN,
+  },
+  {
+    key: 'cancellation_window_hours',
+    displayName: 'Cancellation Window (hours)',
+    dataType: AttributeDataType.INTEGER,
+    isFilterable: false,
+  },
+  {
+    key: 'maximum_travelers',
+    displayName: 'Maximum Travelers',
+    dataType: AttributeDataType.INTEGER,
+    isFilterable: false,
+  },
+  {
+    key: 'meeting_point',
+    displayName: 'Meeting Point',
+    dataType: AttributeDataType.TEXT,
+    isFilterable: false,
+  },
   // Boat Tours
-  { key: 'boat_type', displayName: 'Boat Type', dataType: AttributeDataType.ENUM, allowedValues: ['catamaran', 'yacht', 'speedboat', 'sailboat', 'glass_bottom'], appliesToCategories: ['boat-tours'] },
-  { key: 'snorkeling_stop_count', displayName: 'Snorkeling Stops', dataType: AttributeDataType.INTEGER, appliesToCategories: ['boat-tours'] },
-  { key: 'sunset_cruise', displayName: 'Sunset Cruise', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
-  { key: 'onboard_toilet', displayName: 'Onboard Toilet', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
-  { key: 'open_bar_included', displayName: 'Open Bar Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['boat-tours'] },
+  {
+    key: 'boat_type',
+    displayName: 'Boat Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: [
+      'catamaran',
+      'yacht',
+      'speedboat',
+      'sailboat',
+      'glass_bottom',
+    ],
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'snorkeling_stop_count',
+    displayName: 'Snorkeling Stops',
+    dataType: AttributeDataType.INTEGER,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'sunset_cruise',
+    displayName: 'Sunset Cruise',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'onboard_toilet',
+    displayName: 'Onboard Toilet',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'open_bar_included',
+    displayName: 'Open Bar Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
   // Snorkeling
-  { key: 'snorkeling_equipment_included', displayName: 'Snorkeling Equipment Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
-  { key: 'guide_included', displayName: 'Guide Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
-  { key: 'swimming_required', displayName: 'Swimming Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['snorkeling'] },
+  {
+    key: 'snorkeling_equipment_included',
+    displayName: 'Snorkeling Equipment Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['snorkeling'],
+  },
+  {
+    key: 'guide_included',
+    displayName: 'Guide Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['snorkeling'],
+  },
+  {
+    key: 'swimming_required',
+    displayName: 'Swimming Required',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['snorkeling'],
+  },
   // wildlife_type spans snorkeling + nature-wildlife (union of allowed values)
-  { key: 'wildlife_type', displayName: 'Wildlife', dataType: AttributeDataType.ENUM_MULTI, allowedValues: ['turtles', 'coral', 'tropical_fish', 'rays', 'dolphins', 'whales', 'flamingos'], appliesToCategories: ['snorkeling', 'nature-wildlife-tours'] },
+  {
+    key: 'wildlife_type',
+    displayName: 'Wildlife',
+    dataType: AttributeDataType.ENUM_MULTI,
+    allowedValues: [
+      'turtles',
+      'coral',
+      'tropical_fish',
+      'rays',
+      'dolphins',
+      'whales',
+      'flamingos',
+    ],
+    appliesToCategories: ['snorkeling', 'nature-wildlife-tours'],
+  },
   // Scuba Diving
-  { key: 'dive_type', displayName: 'Dive Type', dataType: AttributeDataType.ENUM, allowedValues: ['discover_scuba', 'certified', 'night_dive'], appliesToCategories: ['scuba-diving'] },
-  { key: 'certification_required', displayName: 'Certification Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['scuba-diving'] },
-  { key: 'max_depth', displayName: 'Max Depth', dataType: AttributeDataType.ENUM, allowedValues: ['12m', '18m', '30m'], appliesToCategories: ['scuba-diving'] },
+  {
+    key: 'dive_type',
+    displayName: 'Dive Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['discover_scuba', 'certified', 'night_dive'],
+    appliesToCategories: ['scuba-diving'],
+  },
+  {
+    key: 'certification_required',
+    displayName: 'Certification Required',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['scuba-diving'],
+  },
+  {
+    key: 'max_depth',
+    displayName: 'Max Depth',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['12m', '18m', '30m'],
+    appliesToCategories: ['scuba-diving'],
+  },
   // Off-Road
-  { key: 'vehicle_type', displayName: 'Vehicle Type', dataType: AttributeDataType.ENUM, allowedValues: ['buggy', 'atv', 'utv', 'jeep'], appliesToCategories: ['off-road-tours'] },
-  { key: 'driver_license_required', displayName: 'Driver License Required', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['off-road-tours'] },
-  { key: 'offroad_difficulty', displayName: 'Difficulty', dataType: AttributeDataType.ENUM, allowedValues: ['easy', 'moderate', 'extreme'], appliesToCategories: ['off-road-tours'] },
+  {
+    key: 'vehicle_type',
+    displayName: 'Vehicle Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['buggy', 'atv', 'utv', 'jeep'],
+    appliesToCategories: ['off-road-tours'],
+  },
+  {
+    key: 'driver_license_required',
+    displayName: 'Driver License Required',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['off-road-tours'],
+  },
+  {
+    key: 'offroad_difficulty',
+    displayName: 'Difficulty',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['easy', 'moderate', 'extreme'],
+    appliesToCategories: ['off-road-tours'],
+  },
   // Water Sports / Jet Ski / Parasailing
-  { key: 'water_sport_type', displayName: 'Water Sport', dataType: AttributeDataType.ENUM, allowedValues: ['jet_ski', 'kayak', 'sup', 'surf', 'parasail'], appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
-  { key: 'instructor_included', displayName: 'Instructor Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
-  { key: 'passenger_allowed', displayName: 'Passenger Allowed', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'] },
+  {
+    key: 'water_sport_type',
+    displayName: 'Water Sport',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['jet_ski', 'kayak', 'sup', 'surf', 'parasail'],
+    appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'],
+  },
+  {
+    key: 'instructor_included',
+    displayName: 'Instructor Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'],
+  },
+  {
+    key: 'passenger_allowed',
+    displayName: 'Passenger Allowed',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['water-sports', 'jet-ski', 'parasailing'],
+  },
   // Nature & Wildlife
-  { key: 'animal_guarantee', displayName: 'Animal Sighting Guarantee', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['nature-wildlife-tours'] },
+  {
+    key: 'animal_guarantee',
+    displayName: 'Animal Sighting Guarantee',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['nature-wildlife-tours'],
+  },
   // Food & Drink
-  { key: 'tasting_type', displayName: 'Tasting Type', dataType: AttributeDataType.ENUM, allowedValues: ['food', 'wine', 'rum', 'cocktail'], appliesToCategories: ['food-tours'] },
-  { key: 'meal_included', displayName: 'Meal Included', dataType: AttributeDataType.BOOLEAN, appliesToCategories: ['food-tours'] },
+  {
+    key: 'tasting_type',
+    displayName: 'Tasting Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['food', 'wine', 'rum', 'cocktail'],
+    appliesToCategories: ['food-tours'],
+  },
+  {
+    key: 'meal_included',
+    displayName: 'Meal Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['food-tours'],
+  },
   // Adventure
-  { key: 'adventure_type', displayName: 'Adventure Type', dataType: AttributeDataType.ENUM, allowedValues: ['zipline', 'bungee', 'skydiving', 'cliff_jumping'], appliesToCategories: ['adventure-tours'] },
-  { key: 'height_requirement', displayName: 'Height Requirement (cm)', dataType: AttributeDataType.INTEGER, appliesToCategories: ['adventure-tours'] },
+  {
+    key: 'adventure_type',
+    displayName: 'Adventure Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['zipline', 'bungee', 'skydiving', 'cliff_jumping'],
+    appliesToCategories: ['adventure-tours'],
+  },
+  {
+    key: 'height_requirement',
+    displayName: 'Height Requirement (cm)',
+    dataType: AttributeDataType.INTEGER,
+    appliesToCategories: ['adventure-tours'],
+  },
   // Hiking
-  { key: 'fitness_level', displayName: 'Fitness Level', dataType: AttributeDataType.ENUM, allowedValues: ['easy', 'moderate', 'hard'], appliesToCategories: ['hiking-tours'] },
-  { key: 'trail_distance_km', displayName: 'Trail Distance (km)', dataType: AttributeDataType.DECIMAL, appliesToCategories: ['hiking-tours'] },
+  {
+    key: 'fitness_level',
+    displayName: 'Fitness Level',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['easy', 'moderate', 'hard'],
+    appliesToCategories: ['hiking-tours'],
+  },
+  {
+    key: 'trail_distance_km',
+    displayName: 'Trail Distance (km)',
+    dataType: AttributeDataType.DECIMAL,
+    appliesToCategories: ['hiking-tours'],
+  },
   // Attraction Tickets
-  { key: 'ticket_type', displayName: 'Ticket Type', dataType: AttributeDataType.ENUM, allowedValues: ['museum', 'park', 'attraction', 'show'], appliesToCategories: ['attraction-tickets'] },
+  {
+    key: 'ticket_type',
+    displayName: 'Ticket Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['museum', 'park', 'attraction', 'show'],
+    appliesToCategories: ['attraction-tickets'],
+  },
   // Luxury
-  { key: 'tier', displayName: 'Tier', dataType: AttributeDataType.ENUM, allowedValues: ['premium', 'luxury', 'ultra_luxury'], appliesToCategories: ['luxury-experiences'] },
+  {
+    key: 'tier',
+    displayName: 'Tier',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['premium', 'luxury', 'ultra_luxury'],
+    appliesToCategories: ['luxury-experiences'],
+  },
   // Workshops
-  { key: 'class_type', displayName: 'Class Type', dataType: AttributeDataType.ENUM, allowedValues: ['cooking', 'surf_lesson', 'art', 'craft'], appliesToCategories: ['workshops-classes'] },
+  {
+    key: 'class_type',
+    displayName: 'Class Type',
+    dataType: AttributeDataType.ENUM,
+    allowedValues: ['cooking', 'surf_lesson', 'art', 'craft'],
+    appliesToCategories: ['workshops-classes'],
+  },
 ];
 
-function filterDisplayFor(dataType: AttributeDataType): FilterDisplayType | null {
+function filterDisplayFor(
+  dataType: AttributeDataType,
+): FilterDisplayType | null {
   switch (dataType) {
-    case AttributeDataType.BOOLEAN: return FilterDisplayType.CHECKBOX;
-    case AttributeDataType.ENUM: return FilterDisplayType.RADIO;
-    case AttributeDataType.ENUM_MULTI: return FilterDisplayType.CHECKBOX;
+    case AttributeDataType.BOOLEAN:
+      return FilterDisplayType.CHECKBOX;
+    case AttributeDataType.ENUM:
+      return FilterDisplayType.RADIO;
+    case AttributeDataType.ENUM_MULTI:
+      return FilterDisplayType.CHECKBOX;
     case AttributeDataType.INTEGER:
-    case AttributeDataType.DECIMAL: return FilterDisplayType.RANGE_SLIDER;
-    default: return null;
+    case AttributeDataType.DECIMAL:
+      return FilterDisplayType.RANGE_SLIDER;
+    default:
+      return null;
   }
 }
 
@@ -402,7 +814,9 @@ async function seedAttributes() {
     const data = {
       displayName: def.displayName,
       dataType: def.dataType,
-      allowedValues: def.allowedValues ? (def.allowedValues as Prisma.InputJsonValue) : Prisma.JsonNull,
+      allowedValues: def.allowedValues
+        ? (def.allowedValues as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
       appliesToCategories: def.appliesToCategories ?? [],
       isFilterable,
       isSortable: def.isSortable ?? false,
@@ -415,7 +829,9 @@ async function seedAttributes() {
       update: data,
     });
   }
-  console.log(`Attribute dictionary seeded (${ATTRIBUTE_DEFS.length} definitions).`);
+  console.log(
+    `Attribute dictionary seeded (${ATTRIBUTE_DEFS.length} definitions).`,
+  );
 }
 
 main()

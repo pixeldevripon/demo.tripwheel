@@ -2,7 +2,6 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumb } from '@/components/dashboard/breadcrumb';
-import { HubSubNav } from './hub-sub-nav';
 
 interface HubDetailShellProps {
   id: string;
@@ -35,8 +34,6 @@ export function HubDetailShell({ id, name, isLoading, subtitle, children }: HubD
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
-
-      <HubSubNav hubId={id} />
 
       <div className="max-w-6xl">{children}</div>
     </div>

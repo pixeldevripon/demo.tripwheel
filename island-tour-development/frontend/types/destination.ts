@@ -70,6 +70,7 @@ export interface DestinationFaq {
   displayOrder: number;
   isActive: boolean;
   locale: Locale;
+  faqGroupId?: string | null;
 }
 
 export interface DestinationsQueryParams {

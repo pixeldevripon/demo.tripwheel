@@ -8,6 +8,7 @@ import {
   Zap,
   LanguagesIcon,
   FileTextIcon,
+  SearchIcon,
   HelpCircleIcon,
   TagsIcon,
   ToggleLeftIcon,
@@ -81,25 +82,31 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/translations`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=translations`)}
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/page-content`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=page-content`)}
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/faqs`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=seo`)}
+          >
+            <SearchIcon />
+            SEO
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/allowed-categories`)}
+            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=allowed-categories`)}
           >
             <TagsIcon />
             Allowed Categories

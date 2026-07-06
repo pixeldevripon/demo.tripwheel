@@ -8,6 +8,7 @@ import {
   Zap,
   LanguagesIcon,
   FileTextIcon,
+  SearchIcon,
   HelpCircleIcon,
   ToggleLeftIcon,
   ToggleRightIcon,
@@ -95,19 +96,29 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/translations`)}
+            onClick={() =>
+              router.push(`/dashboard/destinations/${destination.id}/edit?tab=translations`)
+            }
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/page-content`)}
+            onClick={() =>
+              router.push(`/dashboard/destinations/${destination.id}/edit?tab=page-content`)
+            }
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/faqs`)}
+            onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit?tab=seo`)}
+          >
+            <SearchIcon />
+            SEO
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs

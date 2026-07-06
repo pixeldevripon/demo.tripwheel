@@ -11,6 +11,7 @@
  */
 
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -135,6 +136,16 @@ describe('DestinationService', () => {
       providers: [
         DestinationService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: FaqGroupService,
+          useValue: {
+            getGroups: jest.fn(),
+            createGroup: jest.fn(),
+            updateGroup: jest.fn(),
+            deleteGroup: jest.fn(),
+            upsertTranslation: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

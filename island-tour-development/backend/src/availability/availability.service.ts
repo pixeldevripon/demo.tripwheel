@@ -92,6 +92,7 @@ export class AvailabilityService {
   ): Promise<ScheduleResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     await this.assertStartTimeInSlotSet(dto.tourId, dto.startTime);
+    await this.assertResolvableCapacity(dto.tourId, dto.capacityOverride);
     const clock = await this.tourClock(dto.tourId);
     let row;
     try {
@@ -165,7 +166,7 @@ export class AvailabilityService {
   ): Promise<ScheduleResponseDto> {
     const existing = await this.prisma.availabilitySchedule.findUnique({
       where: { id },
-      select: { tourId: true },
+      select: { tourId: true, capacityOverride: true },
     });
     if (!existing) throw new NotFoundException('Schedule not found');
     const operatorId = await this.assertTourAccess(
@@ -175,6 +176,13 @@ export class AvailabilityService {
     );
     if (dto.startTime)
       await this.assertStartTimeInSlotSet(existing.tourId, dto.startTime);
+    // The effective override after this edit (unchanged fields keep their value).
+    if (dto.capacityOverride !== undefined) {
+      await this.assertResolvableCapacity(
+        existing.tourId,
+        dto.capacityOverride,
+      );
+    }
     let row;
     try {
       row = await this.prisma.availabilitySchedule.update({
@@ -642,6 +650,41 @@ export class AvailabilityService {
         `startTime ${startTime} is not in the tour's startTimes slot set`,
       );
     }
+  }
+
+  /**
+   * A schedule only materialises into departures if a capacity can be resolved:
+   * its own `capacityOverride`, else the tour's `maxPartySize` default. When both
+   * are absent the materialiser silently skips every slot and the tour never lists
+   * - so reject the write up-front and tell the operator exactly how to fix it
+   * (master §3: capacity is per-departure, defaulting from the tour).
+   */
+  private async assertResolvableCapacity(
+    tourId: string,
+    capacityOverride: number | null | undefined,
+  ): Promise<void> {
+    if (capacityOverride != null) return; // its own capacity always resolves
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: { maxPartySize: true },
+    });
+    if (!tour) throw new NotFoundException('Tour not found');
+    if (tour.maxPartySize == null) {
+      throw new BadRequestException(
+        "This schedule has no capacity to sell. Set a capacity override for it, or set the tour's Max Party Size on the Details tab (used as the default capacity). Without one, no bookable departures are created and the tour will not list.",
+      );
+    }
+  }
+
+  /**
+   * Public re-projection hook for callers outside the availability module (e.g.
+   * {@link ToursService} when a tour's `maxPartySize` - the schedules' default
+   * capacity - changes). Re-materialises the near-term window and refreshes the
+   * `isBookable` listing gate so previously-uncapacitated schedules become
+   * bookable (or stop being) immediately, without waiting for the nightly job.
+   */
+  async resyncTourAvailability(tourId: string): Promise<void> {
+    await this.syncTourAvailability(tourId);
   }
 
   private async tourClock(tourId: string): Promise<TourClock> {

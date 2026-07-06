@@ -11,6 +11,7 @@ import {
   ParseEnumPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -19,9 +20,11 @@ import { DestinationService } from './destinations.service';
 import {
   ApiCreateDestinationDocs,
   ApiCreateFaqDocs,
+  ApiCreateFaqGroupDocs,
   ApiDeleteDestinationDocs,
   ApiForceDeleteDestinationDocs,
   ApiDeleteFaqDocs,
+  ApiDeleteFaqGroupDocs,
   ApiDeleteTranslationsDocs,
   ApiGetActiveDestinationsDocs,
   ApiGetAllDestinationsDocs,
@@ -29,13 +32,21 @@ import {
   ApiGetDestinationByIdDocs,
   ApiGetDestinationBySlugDocs,
   ApiGetFaqsDocs,
+  ApiGetFaqGroupsDocs,
   ApiGetPageContentDocs,
   ApiGetTranslationsByLocaleDocs,
   ApiUpdateDestinationDocs,
   ApiUpdateFaqDocs,
+  ApiUpdateFaqGroupDocs,
+  ApiUpsertFaqTranslationDocs,
   ApiUpsertPageContentDocs,
   ApiUpsertTranslationsDocs,
 } from './destinations.swagger';
+import {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import {
   CreateDestinationDto,
   CreateFaqDto,
@@ -209,6 +220,69 @@ export class DestinationController {
   @ApiGetFaqsDocs()
   getFaqs(@Param('id') id: string, @Query() query: FaqLocaleQueryDto) {
     return this.destinationService.getFaqs(id, query);
+  }
+
+  // Grouped FAQ routes ("groups" static segment declared before the dynamic
+  // `:faqId` routes so it is never captured as an id).
+
+  @Get(':id/faqs/groups')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiGetFaqGroupsDocs()
+  getFaqGroups(@Param('id') id: string) {
+    return this.destinationService.getFaqGroups(id);
+  }
+
+  @Post(':id/faqs/groups')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiCreateFaqGroupDocs()
+  createFaqGroup(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.createFaqGroup(id, dto, user.id);
+  }
+
+  @Patch(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpdateFaqGroupDocs()
+  updateFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.updateFaqGroup(id, groupId, dto, user.id);
+  }
+
+  @Delete(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiDeleteFaqGroupDocs()
+  deleteFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.deleteFaqGroup(id, groupId, user.id);
+  }
+
+  @Put(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpsertFaqTranslationDocs()
+  upsertFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertFaqTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.upsertFaqTranslation(
+      id,
+      groupId,
+      locale,
+      dto,
+      user.id,
+    );
   }
 
   @Post(':id/faqs')

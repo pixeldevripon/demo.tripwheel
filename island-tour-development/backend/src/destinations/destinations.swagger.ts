@@ -21,6 +21,7 @@ import {
   FaqResponseDto,
   PaginatedLocalizedDestinationsResponseDto,
 } from './dto/destination.dto';
+import { FaqGroupResponseDto } from '@/common/faq/dto/faq-group.dto';
 
 // ── Shared error sets ─────────────────────────────────────────────────────────
 
@@ -336,6 +337,75 @@ export function ApiDeleteFaqDocs() {
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
     ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+// ── Grouped FAQ (add in English, then translate) ────────────────────────────
+
+export function ApiGetFaqGroupsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get FAQs grouped by locale for a destination (Admin/Editor)',
+      description:
+        'Returns each logical FAQ once, with its per-locale translations nested. Powers the dashboard "add in English, then translate" editor.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 200, type: [FaqGroupResponseDto] }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiCreateFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Create a FAQ (English base) for a destination (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 201, type: FaqGroupResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update a FAQ group (display order / active) (Admin/Editor)',
+      description: 'Applies to every locale row of the FAQ at once.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiResponse({ status: 200, type: FaqGroupResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiDeleteFaqGroupDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Delete a FAQ and all its translations (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertFaqTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Add or update a FAQ translation for one locale (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: FaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

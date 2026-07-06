@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
+import { FaqModule } from '@/common/faq/faq.module';
 import { AuthModule } from '@/auth/auth.module';
 import { MailModule } from '@/mail/mail.module';
 import { UserModule } from '@/users/user.module';
@@ -35,6 +36,7 @@ import { WorkersModule } from '@/workers/workers.module';
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
+    FaqModule,
     AuthModule,
     MailModule,
     UserModule,

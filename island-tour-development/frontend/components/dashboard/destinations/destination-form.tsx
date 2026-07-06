@@ -61,7 +61,6 @@ const destinationSchema = z.object({
     timezone: z.string().optional(),
     currency: z.enum(CURRENCY_VALUES as [string, ...string[]]).optional().or(z.literal('')),
     language: z.string().optional(),
-    ogImage: z.string().optional(),
     galleryImages: z.array(z.string()).optional(),
     parentDestinationId: z.string().optional(),
     isActive: z.boolean().optional(),
@@ -110,7 +109,6 @@ export function DestinationForm({
             timezone: destination?.timezone ?? '',
             currency: destination?.currency ?? '',
             language: destination?.language ?? '',
-            ogImage: destination?.ogImage ?? '',
             galleryImages: destination?.galleryImages ?? [],
             parentDestinationId: destination?.parentDestinationId ?? '',
             isActive: destination?.isActive ?? true,
@@ -118,7 +116,6 @@ export function DestinationForm({
     });
 
     const heroImageValue = watch('heroImage');
-    const ogImageValue = watch('ogImage');
     const galleryValue = watch('galleryImages');
     const regionValue = watch('region');
     const currencyValue = watch('currency');
@@ -158,7 +155,6 @@ export function DestinationForm({
                         timezone: values.timezone || null,
                         currency: (values.currency || null) as import("@/types/enums").Currency | null,
                         language: values.language || null,
-                        ogImage: values.ogImage || null,
                         galleryImages: values.galleryImages ?? [],
                         isActive: values.isActive,
                     },
@@ -190,7 +186,6 @@ export function DestinationForm({
                     timezone: values.timezone || null,
                     currency: (values.currency || null) as import("@/types/enums").Currency | null,
                     language: values.language || null,
-                    ogImage: values.ogImage || null,
                     galleryImages: values.galleryImages ?? [],
                     parentDestinationId: values.parentDestinationId || null,
                 },
@@ -394,19 +389,6 @@ export function DestinationForm({
                             <FieldDescription>
                                 Optional - for future sub-destinations.
                             </FieldDescription>
-                        </Field>
-
-                        <Field>
-                            <Label className='text-xs font-semibold uppercase'>OG Image</Label>
-                            <FieldDescription>
-                                Social-share image (Open Graph).
-                            </FieldDescription>
-                            <ImageSelectorField
-                                value={ogImageValue || null}
-                                onChange={url =>
-                                    setValue('ogImage', url ?? '', { shouldValidate: true })
-                                }
-                            />
                         </Field>
 
                         <Field>

@@ -2,7 +2,6 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumb } from '@/components/dashboard/breadcrumb';
-import { DestinationSubNav } from './destination-sub-nav';
 
 interface DestinationDetailShellProps {
   id: string;
@@ -43,8 +42,6 @@ export function DestinationDetailShell({
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
-
-      <DestinationSubNav destinationId={id} />
 
       <div className={maxWidth === 'lg' ? 'max-w-6xl' : 'max-w-6xl'}>
         {children}

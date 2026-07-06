@@ -34,18 +34,26 @@ import {
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
 } from './dto/hub.dto';
+import {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import { HubService } from './hubs.service';
 import {
   ApiAddAllowedCategoryDocs,
   ApiCreateFaqDocs,
+  ApiCreateFaqGroupDocs,
   ApiCreateHubDocs,
   ApiDeleteFaqDocs,
+  ApiDeleteFaqGroupDocs,
   ApiDeleteHubDocs,
   ApiDeleteTranslationsDocs,
   ApiGetActiveHubsDocs,
   ApiGetAllHubsDocs,
   ApiGetAllowedCategoriesDocs,
   ApiGetAllTranslationsDocs,
+  ApiGetFaqGroupsDocs,
   ApiGetFaqsDocs,
   ApiGetHubByIdDocs,
   ApiGetHubBySlugDocs,
@@ -54,7 +62,9 @@ import {
   ApiGetTranslationsByLocaleDocs,
   ApiRemoveAllowedCategoryDocs,
   ApiUpdateFaqDocs,
+  ApiUpdateFaqGroupDocs,
   ApiUpdateHubDocs,
+  ApiUpsertFaqTranslationDocs,
   ApiUpsertPageContentDocs,
   ApiUpsertTranslationsDocs,
 } from './hubs.swagger';
@@ -231,6 +241,69 @@ export class HubController {
   @ApiGetFaqsDocs()
   getFaqs(@Param('id') id: string, @Query() query: FaqLocaleQueryDto) {
     return this.hubService.getFaqs(id, query);
+  }
+
+  // Grouped FAQ routes ("groups" static segment declared before the dynamic
+  // `:faqId` routes so it is never captured as an id).
+
+  @Get(':id/faqs/groups')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiGetFaqGroupsDocs()
+  getFaqGroups(@Param('id') id: string) {
+    return this.hubService.getFaqGroups(id);
+  }
+
+  @Post(':id/faqs/groups')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiCreateFaqGroupDocs()
+  createFaqGroup(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.createFaqGroup(id, dto, user.id);
+  }
+
+  @Patch(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpdateFaqGroupDocs()
+  updateFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.updateFaqGroup(id, groupId, dto, user.id);
+  }
+
+  @Delete(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiDeleteFaqGroupDocs()
+  deleteFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteFaqGroup(id, groupId, user.id);
+  }
+
+  @Put(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertFaqTranslationDocs()
+  upsertFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertFaqTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertFaqTranslation(
+      id,
+      groupId,
+      locale,
+      dto,
+      user.id,
+    );
   }
 
   @Post(':id/faqs')

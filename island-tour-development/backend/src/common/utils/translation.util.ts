@@ -15,6 +15,7 @@ export const faqSelect = {
   displayOrder: true,
   isActive: true,
   locale: true,
+  faqGroupId: true,
 } as const;
 
 export function applyTranslation<T extends { name: string }>(

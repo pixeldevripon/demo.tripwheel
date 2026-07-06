@@ -7,23 +7,16 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldDescription, FieldError } from '@/components/ui/field';
+import { Field, FieldDescription } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHubPageContent, useUpsertHubPageContent } from '@/hooks/hubs/use-hubs';
 import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 
 const pageContentSchema = z.object({
   aboutText: z.string().optional().or(z.literal('')),
-  metaTitle: z.string().optional().or(z.literal('')),
-  metaDescription: z
-    .string()
-    .max(160, 'Meta description must be 160 characters or fewer')
-    .optional()
-    .or(z.literal('')),
 });
 
 type PageContentFormValues = z.infer<typeof pageContentSchema>;
@@ -40,22 +33,16 @@ function LocalePageContentTab({ hubId, locale }: LocalePageContentTabProps) {
   const {
     register,
     handleSubmit,
-    watch,
     reset,
-    formState: { errors },
   } = useForm<PageContentFormValues>({
     resolver: zodResolver(pageContentSchema),
-    defaultValues: { aboutText: '', metaTitle: '', metaDescription: '' },
+    defaultValues: { aboutText: '' },
   });
-
-  const metaDescValue = watch('metaDescription') ?? '';
 
   useEffect(() => {
     if (content) {
       reset({
         aboutText: content.aboutText ?? '',
-        metaTitle: content.metaTitle ?? '',
-        metaDescription: content.metaDescription ?? '',
       });
     }
   }, [content, reset]);
@@ -67,8 +54,6 @@ function LocalePageContentTab({ hubId, locale }: LocalePageContentTabProps) {
         locale,
         payload: {
           aboutText: values.aboutText || null,
-          metaTitle: values.metaTitle || null,
-          metaDescription: values.metaDescription || null,
         },
       },
       {
@@ -99,39 +84,9 @@ function LocalePageContentTab({ hubId, locale }: LocalePageContentTabProps) {
           rows={8}
         />
         <FieldDescription>
-          Rich editorial content displayed on the hub&apos;s about section.
+          Rich editorial content displayed on the hub&apos;s about section. Search-engine meta
+          title and description live in the SEO tab.
         </FieldDescription>
-      </Field>
-
-      <Field>
-        <Label className="text-xs font-semibold uppercase">Meta Title</Label>
-        <Input
-          {...register('metaTitle')}
-          placeholder="SEO page title"
-          aria-invalid={!!errors.metaTitle}
-        />
-        <FieldError>{errors.metaTitle?.message}</FieldError>
-        <FieldDescription>Appears in browser tab and search engine results.</FieldDescription>
-      </Field>
-
-      <Field>
-        <Label className="text-xs font-semibold uppercase">Meta Description</Label>
-        <Textarea
-          {...register('metaDescription')}
-          placeholder="Brief description for search engines (max 160 characters)"
-          rows={3}
-          aria-invalid={!!errors.metaDescription}
-        />
-        <div className="flex items-center justify-between">
-          <FieldError>{errors.metaDescription?.message}</FieldError>
-          <span
-            className={`text-xs tabular-nums ${
-              metaDescValue.length > 160 ? 'text-destructive' : 'text-muted-foreground'
-            }`}
-          >
-            {metaDescValue.length}/160
-          </span>
-        </div>
       </Field>
 
       <div className="flex justify-end pt-2">

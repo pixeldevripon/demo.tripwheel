@@ -4,15 +4,22 @@
 // question + answer + displayOrder + locale + isActive.
 // The service layer enforces that entityId belongs to the correct pageType.
 model Faq {
-  id           String  @id @default(uuid())
-  pageType     String // 'category' | 'hub' | 'destination' | 'tour'
+  id           String      @id @default(uuid())
+  pageType     FaqPageType
   entityId     String // UUID of the owning entity
+  // Links the per-locale rows of a single logical FAQ. All locale variants of the
+  // same question/answer share one faqGroupId (the English row is the base). NULL on
+  // legacy rows created before grouping existed — those are treated as one-locale groups.
+  faqGroupId   String?
   locale       Locale
   question     String
   answer       String
-  displayOrder Int     @default(0)
-  isActive     Boolean @default(true)
+  displayOrder Int         @default(0)
+  isActive     Boolean     @default(true)
 
+  // One row per locale within a group. faqGroupId is nullable, and Postgres treats
+  // NULLs as distinct, so legacy ungrouped rows never collide.
+  @@unique([pageType, entityId, faqGroupId, locale])
   @@index([pageType, entityId, locale])
   @@map("faqs")
 }

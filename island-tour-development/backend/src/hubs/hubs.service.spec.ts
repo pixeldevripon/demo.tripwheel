@@ -8,6 +8,7 @@
  */
 
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -201,8 +202,22 @@ describe('HubService', () => {
   beforeEach(async () => {
     prisma = createMockPrismaService();
 
+    // Grouped-FAQ logic is delegated to the shared FaqGroupService; the hub
+    // wrappers only assert existence then call through, so a bare mock suffices.
+    const mockFaqGroups = {
+      getGroups: jest.fn(),
+      createGroup: jest.fn(),
+      upsertTranslation: jest.fn(),
+      updateGroup: jest.fn(),
+      deleteGroup: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [HubService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        HubService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: FaqGroupService, useValue: mockFaqGroups },
+      ],
     }).compile();
 
     service = module.get<HubService>(HubService);
