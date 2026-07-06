@@ -1,25 +1,25 @@
-import Image from 'next/image';
-import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
-import { Suspense } from 'react';
-import { type Locale } from '@/lib/constants/locales';
-import { getTourBySlug } from '@/lib/api/public/tours';
-import { getDestinationCategories } from '@/lib/api/public/categories';
-import { formatDuration } from '@/lib/tours/listing';
-import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { PublicTourExclusion } from '@/types/tour-detail';
-import { ToursBreadcrumb, type BreadcrumbAnchor } from './tours-breadcrumb';
-import { TourSection } from './tour-section';
-import { TourMeetingCard } from './tour-meeting-card';
-import { TourHeader } from './tour-header';
-import { TourGallery, type TourGalleryMeta } from './tour-gallery';
-import { TourBookingCard } from './tour-booking-card';
-import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
-import { TourReviewsBlock, TourReviewsPreview } from './tour-reviews-blocks';
 import {
     TourReviewsPreviewSkeleton,
     TourReviewsSectionSkeleton,
 } from '@/components/skelitons/tour-page-skeleton';
+import { getDestinationCategories } from '@/lib/api/public/categories';
+import { getTourBySlug } from '@/lib/api/public/tours';
+import { type Locale } from '@/lib/constants/locales';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { formatDuration } from '@/lib/tours/listing';
+import type { PublicTourExclusion } from '@/types/tour-detail';
+import Image from 'next/image';
+import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
+import { Suspense } from 'react';
+import { TourBookingCard } from './tour-booking-card';
+import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
+import { TourGallery, type TourGalleryMeta } from './tour-gallery';
+import { TourHeader } from './tour-header';
+import { TourMeetingCard } from './tour-meeting-card';
+import { TourReviewsBlock, TourReviewsPreview } from './tour-reviews-blocks';
+import { TourSection } from './tour-section';
+import { ToursBreadcrumb, type BreadcrumbAnchor } from './tours-breadcrumb';
 
 // Last-resort gallery fallback: a LIVE tour is expected to carry images, but the
 // gallery must never receive an empty set (its mobile slider indexes image[0]),
@@ -63,7 +63,7 @@ function formatClockTime(hhmm: string, locale: string): string {
 // unavailable / not-permitted items carry no suffix (the label says it).
 function exclusionSuffix(
     exclusion: PublicTourExclusion,
-    dict: Dictionary['destination']['tour']['exclusion'],
+    dict: Dictionary['destination']['tour']['exclusion']
 ): string {
     const { type, priceText } = exclusion;
     const isPaid = type === 'PAID_ADVANCE' || type === 'PAID_ONSITE';
@@ -99,8 +99,8 @@ export async function TourDetailContent({
     await connection();
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
     if (!detail) notFound();
-    console.log(`details`,detail);
-    
+    console.log(`details`, detail);
+
     const tourDict = dict.destination.tour;
 
     // Live header / breadcrumb / title values (localized with EN fallback applied
@@ -124,7 +124,10 @@ export async function TourDetailContent({
     // has ≥1 published tour - this one), so its crumb link never 404s.
     let anchor: BreadcrumbAnchor | null = null;
     if (detail.primaryCategoryId) {
-        const categories = await getDestinationCategories(destinationSlug, locale);
+        const categories = await getDestinationCategories(
+            destinationSlug,
+            locale
+        );
         const primary = categories.find(c => c.id === detail.primaryCategoryId);
         if (primary) {
             anchor = {
@@ -147,7 +150,7 @@ export async function TourDetailContent({
     const durationLabel = formatDuration(
         detail.durationMinutesFrom,
         detail.durationMinutesTo,
-        dict.search,
+        dict.search
     );
     if (durationLabel) {
         galleryMeta.push({ icon: '/icons/clock.svg', label: durationLabel });
@@ -174,9 +177,7 @@ export async function TourDetailContent({
         .split(/\n{2,}|\n/)
         .map(p => p.trim())
         .filter(Boolean);
-    const highlights = detail.highlights
-        .map(h => h.text)
-        .filter(Boolean);
+    const highlights = detail.highlights.map(h => h.text).filter(Boolean);
     const localTipTitle = detail.translation?.localTipTitle ?? null;
     const localTipBody = detail.translation?.localTipBody ?? null;
 
@@ -222,8 +223,10 @@ export async function TourDetailContent({
               }
             : null;
 
-    const meetingLat = detail.meetingPointLat ?? startLocation?.latitude ?? null;
-    const meetingLng = detail.meetingPointLng ?? startLocation?.longitude ?? null;
+    const meetingLat =
+        detail.meetingPointLat ?? startLocation?.latitude ?? null;
+    const meetingLng =
+        detail.meetingPointLng ?? startLocation?.longitude ?? null;
     const mapLink =
         meetingLat != null && meetingLng != null
             ? {
@@ -261,7 +264,7 @@ export async function TourDetailContent({
                   detail: detail.checkInMinutesBefore
                       ? meetDict.checkInEarly.replace(
                             '{minutes}',
-                            String(detail.checkInMinutesBefore),
+                            String(detail.checkInMinutesBefore)
                         )
                       : '',
               }
@@ -291,7 +294,7 @@ export async function TourDetailContent({
     const cancelDict = tourDict.cancellation;
     const cancellationBody = cancelDict.body.replace(
         /\{hours\}/g,
-        String(detail.cancellationHours),
+        String(detail.cancellationHours)
     );
 
     // Reviews aggregate + histogram come off the tour payload (same source as the
@@ -389,7 +392,8 @@ export async function TourDetailContent({
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
-                                {(overviewParagraphs.length > 0 || highlights.length > 0) && (
+                                {(overviewParagraphs.length > 0 ||
+                                    highlights.length > 0) && (
                                     <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                         {overviewParagraphs.map((p, i) => (
                                             <p key={i} className='m-0'>
@@ -419,10 +423,14 @@ export async function TourDetailContent({
                                         />
                                         <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
                                             {localTipTitle && (
-                                                <span className='text-[#8b390e]'>{localTipTitle}</span>
+                                                <span className='text-[#8b390e]'>
+                                                    {localTipTitle}
+                                                </span>
                                             )}
                                             {localTipBody && (
-                                                <span className='text-[#8b390e]/60'>{localTipBody}</span>
+                                                <span className='text-[#8b390e]/60'>
+                                                    {localTipBody}
+                                                </span>
                                             )}
                                         </p>
                                     </div>
@@ -499,9 +507,15 @@ export async function TourDetailContent({
                                                     <li
                                                         key={step.id}
                                                         className={`relative flex gap-4 ${
-                                                            i < expectSteps.length - 1 ? 'pb-8' : ''
+                                                            i <
+                                                            expectSteps.length -
+                                                                1
+                                                                ? 'pb-8'
+                                                                : ''
                                                         }`}>
-                                                        {i < expectSteps.length - 1 && (
+                                                        {i <
+                                                            expectSteps.length -
+                                                                1 && (
                                                             <span
                                                                 aria-hidden='true'
                                                                 className='absolute top-10 bottom-0 left-5 w-px -translate-x-1/2 bg-it-heading/15'
@@ -516,7 +530,9 @@ export async function TourDetailContent({
                                                             </span>
                                                             {step.detail && (
                                                                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                                                    {step.detail}
+                                                                    {
+                                                                        step.detail
+                                                                    }
                                                                 </span>
                                                             )}
                                                         </div>
@@ -567,7 +583,7 @@ export async function TourDetailContent({
                                                                     key={`${group.title}-${i}`}>
                                                                     {item}
                                                                 </li>
-                                                            ),
+                                                            )
                                                         )}
                                                     </ul>
                                                 </div>
@@ -629,3 +645,4 @@ export async function TourDetailContent({
         </>
     );
 }
+

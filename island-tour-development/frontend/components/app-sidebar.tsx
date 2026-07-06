@@ -17,6 +17,7 @@ import { getNavigations } from '@/navigations/navigations';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { CommandIcon } from 'lucide-react';
 import { NavMain } from './nav-main';
+import Image from 'next/image';
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userRole?: string;
@@ -42,31 +43,33 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                            asChild
-                            className='data-[slot=sidebar-menu-button]:p-1.5!'>
-                            <a href='#'>
-                                <CommandIcon className='size-5!' />
-                                <span className='text-base font-semibold font-dm-sans'>
-                                    Island Tours
-                                </span>
-                            </a>
-                        </SidebarMenuButton>
+                        <Image
+                            src='/logo/logo.png'
+                            alt='Island Tours'
+                            width={68}
+                            height={50}
+                            priority
+                            className='h-11 ml-6 w-auto object-contain'
+                        />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={filteredNav} />
             </SidebarContent>
-            <SidebarFooter className="border-t border-border/40 p-2">
+            <SidebarFooter className='border-t border-border/40 p-2'>
                 <div className='flex items-center gap-3 p-3 rounded-xl hover:bg-sidebar-accent transition-colors group cursor-pointer'>
                     <div className='relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-semibold text-sm overflow-hidden border border-border/50 shadow-sm'>
                         {userImage ? (
-                            <img src={userImage} alt={userName} className="h-full w-full object-cover" />
+                            <img
+                                src={userImage}
+                                alt={userName}
+                                className='h-full w-full object-cover'
+                            />
                         ) : (
-                            userName?.charAt(0)?.toUpperCase() ?? 'U'
+                            (userName?.charAt(0)?.toUpperCase() ?? 'U')
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                        <div className='absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors' />
                     </div>
                     <div className='flex flex-col min-w-0 flex-1'>
                         <span className='text-sm font-semibold font-dm-sans truncate text-foreground/90'>
@@ -81,4 +84,5 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
         </Sidebar>
     );
 }
+
 

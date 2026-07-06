@@ -201,10 +201,10 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
             />
             <FieldError>{errors.text?.message}</FieldError>
           </Field>
-          <Field>
+ {/*          <Field>
             <Label className="text-xs font-semibold uppercase">Image URL</Label>
             <Input {...register('imageUrl')} placeholder="Optional image URL" />
-          </Field>
+          </Field> */}
           <Field>
             <Label className="text-xs font-semibold uppercase">Display Order</Label>
             <Input {...register('displayOrder')} type="number" min={0} />
