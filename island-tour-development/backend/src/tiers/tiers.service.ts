@@ -129,20 +129,39 @@ export class TiersService {
     if (query.destinationId) where.destinationId = query.destinationId;
     if (query.status) where.status = query.status;
 
-    const [rows, activeCount] = await Promise.all([
+    const [rows, activeCountsByDest] = await Promise.all([
       this.prisma.spotlightRequest.findMany({
         where,
         orderBy: { requestedAt: 'desc' },
         select: SPOTLIGHT_SELECT,
       }),
-      this.prisma.spotlightRequest.count({
+      this.prisma.spotlightRequest.groupBy({
+        by: ['destinationId'],
         where: {
           ...(query.destinationId && { destinationId: query.destinationId }),
           status: { in: CAP_STATUSES },
         },
+        _count: { _all: true },
       }),
     ]);
-    return { activeCount, data: rows.map(mapSpotlight) };
+
+    const activeCount = activeCountsByDest.reduce(
+      (acc, curr) => acc + curr._count._all,
+      0,
+    );
+    const activeCountByDestination = activeCountsByDest.reduce(
+      (acc, curr) => {
+        acc[curr.destinationId] = curr._count._all;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return {
+      activeCount,
+      activeCountByDestination,
+      data: rows.map(mapSpotlight),
+    };
   }
 
   /**

@@ -73,6 +73,13 @@ export class SpotlightQueueDto {
   activeCount!: number;
 
   @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+    description: 'Active count per destination.',
+  })
+  activeCountByDestination!: Record<string, number>;
+
+  @ApiProperty({
     type: SpotlightRequestResponseDto,
     isArray: true,
     description: 'Matching requests, newest first.',

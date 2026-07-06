@@ -90,6 +90,7 @@ export interface SpotlightQueueParams {
 
 export interface SpotlightQueue {
   activeCount: number;
+  activeCountByDestination: Record<string, number>;
   data: SpotlightRequest[];
 }
 
