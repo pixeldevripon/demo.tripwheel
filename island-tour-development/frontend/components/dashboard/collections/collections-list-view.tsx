@@ -3,12 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -16,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,13 +27,7 @@ import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useCollectionsByDestination, useDeleteCollection } from '@/hooks/collections/use-collections';
 import { useRole } from '@/contexts/role-context';
 import type { Collection } from '@/types/collection';
-import { COLLECTION_STATUS_LABELS, type CollectionStatus } from '@/types/enums';
-
-const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  PUBLISHED: 'default',
-  ARCHIVED: 'destructive',
-};
+import { CollectionsTable } from './collections-table';
 
 export function CollectionsListView() {
   const { can } = useRole();
@@ -64,95 +47,42 @@ export function CollectionsListView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Label className="text-xs font-semibold uppercase">Destination</Label>
-          <Select value={destSlug} onValueChange={setDestSlug}>
-            <SelectTrigger className="mt-1 w-64">
-              <SelectValue placeholder="Select a destination" />
-            </SelectTrigger>
-            <SelectContent>
-              {(destinations ?? []).map(d => (
-                <SelectItem key={d.id} value={d.slug}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {isLoading ? (
+        <div className="space-y-2 p-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-none" />
+          ))}
         </div>
-        {can('CREATE_COLLECTION') && (
-          <Button asChild size="sm">
-            <Link href="/dashboard/collections/new">
-              <PlusIcon /> Add Collection
-            </Link>
-          </Button>
-        )}
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-none" />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Tours</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead className="w-20" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(collections ?? []).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                      No collections for this destination yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {(collections ?? []).map(c => (
-                  <TableRow key={c.id} className={c.isActive ? undefined : 'opacity-50'}>
-                    <TableCell className="text-sm font-medium">{c.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{c.collectionType}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.collectionType === 'MANUAL' ? `${(c.tourIds ?? []).length} tours` : 'dynamic'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant[c.status]}>{COLLECTION_STATUS_LABELS[c.status]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={c.isActive ? 'default' : 'outline'}>
-                        {c.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        {can('EDIT_COLLECTION') && (
-                          <Button asChild variant="ghost" size="icon-xs">
-                            <Link href={`/dashboard/collections/${c.id}/edit`}>
-                              <PencilIcon className="size-3.5" />
-                            </Link>
-                          </Button>
-                        )}
-                        {can('DELETE_COLLECTION') && c.isActive && (
-                          <Button variant="ghost" size="icon-xs" onClick={() => setTarget(c)}>
-                            <Trash2Icon className="size-3.5 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+      ) : (
+        <CollectionsTable
+          data={collections ?? []}
+          canEdit={can('EDIT_COLLECTION')}
+          canDelete={can('DELETE_COLLECTION')}
+          onDeactivate={setTarget}
+          filterSlot={
+            <Select value={destSlug} onValueChange={setDestSlug}>
+              <SelectTrigger className="w-48 shrink-0">
+                <SelectValue placeholder="Destination" />
+              </SelectTrigger>
+              <SelectContent>
+                {(destinations ?? []).map(d => (
+                  <SelectItem key={d.id} value={d.slug}>{d.name}</SelectItem>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </SelectContent>
+            </Select>
+          }
+          actionSlot={
+            can('CREATE_COLLECTION') && (
+              <Button asChild size="sm">
+                <Link href="/dashboard/collections/new">
+                  <PlusIcon /> New Collection
+                </Link>
+              </Button>
+            )
+          }
+        />
+      )}
+
 
       <AlertDialog open={!!target} onOpenChange={o => !o && setTarget(null)}>
         <AlertDialogContent>

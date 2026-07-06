@@ -21,14 +21,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
@@ -38,28 +30,17 @@ import {
     useSpotlightQueue,
 } from '@/hooks/tiers/use-tiers';
 import { useAdminTrips } from '@/hooks/trips/use-trips';
-import { formatDate } from '@/lib/utils';
-import type { SpotlightRequest, SpotlightStatus } from '@/types/tier';
+import type { SpotlightStatus } from '@/types/tier';
 import {
     SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION,
     SPOTLIGHT_STATUS_LABELS,
     SPOTLIGHT_STATUS_VALUES,
 } from '@/types/tier';
-import { CheckIcon, SparklesIcon, XIcon } from 'lucide-react';
+import { SparklesIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import Link from 'next/link';
-
-const statusVariant: Record<
-    SpotlightStatus,
-    'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-    REQUESTED: 'secondary',
-    APPROVED: 'default',
-    ACTIVE: 'default',
-    REJECTED: 'destructive',
-    EXPIRED: 'outline',
-};
+import { SpotlightTable } from './spotlight-table';
+import type { SpotlightRequestWithInfo } from './spotlight-columns';
 
 export function SpotlightQueueView() {
     const { can } = useRole();
@@ -75,16 +56,8 @@ export function SpotlightQueueView() {
         status: status !== 'all' ? (status as SpotlightStatus) : undefined,
     });
 
-    console.log(`destinations`, destinations);
-    console.log(`adminTrips`, adminTrips);
-    console.log(`queue`, queue);
-
-    const [approveTarget, setApproveTarget] = useState<SpotlightRequest | null>(
-        null
-    );
-    const [rejectTarget, setRejectTarget] = useState<SpotlightRequest | null>(
-        null
-    );
+    const [approveTarget, setApproveTarget] = useState<SpotlightRequestWithInfo | null>(null);
+    const [rejectTarget, setRejectTarget] = useState<SpotlightRequestWithInfo | null>(null);
 
     // Tour id -> display info (name, operator, destination, image, rating, reviewCount) from the admin tour list.
     const tourMap = useMemo(() => {
@@ -108,255 +81,94 @@ export function SpotlightQueueView() {
         return map;
     }, [adminTrips]);
 
-    const rows = queue?.data ?? [];
+    // Enrich each spotlight request with tour info for the table
+    const rows: SpotlightRequestWithInfo[] = useMemo(() => {
+        return (queue?.data ?? []).map((req) => ({
+            ...req,
+            tourInfo: tourMap.get(req.tourId),
+        }));
+    }, [queue, tourMap]);
 
     return (
         <div className='space-y-4'>
-            <div className='flex flex-wrap items-end justify-between gap-3'>
-                <div className='flex flex-wrap items-end gap-3'>
-                    <div>
-                        <Label className='text-xs font-semibold uppercase'>
-                            Destination
-                        </Label>
-                        <Select
-                            value={destinationId}
-                            onValueChange={setDestinationId}>
-                            <SelectTrigger className='mt-1 w-56'>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='all'>
-                                    All Destinations
-                                </SelectItem>
-                                {(destinations ?? []).map(d => (
-                                    <SelectItem key={d.id} value={d.id}>
-                                        {d.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className='text-xs font-semibold uppercase'>
-                            Status
-                        </Label>
-                        <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className='mt-1 w-44'>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='all'>
-                                    All Statuses
-                                </SelectItem>
-                                {SPOTLIGHT_STATUS_VALUES.map(s => (
-                                    <SelectItem key={s} value={s}>
-                                        {SPOTLIGHT_STATUS_LABELS[s]}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+            {isLoading ? (
+                <div className='space-y-2 p-4'>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton
+                            key={i}
+                            className='h-12 w-full rounded-none'
+                        />
+                    ))}
                 </div>
+            ) : (
+                <SpotlightTable
+                    data={rows}
+                    canApprove={canApprove}
+                    onApprove={setApproveTarget}
+                    onReject={setRejectTarget}
+                    filterSlot={
+                        <>
+                            <Select
+                                value={destinationId}
+                                onValueChange={setDestinationId}>
+                                <SelectTrigger className='w-48 shrink-0'>
+                                    <SelectValue placeholder='Destination' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value='all'>
+                                        All Destinations
+                                    </SelectItem>
+                                    {(destinations ?? []).map((d) => (
+                                        <SelectItem key={d.id} value={d.id}>
+                                            {d.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                {destinationId !== 'all' && queue && (
-                    <Badge
-                        variant={
-                            queue.activeCount >=
-                            SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION
-                                ? 'destructive'
-                                : 'secondary'
-                        }
-                        className='h-9 px-3'>
-                        Active {queue.activeCount}/
-                        {SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
-                    </Badge>
-                )}
-            </div>
-
-            <Card>
-                <CardContent className='p-0'>
-                    {isLoading ? (
-                        <div className='space-y-2 p-4'>
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <Skeleton
-                                    key={i}
-                                    className='h-12 w-full rounded-none'
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Tour</TableHead>
-                                    <TableHead>Operator</TableHead>
-                                    <TableHead>Destination</TableHead>
-                                    <TableHead>Requested</TableHead>
-                                    <TableHead>Preferred</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className='w-28' />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rows.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={7}
-                                            className='py-8 text-center text-sm text-muted-foreground'>
-                                            No spotlight requests match these
-                                            filters.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                                {rows.map(req => {
-                                    const info = tourMap.get(req.tourId);
-                                    const isEligible = (info?.reviewCount ?? 0) >= 10 && (info?.rating ?? 0) >= 4.5;
-                                    return (
-                                        <TableRow key={req.id}>
-                                            <TableCell className='text-sm font-medium'>
-                                                <div className='flex flex-col gap-1'>
-                                                    <Link
-                                                        href={`/dashboard/trips/${req.tourId}/edit`}
-                                                        className='flex items-center gap-3 hover:underline w-fit'>
-                                                        {info?.image ? (
-                                                            <div className='size-10 shrink-0 overflow-hidden rounded-md bg-muted'>
-                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                <img
-                                                                    src={info.image}
-                                                                    alt={info.name}
-                                                                    className='size-full object-cover'
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className='size-10 shrink-0 rounded-md bg-muted' />
-                                                        )}
-                                                        <span>
-                                                            {info?.name ?? (
-                                                                <span className='font-mono text-xs text-muted-foreground'>
-                                                                    {req.tourId.slice(0, 8)}
-                                                                    …
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    </Link>
-                                                    {info?.reviewCount !== undefined && (
-                                                        <span className='text-xs text-muted-foreground pl-[3.25rem]'>
-                                                            {info.rating ? `${info.rating.toFixed(1)}/5` : 'No rating'} ({info.reviewCount} {info.reviewCount === 1 ? 'review' : 'reviews'})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className='text-sm text-muted-foreground'>
-                                                <Link
-                                                    href={`/dashboard/tour-operators/${req.operatorId}`}
-                                                    className='hover:underline'>
-                                                    {info?.operator ?? '—'}
-                                                </Link>
-                                            </TableCell>
-                                            <TableCell className='text-sm text-muted-foreground'>
-                                                <div className='flex flex-col gap-1'>
-                                                    <Link
-                                                        href={`/dashboard/destinations/${req.destinationId}`}
-                                                        className='hover:underline w-fit'>
-                                                        {info?.destination ?? '—'}
-                                                    </Link>
-                                                    <span
-                                                        className={`text-xs ${(queue?.activeCountByDestination?.[req.destinationId] ?? 0) >= SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
-                                                        Active: {queue?.activeCountByDestination?.[req.destinationId] ?? 0}/{SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className='text-xs text-muted-foreground'>
-                                                {formatDate(req.requestedAt)}
-                                            </TableCell>
-                                            <TableCell className='text-xs text-muted-foreground'>
-                                                {req.requestedStartsAt
-                                                    ? formatDate(
-                                                          req.requestedStartsAt
-                                                      )
-                                                    : '—'}
-                                                {req.requestedDurationDays
-                                                    ? ` · ${req.requestedDurationDays}d`
-                                                    : ''}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className='flex flex-col items-start gap-1.5'>
-                                                    <Badge
-                                                        variant={
-                                                            statusVariant[
-                                                                req.status
-                                                            ]
-                                                        }>
-                                                        {
-                                                            SPOTLIGHT_STATUS_LABELS[
-                                                                req.status
-                                                            ]
-                                                        }
-                                                    </Badge>
-                                                    {req.status === 'REQUESTED' && (
-                                                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isEligible ? 'text-emerald-600' : 'text-destructive'}`}>
-                                                            {isEligible ? 'Eligible' : 'Ineligible'}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {canApprove &&
-                                                    req.status ===
-                                                        'REQUESTED' && (
-                                                        <div className='flex items-center justify-end gap-1'>
-                                                            <Button
-                                                                size='xs'
-                                                                disabled={!isEligible}
-                                                                title={!isEligible ? 'Does not meet eligibility requirements (>=10 reviews, >=4.5 rating)' : undefined}
-                                                                onClick={() =>
-                                                                    setApproveTarget(
-                                                                        req
-                                                                    )
-                                                                }>
-                                                                <CheckIcon className='size-3.5' />
-                                                                Approve
-                                                            </Button>
-                                                            <Button
-                                                                size='icon-xs'
-                                                                variant='ghost'
-                                                                className='text-destructive hover:text-destructive hover:bg-destructive/10'
-                                                                onClick={() =>
-                                                                    setRejectTarget(
-                                                                        req
-                                                                    )
-                                                                }>
-                                                                <XIcon className='size-3.5' />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                            <Select value={status} onValueChange={setStatus}>
+                                <SelectTrigger className='w-40 shrink-0'>
+                                    <SelectValue placeholder='Status' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value='all'>
+                                        All Statuses
+                                    </SelectItem>
+                                    {SPOTLIGHT_STATUS_VALUES.map((s) => (
+                                        <SelectItem key={s} value={s}>
+                                            {SPOTLIGHT_STATUS_LABELS[s]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            
+                            {destinationId !== 'all' && queue && (
+                                <Badge
+                                    variant={
+                                        queue.activeCount >=
+                                        SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION
+                                            ? 'destructive'
+                                            : 'secondary'
+                                    }
+                                    className='h-9 px-3'>
+                                    Active {queue.activeCount}/
+                                    {SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
+                                </Badge>
+                            )}
+                        </>
+                    }
+                />
+            )}
 
             <ApproveDialog
                 target={approveTarget}
                 onClose={() => setApproveTarget(null)}
-                tourName={
-                    approveTarget
-                        ? tourMap.get(approveTarget.tourId)?.name
-                        : undefined
-                }
+                tourName={approveTarget?.tourInfo?.name}
             />
             <RejectDialog
                 target={rejectTarget}
                 onClose={() => setRejectTarget(null)}
-                tourName={
-                    rejectTarget
-                        ? tourMap.get(rejectTarget.tourId)?.name
-                        : undefined
-                }
+                tourName={rejectTarget?.tourInfo?.name}
             />
         </div>
     );
@@ -367,7 +179,7 @@ function ApproveDialog({
     onClose,
     tourName,
 }: {
-    target: SpotlightRequest | null;
+    target: SpotlightRequestWithInfo | null;
     onClose: () => void;
     tourName?: string;
 }) {
@@ -489,7 +301,7 @@ function RejectDialog({
     onClose,
     tourName,
 }: {
-    target: SpotlightRequest | null;
+    target: SpotlightRequestWithInfo | null;
     onClose: () => void;
     tourName?: string;
 }) {
@@ -560,4 +372,3 @@ function RejectDialog({
         </Dialog>
     );
 }
-

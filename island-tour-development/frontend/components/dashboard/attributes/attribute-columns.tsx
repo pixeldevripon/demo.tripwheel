@@ -1,10 +1,18 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { PencilIcon, Trash2Icon } from 'lucide-react';
+import { PencilIcon, Trash2Icon, MoreHorizontalIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { AttributeDefinition } from '@/types/attribute';
 
 export interface MakeAttributeColumnsOptions {
@@ -25,7 +33,17 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
     {
       accessorKey: 'displayName',
       header: 'Display Name',
-      cell: ({ row }) => <span className="text-sm">{row.original.displayName}</span>,
+      cell: ({ row }) => {
+        if (!canManage) return <span className="text-sm font-medium">{row.original.displayName}</span>;
+        return (
+          <Link 
+            href={`/dashboard/attributes/${row.original.key}/edit`} 
+            className="text-sm font-medium hover:underline underline-offset-4"
+          >
+            {row.original.displayName}
+          </Link>
+        );
+      },
       enableSorting: true,
     },
     {
@@ -72,22 +90,35 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
         const attr = row.original;
         
         return (
-          <div className="flex items-center justify-end gap-1">
-            <Button asChild variant="ghost" size="icon-xs">
-              <Link href={`/dashboard/attributes/${attr.key}/edit`}>
-                <PencilIcon className="size-3.5" />
-              </Link>
-            </Button>
-            {attr.isActive && (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onDeactivate(attr)}
-              >
-                <Trash2Icon className="size-3.5 text-destructive" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm">
+                <MoreHorizontalIcon />
+                <span className="sr-only">Open menu</span>
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/attributes/${attr.key}/edit`}>
+                  <PencilIcon />
+                  Edit Attribute
+                </Link>
+              </DropdownMenuItem>
+              {attr.isActive && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => onDeactivate(attr)}
+                  >
+                    <Trash2Icon />
+                    Deactivate
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
       enableSorting: false,
