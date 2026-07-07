@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthShell } from '@/components/auth/auth-shell';
+import { AuthShell } from '@/components/__backup_auth/auth-shell';
 import { Reveal } from '@/components/frontend/reveal';
 import { usePathname } from 'next/navigation';
 
