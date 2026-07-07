@@ -1,210 +1,194 @@
 'use client';
 
-import Link from 'next/link';
-import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { signIn } from '@/lib/auth-client';
 import { MountReveal } from '@/components/frontend/mount-reveal';
-import { OtpField } from './code-input';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
-    ErrorNote,
     Field,
     inputClass,
     primaryBtn,
     quietLink,
-    SuccessBlock,
+    ErrorNote,
 } from './login-ui';
+// import OperatorTwoFactor from './operator-two-factor'; // 2FA — uncomment when enabled
 
 /**
- * Operator portal login card (`/portal`) - the credential step then mandatory
- * 2FA (TOTP, with WhatsApp v1.1 + backup-code fallbacks). Rendered inside the
- * portal shell (`app/(login)/portal/layout.tsx`), which owns the brand panel, so
- * this component is only the right-hand card. The step swap animates via a
- * `MountReveal` keyed by step.
+ * Operator portal login card (`/portal`) — credential step.
+ * Rendered inside the portal shell (`app/(login)/portal/layout.tsx`), which
+ * owns the brand panel, so this component is only the right-hand card.
  *
- * SCREENS ONLY: nothing is wired to Better Auth - the credential submit just
- * advances to the 2FA step, and any 6-digit code "verifies".
+ * 2FA (TOTP / backup codes) is wired in `operator-two-factor.tsx` but
+ * commented out below — uncomment when the backend supports it.
  */
-type Channel = 'totp' | 'wa' | 'backup';
 
-const CODE_ERRORS: Record<Channel, string> = {
+// 2FA types — kept for when the flow is re-enabled
+export type Channel = 'totp' | 'wa' | 'backup';
+
+export const CODE_ERRORS: Record<Channel, string> = {
     totp: "That code didn't work. Your app makes a new one every 30 seconds, try the newest.",
     wa: "That code didn't work. WhatsApp codes are valid for 10 minutes.",
     backup: "That backup code didn't work. Each one works once.",
 };
 
-const CHANNEL_SUBS: Record<Channel, string> = {
+export const CHANNEL_SUBS: Record<Channel, string> = {
     totp: 'The 6-digit code from your authenticator app.',
     wa: 'Code sent to the WhatsApp number ending in 43.',
     backup: 'Enter one of your backup codes.',
 };
 
 export function OperatorLogin() {
-    const [step, setStep] = useState<1 | 2>(1);
+    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
-    const [channel, setChannel] = useState<Channel>('totp');
-    const [code, setCode] = useState('');
-    const [codeError, setCodeError] = useState(false);
-    const [loggedIn, setLoggedIn] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    function switchChannel(next: Channel) {
-        setChannel(next);
-        setCode('');
-        setCodeError(false);
-    }
+    // ── 2FA state — uncomment when 2FA is enabled ──────────────────────────
+    // const [step, setStep] = useState<1 | 2>(1);
+    // const [channel, setChannel] = useState<Channel>('totp');
+    // const [code, setCode] = useState('');
+    // const [codeError, setCodeError] = useState(false);
+    //
+    // function switchChannel(next: Channel) {
+    //     setChannel(next);
+    //     setCode('');
+    //     setCodeError(false);
+    // }
+    // function backToCredentials() {
+    //     setStep(1);
+    //     setChannel('totp');
+    //     setCode('');
+    //     setCodeError(false);
+    // }
+    // function verify(e: React.FormEvent<HTMLFormElement>) {
+    //     e.preventDefault();
+    //     const raw = code.trim();
+    //     const ok =
+    //         channel === 'backup'
+    //             ? raw.replace(/[^A-Za-z0-9]/g, '').length >= 8
+    //             : raw.replace(/\D/g, '').length >= 6;
+    //     if (!ok) { setCodeError(true); return; }
+    //     setCodeError(false);
+    //     router.push('/dashboard');
+    //     router.refresh();
+    // }
+    // ──────────────────────────────────────────────────────────────────────
 
-    function backToCredentials() {
-        setStep(1);
-        setChannel('totp');
-        setCode('');
-        setCodeError(false);
-    }
-
-    function verify(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        const raw = code.trim();
-        const ok =
-            channel === 'backup'
-                ? raw.replace(/[^A-Za-z0-9]/g, '').length >= 8
-                : raw.replace(/\D/g, '').length >= 6;
-        if (!ok) {
-            setCodeError(true);
-            return;
+        setLoading(true);
+        setError('');
+        try {
+            const { error: authError } = await signIn.email({ email, password });
+            if (authError) {
+                setError(authError.message || 'Invalid email or password.');
+            } else {
+                // When 2FA is enabled: setStep(2) instead of redirect
+                router.push('/dashboard');
+                router.refresh();
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+            setError(msg);
+        } finally {
+            setLoading(false);
         }
-        setCodeError(false);
-        setLoggedIn(true);
     }
 
     const cardClass =
         'w-full rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md';
 
     return (
-        <MountReveal key={step} className={cardClass}>
-            {step === 1 ? (
-                <>
-                    <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
-                        Operator portal
-                    </h1>
-                    <p className='mb-5.5 mt-1.5 text-[14px] text-it-text-muted'>
-                        Manage your tours, availability, and bookings.
-                    </p>
-                    <form onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
-                        <Field label='Email' htmlFor='o-email'>
-                            <input
-                                id='o-email'
-                                type='email'
-                                name='email'
-                                autoComplete='username'
-                                inputMode='email'
-                                placeholder='you@yourcompany.com'
-                                className={inputClass}
-                            />
-                        </Field>
-                        <Field label='Password' htmlFor='o-pw'>
-                            <div className='relative'>
-                                <input
-                                    id='o-pw'
-                                    type={showPw ? 'text' : 'password'}
-                                    name='password'
-                                    autoComplete='current-password'
-                                    className={`${inputClass} pr-16`}
-                                />
-                                <button
-                                    type='button'
-                                    aria-live='polite'
-                                    onClick={() => setShowPw((v) => !v)}
-                                    className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
-                                    {showPw ? 'Hide' : 'Show'}
-                                </button>
-                            </div>
-                        </Field>
-                        <div className='mb-4.5 mt-0.5 flex items-center justify-end'>
-                            <Link href='/portal/forgot' className={quietLink}>
-                                Forgot your password?
-                            </Link>
-                        </div>
-                        <button type='submit' className={primaryBtn}>
-                            Log in
-                        </button>
-                    </form>
+        <MountReveal className={cardClass}>
+            <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
+                Operator portal
+            </h1>
+            <p className='mb-5.5 mt-1.5 text-[14px] text-it-text-muted'>
+                Manage your tours, availability, and bookings.
+            </p>
 
-                    <div className='mt-5 flex flex-col items-center gap-2.5'>
-                        <Link href='/apply' className={quietLink}>
-                            New here? Apply to list your tours &rarr;
-                        </Link>
-                        <Link href='/bookings' className={quietLink}>
-                            Looking for your booking? Go to island.tours/bookings &rarr;
-                        </Link>
-                    </div>
-                </>
-            ) : loggedIn ? (
-                <SuccessBlock
-                    title='Logged in.'
-                    body='The portal opens on the availability screen with one-tap Close today.'
-                />
-            ) : (
-                <>
-                    <button
-                        type='button'
-                        onClick={backToCredentials}
-                        className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
-                        <ArrowLeft className='size-3.5' strokeWidth={1.5} />
-                        Back
-                    </button>
-                    <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
-                        Enter your code
-                    </h1>
-                    <p className='mb-4 mt-1.5 text-[14px] text-it-text-muted'>
-                        {CHANNEL_SUBS[channel]}
-                    </p>
+            <form onSubmit={handleSubmit}>
+                <Field label='Email' htmlFor='o-email'>
+                    <input
+                        id='o-email'
+                        type='email'
+                        name='email'
+                        autoComplete='username'
+                        inputMode='email'
+                        placeholder='you@yourcompany.com'
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                        className={inputClass}
+                    />
+                </Field>
 
-                    {codeError && <ErrorNote>{CODE_ERRORS[channel]}</ErrorNote>}
-
-                    <form onSubmit={verify} noValidate>
-                        <div className='mb-3 text-center text-[13px] font-semibold text-it-heading'>
-                            {channel === 'backup' ? 'Backup code' : '6-digit code'}
-                        </div>
-                        {channel === 'backup' ? (
-                            <input
-                                id='o-code'
-                                type='text'
-                                name='code'
-                                autoComplete='one-time-code'
-                                autoCapitalize='characters'
-                                spellCheck={false}
-                                maxLength={14}
-                                value={code}
-                                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                                placeholder='Enter a backup code'
-                                className={`${inputClass} text-center tracking-[0.15em] uppercase placeholder:tracking-normal placeholder:normal-case`}
-                            />
-                        ) : (
-                            <OtpField value={code} onChange={setCode} />
-                        )}
-                        <label className='my-4 flex items-center justify-center gap-2.25 text-[13.5px] text-it-text-muted'>
-                            <input type='checkbox' className='size-4 accent-it-primary' />
-                            Remember this device for 30 days
-                        </label>
-                        <button type='submit' className={primaryBtn}>
-                            Verify
-                        </button>
-                    </form>
-
-                    <div className='mt-4 flex flex-col items-center gap-2.25'>
+                <Field label='Password' htmlFor='o-pw'>
+                    <div className='relative'>
+                        <input
+                            id='o-pw'
+                            type={showPw ? 'text' : 'password'}
+                            name='password'
+                            autoComplete='current-password'
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            required
+                            className={`${inputClass} pr-16`}
+                        />
                         <button
                             type='button'
-                            onClick={() => switchChannel('wa')}
-                            className={quietLink}>
-                            Send the code to WhatsApp instead
-                        </button>
-                        <button
-                            type='button'
-                            onClick={() => switchChannel('backup')}
-                            className={quietLink}>
-                            Use a backup code
+                            aria-live='polite'
+                            onClick={() => setShowPw(v => !v)}
+                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
+                            {showPw ? 'Hide' : 'Show'}
                         </button>
                     </div>
-                </>
-            )}
+                </Field>
+
+                <div className='mb-4.5 mt-0.5 flex items-center justify-end'>
+                    <Link href='/portal/forgot' className={quietLink}>
+                        Forgot your password?
+                    </Link>
+                </div>
+
+                {error && <ErrorNote>{error}</ErrorNote>}
+
+                <button
+                    type='submit'
+                    disabled={loading}
+                    className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-60`}>
+                    {loading ? 'Signing in…' : 'Log in'}
+                </button>
+            </form>
+
+            <div className='mt-5 flex flex-col items-center gap-2.5'>
+                <Link href='/apply' className={quietLink}>
+                    New here? Apply to list your tours &rarr;
+                </Link>
+                <Link href='/bookings' className={quietLink}>
+                    Looking for your booking? Go to island.tours/bookings &rarr;
+                </Link>
+            </div>
+
+            {/*
+             * ── 2FA step — uncomment block + setStep(2) call above when enabled ──
+             * {step === 2 && !loggedIn && (
+             *     <OperatorTwoFactor
+             *         backToCredentials={backToCredentials}
+             *         switchChannel={switchChannel}
+             *         verify={verify}
+             *         channel={channel}
+             *         code={code}
+             *         codeError={codeError}
+             *         setChannel={setChannel}
+             *         setCode={setCode}
+             *     />
+             * )}
+             */}
         </MountReveal>
     );
 }
+

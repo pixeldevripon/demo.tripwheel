@@ -77,7 +77,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
           fetchOptions: {
             onSuccess: () => {
               queryClient.clear();
-              router.push('/login');
+              router.push('/portal');
             },
           },
         });

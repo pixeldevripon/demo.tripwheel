@@ -16,7 +16,7 @@ export function LogoutButton() {
     try {
       await signOut();
       queryClient.clear();
-      router.push("/login");
+      router.push("/portal");
       router.refresh();
     } catch (error) {
       console.error("Failed to sign out:", error);

@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, CircleAlert } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * Shared primitives for the three login surfaces (traveler / operator / staff).
@@ -50,17 +51,34 @@ export function ErrorNote({ children }: { children: React.ReactNode }) {
     );
 }
 
-export function SuccessBlock({ title, body }: { title: string; body: string }) {
+export function SuccessBlock({
+    title,
+    body,
+    loginHref,
+    loginLabel = 'Back to login',
+}: {
+    title: string;
+    body: string;
+    /** When provided, renders a "Back to login" link below the body. */
+    loginHref?: string;
+    loginLabel?: string;
+}) {
     return (
         <div className='py-2 text-center'>
-            <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-it-green-subtle'>
-                <Check className='size-6 text-it-green-fg' strokeWidth={2} />
+            {/* Bright green circle */}
+            <div className='mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-50'>
+                <Check className='size-7 text-emerald-600' strokeWidth={2.5} />
             </div>
-            <strong className='text-it-heading'>{title}</strong>
-            <p className='mt-1.5 text-[14.5px] text-it-text-muted'>{body}</p>
-            <span className='mt-2.5 inline-block rounded-[6px] border border-dashed border-it-border px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-it-text-muted'>
-                Mockup endpoint
-            </span>
+            <strong className='block text-[17px] text-it-heading'>{title}</strong>
+            <p className='mt-2 text-[14px] leading-relaxed text-it-text-muted'>{body}</p>
+            {loginHref && (
+                <Link
+                    href={loginHref}
+                    className='mt-5 inline-flex items-center justify-center rounded-full border border-it-border bg-it-white px-6 py-2.5 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-primary hover:text-it-primary'>
+                    {loginLabel}
+                </Link>
+            )}
         </div>
     );
 }
+
