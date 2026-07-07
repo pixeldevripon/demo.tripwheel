@@ -67,6 +67,11 @@ export function CollectionsTable({
   const table = useReactTable({
     data,
     columns,
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    },
     state: {
       sorting,
       columnFilters,
