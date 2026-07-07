@@ -1,4 +1,4 @@
-import { LoginForm } from "@/components/auth/login-form";
+import { LoginForm } from "@/components/__backup_auth/login-form";
 
 export const metadata = {
   title: "Login - Island Tours",

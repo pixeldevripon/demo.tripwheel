@@ -2,8 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
-import { Check, CircleAlert } from 'lucide-react';
-import { MountReveal } from '@/components/frontend/mount-reveal';
+import AuthForm from './auth-form';
 
 /**
  * Staff surface `/staff` (spec 4). Google Workspace SSO only - no app-level
@@ -16,15 +15,15 @@ import { MountReveal } from '@/components/frontend/mount-reveal';
  */
 export function StaffLogin() {
     const [tried, setTried] = useState(false);
-    const [loggedIn, setLoggedIn] = useState(false);
+    /*   const [loggedIn, setLoggedIn] = useState(false); */
 
-    function handleGoogle() {
+    /*     function handleGoogle() {
         if (!tried) {
             setTried(true);
             return;
         }
         setLoggedIn(true);
-    }
+    } */
 
     return (
         <div className='flex min-h-screen flex-col items-center justify-center bg-it-ink px-6'>
@@ -37,12 +36,12 @@ export function StaffLogin() {
                 className='mb-6.5 h-auto w-32 object-contain'
             />
 
-            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-7 pb-6.5 pt-7.5 text-center shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
-                <h1 className='mb-5 font-it-display text-[19px] font-semibold text-it-heading'>
+            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-7 pb-6.5 pt-7.5 shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
+                <h1 className='mb-5 text-center font-it-display text-[19px] font-semibold text-it-heading'>
                     Staff access
                 </h1>
 
-                <MountReveal key={loggedIn ? 'success' : 'signin'}>
+                {/*      <MountReveal key={loggedIn ? 'success' : 'signin'}>
                 {loggedIn ? (
                     <div className='py-1'>
                         <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-it-green-subtle'>
@@ -79,16 +78,16 @@ export function StaffLogin() {
                         )}
                     </>
                 )}
-                </MountReveal>
-
+                </MountReveal> */}
+                <AuthForm />
                 <p className='mt-4 text-[12px] leading-[1.5] text-it-text-muted'>
                     Island Tours staff only. Every login and action is logged.
                 </p>
             </div>
 
             <p className='mt-5.5 max-w-85 text-center text-[12px] text-white/65'>
-                admin.island.tours &middot; linked from nowhere, noindex, authorization always
-                server-side
+                admin.island.tours &middot; linked from nowhere, noindex,
+                authorization always server-side
             </p>
         </div>
     );
@@ -97,7 +96,10 @@ export function StaffLogin() {
 /** Official Google "G" brand mark - kept multi-color (not recolourable). */
 function GoogleMark() {
     return (
-        <svg className='size-4.5 shrink-0' viewBox='0 0 48 48' aria-hidden='true'>
+        <svg
+            className='size-4.5 shrink-0'
+            viewBox='0 0 48 48'
+            aria-hidden='true'>
             <path
                 fill='#EA4335'
                 d='M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.7 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z'
@@ -117,3 +119,5 @@ function GoogleMark() {
         </svg>
     );
 }
+
+

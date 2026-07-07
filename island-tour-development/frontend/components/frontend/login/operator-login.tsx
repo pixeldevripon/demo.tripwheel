@@ -1,17 +1,9 @@
 'use client';
 
-import { signIn } from '@/lib/auth-client';
 import { MountReveal } from '@/components/frontend/mount-reveal';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import {
-    Field,
-    inputClass,
-    primaryBtn,
-    quietLink,
-    ErrorNote,
-} from './login-ui';
+import { quietLink } from './login-ui';
+import AuthForm from './auth-form';
 // import OperatorTwoFactor from './operator-two-factor'; // 2FA — uncomment when enabled
 
 /**
@@ -39,13 +31,6 @@ export const CHANNEL_SUBS: Record<Channel, string> = {
 };
 
 export function OperatorLogin() {
-    const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPw, setShowPw] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-
     // ── 2FA state — uncomment when 2FA is enabled ──────────────────────────
     // const [step, setStep] = useState<1 | 2>(1);
     // const [channel, setChannel] = useState<Channel>('totp');
@@ -77,27 +62,6 @@ export function OperatorLogin() {
     // }
     // ──────────────────────────────────────────────────────────────────────
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            const { error: authError } = await signIn.email({ email, password });
-            if (authError) {
-                setError(authError.message || 'Invalid email or password.');
-            } else {
-                // When 2FA is enabled: setStep(2) instead of redirect
-                router.push('/dashboard');
-                router.refresh();
-            }
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
-            setError(msg);
-        } finally {
-            setLoading(false);
-        }
-    }
-
     const cardClass =
         'w-full rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md';
 
@@ -110,59 +74,7 @@ export function OperatorLogin() {
                 Manage your tours, availability, and bookings.
             </p>
 
-            <form onSubmit={handleSubmit}>
-                <Field label='Email' htmlFor='o-email'>
-                    <input
-                        id='o-email'
-                        type='email'
-                        name='email'
-                        autoComplete='username'
-                        inputMode='email'
-                        placeholder='you@yourcompany.com'
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                        className={inputClass}
-                    />
-                </Field>
-
-                <Field label='Password' htmlFor='o-pw'>
-                    <div className='relative'>
-                        <input
-                            id='o-pw'
-                            type={showPw ? 'text' : 'password'}
-                            name='password'
-                            autoComplete='current-password'
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                            className={`${inputClass} pr-16`}
-                        />
-                        <button
-                            type='button'
-                            aria-live='polite'
-                            onClick={() => setShowPw(v => !v)}
-                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
-                            {showPw ? 'Hide' : 'Show'}
-                        </button>
-                    </div>
-                </Field>
-
-                <div className='mb-4.5 mt-0.5 flex items-center justify-end'>
-                    <Link href='/portal/forgot' className={quietLink}>
-                        Forgot your password?
-                    </Link>
-                </div>
-
-                {error && <ErrorNote>{error}</ErrorNote>}
-
-                <button
-                    type='submit'
-                    disabled={loading}
-                    className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-60`}>
-                    {loading ? 'Signing in…' : 'Log in'}
-                </button>
-            </form>
+            <AuthForm />
 
             <div className='mt-5 flex flex-col items-center gap-2.5'>
                 <Link href='/apply' className={quietLink}>
