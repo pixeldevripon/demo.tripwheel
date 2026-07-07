@@ -473,6 +473,13 @@
       "from": "ab",
       "per": "/pro",
       "perGroup": "/pro Gruppe"
+    },
+    "collections": {
+      "title": "Kuratierte Kollektionen",
+      "explore": "Kollektion Entdecken",
+      "breadcrumb": "Kollektionen",
+      "tours": "Touren",
+      "share": "Teilen"
     }
   }
 }

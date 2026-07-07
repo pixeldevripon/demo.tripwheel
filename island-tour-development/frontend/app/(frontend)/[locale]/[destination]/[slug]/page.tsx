@@ -1,16 +1,7 @@
-import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
 import { CategoryPage } from '@/components/frontend/category-page';
+import { CollectionPage } from '@/components/frontend/collection-page';
 import { HubPage } from '@/components/frontend/hub-page';
 import { TourPage } from '@/components/frontend/tour-page';
-import {
-    ALL_LOCALES,
-    DEFAULT_LOCALE,
-    isLocale,
-    localizeHref,
-    type Locale,
-} from '@/lib/constants/locales';
-import { getDictionary } from '@/lib/i18n/dictionaries';
 import {
     getActiveDestinations,
     getCategoryBySlugForDestination,
@@ -19,6 +10,16 @@ import {
     getDestinationCategories,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
+import {
+    ALL_LOCALES,
+    DEFAULT_LOCALE,
+    isLocale,
+    localizeHref,
+    type Locale,
+} from '@/lib/constants/locales';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import type { Metadata } from 'next';
+import { notFound, redirect } from 'next/navigation';
 
 /**
  * Localized destination display name from the public cached loader. On any fetch
@@ -27,12 +28,12 @@ import { resolveSlug } from '@/lib/api/slug-registry';
  */
 async function resolveDestinationName(
     destination: string,
-    locale: Locale,
+    locale: Locale
 ): Promise<string> {
     const dest = await getDestinationBySlug(destination, locale);
     return (
         dest?.name ??
-        destination.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        destination.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     );
 }
 
@@ -80,10 +81,16 @@ export async function generateStaticParams() {
         const destinations = await getActiveDestinations();
         if (destinations && destinations.length > 0) {
             const combos = await Promise.all(
-                destinations.map(async (d) => {
-                    const cats = await getDestinationCategories(d.slug, DEFAULT_LOCALE);
-                    return cats.map((c) => ({ destination: d.slug, slug: c.slug }));
-                }),
+                destinations.map(async d => {
+                    const cats = await getDestinationCategories(
+                        d.slug,
+                        DEFAULT_LOCALE
+                    );
+                    return cats.map(c => ({
+                        destination: d.slug,
+                        slug: c.slug,
+                    }));
+                })
             );
             const flatCombos = combos.flat();
             if (flatCombos.length > 0) {
@@ -93,7 +100,7 @@ export async function generateStaticParams() {
     } catch {
         // Fallback if backend is unavailable during build
     }
-    
+
     // Return permutations of launch destinations and categories
     const fallbackCombos: { destination: string; slug: string }[] = [];
     for (const destination of LAUNCH_DESTINATION_SLUGS) {
@@ -134,17 +141,25 @@ export async function generateMetadata({
 
     if (resolution.entityType === 'CATEGORY' && resolution.entityId) {
         const [category, pageContent] = await Promise.all([
-            getCategoryBySlugForDestination(destination, slug, locale as Locale),
+            getCategoryBySlugForDestination(
+                destination,
+                slug,
+                locale as Locale
+            ),
             getCategoryPageContent(resolution.entityId, locale as Locale),
         ]);
         if (!category) return { alternates };
 
-        const destinationName = await resolveDestinationName(destination, locale as Locale);
+        const destinationName = await resolveDestinationName(
+            destination,
+            locale as Locale
+        );
         return {
             title:
                 pageContent?.metaTitle ??
                 `${category.name} in ${destinationName} | Island Tours`,
-            description: pageContent?.metaDescription ?? category.overview ?? undefined,
+            description:
+                pageContent?.metaDescription ?? category.overview ?? undefined,
             alternates,
         };
     }
@@ -229,9 +244,21 @@ export default async function EntityPage({
         case 'RESERVED':
             redirect(localizeHref(locale, `/${destination}/tours`));
 
-        // COLLECTION page is not built yet (see routing doc §11).
         case 'COLLECTION':
+            if (!resolution?.entityId) notFound();
+            return (
+                <CollectionPage
+                    destinationSlug={destination}
+                    collectionSlug={slug}
+                    collectionId={resolution.entityId}
+                    destinationName={destinationName}
+                    locale={locale}
+                    dict={dict}
+                />
+            );
+
         default:
             notFound();
     }
 }
+

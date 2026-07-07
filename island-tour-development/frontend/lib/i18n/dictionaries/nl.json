@@ -473,6 +473,13 @@
       "from": "vanaf",
       "per": "/per",
       "perGroup": "/per groep"
+    },
+    "collections": {
+      "title": "Uitgelichte Collecties",
+      "explore": "Bekijk Collectie",
+      "breadcrumb": "Collecties",
+      "tours": "tours",
+      "share": "Delen"
     }
   }
 }

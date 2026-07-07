@@ -473,6 +473,13 @@
       "from": "from",
       "per": "/per",
       "perGroup": "/per group"
+    },
+    "collections": {
+      "title": "Curated Collections",
+      "explore": "Explore Collection",
+      "breadcrumb": "Collections",
+      "tours": "tours",
+      "share": "Share"
     }
   }
 }

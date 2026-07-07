@@ -1,18 +1,20 @@
-import { connection } from 'next/server';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { DestinationCollections } from '@/components/frontend/destination/destination-collections';
+import {
+    DestinationExploreTypes,
+    type ExploreType,
+} from '@/components/frontend/destination/destination-explore-types';
+import { DestinationHero } from '@/components/frontend/destination/destination-hero';
+import { DestinationListings } from '@/components/frontend/destination/destination-listings';
+import { collectionsApi } from '@/lib/api/collections';
 import {
     getDestinationCategories,
     getDestinationHubs,
     getDestinationTours,
 } from '@/lib/api/public';
-import { searchHitToListing } from '@/lib/tours/listing';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { DestinationHero } from '@/components/frontend/destination/destination-hero';
-import {
-    DestinationExploreTypes,
-    type ExploreType,
-} from '@/components/frontend/destination/destination-explore-types';
-import { DestinationListings } from '@/components/frontend/destination/destination-listings';
+import { searchHitToListing } from '@/lib/tours/listing';
+import { connection } from 'next/server';
 
 /**
  * Async, streamed sections of the destination page. The route resolves the island
@@ -130,7 +132,7 @@ export async function DestinationLocalFavourites({
         getDestinationTours({ destinationId: islandId, limit: 1 }),
     ]);
     const tours = favouriteTours.data.map(hit =>
-        searchHitToListing(hit, locale, dict.search),
+        searchHitToListing(hit, locale, dict.search)
     );
     if (tours.length === 0) return null;
 
@@ -142,6 +144,28 @@ export async function DestinationLocalFavourites({
             locale={locale}
             destinationSlug={destination}
             totalCount={allTours.total}
-        />  
+        />
     );
 }
+
+export async function DestinationCollectionsSection({
+    destination,
+    locale,
+    dict,
+}: Omit<ListingsSectionProps, 'islandId' | 'destinationName'>) {
+    await connection();
+    const collections = await collectionsApi
+        .getActive(destination, locale)
+        .catch(() => []);
+    if (collections.length === 0) return null;
+
+    return (
+        <DestinationCollections
+            dict={dict.destination.collections}
+            collections={collections}
+            locale={locale}
+            destinationSlug={destination}
+        />
+    );
+}
+

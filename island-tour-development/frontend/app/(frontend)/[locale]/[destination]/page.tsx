@@ -1,12 +1,11 @@
-import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
 import { DestinationAbout } from '@/components/frontend/destination-about';
 import { DestinationInstagram } from '@/components/frontend/destination-instagram';
-import { FaqSection } from '@/components/frontend/faq-section';
 import {
+    DestinationCollectionsSection,
     DestinationHeroSection,
     DestinationLocalFavourites,
 } from '@/components/frontend/destination/destination-page-sections';
+import { FaqSection } from '@/components/frontend/faq-section';
 import {
     DestinationHeroSkeleton,
     DestinationListingsSkeleton,
@@ -14,6 +13,8 @@ import {
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 const LAUNCH_DESTINATION_SLUGS = [
     'curacao',
@@ -86,6 +87,14 @@ export default async function DestinationPage({
                 />
             </Suspense>
 
+            <Suspense fallback={<DestinationListingsSkeleton />}>
+                <DestinationCollectionsSection
+                    destination={destination}
+                    locale={locale as Locale}
+                    dict={dict}
+                />
+            </Suspense>
+
             <DestinationInstagram dict={dict.destination.instagram} />
 
             <FaqSection dict={dict.home.faq} />
@@ -97,3 +106,4 @@ export default async function DestinationPage({
         </>
     );
 }
+

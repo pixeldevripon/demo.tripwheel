@@ -473,6 +473,13 @@
       "from": "起",
       "per": "/人",
       "perGroup": "/每组"
+    },
+    "collections": {
+      "title": "精选系列",
+      "explore": "探索系列",
+      "breadcrumb": "系列",
+      "tours": "个游览",
+      "share": "分享"
     }
   }
 }

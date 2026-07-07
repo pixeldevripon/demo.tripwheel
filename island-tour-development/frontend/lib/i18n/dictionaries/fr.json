@@ -473,6 +473,13 @@
       "from": "à partir de",
       "per": "/par",
       "perGroup": "/par groupe"
+    },
+    "collections": {
+      "title": "Collections Sélectionnées",
+      "explore": "Explorer la Collection",
+      "breadcrumb": "Collections",
+      "tours": "tours",
+      "share": "Partager"
     }
   }
 }
