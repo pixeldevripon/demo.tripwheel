@@ -1,4 +1,4 @@
-import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { ForgotPasswordForm } from "@/components/__backup_auth/forgot-password-form";
 
 export const metadata = {
   title: "Forgot Password - Island Tours",
