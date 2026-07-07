@@ -17,9 +17,6 @@ import {
  */
 const NON_LOCALIZED_PREFIXES = [
     '/dashboard',
-    '/login',
-    '/forgot-password',
-    '/reset-password',
     '/onboarding',
     '/bookings',
     '/portal',
@@ -69,12 +66,12 @@ async function guardDashboard(request: NextRequest) {
         const sessionData = await response.json();
 
         if (!sessionData || !sessionData.session) {
-            return NextResponse.redirect(new URL('/login', request.url));
+            return NextResponse.redirect(new URL('/portal', request.url));
         }
         return NextResponse.next();
     } catch (error) {
         console.error('Proxy error:', error);
-        return NextResponse.redirect(new URL('/login', request.url));
+        return NextResponse.redirect(new URL('/portal', request.url));
     }
 }
 
@@ -86,17 +83,30 @@ export async function proxy(request: NextRequest) {
         return guardDashboard(request);
     }
 
-    // 2. Other non-localized sections (auth, api, onboarding) - pass through.
+    // 2. Legacy auth redirects
+    if (pathname === '/login') {
+        return NextResponse.redirect(new URL('/portal', request.url));
+    }
+    if (pathname === '/forgot-password') {
+        return NextResponse.redirect(new URL('/portal/forgot', request.url));
+    }
+    if (pathname === '/reset-password') {
+        const url = new URL('/portal/reset', request.url);
+        url.search = request.nextUrl.search;
+        return NextResponse.redirect(url);
+    }
+
+    // 3. Other non-localized sections (auth, api, onboarding) - pass through.
     if (isNonLocalized(pathname)) {
         return NextResponse.next();
     }
 
-    // 3. Already localized → let it through.
+    // 4. Already localized → let it through.
     if (hasLocalePrefix(pathname)) {
         return NextResponse.next();
     }
 
-    // 4. Public path without a locale → redirect to the locale-prefixed URL.
+    // 5. Public path without a locale → redirect to the locale-prefixed URL.
     const locale = resolveLocale(request);
     const url = request.nextUrl.clone();
     url.pathname = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
