@@ -15,6 +15,7 @@ import {
     ToursFilterModal,
 } from '@/components/frontend/tours-filter-modal';
 import { useToursNav } from '@/components/frontend/tours/tours-browser';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
 import {
     buildToursHref,
     DEFAULT_GUESTS,
@@ -134,6 +135,11 @@ export function ToursFilterBar({
     const router = useRouter();
     const pathname = usePathname();
     const { startNav } = useToursNav();
+
+    // Grab-to-slide the horizontally-overflowing rows with a plain mouse (same
+    // affordance as the tab bars); no-ops on touch and when the content fits.
+    const controlsRowRef = useDragScroll<HTMLDivElement>();
+    const metaRowRef = useDragScroll<HTMLDivElement>();
 
     // Categories render optimistically: a chip toggle flips its own state on
     // click (inside the nav transition) and only settles back to the server truth
@@ -284,7 +290,9 @@ export function ToursFilterBar({
     return (
         <div className='flex flex-col gap-6'>
             {/* ── Row 1 - controls + category pills (scrolls horizontally) ── */}
-            <div className='flex items-center gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+            <div
+                ref={controlsRowRef}
+                className='flex items-center gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 {/* Left group - control pills + vertical divider */}
                 <div className='flex shrink-0 items-center gap-4'>
                     <div className='flex items-center gap-2'>
@@ -485,7 +493,9 @@ export function ToursFilterBar({
                 off-screen, reachable by scroll); sort stays pinned right. */}
             <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4'>
                 {/* Left - counter, applied chips, clear all */}
-                <div className='flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:flex-auto md:flex-wrap md:overflow-visible md:gap-x-8 md:gap-y-3 md:pb-0 [&::-webkit-scrollbar]:hidden'>
+                <div
+                    ref={metaRowRef}
+                    className='flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:flex-auto md:flex-wrap md:overflow-visible md:gap-x-8 md:gap-y-3 md:pb-0 [&::-webkit-scrollbar]:hidden'>
                     <div className='flex shrink-0 items-center gap-2 md:flex-wrap md:gap-x-4 md:gap-y-2'>
                         <p className='m-0 shrink-0 whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em]'>
                             <span className='font-medium text-it-heading'>{counterLabel}</span>{' '}

@@ -65,6 +65,15 @@ export type TourListing = {
     priceUnit: 'per' | 'perGroup';
     priceVaries?: boolean;
     freeCancellation?: boolean;
+    /**
+     * When set (1-based), the card renders the ranked collection variant
+     * (Figma node 47433:2088): a surface card with a numbered badge, a short
+     * description line, and a combined "duration · From $price" row. The image
+     * carousel and wishlist button are omitted in this variant.
+     */
+    rank?: number;
+    /** Short 1-2 line blurb - shown only in the ranked variant. */
+    description?: string;
 };
 
 // ── BadgeChip ───────────────────────────────────────────────────────────────
@@ -120,7 +129,17 @@ export interface TourCardProps {
     className?: string;
 }
 
-export function TourCard({ tour, dict, className = '' }: TourCardProps) {
+/**
+ * Tour card dispatcher. Renders the ranked collection variant when `tour.rank`
+ * is set (Figma 47433:2088), otherwise the standard listing card used across
+ * Destination Listings, Search, and Home carousels.
+ */
+export function TourCard(props: TourCardProps) {
+    if (props.tour.rank != null) return <RankedTourCard {...props} />;
+    return <DefaultTourCard {...props} />;
+}
+
+function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
@@ -417,6 +436,143 @@ export function TourCard({ tour, dict, className = '' }: TourCardProps) {
                 href={tour.href}
                 aria-label={tour.title}
                 className='block rounded-[16px] @[220px]:rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                {card}
+            </Link>
+        );
+    }
+
+    return card;
+}
+
+// ── RankedTourCard ────────────────────────────────────────────────────────────
+/**
+ * Ranked collection card (Figma node 47433:2088). A surface (#f8f8f8) card,
+ * radius 24, with a numbered badge over a single photo, then rating, title,
+ * a short description, a combined "duration · From $price" row, and a free
+ * cancellation note. No carousel, no wishlist - the whole card links out.
+ */
+function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
+    const [isHovered, setIsHovered] = useState(false);
+    const image = tour.images[0] || '';
+    const rank = String(tour.rank).padStart(2, '0');
+
+    const card = (
+        // @container: the card adapts its own typography to its width - compact in
+        // a 2-col mobile grid (~177px), full size in a wide desktop cell - mirroring
+        // the shared <TourCard>. On hover it fills cream and the image's bottom
+        // corners square off so it merges into the content (same as <TourCard>).
+        <motion.article
+            aria-label={tour.title}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            animate={{ backgroundColor: isHovered ? '#fdf6f0' : '#f8f8f8' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className={cn(
+                '@container flex flex-col gap-3 overflow-hidden rounded-[16px] pb-3 @[220px]:gap-4 @[220px]:rounded-[24px] @[220px]:pb-4',
+                className,
+            )}>
+            {/* Image + rank badge (top-left) */}
+            <motion.div
+                className='relative aspect-[384/270] w-full shrink-0 overflow-hidden bg-it-border'
+                animate={{
+                    borderTopLeftRadius: '16px',
+                    borderTopRightRadius: '16px',
+                    borderBottomLeftRadius: isHovered ? '0px' : '16px',
+                    borderBottomRightRadius: isHovered ? '0px' : '16px',
+                }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}>
+                {image && (
+                    <Image
+                        src={image}
+                        alt={tour.title}
+                        fill
+                        sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 384px'
+                        className='object-cover'
+                    />
+                )}
+                <span className='absolute left-2.5 top-2.5 grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:left-4 @[220px]:top-4 @[220px]:size-10 @[220px]:text-[16px]'>
+                    {rank}
+                </span>
+            </motion.div>
+
+            {/* Info */}
+            <div className='flex flex-col gap-2 px-2.5 @[220px]:gap-3 @[220px]:px-4'>
+                {/* Rating */}
+                {tour.rating !== undefined && (
+                    <div className='flex items-center gap-1.5 @[220px]:gap-2'>
+                        <Image
+                            src='/icons/star-listings.svg'
+                            alt=''
+                            width={16}
+                            height={16}
+                            className='size-3.5 shrink-0 @[220px]:size-4'
+                            aria-hidden='true'
+                        />
+                        <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
+                            {tour.rating} ({tour.reviewCount?.toLocaleString()})
+                        </span>
+                    </div>
+                )}
+
+                <div className='flex flex-col gap-1 @[220px]:gap-1.5'>
+                    {/* Title + description */}
+                    <div className='flex flex-col gap-1 @[220px]:gap-1.5'>
+                        <h3 className='m-0 font-medium text-[12px] leading-[1.4] tracking-[-0.012em] text-it-heading @[220px]:text-[16px]'>
+                            {tour.title}
+                        </h3>
+                        {tour.description && (
+                            <p className='m-0 text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:text-[14px]'>
+                                {tour.description}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Duration · From $price */}
+                    <div className='flex items-center gap-2 @[220px]:gap-4'>
+                        <span className='flex items-center gap-1'>
+                            <Image
+                                src='/icons/clock.svg'
+                                alt=''
+                                width={16}
+                                height={16}
+                                className='size-3.5 shrink-0 @[220px]:size-4'
+                                aria-hidden='true'
+                            />
+                            <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
+                                {tour.duration}
+                            </span>
+                        </span>
+                        <span
+                            aria-hidden='true'
+                            className='size-1 shrink-0 rounded-full bg-it-heading'
+                        />
+                        <span className='flex items-baseline gap-1'>
+                            <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[12px]'>
+                                {dict.from}
+                            </span>
+                            <span className='font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[16px]'>
+                                ${tour.price.toLocaleString()}
+                            </span>
+                        </span>
+                    </div>
+
+                    {/* Free cancellation */}
+                    {tour.freeCancellation && (
+                        <p className='m-0 text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
+                            {dict.freeCancellation}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </motion.article>
+    );
+
+    if (tour.href) {
+        return (
+            <Link
+                href={tour.href}
+                aria-label={tour.title}
+                className='block rounded-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary @[220px]:rounded-[24px]'>
                 {card}
             </Link>
         );

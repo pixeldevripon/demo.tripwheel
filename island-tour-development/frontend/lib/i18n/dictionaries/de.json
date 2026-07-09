@@ -479,7 +479,44 @@
       "explore": "Kollektion Entdecken",
       "breadcrumb": "Kollektionen",
       "tours": "Touren",
-      "share": "Teilen"
+      "share": "Teilen",
+      "related": {
+        "heading": "Entdecke {destination} weiter",
+        "prompt": "Noch unentschlossen?",
+        "cta": "Alle Touren in {destination} ansehen"
+      },
+      "faq": {
+        "guarantees": [
+          "Kostenlose Stornierung bei den meisten Touren, keine Formulare",
+          "Zahle heute schon ab 20%, den Rest später"
+        ],
+        "items": [
+          {
+            "q": "Was sind die besten Aktivitäten auf Curaçao?",
+            "a": "Zu den besten Aktivitäten auf Curaçao gehören Tagesausflüge nach Klein Curaçao, das Schwimmen mit Delfinen, Westcoast Tours, Sunset-Cruises und Offroad-Buggy-Touren. Das sind die charakteristischen Erlebnisse der Insel - eine Mischung aus Abenteuern auf dem Meer und Entdeckungen an Land, die alles abdeckt, wofür Curaçao bekannt ist."
+          },
+          {
+            "q": "Wie weit im Voraus sollte ich diese Touren buchen?",
+            "a": "Bei beliebten Touren wie Klein Curaçao und dem Schwimmen mit Delfinen empfehlen wir, 3 bis 5 Tage im Voraus zu buchen, besonders in der Hochsaison. Viele Touren lassen sich bei freien Plätzen noch für den nächsten Tag reservieren."
+          },
+          {
+            "q": "Wann ist die beste Reisezeit für Curaçao?",
+            "a": "Curaçao ist ein Ganzjahresziel und liegt unterhalb des Hurrikangürtels, daher sind die Tage warm und trocken mit einem kühlenden Passatwind. Die ruhigsten und preiswertesten Monate sind Mai, Juni und September."
+          },
+          {
+            "q": "Ist bei diesen Touren die Hotelabholung inklusive?",
+            "a": "Die meisten Touren bieten eine kostenlose Abholung von Hotels und Unterkünften auf der ganzen Insel. Auf jeder Tourseite steht, ob die Abholung inklusive ist, und wird der Treffpunkt angegeben, wenn das nicht der Fall ist."
+          },
+          {
+            "q": "Kann ich mehrere Touren auf einer Reise kombinieren?",
+            "a": "Auf jeden Fall. Viele Reisende verbinden einen Tagesausflug auf dem Meer mit einer Tour an Land. Füge jede Tour deiner Buchung hinzu und wir helfen dir, sie angenehm über deinen Aufenthalt zu verteilen."
+          },
+          {
+            "q": "Wie wählt Island Tours aus, welche Touren hervorgehoben werden?",
+            "a": "Wir ordnen Touren nach echten Reisebewertungen, der Zuverlässigkeit des Anbieters und dem, was unser lokales Team selbst buchen würde. Die Reihenfolge spiegelt echte Qualität wider, niemals bezahlte Platzierung."
+          }
+        ]
+      }
     }
   }
 }

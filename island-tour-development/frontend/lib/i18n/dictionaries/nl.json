@@ -479,7 +479,44 @@
       "explore": "Bekijk Collectie",
       "breadcrumb": "Collecties",
       "tours": "tours",
-      "share": "Delen"
+      "share": "Delen",
+      "related": {
+        "heading": "Blijf {destination} ontdekken",
+        "prompt": "Nog niet zeker?",
+        "cta": "Bekijk alle tours in {destination}"
+      },
+      "faq": {
+        "guarantees": [
+          "Gratis annuleren bij de meeste tours, geen formulieren",
+          "Betaal vandaag al vanaf 20%, de rest later"
+        ],
+        "items": [
+          {
+            "q": "Wat zijn de leukste dingen om te doen op Curaçao?",
+            "a": "De leukste dingen om te doen op Curaçao zijn dagtochten naar Klein Curaçao, zwemmen met dolfijnen, Westcoast Tours, zonsondergangcruises en off-road buggytochten. Dit zijn de kenmerkende belevenissen van het eiland - een mix van avonturen op zee en ontdekkingen op het eiland die alles omvat waar Curaçao om bekendstaat."
+          },
+          {
+            "q": "Hoe ver van tevoren moet ik deze tours boeken?",
+            "a": "Voor populaire tours zoals Klein Curaçao en het zwemmen met dolfijnen raden we aan om 3 tot 5 dagen van tevoren te boeken, zeker in het hoogseizoen. Veel tours kunnen bij beschikbaarheid nog voor de volgende dag worden gereserveerd."
+          },
+          {
+            "q": "Wat is de beste tijd om Curaçao te bezoeken?",
+            "a": "Curaçao is een bestemming voor het hele jaar en ligt onder de orkaangordel, dus de dagen zijn warm en droog met een verkoelende passaatwind. De rustigste maanden met de beste prijzen zijn mei, juni en september."
+          },
+          {
+            "q": "Is hotelophaalservice bij deze tours inbegrepen?",
+            "a": "De meeste tours bieden gratis ophaalservice bij hotels en verhuuraccommodaties op het hele eiland. Op elke tourpagina staat of ophaalservice is inbegrepen en wordt het verzamelpunt vermeld wanneer dat niet zo is."
+          },
+          {
+            "q": "Kan ik meerdere tours in één reis combineren?",
+            "a": "Zeker. Veel reizigers combineren een dagtocht op zee met een tour op het eiland. Voeg elke tour toe aan je boeking en we helpen je ze comfortabel over je verblijf te spreiden."
+          },
+          {
+            "q": "Hoe kiest Island Tours welke tours worden uitgelicht?",
+            "a": "We rangschikken tours op basis van echte reizigersbeoordelingen, de betrouwbaarheid van de aanbieder en wat ons lokale team zelf zou boeken. De volgorde weerspiegelt echte kwaliteit, nooit betaalde plaatsing."
+          }
+        ]
+      }
     }
   }
 }

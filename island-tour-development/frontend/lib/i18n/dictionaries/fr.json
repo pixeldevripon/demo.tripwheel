@@ -479,7 +479,44 @@
       "explore": "Explorer la Collection",
       "breadcrumb": "Collections",
       "tours": "tours",
-      "share": "Partager"
+      "share": "Partager",
+      "related": {
+        "heading": "Continuez à explorer {destination}",
+        "prompt": "Vous hésitez encore ?",
+        "cta": "Voir tous les tours à {destination}"
+      },
+      "faq": {
+        "guarantees": [
+          "Annulation gratuite sur la plupart des excursions, sans formulaire",
+          "Payez dès aujourd'hui à partir de 20%, le reste plus tard"
+        ],
+        "items": [
+          {
+            "q": "Quelles sont les meilleures choses à faire à Curaçao ?",
+            "a": "Les meilleures choses à faire à Curaçao incluent les excursions à la journée à Klein Curaçao, la nage avec les dauphins, les Westcoast Tours, les croisières au coucher du soleil et les tours en buggy tout-terrain. Ce sont les expériences emblématiques de l'île - un mélange d'aventures en mer et d'explorations à terre qui couvre tout ce pour quoi Curaçao est réputée."
+          },
+          {
+            "q": "Combien de temps à l'avance dois-je réserver ces tours ?",
+            "a": "Pour les tours populaires comme Klein Curaçao et la nage avec les dauphins, nous recommandons de réserver 3 à 5 jours à l'avance, surtout en haute saison. De nombreux tours peuvent encore être réservés pour le lendemain lorsque des places sont disponibles."
+          },
+          {
+            "q": "Quelle est la meilleure période pour visiter Curaçao ?",
+            "a": "Curaçao est une destination ouverte toute l'année, située sous la ceinture des ouragans, si bien que les journées sont chaudes et sèches avec un alizé rafraîchissant. Les mois les plus calmes et les plus avantageux sont mai, juin et septembre."
+          },
+          {
+            "q": "Ces tours incluent-ils la prise en charge à l'hôtel ?",
+            "a": "La plupart des tours proposent une prise en charge gratuite depuis les hôtels et les locations partout sur l'île. Chaque page de tour indique si la prise en charge est incluse et précise le point de rendez-vous lorsqu'elle ne l'est pas."
+          },
+          {
+            "q": "Puis-je combiner plusieurs tours lors d'un même voyage ?",
+            "a": "Absolument. De nombreux voyageurs associent une excursion en mer à la journée à un tour à terre. Ajoutez chaque tour à votre réservation et nous vous aiderons à les répartir confortablement sur la durée de votre séjour."
+          },
+          {
+            "q": "Comment Island Tours choisit-il les tours à mettre en avant ?",
+            "a": "Nous classons les tours selon les avis authentiques des voyageurs, la fiabilité de l'opérateur et ce que notre équipe locale réserverait elle-même. L'ordre reflète une qualité réelle, jamais un placement payant."
+          }
+        ]
+      }
     }
   }
 }

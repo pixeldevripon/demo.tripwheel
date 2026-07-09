@@ -479,7 +479,44 @@
       "explore": "Explore Collection",
       "breadcrumb": "Collections",
       "tours": "tours",
-      "share": "Share"
+      "share": "Share",
+      "related": {
+        "heading": "Keep exploring {destination}",
+        "prompt": "Not sure yet?",
+        "cta": "See all {destination} tours"
+      },
+      "faq": {
+        "guarantees": [
+          "Free cancellation on most tours, no forms",
+          "Pay as little as 20% today, the rest later"
+        ],
+        "items": [
+          {
+            "q": "What are the best things to do in Curaçao?",
+            "a": "The best things to do in Curaçao include Klein Curaçao day trips, swimming with dolphins, Westcoast Tours, sunset cruises, and off-road buggy tours. These are the island's signature experiences - a mix of offshore adventures and on-island exploration that covers everything Curaçao is known for."
+          },
+          {
+            "q": "How far in advance should I book these tours?",
+            "a": "For popular tours like Klein Curaçao and the dolphin swim we recommend booking 3 to 5 days ahead, especially in high season. Many tours can still be reserved for the next day when space allows."
+          },
+          {
+            "q": "When is the best time to visit Curaçao?",
+            "a": "Curaçao is a year-round destination that sits below the hurricane belt, so days are warm and dry with a cooling trade wind. The quietest, best-value months are May, June, and September."
+          },
+          {
+            "q": "Do these tours include hotel pickup?",
+            "a": "Most tours offer complimentary pickup from hotels and rentals across the island. Each tour page states whether pickup is included and lists the meeting point when it is not."
+          },
+          {
+            "q": "Can I combine multiple tours in one trip?",
+            "a": "Absolutely. Many travellers pair an offshore day trip with an on-island tour. Add each tour to your booking and we'll help you space them comfortably across your stay."
+          },
+          {
+            "q": "How does Island Tours choose which tours to feature?",
+            "a": "We rank tours by genuine traveller reviews, operator reliability, and what our local team would book themselves. The featured order reflects real quality, never paid placement."
+          }
+        ]
+      }
     }
   }
 }
