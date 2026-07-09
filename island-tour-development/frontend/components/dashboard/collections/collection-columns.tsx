@@ -1,7 +1,16 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { PencilIcon, Trash2Icon, MoreHorizontalIcon } from 'lucide-react';
+import {
+  PencilIcon,
+  Trash2Icon,
+  MoreHorizontalIcon,
+  ListOrderedIcon,
+  LanguagesIcon,
+  FileTextIcon,
+  HelpCircleIcon,
+  SearchIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -111,12 +120,46 @@ export function makeCollectionColumns({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               {canEdit && (
-                <DropdownMenuItem asChild>
-                  <Link href={`/dashboard/collections/${c.id}/edit`}>
-                    <PencilIcon />
-                    Edit Details
-                  </Link>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/collections/${c.id}/edit`}>
+                      <PencilIcon />
+                      Edit Details
+                    </Link>
+                  </DropdownMenuItem>
+                  {c.collectionType === 'MANUAL' && (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/dashboard/collections/${c.id}/edit?tab=tours`}>
+                        <ListOrderedIcon />
+                        Manage Tours
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/collections/${c.id}/edit?tab=translations`}>
+                      <LanguagesIcon />
+                      Manage Translations
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/collections/${c.id}/edit?tab=page-content`}>
+                      <FileTextIcon />
+                      Page Content
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/collections/${c.id}/edit?tab=faqs`}>
+                      <HelpCircleIcon />
+                      Manage FAQs
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/collections/${c.id}/edit?tab=seo`}>
+                      <SearchIcon />
+                      SEO
+                    </Link>
+                  </DropdownMenuItem>
+                </>
               )}
               {canDelete && c.isActive && (
                 <>

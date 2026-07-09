@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CheckIcon, ChevronsUpDownIcon, StarIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,10 @@ import {
 export interface MultiSelectOption {
   value: string;
   label: string;
+  /** Optional muted second line shown in the dropdown (e.g. performance summary). */
+  description?: string;
+  /** Optional trailing node shown next to the label in the dropdown (e.g. a badge). */
+  badge?: ReactNode;
 }
 
 interface MultiSelectProps {
@@ -104,15 +108,25 @@ export function MultiSelect({
                       key={opt.value}
                       value={opt.label}
                       onSelect={() => toggle(opt.value)}
-                      className="flex items-center gap-2"
+                      className="flex items-start gap-2"
                     >
                       <CheckIcon
                         className={cn(
-                          'size-3.5 shrink-0',
+                          'mt-0.5 size-3.5 shrink-0',
                           checked ? 'opacity-100' : 'opacity-0',
                         )}
                       />
-                      <span className="truncate text-sm">{opt.label}</span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-sm">{opt.label}</span>
+                          {opt.badge}
+                        </span>
+                        {opt.description && (
+                          <span className="truncate text-xs text-muted-foreground">
+                            {opt.description}
+                          </span>
+                        )}
+                      </span>
                     </CommandItem>
                   );
                 })}

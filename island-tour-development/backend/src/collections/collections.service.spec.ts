@@ -2,6 +2,7 @@
  * Unit tests for CollectionsService - create (cannibalization guard + slug_registry),
  * manual/dynamic tour resolution, soft delete. PrismaService and ToursService mocked.
  */
+import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ToursService } from '@/tours/tours.service';
 import {
@@ -52,7 +53,9 @@ function createMockPrisma() {
     collectionTour: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      create: jest.fn(),
       createMany: jest.fn(),
+      update: jest.fn(),
       deleteMany: jest.fn(),
     },
     collectionTourRationale: { upsert: jest.fn() },
@@ -72,6 +75,13 @@ function createMockPrisma() {
 }
 
 const tours = { findPublicByIds: jest.fn(), findAll: jest.fn() };
+const faqGroups = {
+  getGroups: jest.fn(),
+  createGroup: jest.fn(),
+  updateGroup: jest.fn(),
+  deleteGroup: jest.fn(),
+  upsertTranslation: jest.fn(),
+};
 
 describe('CollectionsService', () => {
   let service: CollectionsService;
@@ -84,6 +94,7 @@ describe('CollectionsService', () => {
         CollectionsService,
         { provide: PrismaService, useValue: prisma },
         { provide: ToursService, useValue: tours },
+        { provide: FaqGroupService, useValue: faqGroups },
       ],
     }).compile();
     service = module.get(CollectionsService);
@@ -523,13 +534,14 @@ describe('CollectionsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('writes ordered CollectionTour rows + syncs tourIds, normalizing positions', async () => {
+    it('diffs membership (preserving kept rows), re-normalizes positions, syncs tourIds', async () => {
       prisma.collection.findUnique.mockResolvedValue({
         id: 'col-1',
         collectionType: CollectionType.MANUAL,
         destinationId: 'dest-1',
       });
       prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
+      // Existing members: t2 @0, t1 @1 (both remain → no delete, rows preserved).
       prisma.collectionTour.findMany.mockResolvedValue([
         { id: 'ct-1', tourId: 't2', position: 0 },
         { id: 'ct-2', tourId: 't1', position: 1 },
@@ -546,18 +558,61 @@ describe('CollectionsService', () => {
         'admin',
       );
 
-      expect(prisma.collectionTour.deleteMany).toHaveBeenCalledWith({
-        where: { collectionId: 'col-1' },
+      // Sorted by position → [t2, t1]; both kept, so no deletions and no creates.
+      expect(prisma.collectionTour.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.collectionTour.create).not.toHaveBeenCalled();
+      // Kept rows are re-positioned to a dense 0..n by the submitted order.
+      expect(prisma.collectionTour.update).toHaveBeenCalledWith({
+        where: { id: 'ct-1' },
+        data: { position: 0 },
       });
-      expect(prisma.collectionTour.createMany).toHaveBeenCalledWith({
-        data: [
-          { collectionId: 'col-1', tourId: 't2', position: 0 },
-          { collectionId: 'col-1', tourId: 't1', position: 1 },
-        ],
+      expect(prisma.collectionTour.update).toHaveBeenCalledWith({
+        where: { id: 'ct-2' },
+        data: { position: 1 },
       });
       expect(prisma.collection.update).toHaveBeenCalledWith({
         where: { id: 'col-1' },
         data: { tourIds: ['t2', 't1'] },
+      });
+    });
+
+    it('deletes only removed members and creates only new ones', async () => {
+      prisma.collection.findUnique.mockResolvedValue({
+        id: 'col-1',
+        collectionType: CollectionType.MANUAL,
+        destinationId: 'dest-1',
+      });
+      prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't3' }]);
+      // Existing: t1 @0, t2 @1. New payload: t1, t3 → remove t2, add t3, keep t1.
+      prisma.collectionTour.findMany.mockResolvedValue([
+        { id: 'ct-1', tourId: 't1', position: 0 },
+        { id: 'ct-2', tourId: 't2', position: 1 },
+      ]);
+
+      await service.replaceTours(
+        'col-1',
+        {
+          tours: [
+            { tourId: 't1', position: 0 },
+            { tourId: 't3', position: 1 },
+          ],
+        },
+        'admin',
+      );
+
+      expect(prisma.collectionTour.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['ct-2'] } },
+      });
+      expect(prisma.collectionTour.update).toHaveBeenCalledWith({
+        where: { id: 'ct-1' },
+        data: { position: 0 },
+      });
+      expect(prisma.collectionTour.create).toHaveBeenCalledWith({
+        data: { collectionId: 'col-1', tourId: 't3', position: 1 },
+      });
+      expect(prisma.collection.update).toHaveBeenCalledWith({
+        where: { id: 'col-1' },
+        data: { tourIds: ['t1', 't3'] },
       });
     });
   });

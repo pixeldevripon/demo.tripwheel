@@ -6,6 +6,7 @@
  * '@/lib/api/public'`. Shared fetch primitives live in `./fetch`.
  */
 export * from './categories';
+export * from './collections';
 export * from './destinations';
 export * from './filters';
 export * from './hubs';

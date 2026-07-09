@@ -4,7 +4,9 @@ import type {
   CollectionFaq,
   CollectionLocalized,
   CollectionPageContent,
+  CollectionRenderTour,
   CollectionTourEntry,
+  CollectionTourForEdit,
   CollectionTourRationale,
   CollectionTranslation,
   CreateCollectionFaqPayload,
@@ -147,8 +149,18 @@ export const collectionsApi = {
     });
   },
 
-  // MANUAL membership (replace-all). Re-normalizes positions 0..n and clears
-  // existing per-tour rationales (CollectionTour rows are recreated).
+  // MANUAL membership + per-locale rationales for the admin Tours editor (ordered).
+  getToursForEdit(id: string): Promise<CollectionTourForEdit[]> {
+    return apiFetch<CollectionTourForEdit[]>(`/collections/${id}/tours`);
+  },
+
+  // Admin preview of the tours a collection resolves to (DYNAMIC filter or MANUAL order).
+  getResolvedTours(id: string): Promise<CollectionRenderTour[]> {
+    return apiFetch<CollectionRenderTour[]>(`/collections/${id}/resolved-tours`);
+  },
+
+  // MANUAL membership (replace-all). Re-normalizes positions 0..n; kept tours
+  // keep their rationale translations, removed tours are dropped.
   replaceTours(id: string, payload: ReplaceCollectionToursPayload): Promise<CollectionTourEntry[]> {
     return apiFetch<CollectionTourEntry[]>(`/collections/${id}/tours`, {
       method: 'PUT',

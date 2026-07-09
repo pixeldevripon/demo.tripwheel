@@ -4,6 +4,7 @@ import {
   CollectionDisplayStyle,
   CollectionStatus,
   CollectionType,
+  PricingModel,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
@@ -12,10 +13,12 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   Min,
   MinLength,
   ValidateNested,
@@ -41,6 +44,9 @@ export class CollectionResponseDto {
   @ApiPropertyOptional({ example: { booking_type: 'private' }, nullable: true })
   filterQuery!: unknown;
   @ApiPropertyOptional({ example: null, nullable: true }) heroImage!:
+    | string
+    | null;
+  @ApiPropertyOptional({ example: null, nullable: true }) ogImage!:
     | string
     | null;
   @ApiProperty({ example: 'recommended' }) sortOrder!: string;
@@ -196,6 +202,102 @@ export class CollectionBySlugQueryDto {
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
+/**
+ * Saved filter for a DYNAMIC collection. Every key maps 1:1 to a `TourQueryDto`
+ * field consumed by the tour-listing engine (`ToursService.findAll`) when the
+ * collection is resolved. Validated (whitelisted) so an unknown key is rejected.
+ */
+export class CollectionFilterQueryDto {
+  @ApiPropertyOptional({ description: 'Single category id.' })
+  @IsOptional()
+  @IsUUID('4')
+  categoryId?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Multi-select category ids (a tour in ANY matches).',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  categoryIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Activity hub id.' })
+  @IsOptional()
+  @IsUUID('4')
+  hubId?: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional({ example: 200 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ example: 60, description: 'Min duration in minutes.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  durationMin?: number;
+
+  @ApiPropertyOptional({
+    example: 480,
+    description: 'Max duration in minutes.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  durationMax?: number;
+
+  @ApiPropertyOptional({ example: 4.0, description: 'Minimum average rating.' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  ratingMin?: number;
+
+  @ApiPropertyOptional({
+    example: 48,
+    description:
+      'Free-cancellation cutoff ceiling in hours (cancellationHours <= value).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  cancellationMaxHours?: number;
+
+  @ApiPropertyOptional({ description: 'Only tours that offer pickup.' })
+  @IsOptional()
+  @IsBoolean()
+  pickupAvailable?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Only tours flagged as a locals' favourite.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isLocalsFavourite?: boolean;
+
+  @ApiPropertyOptional({ enum: PricingModel })
+  @IsOptional()
+  @IsEnum(PricingModel)
+  pricingModel?: PricingModel;
+
+  @ApiPropertyOptional({
+    description:
+      'Dictionary attribute filters: { attributeKey: value | value[] }. OR within a key, AND across keys.',
+    example: { boat_type: ['catamaran', 'yacht'], booking_type: 'private' },
+  })
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, string | string[]>;
+}
+
 export class CreateCollectionDto {
   @ApiProperty({ example: 'a1b2c3d4-0000-0000-0000-000000000001' })
   @IsUUID()
@@ -230,17 +332,27 @@ export class CreateCollectionDto {
   tourIds?: string[];
 
   @ApiPropertyOptional({
-    example: { categoryId: 'uuid', attributes: { booking_type: 'private' } },
-    description: 'DYNAMIC: saved filter',
+    type: CollectionFilterQueryDto,
+    description:
+      'DYNAMIC: saved filter (each key maps to a TourQueryDto field).',
   })
   @IsOptional()
-  @IsObject()
-  filterQuery?: Record<string, unknown>;
+  @ValidateNested()
+  @Type(() => CollectionFilterQueryDto)
+  filterQuery?: CollectionFilterQueryDto;
 
   @ApiPropertyOptional({ example: null })
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  @ApiPropertyOptional({
+    example: null,
+    description: 'Open Graph social-share image. Falls back to heroImage.',
+  })
+  @IsOptional()
+  @IsString()
+  ogImage?: string;
 
   @ApiPropertyOptional({
     example: 'recommended',
@@ -292,15 +404,28 @@ export class UpdateCollectionDto {
   @IsUUID('4', { each: true })
   tourIds?: string[];
 
-  @ApiPropertyOptional({ example: { attributes: { booking_type: 'private' } } })
+  @ApiPropertyOptional({
+    type: CollectionFilterQueryDto,
+    description:
+      'DYNAMIC: saved filter (each key maps to a TourQueryDto field).',
+  })
   @IsOptional()
-  @IsObject()
-  filterQuery?: Record<string, unknown>;
+  @ValidateNested()
+  @Type(() => CollectionFilterQueryDto)
+  filterQuery?: CollectionFilterQueryDto;
 
   @ApiPropertyOptional({ example: null })
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  @ApiPropertyOptional({
+    example: null,
+    description: 'Open Graph social-share image. Falls back to heroImage.',
+  })
+  @IsOptional()
+  @IsString()
+  ogImage?: string;
 
   @ApiPropertyOptional({ example: 'rating' })
   @IsOptional()

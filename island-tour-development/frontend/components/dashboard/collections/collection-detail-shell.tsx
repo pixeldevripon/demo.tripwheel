@@ -2,7 +2,6 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumb } from '@/components/dashboard/breadcrumb';
-import { CollectionSubNav } from './collection-sub-nav';
 
 interface CollectionDetailShellProps {
   id: string;
@@ -41,8 +40,6 @@ export function CollectionDetailShell({
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
-
-      <CollectionSubNav collectionId={id} />
 
       <div className="max-w-6xl">{children}</div>
     </div>

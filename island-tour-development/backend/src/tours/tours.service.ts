@@ -637,8 +637,12 @@ export class ToursService {
         where,
         select: {
           ...this.tourSelect,
-          // Localized title for the card (falls back to the canonical name).
-          translations: { where: { locale }, select: { title: true } },
+          // Localized title + overview for the card (title falls back to the
+          // canonical name; overview backs the DYNAMIC collection card's blurb).
+          translations: {
+            where: { locale },
+            select: { title: true, overview: true },
+          },
           // Destination slug so a listing item can build its flat URL even when
           // the list is not scoped to a single destination.
           destination: { select: { slug: true } },
@@ -657,6 +661,7 @@ export class ToursService {
     const mapped = data.map(({ translations, destination, ...t }) => ({
       ...this.flattenTour(t),
       title: translations[0]?.title ?? t.name,
+      overview: translations[0]?.overview ?? null,
       destinationSlug: destination?.slug ?? null,
       badge: this.deriveTourBadge(t),
     }));

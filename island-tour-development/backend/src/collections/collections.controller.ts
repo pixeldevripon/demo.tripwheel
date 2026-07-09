@@ -16,6 +16,11 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
+import {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import { CollectionsService } from './collections.service';
 import {
   ApiCreateCollectionDocs,
@@ -217,6 +222,76 @@ export class CollectionsController {
     return this.collectionsService.createFaq(id, dto, user.id);
   }
 
+  // ── Grouped FAQ (shared editor: add in English, then translate) ──────────────
+  // The "groups" static segment is declared before the dynamic `:faqId` routes so
+  // it is never captured as an id.
+
+  @Get(':id/faqs/groups')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({
+    summary: 'Admin: list grouped FAQs (English base + translations)',
+  })
+  getFaqGroups(@Param('id') id: string) {
+    return this.collectionsService.getFaqGroups(id);
+  }
+
+  @Post(':id/faqs/groups')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({ summary: 'Admin: create a FAQ (English base row)' })
+  createFaqGroup(
+    @Param('id') id: string,
+    @Body() dto: CreateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.createFaqGroup(id, dto, user.id);
+  }
+
+  @Patch(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({
+    summary: 'Admin: update a FAQ group (displayOrder / isActive)',
+  })
+  updateFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateFaqGroupDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.updateFaqGroup(id, groupId, dto, user.id);
+  }
+
+  @Delete(':id/faqs/groups/:groupId')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({ summary: 'Admin: delete a FAQ group (all locales)' })
+  deleteFaqGroup(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.deleteFaqGroup(id, groupId, user.id);
+  }
+
+  @Put(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({
+    summary: 'Admin: upsert a FAQ group translation for a locale',
+  })
+  upsertFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertFaqTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.upsertFaqTranslation(
+      id,
+      groupId,
+      locale,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(':id/faqs/:faqId')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiUpdateCollectionFaqDocs()
@@ -241,6 +316,26 @@ export class CollectionsController {
   }
 
   // ── Membership + rationale + status (Admin) ──────────────────────────────────
+
+  @Get(':id/tours')
+  @RequirePermissions(Permission.VIEW_COLLECTIONS)
+  @ApiOperation({
+    summary:
+      'Admin: ordered MANUAL membership with per-locale rationales (for the Tours editor)',
+  })
+  getToursForEdit(@Param('id') id: string) {
+    return this.collectionsService.getToursForEdit(id);
+  }
+
+  @Get(':id/resolved-tours')
+  @RequirePermissions(Permission.VIEW_COLLECTIONS)
+  @ApiOperation({
+    summary:
+      'Admin: preview the tours this collection resolves to (DYNAMIC filter or MANUAL order)',
+  })
+  getResolvedTours(@Param('id') id: string) {
+    return this.collectionsService.getResolvedTours(id);
+  }
 
   @Put(':id/tours')
   @RequirePermissions(Permission.EDIT_COLLECTION)

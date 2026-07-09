@@ -25,6 +25,10 @@ export const collectionKeys = {
   pageContent: (id: string, locale?: Locale) =>
     [...collectionKeys.all, 'page-content', id, locale] as const,
   faqs: (id: string, locale?: Locale) => [...collectionKeys.all, 'faqs', id, locale] as const,
+  toursForEdit: (id: string) => [...collectionKeys.all, 'tours-edit', id] as const,
+  // Child of detail(id) so invalidating the detail (e.g. after a filterQuery save)
+  // also refreshes the resolved-tours preview.
+  resolvedTours: (id: string) => [...collectionKeys.detail(id), 'resolved'] as const,
 };
 
 export function useCollectionsByDestination(destinationSlug: string | undefined) {
@@ -217,7 +221,26 @@ export function useUpdateCollectionStatus() {
   });
 }
 
-// MANUAL membership (replace-all). Invalidates the detail so the ordered tourIds refresh.
+// Ordered MANUAL membership + per-locale rationales (admin Tours editor read-back).
+export function useCollectionToursForEdit(id: string) {
+  return useQuery({
+    queryKey: collectionKeys.toursForEdit(id),
+    queryFn: () => collectionsApi.getToursForEdit(id),
+    enabled: !!id,
+  });
+}
+
+// Admin preview of the tours a DYNAMIC collection resolves to (from its saved filter).
+export function useCollectionResolvedTours(id: string, enabled = true) {
+  return useQuery({
+    queryKey: collectionKeys.resolvedTours(id),
+    queryFn: () => collectionsApi.getResolvedTours(id),
+    enabled: !!id && enabled,
+  });
+}
+
+// MANUAL membership (replace-all). Invalidates the detail + editor read-back so the
+// ordered tourIds and rationales refresh.
 export function useReplaceCollectionTours() {
   const qc = useQueryClient();
   return useMutation({
@@ -225,12 +248,14 @@ export function useReplaceCollectionTours() {
       collectionsApi.replaceTours(id, payload),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: collectionKeys.detail(vars.id) });
+      qc.invalidateQueries({ queryKey: collectionKeys.toursForEdit(vars.id) });
     },
   });
 }
 
-// Per-tour, per-locale rationale.
+// Per-tour, per-locale rationale. Invalidates the editor read-back so translations refresh.
 export function useUpsertCollectionTourRationale() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       id,
@@ -243,5 +268,8 @@ export function useUpsertCollectionTourRationale() {
       locale: Locale;
       payload: UpsertCollectionTourRationalePayload;
     }) => collectionsApi.upsertTourRationale(id, tourId, locale, payload),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: collectionKeys.toursForEdit(vars.id) });
+    },
   });
 }

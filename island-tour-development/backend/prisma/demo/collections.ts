@@ -10,7 +10,15 @@ import {
   Prisma,
   SlugEntityType,
 } from '@prisma/client';
-import { ALL_LOCALES, DEMO_TOUR_REF, img, log, prisma, section, stub } from './_shared';
+import {
+  ALL_LOCALES,
+  DEMO_TOUR_REF,
+  img,
+  log,
+  prisma,
+  section,
+  stub,
+} from './_shared';
 
 interface CollectionDef {
   destinationSlug: string;
@@ -38,7 +46,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'The tours our team books for visiting friends, ranked.',
     curationNote: 'Chosen by Islanders who live and play here.',
     eyebrowLabel: 'BEST THINGS TO DO',
-    about: 'A hand-ranked list of the experiences that show Curaçao at its best — from Klein Curaçao day trips to the reefs and the old town. Updated as new gems earn their place.',
+    about:
+      'A hand-ranked list of the experiences that show Curaçao at its best — from Klein Curaçao day trips to the reefs and the old town. Updated as new gems earn their place.',
     pick: { max: 8 },
   },
   {
@@ -50,7 +59,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'Easy, safe and genuinely fun for all ages.',
     curationNote: 'Parent-approved, kid-tested.',
     eyebrowLabel: 'FOR FAMILIES',
-    about: 'Calm-water snorkels, gentle boat trips and short tours that keep little ones smiling. Every tour here is family friendly.',
+    about:
+      'Calm-water snorkels, gentle boat trips and short tours that keep little ones smiling. Every tour here is family friendly.',
     filterQuery: { attributes: { family_friendly: true } },
     sortOrder: 'recommended',
   },
@@ -63,7 +73,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'Where islanders actually send their visitors.',
     curationNote: 'The real deal, no tourist traps.',
     eyebrowLabel: "LOCALS' PICKS",
-    about: 'The experiences that locals quietly rave about — the captains, guides and spots that make Curaçao special.',
+    about:
+      'The experiences that locals quietly rave about — the captains, guides and spots that make Curaçao special.',
     pick: { max: 6, localsOnly: true },
   },
   {
@@ -75,7 +86,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'Aruba’s top adrenaline and off-road experiences, ranked.',
     curationNote: 'Picked by guides who run these trails daily.',
     eyebrowLabel: 'TOP ADVENTURES',
-    about: 'From UTV desert runs to the Natural Pool and Arikok safaris, these are the adventures that define an active Aruba trip.',
+    about:
+      'From UTV desert runs to the Natural Pool and Arikok safaris, these are the adventures that define an active Aruba trip.',
     pick: { max: 7 },
   },
   {
@@ -87,7 +99,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'Jet skis, parasails and everything splash.',
     curationNote: 'For sun-and-sea days on Palm Beach.',
     eyebrowLabel: 'ON THE WATER',
-    about: 'All the water sports that make Palm Beach buzz — book a morning of jet skiing or float above it all on a parasail.',
+    about:
+      'All the water sports that make Palm Beach buzz — book a morning of jet skiing or float above it all on a parasail.',
     filterQuery: { categories: ['jet-ski', 'parasailing', 'water-sports'] },
     sortOrder: 'recommended',
   },
@@ -100,7 +113,8 @@ const COLLECTIONS: CollectionDef[] = [
     overview: 'The must-do experiences across both sides of the island.',
     curationNote: 'Curated by our Philipsburg crew.',
     eyebrowLabel: 'ISLAND HIGHLIGHTS',
-    about: 'Sunset sails, the Maho Beach plane spotting and both-sides sightseeing — the essential Sint Maarten / Saint-Martin shortlist.',
+    about:
+      'Sunset sails, the Maho Beach plane spotting and both-sides sightseeing — the essential Sint Maarten / Saint-Martin shortlist.',
     pick: { max: 5 },
   },
 ];
@@ -110,7 +124,9 @@ export const COLLECTION_SLUGS = COLLECTIONS.map((c) => c.slug);
 export async function seedCollections(): Promise<void> {
   section('Collections');
 
-  const destinations = await prisma.destination.findMany({ select: { id: true, slug: true } });
+  const destinations = await prisma.destination.findMany({
+    select: { id: true, slug: true },
+  });
   const destIdBySlug = new Map(destinations.map((d) => [d.slug, d.id]));
 
   let created = 0;
@@ -155,6 +171,7 @@ export async function seedCollections(): Promise<void> {
           tourIds: memberTours.map((t) => t.id), // legacy mirror
           filterQuery: def.filterQuery ?? Prisma.JsonNull,
           heroImage: img(`collection-${def.slug}`, 1600, 900),
+          ogImage: img(`collection-${def.slug}-og`, 1200, 630),
           sortOrder: def.sortOrder ?? 'recommended',
           status: CollectionStatus.PUBLISHED,
           displayStyle: def.displayStyle,
@@ -171,8 +188,12 @@ export async function seedCollections(): Promise<void> {
             locale,
             name: en ? def.name : stub(locale, def.name),
             overview: en ? def.overview : stub(locale, def.overview),
-            curationNote: en ? def.curationNote : stub(locale, def.curationNote),
-            eyebrowLabel: en ? def.eyebrowLabel : stub(locale, def.eyebrowLabel),
+            curationNote: en
+              ? def.curationNote
+              : stub(locale, def.curationNote),
+            eyebrowLabel: en
+              ? def.eyebrowLabel
+              : stub(locale, def.eyebrowLabel),
             breadcrumbLabel: en ? def.name : stub(locale, def.name),
             isMachineTranslated: !en,
           };
@@ -184,25 +205,56 @@ export async function seedCollections(): Promise<void> {
           collectionId: collection.id,
           locale,
           aboutText: locale === Locale.en ? def.about : stub(locale, def.about),
-          metaTitle: locale === Locale.en ? `${def.name} | Island Tours` : stub(locale, `${def.name} | Island Tours`),
-          metaDescription: locale === Locale.en ? def.overview : stub(locale, def.overview),
+          metaTitle:
+            locale === Locale.en
+              ? `${def.name} | Island Tours`
+              : stub(locale, `${def.name} | Island Tours`),
+          metaDescription:
+            locale === Locale.en ? def.overview : stub(locale, def.overview),
         })),
       });
 
       // MANUAL membership + per-locale rationale.
       for (let i = 0; i < memberTours.length; i++) {
-        const ct = await tx.collectionTour.create({ data: { collectionId: collection.id, tourId: memberTours[i].id, position: i } });
+        const ct = await tx.collectionTour.create({
+          data: {
+            collectionId: collection.id,
+            tourId: memberTours[i].id,
+            position: i,
+          },
+        });
         const rationale = `Ranked #${i + 1} for its mix of value, scenery and a guide who makes the day.`;
         await tx.collectionTourRationale.createMany({
-          data: ALL_LOCALES.map((locale) => ({ collectionTourId: ct.id, locale, rationale: locale === Locale.en ? rationale : stub(locale, rationale) })),
+          data: ALL_LOCALES.map((locale) => ({
+            collectionTourId: ct.id,
+            locale,
+            rationale:
+              locale === Locale.en ? rationale : stub(locale, rationale),
+          })),
         });
       }
 
       // COLLECTION slug_registry row (same transaction).
       await tx.slugRegistry.upsert({
-        where: { destinationSlug_slug: { destinationSlug: def.destinationSlug, slug: def.slug } },
-        update: { isActive: true, entityType: SlugEntityType.COLLECTION, entityId: collection.id, deletedAt: null },
-        create: { destinationSlug: def.destinationSlug, slug: def.slug, entityType: SlugEntityType.COLLECTION, entityId: collection.id, isActive: true },
+        where: {
+          destinationSlug_slug: {
+            destinationSlug: def.destinationSlug,
+            slug: def.slug,
+          },
+        },
+        update: {
+          isActive: true,
+          entityType: SlugEntityType.COLLECTION,
+          entityId: collection.id,
+          deletedAt: null,
+        },
+        create: {
+          destinationSlug: def.destinationSlug,
+          slug: def.slug,
+          entityType: SlugEntityType.COLLECTION,
+          entityId: collection.id,
+          isActive: true,
+        },
       });
     });
     created++;

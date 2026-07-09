@@ -1,5 +1,11 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
+import { FaqGroupService } from '@/common/faq/faq-group.service';
+import type {
+  CreateFaqGroupDto,
+  UpdateFaqGroupDto,
+  UpsertFaqTranslationDto,
+} from '@/common/faq/dto/faq-group.dto';
 import { generateSlug } from '@/common/utils/slug.util';
 import {
   clearCooledDownSlugs,
@@ -26,11 +32,13 @@ import {
 import {
   CollectionStatus,
   CollectionType,
+  PricingModel,
   Prisma,
   SlugEntityType,
 } from '@prisma/client';
 import { TourQueryDto, TourSort } from '@/tours/dto/tour.dto';
 import {
+  CollectionFilterQueryDto,
   CreateCollectionDto,
   CreateFaqDto,
   FaqLocaleQueryDto,
@@ -49,6 +57,7 @@ export class CollectionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly toursService: ToursService,
+    private readonly faqGroups: FaqGroupService,
   ) {}
 
   private readonly collectionSelect = {
@@ -62,6 +71,7 @@ export class CollectionsService {
     tourIds: true,
     filterQuery: true,
     heroImage: true,
+    ogImage: true,
     sortOrder: true,
     isActive: true,
     isSeeded: true,
@@ -181,16 +191,28 @@ export class CollectionsService {
     destinationId: string;
     collectionType: CollectionType;
     tourIds: string[];
-    filterQuery: unknown;
+    filterQuery: Prisma.JsonValue;
     sortOrder: string;
   }) {
     if (collection.collectionType === CollectionType.MANUAL) {
       return this.toursService.findPublicByIds(collection.tourIds);
     }
-    const fq = (collection.filterQuery as Record<string, any>) ?? {};
+    const fq = (collection.filterQuery ?? {}) as CollectionFilterQueryDto;
+    const pricingModel =
+      typeof fq.pricingModel === 'string' &&
+      (Object.values(PricingModel) as string[]).includes(fq.pricingModel)
+        ? fq.pricingModel
+        : undefined;
     const query: TourQueryDto = {
       destinationId: collection.destinationId,
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : undefined,
+      // Multi-select category (CSV or array); takes precedence over categoryId in findAll.
+      categoryIds: Array.isArray(fq.categoryIds)
+        ? fq.categoryIds.filter(
+            (c: unknown): c is string => typeof c === 'string',
+          )
+        : undefined,
+      hubId: typeof fq.hubId === 'string' ? fq.hubId : undefined,
       minPrice: typeof fq.minPrice === 'number' ? fq.minPrice : undefined,
       maxPrice: typeof fq.maxPrice === 'number' ? fq.maxPrice : undefined,
       durationMin:
@@ -198,6 +220,19 @@ export class CollectionsService {
       durationMax:
         typeof fq.durationMax === 'number' ? fq.durationMax : undefined,
       ratingMin: typeof fq.ratingMin === 'number' ? fq.ratingMin : undefined,
+      cancellationMaxHours:
+        typeof fq.cancellationMaxHours === 'number'
+          ? fq.cancellationMaxHours
+          : undefined,
+      pickupAvailable:
+        typeof fq.pickupAvailable === 'boolean'
+          ? fq.pickupAvailable
+          : undefined,
+      isLocalsFavourite:
+        typeof fq.isLocalsFavourite === 'boolean'
+          ? fq.isLocalsFavourite
+          : undefined,
+      pricingModel,
       sort: this.toTourSort(collection.sortOrder),
       page: 1,
       limit: 100,
@@ -218,6 +253,27 @@ export class CollectionsService {
     return (Object.values(TourSort) as string[]).includes(value)
       ? (value as TourSort)
       : TourSort.recommended;
+  }
+
+  /**
+   * Admin preview of the tours a collection currently resolves to — DYNAMIC via the
+   * saved filterQuery (+ sortOrder), MANUAL via the ordered tourIds. Works for DRAFT
+   * collections (unlike the published-only public render), so an admin can verify a
+   * filter right after saving it. Read-only: it does not persist anything.
+   */
+  async getResolvedTours(id: string) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { id },
+      select: {
+        destinationId: true,
+        collectionType: true,
+        tourIds: true,
+        filterQuery: true,
+        sortOrder: true,
+      },
+    });
+    if (!collection) throw new NotFoundException(`Collection ${id} not found`);
+    return this.resolveTours(collection);
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────────
@@ -270,10 +326,11 @@ export class CollectionsService {
               displayStyle: dto.displayStyle,
             }),
             tourIds: dto.tourIds ?? [],
-            filterQuery: (dto.filterQuery ?? undefined) as
+            filterQuery: (dto.filterQuery ?? undefined) as unknown as
               | Prisma.InputJsonValue
               | undefined,
             heroImage: dto.heroImage ?? null,
+            ogImage: dto.ogImage ?? null,
             sortOrder: dto.sortOrder ?? 'recommended',
             createdBy: adminId,
           },
@@ -388,9 +445,10 @@ export class CollectionsService {
             ...(dto.name !== undefined && { name: dto.name }),
             ...(dto.tourIds !== undefined && { tourIds: dto.tourIds }),
             ...(dto.filterQuery !== undefined && {
-              filterQuery: dto.filterQuery as Prisma.InputJsonValue,
+              filterQuery: dto.filterQuery as unknown as Prisma.InputJsonValue,
             }),
             ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+            ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
             ...(dto.displayStyle !== undefined && {
               displayStyle: dto.displayStyle,
@@ -682,6 +740,67 @@ export class CollectionsService {
     return { message: 'FAQ deleted successfully' };
   }
 
+  // ── Grouped FAQ (add in English, then translate) ────────────────────────────
+  // Thin wrappers over the shared FaqGroupService; each verifies the collection
+  // exists first so 404s are accurate, then delegates the grouped-FAQ logic.
+
+  async getFaqGroups(id: string) {
+    await this.findCollectionOrThrow(id);
+    return this.faqGroups.getGroups(FAQ_PAGE_TYPE.COLLECTION, id);
+  }
+
+  async createFaqGroup(id: string, dto: CreateFaqGroupDto, adminId: string) {
+    await this.findCollectionOrThrow(id);
+    this.logger.log(`Admin ${adminId} created FAQ for collection ${id}`);
+    return this.faqGroups.createGroup(FAQ_PAGE_TYPE.COLLECTION, id, dto);
+  }
+
+  async upsertFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertFaqTranslationDto,
+    adminId: string,
+  ) {
+    await this.findCollectionOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} upserted FAQ ${groupId} [${locale}] for collection ${id}`,
+    );
+    return this.faqGroups.upsertTranslation(
+      FAQ_PAGE_TYPE.COLLECTION,
+      id,
+      groupId,
+      locale,
+      dto,
+    );
+  }
+
+  async updateFaqGroup(
+    id: string,
+    groupId: string,
+    dto: UpdateFaqGroupDto,
+    adminId: string,
+  ) {
+    await this.findCollectionOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} updated FAQ ${groupId} for collection ${id}`,
+    );
+    return this.faqGroups.updateGroup(
+      FAQ_PAGE_TYPE.COLLECTION,
+      id,
+      groupId,
+      dto,
+    );
+  }
+
+  async deleteFaqGroup(id: string, groupId: string, adminId: string) {
+    await this.findCollectionOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} deleted FAQ ${groupId} for collection ${id}`,
+    );
+    return this.faqGroups.deleteGroup(FAQ_PAGE_TYPE.COLLECTION, id, groupId);
+  }
+
   // ── Membership + rationale (MANUAL) ─────────────────────────────────────────────
 
   private static readonly RATIONALE_MAX_WORDS = 20;
@@ -691,9 +810,54 @@ export class CollectionsService {
   }
 
   /**
+   * Ordered MANUAL membership for the admin editor: each member tour with its name
+   * and a `rationales` map keyed by locale (so the Tours tab can pre-fill existing
+   * rationales and translate them, rather than re-entering English every save).
+   * Returns [] for DYNAMIC collections (their tours come from the filter query).
+   */
+  async getToursForEdit(id: string) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { id },
+      select: { id: true, collectionType: true },
+    });
+    if (!collection) throw new NotFoundException(`Collection ${id} not found`);
+    if (collection.collectionType !== CollectionType.MANUAL) return [];
+
+    const members = await this.prisma.collectionTour.findMany({
+      where: { collectionId: id },
+      orderBy: { position: 'asc' },
+      select: {
+        tourId: true,
+        position: true,
+        translations: { select: { locale: true, rationale: true } },
+      },
+    });
+    if (members.length === 0) return [];
+
+    const nameById = new Map(
+      (
+        await this.prisma.tour.findMany({
+          where: { id: { in: members.map((m) => m.tourId) } },
+          select: { id: true, name: true },
+        })
+      ).map((t) => [t.id, t.name]),
+    );
+
+    return members.map((m) => ({
+      tourId: m.tourId,
+      position: m.position,
+      name: nameById.get(m.tourId) ?? null,
+      rationales: Object.fromEntries(
+        m.translations.map((t) => [t.locale, t.rationale]),
+      ),
+    }));
+  }
+
+  /**
    * Replace the ordered MANUAL membership. Writes CollectionTour rows (position normalized
    * to a dense 0..n by the submitted order) and keeps the legacy `tourIds[]` mirror in the
-   * same order. Existing members not in the payload are removed (cascading their rationales).
+   * same order. Existing members not in the payload are removed (cascading their rationales);
+   * members that remain keep their row and their per-locale rationale translations.
    */
   async replaceTours(
     id: string,
@@ -731,15 +895,42 @@ export class CollectionsService {
       );
     }
 
+    // Diff the membership rather than delete+recreate, so tours that remain
+    // members keep their CollectionTour row — and therefore their per-locale
+    // rationale translations — across a reorder. Only removed tours (and their
+    // rationales, via cascade) are deleted.
     await this.prisma.$transaction(async (tx) => {
-      await tx.collectionTour.deleteMany({ where: { collectionId: id } });
-      await tx.collectionTour.createMany({
-        data: ordered.map((t, index) => ({
-          collectionId: id,
-          tourId: t.tourId,
-          position: index,
-        })),
+      const existing = await tx.collectionTour.findMany({
+        where: { collectionId: id },
+        select: { id: true, tourId: true },
       });
+      const existingIdByTour = new Map(existing.map((m) => [m.tourId, m.id]));
+      const keepTourIds = new Set(tourIds);
+
+      const removedIds = existing
+        .filter((m) => !keepTourIds.has(m.tourId))
+        .map((m) => m.id);
+      if (removedIds.length > 0) {
+        await tx.collectionTour.deleteMany({
+          where: { id: { in: removedIds } },
+        });
+      }
+
+      for (let index = 0; index < ordered.length; index++) {
+        const { tourId } = ordered[index];
+        const existingId = existingIdByTour.get(tourId);
+        if (existingId) {
+          await tx.collectionTour.update({
+            where: { id: existingId },
+            data: { position: index },
+          });
+        } else {
+          await tx.collectionTour.create({
+            data: { collectionId: id, tourId, position: index },
+          });
+        }
+      }
+
       await tx.collection.update({ where: { id }, data: { tourIds } });
     });
 

@@ -6,6 +6,8 @@ import {
     getActiveDestinations,
     getCategoryBySlugForDestination,
     getCategoryPageContent,
+    getCollectionPageContent,
+    getCollectionRender,
     getDestinationBySlug,
     getDestinationCategories,
 } from '@/lib/api/public';
@@ -160,6 +162,28 @@ export async function generateMetadata({
                 `${category.name} in ${destinationName} | Island Tours`,
             description:
                 pageContent?.metaDescription ?? category.overview ?? undefined,
+            alternates,
+        };
+    }
+
+    if (resolution.entityType === 'COLLECTION' && resolution.entityId) {
+        const dest = await getDestinationBySlug(destination, locale as Locale);
+        if (!dest) return { alternates };
+
+        const [render, pageContent] = await Promise.all([
+            getCollectionRender(slug, dest.id, locale as Locale),
+            getCollectionPageContent(resolution.entityId, locale as Locale),
+        ]);
+        // Only PUBLISHED collections render; a null render (draft/404) emits just
+        // the alternates so the page's own notFound() still governs the response.
+        if (!render) return { alternates };
+
+        return {
+            title:
+                pageContent?.metaTitle ??
+                `${render.h1Override ?? render.name} | Island Tours`,
+            description:
+                pageContent?.metaDescription ?? render.overview ?? undefined,
             alternates,
         };
     }

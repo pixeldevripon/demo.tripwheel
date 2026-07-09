@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
+import { TourBadgeChip, type TourBadge } from './tour-badge';
 
 // ── Dictionary type ─────────────────────────────────────────────────────────
 export type TourCardDict = {
@@ -33,13 +34,9 @@ export type TourCardDict = {
 // ── Data types ──────────────────────────────────────────────────────────────
 // Master §3.6 badge set (the single badge in the card's top-left slot). Derived
 // by the backend `deriveTourBadge` and passed through unchanged - full logic in
-// technical-doc/03-implementation/TOUR-BADGES.md.
-export type TourBadge =
-    | 'new'
-    | 'likelyToSellOut'
-    | 'mostPopular'
-    | 'sponsored'
-    | null;
+// technical-doc/03-implementation/TOUR-BADGES.md. The type + chip UI live in the
+// shared, self-contained `./tour-badge` module (reused by the dashboard).
+export type { TourBadge };
 
 export type TourListing = {
     id: string;
@@ -85,40 +82,23 @@ interface BadgeChipProps {
 
 export function BadgeChip({ type, dict, className = '' }: BadgeChipProps) {
     if (!type) return null;
-
-    let label = '';
-    let colorClass = '';
-
-    if (type === 'sponsored') {
-        label = dict.sponsored;
-        // Master §3.6: "Rounded rectangle, gray" - neutral, never brand orange.
-        colorClass = 'bg-it-surface text-it-heading';
-    } else if (type === 'new') {
-        label = dict.new;
-        // Figma: bg: #fdf6f0, text: #2c2c2c
-        colorClass = 'bg-[#fdf6f0] text-[#2c2c2c]';
-    } else if (type === 'likelyToSellOut') {
-        label = dict.likelyToSellOut;
-        // Figma: bg: rgb(25, 60, 94) / #193c5e, text: white
-        colorClass = 'bg-[#193c5e] text-it-white';
-    } else {
-        label = dict.mostPopular;
-        // Figma: bg: rgb(232, 97, 26) / #e8611a, text: white
-        colorClass = 'bg-[#e8611a] text-it-white';
-    }
+    // Localized label for this badge; the color/shape/sizing live in the shared chip.
+    const label =
+        type === 'sponsored'
+            ? dict.sponsored
+            : type === 'new'
+              ? dict.new
+              : type === 'likelyToSellOut'
+                ? dict.likelyToSellOut
+                : dict.mostPopular;
 
     return (
-        <span
-            className={[
-                'inline-flex items-center justify-center rounded-full',
-                'h-6 px-2.5 text-[10px] @[220px]:h-8 @[220px]:px-[14px] @[220px]:text-[14px]',
-                'font-normal leading-[1.4] tracking-[-0.012em]',
-                colorClass,
-                className,
-            ].join(' ')}
-        >
-            {label}
-        </span>
+        <TourBadgeChip
+            type={type}
+            label={label}
+            size="responsive"
+            className={className}
+        />
     );
 }
 

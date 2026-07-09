@@ -3,6 +3,28 @@ import type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@
 export type { Locale } from '@/lib/constants/locales';
 export type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 
+/**
+ * Saved filter for a DYNAMIC collection. Every key maps 1:1 to a backend
+ * `TourQueryDto` field consumed by the tour-listing engine when the collection is
+ * resolved. Kept in sync with the backend `CollectionFilterQueryDto`.
+ */
+export interface CollectionFilterQuery {
+  categoryId?: string;
+  categoryIds?: string[];
+  hubId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  durationMin?: number;
+  durationMax?: number;
+  ratingMin?: number;
+  cancellationMaxHours?: number;
+  pickupAvailable?: boolean;
+  isLocalsFavourite?: boolean;
+  pricingModel?: 'PER_PERSON' | 'UNIT';
+  /** Dictionary attribute filters: OR within a key, AND across keys. */
+  attributes?: Record<string, string | string[]>;
+}
+
 export interface Collection {
   id: string;
   destinationId: string;
@@ -12,8 +34,9 @@ export interface Collection {
   status: CollectionStatus;
   displayStyle: CollectionDisplayStyle;
   tourIds: string[] | null; // null/empty for DYNAMIC collections
-  filterQuery: Record<string, unknown> | null;
+  filterQuery: CollectionFilterQuery | null;
   heroImage: string | null;
+  ogImage: string | null;
   sortOrder: string;
   isActive: boolean;
   isSeeded: boolean;
@@ -33,6 +56,50 @@ export interface CollectionDetail extends CollectionLocalized {
   tours: unknown[];
 }
 
+/** A resolved tour card in the public collection render (subset of the tour shape). */
+export interface CollectionRenderTour {
+  id: string;
+  slug: string;
+  name: string;
+  priceFrom: number | string | null;
+  basePrice?: number | string | null;
+  aggregateRating: number | null;
+  aggregateReviewCount: number;
+  bookingCount?: number;
+  durationMinutesFrom: number | null;
+  durationMinutesTo: number | null;
+  pickupModel: string;
+  pricingModel: string;
+  cancellationHours: number | null;
+  /** Server-derived badge (master §3.6); absent for MANUAL membership cards. */
+  badge?: 'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored' | null;
+  images?: { url: string }[];
+  /** MANUAL only: the per-tour rationale for the requested locale (falls back to en). */
+  rationale?: string | null;
+  /** DYNAMIC: the tour's own localized overview, used as the card blurb (Option 1). */
+  overview?: string | null;
+}
+
+export interface CollectionRelated {
+  id: string;
+  name: string;
+  slug: string;
+  heroImage: string | null;
+}
+
+/** Full §10 render payload for a PUBLISHED collection page (GET /collections/render/:slug). */
+export interface CollectionRender extends CollectionLocalized {
+  overview: string | null;
+  h1Override: string | null;
+  breadcrumbLabel: string | null;
+  curationNote: string | null;
+  eyebrowLabel: string | null;
+  tours: CollectionRenderTour[];
+  fastStats: { tourCount: number; fromPrice: number | null };
+  faqs: CollectionFaq[];
+  relatedCollections: CollectionRelated[];
+}
+
 export interface CollectionsQueryParams {
   destinationSlug: string;
   locale?: Locale;
@@ -44,8 +111,9 @@ export interface CreateCollectionPayload {
   slug?: string;
   collectionType: CollectionType;
   tourIds?: string[];
-  filterQuery?: Record<string, unknown>;
+  filterQuery?: CollectionFilterQuery;
   heroImage?: string | null;
+  ogImage?: string | null;
   sortOrder?: string;
   status?: CollectionStatus;
   displayStyle?: CollectionDisplayStyle;
@@ -55,8 +123,9 @@ export interface UpdateCollectionPayload {
   name?: string;
   slug?: string;
   tourIds?: string[];
-  filterQuery?: Record<string, unknown>;
+  filterQuery?: CollectionFilterQuery;
   heroImage?: string | null;
+  ogImage?: string | null;
   sortOrder?: string;
   displayStyle?: CollectionDisplayStyle;
   isActive?: boolean;
@@ -144,6 +213,17 @@ export interface CollectionTourEntry {
   id: string;
   tourId: string;
   position: number;
+}
+
+/**
+ * Read-back row from GET /collections/:id/tours (admin Tours editor): the ordered
+ * MANUAL membership with each member's name and its per-locale rationales.
+ */
+export interface CollectionTourForEdit {
+  tourId: string;
+  position: number;
+  name: string | null;
+  rationales: Partial<Record<Locale, string>>;
 }
 
 // ── Per-tour, per-locale rationale (≤20 words) ────────────────────────────────────

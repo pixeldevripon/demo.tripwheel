@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AlertTriangleIcon, ListOrderedIcon } from 'lucide-react';
@@ -22,11 +21,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TourBadgeChip } from '@/components/frontend/tour-badge';
+import { deriveTourBadge } from '@/lib/tours/listing';
 import { useCreateCollection, useUpdateCollection } from '@/hooks/collections/use-collections';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
+import { useActiveHubs } from '@/hooks/hubs/use-hubs';
+import { useAttributes } from '@/hooks/attributes/use-attributes';
 import { useAdminTrips } from '@/hooks/trips/use-trips';
-import type { Collection } from '@/types/collection';
+import type { Collection, CollectionFilterQuery } from '@/types/collection';
+import { tourPerfSummary } from './collection-tour-select';
 import {
   COLLECTION_DISPLAY_STYLE_LABELS,
   COLLECTION_DISPLAY_STYLE_VALUES,
@@ -54,20 +58,27 @@ const schema = z.object({
   displayStyle: z.enum(COLLECTION_DISPLAY_STYLE_VALUES as [string, ...string[]]),
   // DYNAMIC filter fields
   categoryId: z.string().optional(),
+  hubId: z.string().optional(),
   minPrice: z.string().optional(),
   maxPrice: z.string().optional(),
   durationMin: z.string().optional(),
   durationMax: z.string().optional(),
   ratingMin: z.string().optional(),
+  cancellationMaxHours: z.string().optional(),
+  pickupAvailable: z.string().optional(), // '' | 'true' | 'false'
+  isLocalsFavourite: z.string().optional(), // '' | 'true'
+  pricingModel: z.string().optional(), // '' | 'PER_PERSON' | 'UNIT'
 });
 
 type FormValues = z.infer<typeof schema>;
 
 interface CollectionFormProps {
   collection?: Collection;
+  /** Edit mode: switch the in-page tabs to the Tours tab (from the "Manage Tours" button). */
+  onManageTours?: () => void;
 }
 
-export function CollectionForm({ collection }: CollectionFormProps) {
+export function CollectionForm({ collection, onManageTours }: CollectionFormProps) {
   const router = useRouter();
   const isEditMode = !!collection;
   const { mutate: create, isPending: creating } = useCreateCollection();
@@ -78,7 +89,19 @@ export function CollectionForm({ collection }: CollectionFormProps) {
   const { data: categories } = useActiveCategories();
   const { data: adminTrips } = useAdminTrips({ limit: 100 });
 
-  const fq = (collection?.filterQuery ?? {}) as Record<string, unknown>;
+  const fq: CollectionFilterQuery = collection?.filterQuery ?? {};
+
+  // Dictionary attribute filters (dynamic keys) are held outside RHF. Seeded once
+  // from the saved filter; each key holds the selected value(s).
+  const [attributeFilters, setAttributeFilters] = useState<Record<string, string[]>>(
+    () => {
+      const out: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(fq.attributes ?? {})) {
+        out[k] = Array.isArray(v) ? v : [v];
+      }
+      return out;
+    },
+  );
 
   const {
     register,
@@ -98,11 +121,18 @@ export function CollectionForm({ collection }: CollectionFormProps) {
       sortOrder: collection?.sortOrder ?? 'recommended',
       displayStyle: collection?.displayStyle ?? 'PERSONA',
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : '',
+      hubId: typeof fq.hubId === 'string' ? fq.hubId : '',
       minPrice: fq.minPrice != null ? String(fq.minPrice) : '',
       maxPrice: fq.maxPrice != null ? String(fq.maxPrice) : '',
       durationMin: fq.durationMin != null ? String(fq.durationMin) : '',
       durationMax: fq.durationMax != null ? String(fq.durationMax) : '',
       ratingMin: fq.ratingMin != null ? String(fq.ratingMin) : '',
+      cancellationMaxHours:
+        fq.cancellationMaxHours != null ? String(fq.cancellationMaxHours) : '',
+      pickupAvailable:
+        typeof fq.pickupAvailable === 'boolean' ? String(fq.pickupAvailable) : '',
+      isLocalsFavourite: fq.isLocalsFavourite === true ? 'true' : '',
+      pricingModel: typeof fq.pricingModel === 'string' ? fq.pricingModel : '',
     },
   });
 
@@ -116,6 +146,10 @@ export function CollectionForm({ collection }: CollectionFormProps) {
   const sortOrder = watch('sortOrder');
   const displayStyle = watch('displayStyle');
   const categoryId = watch('categoryId');
+  const hubId = watch('hubId');
+  const pickupAvailable = watch('pickupAvailable');
+  const isLocalsFavourite = watch('isLocalsFavourite');
+  const pricingModel = watch('pricingModel');
 
   useEffect(() => {
     if (!isEditMode && !slugTouched) setValue('slug', toSlug(nameValue), { shouldValidate: !!nameValue });
@@ -126,13 +160,43 @@ export function CollectionForm({ collection }: CollectionFormProps) {
     if (!isEditMode) setValue('tourIds', []);
   }, [destinationId, isEditMode, setValue]);
 
-  // Tours scoped to the selected destination (client-side filter of admin trips)
+  // Tours scoped to the selected destination (client-side filter of admin trips).
+  // Each option carries the tour's badge + performance summary so the admin can
+  // judge why to pick it, matching the edit-mode Tours tab.
   const tourOptions = useMemo(
     () =>
       (adminTrips?.data ?? [])
         .filter(t => t.destinationId === destinationId)
-        .map(t => ({ value: t.id, label: t.name })),
+        .map(t => ({
+          value: t.id,
+          label: t.name,
+          description: tourPerfSummary(t),
+          badge: <TourBadgeChip type={deriveTourBadge(t)} />,
+        })),
     [adminTrips, destinationId],
+  );
+
+  // Hubs scoped to the selected destination (for the DYNAMIC filter builder).
+  const { data: hubs } = useActiveHubs(destinationId || undefined);
+
+  // Filterable dictionary attributes, scoped to the chosen category (+ globals).
+  const { data: allFilterableAttrs } = useAttributes({ filterableOnly: true });
+  const selectedCategorySlug = useMemo(
+    () => (categories ?? []).find(c => c.id === categoryId)?.slug,
+    [categories, categoryId],
+  );
+  const scopedAttributes = useMemo(
+    () =>
+      (allFilterableAttrs ?? []).filter(a => {
+        // Global attributes always apply; category-specific ones only when their
+        // category is the one being filtered.
+        if (!a.allowedValues?.length) return false; // only value-list attributes get a picker
+        if (!a.appliesToCategories || a.appliesToCategories.length === 0) return true;
+        return selectedCategorySlug
+          ? a.appliesToCategories.includes(selectedCategorySlug)
+          : false;
+      }),
+    [allFilterableAttrs, selectedCategorySlug],
   );
 
   // Cannibalization warning: collection slug must not equal a category slug
@@ -143,14 +207,28 @@ export function CollectionForm({ collection }: CollectionFormProps) {
 
   const num = (v: string | undefined) => (v && !isNaN(Number(v)) ? Number(v) : undefined);
 
-  function buildFilterQuery(values: FormValues): Record<string, unknown> {
-    const q: Record<string, unknown> = {};
+  function buildFilterQuery(values: FormValues): CollectionFilterQuery {
+    const q: CollectionFilterQuery = {};
     if (values.categoryId) q.categoryId = values.categoryId;
+    if (values.hubId) q.hubId = values.hubId;
     if (num(values.minPrice) !== undefined) q.minPrice = num(values.minPrice);
     if (num(values.maxPrice) !== undefined) q.maxPrice = num(values.maxPrice);
     if (num(values.durationMin) !== undefined) q.durationMin = num(values.durationMin);
     if (num(values.durationMax) !== undefined) q.durationMax = num(values.durationMax);
     if (num(values.ratingMin) !== undefined) q.ratingMin = num(values.ratingMin);
+    if (num(values.cancellationMaxHours) !== undefined)
+      q.cancellationMaxHours = num(values.cancellationMaxHours);
+    if (values.pickupAvailable === 'true') q.pickupAvailable = true;
+    else if (values.pickupAvailable === 'false') q.pickupAvailable = false;
+    if (values.isLocalsFavourite === 'true') q.isLocalsFavourite = true;
+    if (values.pricingModel)
+      q.pricingModel = values.pricingModel as CollectionFilterQuery['pricingModel'];
+    // Dictionary attribute filters (only non-empty selections).
+    const attrs: Record<string, string[]> = {};
+    for (const [key, vals] of Object.entries(attributeFilters)) {
+      if (vals.length > 0) attrs[key] = vals;
+    }
+    if (Object.keys(attrs).length > 0) q.attributes = attrs;
     return q;
   }
 
@@ -177,10 +255,9 @@ export function CollectionForm({ collection }: CollectionFormProps) {
           },
         },
         {
-          onSuccess: () => {
-            toast.success('Collection updated.');
-            router.push('/dashboard/collections');
-          },
+          // Stay on the editor so the admin can flip to the Tours tab and see the
+          // resolved tours right after saving a filter.
+          onSuccess: () => toast.success('Collection updated.'),
           onError: err => toast.error(err instanceof Error ? err.message : 'Update failed.'),
         },
       );
@@ -197,10 +274,10 @@ export function CollectionForm({ collection }: CollectionFormProps) {
           ...(isManual ? { tourIds: values.tourIds ?? [] } : { filterQuery: buildFilterQuery(values) }),
         },
         {
-          onSuccess: () => {
-            toast.success('Collection created.');
-            router.push('/dashboard/collections');
-          },
+          // Land on the new collection's editor so the admin can continue (tours,
+          // translations, publish) instead of bouncing back to the list.
+          onSuccess: created =>
+            router.push(`/dashboard/collections/${created.id}/edit`),
           onError: err => toast.error(err instanceof Error ? err.message : 'Create failed.'),
         },
       );
@@ -284,19 +361,24 @@ export function CollectionForm({ collection }: CollectionFormProps) {
             />
           </Field>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Sort Order</Label>
-            <Select value={sortOrder || 'recommended'} onValueChange={v => setValue('sortOrder', v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* Sort Order only applies to DYNAMIC collections (it drives how the
+              filter resolves + orders tours). MANUAL order is the hand-picked list. */}
+          {collectionType === 'DYNAMIC' && (
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Sort Order</Label>
+              <Select value={sortOrder || 'recommended'} onValueChange={v => setValue('sortOrder', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>How the filtered tours are ordered on the collection page.</FieldDescription>
+            </Field>
+          )}
 
           <Field>
             <Label className="text-xs font-semibold uppercase">Display Style</Label>
@@ -344,10 +426,13 @@ export function CollectionForm({ collection }: CollectionFormProps) {
                   <p className="text-muted-foreground">
                     Tour selection, ordering, and per-tour rationale are managed in the Tours tab.
                   </p>
-                  <Button asChild variant="outline" size="xs">
-                    <Link href={`/dashboard/collections/${collection?.id}/tours`}>
-                      Manage Tours
-                    </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => onManageTours?.()}
+                  >
+                    Manage Tours
                   </Button>
                 </div>
               </div>
@@ -382,6 +467,25 @@ export function CollectionForm({ collection }: CollectionFormProps) {
                   </SelectContent>
                 </Select>
               </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Hub</Label>
+                <Select
+                  value={hubId || '__any__'}
+                  onValueChange={v => setValue('hubId', v === '__any__' ? '' : v)}
+                  disabled={!destinationId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={destinationId ? 'Any hub' : 'Select a destination first'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__any__">Any hub</SelectItem>
+                    {(hubs ?? []).map(h => (
+                      <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>Only tours tagged with this activity hub.</FieldDescription>
+              </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
                   <Label className="text-xs font-semibold uppercase">Min Price</Label>
@@ -403,7 +507,94 @@ export function CollectionForm({ collection }: CollectionFormProps) {
                   <Label className="text-xs font-semibold uppercase">Min Rating</Label>
                   <Input type="number" min={0} max={5} step="0.1" {...register('ratingMin')} placeholder="e.g. 4" />
                 </Field>
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Free-cancellation window (max hrs)</Label>
+                  <Input type="number" min={0} {...register('cancellationMaxHours')} placeholder="e.g. 48" />
+                </Field>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Pickup</Label>
+                  <Select
+                    value={pickupAvailable || '__any__'}
+                    onValueChange={v => setValue('pickupAvailable', v === '__any__' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">Any</SelectItem>
+                      <SelectItem value="true">Offers pickup</SelectItem>
+                      <SelectItem value="false">No pickup</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
+                  <Select
+                    value={pricingModel || '__any__'}
+                    onValueChange={v => setValue('pricingModel', v === '__any__' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">Any</SelectItem>
+                      <SelectItem value="PER_PERSON">Per person</SelectItem>
+                      <SelectItem value="UNIT">Per unit / group</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Locals&apos; Favourite</Label>
+                  <Select
+                    value={isLocalsFavourite || '__any__'}
+                    onValueChange={v => setValue('isLocalsFavourite', v === '__any__' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">Any</SelectItem>
+                      <SelectItem value="true">Only locals&apos; favourites</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              {/* Dictionary attribute filters (per-category, value-list attributes). */}
+              {scopedAttributes.length > 0 && (
+                <div className="space-y-4 border-t border-border pt-4">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Attributes
+                  </p>
+                  {!categoryId && (
+                    <FieldDescription>
+                      Showing global attributes. Pick a category above to also filter by that
+                      category&apos;s attributes.
+                    </FieldDescription>
+                  )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {scopedAttributes.map(attr => (
+                      <Field key={attr.key}>
+                        <Label className="text-xs font-semibold uppercase">
+                          {attr.displayName}
+                        </Label>
+                        <MultiSelect
+                          options={(attr.allowedValues ?? []).map(v => ({ value: v, label: v }))}
+                          value={attributeFilters[attr.key] ?? []}
+                          onChange={vals =>
+                            setAttributeFilters(prev => ({ ...prev, [attr.key]: vals }))
+                          }
+                          placeholder="Any"
+                          searchPlaceholder="Search values…"
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

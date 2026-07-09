@@ -13,6 +13,7 @@ model Collection {
   tourIds        String[]       @default([]) // MANUAL legacy mirror; CollectionTour is authoritative for order
   filterQuery    Json? // DYNAMIC: saved attribute/price/category filter
   heroImage      String?
+  ogImage        String? // Open Graph image (SEO social card); falls back to heroImage when empty
   sortOrder      String         @default("recommended") // DYNAMIC only — maps to TourSort (master E.5)
 
   status       CollectionStatus       @default(DRAFT) // publish lifecycle (G5)
