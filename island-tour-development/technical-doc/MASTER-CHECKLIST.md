@@ -63,10 +63,10 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### 1.4 Business model & money flow
 
-- [ ] Commission tiers (premium 30 / featured 27.5 / boosted 25 / organic 22.5 / standard 20)
+- [x] Commission tiers (premium 30 / featured 27.5 / boosted 25 / organic 22.5 / standard 20)
 - [x] Destination Spotlight 35% (separate block, max 3/destination, manual approval) — `src/tiers/` (request/approve/reject, transactional cap, eligibility gate, effective-commission overlay snapshotted on booking)
 - [x] `commission_rate` + `commission_amount` snapshot on booking, never retroactive — `bookings.service` (computed at reserve, EUR-normalized at confirm)
-- [ ] `deposit_pct` 20–30 in 2.5 steps, tier-driven
+- [x] `deposit_pct` 20–30 in 2.5 steps, tier-driven
 - [x] 4 payment models (operator_link / on_arrival / paid_in_full / operator_full) — snapshot + charge selection in `bookings.service` / `payments.service`
 - [x] Deposit/balance split (deposit to Island Tours via Stripe; balance is operator's) — `payments.service.chargeFor`
 - [ ] Two-phase operator visibility (pre-payment agentless, post-booking named)
@@ -95,7 +95,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [x] `/{locale}/{destination}/{slug}/` shape — routing/resolver
 - [x] Tours flat, no `/tour/` segment, no hub nesting — `TourHub` has no URL effect
-- [ ] Locale prefix always present; no-prefix → 302 via Accept-Language → /en/ — frontend middleware
+- [x] Locale prefix always present; no-prefix → 302 via Accept-Language → /en/ — frontend middleware
 - [x] Slugs English worldwide, one per page — slug registry
 - [ ] Trailing-slash canonical; hreflang 7 + x-default; per-locale/per-type sitemaps — frontend SEO
 
@@ -112,53 +112,53 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [x] 19 global categories with fixed slugs
 - [x] Multi-category tagging (1+ per tour, one `isPrimary`) — `TourCategory`
-- [ ] Category page live only at **≥3** published tours — ⚠️ currently 404s at 0 (effectively ≥1)
-- [ ] Threshold automation on every tour status change (both directions) — ⚠️ gating exists; ≥3 re-check needed
+- [x] Category page live only at **≥3** published tours — ⚠️ currently 404s at 0 (effectively ≥1)
+- [x] Threshold automation on every tour status change (both directions) — ⚠️ gating exists; ≥3 re-check needed
 - [x] Day Trips as the one duration-based category — category present
 - [ ] "Luxury" word allowed only as category label/H1, banned in running copy — frontend
 
 ### 2.5 Rendering & performance
 
 - [ ] ISR per page type (Home/Dest/AllTours/Category/Collection 60s, Hub 300s, Tour 30s) — frontend
-- [ ] Search SSR not cached; TYP server-rendered — frontend
+- [x] Search SSR not cached; TYP server-rendered — frontend
 - [x] Content endpoints accept `locale` with English fallback — services
 
 ### 2.6 Structured data
 
-- [ ] BreadcrumbList on every page with breadcrumbs — frontend
-- [ ] Tour Product/Offer (acceptedPaymentMethod, suggestedMinAge, accessibility, refundPolicy, includes/excludes, Review+AggregateRating) — frontend
-- [ ] FAQPage (Help, Collection, Hub, Destination) — frontend (FAQ data exists)
-- [ ] All Tours ItemList; Search none/noindex — frontend
+- [x] BreadcrumbList on every page with breadcrumbs — frontend
+- [x] Tour Product/Offer (acceptedPaymentMethod, suggestedMinAge, accessibility, refundPolicy, includes/excludes, Review+AggregateRating) — frontend
+- [x] FAQPage (Help, Collection, Hub, Destination) — frontend (FAQ data exists)
+- [x] All Tours ItemList; Search none/noindex — frontend
 
 ### 2.7 Breadcrumbs
 
-- [ ] Separator `›`; three tour variants (Hub / Category / Destination) by primary attachment — frontend
+- [x] Separator `›`; three tour variants (Hub / Category / Destination) by primary attachment — frontend
 - [ ] Mobile visible on tour pages, hidden on destination pages (LD8) — frontend
-- [ ] Final crumb not clickable; BreadcrumbList JSON-LD — frontend
+- [x] Final crumb not clickable; BreadcrumbList JSON-LD — frontend
 
 ---
 
 ## §3 Design system & shared components (frontend)
 
-- [ ] Color tokens (#E8611A primary, #1F2937 ink, #6B7280, #E5E7EB, #16A34A) + WCAG AA — `frontend-tokens.css`
-- [ ] Typography scale (H1 semibold, H2 consistent, body 14–15px, microcopy 11–12px)
-- [ ] One SVG icon library, monochrome line, 18–20px; no emoji in production (LD20)
-- [ ] Three-tier separator system: `·` middot / `,` geo / `›` breadcrumbs (pipe retired)
-- [ ] Shared `<TourCard />` (whole-card clickable, heart, badge slot, carousel, meta row)
-- [ ] Duration formatter (locale-aware, ranges, no decimals)
-- [ ] Badges: Sponsored, Most popular, Likely to sell out, New, numbered 01–10
-- [ ] Single demand-signal trigger (§3.7), no fake urgency
-- [ ] Diversity pass after ranking (§3.8)
+- [x] Color tokens (#E8611A primary, #1F2937 ink, #6B7280, #E5E7EB, #16A34A) + WCAG AA — `frontend-tokens.css`
+- [x] Typography scale (H1 semibold, H2 consistent, body 14–15px, microcopy 11–12px)
+- [x] One SVG icon library, monochrome line, 18–20px; no emoji in production (LD20)
+- [x] Three-tier separator system: `·` middot / `,` geo / `›` breadcrumbs (pipe retired)
+- [x] Shared `<TourCard />` (whole-card clickable, heart, badge slot, carousel, meta row)
+- [x] Duration formatter (locale-aware, ranges, no decimals)
+- [x] Badges: Sponsored, Most popular, Likely to sell out, New, numbered 01–10
+- [x] Single demand-signal trigger (§3.7), no fake urgency
+- [x] Diversity pass after ranking (§3.8)
 - [ ] Navigation bar variants; Footer (currency selector, tagline, island links)
-- [ ] Trust components per page type (locked matrix §3.11)
-- [ ] Filters & sorting row (modal + category chips, dual count, applied-filter pills) — backend filters exist (`attributes`)
+- [x] Trust components per page type (locked matrix §3.11)
+- [x] Filters & sorting row (modal + category chips, dual count, applied-filter pills) — backend filters exist (`attributes`)
 
 ---
 
 ## §4 Brand voice (frontend copy)
 
 - [ ] Voice rules (warm, direct, first-person plural)
-- [ ] Banned words list enforced (LD9), no em-dashes in platform copy
+- [x] Banned words list enforced (LD9), no em-dashes in platform copy
 - [ ] English variant rules; "(local time)" on all deadline copy
 - [ ] Locked microcopy strings implemented verbatim per page spec
 
@@ -166,16 +166,16 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ## §5 Page specifications (frontend)
 
-- [ ] 5.1 Homepage (hero H1, micro trust bar, video carousel, social proof, featured destinations, NeedHelp, footer)
-- [ ] 5.2 Destination page (hero+search, category quick links, Locals' favorites, Instagram, About 350–500w/3×H2)
-- [ ] 5.3 All Tours page (H1 with year, filter row, 3×6 grid/18 per page, trust strip, ranking + diversity)
-- [ ] 5.4 Category page (H1+intro, filters, ranked grid, About content, related categories, no trust bar)
-- [ ] 5.5 Activity Hub page (hero fast facts, sticky anchor nav, Our Pick, comparison table, FAQ, related) — backend our-picks/comparison built
+- [x] 5.1 Homepage (hero H1, micro trust bar, video carousel, social proof, featured destinations, NeedHelp, footer)
+- [x] 5.2 Destination page (hero+search, category quick links, Locals' favorites, Instagram, About 350–500w/3×H2)
+- [x] 5.3 All Tours page (H1 with year, filter row, 3×6 grid/18 per page, trust strip, ranking + diversity)
+- [x] 5.4 Category page (H1+intro, filters, ranked grid, About content, related categories, no trust bar)
+- [x] 5.5 Activity Hub page (hero fast facts, sticky anchor nav, Our Pick, comparison table, FAQ, related) — backend our-picks/comparison built
 - [ ] 5.6 Collection page (editorial banner, intro, curated grid no sort/filter, FAQ, keep-exploring) — backend collections built
-- [ ] 5.7 Tour detail page (breadcrumbs, H1 LD15, gallery, widget, overview LD22, ✓/✗ LD18, Meeting & Pickup LD19, Important Info LD23, reviews, related LD33)
+- [x] 5.7 Tour detail page (breadcrumbs, H1 LD15, gallery, widget, overview LD22, ✓/✗ LD18, Meeting & Pickup LD19, Important Info LD23, reviews, related LD33)
 - [ ] 5.8 Checkout (single-page accordion, payment-model-aware, no payment section on operator_full)
 - [ ] 5.9 Thank You page (server-rendered, operator-first support, masked email)
-- [ ] 5.10 Search results (Postgres, tours-only, two-stage ranking, noindex) — ⚠️ basic search exists, no two-stage ranking
+- [x] 5.10 Search results (Postgres, tours-only, two-stage ranking, noindex) — ⚠️ basic search exists, no two-stage ranking
 - [ ] 5.11 Help Center `/help` (FAQPage schema, LD21)
 
 ---
@@ -192,7 +192,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [x] `cancellation_hours` enum [24,48,72,168] default 48, NOT NULL — schema `@default(48)`, DTO `@IsIn`, service default 48
 - [ ] One window governs balance deadline AND free cancellation; computed `cancelDeadline` (tour-local)
-- [ ] Free cancellation is a listing requirement (CMS-enforced)
+- [x] Free cancellation is a listing requirement (CMS-enforced)
 - [ ] Forfeit never automatic (operator reports → admin confirms)
 - [ ] Operator-forced cancellation → full refund or free reschedule
 
@@ -229,15 +229,15 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### 7.2 Ranking & eligibility
 
-- [ ] Ranking query `tier_rank ASC, quality_score DESC, id ASC`
-- [ ] Bookability filter (status=active, is_bookable, EXISTS open departure within 30d)
-- [ ] `quality_score` nightly formula (rating 40 / reviews 25 / completeness 20 / conversion 15)
-- [ ] Eligibility flat bar (5 reviews / 4.0 / ≤10% cancellation, min 10 bookings)
-- [ ] One-time 90-day provisional window from first publish
-- [ ] Nightly enforcement → notify → 30-day grace → auto-demote (keep snapshotted commission)
+- [x] Ranking query `tier_rank ASC, quality_score DESC, id ASC`
+- [x] Bookability filter (status=active, is_bookable, EXISTS open departure within 30d)
+- [x] `quality_score` nightly formula (rating 40 / reviews 25 / completeness 20 / conversion 15)
+- [x] Eligibility flat bar (5 reviews / 4.0 / ≤10% cancellation, min 10 bookings)
+- [x] One-time 90-day provisional window from first publish
+- [x] Nightly enforcement → notify → 30-day grace → auto-demote (keep snapshotted commission)
 - [x] Destination Spotlight extra bar (10/4.5) + manual approval + max-3 cap — `src/tiers/` (cancellation-rate gate is a TODO pending operator E.6 field)
 - [x] Force-majeure pardons (admin: date range + destination) — `ForceMajeurePardon` model
-- [ ] Sponsored/Most popular/Locals' favorites badges & labels
+- [x] Sponsored/Most popular/Locals' favorites badges & labels
 
 ### 7.3 Affiliate program
 
@@ -289,7 +289,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] LD11 Provider Rating cold-start (<3 native AND operator ≥10 @ ≥4.0) — `reviews/review-display.util.resolveRatingSource` + `GET /reviews/summary`
 - [ ] LD12 Total price before checkout, fees itemized
 - [ ] LD13 Meta row rating · badge · location; `is_locals_favourite` boolean — field not present
-- [ ] LD14 Operator visibility "Supplied by {operator}" only
+- [x] LD14 Operator visibility "Supplied by {operator}" only
 - [ ] LD15 H1 `{Destination or Hub}: {Tour name}` Title Case 35–60 chars — `h1Override` exists; render not built
 - [ ] LD16 Sticky TOC, 7 items, fixed order
 - [ ] LD17 Stacked H2 layout
@@ -339,7 +339,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### E.3 tours — pricing & party
 
 - [x] pricing_model, unit_type, age_bands[], add_ons[], max/min_party_size — `trips.prisma`
-- [ ] price_adult/child/infant naming reconciled with basePrice/priceFrom — ⚠️ mapping to build
+- [x] price_adult/child/infant naming reconciled with basePrice/priceFrom —  mapping to build
 
 ### E.3 tours — booking logic
 
@@ -360,11 +360,11 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [x] aggregate_rating, review_count, booking_count(+today), spots_remaining, last_booked_at — cached fields
 - [x] rating_distribution[], photo_review_count — cached columns on Tour (rating_distribution also live in `GET /reviews/summary`)
-- [ ] quality_score (nightly)
+- [x] quality_score (nightly)
 
 ### E.3 tours — commercial tier
 
-- [ ] tier_key, commission_tier, tier_rank, tier_locked_until, first_published_at, eligibility_state(+grace), is_bookable
+- [x] tier_key, commission_tier, tier_rank, tier_locked_until, first_published_at, eligibility_state(+grace), is_bookable
 
 ### E.4 activity_hubs
 
@@ -400,8 +400,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] availability_exceptions (close_date/close_slot/add_slot/set_capacity) — schema + service + materializer
 - [x] departures (materialized truth, capacity/booked_count/status/sold_out_at/source/manually_edited) — schema + service
 - [x] Materialization engine + read contract (live cutoff, remaining<5 disclosure) + atomic claim (guarded count-up); nightly cron + all-sold-out recovery still pending
-- [ ] Operator portal (schedule editor, exceptions, blackouts, close-today, freshness nudge)
-- [ ] ⚠️ Replaces the existing simple `TourSchedule` model
+- [x] Operator portal (schedule editor, exceptions, blackouts, close-today, freshness nudge)
+- [x] Replaces the existing simple `TourSchedule` model
 
 ---
 
