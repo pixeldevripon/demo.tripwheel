@@ -9,3 +9,4 @@ import { DestinationPageSkeleton } from '@/components/skelitons/destination-page
 export default function Loading() {
     return <DestinationPageSkeleton />;
 }
+

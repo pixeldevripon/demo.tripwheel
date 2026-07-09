@@ -1,9 +1,19 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, CheckIcon, XIcon, MoreHorizontalIcon } from 'lucide-react';
+import {
+  AlertTriangleIcon,
+  CalendarCheckIcon,
+  CheckIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  Clock3Icon,
+  MoreHorizontalIcon,
+  TimerOffIcon,
+  XIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,15 +23,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { SpotlightRequest, SpotlightStatus } from '@/types/tier';
-import { SPOTLIGHT_STATUS_LABELS } from '@/types/tier';
+import {
+  SPOTLIGHT_MIN_RATING,
+  SPOTLIGHT_MIN_REVIEWS,
+  SPOTLIGHT_STATUS_LABELS,
+} from '@/types/tier';
 
 export interface TourInfo {
   name: string;
@@ -36,13 +44,114 @@ export type SpotlightRequestWithInfo = SpotlightRequest & {
   tourInfo?: TourInfo;
 };
 
-const statusVariant: Record<SpotlightStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  REQUESTED: 'secondary',
-  APPROVED: 'default',
-  ACTIVE: 'default',
-  REJECTED: 'destructive',
-  EXPIRED: 'outline',
+const statusStyles: Record<
+  SpotlightStatus,
+  {
+    Icon: LucideIcon;
+    tone: string;
+    dot: string;
+    description: string;
+  }
+> = {
+  REQUESTED: {
+    Icon: Clock3Icon,
+    tone: 'border-amber-200 bg-amber-50 text-amber-900',
+    dot: 'bg-amber-500',
+    description: 'Waiting for admin review',
+  },
+  APPROVED: {
+    Icon: CalendarCheckIcon,
+    tone: 'border-sky-200 bg-sky-50 text-sky-900',
+    dot: 'bg-sky-500',
+    description: 'Approved and scheduled',
+  },
+  ACTIVE: {
+    Icon: CircleCheckIcon,
+    tone: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    dot: 'bg-emerald-500',
+    description: 'Live in Destination Spotlight',
+  },
+  REJECTED: {
+    Icon: CircleXIcon,
+    tone: 'border-rose-200 bg-rose-50 text-rose-900',
+    dot: 'bg-rose-500',
+    description: 'Declined by admin',
+  },
+  EXPIRED: {
+    Icon: TimerOffIcon,
+    tone: 'border-slate-200 bg-slate-50 text-slate-700',
+    dot: 'bg-slate-400',
+    description: 'Live window has ended',
+  },
 };
+
+function getEligibilitySummary(info?: TourInfo) {
+  const reviewCount = info?.reviewCount ?? 0;
+  const rating = info?.rating ?? 0;
+  const missingReviews = Math.max(SPOTLIGHT_MIN_REVIEWS - reviewCount, 0);
+  const ratingOk = rating >= SPOTLIGHT_MIN_RATING;
+  const reviewsOk = reviewCount >= SPOTLIGHT_MIN_REVIEWS;
+
+  if (ratingOk && reviewsOk) {
+    return {
+      isEligible: true,
+      text: `${reviewCount} reviews and ${rating.toFixed(1)} rating qualify`,
+    };
+  }
+
+  const issues = [];
+  if (!reviewsOk) issues.push(`${missingReviews} more ${missingReviews === 1 ? 'review' : 'reviews'}`);
+  if (!ratingOk) issues.push(`${SPOTLIGHT_MIN_RATING.toFixed(1)}+ rating`);
+
+  return {
+    isEligible: false,
+    text: `Needs ${issues.join(' and ')}`,
+  };
+}
+
+function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo }) {
+  const style = statusStyles[request.status];
+  const eligibility = getEligibilitySummary(request.tourInfo);
+  const Icon = style.Icon;
+
+  return (
+    <div className="min-w-44 space-y-1.5">
+      <div
+        className={cn(
+          'inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold',
+          style.tone
+        )}
+      >
+        <span className={cn('size-2 rounded-full', style.dot)} />
+        <Icon className="size-3.5" />
+        <span>{SPOTLIGHT_STATUS_LABELS[request.status]}</span>
+      </div>
+      <p className="text-xs leading-5 text-muted-foreground">{style.description}</p>
+      {request.status === 'REQUESTED' && (
+        <div
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+            eligibility.isEligible
+              ? 'bg-emerald-50 text-emerald-800'
+              : 'bg-rose-50 text-rose-800'
+          )}
+        >
+          {eligibility.isEligible ? (
+            <CircleCheckIcon className="size-3.5" />
+          ) : (
+            <AlertTriangleIcon className="size-3.5" />
+          )}
+          <span>{eligibility.isEligible ? 'Eligible' : 'Not eligible'} · {eligibility.text}</span>
+        </div>
+      )}
+      {request.status === 'REJECTED' && request.rejectionReason && (
+        <p className="max-w-56 text-xs leading-5 text-muted-foreground">
+          Reason: {request.rejectionReason}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export interface MakeSpotlightColumnsOptions {
   canApprove: boolean;
@@ -168,24 +277,7 @@ export function makeSpotlightColumns({
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => {
-        const req = row.original;
-        const info = req.tourInfo;
-        const isEligible = (info?.reviewCount ?? 0) >= 10 && (info?.rating ?? 0) >= 4.5;
-        
-        return (
-          <div className="flex flex-col gap-1 items-start">
-            <Badge variant={statusVariant[req.status]}>
-              {SPOTLIGHT_STATUS_LABELS[req.status]}
-            </Badge>
-            {req.status === 'REQUESTED' && (
-              <Badge variant={isEligible ? 'default' : 'destructive'} className="text-[10px] h-4 px-1.5 opacity-80">
-                {isEligible ? 'Eligible' : 'Ineligible'}
-              </Badge>
-            )}
-          </div>
-        );
-      },
+      cell: ({ row }) => <SpotlightStatusCell request={row.original} />,
       enableSorting: true,
     },
     {
@@ -193,8 +285,7 @@ export function makeSpotlightColumns({
       header: '',
       cell: ({ row }) => {
         const req = row.original;
-        const info = req.tourInfo;
-        const isEligible = (info?.reviewCount ?? 0) >= 10 && (info?.rating ?? 0) >= 4.5;
+        const { isEligible } = getEligibilitySummary(req.tourInfo);
         
         if (!canApprove || req.status !== 'REQUESTED') return null;
 

@@ -1,16 +1,16 @@
 import { notFound } from 'next/navigation';
 
-import { Suspense } from 'react';
-import { Navbar } from '@/components/frontend/navbar/navbar';
 import { Footer } from '@/components/frontend/footer';
+import { Navbar } from '@/components/frontend/navbar/navbar';
 import { WishlistProvider } from '@/components/frontend/wishlist-provider';
+import { getActiveDestinations } from '@/lib/api/public';
 import { ALL_LOCALES, isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { getActiveDestinations } from '@/lib/api/public';
+import { Suspense } from 'react';
 
 /** Pre-render the shell for every supported locale. */
 export function generateStaticParams() {
-    return ALL_LOCALES.map((locale) => ({ locale }));
+    return ALL_LOCALES.map(locale => ({ locale }));
 }
 
 export default async function LocaleLayout({
@@ -29,7 +29,7 @@ export default async function LocaleLayout({
     ]);
 
     // Navbar only needs the display name + slug for the island selector.
-    const islands = destinations.map((d) => ({ name: d.name, slug: d.slug }));
+    const islands = destinations.map(d => ({ name: d.name, slug: d.slug }));
 
     return (
         // WishlistProvider is a client island; the server-rendered Navbar/main/Footer
@@ -43,7 +43,8 @@ export default async function LocaleLayout({
                     ...dict.search,
                     // Card meta labels live in the shared listings dictionary.
                     pickupAvailable: dict.destination.listings.pickupAvailable,
-                    freeCancellation: dict.destination.listings.freeCancellation,
+                    freeCancellation:
+                        dict.destination.listings.freeCancellation,
                     from: dict.destination.listings.from,
                 }}
                 islands={islands}
@@ -57,3 +58,4 @@ export default async function LocaleLayout({
         </WishlistProvider>
     );
 }
+

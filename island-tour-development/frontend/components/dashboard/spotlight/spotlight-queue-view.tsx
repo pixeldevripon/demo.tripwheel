@@ -3,7 +3,6 @@
 import { DatePickerField } from '@/components/dashboard/date-picker-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -33,21 +32,64 @@ import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { SpotlightStatus } from '@/types/tier';
 import {
     SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION,
+    SPOTLIGHT_MIN_RATING,
+    SPOTLIGHT_MIN_REVIEWS,
     SPOTLIGHT_STATUS_LABELS,
     SPOTLIGHT_STATUS_VALUES,
 } from '@/types/tier';
-import { SparklesIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+    CalendarCheckIcon,
+    CircleCheckIcon,
+    CircleXIcon,
+    Clock3Icon,
+    SparklesIcon,
+    TimerOffIcon,
+    type LucideIcon,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SpotlightTable } from './spotlight-table';
 import type { SpotlightRequestWithInfo } from './spotlight-columns';
+
+const statusKey: Array<{
+    status: SpotlightStatus;
+    Icon: LucideIcon;
+    className: string;
+}> = [
+    {
+        status: 'REQUESTED',
+        Icon: Clock3Icon,
+        className: 'text-amber-700',
+    },
+    {
+        status: 'APPROVED',
+        Icon: CalendarCheckIcon,
+        className: 'text-sky-700',
+    },
+    {
+        status: 'ACTIVE',
+        Icon: CircleCheckIcon,
+        className: 'text-emerald-700',
+    },
+    {
+        status: 'REJECTED',
+        Icon: CircleXIcon,
+        className: 'text-rose-700',
+    },
+    {
+        status: 'EXPIRED',
+        Icon: TimerOffIcon,
+        className: 'text-slate-600',
+    },
+];
 
 export function SpotlightQueueView() {
     const { can } = useRole();
     const canApprove = can('APPROVE_SPOTLIGHT');
 
     const [destinationId, setDestinationId] = useState<string>('all');
-    const [status, setStatus] = useState<string>('all');
+    const [status, setStatus] = useState<string>('REQUESTED');
 
     const { data: destinations } = useActiveDestinations();
     const { data: adminTrips } = useAdminTrips({ limit: 200 });
@@ -55,6 +97,7 @@ export function SpotlightQueueView() {
         destinationId: destinationId !== 'all' ? destinationId : undefined,
         status: status !== 'all' ? (status as SpotlightStatus) : undefined,
     });
+    const { data: statusQueue } = useSpotlightQueue();
 
     const [approveTarget, setApproveTarget] = useState<SpotlightRequestWithInfo | null>(null);
     const [rejectTarget, setRejectTarget] = useState<SpotlightRequestWithInfo | null>(null);
@@ -89,6 +132,38 @@ export function SpotlightQueueView() {
         }));
     }, [queue, tourMap]);
 
+    const statusRows: SpotlightRequestWithInfo[] = useMemo(() => {
+        return (statusQueue?.data ?? []).map((req) => ({
+            ...req,
+            tourInfo: tourMap.get(req.tourId),
+        }));
+    }, [statusQueue, tourMap]);
+
+    const statusCounts = useMemo(() => {
+        const counts = new Map<SpotlightStatus, number>();
+        for (const s of SPOTLIGHT_STATUS_VALUES) counts.set(s, 0);
+        let eligibleRequested = 0;
+        let blockedRequested = 0;
+
+        for (const row of statusRows) {
+            counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+            if (row.status === 'REQUESTED') {
+                const reviewCount = row.tourInfo?.reviewCount ?? 0;
+                const rating = row.tourInfo?.rating ?? 0;
+                if (
+                    reviewCount >= SPOTLIGHT_MIN_REVIEWS &&
+                    rating >= SPOTLIGHT_MIN_RATING
+                ) {
+                    eligibleRequested += 1;
+                } else {
+                    blockedRequested += 1;
+                }
+            }
+        }
+
+        return { counts, eligibleRequested, blockedRequested };
+    }, [statusRows]);
+
     return (
         <div className='space-y-4'>
             {isLoading ? (
@@ -101,63 +176,97 @@ export function SpotlightQueueView() {
                     ))}
                 </div>
             ) : (
-                <SpotlightTable
-                    data={rows}
-                    canApprove={canApprove}
-                    onApprove={setApproveTarget}
-                    onReject={setRejectTarget}
-                    filterSlot={
-                        <>
-                            <Select
-                                value={destinationId}
-                                onValueChange={setDestinationId}>
-                                <SelectTrigger className='w-48 shrink-0'>
-                                    <SelectValue placeholder='Destination' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value='all'>
-                                        All Destinations
-                                    </SelectItem>
-                                    {(destinations ?? []).map((d) => (
-                                        <SelectItem key={d.id} value={d.id}>
-                                            {d.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                <>
+                    <div
+                        role='tablist'
+                        aria-label='Filter spotlight requests by status'
+                        className='flex flex-wrap items-center gap-1 border-b border-border/70'
+                    >
+                        {statusKey.map(({ status: key, Icon, className }) => (
+                            <button
+                                type='button'
+                                role='tab'
+                                key={key}
+                                onClick={() => setStatus(key)}
+                                aria-selected={status === key}
+                                className={cn(
+                                    'relative -mb-px inline-flex h-9 items-center gap-2 border-b-2 border-transparent px-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                    status === key
+                                        ? 'border-foreground text-foreground'
+                                        : 'hover:border-border'
+                                )}>
+                                <Icon className={cn('size-3.5', className)} />
+                                <span>{SPOTLIGHT_STATUS_LABELS[key]}</span>
+                                <span
+                                    className={cn(
+                                        'rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums text-muted-foreground',
+                                        status === key && 'bg-foreground text-background'
+                                    )}
+                                >
+                                    {statusCounts.counts.get(key) ?? 0}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
 
-                            <Select value={status} onValueChange={setStatus}>
-                                <SelectTrigger className='w-40 shrink-0'>
-                                    <SelectValue placeholder='Status' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value='all'>
-                                        All Statuses
-                                    </SelectItem>
-                                    {SPOTLIGHT_STATUS_VALUES.map((s) => (
-                                        <SelectItem key={s} value={s}>
-                                            {SPOTLIGHT_STATUS_LABELS[s]}
+                    <SpotlightTable
+                        data={rows}
+                        canApprove={canApprove}
+                        onApprove={setApproveTarget}
+                        onReject={setRejectTarget}
+                        filterSlot={
+                            <>
+                                <Select
+                                    value={destinationId}
+                                    onValueChange={setDestinationId}>
+                                    <SelectTrigger className='w-48 shrink-0'>
+                                        <SelectValue placeholder='Destination' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value='all'>
+                                            All Destinations
                                         </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            
-                            {destinationId !== 'all' && queue && (
-                                <Badge
-                                    variant={
-                                        queue.activeCount >=
-                                        SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION
-                                            ? 'destructive'
-                                            : 'secondary'
-                                    }
-                                    className='h-9 px-3'>
-                                    Active {queue.activeCount}/
-                                    {SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
-                                </Badge>
-                            )}
-                        </>
-                    }
-                />
+                                        {(destinations ?? []).map((d) => (
+                                            <SelectItem key={d.id} value={d.id}>
+                                                {d.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={status} onValueChange={setStatus}>
+                                    <SelectTrigger className='w-40 shrink-0'>
+                                        <SelectValue placeholder='Status' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value='all'>
+                                            All Statuses
+                                        </SelectItem>
+                                        {SPOTLIGHT_STATUS_VALUES.map((s) => (
+                                            <SelectItem key={s} value={s}>
+                                                {SPOTLIGHT_STATUS_LABELS[s]}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                                {destinationId !== 'all' && queue && (
+                                    <Badge
+                                        variant={
+                                            queue.activeCount >=
+                                            SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION
+                                                ? 'destructive'
+                                                : 'secondary'
+                                        }
+                                        className='h-9 px-3'>
+                                        Active {queue.activeCount}/
+                                        {SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
+                                    </Badge>
+                                )}
+                            </>
+                        }
+                    />
+                </>
             )}
 
             <ApproveDialog

@@ -1,13 +1,13 @@
-import { notFound } from 'next/navigation';
 import { collectionsApi } from '@/lib/api/collections';
 import { getDestinationBySlug } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { toSlug } from '@/lib/utils';
-import { ToursBreadcrumb } from './tours-breadcrumb';
+import { notFound } from 'next/navigation';
 import { CollectionHero } from './collection-hero';
-import { ToursListing } from './tours-listing';
+import { FaqSection } from './faq-section';
 import type { TourListing } from './tour-card';
+import { ToursBreadcrumb } from './tours-breadcrumb';
 
 /**
  * Collection page - the COLLECTION branch of the polymorphic `[slug]` route
@@ -18,7 +18,11 @@ import type { TourListing } from './tour-card';
 const MOCK_TOURS: TourListing[] = [
     {
         id: 'coll-1',
-        images: ['/images/tours/tour-1-1.jpg', '/images/tours/tour-1-2.jpg', '/images/tours/tour-1-3.jpg'],
+        images: [
+            '/images/tours/tour-1-1.jpg',
+            '/images/tours/tour-1-2.jpg',
+            '/images/tours/tour-1-3.jpg',
+        ],
         badge: 'mostPopular',
         rating: 4.8,
         reviewCount: 1738,
@@ -44,7 +48,11 @@ const MOCK_TOURS: TourListing[] = [
     },
     {
         id: 'coll-3',
-        images: ['/images/tours/tour-3-1.jpg', '/images/tours/tour-3-2.jpg', '/images/tours/tour-3-3.jpg'],
+        images: [
+            '/images/tours/tour-3-1.jpg',
+            '/images/tours/tour-3-2.jpg',
+            '/images/tours/tour-3-3.jpg',
+        ],
         badge: null,
         rating: 4.8,
         reviewCount: 1738,
@@ -54,7 +62,7 @@ const MOCK_TOURS: TourListing[] = [
         price: 270,
         priceUnit: 'perGroup',
         freeCancellation: false,
-    }
+    },
 ];
 
 interface CollectionPageProps {
@@ -75,7 +83,9 @@ export async function CollectionPage({
     dict,
 }: CollectionPageProps) {
     const [collection, destination] = await Promise.all([
-        collectionsApi.getBySlug(collectionSlug, destinationSlug, locale).catch(() => null),
+        collectionsApi
+            .getBySlug(collectionSlug, destinationSlug, locale)
+            .catch(() => null),
         getDestinationBySlug(destinationSlug, locale),
     ]);
 
@@ -87,7 +97,9 @@ export async function CollectionPage({
     const breadcrumbLabel = collection.breadcrumbLabel ?? collection.name;
     const heading = collection.h1Override ?? collection.name;
     const subtitle = collection.overview ?? null;
-    const total = Array.isArray(collection.tours) ? collection.tours.length : MOCK_TOURS.length;
+    const total = Array.isArray(collection.tours)
+        ? collection.tours.length
+        : MOCK_TOURS.length;
 
     const tours = MOCK_TOURS.map(tour => ({
         ...tour,
@@ -110,12 +122,12 @@ export async function CollectionPage({
 
             {/* Full-width Hero — matches Figma 47433-2069 */}
             <CollectionHero
-                title={heading}
-                eyebrow={null}
-                subtitle={subtitle}
+                title={'The 10 best things to do in Curaçao'}
+                eyebrow={'BEST THINGS TO DO'}
+                subtitle={"Chosen by Islanders — in the order we'd book them"}
                 heroImage={collection.heroImage ?? null}
                 tourCount={total}
-                startingPrice={null}
+                startingPrice={39.9}
                 dict={{
                     tours: collectionDict?.tours ?? 'tours',
                     from: listings?.from ?? 'From',
@@ -123,20 +135,9 @@ export async function CollectionPage({
                 }}
             />
 
-            {/* Tour listing */}
-            <section className='bg-it-white pb-17.5 md:pb-32.5'>
-                <div className='it-container'>
-                    <div className='flex flex-col gap-10 pt-8 md:pt-15'>
-                        <div className='h-px w-full bg-it-heading/10' aria-hidden='true' />
-
-                        <ToursListing
-                            tours={tours}
-                            dict={listings}
-                            pageCount={1}
-                        />
-                    </div>
-                </div>
-            </section>
+            <FaqSection dict={dict.home.faq} />
         </>
     );
 }
+
+
