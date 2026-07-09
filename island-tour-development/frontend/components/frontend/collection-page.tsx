@@ -52,19 +52,11 @@ export async function CollectionPage({
     const breadcrumbLabel = collection.breadcrumbLabel ?? collection.name;
     const heading = collection.h1Override ?? collection.name;
 
-    // Display style drives the card variant: NUMBERED → numbered ranked cards
-    // (Top 10 / Best Things to Do); PERSONA → standard tour cards (no rank badge).
-    // Order is the product (master 5.6); each card's blurb is its rationale
-    // (MANUAL) or the tour's own overview (DYNAMIC, Option 1).
-    const numbered = collection.displayStyle === 'NUMBERED';
+    // Collection cards are ALWAYS rendered as a numbered ranked list (Top 10 /
+    // Best Things to Do). Order is the product (master 5.6); each card's blurb is
+    // its rationale (MANUAL) or the tour's own overview (DYNAMIC, Option 1).
     const tours = collection.tours.map((tour, index) =>
-        collectionTourToListing(
-            tour,
-            destinationSlug,
-            locale,
-            dict.search,
-            numbered ? index + 1 : undefined
-        )
+        collectionTourToListing(tour, destinationSlug, locale, dict.search, index + 1)
     );
 
     // FAQs come from the render (per locale); fall back to the localized collection

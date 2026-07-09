@@ -32,7 +32,6 @@ import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { Collection, CollectionFilterQuery } from '@/types/collection';
 import { tourPerfSummary } from './collection-tour-select';
 import {
-  COLLECTION_DISPLAY_STYLE_LABELS,
   COLLECTION_DISPLAY_STYLE_VALUES,
   COLLECTION_TYPE_VALUES,
   type CollectionDisplayStyle,
@@ -119,7 +118,9 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
       tourIds: collection?.tourIds ?? [],
       heroImage: collection?.heroImage ?? '',
       sortOrder: collection?.sortOrder ?? 'recommended',
-      displayStyle: collection?.displayStyle ?? 'PERSONA',
+      // Collections always render as a numbered ranked list; the field is kept
+      // for API compatibility but is no longer user-selectable.
+      displayStyle: collection?.displayStyle ?? 'NUMBERED',
       categoryId: typeof fq.categoryId === 'string' ? fq.categoryId : '',
       hubId: typeof fq.hubId === 'string' ? fq.hubId : '',
       minPrice: fq.minPrice != null ? String(fq.minPrice) : '',
@@ -144,7 +145,6 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
   const tourIds = watch('tourIds') ?? [];
   const heroImageValue = watch('heroImage');
   const sortOrder = watch('sortOrder');
-  const displayStyle = watch('displayStyle');
   const categoryId = watch('categoryId');
   const hubId = watch('hubId');
   const pickupAvailable = watch('pickupAvailable');
@@ -380,23 +380,8 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
             </Field>
           )}
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Display Style</Label>
-            <Select
-              value={displayStyle || 'PERSONA'}
-              onValueChange={v => setValue('displayStyle', v as CollectionDisplayStyle)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COLLECTION_DISPLAY_STYLE_VALUES.map(s => (
-                  <SelectItem key={s} value={s}>{COLLECTION_DISPLAY_STYLE_LABELS[s]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>How tour cards are rendered on the collection page.</FieldDescription>
-          </Field>
+          {/* Display Style selector removed: collection tours always render as a
+              numbered ranked list. `displayStyle` stays NUMBERED (schema default). */}
 
           <Field>
             <Label className="text-xs font-semibold uppercase">Type</Label>

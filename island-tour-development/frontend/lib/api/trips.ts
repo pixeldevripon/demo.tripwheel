@@ -50,33 +50,7 @@ import type {
   UpsertTripTranslationPayload,
 } from '@/types/trip';
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
-
-  if (!res.ok) {
-    let message = `Request failed with status ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.message) message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-    } catch {
-      // ignore json parse error
-    }
-    throw new Error(message);
-  }
-
-  if (res.status === 204) return undefined as T;
-  // Some mutations (e.g. DELETE) reply 200/201 with an empty body. Parsing that
-  // as JSON throws "Unexpected end of JSON input", so read text first and only
-  // parse when there is content.
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
-}
+import { apiFetch } from './fetch';
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
   const qs = new URLSearchParams();

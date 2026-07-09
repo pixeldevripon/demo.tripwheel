@@ -72,7 +72,13 @@ function isTrustedInternalOrigin(context: ExecutionContext): boolean {
         process.env.NODE_ENV === 'test'
           ? [{ name: 'test', ttl: 60_000, limit: 10_000 }]
           : [
-              { name: 'short', ttl: 1_000, limit: 20 }, // burst: 20 req/s
+              // Burst tier sized for an authenticated dashboard page load, which
+              // legitimately fan-outs many parallel requests on mount (trips +
+              // collections + attributes + hubs + tiers + resolved-tours, etc.)
+              // from one browser/IP. The sustained + hourly caps below still bound
+              // real abuse; anonymous auth brute-force is separately handled by
+              // Better Auth's own per-path limiter (auth.instance.ts).
+              { name: 'short', ttl: 1_000, limit: 60 }, // burst: 60 req/s
               { name: 'medium', ttl: 60_000, limit: 300 }, // sustained: 300 req/min
               { name: 'long', ttl: 3_600_000, limit: 3_000 }, // hourly cap: 3 000 req/hr
             ],
