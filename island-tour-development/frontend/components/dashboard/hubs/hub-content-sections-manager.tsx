@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
+import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
 import {
   Select,
   SelectContent,
@@ -39,7 +40,15 @@ function nextKey() {
 }
 
 function emptyRow(locale: Locale): DraftSection {
-  return { key: nextKey(), locale, sectionType: 'DISCOVER', heading: '', body: '', displayOrder: 0 };
+  return {
+    key: nextKey(),
+    locale,
+    sectionType: 'DISCOVER',
+    heading: '',
+    body: '',
+    image: null,
+    displayOrder: 0,
+  };
 }
 
 interface HubContentSectionsManagerProps {
@@ -90,6 +99,9 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
             sectionType: r.sectionType,
             heading: r.heading.trim(),
             body: r.body.trim(),
+            // Send null (not '') when empty - the backend's @IsUrl rejects '',
+            // while @IsOptional short-circuits on null.
+            image: r.image || null,
             displayOrder: r.displayOrder,
           })),
         },
@@ -225,6 +237,14 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                     onChange={(e) => updateRow(row.key, { body: e.target.value })}
                     rows={3}
                     placeholder="Section content"
+                  />
+                </Field>
+
+                <Field>
+                  <Label className="text-xs font-semibold uppercase">Image (optional)</Label>
+                  <ImageSelectorField
+                    value={row.image || null}
+                    onChange={(url) => updateRow(row.key, { image: url ?? null })}
                   />
                 </Field>
 

@@ -1,11 +1,16 @@
 'use client';
 
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Fragment, useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useOptionalHubDate } from './hub-date-context';
 
 type HubHeroDict = {
     tagline: string;
@@ -34,6 +39,7 @@ export function HubHero({
     image,
     dict,
     onCheckAvailability,
+    scrollTargetId = 'hub-section-trips',
 }: {
     title: string;
     /** Hub-specific tagline; falls back to the dictionary line when empty. */
@@ -42,10 +48,35 @@ export function HubHero({
     /** Background photo - falls back to the deep-ocean hero gradient. */
     image?: string | null;
     dict: HubHeroDict;
+    /**
+     * Custom handler for the Check Availability button. When omitted, the button
+     * smooth-scrolls to `scrollTargetId` (the trips listing) - a hub headlines a
+     * set of experiences rather than one bookable tour, so "check availability"
+     * means "jump to the experiences you can book".
+     */
     onCheckAvailability?: (date: Date | undefined) => void;
+    /** Element id to scroll to when no `onCheckAvailability` is supplied. */
+    scrollTargetId?: string;
 }) {
-    const [date, setDate] = useState<Date | undefined>(undefined);
+    // Single source of truth shared with the trips panels: a date picked here
+    // auto-selects in their filters. Falls back to local state when standalone.
+    const shared = useOptionalHubDate();
+    const [localDate, setLocalDate] = useState<Date | undefined>(undefined);
+    const date = shared ? shared.date : localDate;
+    const setDate = shared ? shared.setDate : setLocalDate;
     const [dateOpen, setDateOpen] = useState(false);
+
+    const handleCheckAvailability = () => {
+        if (onCheckAvailability) {
+            onCheckAvailability(date);
+            return;
+        }
+        // The trips section is streamed in below (Suspense); resolve by id at
+        // click time. `scroll-mt-*` on the target keeps it clear of the navbar.
+        document
+            .getElementById(scrollTargetId)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     return (
         // Figma: 465px (mobile) / 533px (desktop) band. Content is bottom-anchored
@@ -53,14 +84,23 @@ export function HubHero({
         // reproduces the exact 152/154px top gaps at each breakpoint.
         <section className='relative flex min-h-116.25 md:min-h-133.25 items-end justify-center overflow-hidden bg-it-hub-hero-bg [background-image:var(--it-hub-hero-gradient)] pb-12.25 md:pb-25'>
             {image && (
-                <Image src={image} alt={title} fill priority className='object-cover' />
+                <Image
+                    src={image}
+                    alt={title}
+                    fill
+                    priority
+                    className='object-cover'
+                />
             )}
 
             <div className='it-container relative z-10 flex w-full justify-center'>
                 <motion.div
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
+                    transition={{
+                        duration: 0.6,
+                        ease: [0.21, 0.47, 0.32, 0.98],
+                    }}
                     className='flex w-full max-w-172.25 flex-col items-center gap-10'>
                     {/* Title + italic tagline - gap 4 */}
                     <div className='flex flex-col items-center gap-1 text-center'>
@@ -113,7 +153,9 @@ export function HubHero({
                                         type='button'
                                         aria-label={dict.selectDate}
                                         className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
-                                        {date ? format(date, 'd MMM yyyy') : dict.selectDate}
+                                        {date
+                                            ? format(date, 'd MMM yyyy')
+                                            : dict.selectDate}
                                     </button>
                                 </PopoverTrigger>
                                 <PopoverContent
@@ -123,7 +165,7 @@ export function HubHero({
                                     <Calendar
                                         mode='single'
                                         selected={date}
-                                        onSelect={(selected) => {
+                                        onSelect={selected => {
                                             setDate(selected);
                                             setDateOpen(false);
                                         }}
@@ -136,10 +178,14 @@ export function HubHero({
 
                             <motion.button
                                 type='button'
-                                onClick={() => onCheckAvailability?.(date)}
-                                whileHover={{ scale: 1.04 }}
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                                onClick={handleCheckAvailability}
+                                whileHover={{ scale: 1 }}
+                                whileTap={{ scale: 0.99 }}
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 400,
+                                    damping: 17,
+                                }}
                                 className='grid h-10 min-w-37 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary px-5 font-medium text-[14px] md:h-12 md:min-w-45 md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
                                 {dict.checkAvailability}
                             </motion.button>
@@ -150,3 +196,4 @@ export function HubHero({
         </section>
     );
 }
+

@@ -336,6 +336,37 @@
         "titlePattern": "探索 {hub}",
         "subtitle": "一座面积 1.7 平方公里的平坦无人岛，位于库拉索东南海岸外 10 公里处。没有商店，没有信号，只有沙滩、珊瑚礁和历史。",
         "bookTrip": "预订行程"
+      },
+      "frequencyDaily": "每日",
+      "frequencyWeekly": "每周{count}天",
+      "durationFullDay": "全天",
+      "durationHalfDay": "半天",
+      "checkingAvailability": "正在查询可用性",
+      "noneOnDate": "所选日期没有可预订的体验。",
+      "showAllDates": "显示所有日期",
+      "durationDay": "1 天",
+      "durationDays": "{count} 天",
+      "cardChips": {
+        "upTo": "最多 {count} 人",
+        "familyFriendly": "适合家庭",
+        "peopleIncluded": "/{count} 人",
+        "perExtraPerson": "+ 每增加一人 {price}",
+        "amenities": {
+          "openBar": "无限畅饮",
+          "bbq": "烧烤",
+          "beachHouse": "海滩屋",
+          "breakfast": "早餐",
+          "meals": "餐食",
+          "drinks": "饮品",
+          "snorkeling": "浮潜"
+        },
+        "perUnit": "/人"
+      },
+      "heroInclusion": {
+        "bbq": "BBQ 午餐",
+        "beachHouse": "海滩屋",
+        "openBar": "无限畅饮",
+        "breakfast": "早餐"
       }
     },
     "tour": {

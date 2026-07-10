@@ -67,6 +67,8 @@ export class ToursService {
     defaultCurrency: true,
     basePrice: true,
     priceFrom: true,
+    unitIncludedGuests: true,
+    extraPersonPrice: true,
     durationMinutesFrom: true,
     durationMinutesTo: true,
     pickupModel: true,
@@ -147,6 +149,44 @@ export class ToursService {
         categories?.find((c) => c.isPrimary)?.categoryId ?? null,
       hubIds: hubs?.map((h) => h.hubId) ?? [],
     };
+  }
+
+  /**
+   * Batch-loads each tour's attribute values for listing cards, keyed by tour id.
+   * One query across all card tour ids + one for the active definitions (so the
+   * card only ever surfaces live attributes), then grouped in memory. Returns
+   * `{ key, value, dataType }[]` per tour (raw stored value; ENUM_MULTI stays a
+   * JSON-encoded array string) so the frontend can compose the chip row itself.
+   */
+  private async loadCardAttributes(
+    tourIds: string[],
+  ): Promise<Map<string, { key: string; value: string; dataType: string }[]>> {
+    const result = new Map<
+      string,
+      { key: string; value: string; dataType: string }[]
+    >();
+    if (tourIds.length === 0) return result;
+
+    const [rows, defs] = await Promise.all([
+      this.prisma.tourAttribute.findMany({
+        where: { tourId: { in: tourIds } },
+        select: { tourId: true, attributeKey: true, attributeValue: true },
+      }),
+      this.prisma.attributeDefinition.findMany({
+        where: { isActive: true },
+        select: { key: true, dataType: true },
+      }),
+    ]);
+    const dataTypeByKey = new Map(defs.map((d) => [d.key, d.dataType]));
+
+    for (const r of rows) {
+      const dataType = dataTypeByKey.get(r.attributeKey);
+      if (!dataType) continue; // definition inactive/removed - skip
+      const list = result.get(r.tourId) ?? [];
+      list.push({ key: r.attributeKey, value: r.attributeValue, dataType });
+      result.set(r.tourId, list);
+    }
+    return result;
   }
 
   /**
@@ -658,12 +698,17 @@ export class ToursService {
       }),
     ]);
 
+    const attributesByTour = await this.loadCardAttributes(
+      data.map((t) => t.id),
+    );
+
     const mapped = data.map(({ translations, destination, ...t }) => ({
       ...this.flattenTour(t),
       title: translations[0]?.title ?? t.name,
       overview: translations[0]?.overview ?? null,
       destinationSlug: destination?.slug ?? null,
       badge: this.deriveTourBadge(t),
+      attributes: attributesByTour.get(t.id) ?? [],
     }));
 
     // §3.8 diversity pass runs after ranking, on the default ("recommended") sort
@@ -1511,6 +1556,8 @@ export class ToursService {
             }),
             basePrice: dto.basePrice ?? null,
             priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
+            unitIncludedGuests: dto.unitIncludedGuests ?? null,
+            extraPersonPrice: dto.extraPersonPrice ?? null,
             durationMinutesFrom: dto.durationMinutesFrom ?? null,
             durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
@@ -1712,6 +1759,12 @@ export class ToursService {
             defaultCurrency: dto.defaultCurrency,
           }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
+          ...(dto.unitIncludedGuests !== undefined && {
+            unitIncludedGuests: dto.unitIncludedGuests,
+          }),
+          ...(dto.extraPersonPrice !== undefined && {
+            extraPersonPrice: dto.extraPersonPrice,
+          }),
           ...(dto.durationMinutesFrom !== undefined && {
             durationMinutesFrom: dto.durationMinutesFrom,
           }),

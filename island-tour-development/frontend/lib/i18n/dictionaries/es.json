@@ -336,6 +336,37 @@
         "titlePattern": "Descubre {hub}",
         "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.",
         "bookTrip": "Reserva tu excursión"
+      },
+      "frequencyDaily": "Todos los días",
+      "frequencyWeekly": "{count} días a la semana",
+      "durationFullDay": "Día completo",
+      "durationHalfDay": "Medio día",
+      "checkingAvailability": "Comprobando disponibilidad",
+      "noneOnDate": "No hay experiencias disponibles en la fecha seleccionada.",
+      "showAllDates": "Mostrar todas las fechas",
+      "durationDay": "1 día",
+      "durationDays": "{count} días",
+      "cardChips": {
+        "upTo": "Hasta {count}",
+        "familyFriendly": "Familiar",
+        "peopleIncluded": "/{count} personas",
+        "perExtraPerson": "+ {price} por persona adicional",
+        "amenities": {
+          "openBar": "Barra libre",
+          "bbq": "Barbacoa",
+          "beachHouse": "Casa de playa",
+          "breakfast": "Desayuno",
+          "meals": "Comidas",
+          "drinks": "Bebidas",
+          "snorkeling": "Esnórquel"
+        },
+        "perUnit": "/pers"
+      },
+      "heroInclusion": {
+        "bbq": "Almuerzo BBQ",
+        "beachHouse": "Casa de playa",
+        "openBar": "Barra libre",
+        "breakfast": "Desayuno"
       }
     },
     "tour": {

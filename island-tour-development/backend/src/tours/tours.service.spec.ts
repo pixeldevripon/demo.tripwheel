@@ -40,6 +40,7 @@ function createMockPrismaService() {
     hub: { findUnique: jest.fn() },
     hubAllowedCategory: { findUnique: jest.fn(), count: jest.fn() },
     attributeDefinition: { findMany: jest.fn() },
+    tourAttribute: { findMany: jest.fn() },
     tour: {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -154,6 +155,10 @@ describe('ToursService', () => {
     }).compile();
     service = module.get(ToursService);
     jest.clearAllMocks();
+    // Listing card-attribute resolver (loadCardAttributes) defaults - individual
+    // tests override as needed.
+    prisma.tourAttribute.findMany.mockResolvedValue([]);
+    prisma.attributeDefinition.findMany.mockResolvedValue([]);
   });
 
   // ── resolveOperatorId (exercised via create / findMyTours) ────────────────────

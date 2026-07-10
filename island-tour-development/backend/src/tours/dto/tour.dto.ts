@@ -51,6 +51,18 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
+export class TourCardAttributeDto {
+  @ApiProperty({ example: 'boat_type' }) key!: string;
+  @ApiProperty({
+    example: 'catamaran',
+    description:
+      'Raw stored value; "true"/"false" for BOOLEAN, JSON array for ENUM_MULTI.',
+  })
+  value!: string;
+  @ApiProperty({ example: 'ENUM', description: 'AttributeDefinition.dataType' })
+  dataType!: string;
+}
+
 export class TourResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ example: 'Sunset Catamaran Cruise' }) name!: string;
@@ -83,6 +95,20 @@ export class TourResponseDto {
   @ApiProperty({ enum: Currency }) defaultCurrency!: Currency;
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
   @ApiPropertyOptional({ example: '75.00' }) priceFrom!: string | null;
+  @ApiPropertyOptional({
+    example: 10,
+    nullable: true,
+    description:
+      'UNIT pricing: travelers covered by basePrice ("/10 people"). null for PER_PERSON.',
+  })
+  unitIncludedGuests!: number | null;
+  @ApiPropertyOptional({
+    example: '175.00',
+    nullable: true,
+    description:
+      'UNIT pricing: surcharge per traveler beyond unitIncludedGuests. null for PER_PERSON.',
+  })
+  extraPersonPrice!: string | null;
   @ApiPropertyOptional({ example: 180 }) durationMinutesFrom!: number | null;
   @ApiPropertyOptional({ example: 240 }) durationMinutesTo!: number | null;
   @ApiProperty({ enum: PickupModel }) pickupModel!: PickupModel;
@@ -242,6 +268,12 @@ export class TourResponseDto {
   @ApiPropertyOptional({ example: null }) publishedAt!: Date | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
+  @ApiPropertyOptional({
+    type: [TourCardAttributeDto],
+    description:
+      "The tour's resolved attribute values (boat type, amenities, …) for the listing card chip row. Only present on the listing endpoint.",
+  })
+  attributes?: TourCardAttributeDto[];
 }
 
 export class TourHeroImageDto {
@@ -789,6 +821,25 @@ export class CreateTourDto {
   @IsDecimal({}, { message: 'basePrice must be a valid decimal number' })
   basePrice?: string;
 
+  @ApiPropertyOptional({
+    example: 10,
+    description:
+      'UNIT pricing: travelers covered by basePrice ("/10 people"). Omit for PER_PERSON.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitIncludedGuests?: number;
+
+  @ApiPropertyOptional({
+    example: '175.00',
+    description:
+      'UNIT pricing: surcharge per traveler beyond unitIncludedGuests. Omit for PER_PERSON.',
+  })
+  @IsOptional()
+  @IsDecimal({}, { message: 'extraPersonPrice must be a valid decimal number' })
+  extraPersonPrice?: string;
+
   @ApiPropertyOptional({ example: 180 })
   @IsOptional()
   @IsInt()
@@ -1056,6 +1107,25 @@ export class UpdateTourDto {
   @IsOptional()
   @IsDecimal({}, { message: 'basePrice must be a valid decimal number' })
   basePrice?: string;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description:
+      'UNIT pricing: travelers covered by basePrice ("/10 people"). Omit for PER_PERSON.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitIncludedGuests?: number;
+
+  @ApiPropertyOptional({
+    example: '175.00',
+    description:
+      'UNIT pricing: surcharge per traveler beyond unitIncludedGuests. Omit for PER_PERSON.',
+  })
+  @IsOptional()
+  @IsDecimal({}, { message: 'extraPersonPrice must be a valid decimal number' })
+  extraPersonPrice?: string;
 
   @ApiPropertyOptional({ example: 180 })
   @IsOptional()

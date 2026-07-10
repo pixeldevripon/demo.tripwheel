@@ -31,6 +31,11 @@ model Tour {
   defaultCurrency Currency       @default(USD)
   basePrice       Decimal?       @db.Decimal(10, 2)
   priceFrom       Decimal?       @db.Decimal(10, 2) // cached min for listing
+  // UNIT (whole-asset / charter) pricing: base covers `unitIncludedGuests`
+  // travelers; each additional traveler up to maxPartySize costs `extraPersonPrice`.
+  // Both null for PER_PERSON tours (priced via TourAgeBand).
+  unitIncludedGuests Int? // guests covered by basePrice ("/10 people")
+  extraPersonPrice   Decimal? @db.Decimal(10, 2) // surcharge per traveler beyond unitIncludedGuests
 
   // ── Operational / booking logic (master E.3) ──
   durationMinutesFrom  Int?

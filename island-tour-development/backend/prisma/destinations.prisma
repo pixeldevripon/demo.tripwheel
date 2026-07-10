@@ -258,6 +258,7 @@ model HubContentSection {
   sectionType  HubSectionType
   heading      String
   body         String
+  image        String?
   displayOrder Int            @default(0)
 
   hub Hub @relation(fields: [hubId], references: [id], onDelete: Cascade)

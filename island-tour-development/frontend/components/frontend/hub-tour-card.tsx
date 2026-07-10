@@ -152,8 +152,9 @@ export function HubTourCard({
                     </ul>
                 </div>
 
-                {/* Price - "from $150 /per" (note wraps on narrow cards). Inline
-                    text so the trailing unit/note wraps at word boundaries. */}
+                {/* Price - "from $140/per" or charter "from $2,200/10 people +
+                    $220 per extra person" (Figma: unit sits flush to the price, the
+                    surcharge note keeps its space and wraps on narrow cards). */}
                 <p className='m-0 leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     <span className='text-[10px] text-it-heading/70 md:text-[12px]'>
                         {dict.from}{' '}
@@ -162,7 +163,6 @@ export function HubTourCard({
                         ${tour.price.toLocaleString()}
                     </span>
                     <span className='text-[10px] text-it-heading/70 md:text-[12px]'>
-                        {' '}
                         {tour.priceUnit}
                         {tour.priceNote ? ` ${tour.priceNote}` : ''}
                     </span>

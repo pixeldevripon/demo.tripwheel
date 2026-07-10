@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type { HubTourCardDict } from './hub-tour-card';
-import { HubTripsPanel, type HubTripsPanelData } from './hub-trips-panel';
+import {
+    HubTripsPanel,
+    type HubTripsFilterDict,
+    type HubTripsPanelData,
+} from './hub-trips-panel';
 import { HubTripsTabs, type HubTripsTab } from './hub-trips-tabs';
 
 type HubTripsDict = {
@@ -15,6 +19,8 @@ type HubTripsDict = {
      */
     panels: (HubTripsPanelData | ReactElement | null)[];
     selectDate: string;
+    /** Copy for the date-availability filter on each trips/charters panel. */
+    filter: HubTripsFilterDict;
     card: HubTourCardDict;
 };
 
@@ -97,6 +103,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
                     <HubTripsPanel
                         panel={panel}
                         selectDate={dict.selectDate}
+                        filter={dict.filter}
                         card={dict.card}
                     />
                 ) : (

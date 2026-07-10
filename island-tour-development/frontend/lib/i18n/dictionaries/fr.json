@@ -336,6 +336,37 @@
         "titlePattern": "Découvrez {hub}",
         "subtitle": "Une île plate et inhabitée de 1,7 km², à 10 km au large de la côte sud-est de Curaçao. Pas de boutiques, pas de réseau, juste du sable, du récif et de l'histoire.",
         "bookTrip": "Réservez votre excursion"
+      },
+      "frequencyDaily": "Tous les jours",
+      "frequencyWeekly": "{count} jours par semaine",
+      "durationFullDay": "Journée complète",
+      "durationHalfDay": "Demi-journée",
+      "checkingAvailability": "Vérification des disponibilités",
+      "noneOnDate": "Aucune expérience disponible à la date choisie.",
+      "showAllDates": "Afficher toutes les dates",
+      "durationDay": "1 jour",
+      "durationDays": "{count} jours",
+      "cardChips": {
+        "upTo": "Jusqu'à {count}",
+        "familyFriendly": "Familial",
+        "peopleIncluded": "/{count} personnes",
+        "perExtraPerson": "+ {price} par personne supplémentaire",
+        "amenities": {
+          "openBar": "Open bar",
+          "bbq": "Barbecue",
+          "beachHouse": "Maison de plage",
+          "breakfast": "Petit-déjeuner",
+          "meals": "Repas",
+          "drinks": "Boissons",
+          "snorkeling": "Plongée avec tuba"
+        },
+        "perUnit": "/pers"
+      },
+      "heroInclusion": {
+        "bbq": "Déjeuner BBQ",
+        "beachHouse": "Maison de plage",
+        "openBar": "Open bar",
+        "breakfast": "Petit-déjeuner"
       }
     },
     "tour": {

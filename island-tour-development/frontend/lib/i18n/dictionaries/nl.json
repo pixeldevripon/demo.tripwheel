@@ -336,6 +336,37 @@
         "titlePattern": "Ontdek {hub}",
         "subtitle": "Een vlak, onbewoond eiland van 1,7 km², 10 km voor de zuidoostkust van Curaçao. Geen winkels, geen bereik, alleen zand, rif en geschiedenis.",
         "bookTrip": "Boek je trip"
+      },
+      "frequencyDaily": "Dagelijks",
+      "frequencyWeekly": "{count} dagen per week",
+      "durationFullDay": "Hele dag",
+      "durationHalfDay": "Halve dag",
+      "checkingAvailability": "Beschikbaarheid controleren",
+      "noneOnDate": "Geen ervaringen beschikbaar op de gekozen datum.",
+      "showAllDates": "Alle datums tonen",
+      "durationDay": "1 dag",
+      "durationDays": "{count} dagen",
+      "cardChips": {
+        "upTo": "Tot {count}",
+        "familyFriendly": "Gezinsvriendelijk",
+        "peopleIncluded": "/{count} personen",
+        "perExtraPerson": "+ {price} per extra persoon",
+        "amenities": {
+          "openBar": "Open bar",
+          "bbq": "BBQ",
+          "beachHouse": "Strandhuis",
+          "breakfast": "Ontbijt",
+          "meals": "Maaltijden",
+          "drinks": "Drankjes",
+          "snorkeling": "Snorkelen"
+        },
+        "perUnit": "/pp"
+      },
+      "heroInclusion": {
+        "bbq": "BBQ-lunch",
+        "beachHouse": "Strandhuis",
+        "openBar": "Open bar",
+        "breakfast": "Ontbijt"
       }
     },
     "tour": {

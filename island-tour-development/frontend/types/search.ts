@@ -18,10 +18,21 @@ export interface SearchHit {
   basePrice: string | null;
   defaultCurrency: string;
   pricingModel: string;
+  /** Whole-unit type when pricingModel = UNIT (boat/vehicle/…); else null. */
+  wholeUnitType?: string | null;
+  /** UNIT pricing: travelers covered by basePrice ("/10 people"); null for PER_PERSON. */
+  unitIncludedGuests?: number | null;
+  /** UNIT pricing: surcharge per traveler beyond unitIncludedGuests; null for PER_PERSON. */
+  extraPersonPrice?: string | null;
+  minPartySize?: number;
+  maxPartySize?: number | null;
   durationMinutesFrom: number | null;
   durationMinutesTo: number | null;
   pickupModel: string;
   cancellationHours: number | null;
+  familyFriendly?: boolean;
+  /** Resolved attribute values for the card chip row (listing endpoint only). */
+  attributes?: { key: string; value: string; dataType: string }[];
   aggregateRating: number | null;
   aggregateReviewCount: number;
   isLocalsFavourite: boolean;

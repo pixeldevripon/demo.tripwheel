@@ -616,6 +616,24 @@ const ATTRIBUTE_DEFS: AttrSeed[] = [
     dataType: AttributeDataType.BOOLEAN,
     appliesToCategories: ['boat-tours'],
   },
+  {
+    key: 'bbq_included',
+    displayName: 'BBQ Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'beach_house_included',
+    displayName: 'Beach House',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'breakfast_included',
+    displayName: 'Breakfast Included',
+    dataType: AttributeDataType.BOOLEAN,
+    appliesToCategories: ['boat-tours'],
+  },
   // Snorkeling
   {
     key: 'snorkeling_equipment_included',

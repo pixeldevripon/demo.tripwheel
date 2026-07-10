@@ -224,6 +224,12 @@ const detailsSchema = z.object({
     .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
     .optional()
     .or(z.literal('')),
+  unitIncludedGuests: z.coerce.number().int().min(1).optional().or(z.literal('')),
+  extraPersonPrice: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
+    .optional()
+    .or(z.literal('')),
   durationMinutesFrom: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   durationMinutesTo: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
@@ -271,6 +277,8 @@ type DetailsFormValues = {
   wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
   defaultCurrency: 'USD' | 'EUR';
   basePrice: string;
+  unitIncludedGuests: string;
+  extraPersonPrice: string;
   durationMinutesFrom: string;
   durationMinutesTo: string;
   pickupModel: 'NONE' | 'INCLUDED' | 'PAID_ADDON';
@@ -326,6 +334,8 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     wholeUnitType: trip.wholeUnitType ?? '',
     defaultCurrency: trip.defaultCurrency,
     basePrice: trip.basePrice ?? '',
+    unitIncludedGuests: trip.unitIncludedGuests != null ? String(trip.unitIncludedGuests) : '',
+    extraPersonPrice: trip.extraPersonPrice ?? '',
     durationMinutesFrom: trip.durationMinutesFrom != null ? String(trip.durationMinutesFrom) : '',
     durationMinutesTo: trip.durationMinutesTo != null ? String(trip.durationMinutesTo) : '',
     pickupModel: trip.pickupModel,
@@ -369,6 +379,20 @@ interface TripDetailsTabProps {
   onWarnings?: (warnings: string[]) => void;
 }
 
+/**
+ * Mirrors the public card's duration chip (hub-page.tsx `formatDuration`): under
+ * 6h reads in hours, 6-23h "Full day", 24h+ in days. English-only operator hint.
+ */
+function durationHint(mins: number): string {
+  if (!mins || mins < 1) return '';
+  if (mins >= 1440) {
+    const d = Math.round(mins / 1440);
+    return d <= 1 ? '1 day' : `${d} days`;
+  }
+  if (mins >= 360) return 'Full day';
+  return `${Math.round(mins / 60)}h`;
+}
+
 export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const { mutate: updateTrip, isPending } = useUpdateTrip();
   const { data: categories } = useActiveCategories();
@@ -395,6 +419,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
   const pricingModel = watch('pricingModel');
+  const durationFromWatch = watch('durationMinutesFrom');
   const pickupRequired = watch('pickupRequired');
   const instantConfirmation = watch('instantConfirmation');
   const weatherDependent = watch('weatherDependent');
@@ -430,6 +455,14 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           wholeUnitType: values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
           defaultCurrency: values.defaultCurrency,
           basePrice: values.basePrice || undefined,
+          unitIncludedGuests:
+            values.pricingModel === 'UNIT' && values.unitIncludedGuests
+              ? Number(values.unitIncludedGuests)
+              : undefined,
+          extraPersonPrice:
+            values.pricingModel === 'UNIT' && values.extraPersonPrice
+              ? values.extraPersonPrice
+              : undefined,
           durationMinutesFrom: values.durationMinutesFrom ? Number(values.durationMinutesFrom) : undefined,
           durationMinutesTo: values.durationMinutesTo ? Number(values.durationMinutesTo) : undefined,
           pickupModel: values.pickupModel,
@@ -667,10 +700,44 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             )}
           </div>
 
+          {/* UNIT (charter) pricing: base covers N guests; extra guests cost a
+              per-person surcharge. Card reads "from $X /N people + $Y per extra person". */}
+          {pricingModel === 'UNIT' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Guests Included in Base Price</Label>
+                <Input
+                  {...register('unitIncludedGuests')}
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 10"
+                  aria-invalid={!!errors.unitIncludedGuests}
+                />
+                <FieldDescription>Travelers covered by the base price. Shown on the card as &ldquo;/N people&rdquo;.</FieldDescription>
+                <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Extra Person Price</Label>
+                <Input
+                  {...register('extraPersonPrice')}
+                  placeholder="e.g. 175.00"
+                  aria-invalid={!!errors.extraPersonPrice}
+                />
+                <FieldDescription>Charged per traveler beyond the included count, up to max party size.</FieldDescription>
+                <FieldError>{errors.extraPersonPrice?.message}</FieldError>
+              </Field>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label className="text-xs font-semibold uppercase">Duration From (minutes)</Label>
               <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
+              {durationHint(Number(durationFromWatch)) && (
+                <FieldDescription>
+                  Shows on cards as &ldquo;{durationHint(Number(durationFromWatch))}&rdquo;.
+                </FieldDescription>
+              )}
             </Field>
             <Field>
               <Label className="text-xs font-semibold uppercase">Duration To (minutes)</Label>

@@ -1,10 +1,13 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  AttributeDataType,
   HubPickType,
   HubSectionType,
   HubStatus,
   HubType,
+  PricingModel,
+  WholeUnitType,
 } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -151,6 +154,13 @@ export class HubContentSectionItemDto {
   @ApiProperty({ example: 'The White Beach' }) heading!: string;
   @ApiProperty({ example: 'A two-kilometre stretch of powder-soft sand...' })
   body!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'https://cdn.example.com/hubs/klein-curacao-white-beach.jpg',
+    description:
+      'Optional illustrative image for the section (Discover cards).',
+  })
+  image!: string | null;
   @ApiProperty({ example: 0 }) displayOrder!: number;
 }
 
@@ -167,6 +177,34 @@ export class OurPickTourSummaryDto {
   @ApiProperty({ example: 'klein-curacao-snorkel-cruise' }) slug!: string;
   @ApiProperty({ example: 'Klein Curaçao Snorkel & BBQ Cruise' })
   title!: string;
+  @ApiPropertyOptional({ nullable: true, description: 'Hero image URL.' })
+  heroImage!: string | null;
+  @ApiPropertyOptional({ nullable: true }) heroImageAlt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 120,
+    description: 'Cached listing "from" price (raw Decimal).',
+  })
+  priceFrom!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: 150 })
+  basePrice!: number | null;
+  @ApiProperty({ example: 'USD' }) currency!: string;
+  @ApiProperty({ enum: PricingModel, example: PricingModel.PER_PERSON })
+  pricingModel!: PricingModel;
+  @ApiPropertyOptional({
+    enum: WholeUnitType,
+    nullable: true,
+    description: 'Set only when pricingModel = UNIT (private charters).',
+  })
+  unitType!: WholeUnitType | null;
+  @ApiPropertyOptional({ nullable: true, example: 4.8 })
+  rating!: number | null;
+  @ApiProperty({ example: 1738 }) reviewCount!: number;
+  @ApiPropertyOptional({ nullable: true, example: 480 })
+  durationMinutesFrom!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: 540 })
+  durationMinutesTo!: number | null;
+  @ApiProperty({ example: 0 }) bookingCount!: number;
 }
 
 export class HubOurPickItemDto {
@@ -199,12 +237,45 @@ export class ComparisonTourItemDto {
   @ApiProperty({ type: OurPickTourSummaryDto }) tour!: OurPickTourSummaryDto;
 }
 
+export class ComparisonCellDto {
+  @ApiProperty({
+    type: [String],
+    example: ['Beach house', 'Beds', 'Shower'],
+    description:
+      'Value fragments for this cell (empty when the tour lacks it).',
+  })
+  parts!: string[];
+  @ApiPropertyOptional({
+    nullable: true,
+    example: true,
+    description: 'BOOLEAN attributes only: true/false; null for non-boolean.',
+  })
+  check!: boolean | null;
+}
+
+export class ComparisonRowDto {
+  @ApiProperty({ example: 'boat_type' }) key!: string;
+  @ApiProperty({ example: 'Boat type' }) label!: string;
+  @ApiProperty({ enum: AttributeDataType, example: AttributeDataType.ENUM })
+  dataType!: AttributeDataType;
+  @ApiProperty({
+    type: [ComparisonCellDto],
+    description: 'One cell per tour column, index-aligned to `tours`.',
+  })
+  cells!: ComparisonCellDto[];
+}
+
 export class ComparisonGroupItemDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ example: 'Comfort trips' }) groupName!: string;
   @ApiProperty({ example: 0 }) displayOrder!: number;
   @ApiProperty({ type: [ComparisonTourItemDto] })
   tours!: ComparisonTourItemDto[];
+  @ApiProperty({
+    type: [ComparisonRowDto],
+    description: 'Auto-derived attribute rows (frozen first column = label).',
+  })
+  rows!: ComparisonRowDto[];
 }
 
 export class SetComparisonResponseDto {
@@ -215,12 +286,35 @@ export class SetComparisonResponseDto {
 
 // ── Public render payload (§14) ───────────────────────────────────────────────
 
+export class HubHeroStatsDto {
+  @ApiPropertyOptional({ nullable: true, example: 480 })
+  durationMinutesFrom!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: 540 })
+  durationMinutesTo!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: 120 })
+  priceFrom!: number | null;
+  @ApiProperty({
+    example: 7,
+    description:
+      'Distinct ACTIVE departure weekdays across the hub (0-7); 7 = daily',
+  })
+  frequencyDays!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'bbq_included',
+    description:
+      "Most common amenity attribute key across the hub's tours, for the hero inclusion pill (e.g. bbq_included). null when none apply.",
+  })
+  inclusion!: string | null;
+}
+
 export class HubRenderHeroDto {
   @ApiPropertyOptional({ nullable: true }) heroImage!: string | null;
   @ApiProperty({ example: 'Klein Curaçao day trips' }) h1!: string;
   @ApiPropertyOptional({ nullable: true }) heroTagline!: string | null;
   @ApiProperty({ type: [HubContentSectionItemDto] })
   fastFacts!: HubContentSectionItemDto[];
+  @ApiProperty({ type: HubHeroStatsDto }) stats!: HubHeroStatsDto;
 }
 
 export class RelatedHubItemDto {
@@ -253,6 +347,13 @@ export class HubRenderResponseDto {
   localTips!: HubContentSectionItemDto[];
   @ApiProperty({ type: [FaqResponseDto] }) faqs!: FaqResponseDto[];
   @ApiProperty({ type: [RelatedHubItemDto] }) relatedHubs!: RelatedHubItemDto[];
+  @ApiProperty({
+    type: [String],
+    example: ['boat-tours', 'snorkeling', 'day-trips'],
+    description:
+      'Category slugs this hub is scoped to (frontend excludes them from the "Also worth your time" grid)',
+  })
+  allowedCategorySlugs!: string[];
 }
 
 export class AddAllowedCategoryResponseDto {
@@ -690,6 +791,15 @@ export class HubContentSectionInputDto {
   @IsString()
   @MinLength(1)
   body!: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/hubs/klein-curacao-white-beach.jpg',
+    description:
+      'Optional illustrative image for the section (Discover cards).',
+  })
+  @IsOptional()
+  @IsUrl()
+  image?: string;
 
   @ApiPropertyOptional({ example: 0, default: 0 })
   @IsOptional()

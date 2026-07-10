@@ -35,6 +35,8 @@ export async function getDestinationTours(params: {
   categoryId?: string;
   /** Multi-select category filter (CSV of ids); a tour in ANY matches. */
   categoryIds?: string;
+  /** Restrict to tours assigned to this activity hub (by hub UUID). */
+  hubId?: string;
   sort?: 'recommended' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
   /** Price range filter (on `basePrice`). */
   minPrice?: number;
@@ -73,6 +75,7 @@ export async function getDestinationTours(params: {
     localsFavourite,
     categoryId,
     categoryIds,
+    hubId,
     sort,
     minPrice,
     maxPrice,
@@ -100,6 +103,7 @@ export async function getDestinationTours(params: {
       isLocalsFavourite: localsFavourite,
       categoryId,
       categoryIds,
+      hubId,
       sort,
       minPrice,
       maxPrice,

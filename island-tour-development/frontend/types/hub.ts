@@ -161,6 +161,8 @@ export interface HubContentSection {
   sectionType: HubSectionType;
   heading: string;
   body: string;
+  /** Optional illustrative image (Discover / editorial cards). */
+  image: string | null;
   displayOrder: number;
 }
 
@@ -184,6 +186,20 @@ export interface OurPickTourSummary {
   id: string;
   slug: string;
   title: string;
+  // Enriched card fields (present on the public render + admin read-back). Prices
+  // are raw Decimal, serialized as string|number (mirrors the /tours card).
+  heroImage?: string | null;
+  heroImageAlt?: string | null;
+  priceFrom?: number | string | null;
+  basePrice?: number | string | null;
+  currency?: string;
+  pricingModel?: string;
+  unitType?: string | null;
+  rating?: number | null;
+  reviewCount?: number;
+  durationMinutesFrom?: number | null;
+  durationMinutesTo?: number | null;
+  bookingCount?: number;
 }
 
 export interface HubOurPick {
@@ -248,4 +264,101 @@ export interface SetComparisonPayload {
 export interface SetComparisonResponse {
   count: number;
   groups: ComparisonGroupItem[];
+}
+
+// ── Public render payload (GET /hubs/render/:slug) ─────────────────────────────
+// Published-only aggregate for the public hub page (master 5.5). Editorial fields
+// fall back to English on the backend.
+
+/** A content-section block resolved for one locale (Discover / Local Tip / Fast Fact). */
+export interface HubRenderSection {
+  locale: Locale;
+  sectionType: HubSectionType;
+  heading: string;
+  body: string;
+  image: string | null;
+  displayOrder: number;
+}
+
+/** At-a-glance hero pills, computed from the hub's live tour set. */
+export interface HubHeroStats {
+  durationMinutesFrom: number | null;
+  durationMinutesTo: number | null;
+  priceFrom: number | null;
+  /** Distinct ACTIVE departure weekdays across the hub (0-7); 7 = daily. */
+  frequencyDays: number;
+  /** Most common amenity attribute key for the hero inclusion pill (e.g. 'bbq_included'); null when none. */
+  inclusion: string | null;
+}
+
+export interface HubRenderHero {
+  heroImage: string | null;
+  h1: string;
+  heroTagline: string | null;
+  fastFacts: HubRenderSection[];
+  stats: HubHeroStats;
+}
+
+export interface HubRenderOurPick {
+  id: string;
+  pickType: HubPickType;
+  description: string;
+  displayOrder: number;
+  tour: OurPickTourSummary;
+}
+
+/** One auto-derived comparison cell, index-aligned to the group's tour columns. */
+export interface HubComparisonCell {
+  parts: string[];
+  /** BOOLEAN attributes only (true/false); null for non-boolean or blank cells. */
+  check: boolean | null;
+}
+
+/** One auto-derived comparison row (frozen first column = `label`). */
+export interface HubComparisonRow {
+  key: string;
+  label: string;
+  dataType: string;
+  cells: HubComparisonCell[];
+}
+
+export interface HubRenderComparisonGroup {
+  id: string;
+  groupName: string;
+  displayOrder: number;
+  tours: ComparisonTourItem[];
+  rows: HubComparisonRow[];
+}
+
+export interface HubRenderFaq {
+  id: string;
+  question: string;
+  answer: string;
+  displayOrder: number;
+}
+
+export interface HubRelated {
+  id: string;
+  slug: string;
+  name: string;
+  heroImage: string | null;
+}
+
+export interface HubRender {
+  id: string;
+  slug: string;
+  name: string;
+  locale: Locale;
+  hubType: HubType | null;
+  breadcrumbLabel: string | null;
+  hero: HubRenderHero;
+  editorialLead: string | null;
+  ourPicks: HubRenderOurPick[];
+  comparisonGroups: HubRenderComparisonGroup[];
+  discover: HubRenderSection[];
+  localTips: HubRenderSection[];
+  faqs: HubRenderFaq[];
+  relatedHubs: HubRelated[];
+  /** Category slugs this hub covers; excluded from the "Also worth" grid. */
+  allowedCategorySlugs: string[];
 }

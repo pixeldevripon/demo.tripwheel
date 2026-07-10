@@ -336,6 +336,37 @@
         "titlePattern": "Entdecke {hub}",
         "subtitle": "Eine flache, unbewohnte Insel von 1,7 km², 10 km vor der Südostküste von Curaçao. Keine Geschäfte, kein Empfang, nur Sand, Riff und Geschichte.",
         "bookTrip": "Buche deinen Trip"
+      },
+      "frequencyDaily": "Täglich",
+      "frequencyWeekly": "{count} Tage pro Woche",
+      "durationFullDay": "Ganzer Tag",
+      "durationHalfDay": "Halber Tag",
+      "checkingAvailability": "Verfügbarkeit wird geprüft",
+      "noneOnDate": "Keine Erlebnisse am gewählten Datum verfügbar.",
+      "showAllDates": "Alle Daten anzeigen",
+      "durationDay": "1 Tag",
+      "durationDays": "{count} Tage",
+      "cardChips": {
+        "upTo": "Bis zu {count}",
+        "familyFriendly": "Familienfreundlich",
+        "peopleIncluded": "/{count} Personen",
+        "perExtraPerson": "+ {price} pro weitere Person",
+        "amenities": {
+          "openBar": "Open Bar",
+          "bbq": "BBQ",
+          "beachHouse": "Strandhaus",
+          "breakfast": "Frühstück",
+          "meals": "Mahlzeiten",
+          "drinks": "Getränke",
+          "snorkeling": "Schnorcheln"
+        },
+        "perUnit": "/pP"
+      },
+      "heroInclusion": {
+        "bbq": "BBQ-Mittagessen",
+        "beachHouse": "Strandhaus",
+        "openBar": "Open Bar",
+        "breakfast": "Frühstück"
       }
     },
     "tour": {

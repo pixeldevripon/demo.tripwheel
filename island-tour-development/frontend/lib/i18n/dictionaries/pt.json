@@ -336,6 +336,37 @@
         "titlePattern": "Descubra {hub}",
         "subtitle": "Uma ilha plana e desabitada de 1,7 km², a 10 km da costa sudeste de Curaçao. Sem lojas, sem sinal, apenas areia, recife e história.",
         "bookTrip": "Reserve seu passeio"
+      },
+      "frequencyDaily": "Diariamente",
+      "frequencyWeekly": "{count} dias por semana",
+      "durationFullDay": "Dia inteiro",
+      "durationHalfDay": "Meio dia",
+      "checkingAvailability": "Verificando disponibilidade",
+      "noneOnDate": "Nenhuma experiência disponível na data selecionada.",
+      "showAllDates": "Mostrar todas as datas",
+      "durationDay": "1 dia",
+      "durationDays": "{count} dias",
+      "cardChips": {
+        "upTo": "Até {count}",
+        "familyFriendly": "Familiar",
+        "peopleIncluded": "/{count} pessoas",
+        "perExtraPerson": "+ {price} por pessoa adicional",
+        "amenities": {
+          "openBar": "Open bar",
+          "bbq": "Churrasco",
+          "beachHouse": "Casa de praia",
+          "breakfast": "Café da manhã",
+          "meals": "Refeições",
+          "drinks": "Bebidas",
+          "snorkeling": "Mergulho com snorkel"
+        },
+        "perUnit": "/pes"
+      },
+      "heroInclusion": {
+        "bbq": "Almoço BBQ",
+        "beachHouse": "Casa de praia",
+        "openBar": "Open bar",
+        "breakfast": "Café da manhã"
       }
     },
     "tour": {

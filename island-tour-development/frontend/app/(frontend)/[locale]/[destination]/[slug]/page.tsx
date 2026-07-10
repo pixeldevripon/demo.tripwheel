@@ -10,6 +10,8 @@ import {
     getCollectionRender,
     getDestinationBySlug,
     getDestinationCategories,
+    getHubPageContent,
+    getHubRender,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
 import {
@@ -184,6 +186,29 @@ export async function generateMetadata({
                 `${render.h1Override ?? render.name} | Island Tours`,
             description:
                 pageContent?.metaDescription ?? render.overview ?? undefined,
+            alternates,
+        };
+    }
+
+    if (resolution.entityType === 'HUB' && resolution.entityId) {
+        const dest = await getDestinationBySlug(destination, locale as Locale);
+        if (!dest) return { alternates };
+
+        const [render, pageContent] = await Promise.all([
+            getHubRender(slug, dest.id, locale as Locale),
+            getHubPageContent(resolution.entityId, locale as Locale),
+        ]);
+        // Only PUBLISHED hubs render; a null render (draft/404) emits just the
+        // alternates so the page's own notFound() still governs the response.
+        if (!render) return { alternates };
+
+        return {
+            title:
+                pageContent?.metaTitle ?? `${render.hero.h1} | Island Tours`,
+            description:
+                pageContent?.metaDescription ??
+                render.editorialLead ??
+                undefined,
             alternates,
         };
     }

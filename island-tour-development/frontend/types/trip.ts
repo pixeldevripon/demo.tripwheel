@@ -60,6 +60,10 @@ export interface TripListItem {
   defaultCurrency: Currency;
   basePrice: string | null;
   priceFrom: string | null;
+  // UNIT (charter) pricing: base covers `unitIncludedGuests`; each extra traveler
+  // beyond that (up to maxPartySize) costs `extraPersonPrice`. Null for PER_PERSON.
+  unitIncludedGuests: number | null;
+  extraPersonPrice: string | null;
 
   // Duration range
   durationMinutesFrom: number | null;
@@ -417,6 +421,8 @@ export interface CreateTripPayload {
   wholeUnitType?: WholeUnitType;
   defaultCurrency?: Currency;
   basePrice?: string;
+  unitIncludedGuests?: number;
+  extraPersonPrice?: string;
   durationMinutesFrom?: number;
   durationMinutesTo?: number;
   pickupModel?: PickupModel;
@@ -465,6 +471,8 @@ export interface UpdateTripPayload {
   wholeUnitType?: WholeUnitType;
   defaultCurrency?: Currency;
   basePrice?: string;
+  unitIncludedGuests?: number;
+  extraPersonPrice?: string;
   durationMinutesFrom?: number;
   durationMinutesTo?: number;
   pickupModel?: PickupModel;

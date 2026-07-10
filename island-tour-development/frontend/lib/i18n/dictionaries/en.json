@@ -336,6 +336,37 @@
         "titlePattern": "Discover {hub}",
         "subtitle": "A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.",
         "bookTrip": "Book your trip"
+      },
+      "frequencyDaily": "Daily",
+      "frequencyWeekly": "{count} days a week",
+      "durationFullDay": "Full day",
+      "durationHalfDay": "Half day",
+      "checkingAvailability": "Checking availability",
+      "noneOnDate": "No experiences available on the selected date.",
+      "showAllDates": "Show all dates",
+      "durationDay": "1 day",
+      "durationDays": "{count} days",
+      "cardChips": {
+        "upTo": "Up to {count}",
+        "familyFriendly": "Family-friendly",
+        "peopleIncluded": "/{count} people",
+        "perExtraPerson": "+ {price} per extra person",
+        "amenities": {
+          "openBar": "Open bar",
+          "bbq": "BBQ",
+          "beachHouse": "Beach house",
+          "breakfast": "Breakfast",
+          "meals": "Meals",
+          "drinks": "Drinks",
+          "snorkeling": "Snorkeling"
+        },
+        "perUnit": "/per"
+      },
+      "heroInclusion": {
+        "bbq": "BBQ lunch",
+        "beachHouse": "Beach house",
+        "openBar": "Open bar",
+        "breakfast": "Breakfast"
       }
     },
     "tour": {

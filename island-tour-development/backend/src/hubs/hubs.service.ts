@@ -24,6 +24,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  AttributeDataType,
+  AvailabilityScheduleStatus,
   HubSectionType,
   HubStatus,
   SlugEntityType,
@@ -132,6 +134,193 @@ export class HubService {
     translations: { title: string | null }[];
   }): string {
     return tour.translations[0]?.title ?? tour.name;
+  }
+
+  /**
+   * Public tour-card fields shared by Our Picks and the comparison columns, so
+   * both render decision-ready cards (price, rating, image, duration, pricing
+   * model) instead of a bare {id, slug, title}. Mirrors the scalar shape of
+   * `ToursService`'s public card select (prices stay raw Decimal, matching the
+   * `/tours` listing). `translations` is added inline per call (locale-scoped).
+   */
+  private readonly cardTourSelect = {
+    id: true,
+    slug: true,
+    name: true,
+    basePrice: true,
+    priceFrom: true,
+    defaultCurrency: true,
+    pricingModel: true,
+    wholeUnitType: true,
+    aggregateRating: true,
+    aggregateReviewCount: true,
+    durationMinutesFrom: true,
+    durationMinutesTo: true,
+    bookingCount: true,
+    images: {
+      where: { isHero: true },
+      select: { url: true, altText: true },
+      take: 1,
+    },
+  } as const;
+
+  /** Map an enriched tour row (cardTourSelect + locale title) to a card summary. */
+  private tourCard(tour: {
+    id: string;
+    slug: string;
+    name: string;
+    basePrice: unknown;
+    priceFrom: unknown;
+    defaultCurrency: string;
+    pricingModel: unknown;
+    wholeUnitType: unknown;
+    aggregateRating: number | null;
+    aggregateReviewCount: number;
+    durationMinutesFrom: number | null;
+    durationMinutesTo: number | null;
+    bookingCount: number;
+    images: { url: string; altText: string | null }[];
+    translations: { title: string | null }[];
+  }) {
+    return {
+      id: tour.id,
+      slug: tour.slug,
+      title: this.tourTitle(tour),
+      heroImage: tour.images[0]?.url ?? null,
+      heroImageAlt: tour.images[0]?.altText ?? null,
+      basePrice: tour.basePrice,
+      priceFrom: tour.priceFrom,
+      currency: tour.defaultCurrency,
+      pricingModel: tour.pricingModel,
+      unitType: tour.wholeUnitType,
+      rating: tour.aggregateRating,
+      reviewCount: tour.aggregateReviewCount,
+      durationMinutesFrom: tour.durationMinutesFrom,
+      durationMinutesTo: tour.durationMinutesTo,
+      bookingCount: tour.bookingCount,
+    };
+  }
+
+  // ── Comparison-row derivation (auto from tour attributes) ───────────────────────
+
+  /**
+   * Load every column tour's attribute values once (two-query + in-memory join
+   * by key - `TourAttribute` joins `AttributeDefinition` by string `key`, not a
+   * DB relation). Attribute labels are NOT localized in this schema
+   * (`displayName` is a single string), so there is no locale step.
+   */
+  private async loadTourAttributes(tourIds: string[]) {
+    const defs: {
+      key: string;
+      displayName: string;
+      dataType: AttributeDataType;
+      sortOrder: number;
+    }[] = [];
+    const attrsByTour = new Map<string, Map<string, string>>();
+    if (tourIds.length === 0) return { attrsByTour, defs };
+
+    const [rows, definitions] = await Promise.all([
+      this.prisma.tourAttribute.findMany({
+        where: { tourId: { in: tourIds } },
+        select: { tourId: true, attributeKey: true, attributeValue: true },
+      }),
+      this.prisma.attributeDefinition.findMany({
+        where: { isActive: true },
+        select: {
+          key: true,
+          displayName: true,
+          dataType: true,
+          sortOrder: true,
+        },
+      }),
+    ]);
+
+    defs.push(...definitions);
+    for (const r of rows) {
+      let m = attrsByTour.get(r.tourId);
+      if (!m) {
+        m = new Map();
+        attrsByTour.set(r.tourId, m);
+      }
+      m.set(r.attributeKey, r.attributeValue);
+    }
+    return { attrsByTour, defs };
+  }
+
+  /** Format one stored attribute value into a comparison cell for a column. */
+  private formatComparisonCell(
+    raw: string | undefined,
+    dataType: AttributeDataType,
+  ): { parts: string[]; check: boolean | null } {
+    if (raw === undefined || raw === null || raw === '') {
+      return { parts: [], check: null };
+    }
+    if (dataType === AttributeDataType.BOOLEAN) {
+      return { parts: [], check: raw === 'true' };
+    }
+    if (dataType === AttributeDataType.ENUM_MULTI) {
+      try {
+        const arr: unknown = JSON.parse(raw);
+        return {
+          parts: Array.isArray(arr) ? arr.map((v) => String(v)) : [raw],
+          check: null,
+        };
+      } catch {
+        return { parts: [raw], check: null };
+      }
+    }
+    return { parts: [raw], check: null };
+  }
+
+  /**
+   * Build comparison rows (frozen first column = attribute label, one cell per
+   * tour column) for a group. A row is emitted for every active attribute that
+   * at least one column carries, ordered by the definition's sortOrder then key.
+   * The editorial "What stands out" row + price/book header are composed on the
+   * frontend from each column's standoutNote/price.
+   */
+  private buildComparisonRows(
+    orderedTourIds: string[],
+    attrsByTour: Map<string, Map<string, string>>,
+    defs: {
+      key: string;
+      displayName: string;
+      dataType: AttributeDataType;
+      sortOrder: number;
+    }[],
+  ) {
+    const present = new Set<string>();
+    for (const tid of orderedTourIds) {
+      const m = attrsByTour.get(tid);
+      if (m) for (const k of m.keys()) present.add(k);
+    }
+
+    return (
+      defs
+        .filter((d) => present.has(d.key))
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key))
+        .map((d) => ({
+          key: d.key,
+          label: d.displayName,
+          dataType: d.dataType,
+          cells: orderedTourIds.map((tid) =>
+            this.formatComparisonCell(
+              attrsByTour.get(tid)?.get(d.key),
+              d.dataType,
+            ),
+          ),
+        }))
+        // Keep only attributes that DIFFER across the columns - a comparison table
+        // earns its space by showing differences, not rows of identical values
+        // (master 5.5). Single-column groups keep every present attribute.
+        .filter((row) => {
+          if (row.cells.length < 2) return true;
+          const key = (c: { parts: string[]; check: boolean | null }) =>
+            `${c.check}|${c.parts.join('')}`;
+          const first = key(row.cells[0]);
+          return row.cells.some((c) => key(c) !== first);
+        })
+    );
   }
 
   // ── Public CRUD ───────────────────────────────────────────────────────────────
@@ -816,6 +1005,7 @@ export class HubService {
     sectionType: true,
     heading: true,
     body: true,
+    image: true,
     displayOrder: true,
   } as const;
 
@@ -848,6 +1038,7 @@ export class HubService {
             sectionType: s.sectionType,
             heading: s.heading,
             body: s.body,
+            image: s.image ?? null,
             displayOrder: s.displayOrder ?? 0,
           })),
         });
@@ -941,9 +1132,7 @@ export class HubService {
         translations: { where: { locale }, select: { description: true } },
         tour: {
           select: {
-            id: true,
-            slug: true,
-            name: true,
+            ...this.cardTourSelect,
             translations: { where: { locale }, select: { title: true } },
           },
         },
@@ -956,11 +1145,7 @@ export class HubService {
       pickType: r.pickType,
       description: r.translations[0]?.description ?? r.description,
       displayOrder: r.displayOrder,
-      tour: {
-        id: r.tour.id,
-        slug: r.tour.slug,
-        title: this.tourTitle(r.tour),
-      },
+      tour: this.tourCard(r.tour),
     }));
 
     return { count: ourPicks.length, ourPicks };
@@ -1065,9 +1250,7 @@ export class HubService {
             translations: { where: { locale }, select: { standoutNote: true } },
             tour: {
               select: {
-                id: true,
-                slug: true,
-                name: true,
+                ...this.cardTourSelect,
                 translations: { where: { locale }, select: { title: true } },
               },
             },
@@ -1078,24 +1261,132 @@ export class HubService {
       orderBy: { displayOrder: 'asc' },
     });
 
-    const mapped = groups.map((g) => ({
-      id: g.id,
-      groupName: g.translations[0]?.groupName ?? g.groupName,
-      displayOrder: g.displayOrder,
-      tours: g.comparisonTours.map((ct) => ({
-        id: ct.id,
-        displayOrder: ct.displayOrder,
-        standoutNote:
-          ct.translations[0]?.standoutNote ?? ct.standoutNote ?? null,
-        tour: {
-          id: ct.tour.id,
-          slug: ct.tour.slug,
-          title: this.tourTitle(ct.tour),
-        },
-      })),
-    }));
+    // Auto-derive comparison rows from the column tours' attributes (one load
+    // for every tour across all groups).
+    const allTourIds = [
+      ...new Set(
+        groups.flatMap((g) => g.comparisonTours.map((ct) => ct.tour.id)),
+      ),
+    ];
+    const { attrsByTour, defs } = await this.loadTourAttributes(allTourIds);
+
+    const mapped = groups.map((g) => {
+      const orderedTourIds = g.comparisonTours.map((ct) => ct.tour.id);
+      return {
+        id: g.id,
+        groupName: g.translations[0]?.groupName ?? g.groupName,
+        displayOrder: g.displayOrder,
+        tours: g.comparisonTours.map((ct) => ({
+          id: ct.id,
+          displayOrder: ct.displayOrder,
+          standoutNote:
+            ct.translations[0]?.standoutNote ?? ct.standoutNote ?? null,
+          tour: this.tourCard(ct.tour),
+        })),
+        rows: this.buildComparisonRows(orderedTourIds, attrsByTour, defs),
+      };
+    });
 
     return { count: mapped.length, groups: mapped };
+  }
+
+  // ── Hero at-a-glance stats (computed, not editorial) ────────────────────────────
+
+  /**
+   * Compute the hero "meta pills" from the hub's LIVE tour set (master 5.5 - the
+   * hero summarises the typical trip, not authored copy). Mirrors the public
+   * `/tours?hubId=` filter exactly (`status=LIVE`, `isActive`, `isBookable`) so the
+   * pills always agree with the trips grid below:
+   *  - duration : min..max of the tours' duration range
+   *  - priceFrom: cheapest `priceFrom` (fallback `basePrice`) across the set
+   *  - frequencyDays: distinct ACTIVE departure weekdays across the whole set
+   *    (0-7); the frontend renders 7 as "Daily", 1-6 as "N days a week"
+   *
+   * The inclusion/meal pill ("BBQ lunch") is NOT computed here - it is editorial
+   * (a meal name is marketing copy, not derivable from tour data), so the frontend
+   * reads it from `hero.fastFacts`.
+   */
+  private async computeHeroStats(hubId: string) {
+    const tourWhere = {
+      status: TourStatus.LIVE,
+      isActive: true,
+      isBookable: true,
+      hubs: { some: { hubId } },
+    } as const;
+
+    const [tours, weekdays] = await Promise.all([
+      this.prisma.tour.findMany({
+        where: tourWhere,
+        select: {
+          id: true,
+          durationMinutesFrom: true,
+          durationMinutesTo: true,
+          priceFrom: true,
+          basePrice: true,
+        },
+      }),
+      this.prisma.availabilitySchedule.findMany({
+        where: {
+          status: AvailabilityScheduleStatus.ACTIVE,
+          tour: tourWhere,
+        },
+        select: { weekday: true },
+        distinct: ['weekday'],
+      }),
+    ]);
+
+    const durFrom = tours
+      .map((t) => t.durationMinutesFrom)
+      .filter((n): n is number => n != null);
+    const durTo = tours
+      .map((t) => t.durationMinutesTo ?? t.durationMinutesFrom)
+      .filter((n): n is number => n != null);
+    const prices = tours
+      .map((t) => Number(t.priceFrom ?? t.basePrice ?? 0))
+      .filter((n) => n > 0);
+
+    return {
+      durationMinutesFrom: durFrom.length ? Math.min(...durFrom) : null,
+      durationMinutesTo: durTo.length ? Math.max(...durTo) : null,
+      priceFrom: prices.length ? Math.min(...prices) : null,
+      frequencyDays: weekdays.length,
+      inclusion: await this.computeHeroInclusion(tours.map((t) => t.id)),
+    };
+  }
+
+  // Amenity attributes the hero "inclusion" pill can surface, in display
+  // priority (BBQ first, per Figma 48024:11162). The highest-priority amenity
+  // present on ANY of the hub's live tours wins - a deterministic feature pick,
+  // not a popularity contest, so BBQ headlines whenever the hub offers it.
+  private static readonly HERO_AMENITY_PRIORITY = [
+    'bbq_included',
+    'beach_house_included',
+    'open_bar_included',
+    'breakfast_included',
+  ];
+
+  /**
+   * The single amenity to feature in the hero's inclusion pill: the first key in
+   * HERO_AMENITY_PRIORITY present on any of the hub's tours. Returns the attribute
+   * key (e.g. 'bbq_included') or null when none apply.
+   */
+  private async computeHeroInclusion(
+    tourIds: string[],
+  ): Promise<string | null> {
+    if (tourIds.length === 0) return null;
+    const rows = await this.prisma.tourAttribute.groupBy({
+      by: ['attributeKey'],
+      where: {
+        tourId: { in: tourIds },
+        attributeKey: { in: HubService.HERO_AMENITY_PRIORITY },
+        attributeValue: 'true',
+      },
+      _count: { attributeKey: true },
+    });
+    const present = new Set(rows.map((r) => r.attributeKey));
+    return (
+      HubService.HERO_AMENITY_PRIORITY.find((key) => present.has(key)) ?? null
+    );
   }
 
   // ── Public render payload (§14) ────────────────────────────────────────────────
@@ -1126,6 +1417,9 @@ export class HubService {
             overview: true,
             breadcrumbLabel: true,
           },
+        },
+        allowedCategories: {
+          select: { category: { select: { slug: true } } },
         },
       },
     });
@@ -1161,7 +1455,7 @@ export class HubService {
     const breadcrumbLabel =
       localeT?.breadcrumbLabel ?? enT?.breadcrumbLabel ?? null;
 
-    const [sections, ourPicks, comparison, faqs, relatedHubs] =
+    const [sections, ourPicks, comparison, faqs, relatedHubs, heroStats] =
       await Promise.all([
         this.prisma.hubContentSection.findMany({
           where: { hubId: hub.id, locale },
@@ -1191,6 +1485,7 @@ export class HubService {
           orderBy: { name: 'asc' },
           take: 3,
         }),
+        this.computeHeroStats(hub.id),
       ]);
 
     const fastFacts = sections.filter(
@@ -1215,6 +1510,8 @@ export class HubService {
         h1,
         heroTagline,
         fastFacts,
+        // At-a-glance pills computed from the LIVE tour set (not editorial).
+        stats: heroStats,
       },
       editorialLead,
       ourPicks: ourPicks.ourPicks,
@@ -1223,6 +1520,10 @@ export class HubService {
       localTips,
       faqs,
       relatedHubs,
+      // Category slugs this hub is scoped to; the frontend "Also worth your
+      // time" grid excludes these so it never surfaces a category the hub
+      // already covers.
+      allowedCategorySlugs: hub.allowedCategories.map((a) => a.category.slug),
     };
   }
 
