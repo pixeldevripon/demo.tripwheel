@@ -2,26 +2,44 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ColumnsIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { ChevronDownIcon, ColumnsIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Field } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useHub, useHubComparison, useSetHubComparison } from '@/hooks/hubs/use-hubs';
+import { TourBadgeChip } from '@/components/frontend/tour-badge';
+import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
+import { RationaleTranslationTabs } from '@/components/dashboard/rationale-translation-tabs';
+import {
+  useHub,
+  useHubComparisonForEdit,
+  useSetHubComparison,
+} from '@/hooks/hubs/use-hubs';
+import { useAdminTrips } from '@/hooks/trips/use-trips';
+import { ALL_LOCALES, DEFAULT_LOCALE, type Locale } from '@/lib/constants/locales';
+import type { ComparisonGroupNameTranslationInput } from '@/types/hub';
 import { HubTourSelect } from './hub-tour-select';
 
 interface DraftTour {
   key: string;
   tourId: string;
-  standoutNote: string;
+  /** Standout note per locale (English is the base). */
+  standouts: Record<string, string>;
   displayOrder: number;
 }
 
 interface DraftGroup {
   key: string;
   groupName: string;
+  /** Group-name translations, round-tripped untouched so a save never wipes them. */
+  nameTranslations: ComparisonGroupNameTranslationInput[];
   displayOrder: number;
   tours: DraftTour[];
 }
@@ -38,26 +56,49 @@ interface HubComparisonManagerProps {
 
 export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
   const { data: hub } = useHub(hubId, 'en');
-  const { data, isLoading } = useHubComparison(hubId, 'en');
+  const { data, isLoading } = useHubComparisonForEdit(hubId);
   const { mutate: save, isPending } = useSetHubComparison();
+  // Shared query key with HubTourSelect (one fetch) so each selected column can
+  // show its aggregated performance strip below the picker.
+  const { data: adminTrips } = useAdminTrips({ limit: 200 }, !!hub?.destinationId);
 
   const [groups, setGroups] = useState<DraftGroup[]>([]);
+  // Per-group open/collapsed state (kept out of the data model). Seeded groups
+  // start collapsed; a freshly added group opens so it can be filled in.
+  const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
 
-  // Seed local edit state from the loaded comparison (render-time, reference-guarded).
+  function toggleOpen(key: string) {
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  // Seed local edit state from the all-locale read-back (base note + every locale),
+  // reference-guarded (render-time setState per repo convention).
   const [seededFrom, setSeededFrom] = useState<typeof data>(undefined);
   if (data && data !== seededFrom) {
     setSeededFrom(data);
     setGroups(
-      data.groups.map((g) => ({
+      data.map((g) => ({
         key: nextKey('group'),
         groupName: g.groupName,
+        nameTranslations: g.translations,
         displayOrder: g.displayOrder,
-        tours: g.tours.map((t) => ({
-          key: nextKey('tour'),
-          tourId: t.tour.id,
-          standoutNote: t.standoutNote ?? '',
-          displayOrder: t.displayOrder,
-        })),
+        tours: g.tours.map((t) => {
+          const standouts: Record<string, string> = {
+            [DEFAULT_LOCALE]: t.standoutNote ?? '',
+          };
+          for (const tr of t.translations) standouts[tr.locale] = tr.standoutNote;
+          return {
+            key: nextKey('tour'),
+            tourId: t.tourId,
+            standouts,
+            displayOrder: t.displayOrder,
+          };
+        }),
       }))
     );
   }
@@ -71,10 +112,12 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
   }
 
   function addGroup() {
+    const key = nextKey('group');
     setGroups((prev) => [
       ...prev,
-      { key: nextKey('group'), groupName: '', displayOrder: prev.length, tours: [] },
+      { key, groupName: '', nameTranslations: [], displayOrder: prev.length, tours: [] },
     ]);
+    setOpenKeys((prev) => new Set(prev).add(key));
   }
 
   function addTour(groupKey: string) {
@@ -85,7 +128,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
               ...g,
               tours: [
                 ...g.tours,
-                { key: nextKey('tour'), tourId: '', standoutNote: '', displayOrder: g.tours.length },
+                { key: nextKey('tour'), tourId: '', standouts: {}, displayOrder: g.tours.length },
               ],
             }
           : g
@@ -98,6 +141,23 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
       prev.map((g) =>
         g.key === groupKey
           ? { ...g, tours: g.tours.map((t) => (t.key === tourKey ? { ...t, ...patch } : t)) }
+          : g
+      )
+    );
+  }
+
+  function updateStandout(groupKey: string, tourKey: string, locale: Locale, value: string) {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.key === groupKey
+          ? {
+              ...g,
+              tours: g.tours.map((t) =>
+                t.key === tourKey
+                  ? { ...t, standouts: { ...t.standouts, [locale]: value } }
+                  : t
+              ),
+            }
           : g
       )
     );
@@ -131,10 +191,14 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
           groups: groups.map((g) => ({
             groupName: g.groupName.trim(),
             displayOrder: g.displayOrder,
+            translations: g.nameTranslations,
             tours: g.tours.map((t) => ({
               tourId: t.tourId,
-              standoutNote: t.standoutNote.trim() || undefined,
+              standoutNote: (t.standouts[DEFAULT_LOCALE] ?? '').trim() || undefined,
               displayOrder: t.displayOrder,
+              translations: ALL_LOCALES.filter(
+                (l) => l !== DEFAULT_LOCALE && (t.standouts[l] ?? '').trim()
+              ).map((l) => ({ locale: l, standoutNote: t.standouts[l].trim() })),
             })),
           })),
         },
@@ -160,9 +224,9 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-        Comparison groups (e.g. &quot;Comfort trips&quot;) and the tour columns inside them. Group
-        names and standout notes are the base English values; per-locale translations are managed
-        via the API and are not editable here. Saving replaces the full set.
+        Comparison groups (e.g. &quot;Comfort trips&quot;) and the tour columns inside them. The
+        English standout note is the base; switch locale tabs to translate it (blank locales fall
+        back to English on the page). Saving replaces the full set.
       </div>
 
       <div className="flex items-center justify-end">
@@ -180,96 +244,133 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {groups.map((group) => (
-            <Card key={group.key}>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-end justify-between gap-4">
-                  <div className="grid flex-1 gap-4 sm:grid-cols-[1fr_8rem]">
-                    <Field>
-                      <Label className="text-xs font-semibold uppercase">Group Name</Label>
-                      <Input
-                        value={group.groupName}
-                        onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
-                        placeholder="e.g. Comfort trips"
-                      />
-                    </Field>
-                    <Field>
-                      <Label className="text-xs font-semibold uppercase">Display Order</Label>
-                      <Input
-                        type="number"
-                        value={group.displayOrder}
-                        onChange={(e) =>
-                          updateGroup(group.key, { displayOrder: Number(e.target.value) || 0 })
-                        }
-                      />
-                    </Field>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => removeGroup(group.key)}
-                  >
-                    <Trash2Icon />
-                    Remove Group
-                  </Button>
+          {groups.map((group) => {
+            const isOpen = openKeys.has(group.key);
+            const title = group.groupName.trim() || 'Untitled group';
+            return (
+            <Collapsible
+              key={group.key}
+              open={isOpen}
+              onOpenChange={() => toggleOpen(group.key)}
+              className="border bg-card"
+            >
+              <div className="flex items-center gap-2 px-3 py-2">
+                <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                  <ChevronDownIcon
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                      isOpen ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                  <span className="truncate text-sm font-medium">{title}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    ({group.tours.length} tour{group.tours.length === 1 ? '' : 's'})
+                  </span>
+                </CollapsibleTrigger>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => removeGroup(group.key)}
+                >
+                  <Trash2Icon />
+                  Remove Group
+                </Button>
+              </div>
+
+              <CollapsibleContent className="space-y-4 border-t px-3 py-4">
+                <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
+                  <Field>
+                    <Label className="text-xs font-semibold uppercase">Group Name</Label>
+                    <Input
+                      value={group.groupName}
+                      onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
+                      placeholder="e.g. Comfort trips"
+                    />
+                  </Field>
+                  <Field>
+                    <Label className="text-xs font-semibold uppercase">Display Order</Label>
+                    <Input
+                      type="number"
+                      value={group.displayOrder}
+                      onChange={(e) =>
+                        updateGroup(group.key, { displayOrder: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </Field>
                 </div>
 
                 {/* Tour columns */}
                 <div className="space-y-3 border-l-2 border-muted pl-4">
-                  {group.tours.map((tour) => (
-                    <div key={tour.key} className="grid gap-3 sm:grid-cols-[1fr_1fr_6rem_auto] sm:items-end">
-                      <Field>
-                        <Label className="text-xs font-semibold uppercase">Tour</Label>
-                        <HubTourSelect
-                          destinationId={hub?.destinationId ?? ''}
-                          value={tour.tourId}
-                          onChange={(tourId) => updateTour(group.key, tour.key, { tourId })}
-                          excludeIds={group.tours.map((t) => t.tourId)}
-                        />
-                      </Field>
-                      <Field>
-                        <Label className="text-xs font-semibold uppercase">Standout Note</Label>
-                        <Input
-                          value={tour.standoutNote}
-                          onChange={(e) =>
-                            updateTour(group.key, tour.key, { standoutNote: e.target.value })
-                          }
-                          placeholder="What stands out"
-                        />
-                      </Field>
-                      <Field>
-                        <Label className="text-xs font-semibold uppercase">Order</Label>
-                        <Input
-                          type="number"
-                          value={tour.displayOrder}
-                          onChange={(e) =>
-                            updateTour(group.key, tour.key, {
-                              displayOrder: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </Field>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 mb-1"
-                        onClick={() => removeTour(group.key, tour.key)}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  ))}
+                  {group.tours.map((tour) => {
+                    const trip = adminTrips?.data.find((t) => t.id === tour.tourId);
+                    return (
+                      <Card key={tour.key} size="sm">
+                        <CardContent className="pt-5 space-y-4">
+                          <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+                            <Field>
+                              <Label className="text-xs font-semibold uppercase">Tour</Label>
+                              <HubTourSelect
+                                destinationId={hub?.destinationId ?? ''}
+                                value={tour.tourId}
+                                onChange={(tourId) => updateTour(group.key, tour.key, { tourId })}
+                                excludeIds={group.tours.map((t) => t.tourId)}
+                              />
+                              {trip && (
+                                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
+                                  <TourBadgeChip type={deriveTourBadge(trip)} />
+                                  <span>{tourPerfSummary(trip)}</span>
+                                </div>
+                              )}
+                            </Field>
+                            <Field>
+                              <Label className="text-xs font-semibold uppercase">Order</Label>
+                              <Input
+                                type="number"
+                                value={tour.displayOrder}
+                                onChange={(e) =>
+                                  updateTour(group.key, tour.key, {
+                                    displayOrder: Number(e.target.value) || 0,
+                                  })
+                                }
+                              />
+                            </Field>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 mb-1"
+                              onClick={() => removeTour(group.key, tour.key)}
+                            >
+                              <Trash2Icon />
+                            </Button>
+                          </div>
+
+                          <RationaleTranslationTabs
+                            label="Standout Note"
+                            values={tour.standouts}
+                            onChange={(locale, value) =>
+                              updateStandout(group.key, tour.key, locale, value)
+                            }
+                            placeholder={(loc) =>
+                              loc === DEFAULT_LOCALE
+                                ? 'What stands out about this tour'
+                                : 'Translated standout note (optional)'
+                            }
+                          />
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                   <Button type="button" variant="outline" size="xs" onClick={() => addTour(group.key)}>
                     <PlusIcon />
                     Add Tour Column
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </CollapsibleContent>
+            </Collapsible>
+            );
+          })}
         </div>
       )}
 

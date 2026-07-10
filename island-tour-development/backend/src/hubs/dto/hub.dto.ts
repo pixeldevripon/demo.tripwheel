@@ -231,6 +231,29 @@ export class SetOurPicksResponseDto {
   @ApiProperty({ type: [HubOurPickItemDto] }) ourPicks!: HubOurPickItemDto[];
 }
 
+export class OurPickTranslationItemDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'De beste boot - comfort wint.' })
+  description!: string;
+}
+
+/** Admin read-back for the Our Picks editor (base blurb + all translations). */
+export class HubOurPickForEditDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  tourId!: string;
+  @ApiProperty({ example: 'Klein Curacao Catamaran' }) tourName!: string;
+  @ApiProperty({ enum: HubPickType, example: HubPickType.BEST_OVERALL })
+  pickType!: HubPickType;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({
+    example: "We've been on every boat - this one wins on comfort.",
+  })
+  description!: string;
+  @ApiProperty({ type: [OurPickTranslationItemDto] })
+  translations!: OurPickTranslationItemDto[];
+}
+
 // ── Comparison ──────────────────────────────────────────────────────────────
 
 export class ComparisonTourItemDto {
@@ -352,6 +375,23 @@ export class HubRenderResponseDto {
   @ApiProperty({ type: [HubOurPickItemDto] }) ourPicks!: HubOurPickItemDto[];
   @ApiProperty({ type: [ComparisonGroupItemDto] })
   comparisonGroups!: ComparisonGroupItemDto[];
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Discover section intro/subtitle (first EDITORIAL content section body for the locale). null when unset - frontend falls back to a static string.',
+  })
+  discoverIntro!: string | null;
+  @ApiProperty({
+    type: [String],
+    example: [
+      'Sells out weeks ahead',
+      'No phone signal',
+      'Bring reef-safe sunscreen',
+    ],
+    description:
+      'First-timer green-check takeaways (HIGHLIGHT content-section bodies, in order).',
+  })
+  highlights!: string[];
   @ApiProperty({ type: [HubContentSectionItemDto] })
   discover!: HubContentSectionItemDto[];
   @ApiProperty({ type: [HubContentSectionItemDto] })
@@ -881,10 +921,11 @@ export class HubOurPickInputDto {
 export class SetOurPicksDto {
   @ApiProperty({
     type: [HubOurPickInputDto],
-    description: 'Full replacement set of Our Pick selections (typically 3).',
+    description:
+      'Full replacement set of Our Pick selections. Master caps this at 3 (Best overall / Most popular / Best for families).',
   })
   @IsArray()
-  @ArrayMaxSize(4)
+  @ArrayMaxSize(3)
   @ValidateNested({ each: true })
   @Type(() => HubOurPickInputDto)
   picks!: HubOurPickInputDto[];
@@ -990,4 +1031,39 @@ export class SetComparisonDto {
   @ValidateNested({ each: true })
   @Type(() => ComparisonGroupInputDto)
   groups!: ComparisonGroupInputDto[];
+}
+
+// ── Comparison (admin all-locale read-back for the editor) ────────────────────
+
+export class ComparisonGroupNameTranslationItemDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'Comforttrips' }) groupName!: string;
+}
+
+export class ComparisonStandoutTranslationItemDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'Duikschool, massage met uitzicht' })
+  standoutNote!: string;
+}
+
+export class ComparisonTourForEditDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  tourId!: string;
+  @ApiProperty({ example: 'Klein Curaçao Deluxe Catamaran' }) tourName!: string;
+  @ApiProperty({ example: 'Dive school, massage with a view', nullable: true })
+  standoutNote!: string | null;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ type: [ComparisonStandoutTranslationItemDto] })
+  translations!: ComparisonStandoutTranslationItemDto[];
+}
+
+export class ComparisonGroupForEditDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: 'Comfort trips' }) groupName!: string;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ type: [ComparisonGroupNameTranslationItemDto] })
+  translations!: ComparisonGroupNameTranslationItemDto[];
+  @ApiProperty({ type: [ComparisonTourForEditDto] })
+  tours!: ComparisonTourForEditDto[];
 }

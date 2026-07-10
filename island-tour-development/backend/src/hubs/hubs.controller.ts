@@ -397,6 +397,12 @@ export class HubController {
     return this.hubService.getOurPicks(id, query.locale ?? Locale.en);
   }
 
+  @Get(':id/our-picks/edit')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  getOurPicksForEdit(@Param('id') id: string) {
+    return this.hubService.getOurPicksForEdit(id);
+  }
+
   @Put(':id/our-picks')
   @RequirePermissions(Permission.MANAGE_HUBS)
   setOurPicks(
@@ -413,6 +419,12 @@ export class HubController {
   @Public()
   getComparison(@Param('id') id: string, @Query() query: LocaleQueryDto) {
     return this.hubService.getComparison(id, query.locale ?? Locale.en);
+  }
+
+  @Get(':id/comparison/edit')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  getComparisonForEdit(@Param('id') id: string) {
+    return this.hubService.getComparisonForEdit(id);
   }
 
   @Put(':id/comparison')

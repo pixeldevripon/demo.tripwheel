@@ -5,20 +5,18 @@ import { toast } from 'sonner';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   ListOrderedIcon,
   PlusIcon,
   Trash2Icon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TourBadgeChip } from '@/components/frontend/tour-badge';
-import { deriveTourBadge } from '@/lib/tours/listing';
+import { RationaleTranslationTabs } from '@/components/dashboard/rationale-translation-tabs';
+import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
 import {
   useCollection,
   useCollectionResolvedTours,
@@ -30,10 +28,9 @@ import { useAdminTrips } from '@/hooks/trips/use-trips';
 import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import type { CollectionRenderTour, CollectionTourForEdit } from '@/types/collection';
 import type { TripListItem } from '@/types/trip';
-import { CollectionTourSelect, tourPerfSummary } from './collection-tour-select';
+import { CollectionTourSelect } from './collection-tour-select';
 
 const RATIONALE_MAX_WORDS = 20;
-const TRANSLATION_LOCALES = ALL_LOCALES.filter((l) => l !== 'en') as Locale[];
 
 function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -80,7 +77,6 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
   );
 
   const [rows, setRows] = useState<DraftRow[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Seed from the read-back (order + every locale's rationale), reference-guarded
   // so a refetch after save reseeds without an effect (repo lints setState-in-effect).
@@ -117,15 +113,6 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
       return next;
     });
   }
-  function toggleExpanded(key: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   async function handleSave() {
     if (rows.length === 0) {
       toast.error('Add at least one tour.');
@@ -205,12 +192,6 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
       ) : (
         <div className="space-y-3">
           {rows.map((row, index) => {
-            const enWords = wordCount(row.rationales.en ?? '');
-            const enOver = enWords > RATIONALE_MAX_WORDS;
-            const isOpen = expanded.has(row.key);
-            const translatedCount = TRANSLATION_LOCALES.filter((l) =>
-              (row.rationales[l] ?? '').trim()
-            ).length;
             const trip = row.tourId ? tripById.get(row.tourId) : undefined;
             return (
               <Card key={row.key} size="sm">
@@ -259,70 +240,17 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                         )}
                       </Field>
 
-                      <Field>
-                        <Label className="text-xs font-semibold uppercase">Rationale (English)</Label>
-                        <Textarea
-                          value={row.rationales.en ?? ''}
-                          onChange={(e) => updateRationale(row.key, 'en', e.target.value)}
-                          rows={2}
-                          placeholder="Why this tour belongs in the collection"
-                        />
-                        <span
-                          className={`text-xs ${enOver ? 'text-destructive' : 'text-muted-foreground'}`}
-                        >
-                          {enWords}/{RATIONALE_MAX_WORDS} words
-                        </span>
-                      </Field>
-
-                      {/* Per-tour rationale translations (the other 6 locales). */}
-                      <div className="rounded-md border border-border">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(row.key)}
-                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/50"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            {isOpen ? (
-                              <ChevronDownIcon className="size-3.5" />
-                            ) : (
-                              <ChevronRightIcon className="size-3.5" />
-                            )}
-                            Rationale translations
-                          </span>
-                          <span className="tabular-nums normal-case">
-                            {translatedCount}/{TRANSLATION_LOCALES.length} translated
-                          </span>
-                        </button>
-
-                        {isOpen && (
-                          <div className="space-y-4 border-t border-border p-3">
-                            {TRANSLATION_LOCALES.map((locale) => {
-                              const words = wordCount(row.rationales[locale] ?? '');
-                              const over = words > RATIONALE_MAX_WORDS;
-                              return (
-                                <Field key={locale}>
-                                  <Label className="text-xs font-semibold uppercase">
-                                    {LOCALE_LABELS[locale]}
-                                  </Label>
-                                  <Textarea
-                                    value={row.rationales[locale] ?? ''}
-                                    onChange={(e) =>
-                                      updateRationale(row.key, locale, e.target.value)
-                                    }
-                                    rows={2}
-                                    placeholder={`Rationale in ${LOCALE_LABELS[locale]} (optional)`}
-                                  />
-                                  <span
-                                    className={`text-xs ${over ? 'text-destructive' : 'text-muted-foreground'}`}
-                                  >
-                                    {words}/{RATIONALE_MAX_WORDS} words
-                                  </span>
-                                </Field>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                      <RationaleTranslationTabs
+                        label="Rationale"
+                        values={row.rationales}
+                        onChange={(locale, value) => updateRationale(row.key, locale, value)}
+                        maxWords={RATIONALE_MAX_WORDS}
+                        placeholder={(loc) =>
+                          loc === 'en'
+                            ? 'Why this tour belongs in the collection'
+                            : `Rationale in ${LOCALE_LABELS[loc]} (optional)`
+                        }
+                      />
                     </div>
 
                     <Button

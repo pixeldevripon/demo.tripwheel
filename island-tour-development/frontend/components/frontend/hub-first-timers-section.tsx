@@ -24,9 +24,10 @@ export type HubFirstTimersDict = {
  * mobile and spread (space-between) on desktop; the takeaway->divider gap is
  * 24/40 and the inter-tip gap is 24/32.
  *
- * Pure + data-driven: owns no state. `highlights` + `tips` are placeholder
- * editorial copy until the hub content API is wired (mirroring the MOCK
- * convention on the rest of the hub page); the title comes from the dictionary.
+ * Pure + data-driven: owns no state. `highlights` (HIGHLIGHT content sections)
+ * and `tips` (LOCAL_TIP content sections) come from the hub render payload
+ * (dashboard-managed, per-locale); the title comes from the dictionary. The
+ * green-check takeaways row is hidden when a hub has no highlights.
  */
 export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
     return (
@@ -40,31 +41,34 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                             {dict.title}
                         </h2>
 
-                        {/* Takeaways stacked (mobile) / spread (desktop) + divider */}
-                        <div className='flex flex-col gap-6 md:gap-10'>
-                            <ul className='m-0 flex list-none flex-col gap-2 p-0 md:flex-row md:justify-between md:gap-2'>
-                                {dict.highlights.map((highlight) => (
-                                    <li
-                                        key={highlight}
-                                        className='flex items-center gap-2'>
-                                        <Image
-                                            src='/icons/check-green.svg'
-                                            alt=''
-                                            width={24}
-                                            height={24}
-                                            className='size-6 shrink-0'
-                                        />
-                                        <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {highlight}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div
-                                className='h-px w-full bg-it-border-subtle'
-                                aria-hidden='true'
-                            />
-                        </div>
+                        {/* Takeaways stacked (mobile) / spread (desktop) + divider.
+                            Hidden when the hub has no HIGHLIGHT sections. */}
+                        {dict.highlights.length > 0 && (
+                            <div className='flex flex-col gap-6 md:gap-10'>
+                                <ul className='m-0 flex list-none flex-col gap-2 p-0 md:flex-row md:flex-wrap md:justify-between md:gap-x-6 md:gap-y-3'>
+                                    {dict.highlights.map((highlight) => (
+                                        <li
+                                            key={highlight}
+                                            className='flex items-center gap-2'>
+                                            <Image
+                                                src='/icons/check-green.svg'
+                                                alt=''
+                                                width={24}
+                                                height={24}
+                                                className='size-6 shrink-0'
+                                            />
+                                            <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                {highlight}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div
+                                    className='h-px w-full bg-it-border-subtle'
+                                    aria-hidden='true'
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Tips - title + orange-ruled body */}

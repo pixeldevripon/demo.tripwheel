@@ -570,7 +570,7 @@ export async function HubPage({
             <HubFirstTimersSection
                 dict={{
                     title: firstTimersTitle,
-                    highlights: [],
+                    highlights: render.highlights,
                     tips: render.localTips.map(sectionToTip),
                 }}
             />
@@ -723,9 +723,11 @@ async function HubTripsData({
             <HubDiscoverSection
                 key='discover'
                 items={discoverItems}
+                bookTripTargetId='hub-section-trips'
                 dict={{
                     title: discoverTitle,
-                    subtitle: discoverDict.subtitle,
+                    // Per-hub editorial intro (dashboard) with the static string as fallback.
+                    subtitle: render.discoverIntro ?? discoverDict.subtitle,
                     bookTrip: discoverDict.bookTrip,
                     learnMore: dict.destination.about.learnMore,
                     readLess: dict.destination.about.readLess,

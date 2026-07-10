@@ -33,6 +33,31 @@ export function deriveTourBadge(t: {
   return null;
 }
 
+/**
+ * "★ 4.8 (1,738) · 42 booked · From $120" - the performance signals an admin picks
+ * on. Shared by the Collection, Our Picks and Comparison tour selectors so every
+ * dashboard picker surfaces the same aggregated numbers, not just the tour name.
+ */
+export function tourPerfSummary(t: {
+  aggregateRating?: number | null;
+  aggregateReviewCount?: number;
+  bookingCount?: number;
+  priceFrom?: number | string | null;
+  basePrice?: number | string | null;
+}): string {
+  const parts: string[] = [];
+  const reviews = t.aggregateReviewCount ?? 0;
+  if (reviews > 0) {
+    parts.push(`★ ${t.aggregateRating ?? '-'} (${reviews.toLocaleString()})`);
+  } else {
+    parts.push('No reviews yet');
+  }
+  parts.push(`${(t.bookingCount ?? 0).toLocaleString()} booked`);
+  const price = Math.round(Number(t.priceFrom ?? t.basePrice ?? 0));
+  if (Number.isFinite(price) && price > 0) parts.push(`From $${price}`);
+  return parts.join(' · ');
+}
+
 /** Duration label strings (from the `search` dictionary section). */
 export type DurationDict = {
   hours: string;

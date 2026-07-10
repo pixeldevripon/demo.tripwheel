@@ -36,20 +36,27 @@ export const HUB_STATUS_LABELS: Record<HubStatus, string> = {
 
 // Hub editorial content blocks (HUB-DATA §5). DISCOVER + LOCAL_TIP (en) are
 // required for PUBLISHED; FAST_FACT feeds the hero bar.
-export type HubSectionType = 'DISCOVER' | 'LOCAL_TIP' | 'FAST_FACT' | 'EDITORIAL';
+export type HubSectionType =
+  | 'DISCOVER'
+  | 'LOCAL_TIP'
+  | 'FAST_FACT'
+  | 'EDITORIAL'
+  | 'HIGHLIGHT';
 
 export const HUB_SECTION_TYPE_VALUES: HubSectionType[] = [
   'DISCOVER',
   'LOCAL_TIP',
   'FAST_FACT',
   'EDITORIAL',
+  'HIGHLIGHT',
 ];
 
 export const HUB_SECTION_TYPE_LABELS: Record<HubSectionType, string> = {
   DISCOVER: 'Discover',
   LOCAL_TIP: 'Local Tip',
   FAST_FACT: 'Fast Fact',
-  EDITORIAL: 'Editorial',
+  EDITORIAL: 'Discover Intro',
+  HIGHLIGHT: 'First-timer Highlight',
 };
 
 // Our Picks classification.

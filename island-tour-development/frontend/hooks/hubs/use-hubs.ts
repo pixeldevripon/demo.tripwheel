@@ -31,7 +31,9 @@ export const hubKeys = {
   contentSections: (id: string, locale?: Locale) =>
     [...hubKeys.all, 'content-sections', id, locale] as const,
   ourPicks: (id: string, locale?: Locale) => [...hubKeys.all, 'our-picks', id, locale] as const,
+  ourPicksEdit: (id: string) => [...hubKeys.all, 'our-picks-edit', id] as const,
   comparison: (id: string, locale?: Locale) => [...hubKeys.all, 'comparison', id, locale] as const,
+  comparisonEdit: (id: string) => [...hubKeys.all, 'comparison-edit', id] as const,
 };
 
 export function useHubs(params: HubsQueryParams = {}) {
@@ -293,6 +295,15 @@ export function useHubOurPicks(id: string, locale?: Locale) {
   });
 }
 
+/** All-locale read-back for the Our Picks editor tabs. */
+export function useHubOurPicksForEdit(id: string) {
+  return useQuery({
+    queryKey: hubKeys.ourPicksEdit(id),
+    queryFn: () => hubsApi.getOurPicksForEdit(id),
+    enabled: !!id,
+  });
+}
+
 export function useSetHubOurPicks() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -300,6 +311,7 @@ export function useSetHubOurPicks() {
       hubsApi.setOurPicks(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: hubKeys.ourPicks(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicksEdit(variables.id) });
     },
   });
 }
@@ -314,6 +326,15 @@ export function useHubComparison(id: string, locale?: Locale) {
   });
 }
 
+/** All-locale read-back for the comparison editor tabs. */
+export function useHubComparisonForEdit(id: string) {
+  return useQuery({
+    queryKey: hubKeys.comparisonEdit(id),
+    queryFn: () => hubsApi.getComparisonForEdit(id),
+    enabled: !!id,
+  });
+}
+
 export function useSetHubComparison() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -321,6 +342,7 @@ export function useSetHubComparison() {
       hubsApi.setComparison(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
     },
   });
 }

@@ -17,9 +17,11 @@ import type {
   ReplaceContentSectionsPayload,
   ReplaceContentSectionsResponse,
   HubOurPick,
+  HubOurPickForEdit,
   SetOurPicksPayload,
   SetOurPicksResponse,
   ComparisonGroupItem,
+  ComparisonGroupForEdit,
   SetComparisonPayload,
   SetComparisonResponse,
   Locale,
@@ -176,6 +178,11 @@ export const hubsApi = {
     return apiFetch<SetOurPicksResponse>(`/hubs/${id}/our-picks${query}`);
   },
 
+  /** Admin read-back with every locale's blurb (for the Our Picks editor tabs). */
+  getOurPicksForEdit(id: string): Promise<HubOurPickForEdit[]> {
+    return apiFetch<HubOurPickForEdit[]>(`/hubs/${id}/our-picks/edit`);
+  },
+
   setOurPicks(id: string, payload: SetOurPicksPayload): Promise<SetOurPicksResponse> {
     return apiFetch<SetOurPicksResponse>(`/hubs/${id}/our-picks`, {
       method: 'PUT',
@@ -187,6 +194,11 @@ export const hubsApi = {
   getComparison(id: string, locale?: Locale): Promise<SetComparisonResponse> {
     const query = buildQuery({ locale: locale ?? undefined });
     return apiFetch<SetComparisonResponse>(`/hubs/${id}/comparison${query}`);
+  },
+
+  /** Admin read-back with every locale's standout note (for the comparison editor tabs). */
+  getComparisonForEdit(id: string): Promise<ComparisonGroupForEdit[]> {
+    return apiFetch<ComparisonGroupForEdit[]>(`/hubs/${id}/comparison/edit`);
   },
 
   setComparison(id: string, payload: SetComparisonPayload): Promise<SetComparisonResponse> {

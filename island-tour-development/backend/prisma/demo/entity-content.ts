@@ -479,6 +479,24 @@ export async function seedEntityContent(): Promise<void> {
             body: t.body,
             order: i,
           })),
+          // Discover Intro (EDITORIAL) -> the Discover section subtitle.
+          {
+            type: HubSectionType.EDITORIAL,
+            heading: 'Discover intro',
+            body: 'A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.',
+            order: 0,
+          },
+          // First-timer Highlights (HIGHLIGHT) -> green-check takeaways row (Figma).
+          ...[
+            'Take water shoes',
+            'The open bar opens after arrival',
+            'There is no phone signal',
+          ].map((body, i) => ({
+            type: HubSectionType.HIGHLIGHT,
+            heading: 'Highlight',
+            body,
+            order: i,
+          })),
         ]
       : [
           {
@@ -507,6 +525,24 @@ export async function seedEntityContent(): Promise<void> {
             body: 'Uninhabited · No shade beyond the boat awnings · Lunch is included on full-day trips.',
             order: 0,
           },
+          // Discover Intro (EDITORIAL) -> the Discover section subtitle.
+          {
+            type: HubSectionType.EDITORIAL,
+            heading: 'Discover intro',
+            body: `Everything worth knowing about ${h.name} before you go, from the crossing to what to pack.`,
+            order: 0,
+          },
+          // First-timer Highlights (HIGHLIGHT) -> green-check takeaways row.
+          ...[
+            'Book ahead in high season',
+            'Bring reef-safe sunscreen',
+            'Earliest departures are calmest',
+          ].map((body, i) => ({
+            type: HubSectionType.HIGHLIGHT,
+            heading: 'Highlight',
+            body,
+            order: i,
+          })),
         ];
     const sectionRows: Prisma.HubContentSectionCreateManyInput[] = [];
     for (const s of sections) {

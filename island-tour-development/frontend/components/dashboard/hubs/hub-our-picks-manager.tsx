@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { PlusIcon, StarIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,17 +16,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useHub, useHubOurPicks, useSetHubOurPicks } from '@/hooks/hubs/use-hubs';
+import { TourBadgeChip } from '@/components/frontend/tour-badge';
+import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
+import { useHub, useHubOurPicksForEdit, useSetHubOurPicks } from '@/hooks/hubs/use-hubs';
+import { useAdminTrips } from '@/hooks/trips/use-trips';
+import { ALL_LOCALES, DEFAULT_LOCALE, type Locale } from '@/lib/constants/locales';
 import { HUB_PICK_TYPE_LABELS, HUB_PICK_TYPE_VALUES, type HubPickType } from '@/types/enums';
+import { RationaleTranslationTabs } from '@/components/dashboard/rationale-translation-tabs';
 import { HubTourSelect } from './hub-tour-select';
 
-const MAX_PICKS = 4;
+// Master caps Our Picks at 3 (Best overall / Most popular / Best for families).
+const MAX_PICKS = 3;
 
 interface DraftPick {
   key: string;
   tourId: string;
   pickType: HubPickType;
-  description: string;
+  /** Rationale per locale (English is the base, required for publish). */
+  rationales: Record<string, string>;
   displayOrder: number;
 }
 
@@ -43,28 +49,44 @@ interface HubOurPicksManagerProps {
 
 export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
   const { data: hub } = useHub(hubId, 'en');
-  const { data, isLoading } = useHubOurPicks(hubId, 'en');
+  const { data, isLoading } = useHubOurPicksForEdit(hubId);
   const { mutate: save, isPending } = useSetHubOurPicks();
+  // Shared with HubTourSelect (same query key → one fetch) so a selected pick can
+  // show its aggregated performance strip below the picker.
+  const { data: adminTrips } = useAdminTrips({ limit: 200 }, !!hub?.destinationId);
 
   const [rows, setRows] = useState<DraftPick[]>([]);
 
-  // Seed local edit state from the loaded picks (render-time, reference-guarded).
+  // Seed local edit state from the read-back (base blurb + every locale),
+  // reference-guarded (render-time setState per repo convention).
   const [seededFrom, setSeededFrom] = useState<typeof data>(undefined);
   if (data && data !== seededFrom) {
     setSeededFrom(data);
     setRows(
-      data.ourPicks.map((p) => ({
-        key: nextKey(),
-        tourId: p.tour.id,
-        pickType: p.pickType,
-        description: p.description,
-        displayOrder: p.displayOrder,
-      }))
+      data.map((p) => {
+        const rationales: Record<string, string> = { [DEFAULT_LOCALE]: p.description };
+        for (const t of p.translations) rationales[t.locale] = t.description;
+        return {
+          key: nextKey(),
+          tourId: p.tourId,
+          pickType: p.pickType,
+          rationales,
+          displayOrder: p.displayOrder,
+        };
+      })
     );
   }
 
   function updateRow(key: string, patch: Partial<DraftPick>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function updateRationale(key: string, locale: Locale, value: string) {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.key === key ? { ...r, rationales: { ...r.rationales, [locale]: value } } : r
+      )
+    );
   }
 
   function removeRow(key: string) {
@@ -79,7 +101,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
         key: nextKey(),
         tourId: '',
         pickType: 'BEST_OVERALL',
-        description: '',
+        rationales: {},
         displayOrder: prev.length,
       },
     ]);
@@ -90,8 +112,8 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
       toast.error('Every pick needs a tour selected.');
       return;
     }
-    if (rows.some((r) => !r.description.trim())) {
-      toast.error('Every pick needs a description.');
+    if (rows.some((r) => !(r.rationales[DEFAULT_LOCALE] ?? '').trim())) {
+      toast.error('Every pick needs an English rationale.');
       return;
     }
     save(
@@ -101,8 +123,11 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
           picks: rows.map((r) => ({
             tourId: r.tourId,
             pickType: r.pickType,
-            description: r.description.trim(),
+            description: r.rationales[DEFAULT_LOCALE].trim(),
             displayOrder: r.displayOrder,
+            translations: ALL_LOCALES.filter(
+              (l) => l !== DEFAULT_LOCALE && (r.rationales[l] ?? '').trim()
+            ).map((l) => ({ locale: l, description: r.rationales[l].trim() })),
           })),
         },
       },
@@ -127,9 +152,9 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-        Up to {MAX_PICKS} editorial &quot;Our Pick&quot; tours for this hub. Descriptions are the
-        base English blurb; per-locale translations are managed via the API and are not editable
-        here. Saving replaces the full set.
+        Up to {MAX_PICKS} editorial &quot;Our Pick&quot; tours for this hub (Best overall / Most
+        popular / Best for families). The English rationale is required; switch locale tabs to
+        translate it (blank locales fall back to English on the page). Saving replaces the full set.
       </div>
 
       <div className="flex items-center justify-end">
@@ -147,7 +172,9 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {rows.map((row) => (
+          {rows.map((row) => {
+            const trip = adminTrips?.data.find((t) => t.id === row.tourId);
+            return (
             <Card key={row.key} size="sm">
               <CardContent className="pt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -159,6 +186,12 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                       onChange={(tourId) => updateRow(row.key, { tourId })}
                       excludeIds={rows.map((r) => r.tourId)}
                     />
+                    {trip && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
+                        <TourBadgeChip type={deriveTourBadge(trip)} />
+                        <span>{tourPerfSummary(trip)}</span>
+                      </div>
+                    )}
                   </Field>
                   <Field>
                     <Label className="text-xs font-semibold uppercase">Pick Type</Label>
@@ -180,15 +213,16 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                   </Field>
                 </div>
 
-                <Field>
-                  <Label className="text-xs font-semibold uppercase">Description (English)</Label>
-                  <Textarea
-                    value={row.description}
-                    onChange={(e) => updateRow(row.key, { description: e.target.value })}
-                    rows={2}
-                    placeholder="Why this tour is a pick"
-                  />
-                </Field>
+                <RationaleTranslationTabs
+                  label="Rationale"
+                  values={row.rationales}
+                  onChange={(locale, value) => updateRationale(row.key, locale, value)}
+                  placeholder={(loc) =>
+                    loc === DEFAULT_LOCALE
+                      ? 'Why this tour is a pick'
+                      : 'Translated rationale (optional)'
+                  }
+                />
 
                 <div className="flex items-end justify-between gap-4">
                   <Field className="w-32">
@@ -214,7 +248,8 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

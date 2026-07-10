@@ -445,6 +445,7 @@ enum HubSectionType {
   LOCAL_TIP
   FAST_FACT
   EDITORIAL
+  HIGHLIGHT
 }
 
 // Supported currencies (ISO 4217). Launch set: Caribbean island currencies + major

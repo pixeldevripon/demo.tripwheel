@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { HubDiscoverCard, type HubDiscoverItem } from './hub-discover-card';
+import { HubScrollButton } from './hub-scroll-button';
 import { Reveal } from './reveal';
 
 /**
@@ -46,11 +47,14 @@ const FULL_BLEED = 'w-screen ml-[calc(50%-50vw)]';
 export function HubDiscoverSection({
     items,
     bannerImage,
+    bookTripTargetId = 'hub-section-trips',
     dict,
 }: {
     items: HubDiscoverItem[];
     /** Full-bleed banner photo - falls back to a neutral placeholder. */
     bannerImage?: string | null;
+    /** On-page element id the "Book your trip" CTA smooth-scrolls to. */
+    bookTripTargetId?: string;
     dict: HubDiscoverDict;
 }) {
     return (
@@ -107,11 +111,11 @@ export function HubDiscoverSection({
                 {/* "Book your trip" - outlined orange pill. Full-width on mobile
                     (h-46, 40px sides), hugged + centered on desktop (h-48). */}
                 <Reveal className='flex md:justify-center'>
-                    <button
-                        type='button'
-                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
+                    <HubScrollButton
+                        targetId={bookTripTargetId}
+                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
                         {dict.bookTrip}
-                    </button>
+                    </HubScrollButton>
                 </Reveal>
             </div>
         </div>

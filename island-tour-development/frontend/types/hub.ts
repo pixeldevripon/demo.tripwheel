@@ -212,11 +212,29 @@ export interface HubOurPick {
   tour: OurPickTourSummary;
 }
 
+export interface OurPickTranslationInput {
+  locale: Locale;
+  description: string;
+}
+
 export interface HubOurPickInput {
   tourId: string;
   pickType: HubPickType;
   description: string;
   displayOrder?: number;
+  /** Per-locale blurb translations (non-en); en lives in `description`. */
+  translations?: OurPickTranslationInput[];
+}
+
+/** Admin read-back for the Our Picks editor: base blurb + all stored translations. */
+export interface HubOurPickForEdit {
+  id: string;
+  tourId: string;
+  tourName: string;
+  pickType: HubPickType;
+  displayOrder: number;
+  description: string;
+  translations: { locale: Locale; description: string }[];
 }
 
 export interface SetOurPicksPayload {
@@ -247,15 +265,27 @@ export interface ComparisonGroupItem {
   tours: ComparisonTourItem[];
 }
 
+export interface ComparisonStandoutTranslationInput {
+  locale: Locale;
+  standoutNote: string;
+}
+
+export interface ComparisonGroupNameTranslationInput {
+  locale: Locale;
+  groupName: string;
+}
+
 export interface ComparisonTourInput {
   tourId: string;
   standoutNote?: string;
   displayOrder?: number;
+  translations?: ComparisonStandoutTranslationInput[];
 }
 
 export interface ComparisonGroupInput {
   groupName: string;
   displayOrder?: number;
+  translations?: ComparisonGroupNameTranslationInput[];
   tours: ComparisonTourInput[];
 }
 
@@ -266,6 +296,24 @@ export interface SetComparisonPayload {
 export interface SetComparisonResponse {
   count: number;
   groups: ComparisonGroupItem[];
+}
+
+// Admin all-locale read-back for the comparison editor tabs.
+export interface ComparisonTourForEdit {
+  id: string;
+  tourId: string;
+  tourName: string;
+  standoutNote: string | null;
+  displayOrder: number;
+  translations: ComparisonStandoutTranslationInput[];
+}
+
+export interface ComparisonGroupForEdit {
+  id: string;
+  groupName: string;
+  displayOrder: number;
+  translations: ComparisonGroupNameTranslationInput[];
+  tours: ComparisonTourForEdit[];
 }
 
 // ── Public render payload (GET /hubs/render/:slug) ─────────────────────────────
@@ -355,6 +403,10 @@ export interface HubRender {
   breadcrumbLabel: string | null;
   hero: HubRenderHero;
   editorialLead: string | null;
+  /** Discover section intro/subtitle (EDITORIAL content section); null falls back to a static string. */
+  discoverIntro: string | null;
+  /** First-timer green-check takeaways (HIGHLIGHT content sections, in order). */
+  highlights: string[];
   ourPicks: HubRenderOurPick[];
   comparisonGroups: HubRenderComparisonGroup[];
   discover: HubRenderSection[];

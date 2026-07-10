@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { TourBadgeChip } from '@/components/frontend/tour-badge';
-import { deriveTourBadge } from '@/lib/tours/listing';
+import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
 import { useCreateCollection, useUpdateCollection } from '@/hooks/collections/use-collections';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
@@ -30,7 +30,6 @@ import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { useAttributes } from '@/hooks/attributes/use-attributes';
 import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { Collection, CollectionFilterQuery } from '@/types/collection';
-import { tourPerfSummary } from './collection-tour-select';
 import {
   COLLECTION_DISPLAY_STYLE_VALUES,
   COLLECTION_TYPE_VALUES,

@@ -1186,6 +1186,39 @@ export class HubService {
     return { count: ourPicks.length, ourPicks };
   }
 
+  /**
+   * Admin read-back for the Our Picks editor: returns each pick with its base
+   * (en) blurb plus every stored per-locale translation, so the dashboard can
+   * populate the locale tabs and round-trip all languages.
+   */
+  async getOurPicksForEdit(id: string) {
+    await this.findHubOrThrow(id);
+
+    const rows = await this.prisma.hubOurPick.findMany({
+      where: { hubId: id },
+      select: {
+        id: true,
+        tourId: true,
+        pickType: true,
+        description: true,
+        displayOrder: true,
+        translations: { select: { locale: true, description: true } },
+        tour: { select: { name: true } },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      tourId: r.tourId,
+      tourName: r.tour.name,
+      pickType: r.pickType,
+      displayOrder: r.displayOrder,
+      description: r.description,
+      translations: r.translations,
+    }));
+  }
+
   // ── Comparison ───────────────────────────────────────────────────────────────
 
   /** Replace the hub's comparison groups + tour columns, with per-locale labels/notes. */
@@ -1323,6 +1356,54 @@ export class HubService {
     });
 
     return { count: mapped.length, groups: mapped };
+  }
+
+  /**
+   * Admin read-back for the comparison editor: returns each group + tour column
+   * with its base (en) values plus every stored per-locale translation, so the
+   * dashboard can populate the standout-note locale tabs and round-trip all
+   * languages. Group-name translations are returned so they can be preserved on
+   * the replace-all save even though the editor only edits standout notes.
+   */
+  async getComparisonForEdit(id: string) {
+    await this.findHubOrThrow(id);
+
+    const groups = await this.prisma.hubComparisonGroup.findMany({
+      where: { hubId: id },
+      select: {
+        id: true,
+        groupName: true,
+        displayOrder: true,
+        translations: { select: { locale: true, groupName: true } },
+        comparisonTours: {
+          select: {
+            id: true,
+            tourId: true,
+            standoutNote: true,
+            displayOrder: true,
+            translations: { select: { locale: true, standoutNote: true } },
+            tour: { select: { name: true } },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    return groups.map((g) => ({
+      id: g.id,
+      groupName: g.groupName,
+      displayOrder: g.displayOrder,
+      translations: g.translations,
+      tours: g.comparisonTours.map((ct) => ({
+        id: ct.id,
+        tourId: ct.tourId,
+        tourName: ct.tour.name,
+        standoutNote: ct.standoutNote,
+        displayOrder: ct.displayOrder,
+        translations: ct.translations,
+      })),
+    }));
   }
 
   // ── Hero at-a-glance stats (computed, not editorial) ────────────────────────────
@@ -1532,6 +1613,17 @@ export class HubService {
     const localTips = sections.filter(
       (s) => s.sectionType === HubSectionType.LOCAL_TIP,
     );
+    // The Discover block's intro/subtitle is authored as an EDITORIAL content
+    // section (dashboard-managed + per-locale); the frontend falls back to a
+    // static string when a hub has none.
+    const discoverIntro =
+      sections.find((s) => s.sectionType === HubSectionType.EDITORIAL)?.body ??
+      null;
+    // First-timer "tick" takeaways (green-check row) - HIGHLIGHT sections, each
+    // body a single takeaway, ordered by displayOrder.
+    const highlights = sections
+      .filter((s) => s.sectionType === HubSectionType.HIGHLIGHT)
+      .map((s) => s.body);
 
     return {
       id: hub.id,
@@ -1551,6 +1643,8 @@ export class HubService {
       editorialLead,
       ourPicks: ourPicks.ourPicks,
       comparisonGroups: comparison.groups,
+      discoverIntro,
+      highlights,
       discover,
       localTips,
       faqs,

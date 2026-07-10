@@ -8,8 +8,7 @@ import {
   SelectTrigger,
 } from '@/components/ui/select';
 import { TourBadgeChip } from '@/components/frontend/tour-badge';
-import { deriveTourBadge } from '@/lib/tours/listing';
-import type { TripListItem } from '@/types/trip';
+import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
 
 interface CollectionTourSelectProps {
   destinationId: string;
@@ -19,20 +18,6 @@ interface CollectionTourSelectProps {
   excludeIds?: string[];
   disabled?: boolean;
   placeholder?: string;
-}
-
-/** "★4.8 (1,738) · 42 booked · From $120" — the performance signals an admin picks on. */
-export function tourPerfSummary(t: TripListItem): string {
-  const parts: string[] = [];
-  if (t.aggregateReviewCount > 0) {
-    parts.push(`★ ${t.aggregateRating ?? '-'} (${t.aggregateReviewCount.toLocaleString()})`);
-  } else {
-    parts.push('No reviews yet');
-  }
-  parts.push(`${t.bookingCount.toLocaleString()} booked`);
-  const price = Math.round(Number(t.priceFrom ?? t.basePrice ?? 0));
-  if (Number.isFinite(price) && price > 0) parts.push(`From $${price}`);
-  return parts.join(' · ');
 }
 
 /**

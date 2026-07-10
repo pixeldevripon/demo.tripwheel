@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
@@ -40,10 +41,8 @@ import {
   useUpdateFaqGroup,
   useUpsertFaqTranslation,
 } from '@/hooks/faq/use-faq-groups';
-import { ALL_LOCALES, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
+import { ALL_LOCALES, DEFAULT_LOCALE, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import type { FaqGroup } from '@/types/faq';
-
-const NON_EN_LOCALES = ALL_LOCALES.filter((l) => l !== 'en') as Locale[];
 
 // Backend enforces question >= 5 and answer >= 10 characters.
 const faqContentSchema = z.object({
@@ -251,33 +250,36 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                 </div>
               </div>
 
-              {/* English base first, then translations */}
-              <FaqLocaleEditor
-                basePath={basePath}
-                entityId={entityId}
-                groupId={group.faqGroupId}
-                locale={'en' as Locale}
-                isBase
-                existing={en ? { question: en.question, answer: en.answer } : undefined}
-              />
-              <div className="space-y-6">
-                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                  Translations
-                </p>
-                {NON_EN_LOCALES.map((locale) => {
+              {/* English base + translations - same tabbed UI as the
+                  Translations / Page Content tabs. */}
+              <Tabs defaultValue={DEFAULT_LOCALE}>
+                <div className="pb-2 mb-4">
+                  <TabsList>
+                    {ALL_LOCALES.map((locale) => (
+                      <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
+                        <span className="sm:hidden uppercase">{locale}</span>
+                        <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+
+                {ALL_LOCALES.map((locale) => {
                   const t = byLocale.get(locale);
                   return (
-                    <FaqLocaleEditor
-                      key={locale}
-                      basePath={basePath}
-                      entityId={entityId}
-                      groupId={group.faqGroupId}
-                      locale={locale}
-                      existing={t ? { question: t.question, answer: t.answer } : undefined}
-                    />
+                    <TabsContent key={locale} value={locale}>
+                      <FaqLocaleEditor
+                        basePath={basePath}
+                        entityId={entityId}
+                        groupId={group.faqGroupId}
+                        locale={locale}
+                        isBase={locale === DEFAULT_LOCALE}
+                        existing={t ? { question: t.question, answer: t.answer } : undefined}
+                      />
+                    </TabsContent>
                   );
                 })}
-              </div>
+              </Tabs>
             </div>
           )}
         </CardContent>
