@@ -634,6 +634,36 @@ const ATTRIBUTE_DEFS: AttrSeed[] = [
     dataType: AttributeDataType.BOOLEAN,
     appliesToCategories: ['boat-tours'],
   },
+  // Hub comparison-table inputs (curated boat-tour compare template - see
+  // HubService.COMPARISON_TEMPLATE). Not surfaced as filters.
+  {
+    key: 'island_facilities',
+    displayName: 'On the island',
+    dataType: AttributeDataType.ENUM_MULTI,
+    allowedValues: [
+      'Beach house',
+      'Beds',
+      'Shower',
+      'WC',
+      'Palapas',
+      'On board WC',
+      'Sun beds',
+      'Shade',
+    ],
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'crossing_time',
+    displayName: 'Crossing',
+    dataType: AttributeDataType.TEXT,
+    appliesToCategories: ['boat-tours'],
+  },
+  {
+    key: 'boat_name',
+    displayName: 'Boat Name',
+    dataType: AttributeDataType.TEXT,
+    appliesToCategories: ['boat-tours'],
+  },
   // Snorkeling
   {
     key: 'snorkeling_equipment_included',

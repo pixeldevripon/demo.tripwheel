@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
+
+import { useWishlist } from '@/components/frontend/wishlist-provider';
 
 export type HubTourBadge = 'sponsored' | 'mostPopular' | 'likelyToSellOut' | null;
 
@@ -57,7 +59,8 @@ export function HubTourCard({
     tour: HubTour;
     dict: HubTourCardDict;
 }) {
-    const [saved, setSaved] = useState(false);
+    const { isSaved, toggle } = useWishlist();
+    const saved = isSaved(tour.id);
     const badgeLabel =
         tour.badge &&
         {
@@ -96,7 +99,7 @@ export function HubTourCard({
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setSaved((v) => !v);
+                            toggle(tour.id);
                         }}
                         aria-label={dict.save}
                         aria-pressed={saved}

@@ -205,6 +205,13 @@ export class OurPickTourSummaryDto {
   @ApiPropertyOptional({ nullable: true, example: 540 })
   durationMinutesTo!: number | null;
   @ApiProperty({ example: 0 }) bookingCount!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'yacht',
+    description:
+      'boat_type attribute value (for the pick card); null if unset.',
+  })
+  boatType?: string | null;
 }
 
 export class HubOurPickItemDto {
@@ -254,9 +261,12 @@ export class ComparisonCellDto {
 }
 
 export class ComparisonRowDto {
-  @ApiProperty({ example: 'boat_type' }) key!: string;
-  @ApiProperty({ example: 'Boat type' }) label!: string;
-  @ApiProperty({ enum: AttributeDataType, example: AttributeDataType.ENUM })
+  @ApiProperty({ example: 'boat_and_group' }) key!: string;
+  @ApiProperty({ example: 'Boat & group' }) label!: string;
+  @ApiProperty({
+    enum: AttributeDataType,
+    example: AttributeDataType.ENUM_MULTI,
+  })
   dataType!: AttributeDataType;
   @ApiProperty({
     type: [ComparisonCellDto],
@@ -273,7 +283,8 @@ export class ComparisonGroupItemDto {
   tours!: ComparisonTourItemDto[];
   @ApiProperty({
     type: [ComparisonRowDto],
-    description: 'Auto-derived attribute rows (frozen first column = label).',
+    description:
+      'Curated six-row compare template (frozen first column = label). The "What stands out" row + price/book footer are composed on the frontend.',
   })
   rows!: ComparisonRowDto[];
 }

@@ -210,32 +210,14 @@ export class HubService {
    * (`displayName` is a single string), so there is no locale step.
    */
   private async loadTourAttributes(tourIds: string[]) {
-    const defs: {
-      key: string;
-      displayName: string;
-      dataType: AttributeDataType;
-      sortOrder: number;
-    }[] = [];
     const attrsByTour = new Map<string, Map<string, string>>();
-    if (tourIds.length === 0) return { attrsByTour, defs };
+    if (tourIds.length === 0) return attrsByTour;
 
-    const [rows, definitions] = await Promise.all([
-      this.prisma.tourAttribute.findMany({
-        where: { tourId: { in: tourIds } },
-        select: { tourId: true, attributeKey: true, attributeValue: true },
-      }),
-      this.prisma.attributeDefinition.findMany({
-        where: { isActive: true },
-        select: {
-          key: true,
-          displayName: true,
-          dataType: true,
-          sortOrder: true,
-        },
-      }),
-    ]);
+    const rows = await this.prisma.tourAttribute.findMany({
+      where: { tourId: { in: tourIds } },
+      select: { tourId: true, attributeKey: true, attributeValue: true },
+    });
 
-    defs.push(...definitions);
     for (const r of rows) {
       let m = attrsByTour.get(r.tourId);
       if (!m) {
@@ -244,82 +226,126 @@ export class HubService {
       }
       m.set(r.attributeKey, r.attributeValue);
     }
-    return { attrsByTour, defs };
+    return attrsByTour;
   }
 
-  /** Format one stored attribute value into a comparison cell for a column. */
-  private formatComparisonCell(
-    raw: string | undefined,
-    dataType: AttributeDataType,
-  ): { parts: string[]; check: boolean | null } {
-    if (raw === undefined || raw === null || raw === '') {
-      return { parts: [], check: null };
+  private static parseMulti(raw: string | undefined): string[] {
+    if (!raw) return [];
+    try {
+      const arr: unknown = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.map((v) => String(v)) : [raw];
+    } catch {
+      return [raw];
     }
-    if (dataType === AttributeDataType.BOOLEAN) {
-      return { parts: [], check: raw === 'true' };
-    }
-    if (dataType === AttributeDataType.ENUM_MULTI) {
-      try {
-        const arr: unknown = JSON.parse(raw);
-        return {
-          parts: Array.isArray(arr) ? arr.map((v) => String(v)) : [raw],
-          check: null,
-        };
-      } catch {
-        return { parts: [raw], check: null };
-      }
-    }
-    return { parts: [raw], check: null };
+  }
+
+  private static titleCaseWords(v: string): string {
+    return v
+      .split('_')
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(' ');
   }
 
   /**
-   * Build comparison rows (frozen first column = attribute label, one cell per
-   * tour column) for a group. A row is emitted for every active attribute that
-   * at least one column carries, ordered by the definition's sortOrder then key.
-   * The editorial "What stands out" row + price/book header are composed on the
-   * frontend from each column's standoutNote/price.
+   * Fixed comparison template (Figma node 48047:5005). Six curated rows in a set
+   * order, each formatted for the boat-tour design: composite "Boat & group"
+   * (name + capacity), "Free cancel" as `48h`, "Open bar" as a green-check
+   * "Included" vs plain "Optional", and so on. The editorial "What stands out"
+   * row + the price/book footer are composed on the frontend from each column's
+   * standoutNote/price. `check: true` renders a leading green check.
+   */
+  private static readonly COMPARISON_TEMPLATE: {
+    key: string;
+    label: string;
+    dataType: AttributeDataType;
+    build: (attrs: Map<string, string> | undefined) => {
+      parts: string[];
+      check: boolean | null;
+    };
+  }[] = [
+    {
+      key: 'island_facilities',
+      label: 'On the island',
+      dataType: AttributeDataType.ENUM_MULTI,
+      build: (m) => ({
+        parts: HubService.parseMulti(m?.get('island_facilities')),
+        check: null,
+      }),
+    },
+    {
+      key: 'breakfast',
+      label: 'Breakfast',
+      dataType: AttributeDataType.BOOLEAN,
+      build: (m) => ({
+        parts: m?.get('breakfast_included') === 'true' ? ['Included'] : [],
+        check: null,
+      }),
+    },
+    {
+      key: 'open_bar',
+      label: 'Open bar',
+      dataType: AttributeDataType.BOOLEAN,
+      build: (m) => {
+        const raw = m?.get('open_bar_included');
+        if (raw === 'true') return { parts: ['Included'], check: true };
+        if (raw === 'false') return { parts: ['Optional'], check: null };
+        return { parts: [], check: null };
+      },
+    },
+    {
+      key: 'crossing',
+      label: 'Crossing',
+      dataType: AttributeDataType.TEXT,
+      build: (m) => {
+        const raw = m?.get('crossing_time');
+        return { parts: raw ? [raw] : [], check: null };
+      },
+    },
+    {
+      key: 'boat_and_group',
+      label: 'Boat & group',
+      dataType: AttributeDataType.ENUM_MULTI,
+      build: (m) => {
+        const boatType = m?.get('boat_type');
+        const name =
+          m?.get('boat_name') ??
+          (boatType ? HubService.titleCaseWords(boatType) : undefined);
+        const max = m?.get('maximum_travelers');
+        const parts: string[] = [];
+        if (name) parts.push(name);
+        if (max) parts.push(`max ${max}`);
+        return { parts, check: null };
+      },
+    },
+    {
+      key: 'free_cancel',
+      label: 'Free cancel',
+      dataType: AttributeDataType.TEXT,
+      build: (m) => {
+        const raw = m?.get('cancellation_window_hours');
+        return { parts: raw ? [`${raw}h`] : [], check: null };
+      },
+    },
+  ];
+
+  /**
+   * Build the fixed six-row comparison for a group from the curated template.
+   * A row is dropped only when NO column carries any value for it (so a non-boat
+   * group never shows empty boat rows); rows are otherwise always emitted in
+   * template order, even when every column matches (master 5.5 shows identical
+   * "Breakfast: Included" cells).
    */
   private buildComparisonRows(
     orderedTourIds: string[],
     attrsByTour: Map<string, Map<string, string>>,
-    defs: {
-      key: string;
-      displayName: string;
-      dataType: AttributeDataType;
-      sortOrder: number;
-    }[],
   ) {
-    const present = new Set<string>();
-    for (const tid of orderedTourIds) {
-      const m = attrsByTour.get(tid);
-      if (m) for (const k of m.keys()) present.add(k);
-    }
-
-    return (
-      defs
-        .filter((d) => present.has(d.key))
-        .sort((a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key))
-        .map((d) => ({
-          key: d.key,
-          label: d.displayName,
-          dataType: d.dataType,
-          cells: orderedTourIds.map((tid) =>
-            this.formatComparisonCell(
-              attrsByTour.get(tid)?.get(d.key),
-              d.dataType,
-            ),
-          ),
-        }))
-        // Keep only attributes that DIFFER across the columns - a comparison table
-        // earns its space by showing differences, not rows of identical values
-        // (master 5.5). Single-column groups keep every present attribute.
-        .filter((row) => {
-          if (row.cells.length < 2) return true;
-          const key = (c: { parts: string[]; check: boolean | null }) =>
-            `${c.check}|${c.parts.join('')}`;
-          const first = key(row.cells[0]);
-          return row.cells.some((c) => key(c) !== first);
-        })
+    return HubService.COMPARISON_TEMPLATE.map((t) => ({
+      key: t.key,
+      label: t.label,
+      dataType: t.dataType,
+      cells: orderedTourIds.map((tid) => t.build(attrsByTour.get(tid))),
+    })).filter((row) =>
+      row.cells.some((c) => c.parts.length > 0 || c.check !== null),
     );
   }
 
@@ -1140,12 +1166,21 @@ export class HubService {
       orderBy: { displayOrder: 'asc' },
     });
 
+    // Boat type is a `tour_attributes` value (not a column), so batch-load it for
+    // the pick tours and surface it on the card (Figma shows it under the title).
+    const attrsByTour = await this.loadTourAttributes(
+      rows.map((r) => r.tour.id),
+    );
+
     const ourPicks = rows.map((r) => ({
       id: r.id,
       pickType: r.pickType,
       description: r.translations[0]?.description ?? r.description,
       displayOrder: r.displayOrder,
-      tour: this.tourCard(r.tour),
+      tour: {
+        ...this.tourCard(r.tour),
+        boatType: attrsByTour.get(r.tour.id)?.get('boat_type') ?? null,
+      },
     }));
 
     return { count: ourPicks.length, ourPicks };
@@ -1268,7 +1303,7 @@ export class HubService {
         groups.flatMap((g) => g.comparisonTours.map((ct) => ct.tour.id)),
       ),
     ];
-    const { attrsByTour, defs } = await this.loadTourAttributes(allTourIds);
+    const attrsByTour = await this.loadTourAttributes(allTourIds);
 
     const mapped = groups.map((g) => {
       const orderedTourIds = g.comparisonTours.map((ct) => ct.tour.id);
@@ -1283,7 +1318,7 @@ export class HubService {
             ct.translations[0]?.standoutNote ?? ct.standoutNote ?? null,
           tour: this.tourCard(ct.tour),
         })),
-        rows: this.buildComparisonRows(orderedTourIds, attrsByTour, defs),
+        rows: this.buildComparisonRows(orderedTourIds, attrsByTour),
       };
     });
 

@@ -200,6 +200,8 @@ export interface OurPickTourSummary {
   durationMinutesFrom?: number | null;
   durationMinutesTo?: number | null;
   bookingCount?: number;
+  /** boat_type attribute value (for the pick card), e.g. "yacht". */
+  boatType?: string | null;
 }
 
 export interface HubOurPick {

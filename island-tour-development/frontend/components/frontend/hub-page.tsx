@@ -319,7 +319,11 @@ function pickToHubPick(
         title: pick.tour.title,
         rating: pick.tour.rating ?? 0,
         reviewCount: pick.tour.reviewCount ?? 0,
-        type: humanizeUnit(pick.tour.unitType),
+        // Figma shows the boat type under the title; fall back to the unit type
+        // (e.g. "Private charter") for non-boat picks that carry no boat_type.
+        type: pick.tour.boatType
+            ? titleCaseValue(pick.tour.boatType)
+            : humanizeUnit(pick.tour.unitType),
         description: pick.description,
         duration: formatDuration(pick.tour.durationMinutesFrom, durationLabels),
         price: num(pick.tour.priceFrom ?? pick.tour.basePrice),
@@ -327,22 +331,43 @@ function pickToHubPick(
     };
 }
 
-function groupToCompareTable(group: HubRenderComparisonGroup): CompareTable {
+function groupToCompareTable(
+    group: HubRenderComparisonGroup,
+    whatStandsOutLabel: string,
+): CompareTable {
+    // Editorial lead row: each column's standout note, split on commas into
+    // bullet-joined fragments (e.g. "Dive school, massage with a view").
+    const standoutRow = {
+        label: whatStandsOutLabel,
+        cells: group.tours.map((ct) => ({
+            parts: (ct.standoutNote ?? '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            check: undefined,
+        })),
+    };
+    const hasStandout = standoutRow.cells.some((c) => c.parts.length > 0);
+
     return {
         title: group.groupName,
         boats: group.tours.map((ct) => ({
             name: ct.tour.title,
             price: num(ct.tour.priceFrom ?? ct.tour.basePrice),
         })),
-        // Rows are auto-derived from the column tours' attributes (backend). A
-        // BOOLEAN true renders a green check; everything else renders its parts.
-        rows: group.rows.map((r) => ({
-            label: r.label,
-            cells: r.cells.map((c) => ({
-                parts: c.parts,
-                check: c.check === true ? true : undefined,
+        // "What stands out" (editorial, from standoutNote) sits above the curated
+        // attribute rows (backend template). A BOOLEAN true renders a green check;
+        // everything else renders its parts.
+        rows: [
+            ...(hasStandout ? [standoutRow] : []),
+            ...group.rows.map((r) => ({
+                label: r.label,
+                cells: r.cells.map((c) => ({
+                    parts: c.parts,
+                    check: c.check === true ? true : undefined,
+                })),
             })),
-        })),
+        ],
     };
 }
 
@@ -625,7 +650,9 @@ async function HubTripsData({
         pickToHubPick(p, pickLabelText, cardLabels),
     );
 
-    const compareTables = render.comparisonGroups.map(groupToCompareTable);
+    const compareTables = render.comparisonGroups.map((g) =>
+        groupToCompareTable(g, hubDict.comparison.whatStandsOut),
+    );
     const discoverItems = render.discover.map(sectionToDiscoverItem);
     const discoverTitle = discoverDict.titlePattern.replace(
         '{hub}',
