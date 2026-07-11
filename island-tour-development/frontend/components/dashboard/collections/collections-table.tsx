@@ -12,9 +12,9 @@ import {
   type ColumnFiltersState,
   type VisibilityState,
 } from '@tanstack/react-table';
-import { SearchIcon, Settings2Icon, FolderIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon } from 'lucide-react';
+import { Settings2Icon, FolderIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TableSearchInput } from '@/components/dashboard/table-search-input';
 import {
   Select,
   SelectContent,
@@ -91,15 +91,12 @@ export function CollectionsTable({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-36">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search collections..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <TableSearchInput
+          value={globalFilter}
+          onValueChange={setGlobalFilter}
+          placeholder="Search collections..."
+          className="min-w-36"
+        />
         
         {filterSlot}
 

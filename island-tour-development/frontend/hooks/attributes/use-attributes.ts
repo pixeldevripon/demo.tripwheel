@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { attributesApi } from '@/lib/api/attributes';
 import type {
   AttributeDefinitionQuery,
@@ -21,6 +21,7 @@ export function useAttributes(query: AttributeDefinitionQuery = {}) {
   return useQuery({
     queryKey: attributeKeys.list(query),
     queryFn: () => attributesApi.list(query),
+    placeholderData: keepPreviousData,
   });
 }
 

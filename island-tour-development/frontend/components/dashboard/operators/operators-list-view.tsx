@@ -16,7 +16,7 @@ export function OperatorsListView() {
     const t = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
-    }, 350);
+    }, 500);
     return () => clearTimeout(t);
   }, [search]);
 

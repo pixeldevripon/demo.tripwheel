@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { collectionsApi } from '@/lib/api/collections';
 import type {
   CreateCollectionFaqPayload,
@@ -36,6 +36,7 @@ export function useCollectionsByDestination(destinationSlug: string | undefined)
     queryKey: collectionKeys.byDestination(destinationSlug ?? ''),
     queryFn: () => collectionsApi.getAllAdmin(destinationSlug as string),
     enabled: !!destinationSlug,
+    placeholderData: keepPreviousData,
   });
 }
 

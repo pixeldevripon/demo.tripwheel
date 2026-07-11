@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { operatorsApi } from '@/lib/api/operators';
 import type {
   CreateOperatorPayload,
@@ -21,6 +21,9 @@ export function useOperators(params: OperatorsQueryParams = {}) {
   return useQuery({
     queryKey: operatorKeys.list(params),
     queryFn: () => operatorsApi.getAll(params),
+    // Keep prior results visible during a new page/search fetch so the toolbar
+    // and focused search input never unmount into a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 

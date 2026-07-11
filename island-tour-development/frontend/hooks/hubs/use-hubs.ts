@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hubsApi } from '@/lib/api/hubs';
 import type {
   CreateHubPayload,
@@ -40,6 +40,7 @@ export function useHubs(params: HubsQueryParams = {}) {
   return useQuery({
     queryKey: hubKeys.list(params),
     queryFn: () => hubsApi.getAll(params),
+    placeholderData: keepPreviousData,
   });
 }
 

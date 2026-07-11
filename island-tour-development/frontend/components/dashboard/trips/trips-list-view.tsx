@@ -17,7 +17,7 @@ export function TripsListView() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(search), 350);
+        const timer = setTimeout(() => setDebouncedSearch(search), 500);
         return () => clearTimeout(timer);
     }, [search]);
 

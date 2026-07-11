@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tiersApi } from '@/lib/api/tiers';
 import { tripKeys } from '@/hooks/trips/use-trips';
 import type {
@@ -56,6 +56,7 @@ export function useSpotlightQueue(params: SpotlightQueueParams = {}) {
   return useQuery({
     queryKey: tierKeys.queue(params),
     queryFn: () => tiersApi.getSpotlightQueue(params),
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -14,7 +14,6 @@ import {
 } from '@tanstack/react-table';
 import {
   PlusIcon,
-  SearchIcon,
   NavigationIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -25,7 +24,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TableSearchInput } from '@/components/dashboard/table-search-input';
 import {
   Table,
   TableBody,
@@ -188,15 +187,12 @@ export function HubsTable({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 flex-1 flex-wrap">
-          <div className="relative flex-1 max-w-sm">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search hubs..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <TableSearchInput
+            value={globalFilter}
+            onValueChange={setGlobalFilter}
+            placeholder="Search hubs..."
+            className="max-w-sm"
+          />
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Status" />

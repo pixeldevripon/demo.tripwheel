@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { categoriesApi } from '@/lib/api/categories';
 import type {
   CategoriesQueryParams,
@@ -30,6 +30,7 @@ export function useCategories(params: CategoriesQueryParams = {}) {
   return useQuery({
     queryKey: categoryKeys.list(params),
     queryFn: () => categoriesApi.getAll(params),
+    placeholderData: keepPreviousData,
   });
 }
 

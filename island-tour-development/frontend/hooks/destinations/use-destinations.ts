@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { destinationsApi } from '@/lib/api/destinations';
 import type {
   CreateDestinationPayload,
@@ -30,6 +30,7 @@ export function useDestinations(params: DestinationsQueryParams = {}) {
   return useQuery({
     queryKey: destinationKeys.list(params),
     queryFn: () => destinationsApi.getAll(params),
+    placeholderData: keepPreviousData,
   });
 }
 

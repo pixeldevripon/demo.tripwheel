@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tripsApi } from '@/lib/api/trips';
 import type {
   AddTourImagePayload,
@@ -64,6 +64,9 @@ export function useMyTrips(params: MyTripsQueryParams = {}, enabled = true) {
     queryKey: tripKeys.myTrips(params),
     queryFn: () => tripsApi.getMyTrips(params),
     enabled,
+    // Keep the previous page/search results visible while a new query loads so
+    // the toolbar (and the focused search input) never unmounts into a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -72,6 +75,7 @@ export function useAdminTrips(params: AdminTripsQueryParams = {}, enabled = true
     queryKey: tripKeys.adminTrips(params),
     queryFn: () => tripsApi.getAdminTrips(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
