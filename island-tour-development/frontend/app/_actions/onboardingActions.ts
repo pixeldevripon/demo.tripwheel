@@ -16,19 +16,23 @@ async function safeJson(res: Response) {
   }
 }
 
-async function getAuthHeaders() {
-  const reqHeaders = await headers();
-  return {
-    headers: {
-      cookie: reqHeaders.get('cookie') || '',
-    },
-  };
+/**
+ * Headers for server-to-server backend calls: forwards the user's session cookie
+ * plus the server-only internal API secret so this trusted first-party origin
+ * bypasses the backend's per-IP throttle (the secret never reaches the browser).
+ */
+function serverAuthHeaders(cookie: string): Record<string, string> {
+  const h: Record<string, string> = { cookie };
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (secret) h['x-internal-api-key'] = secret;
+  return h;
 }
 
 export async function checkOnboardingStatus() {
   const reqHeaders = await headers();
+  const cookie = reqHeaders.get('cookie') || '';
   const { data: sessionData } = await authClient.getSession({
-    fetchOptions: { headers: reqHeaders },
+    fetchOptions: { headers: serverAuthHeaders(cookie) },
   });
 
   if (!sessionData?.session) {
@@ -44,9 +48,7 @@ export async function checkOnboardingStatus() {
 
   try {
     const response = await fetch(`${BACKEND_URL}/api/v1/users/me`, {
-      headers: {
-        cookie: reqHeaders.get('cookie') || '',
-      },
+      headers: serverAuthHeaders(cookie),
     });
 
     if (!response.ok) {
