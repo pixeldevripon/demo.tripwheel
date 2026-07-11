@@ -308,7 +308,19 @@ async function seedDestinations() {
       where: { slug: dest.slug },
     });
     if (existing) {
-      console.log(`  Destination "${dest.name}" already exists. Skipping.`);
+      // Backfill a missing timezone on rows seeded before the field existed
+      // (the column is now required for all tour/departure/booking local time).
+      if (!existing.timezone) {
+        await prisma.destination.update({
+          where: { id: existing.id },
+          data: { timezone: dest.timezone },
+        });
+        console.log(
+          `  Destination "${dest.name}" already exists. Backfilled timezone ${dest.timezone}.`,
+        );
+      } else {
+        console.log(`  Destination "${dest.name}" already exists. Skipping.`);
+      }
       continue;
     }
 
