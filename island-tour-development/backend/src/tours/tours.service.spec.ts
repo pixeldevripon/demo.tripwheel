@@ -178,6 +178,7 @@ describe('ToursService', () => {
         id: 'dest-1',
         slug: 'curacao',
         isActive: true,
+        timezone: 'America/Curacao',
       });
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prisma.tour.findFirst.mockResolvedValue(null);
@@ -204,6 +205,7 @@ describe('ToursService', () => {
         id: 'dest-1',
         slug: 'curacao',
         isActive: true,
+        timezone: 'America/Curacao',
       });
       prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prisma.tour.create.mockResolvedValue(makeTour());
@@ -284,6 +286,7 @@ describe('ToursService', () => {
         id: 'dest-1',
         slug: 'curacao',
         isActive: true,
+        timezone: 'America/Curacao',
       });
       prisma.tour.findFirst.mockResolvedValue(null);
       prisma.slugRegistry.findUnique.mockResolvedValue(null);

@@ -1,5 +1,6 @@
 'use client';
 
+import { isValidIanaTimeZone } from '@/utils/intl-utils';
 import { ImageSelectorField } from '@/components/dashboard/media/image-selector-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,13 @@ const destinationSchema = z.object({
         .string()
         .optional()
         .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= -180 && Number(v) <= 180), 'Longitude must be between -180 and 180'),
-    timezone: z.string().optional(),
+    timezone: z
+        .string()
+        .optional()
+        .refine(
+            v => !v || isValidIanaTimeZone(v),
+            'Must be a valid IANA timezone (e.g. America/Curacao), not an offset like UTC-4'
+        ),
     currency: z.enum(CURRENCY_VALUES as [string, ...string[]]).optional().or(z.literal('')),
     language: z.string().optional(),
     galleryImages: z.array(z.string()).optional(),

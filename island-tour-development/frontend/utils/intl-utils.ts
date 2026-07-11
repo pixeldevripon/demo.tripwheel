@@ -60,3 +60,38 @@ export function detectBrowserTimezone() {
     if (typeof window === 'undefined') return 'UTC';
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+
+let ianaZones: Set<string> | null = null;
+function getIanaZones(): Set<string> | null {
+    if (ianaZones) return ianaZones;
+    const supported = (
+        Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
+    ).supportedValuesOf;
+    if (typeof supported !== 'function') return null;
+    ianaZones = new Set(supported('timeZone'));
+    return ianaZones;
+}
+
+/**
+ * True when `value` is a real IANA timezone name (e.g. `America/Curacao`, or
+ * `UTC`). Rejects offset labels (`UTC-4`, `+4`), legacy abbreviations (`AST`,
+ * `EST`, `GMT`), human labels (`Curacao`), empty strings, and stray whitespace.
+ * Destination/tour schedule math must always be anchored to an IANA zone, never
+ * a fixed offset. Mirrors the backend `isValidIanaTimeZone` validator.
+ */
+export function isValidIanaTimeZone(value: unknown): value is string {
+    if (typeof value !== 'string') return false;
+    if (value.trim() !== value || value.length === 0) return false;
+    if (value === 'UTC') return true;
+
+    const zones = getIanaZones();
+    if (zones) return zones.has(value);
+
+    if (!value.includes('/')) return false;
+    try {
+        Intl.DateTimeFormat(undefined, { timeZone: value });
+        return true;
+    } catch {
+        return false;
+    }
+}

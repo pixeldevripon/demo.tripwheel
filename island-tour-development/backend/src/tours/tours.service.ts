@@ -7,6 +7,7 @@ import {
   slugRowBlocks,
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
 import { evaluateLikelyToSellOut } from './demand-signal';
@@ -1498,6 +1499,18 @@ export class ToursService {
       throw new BadRequestException('Destination not found or is not active');
     }
 
+    // A tour's local schedule/departure math is anchored to the destination's
+    // IANA timezone - never a universal Curaçao fallback, which would silently
+    // put non-Curaçao islands (Aruba, Bahamas, ...) on the wrong clock.
+    // Capture into a local const so the narrowed `string` survives into the
+    // transaction closure below.
+    const tourTimeZone = destination.timezone;
+    if (!isValidIanaTimeZone(tourTimeZone)) {
+      throw new BadRequestException(
+        'Destination is missing a valid IANA timezone; set it on the destination before creating tours',
+      );
+    }
+
     // Validate categories (V2 §4: 1+ categories, one primary).
     const categoryIds = [...new Set(dto.categoryIds)];
     if (categoryIds.length === 0) {
@@ -1548,7 +1561,7 @@ export class ToursService {
             slug,
             operatorId,
             destinationId: dto.destinationId,
-            timeZone: destination.timezone ?? 'America/Curacao',
+            timeZone: tourTimeZone,
             pricingModel: dto.pricingModel,
             wholeUnitType: dto.wholeUnitType ?? null,
             ...(dto.defaultCurrency !== undefined && {

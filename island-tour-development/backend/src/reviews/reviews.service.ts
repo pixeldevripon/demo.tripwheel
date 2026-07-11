@@ -394,7 +394,11 @@ export class ReviewsService {
     startTime: string | null;
     tour: { timeZone: string } | null;
   }): boolean {
-    const tz = booking.tour?.timeZone ?? 'America/Curacao';
+    // Anchor "has the experience happened yet?" to the tour's own IANA zone -
+    // never a universal Curaçao fallback. A booking always carries a tour; if the
+    // zone is somehow absent we conservatively treat the experience as not-yet-passed.
+    const tz = booking.tour?.timeZone;
+    if (!tz) return false;
     const start = new Date(
       `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,
     );

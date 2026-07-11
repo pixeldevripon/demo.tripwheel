@@ -16,6 +16,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
+import { isValidIanaTimeZone } from '@/utils/intl-utils';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -262,7 +263,15 @@ const detailsSchema = z.object({
   allowFreesale: z.boolean(),
   deliveryFormats: z.array(z.enum(['PDF_URL', 'QRCODE', 'CODE128', 'PKPASS_URL'])),
   deliveryMethods: z.array(z.enum(['VOUCHER', 'TICKET'])),
-  timeZone: z.string().max(60).optional().or(z.literal('')),
+  timeZone: z
+    .string()
+    .max(60)
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      v => !v || isValidIanaTimeZone(v),
+      'Must be a valid IANA timezone (e.g. America/Curacao), not an offset like UTC-4'
+    ),
   startTimes: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
   isActive: z.boolean().optional(),
 });

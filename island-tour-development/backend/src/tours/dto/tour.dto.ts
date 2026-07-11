@@ -1,4 +1,5 @@
 import { Locale } from '@/common/constants/locales';
+import { IsIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   AddOnUnit,
@@ -1247,8 +1248,7 @@ export class UpdateTourDto {
 
   @ApiPropertyOptional({ example: 'America/Curacao' })
   @IsOptional()
-  @IsString()
-  @MaxLength(60)
+  @IsIanaTimeZone()
   timeZone?: string;
 
   @ApiPropertyOptional({ example: true })

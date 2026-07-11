@@ -1,4 +1,5 @@
 import { Locale } from '@/common/constants/locales';
+import { IsIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency, Region } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
@@ -433,7 +434,7 @@ export class CreateDestinationDto {
 
   @ApiPropertyOptional({ example: 'America/Aruba' })
   @IsOptional()
-  @IsString()
+  @IsIanaTimeZone()
   timezone?: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
@@ -504,7 +505,7 @@ export class UpdateDestinationDto {
 
   @ApiPropertyOptional({ example: 'America/Aruba' })
   @IsOptional()
-  @IsString()
+  @IsIanaTimeZone()
   timezone?: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })

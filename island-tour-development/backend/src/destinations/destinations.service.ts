@@ -6,6 +6,7 @@ import {
   translationSelect,
 } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { DEFAULT_DESTINATION_TIMEZONES } from '@/common/validators/is-iana-timezone.validator';
 import {
   clearCooledDownDestinationSlugs,
   markDestinationSlugsDeleted,
@@ -179,6 +180,16 @@ export class DestinationService {
   async create(dto: CreateDestinationDto, adminId: string) {
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
+    // Timezone is required platform data (all tour/departure math anchors to it).
+    // Prefer the admin's IANA value; otherwise derive a known launch zone from the
+    // slug; never default silently to Curaçao for a non-Curaçao island.
+    const timezone = dto.timezone ?? DEFAULT_DESTINATION_TIMEZONES[slug];
+    if (!timezone) {
+      throw new BadRequestException(
+        `Timezone is required for destination "${slug}". Provide a valid IANA timezone (e.g. "America/Aruba").`,
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const destination = await tx.destination
         .create({
@@ -190,7 +201,7 @@ export class DestinationService {
             country: dto.country ?? null,
             latitude: dto.latitude ?? null,
             longitude: dto.longitude ?? null,
-            timezone: dto.timezone ?? null,
+            timezone,
             currency: dto.currency ?? null,
             language: dto.language ?? null,
             galleryImages: dto.galleryImages ?? [],
