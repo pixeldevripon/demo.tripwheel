@@ -31,6 +31,12 @@ function safeEqual(a: string, b: string): boolean {
  * browser; browser-side auth requests carry no such header and remain throttled
  * (and are separately guarded by Better Auth's own per-path rate limiter). When
  * the secret is unset the bypass never triggers - throttling applies to all.
+ *
+ * IMPORTANT: this exempts requests ONLY from THIS NestJS throttle. It has no
+ * effect on Better Auth's own limiter (`auth.instance.ts` rateLimit) - and
+ * `/api/auth/*` is already `@SkipThrottle()`'d from the NestJS guard anyway
+ * (auth.controller.ts), so login/session routes are governed solely by Better
+ * Auth. Do not assume the internal key relaxes anything under `/api/auth/*`.
  */
 function isTrustedInternalOrigin(context: ExecutionContext): boolean {
   const secret = process.env.INTERNAL_API_SECRET;

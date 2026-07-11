@@ -2,6 +2,7 @@ import { auth } from '@/auth/auth.instance';
 import { Public } from '@/auth/decorators/public.decorator';
 import { All, Controller, Req, Res } from '@nestjs/common';
 import { ApiExcludeEndpoint } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { toNodeHandler } from 'better-auth/node';
 import type { Request, Response } from 'express';
 
@@ -20,8 +21,18 @@ import type { Request, Response } from 'express';
  *
  * @Public() is required - unauthenticated users must reach sign-in without
  * being blocked by AuthGuard.
+ *
+ * @SkipThrottle() exempts these routes from the global per-IP NestJS throttle.
+ * Auth is NOT unprotected: Better Auth runs its OWN dedicated per-path limiter
+ * (auth.instance.ts `rateLimit.customRules` - 5/min on sign-in/forget/reset),
+ * which is the correct brute-force defense. The general throttle must not also
+ * gate auth, or a legitimate user gets locked out of sign-in / get-session by an
+ * unrelated request burst - e.g. a dashboard page mounting many `useSession()`
+ * consumers at once, which would otherwise trip `get-session`'s 60/s bucket and
+ * bounce a signed-in user back to the login portal.
  */
 @Controller()
+@SkipThrottle()
 export class AuthController {
   private readonly handler = toNodeHandler(auth);
 

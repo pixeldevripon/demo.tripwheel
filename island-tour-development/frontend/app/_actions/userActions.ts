@@ -1,26 +1,11 @@
 'use server';
 
 import { authClient } from '@/lib/auth-client';
+import { serverAuthHeaders } from '@/lib/server/auth-headers';
 import { headers } from 'next/headers';
 import { cache } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
-
-/**
- * Headers for the dashboard auth-guard's server-to-server backend calls. Forwards
- * the user's session cookie (authenticates as that user) AND the server-only
- * internal API secret (`INTERNAL_API_SECRET`) so this trusted first-party origin
- * bypasses the backend's per-IP throttle. Without the bypass, the guard's fan-out
- * (session + /users/me + operator + settings) plus the dashboard page's own
- * request burst can trip the limiter, fail this check, and bounce a logged-in
- * user to /login. The secret is server-only and never reaches the browser.
- */
-function serverAuthHeaders(cookie: string): Record<string, string> {
-    const headers: Record<string, string> = { cookie };
-    const secret = process.env.INTERNAL_API_SECRET;
-    if (secret) headers['x-internal-api-key'] = secret;
-    return headers;
-}
 
 // ─── Set password for OAuth-only users ───────────────────────────────────────
 // Better Auth's setPassword endpoint is server-only - it must be called with
@@ -30,7 +15,7 @@ export async function setPasswordAction(newPassword: string): Promise<void> {
     const cookie = (await headers()).get('cookie') ?? '';
     const res = await fetch(`${BACKEND_URL}/api/v1/users/me/set-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', cookie },
+        headers: { 'Content-Type': 'application/json', ...serverAuthHeaders(cookie) },
         body: JSON.stringify({ newPassword }),
     });
 

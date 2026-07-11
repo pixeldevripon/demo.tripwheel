@@ -1,28 +1,25 @@
-import { authClient } from '@/lib/auth-client';
+import { getDashboardStats } from '@/app/_actions/dashboardActions';
+import { getUserProfile } from '@/app/_actions/userActions';
+import PageComponents from '@/components/dashboard/page-components';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import PageComponents from '@/components/dashboard/page-components';
-import { getDashboardStats } from '@/app/_actions/dashboardActions';
 
 export default async function DashboardPage() {
-    const reqHeaders = await headers();
-    const { data: sessionData } = await authClient.getSession({
-        fetchOptions: { headers: reqHeaders },
-    });
+    const cookie = (await headers()).get('cookie') ?? '';
 
-    if (!sessionData?.session) {
-        redirect('/login');
+    // `getUserProfile` is request-memoized (React `cache()`) and already resolved
+    // by the dashboard layout, so this reuses that result with no extra backend
+    // call - and it forwards the internal key to bypass the per-IP throttle.
+    const user = await getUserProfile(cookie);
+    if (!user) {
+        redirect('/portal');
     }
 
-    const { user } = sessionData;
     const statsPromise = getDashboardStats();
 
     return (
         <div className='flex flex-1 flex-col gap-4'>
-            <PageComponents
-                statsPromise={statsPromise}
-                loggedInUser={user}
-            />
+            <PageComponents statsPromise={statsPromise} loggedInUser={user} />
         </div>
     );
 }

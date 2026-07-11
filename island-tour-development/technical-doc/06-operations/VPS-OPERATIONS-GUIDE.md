@@ -560,18 +560,25 @@ guard chain, before auth). You don't need to "set it up"; you tune it.
 ### Current limits (per client IP)
 ```ts
 // auth.module.ts — ThrottlerModule.forRoot({ throttlers: [...] })
-{ name: 'short',  ttl: 1_000,     limit: 20   }   // 20 req/sec  (burst)
+{ name: 'short',  ttl: 1_000,     limit: 60   }   // 60 req/sec  (burst — sized for an authed dashboard page's parallel fan-out)
 { name: 'medium', ttl: 60_000,    limit: 300  }   // 300 req/min (sustained)
 { name: 'long',   ttl: 3_600_000, limit: 3000 }   // 3000 req/hr (hard cap)
 ```
 - **Trusted-origin bypass:** `skipIf: isTrustedInternalOrigin` — your SSR/build server
   sends `x-internal-api-key` matching `INTERNAL_API_SECRET`, so Vercel prerender bursts
-  aren't throttled. Everyone else is limited. **Set `INTERNAL_API_SECRET` in production**
-  (both apps) or `next build` can 429 mid-prerender (the env validator warns if unset).
+  aren't throttled. Everyone else is limited. **`INTERNAL_API_SECRET` is REQUIRED in
+  production** (both apps, min 32 chars) — the env validator now *fails to boot* if it's
+  unset in prod, not just warns.
 - **Real client IP:** `main.ts` sets `trust proxy = 1` and the nginx conf forwards
   `X-Real-IP` / `X-Forwarded-For`, so the limiter sees the actual visitor, not the proxy.
+  ⚠️ **Tripwire:** `trust proxy = 1` assumes EXACTLY ONE proxy hop (nginx). If you ever put
+  a CDN/LB in front of nginx (Cloudflare, another LB) it becomes two hops — you MUST bump
+  `trust proxy` to `2` in `main.ts` (or use nginx `real_ip` with the CDN's header). Left at
+  `1`, clients can spoof `X-Forwarded-For` to evade the per-IP limit or poison a victim's bucket.
 - **Auth brute-force** is *separately* handled by Better Auth's own per-path limiter
-  (`auth.instance.ts` → `rateLimit.customRules`).
+  (`auth.instance.ts` → `rateLimit.customRules`, 5/min on sign-in/forget/reset). The
+  internal-key bypass does NOT touch this layer, and `/api/auth/*` is `@SkipThrottle()`'d
+  from the NestJS guard — so login limits are governed solely by Better Auth.
 
 ### How to tune
 - **Global limits:** edit the `throttlers` array in `auth.module.ts`.

@@ -8,13 +8,20 @@ import { revalidatePublicForPath } from './cache-revalidation';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
-// Fixed backoff (ms) between retries, one entry per retry attempt. A dashboard
+// Base backoff (ms) between retries, one entry per retry attempt. A dashboard
 // page mounts many parallel queries at once; if a burst briefly trips the
 // backend's per-IP throttle, a short retry lets it self-heal instead of
 // surfacing a 429 to the user.
 const RETRY_BACKOFF_MS = [300, 800];
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// Full jitter on top of the base delay. Without it, N parallel GETs that all
+// 429 together would retry in lockstep and re-collide on the same throttle
+// window; jitter spreads them out. Client-side, so Math.random is fine here
+// (unlike the `'use cache'` server fetch layer, which bans it).
+const sleep = (base: number) =>
+    new Promise<void>((resolve) =>
+        setTimeout(resolve, base + Math.floor(Math.random() * base)),
+    );
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const request = () =>

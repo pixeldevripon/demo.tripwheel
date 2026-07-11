@@ -33,7 +33,9 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   // bypass the per-IP throttle (see AuthModule). Must match the frontend's
   // server-only INTERNAL_API_SECRET. Server-only - never expose as NEXT_PUBLIC_.
   INTERNAL_API_SECRET: (v) => {
-    if (v.length < 16) return 'must be at least 16 characters';
+    // 32 chars to match BETTER_AUTH_SECRET's policy - this is the sole factor
+    // gating the throttle bypass, so it must be as strong as the auth secret.
+    if (v.length < 32) return 'must be at least 32 characters';
     if (v.includes('change-me') || v === 'secret')
       return 'placeholder detected - generate a real secret: openssl rand -base64 32';
     return null;
@@ -116,8 +118,11 @@ export function validateEnv(): void {
     process.env.NODE_ENV === 'production' &&
     !process.env.INTERNAL_API_SECRET
   ) {
-    console.warn(
-      '⚠  INTERNAL_API_SECRET not set - the SSR/build server will be rate-limited as an anonymous client. Set it (and the matching value on the frontend) to exempt trusted first-party requests.',
+    // Hard-fail in production: without it the SSR guard's per-navigation fan-out
+    // is throttled as an anonymous client, 429s mid-render, and bounces logged-in
+    // users to /portal - a silent, hard-to-diagnose degradation. Fail loud at boot.
+    errors.push(
+      'INTERNAL_API_SECRET is required in production (must match the frontend value) so trusted first-party SSR/build requests bypass the per-IP throttle.',
     );
   }
 

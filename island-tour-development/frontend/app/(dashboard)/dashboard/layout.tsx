@@ -1,10 +1,9 @@
+import { getUserProfile } from '@/app/_actions/userActions';
 import DashboardWrapper from '@/components/dashboard/dashbaord-wraper';
-import { authClient } from '@/lib/auth-client';
+import { DashboardSkeleton } from '@/components/skelitons/dashboard-skeleton';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { DashboardSkeleton } from '@/components/skelitons/dashboard-skeleton';
-import { getUserProfile } from '@/app/_actions/userActions';
 
 export default function DashboardLayout({
     children,
@@ -26,19 +25,18 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
     const user = await getUserProfile(cookie);
 
     if (!user) {
-        redirect('/login');
+        redirect('/portal');
     }
 
     const userRole = (user as unknown as { role?: string }).role;
 
-    if (userRole === 'TOUR_OPERATOR') {
-        const { checkOnboardingStatus } = await import(
-            '@/app/_actions/onboardingActions'
-        );
-        const { needsOnboarding } = await checkOnboardingStatus();
-        if (needsOnboarding) {
-            redirect('/onboarding');
-        }
+    // getUserProfile already fetched the operator record; a TOUR_OPERATOR with
+    // none still needs onboarding. Derive it here instead of a second round-trip.
+    if (
+        userRole === 'TOUR_OPERATOR' &&
+        !(user as unknown as { operator?: unknown }).operator
+    ) {
+        redirect('/onboarding');
     }
 
     return (

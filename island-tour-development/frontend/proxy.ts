@@ -1,3 +1,4 @@
+import { getSessionCookie } from 'better-auth/cookies';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
@@ -54,24 +55,77 @@ function resolveLocale(request: NextRequest): string {
     return DEFAULT_LOCALE;
 }
 
-/** Protect dashboard routes - redirect to /login when there is no valid session. */
-async function guardDashboard(request: NextRequest) {
-    const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
+/**
+ * Optimistic dashboard guard: redirect to /portal only when the session cookie
+ * is absent. This is deliberately a cookie-presence check, NOT a backend call.
+ *
+ * Middleware runs on every dashboard navigation AND every <Link> prefetch. The
+ * previous version fetched `/api/auth/get-session` here with no internal API
+ * key, so each of those requests counted against BOTH the NestJS per-IP
+ * throttle (no key = no bypass) and Better Auth's own per-IP limiter. On
+ * `next start` the browser, this middleware, and SSR all reach the backend as
+ * one IP (127.0.0.1 locally / one egress IP in prod), so that get-session storm
+ * exhausted the shared bucket after a few pages - then a throttled 429 read as
+ * "no session" and bounced a logged-in user to /portal, and the /portal login
+ * POST hit the same exhausted bucket ("Too Many Requests").
+ *
+ * Authoritative validation still happens server-side: the dashboard layout's
+ * `getUserProfile` verifies the session against the backend (forwarding the
+ * internal key so it bypasses the throttle) and redirects if it is truly
+ * invalid. A stale-but-well-formed cookie therefore passes here and is caught
+ * one hop later.
+ *
+ * A genuinely MALFORMED cookie (present but not `<token>.<signature>` shaped -
+ * truncated, empty-segment, or hand-tampered) is different: it would pass a
+ * naive presence check, fail server validation on every request, and the
+ * browser would keep resending the broken value - a redirect loop. So we detect
+ * that shape and STRIP the session cookies on the redirect response, forcing a
+ * clean re-login instead of a loop.
+ */
+function guardDashboard(request: NextRequest) {
+    const sessionToken = getSessionCookie(request);
 
-    try {
-        const response = await fetch(`${backendUrl}/api/auth/get-session`, {
-            headers: { cookie: request.headers.get('cookie') || '' },
-        });
-        const sessionData = await response.json();
-
-        if (!sessionData || !sessionData.session) {
-            return NextResponse.redirect(new URL('/portal', request.url));
-        }
-        return NextResponse.next();
-    } catch (error) {
-        console.error('Proxy error:', error);
+    // No session cookie at all -> not logged in.
+    if (!sessionToken) {
         return NextResponse.redirect(new URL('/portal', request.url));
+    }
+
+    // A valid Better Auth session cookie is exactly `<token>.<signature>` (two
+    // non-empty segments). Anything else (no dot, empty segment, or extra
+    // segments from tampering) is corrupt: redirect AND clear it so the browser
+    // stops resending a value that would fail server validation on every request.
+    const parts = sessionToken.split('.');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        const response = NextResponse.redirect(new URL('/portal', request.url));
+        clearSessionCookies(request, response);
+        return response;
+    }
+
+    return NextResponse.next();
+}
+
+/**
+ * Expire every Better Auth session cookie present on the request (token + data
+ * cookie, in both plain and `__Secure-`-prefixed forms). Deleting by the exact
+ * names seen on the request preserves whatever prefix production is using and is
+ * a no-op for names that are absent.
+ *
+ * In production the real cookie is set with `Domain=.islandtours.esenc.cloud`
+ * (crossSubDomainCookies), so the delete MUST echo that same `domain`/`path` -
+ * a host-scoped delete would not match the domain-scoped cookie and the strip
+ * would silently no-op exactly where it matters. Keep this default in sync with
+ * `backend/src/auth/auth.instance.ts` crossSubDomainCookies.domain.
+ */
+function clearSessionCookies(request: NextRequest, response: NextResponse) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const domain = isProd
+        ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
+        : undefined;
+
+    for (const { name } of request.cookies.getAll()) {
+        if (name.includes('session_token') || name.includes('session_data')) {
+            response.cookies.delete({ name, path: '/', ...(domain && { domain }) });
+        }
     }
 }
 

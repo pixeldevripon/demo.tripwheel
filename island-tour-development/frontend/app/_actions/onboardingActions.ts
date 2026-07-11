@@ -1,8 +1,8 @@
 'use server';
 
-import { authClient } from '@/lib/auth-client';
+import { getUserProfile } from '@/app/_actions/userActions';
+import { serverAuthHeaders } from '@/lib/server/auth-headers';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { OnboardingData } from '@/lib/validations/onboarding';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5050';
@@ -11,60 +11,29 @@ async function safeJson(res: Response) {
   try {
     const text = await res.text();
     return text ? JSON.parse(text) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
 
-/**
- * Headers for server-to-server backend calls: forwards the user's session cookie
- * plus the server-only internal API secret so this trusted first-party origin
- * bypasses the backend's per-IP throttle (the secret never reaches the browser).
- */
-function serverAuthHeaders(cookie: string): Record<string, string> {
-  const h: Record<string, string> = { cookie };
-  const secret = process.env.INTERNAL_API_SECRET;
-  if (secret) h['x-internal-api-key'] = secret;
-  return h;
-}
-
+// Reads the request-memoized profile (`getUserProfile` is React `cache()`-wrapped),
+// so when the dashboard layout has already resolved the user this makes ZERO extra
+// backend calls. A TOUR_OPERATOR with no operator record still needs onboarding.
 export async function checkOnboardingStatus() {
-  const reqHeaders = await headers();
-  const cookie = reqHeaders.get('cookie') || '';
-  const { data: sessionData } = await authClient.getSession({
-    fetchOptions: { headers: serverAuthHeaders(cookie) },
-  });
+  const cookie = (await headers()).get('cookie') || '';
+  const user = await getUserProfile(cookie);
 
-  if (!sessionData?.session) {
+  if (!user) {
     return { needsOnboarding: false, error: 'Unauthorized' };
   }
 
-  const { user } = sessionData;
-  const userRole = (user as any).role;
-
+  const userRole = (user as { role?: string }).role;
   if (userRole !== 'TOUR_OPERATOR') {
     return { needsOnboarding: false };
   }
 
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/users/me`, {
-      headers: serverAuthHeaders(cookie),
-    });
-
-    if (!response.ok) {
-      return { needsOnboarding: false, error: 'Failed to fetch user profile' };
-    }
-
-    const userData = await safeJson(response);
-    if (!userData) {
-      return { needsOnboarding: false, error: 'Failed to parse user profile' };
-    }
-    // In our backend, if operator is null, it means they need onboarding
-    return { needsOnboarding: !userData.operator };
-  } catch (error) {
-    console.error('Error checking onboarding status:', error);
-    return { needsOnboarding: false, error: 'Internal server error' };
-  }
+  // In our backend, if operator is null, it means they need onboarding.
+  return { needsOnboarding: !(user as { operator?: unknown }).operator };
 }
 
 export async function onboardOperator(data: OnboardingData) {
@@ -75,7 +44,7 @@ export async function onboardOperator(data: OnboardingData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        cookie: reqHeaders.get('cookie') || '',
+        ...serverAuthHeaders(reqHeaders.get('cookie') || ''),
       },
       body: JSON.stringify(data),
     });

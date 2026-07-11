@@ -180,14 +180,20 @@ export const auth = betterAuth({
 
   advanced: {
     // Cross-subdomain cookies are only correct in production, where the app and
-    // API live on sibling subdomains (app.esenc.cloud / api.esenc.cloud) and a
-    // `Domain=.esenc.cloud` cookie is shared between them. On localhost the
-    // browser rejects a `.esenc.cloud`-scoped cookie outright, so the session
-    // token is never stored and every dashboard load bounces back to /login.
-    // Gating on NODE_ENV keeps prod behaviour while fixing local sign-in.
+    // API live on sibling subdomains under the SAME project apex
+    // (islandtours.esenc.cloud / api.islandtours.esenc.cloud) and a
+    // `Domain=.islandtours.esenc.cloud` cookie is shared between them. On
+    // localhost the browser rejects such a cookie outright, so the session token
+    // is never stored and every dashboard load bounces back to /login - gating on
+    // NODE_ENV keeps prod behaviour while fixing local sign-in.
+    //
+    // Scope is the PROJECT apex, NOT the bare `.esenc.cloud`: a `.esenc.cloud`
+    // cookie would be sent to every unrelated sibling under that apex (cookie
+    // tossing / fixation blast radius). Override per-environment with
+    // COOKIE_DOMAIN; the default stays scoped to this project's subtree.
     crossSubDomainCookies: {
       enabled: process.env.NODE_ENV === 'production',
-      domain: process.env.COOKIE_DOMAIN ?? '.esenc.cloud',
+      domain: process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud',
     },
   },
 });
