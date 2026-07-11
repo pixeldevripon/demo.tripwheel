@@ -18,6 +18,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { IsLocalDate } from '@/common/validators/is-local-date.validator';
 import { BookingStatus, CancelledBy, CancellationRefund } from '@prisma/client';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -63,14 +64,36 @@ export class ThankYouResponseDto {
   @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!:
     | string
     | null;
+  // The tour experience time is destination-LOCAL wall-clock. Render it from
+  // localDate + startTime/endTime against timeZone. startsAtUtc/endsAtUtc are the
+  // only real UTC instants here - use them for ICS/reminders/integrations, never
+  // for display. (The old fake-`Z` tourStartDateTime/tourEndDateTime are gone.)
   @ApiProperty({ example: '2026-07-01' }) localDate!: string;
   @ApiPropertyOptional({ nullable: true, example: '09:00' }) startTime!:
     | string
     | null;
-  @ApiPropertyOptional({ nullable: true, example: '2026-07-01T13:00:00.000Z' })
-  tourStartDateTime!: string | null;
-  @ApiPropertyOptional({ nullable: true, example: '2026-07-01T21:00:00.000Z' })
-  tourEndDateTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '13:00' }) endTime!:
+    | string
+    | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'IANA zone localDate/startTime/endTime are expressed in. Render against this; do not parse the local fields as UTC.',
+    example: 'America/Curacao',
+  })
+  timeZone!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Real UTC instant of the local start (integrations/ICS only).',
+    example: '2026-07-01T13:00:00.000Z',
+  })
+  startsAtUtc!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Real UTC instant of the local end (integrations/ICS only).',
+    example: '2026-07-01T17:00:00.000Z',
+  })
+  endsAtUtc!: string | null;
   @ApiPropertyOptional({
     nullable: true,
     example: 'Marriott Beach Resort — main lobby',
@@ -315,6 +338,15 @@ export class CancelBookingDto {
   @IsOptional()
   @IsBoolean()
   force?: boolean;
+
+  @ApiPropertyOptional({
+    example: '2026-06-28T14:03:00.000Z',
+    description:
+      'UTC instant the traveler requested cancellation. Refund eligibility is judged at this instant, not the (possibly later) admin action time. Defaults to any prior request stamp, else now.',
+  })
+  @IsOptional()
+  @IsDateString()
+  requestedAt?: string;
 }
 
 export class ExtendBookingDto {
@@ -370,12 +402,12 @@ export class ListBookingsQueryDto {
 
   @ApiPropertyOptional({ example: '2026-07-01' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   from?: string;
 
   @ApiPropertyOptional({ example: '2026-07-31' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   to?: string;
 
   @ApiPropertyOptional({ example: 1 })

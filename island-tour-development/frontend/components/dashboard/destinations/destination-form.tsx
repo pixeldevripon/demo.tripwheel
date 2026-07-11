@@ -61,9 +61,9 @@ const destinationSchema = z.object({
         .refine(v => !v || (!isNaN(Number(v)) && Number(v) >= -180 && Number(v) <= 180), 'Longitude must be between -180 and 180'),
     timezone: z
         .string()
-        .optional()
+        .min(1, 'Timezone is required')
         .refine(
-            v => !v || isValidIanaTimeZone(v),
+            isValidIanaTimeZone,
             'Must be a valid IANA timezone (e.g. America/Curacao), not an offset like UTC-4'
         ),
     currency: z.enum(CURRENCY_VALUES as [string, ...string[]]).optional().or(z.literal('')),
@@ -159,7 +159,7 @@ export function DestinationForm({
                         country: values.country || null,
                         latitude: num(values.latitude),
                         longitude: num(values.longitude),
-                        timezone: values.timezone || null,
+                        timezone: values.timezone,
                         currency: (values.currency || null) as import("@/types/enums").Currency | null,
                         language: values.language || null,
                         galleryImages: values.galleryImages ?? [],
@@ -190,7 +190,7 @@ export function DestinationForm({
                     country: values.country || null,
                     latitude: num(values.latitude),
                     longitude: num(values.longitude),
-                    timezone: values.timezone || null,
+                    timezone: values.timezone,
                     currency: (values.currency || null) as import("@/types/enums").Currency | null,
                     language: values.language || null,
                     galleryImages: values.galleryImages ?? [],
@@ -338,8 +338,12 @@ export function DestinationForm({
                                 </Select>
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Timezone</Label>
-                                <Input {...register('timezone')} placeholder='e.g. America/Curacao' />
+                                <Label className='text-xs font-semibold uppercase'>
+                                    Timezone <span className='text-destructive'>*</span>
+                                </Label>
+                                <Input {...register('timezone')} placeholder='e.g. America/Curacao' aria-invalid={!!errors.timezone} />
+                                <FieldDescription>IANA timezone (required) - anchors all local tour/departure/booking times for this destination.</FieldDescription>
+                                {errors.timezone && <FieldError>{errors.timezone.message}</FieldError>}
                             </Field>
                             <Field>
                                 <Label className='text-xs font-semibold uppercase'>Language</Label>

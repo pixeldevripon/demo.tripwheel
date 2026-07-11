@@ -61,6 +61,22 @@ export function localNow(timeZone: string, instant: Date = new Date()): Date {
   return new Date(instant.getTime() + timeZoneOffsetMs(timeZone, instant));
 }
 
+/**
+ * Convert a local wall-clock instant (a `Z`-labelled `Date`, the storage form
+ * for departure/tour times) into a REAL UTC instant for that timezone - the
+ * inverse of {@link localNow}. Use only when an absolute moment is genuinely
+ * needed (ICS files, reminder scheduling, external integrations), never for
+ * display. Exact for fixed-offset zones (all Caribbean launch islands except
+ * Bahamas); off by at most the DST step in the rare transition hour.
+ */
+export function localWallClockToUtc(
+  localWallClock: Date,
+  timeZone: string,
+): Date {
+  const offset = timeZoneOffsetMs(timeZone, localWallClock);
+  return new Date(localWallClock.getTime() - offset);
+}
+
 /** Parse `"HH:MM"` → `{ hour, minute }`; throws on malformed input. */
 export function parseHhMm(value: string): { hour: number; minute: number } {
   const m = /^(\d{2}):(\d{2})$/.exec(value);

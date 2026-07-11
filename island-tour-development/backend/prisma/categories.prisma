@@ -13,13 +13,13 @@ model Category {
   createdBy String? // null = seeded; userId = admin who created
 
   // ── V2 fields (Stage 1) ──────────────────────────────────────────────────────
-  description             String? // canonical English description (translations carry localized overview)
-  icon                    String? // icon identifier for UI — V2 §3
-  sortOrder               Int        @default(0) // display order in nav/filter
+  description      String? // canonical English description (translations carry localized overview)
+  icon             String? // icon identifier for UI — V2 §3
+  sortOrder        Int        @default(0) // display order in nav/filter
   // Future sub-categories (V2 §3) — nullable, unused at launch, no URL impact.
-  parentCategoryId        String?
-  parentCategory          Category?  @relation("CategoryParent", fields: [parentCategoryId], references: [id])
-  subCategories           Category[] @relation("CategoryParent")
+  parentCategoryId String?
+  parentCategory   Category?  @relation("CategoryParent", fields: [parentCategoryId], references: [id])
+  subCategories    Category[] @relation("CategoryParent")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

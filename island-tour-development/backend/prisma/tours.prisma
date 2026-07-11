@@ -14,7 +14,7 @@ model Tour {
   status TourStatus @default(DRAFT)
 
   // ── OCTO product attributes ──
-  timeZone             String               @default("America/Curacao") // IANA; derive from destination
+  timeZone             String // IANA; always derived from the destination on create (no universal fallback)
   availabilityType     OctoAvailabilityType @default(START_TIME)
   instantConfirmation  Boolean              @default(true)
   instantDelivery      Boolean              @default(true)
@@ -26,16 +26,16 @@ model Tour {
   reference            String? // operator's external id (OCTO reference)
 
   // ── Pricing model ──
-  pricingModel    PricingModel   @default(PER_PERSON) // → OCTO pricingPer
-  wholeUnitType   WholeUnitType? // when pricingModel = UNIT (boat/vehicle…)
-  defaultCurrency Currency       @default(USD)
-  basePrice       Decimal?       @db.Decimal(10, 2)
-  priceFrom       Decimal?       @db.Decimal(10, 2) // cached min for listing
+  pricingModel       PricingModel   @default(PER_PERSON) // → OCTO pricingPer
+  wholeUnitType      WholeUnitType? // when pricingModel = UNIT (boat/vehicle…)
+  defaultCurrency    Currency       @default(USD)
+  basePrice          Decimal?       @db.Decimal(10, 2)
+  priceFrom          Decimal?       @db.Decimal(10, 2) // cached min for listing
   // UNIT (whole-asset / charter) pricing: base covers `unitIncludedGuests`
   // travelers; each additional traveler up to maxPartySize costs `extraPersonPrice`.
   // Both null for PER_PERSON tours (priced via TourAgeBand).
   unitIncludedGuests Int? // guests covered by basePrice ("/10 people")
-  extraPersonPrice   Decimal? @db.Decimal(10, 2) // surcharge per traveler beyond unitIncludedGuests
+  extraPersonPrice   Decimal?       @db.Decimal(10, 2) // surcharge per traveler beyond unitIncludedGuests
 
   // ── Operational / booking logic (master E.3) ──
   durationMinutesFrom  Int?

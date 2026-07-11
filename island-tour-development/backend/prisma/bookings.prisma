@@ -33,6 +33,7 @@ model Booking {
   startTime         String?
   tourStartDateTime DateTime? // full local start instant (TYP range, ICS, reminder, deadline calc) — master E.8
   tourEndDateTime   DateTime? // local end = start + duration (TYP "8:00 AM – 5:00 PM") — master E.8
+  tourTimeZone      String? // IANA zone snapshot (cancellation window + review eligibility stay correct if the tour/destination zone later changes)
 
   // Pickup (octo/pickups; D12)
   pickupRequested  Boolean @default(false)
@@ -92,10 +93,11 @@ model Booking {
   paymentMethodBrand String?
 
   // Cancellation
-  cancellationRefund CancellationRefund?
-  cancelledBy        CancelledBy?
-  cancellationReason String?
-  utcCancelledAt     DateTime?
+  cancellationRefund         CancellationRefund?
+  cancelledBy                CancelledBy?
+  cancellationReason         String?
+  utcCancelledAt             DateTime?
+  utcCancellationRequestedAt DateTime? // when the traveler requested cancellation; refund eligibility is judged at this instant, not the admin action time (gap #16, wired in package D)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

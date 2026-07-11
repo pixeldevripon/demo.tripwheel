@@ -612,13 +612,19 @@ describe('ToursService', () => {
           tourId: 't-ok',
           capacity: 10,
           bookedCount: 7,
+          date: new Date('2026-07-20T00:00:00.000Z'),
           startTime: new Date('1970-01-01T09:00:00.000Z'),
+          status: DepartureStatus.OPEN,
+          tour: { timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
         },
         {
           tourId: 't-full',
           capacity: 10,
           bookedCount: 9,
+          date: new Date('2026-07-20T00:00:00.000Z'),
           startTime: new Date('1970-01-01T09:00:00.000Z'),
+          status: DepartureStatus.OPEN,
+          tour: { timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
         },
       ]);
 
@@ -650,13 +656,19 @@ describe('ToursService', () => {
           tourId: 't-morning',
           capacity: 10,
           bookedCount: 0,
+          date: new Date('2026-07-20T00:00:00.000Z'),
           startTime: new Date('1970-01-01T09:00:00.000Z'), // 09:00 -> morning
+          status: DepartureStatus.OPEN,
+          tour: { timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
         },
         {
           tourId: 't-evening',
           capacity: 10,
           bookedCount: 0,
+          date: new Date('2026-07-20T00:00:00.000Z'),
           startTime: new Date('1970-01-01T18:00:00.000Z'), // 18:00 -> evening
+          status: DepartureStatus.OPEN,
+          tour: { timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
         },
       ]);
 

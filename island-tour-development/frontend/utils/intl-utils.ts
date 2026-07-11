@@ -61,6 +61,45 @@ export function detectBrowserTimezone() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/**
+ * Parse a strict `YYYY-MM-DD` business date into plain calendar parts WITHOUT
+ * going through `new Date(str)` - which parses it as midnight UTC and then
+ * shifts a day for viewers in negative-offset zones. Returns null if malformed.
+ */
+export function parseLocalDateParts(
+    localDate: string
+): { year: number; month: number; day: number } | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
+    if (!m) return null;
+    return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) };
+}
+
+/**
+ * Format a destination-LOCAL calendar date (`YYYY-MM-DD`) for display without
+ * any timezone shift - the value is a wall-clock day, not an instant. Use this
+ * for tour localDate, schedule validFrom/validUntil, exception/departure dates,
+ * etc. NEVER `formatDate(new Date(localDate))` for these (it shifts the day for
+ * viewers outside the destination zone). Real UTC timestamps (createdAt, ...)
+ * still use `formatDate`.
+ */
+export function formatLocalDateOnly(
+    localDate: string,
+    options: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    },
+    locale: string = 'en-US'
+): string {
+    const parts = parseLocalDateParts(localDate);
+    if (!parts) return localDate;
+    // Build a UTC-noon Date from the parts and format in UTC, so the calendar
+    // day can never roll over regardless of the viewer's timezone.
+    const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(d);
+}
+
 let ianaZones: Set<string> | null = null;
 function getIanaZones(): Set<string> | null {
     if (ianaZones) return ianaZones;

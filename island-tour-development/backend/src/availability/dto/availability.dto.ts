@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
-  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -18,6 +17,7 @@ import {
   AvailabilityScheduleStatus,
   DepartureStatus,
 } from '@prisma/client';
+import { IsLocalDate } from '@/common/validators/is-local-date.validator';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -141,12 +141,12 @@ export class ListExceptionsQueryDto {
 
   @ApiPropertyOptional({ example: '2026-07-01' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   from?: string;
 
   @ApiPropertyOptional({ example: '2026-07-31' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   to?: string;
 }
 
@@ -157,12 +157,12 @@ export class ListDeparturesQueryDto {
 
   @ApiPropertyOptional({ example: '2026-07-01' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   from?: string;
 
   @ApiPropertyOptional({ example: '2026-07-31' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   to?: string;
 
   @ApiPropertyOptional({ enum: DepartureStatus })
@@ -207,7 +207,7 @@ export class CreateScheduleDto {
     description: 'Defaults to today.',
   })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   validFrom?: string;
 
   @ApiPropertyOptional({
@@ -215,7 +215,7 @@ export class CreateScheduleDto {
     description: 'null = open-ended.',
   })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   validUntil?: string;
 
   @ApiPropertyOptional({
@@ -251,12 +251,12 @@ export class UpdateScheduleDto {
 
   @ApiPropertyOptional({ example: '2026-06-01' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   validFrom?: string;
 
   @ApiPropertyOptional({ example: '2026-09-30' })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   validUntil?: string;
 
   @ApiPropertyOptional({ enum: AvailabilityScheduleStatus })
@@ -271,7 +271,7 @@ export class CreateExceptionDto {
   tourId!: string;
 
   @ApiProperty({ example: '2026-07-04' })
-  @IsDateString()
+  @IsLocalDate()
   date!: string;
 
   @ApiProperty({
@@ -338,7 +338,7 @@ export class MaterializeDto {
     description: 'Defaults to today.',
   })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   from?: string;
 
   @ApiPropertyOptional({
@@ -346,7 +346,7 @@ export class MaterializeDto {
     description: 'Defaults to today + 90 days; max horizon 365 days.',
   })
   @IsOptional()
-  @IsDateString()
+  @IsLocalDate()
   to?: string;
 }
 
@@ -379,11 +379,11 @@ export class AvailabilityCheckDto {
   tourId!: string;
 
   @ApiProperty({ example: '2026-07-01' })
-  @IsDateString()
+  @IsLocalDate()
   dateFrom!: string;
 
   @ApiProperty({ example: '2026-07-31' })
-  @IsDateString()
+  @IsLocalDate()
   dateTo!: string;
 
   @ApiPropertyOptional({
@@ -405,10 +405,10 @@ export class AvailabilityCalendarDto {
   tourId!: string;
 
   @ApiProperty({ example: '2026-07-01' })
-  @IsDateString()
+  @IsLocalDate()
   dateFrom!: string;
 
   @ApiProperty({ example: '2026-07-31' })
-  @IsDateString()
+  @IsLocalDate()
   dateTo!: string;
 }

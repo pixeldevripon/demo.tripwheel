@@ -1,5 +1,4 @@
 import { Locale } from '@/common/constants/locales';
-import { IsIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   AddOnUnit,
@@ -1246,10 +1245,9 @@ export class UpdateTourDto {
   @IsEnum(DeliveryMethod, { each: true })
   deliveryMethods?: DeliveryMethod[];
 
-  @ApiPropertyOptional({ example: 'America/Curacao' })
-  @IsOptional()
-  @IsIanaTimeZone()
-  timeZone?: string;
+  // timeZone is intentionally NOT operator-editable: it is always derived from
+  // the tour's destination on create (a tour belongs to exactly one destination)
+  // and must not drift from the destination clock. See is-iana-timezone.validator.
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

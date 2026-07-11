@@ -416,6 +416,7 @@ describe('DestinationService', () => {
       const dto: CreateDestinationDto = {
         name: 'Aruba',
         region: Region.CARIBBEAN,
+        timezone: 'America/Aruba',
       };
       const result = await service.create(dto, adminId);
 
@@ -432,6 +433,7 @@ describe('DestinationService', () => {
       const dto: CreateDestinationDto = {
         name: 'Aruba',
         region: Region.CARIBBEAN,
+        timezone: 'America/Aruba',
       };
       await service.create(dto, adminId);
 
@@ -459,6 +461,7 @@ describe('DestinationService', () => {
       const dto: CreateDestinationDto = {
         name: 'Aruba',
         region: Region.CARIBBEAN,
+        timezone: 'America/Aruba',
       };
       await service.create(dto, adminId);
 
@@ -487,7 +490,7 @@ describe('DestinationService', () => {
       prisma.category.findMany.mockResolvedValue([]);
 
       await service.create(
-        { name: 'Aruba', region: Region.CARIBBEAN },
+        { name: 'Aruba', region: Region.CARIBBEAN, timezone: 'America/Aruba' },
         adminId,
       );
 
@@ -505,6 +508,7 @@ describe('DestinationService', () => {
       const dto: CreateDestinationDto = {
         name: 'Aruba',
         region: Region.CARIBBEAN,
+        timezone: 'America/Aruba',
       };
       await expect(service.create(dto, adminId)).rejects.toThrow(
         ConflictException,
@@ -518,7 +522,14 @@ describe('DestinationService', () => {
       prisma.category.findMany.mockResolvedValue([]);
 
       await expect(
-        service.create({ name: 'Aruba', region: Region.CARIBBEAN }, adminId),
+        service.create(
+          {
+            name: 'Aruba',
+            region: Region.CARIBBEAN,
+            timezone: 'America/Aruba',
+          },
+          adminId,
+        ),
       ).rejects.toThrow('DB connection lost');
     });
 
@@ -529,7 +540,11 @@ describe('DestinationService', () => {
       prisma.category.findMany.mockResolvedValue([]);
 
       await service.create(
-        { name: 'Curaçao', region: Region.CARIBBEAN },
+        {
+          name: 'Curaçao',
+          region: Region.CARIBBEAN,
+          timezone: 'America/Curacao',
+        },
         adminId,
       );
 

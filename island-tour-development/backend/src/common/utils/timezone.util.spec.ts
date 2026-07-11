@@ -1,6 +1,7 @@
 import {
   dateKey,
   localNow,
+  localWallClockToUtc,
   localWallTime,
   parseHhMm,
   timeZoneOffsetMs,
@@ -36,6 +37,21 @@ describe('timezone.util (local-time model)', () => {
         new Date('2026-07-01T13:00:00.000Z'),
       );
       expect(now.toISOString()).toBe('2026-07-01T09:00:00.000Z');
+    });
+  });
+
+  describe('localWallClockToUtc', () => {
+    it('is the exact inverse of localNow for a fixed-offset zone', () => {
+      // 09:00 Curaçao (AST, UTC-4) local wall-clock → 13:00 UTC.
+      const local = localWallTime(2026, 7, 1, 9, 0);
+      expect(localWallClockToUtc(local, 'America/Curacao').toISOString()).toBe(
+        '2026-07-01T13:00:00.000Z',
+      );
+      // Round-trips back through localNow.
+      const utc = localWallClockToUtc(local, 'America/Curacao');
+      expect(localNow('America/Curacao', utc).toISOString()).toBe(
+        local.toISOString(),
+      );
     });
   });
 

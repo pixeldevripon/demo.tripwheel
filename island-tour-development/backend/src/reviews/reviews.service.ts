@@ -59,6 +59,7 @@ export class ReviewsService {
         status: true,
         localDate: true,
         startTime: true,
+        tourTimeZone: true,
         contactFirstName: true,
         contactLastName: true,
         contactCountry: true,
@@ -392,12 +393,14 @@ export class ReviewsService {
   private hasExperiencePassed(booking: {
     localDate: Date;
     startTime: string | null;
+    tourTimeZone: string | null;
     tour: { timeZone: string } | null;
   }): boolean {
-    // Anchor "has the experience happened yet?" to the tour's own IANA zone -
-    // never a universal Curaçao fallback. A booking always carries a tour; if the
-    // zone is somehow absent we conservatively treat the experience as not-yet-passed.
-    const tz = booking.tour?.timeZone;
+    // Anchor "has the experience happened yet?" to the zone snapshotted on the
+    // booking (falling back to the live tour zone for older bookings) - never a
+    // universal Curaçao fallback. If no zone is resolvable we conservatively
+    // treat the experience as not-yet-passed.
+    const tz = booking.tourTimeZone ?? booking.tour?.timeZone;
     if (!tz) return false;
     const start = new Date(
       `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,

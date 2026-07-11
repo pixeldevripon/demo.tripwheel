@@ -16,7 +16,6 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
-import { isValidIanaTimeZone } from '@/utils/intl-utils';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -263,15 +262,7 @@ const detailsSchema = z.object({
   allowFreesale: z.boolean(),
   deliveryFormats: z.array(z.enum(['PDF_URL', 'QRCODE', 'CODE128', 'PKPASS_URL'])),
   deliveryMethods: z.array(z.enum(['VOUCHER', 'TICKET'])),
-  timeZone: z
-    .string()
-    .max(60)
-    .optional()
-    .or(z.literal(''))
-    .refine(
-      v => !v || isValidIanaTimeZone(v),
-      'Must be a valid IANA timezone (e.g. America/Curacao), not an offset like UTC-4'
-    ),
+  // timeZone is derived from the destination and not operator-editable (shown read-only below).
   startTimes: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
   isActive: z.boolean().optional(),
 });
@@ -320,7 +311,6 @@ type DetailsFormValues = {
   allowFreesale: boolean;
   deliveryFormats: DeliveryFormat[];
   deliveryMethods: DeliveryMethod[];
-  timeZone: string;
   startTimes: string[];
   isActive: boolean;
 };
@@ -377,7 +367,6 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     allowFreesale: trip.allowFreesale,
     deliveryFormats: trip.deliveryFormats ?? [],
     deliveryMethods: trip.deliveryMethods ?? [],
-    timeZone: trip.timeZone ?? '',
     startTimes: trip.startTimes ?? [],
     isActive: trip.isActive,
   };
@@ -504,7 +493,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           allowFreesale: values.allowFreesale,
           deliveryFormats: values.deliveryFormats,
           deliveryMethods: values.deliveryMethods,
-          timeZone: values.timeZone || undefined,
           startTimes: values.startTimes,
           isActive: values.isActive,
         },
@@ -1191,8 +1179,8 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
             <Field>
               <Label className="text-xs font-semibold uppercase">Time Zone</Label>
-              <Input {...register('timeZone')} placeholder="e.g. America/Curacao" />
-              <FieldDescription>IANA time zone identifier for the tour&apos;s local time.</FieldDescription>
+              <Input value={trip.timeZone ?? ''} readOnly disabled placeholder="Derived from destination" />
+              <FieldDescription>Derived from the destination and used for all schedule, departure, and booking local times. Not editable here.</FieldDescription>
             </Field>
 
             <Field>

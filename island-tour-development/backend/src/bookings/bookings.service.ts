@@ -27,9 +27,12 @@ import {
   combineDateTime,
   dateKey,
   localNow,
+  localWallClockToUtc,
   timeOfDay,
 } from '@/common/utils/timezone.util';
 import { eurFxRate } from '@/common/utils/fx.util';
+import { assertDateRangeOrder } from '@/common/utils/date-range.util';
+import { cutoffReached } from '@/availability/availability-status.util';
 import { storedStatusForFill } from '@/availability/availability-status.util';
 import { TiersService } from '@/tiers/tiers.service';
 import {
@@ -107,14 +110,18 @@ export class BookingsService {
 
     const now = localNow(ctx.tour.timeZone);
     // Cutoff is computed live (master §4): now >= start - bookingCutoffMinutes → closed.
+    // Same arithmetic as public availability and search/listing (shared helper).
     const localStart = combineDateTime(
       ctx.departure.date,
       ctx.departure.startTime,
     );
-    const cutoffAt = new Date(
-      localStart.getTime() - ctx.tour.bookingCutoffMinutes * 60_000,
-    );
-    if (now >= cutoffAt) {
+    if (
+      cutoffReached(
+        localStart.getTime(),
+        now.getTime(),
+        ctx.tour.bookingCutoffMinutes,
+      )
+    ) {
       throw new UnprocessableEntityException(
         'Booking cutoff has passed for this departure',
       );
@@ -197,6 +204,7 @@ export class BookingsService {
           startTime: timeOfDay(ctx.departure.startTime),
           tourStartDateTime: localStart,
           tourEndDateTime,
+          tourTimeZone: ctx.tour.timeZone,
           island: ctx.tour.destination?.slug ?? 'Curaçao',
           utcExpiresAt: operatorFull
             ? null
@@ -511,7 +519,18 @@ export class BookingsService {
       throw new ConflictException(`Cannot cancel a ${booking.status} booking`);
     }
 
-    const refund = await this.computeRefund(booking, dto.force ?? false);
+    // Refund eligibility is judged at the traveler's REQUEST instant (master
+    // BOOKING-AND-PAYMENTS §): an explicit dto.requestedAt (admin processing a
+    // prior request) wins, else a previously-stamped request time, else now
+    // (immediate self-cancel). Admin delay can never shrink the refund window.
+    const requestedAt = dto.requestedAt
+      ? new Date(dto.requestedAt)
+      : (booking.utcCancellationRequestedAt ?? new Date());
+    const refund = await this.computeRefund(
+      booking,
+      dto.force ?? false,
+      requestedAt,
+    );
     const seats = booking.unitItems.length;
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -527,6 +546,7 @@ export class BookingsService {
         data: {
           status: BookingStatus.CANCELLED,
           utcCancelledAt: new Date(),
+          utcCancellationRequestedAt: requestedAt,
           cancellationRefund: refund,
           cancelledBy: actorToCancelledBy(actor?.role),
           cancellationReason: dto.reason ?? null,
@@ -702,12 +722,26 @@ export class BookingsService {
       island: booking.island,
       localDate: dateKey(booking.localDate),
       startTime: booking.startTime,
-      tourStartDateTime: booking.tourStartDateTime
-        ? booking.tourStartDateTime.toISOString()
+      endTime: booking.tourEndDateTime
+        ? timeOfDay(booking.tourEndDateTime)
         : null,
-      tourEndDateTime: booking.tourEndDateTime
-        ? booking.tourEndDateTime.toISOString()
-        : null,
+      timeZone: booking.tourTimeZone ?? null,
+      // Real UTC instants (integrations/ICS/reminders only) - null for pre-snapshot
+      // bookings with no zone, since we cannot resolve an absolute moment then.
+      startsAtUtc:
+        booking.tourStartDateTime && booking.tourTimeZone
+          ? localWallClockToUtc(
+              booking.tourStartDateTime,
+              booking.tourTimeZone,
+            ).toISOString()
+          : null,
+      endsAtUtc:
+        booking.tourEndDateTime && booking.tourTimeZone
+          ? localWallClockToUtc(
+              booking.tourEndDateTime,
+              booking.tourTimeZone,
+            ).toISOString()
+          : null,
       pickupAddress: booking.pickupAddress,
       partySize: booking.unitItems.length,
       currency: booking.currency,
@@ -718,6 +752,7 @@ export class BookingsService {
   }
 
   async list(query: ListBookingsQueryDto, actor: { id: string; role: Role }) {
+    assertDateRangeOrder(query.from, query.to);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.BookingWhereInput = {};
@@ -960,6 +995,7 @@ export class BookingsService {
   private async computeRefund(
     booking: BookingWithItems,
     force: boolean,
+    requestedAt: Date,
   ): Promise<CancellationRefund> {
     if (force) return CancellationRefund.FULL;
     // On-hold bookings never took payment → nothing to refund.
@@ -972,7 +1008,9 @@ export class BookingsService {
     });
     if (!tour) return CancellationRefund.NONE;
 
-    const now = localNow(tour.timeZone);
+    // Judge the window at the REQUEST instant, in the zone snapshotted onto the
+    // booking (falling back to the live tour zone for pre-snapshot bookings).
+    const now = localNow(booking.tourTimeZone ?? tour.timeZone, requestedAt);
     const departureStart = new Date(
       `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,
     );

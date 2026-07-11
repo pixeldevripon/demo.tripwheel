@@ -36,6 +36,8 @@ function mockPrisma() {
       create: jest.fn(),
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     departure: {
       // Default [] so the post-mutation refreshIsBookable() -> computeIsBookable()
@@ -301,6 +303,128 @@ describe('AvailabilityService', () => {
       prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.departure.findMany.mockResolvedValue([]);
       expect(await svc.computeIsBookable('t1')).toBe(false);
+    });
+  });
+
+  // Exceptions change sellable inventory, so every mutation must re-project
+  // departures + refresh the listing gate immediately (not wait for the nightly
+  // job) - otherwise a closed date keeps selling. See availability gap #11.
+  describe('exceptions re-materialise departures', () => {
+    function exceptionRow(over: Record<string, unknown> = {}) {
+      return {
+        id: 'x1',
+        tourId: 't1',
+        date: day('2030-06-10'),
+        startTime: null,
+        type: 'CLOSE_DATE',
+        capacity: null,
+        note: null,
+        createdBy: 'u1',
+        ...over,
+      };
+    }
+
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+    });
+
+    it('re-materialises + refreshes bookable on createException', async () => {
+      prisma.availabilityException.create.mockResolvedValue(exceptionRow());
+      await svc.createException('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        date: '2030-06-10',
+        type: 'CLOSE_DATE',
+      });
+      expect(materializer.materializeTour).toHaveBeenCalledWith('t1');
+      expect(prisma.tour.update).toHaveBeenCalled(); // refreshIsBookable
+      expect(notifications.emitAvailabilityUpdate).toHaveBeenCalled();
+    });
+
+    it('re-materialises on updateException', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-10'),
+      });
+      prisma.availabilityException.update.mockResolvedValue(exceptionRow());
+      await svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+        note: 'closed for maintenance',
+      });
+      expect(materializer.materializeTour).toHaveBeenCalledWith('t1');
+      expect(prisma.tour.update).toHaveBeenCalled();
+    });
+
+    it('re-materialises on deleteException', async () => {
+      prisma.availabilityException.findUnique.mockResolvedValue({
+        tourId: 't1',
+        date: day('2030-06-10'),
+      });
+      prisma.availabilityException.delete.mockResolvedValue(exceptionRow());
+      await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+      expect(materializer.materializeTour).toHaveBeenCalledWith('t1');
+      expect(prisma.tour.update).toHaveBeenCalled();
+    });
+
+    // gap #12: reject exception shapes the materializer would otherwise skip.
+    it('rejects close_slot without a startTime', async () => {
+      await expect(
+        svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-10',
+          type: 'CLOSE_SLOT',
+        }),
+      ).rejects.toThrow(/close_slot requires a startTime/);
+      expect(prisma.availabilityException.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects set_capacity without a capacity', async () => {
+      await expect(
+        svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-10',
+          type: 'SET_CAPACITY',
+          startTime: '09:00',
+        }),
+      ).rejects.toThrow(/set_capacity requires a capacity/);
+    });
+
+    it('rejects add_slot with no resolvable capacity (tour has no default)', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, maxPartySize: null });
+      await expect(
+        svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-10',
+          type: 'ADD_SLOT',
+          startTime: '15:00',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // gap #14: reversed local-date ranges must be rejected, not silently return [].
+  describe('date-range ordering', () => {
+    it('rejects a schedule whose validUntil precedes validFrom', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.createSchedule('u1', Role.TOUR_OPERATOR, {
+          ...createDto,
+          validFrom: '2030-09-01',
+          validUntil: '2030-06-01',
+        }),
+      ).rejects.toThrow(/validUntil must be on or after validFrom/);
+    });
+
+    it('rejects a departures query with to before from', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.listDepartures('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          from: '2030-07-31',
+          to: '2030-07-01',
+        }),
+      ).rejects.toThrow(/to must be on or after from/);
     });
   });
 });

@@ -258,6 +258,8 @@ describe('BookingsService', () => {
       expect(
         data.tourEndDateTime.getTime() - data.tourStartDateTime.getTime(),
       ).toBe(480 * 60_000);
+      // Zone snapshot keeps cancellation/review math correct if the tour zone changes later.
+      expect(data.tourTimeZone).toBe('America/Curacao');
       expect(data.pickupAddress).toBe('Piscadera Bay, Willemstad');
       expect(data.island).toBe('curacao');
       expect(data.newsletterOptIn).toBe(true);
@@ -375,6 +377,46 @@ describe('BookingsService', () => {
       // Seats are released via the clamped raw count-down (master §3).
       expect(m.$executeRaw).toHaveBeenCalled();
       expect(res.cancellationRefund).toBe('FULL');
+    });
+
+    it('judges the refund window at the request instant, not the admin action time', async () => {
+      // Tour departs 2030-06-05 09:00 Curaçao; free-cancel window is 48h before.
+      const setup = () => {
+        m.booking.findUnique.mockResolvedValue(
+          fakeBooking({
+            status: BookingStatus.CONFIRMED,
+            tourTimeZone: 'America/Curacao',
+          }),
+        );
+        m.tour.findUnique.mockResolvedValue({
+          cancellationHours: 48,
+          timeZone: 'America/Curacao',
+        });
+        m.departure.findUnique.mockResolvedValue({
+          capacity: 10,
+          bookedCount: 1,
+          status: 'OPEN',
+          soldOutAt: null,
+        });
+        m.booking.update.mockImplementation(({ data }: any) =>
+          Promise.resolve(fakeBooking({ ...data })),
+        );
+      };
+
+      // Requested ~73h before start → inside the free window → FULL, even though
+      // the departure is only days away in local time.
+      setup();
+      const early = await svc.cancel('b1', {
+        requestedAt: '2030-06-02T12:00:00.000Z',
+      });
+      expect(early.cancellationRefund).toBe('FULL');
+
+      // Requested ~13h before start → past the 48h window → NONE.
+      setup();
+      const late = await svc.cancel('b1', {
+        requestedAt: '2030-06-05T00:00:00.000Z',
+      });
+      expect(late.cancellationRefund).toBe('NONE');
     });
 
     it('refunds NONE for an on-hold cancellation (no payment taken)', async () => {

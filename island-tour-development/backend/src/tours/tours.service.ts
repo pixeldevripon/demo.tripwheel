@@ -10,6 +10,7 @@ import { generateSlug } from '@/common/utils/slug.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
+import { isDepartureLiveBookable } from '@/availability/availability-status.util';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import {
   BadRequestException,
@@ -410,22 +411,26 @@ export class ToursService {
         data: [] as ReturnType<typeof this.flattenSearchHit>[],
       };
     }
-    // Optional date filter: keep only tours with a bookable (OPEN) departure on
-    // that calendar date. Departure.date is a `@db.Date`, so we match midnight UTC.
+    // Optional date filter: keep only tours with a LIVE-bookable departure on
+    // that calendar date - same cutoff/capacity rule as availability + listing
+    // (not a coarse "has an OPEN row" check). Departure.date is a `@db.Date`.
     const parsedDate =
       params.date && !Number.isNaN(Date.parse(`${params.date}T00:00:00.000Z`))
         ? new Date(`${params.date}T00:00:00.000Z`)
         : null;
+    const dateAvailableTourIds = parsedDate
+      ? await this.findDateAvailableTourIds({
+          date: parsedDate,
+          guests: 1,
+          timeOfDay: [],
+        })
+      : null;
     const ci = { contains: term, mode: 'insensitive' as const };
     const where: Prisma.TourWhereInput = {
       status: TourStatus.LIVE,
       isActive: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
-      ...(parsedDate && {
-        departures: {
-          some: { date: parsedDate, status: DepartureStatus.OPEN },
-        },
-      }),
+      ...(dateAvailableTourIds && { id: { in: dateAvailableTourIds } }),
       OR: [
         { name: ci },
         {
@@ -563,13 +568,30 @@ export class ToursService {
         tourId: true,
         capacity: true,
         bookedCount: true,
+        date: true,
         startTime: true,
+        status: true,
+        tour: { select: { timeZone: true, bookingCutoffMinutes: true } },
       },
     });
 
     const ids = new Set<string>();
     for (const d of departures) {
-      if (d.capacity - d.bookedCount < guests) continue;
+      // Same live-bookability rule as public availability + reserve: excludes
+      // sold-out and past-cutoff departures (gaps #6/#15), not just OPEN status.
+      if (
+        !isDepartureLiveBookable({
+          status: d.status,
+          capacity: d.capacity,
+          bookedCount: d.bookedCount,
+          date: d.date,
+          startTime: d.startTime,
+          timeZone: d.tour.timeZone,
+          bookingCutoffMinutes: d.tour.bookingCutoffMinutes,
+          requiredSeats: guests,
+        })
+      )
+        continue;
       if (buckets.length > 0) {
         const hour = d.startTime.getUTCHours();
         if (!buckets.some(([lo, hi]) => hour >= lo && hour < hi)) continue;
@@ -1824,7 +1846,8 @@ export class ToursService {
           ...(dto.deliveryMethods !== undefined && {
             deliveryMethods: dto.deliveryMethods,
           }),
-          ...(dto.timeZone !== undefined && { timeZone: dto.timeZone }),
+          // timeZone is derived from the destination on create and never
+          // operator-editable, so it is intentionally not updated here.
           ...(dto.paymentModel !== undefined && {
             paymentModel: dto.paymentModel,
           }),

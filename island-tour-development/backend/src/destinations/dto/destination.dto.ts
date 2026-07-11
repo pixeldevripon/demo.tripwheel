@@ -432,10 +432,13 @@ export class CreateDestinationDto {
   @Max(180)
   longitude?: number;
 
-  @ApiPropertyOptional({ example: 'America/Aruba' })
-  @IsOptional()
+  @ApiProperty({
+    example: 'America/Aruba',
+    description:
+      'IANA timezone (required). All tour/departure/booking local-time math for this destination anchors to it.',
+  })
   @IsIanaTimeZone()
-  timezone?: string;
+  timezone!: string;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
   @IsOptional()

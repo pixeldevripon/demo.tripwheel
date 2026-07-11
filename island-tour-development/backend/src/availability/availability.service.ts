@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AvailabilityExceptionType,
   DepartureStatus,
   Prisma,
   Role,
@@ -17,6 +18,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
+import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
   combineDateTime,
@@ -28,6 +30,7 @@ import {
 } from '@/common/utils/timezone.util';
 import {
   BOOKABLE_HORIZON_DAYS,
+  cutoffReached,
   discloseRemaining,
   isDepartureBookable,
   liveDepartureStatus,
@@ -93,6 +96,12 @@ export class AvailabilityService {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     await this.assertStartTimeInSlotSet(dto.tourId, dto.startTime);
     await this.assertResolvableCapacity(dto.tourId, dto.capacityOverride);
+    assertDateRangeOrder(
+      dto.validFrom,
+      dto.validUntil,
+      'validFrom',
+      'validUntil',
+    );
     const clock = await this.tourClock(dto.tourId);
     let row;
     try {
@@ -166,7 +175,12 @@ export class AvailabilityService {
   ): Promise<ScheduleResponseDto> {
     const existing = await this.prisma.availabilitySchedule.findUnique({
       where: { id },
-      select: { tourId: true, capacityOverride: true },
+      select: {
+        tourId: true,
+        capacityOverride: true,
+        validFrom: true,
+        validUntil: true,
+      },
     });
     if (!existing) throw new NotFoundException('Schedule not found');
     const operatorId = await this.assertTourAccess(
@@ -176,6 +190,17 @@ export class AvailabilityService {
     );
     if (dto.startTime)
       await this.assertStartTimeInSlotSet(existing.tourId, dto.startTime);
+    // Validate the merged validity window (a partial edit can invert it).
+    assertDateRangeOrder(
+      dto.validFrom ?? dateKey(existing.validFrom),
+      dto.validUntil !== undefined
+        ? (dto.validUntil ?? undefined)
+        : existing.validUntil
+          ? dateKey(existing.validUntil)
+          : undefined,
+      'validFrom',
+      'validUntil',
+    );
     // The effective override after this edit (unchanged fields keep their value).
     if (dto.capacityOverride !== undefined) {
       await this.assertResolvableCapacity(
@@ -257,6 +282,9 @@ export class AvailabilityService {
     dto: CreateExceptionDto,
   ): Promise<ExceptionResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
+    this.assertExceptionShape(dto.type, dto.startTime, dto.capacity);
+    if (dto.type === AvailabilityExceptionType.ADD_SLOT)
+      await this.assertResolvableCapacity(dto.tourId, dto.capacity);
     const row = await this.prisma.availabilityException.create({
       data: {
         tourId: dto.tourId,
@@ -268,6 +296,10 @@ export class AvailabilityService {
         createdBy: userId,
       },
     });
+    // An exception (close date/slot, add slot, set capacity) changes sellable
+    // inventory, so re-project departures + refresh the listing gate now instead
+    // of waiting for the nightly job. Otherwise a closed date keeps selling.
+    await this.syncTourAvailability(dto.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: dto.tourId,
       localDate: dto.date,
@@ -284,7 +316,13 @@ export class AvailabilityService {
   ): Promise<ExceptionResponseDto> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, date: true },
+      select: {
+        tourId: true,
+        date: true,
+        type: true,
+        startTime: true,
+        capacity: true,
+      },
     });
     if (!existing) throw new NotFoundException('Exception not found');
     const operatorId = await this.assertTourAccess(
@@ -292,6 +330,23 @@ export class AvailabilityService {
       userId,
       role,
     );
+    // Validate the merged exception shape (a partial edit can leave it invalid).
+    const effectiveType = dto.type ?? existing.type;
+    const effectiveStartTime =
+      dto.startTime !== undefined
+        ? dto.startTime
+        : existing.startTime
+          ? timeOfDay(existing.startTime)
+          : undefined;
+    const effectiveCapacity =
+      dto.capacity !== undefined ? dto.capacity : existing.capacity;
+    this.assertExceptionShape(
+      effectiveType,
+      effectiveStartTime,
+      effectiveCapacity,
+    );
+    if (effectiveType === AvailabilityExceptionType.ADD_SLOT)
+      await this.assertResolvableCapacity(existing.tourId, effectiveCapacity);
     const row = await this.prisma.availabilityException.update({
       where: { id },
       data: {
@@ -303,6 +358,9 @@ export class AvailabilityService {
         ...(dto.note !== undefined && { note: dto.note ?? null }),
       },
     });
+    // Re-project departures + refresh the listing gate so the edited exception
+    // takes effect on sellable inventory immediately.
+    await this.syncTourAvailability(existing.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       localDate: dateKey(existing.date),
@@ -323,6 +381,9 @@ export class AvailabilityService {
       role,
     );
     await this.prisma.availabilityException.delete({ where: { id } });
+    // Removing an exception restores the underlying schedule's departures for
+    // that date, so re-project + refresh the listing gate now.
+    await this.syncTourAvailability(existing.tourId);
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       localDate: dateKey(existing.date),
@@ -336,6 +397,7 @@ export class AvailabilityService {
     query: ListExceptionsQueryDto,
   ): Promise<ExceptionResponseDto[]> {
     await this.assertTourAccess(query.tourId, userId, role);
+    assertDateRangeOrder(query.from, query.to);
     const where: Prisma.AvailabilityExceptionWhereInput = {
       tourId: query.tourId,
     };
@@ -381,6 +443,7 @@ export class AvailabilityService {
     query: ListDeparturesQueryDto,
   ): Promise<DepartureResponseDto[]> {
     await this.assertTourAccess(query.tourId, userId, role);
+    assertDateRangeOrder(query.from, query.to);
     const clock = await this.tourClock(query.tourId);
     const now = localNow(clock.timeZone);
 
@@ -451,6 +514,7 @@ export class AvailabilityService {
   async checkAvailability(
     dto: AvailabilityCheckDto,
   ): Promise<DepartureResponseDto[]> {
+    assertDateRangeOrder(dto.dateFrom, dto.dateTo, 'dateFrom', 'dateTo');
     const clock = await this.publicTourClock(dto.tourId);
     const now = localNow(clock.timeZone);
     const requiredSeats = (dto.units ?? []).reduce((s, u) => s + u.quantity, 0);
@@ -478,6 +542,7 @@ export class AvailabilityService {
   async calendar(
     dto: AvailabilityCalendarDto,
   ): Promise<CalendarDayResponseDto[]> {
+    assertDateRangeOrder(dto.dateFrom, dto.dateTo, 'dateFrom', 'dateTo');
     const clock = await this.publicTourClock(dto.tourId);
     const now = localNow(clock.timeZone);
 
@@ -677,6 +742,36 @@ export class AvailabilityService {
   }
 
   /**
+   * Rejects an exception whose required fields for its type are missing, so the
+   * materializer never silently skips it (gap #12). `close_date` needs only the
+   * date; `close_slot`/`add_slot` need a `startTime`; `set_capacity` needs a
+   * `capacity`. `add_slot` capacity resolvability is checked separately via
+   * {@link assertResolvableCapacity}.
+   */
+  private assertExceptionShape(
+    type: AvailabilityExceptionType,
+    startTime: string | undefined,
+    capacity: number | null | undefined,
+  ): void {
+    switch (type) {
+      case AvailabilityExceptionType.CLOSE_SLOT:
+        if (!startTime)
+          throw new BadRequestException('close_slot requires a startTime');
+        break;
+      case AvailabilityExceptionType.ADD_SLOT:
+        if (!startTime)
+          throw new BadRequestException('add_slot requires a startTime');
+        break;
+      case AvailabilityExceptionType.SET_CAPACITY:
+        if (capacity == null)
+          throw new BadRequestException('set_capacity requires a capacity');
+        break;
+      case AvailabilityExceptionType.CLOSE_DATE:
+        break;
+    }
+  }
+
+  /**
    * Public re-projection hook for callers outside the availability module (e.g.
    * {@link ToursService} when a tour's `maxPartySize` - the schedules' default
    * capacity - changes). Re-materialises the near-term window and refreshes the
@@ -742,8 +837,11 @@ function mapDeparture(
   publicView: boolean,
 ): DepartureResponseDto {
   const start = combineDateTime(row.date, row.startTime);
-  const cutoffPassed =
-    now.getTime() >= start.getTime() - cutoffMinutes * 60_000;
+  const cutoffPassed = cutoffReached(
+    start.getTime(),
+    now.getTime(),
+    cutoffMinutes,
+  );
   const remaining = Math.max(0, row.capacity - row.bookedCount);
   const status = liveDepartureStatus({
     status: row.status,

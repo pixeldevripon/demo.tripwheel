@@ -180,6 +180,7 @@ describe('DestinationController', () => {
       const dto: CreateDestinationDto = {
         name: 'Aruba',
         region: Region.CARIBBEAN,
+        timezone: 'America/Aruba',
       };
       await controller.create(dto, mockAdminUser);
 
@@ -191,7 +192,7 @@ describe('DestinationController', () => {
       service.create.mockResolvedValue(created);
 
       const result = await controller.create(
-        { name: 'Aruba', region: Region.CARIBBEAN },
+        { name: 'Aruba', region: Region.CARIBBEAN, timezone: 'America/Aruba' },
         mockAdminUser,
       );
 
