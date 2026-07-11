@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { categoriesApi } from '@/lib/api/categories';
+import { fetchDestinationCategoriesClient } from '@/lib/api/categories-public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 import { CategoriesMenu } from './categories-menu';
@@ -86,8 +86,7 @@ export function Navbar({
             return;
         }
         let ignore = false;
-        categoriesApi
-            .getActiveByDestination(slug, locale)
+        fetchDestinationCategoriesClient(slug, locale)
             .then(rows => {
                 if (ignore) return;
                 const mapped = rows.map(c => ({ name: c.name, slug: c.slug }));

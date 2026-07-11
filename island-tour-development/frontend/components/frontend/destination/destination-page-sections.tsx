@@ -5,8 +5,8 @@ import {
 } from '@/components/frontend/destination/destination-explore-types';
 import { DestinationHero } from '@/components/frontend/destination/destination-hero';
 import { DestinationListings } from '@/components/frontend/destination/destination-listings';
-import { collectionsApi } from '@/lib/api/collections';
 import {
+    getActiveCollectionsForDestination,
     getDestinationCategories,
     getDestinationHubs,
     getDestinationTours,
@@ -154,9 +154,7 @@ export async function DestinationCollectionsSection({
     dict,
 }: Omit<ListingsSectionProps, 'islandId' | 'destinationName'>) {
     await connection();
-    const collections = await collectionsApi
-        .getActive(destination, locale)
-        .catch(() => []);
+    const collections = await getActiveCollectionsForDestination(destination, locale);
     if (collections.length === 0) return null;
 
     return (

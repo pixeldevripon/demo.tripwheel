@@ -30,7 +30,9 @@ export async function getTourReviews(params: {
 }): Promise<PublicReviewList> {
   'use cache';
   cacheLife('hours');
-  cacheTag('reviews');
+  // Granular `tour:<id>` too, so approving/removing a review for one tour (or
+  // editing that tour) refreshes only its reviews, not every tour's.
+  cacheTag('reviews', `tour:${params.tourId}`);
 
   const { tourId, locale = DEFAULT_LOCALE, sort, page, limit } = params;
   const res = await publicGet<PublicReviewList>(

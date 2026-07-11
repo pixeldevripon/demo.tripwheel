@@ -37,7 +37,9 @@ export async function getActiveDestinations(
  * when the slug is unknown/inactive or the backend is unreachable - callers
  * should `notFound()` on null.
  *
- * Cached hourly and tagged `destinations`; `slug` + `locale` are the cache key.
+ * Cached hourly; `slug` + `locale` are the cache key. Tagged granularly
+ * `destination:<id>` (from the response) so editing one destination regenerates
+ * only its page; falls back to coarse `destinations` when not found.
  */
 export async function getDestinationBySlug(
   slug: string,
@@ -45,9 +47,10 @@ export async function getDestinationBySlug(
 ): Promise<DestinationDetail | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('destinations');
 
-  return publicGet<DestinationDetail>(
+  const data = await publicGet<DestinationDetail>(
     `/destinations/slug/${slug}${buildQuery({ locale })}`,
   );
+  cacheTag(data ? `destination:${data.id}` : 'destinations');
+  return data;
 }

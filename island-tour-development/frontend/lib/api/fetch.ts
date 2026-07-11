@@ -4,6 +4,8 @@
  * Always sends the Better Auth session cookie (`credentials: 'include'`) and
  * normalises error bodies (string or string[] `message`) into a thrown Error.
  */
+import { revalidatePublicForPath } from './cache-revalidation';
+
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 // Fixed backoff (ms) between retries, one entry per retry attempt. A dashboard
@@ -49,6 +51,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new Error(message);
   }
+
+  // A successful write may change public content - bust the affected public
+  // cache tags so the change shows up on the live site immediately.
+  revalidatePublicForPath(path, method);
 
   if (res.status === 204) return undefined as T;
   // Some mutations (e.g. DELETE) reply 200/201 with an empty body. Parsing that

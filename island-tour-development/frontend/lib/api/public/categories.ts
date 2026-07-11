@@ -11,6 +11,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import type {
   CategoryByDestination,
   CategoryDetailByDestination,
+  CategoryFaq,
   CategoryPageContent,
 } from '@/types/category';
 import type { Locale } from '@/lib/constants/locales';
@@ -31,7 +32,9 @@ export async function getDestinationCategories(
 ): Promise<CategoryByDestination[]> {
   'use cache';
   cacheLife('hours');
-  cacheTag('categories');
+  // `tours` too: tour-gating + each category's `publishedTourCount` depend on
+  // which tours are published.
+  cacheTag('categories', 'tours');
 
   const data = await publicGet<CategoryByDestination[]>(
     `/categories/destination/${destinationSlug}${buildQuery({ locale })}`,
@@ -42,7 +45,9 @@ export async function getDestinationCategories(
 /**
  * Destination-scoped, tour-gated category detail (localized). Returns `null` when
  * the category has zero published tours at this destination (backend 404) or the
- * backend is unreachable. Cached hourly and tagged `categories`.
+ * backend is unreachable. Cached hourly; tagged granularly `category:<id>` (from
+ * the response) plus coarse `tours` (its published-tour count depends on tours).
+ * Falls back to coarse `categories` when not found.
  */
 export async function getCategoryBySlugForDestination(
   destinationSlug: string,
@@ -51,16 +56,19 @@ export async function getCategoryBySlugForDestination(
 ): Promise<CategoryDetailByDestination | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('categories');
 
-  return publicGet<CategoryDetailByDestination>(
+  const data = await publicGet<CategoryDetailByDestination>(
     `/categories/destination/${destinationSlug}/${categorySlug}${buildQuery({ locale })}`,
   );
+  cacheTag('tours', data ? `category:${data.id}` : 'categories');
+  return data;
 }
 
 /**
  * Editorial page content (meta title / description, about copy, …) for a category
- * by id. Returns `null` when unset or the backend is unreachable. Cached hourly.
+ * by id. Returns `null` when unset or the backend is unreachable. Cached hourly;
+ * tagged granularly `category:<id>` (id is the arg) so a category's SEO edit
+ * refreshes only it.
  */
 export async function getCategoryPageContent(
   categoryId: string,
@@ -68,9 +76,28 @@ export async function getCategoryPageContent(
 ): Promise<CategoryPageContent | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('categories');
+  cacheTag(`category:${categoryId}`);
 
   return publicGet<CategoryPageContent>(
     `/categories/${categoryId}/page-content${buildQuery({ locale })}`,
   );
+}
+
+/**
+ * Active FAQs for a category (by id), localized and ordered. Returns `[]` when
+ * unset or the backend is unreachable. Cached hourly; tagged granularly
+ * `category:<id>` so authoring/editing this category's FAQs refreshes only it.
+ */
+export async function getCategoryFaqs(
+  categoryId: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<CategoryFaq[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag(`category:${categoryId}`);
+
+  const data = await publicGet<CategoryFaq[]>(
+    `/categories/${categoryId}/faqs${buildQuery({ locale })}`,
+  );
+  return data ?? [];
 }

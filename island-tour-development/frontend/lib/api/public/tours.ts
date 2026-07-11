@@ -131,8 +131,10 @@ export async function getDestinationTours(params: {
  * the tour is unknown/unpublished or the backend is unreachable - callers should
  * `notFound()` on null.
  *
- * Cached hourly and tagged `tours`; `slug` + `destinationSlug` + `locale` are the
- * cache key. Slugs are English at every locale.
+ * Cached hourly; `slug` + `destinationSlug` + `locale` are the cache key. Tagged
+ * granularly `tour:<id>` (from the response) so editing ONE tour regenerates only
+ * this page - not every tour page. Falls back to coarse `tours` when not found so
+ * a later publish (which busts `tours`) clears the cached 404.
  */
 export async function getTourBySlug(params: {
   slug: string;
@@ -141,10 +143,17 @@ export async function getTourBySlug(params: {
 }): Promise<PublicTourDetail | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('tours');
 
   const { slug, destinationSlug, locale = DEFAULT_LOCALE } = params;
-  return publicGet<PublicTourDetail>(
+  const data = await publicGet<PublicTourDetail>(
     `/tours/slug/${slug}${buildQuery({ destinationSlug, locale })}`,
   );
+  // `tour:<id>` for the tour's own edits; `operator:<id>` because the operator's
+  // company name/logo is rendered here (and only here, not on cards), so an
+  // operator edit must reach this page. Both are granular - a different tour or
+  // operator never regenerates this page. Fall back to coarse `tours` when not
+  // found so a later publish (which busts `tours`) clears the cached 404.
+  if (data) cacheTag(`tour:${data.id}`, `operator:${data.operatorId}`);
+  else cacheTag('tours');
+  return data;
 }

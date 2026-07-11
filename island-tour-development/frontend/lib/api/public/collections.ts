@@ -10,17 +10,45 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { CollectionPageContent, CollectionRender } from '@/types/collection';
+import type {
+  CollectionLocalized,
+  CollectionPageContent,
+  CollectionRender,
+} from '@/types/collection';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
 
 /**
+ * Active (published) collections for a destination, localized - backs the
+ * destination page's "Collections" shelf. Returns `[]` if the backend is
+ * unreachable. Cached hourly and tagged coarse `collections` (the cards show only
+ * each collection's own name/image, so any collection create/edit/status change
+ * at this destination should refresh the shelf; no tour dependency).
+ */
+export async function getActiveCollectionsForDestination(
+  destinationSlug: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<CollectionLocalized[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('collections');
+
+  const data = await publicGet<CollectionLocalized[]>(
+    `/collections${buildQuery({ destinationSlug, locale })}`,
+  );
+  return data ?? [];
+}
+
+/**
  * Full render payload for a published collection. `destinationId` (the destination
  * UUID) scopes the lookup; get it from `getDestinationBySlug(...).id`.
  *
- * Cached hourly and tagged `collections`; `slug` + `destinationId` + `locale` are
- * the cache key. Bust with `revalidateTag('collections')` after an admin edit.
+ * Cached hourly; `slug` + `destinationId` + `locale` are the cache key. Tagged
+ * granularly `collection:<id>` (editing this collection regenerates only this
+ * page) plus coarse `tours` because the render embeds tour cards (price/rating),
+ * which must refresh when any embedded tour changes. Falls back to coarse
+ * `collections` when not found.
  */
 export async function getCollectionRender(
   slug: string,
@@ -29,17 +57,19 @@ export async function getCollectionRender(
 ): Promise<CollectionRender | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('collections');
 
-  return publicGet<CollectionRender>(
+  const data = await publicGet<CollectionRender>(
     `/collections/render/${slug}${buildQuery({ destinationId, locale })}`,
   );
+  cacheTag('tours', data ? `collection:${data.id}` : 'collections');
+  return data;
 }
 
 /**
  * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a
  * collection by id — authored in the dashboard SEO tab. Returns `null` when unset
- * or the backend is unreachable. Cached hourly and tagged `collections`.
+ * or the backend is unreachable. Cached hourly; tagged granularly
+ * `collection:<id>` (id is the arg) so a collection's SEO edit refreshes only it.
  */
 export async function getCollectionPageContent(
   collectionId: string,
@@ -47,7 +77,7 @@ export async function getCollectionPageContent(
 ): Promise<CollectionPageContent | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('collections');
+  cacheTag(`collection:${collectionId}`);
 
   return publicGet<CollectionPageContent>(
     `/collections/${collectionId}/page-content${buildQuery({ locale })}`,

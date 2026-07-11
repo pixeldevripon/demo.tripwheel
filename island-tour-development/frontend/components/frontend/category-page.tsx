@@ -1,6 +1,11 @@
 import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
-import { categoriesApi } from '@/lib/api/categories';
-import { getDestinationBySlug } from '@/lib/api/public';
+import {
+    getCategoryBySlugForDestination,
+    getCategoryFaqs,
+    getCategoryPageContent,
+    getDestinationBySlug,
+    getDestinationCategories,
+} from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { toSlug } from '@/lib/utils';
@@ -203,16 +208,10 @@ export async function CategoryPage({
     // a `null` means 0 published tours → notFound().
     const [category, pageContent, faqs, activeCategories, destination] =
         await Promise.all([
-            categoriesApi.getBySlugForDestination(
-                destinationSlug,
-                categorySlug,
-                locale
-            ),
-            categoriesApi.getPageContent(categoryId, locale),
-            categoriesApi.getFaqs(categoryId, locale),
-            categoriesApi
-                .getActiveByDestination(destinationSlug, locale)
-                .catch(() => []),
+            getCategoryBySlugForDestination(destinationSlug, categorySlug, locale),
+            getCategoryPageContent(categoryId, locale),
+            getCategoryFaqs(categoryId, locale),
+            getDestinationCategories(destinationSlug, locale),
             getDestinationBySlug(destinationSlug, locale),
         ]);
 
@@ -258,7 +257,7 @@ export async function CategoryPage({
     // Body copy from the backend; falls back to the localized placeholder until
     // category page-content is authored (mirrors the MOCK_TOURS convention).
     const aboutDescription =
-        pageContent.aboutText ?? dict.destination.about.description;
+        pageContent?.aboutText ?? dict.destination.about.description;
 
     // FAQs come from the backend (per locale); reuse the FAQ accordion chrome and
     // swap in the localized items + the "Frequently asked questions" title. Falls

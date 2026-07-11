@@ -28,10 +28,13 @@ export async function resolveSlug(
     slug: string
 ): Promise<SlugResolution | null> {
     // Public and immutable-by-slug, so cache it (Cache Components `use cache`,
-    // not the legacy fetch cache). Bust on the rare isActive toggle via the tag.
+    // not the legacy fetch cache). Two tags: the granular `slug:dest:slug` for
+    // targeted busting, and the coarse `slug-registry` busted by any entity
+    // create / delete / rename / (de)activate (see lib/api/cache-revalidation.ts),
+    // since those change what a slug resolves to.
     'use cache';
     cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-    cacheTag(`slug:${destinationSlug}:${slug}`);
+    cacheTag(`slug:${destinationSlug}:${slug}`, 'slug-registry');
 
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
     try {

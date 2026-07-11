@@ -25,7 +25,9 @@ export async function getDestinationHubs(
 ): Promise<HubByDestination[]> {
   'use cache';
   cacheLife('hours');
-  cacheTag('hubs');
+  // `tours` too: each hub carries `publishedTourCount`, which changes when a tour
+  // is published/unpublished.
+  cacheTag('hubs', 'tours');
 
   const data = await publicGet<HubByDestination[]>(
     `/hubs/destination/${destinationSlug}${buildQuery({ locale })}`,
@@ -39,8 +41,10 @@ export async function getDestinationHubs(
  * Returns `null` for a draft/inactive/unknown hub (backend 404) or when the backend
  * is unreachable - callers `notFound()` on null.
  *
- * Cached hourly and tagged `hubs`; `slug` + `destinationId` + `locale` are the key.
- * Bust with `revalidateTag('hubs')` after an admin edit.
+ * Cached hourly; `slug` + `destinationId` + `locale` are the key. Tagged
+ * granularly `hub:<id>` (editing this hub regenerates only this page) plus coarse
+ * `tours` because the render embeds tour cards (price/rating), which must refresh
+ * when any embedded tour changes. Falls back to coarse `hubs` when not found.
  */
 export async function getHubRender(
   slug: string,
@@ -49,17 +53,19 @@ export async function getHubRender(
 ): Promise<HubRender | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('hubs');
 
-  return publicGet<HubRender>(
+  const data = await publicGet<HubRender>(
     `/hubs/render/${slug}${buildQuery({ destinationId, locale })}`,
   );
+  cacheTag('tours', data ? `hub:${data.id}` : 'hubs');
+  return data;
 }
 
 /**
  * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a hub by
  * id - authored in the dashboard SEO tab, used by `generateMetadata`. Returns
- * `null` when unset or the backend is unreachable. Cached hourly, tagged `hubs`.
+ * `null` when unset or the backend is unreachable. Cached hourly; tagged
+ * granularly `hub:<id>` (id is the arg) so a hub's SEO edit refreshes only it.
  */
 export async function getHubPageContent(
   hubId: string,
@@ -67,7 +73,7 @@ export async function getHubPageContent(
 ): Promise<HubPageContent | null> {
   'use cache';
   cacheLife('hours');
-  cacheTag('hubs');
+  cacheTag(`hub:${hubId}`);
 
   return publicGet<HubPageContent>(
     `/hubs/${hubId}/page-content${buildQuery({ locale })}`,
