@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
+import { useSearchNavOptional } from '@/components/frontend/search/search-browser';
 import { Pagination } from './pagination';
 
 /**
@@ -16,12 +17,20 @@ export function SearchPagination({ pageCount }: { pageCount: number }) {
     const params = useSearchParams();
     const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
 
+    const nav = useSearchNavOptional();
+
     const go = (next: number) => {
         const sp = new URLSearchParams(params.toString());
         if (next <= 1) sp.delete('page');
         else sp.set('page', String(next));
         const qs = sp.toString();
-        router.push(qs ? `${pathname}?${qs}` : pathname);
+        const href = qs ? `${pathname}?${qs}` : pathname;
+        
+        if (nav) {
+            nav.startNav(() => router.push(href, { scroll: false }));
+        } else {
+            router.push(href, { scroll: false });
+        }
     };
 
     return <Pagination page={page} pageCount={pageCount} onPageChange={go} />;
