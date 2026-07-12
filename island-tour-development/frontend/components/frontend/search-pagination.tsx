@@ -27,9 +27,9 @@ export function SearchPagination({ pageCount }: { pageCount: number }) {
         const href = qs ? `${pathname}?${qs}` : pathname;
         
         if (nav) {
-            nav.startNav(() => router.push(href, { scroll: false }));
+            nav.startNav(() => router.push(href));
         } else {
-            router.push(href, { scroll: false });
+            router.push(href);
         }
     };
 

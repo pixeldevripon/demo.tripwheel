@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { SearchPagination } from '@/components/frontend/search-pagination';
 import { SearchBrowser } from '@/components/frontend/search/search-browser';
+import { Reveal } from '@/components/frontend/reveal';
 import { TourCard } from '@/components/frontend/tour-card';
 import { getActiveDestinations, searchTours } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
@@ -114,7 +115,7 @@ export async function SearchResultsSection({
                         hint={t.noResultsHint}
                     />
                 ) : (
-                    <>
+                    <Reveal className='flex flex-col gap-12 sm:gap-18'>
                         <div className='grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10'>
                             {listings.map(tour => (
                                 <TourCard
@@ -126,7 +127,7 @@ export async function SearchResultsSection({
                         </div>
 
                         <SearchPagination pageCount={totalPages} />
-                    </>
+                    </Reveal>
                 )
             }
         />

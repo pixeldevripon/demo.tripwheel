@@ -39,13 +39,15 @@ export function SearchBrowser({
 
     return (
         <SearchNavContext.Provider value={{ startNav, isPending }}>
-            {header}
-            <div
-                aria-busy={isPending}
-                className={`transition-opacity duration-200 ${
-                    isPending ? 'pointer-events-none opacity-50' : 'opacity-100'
-                }`}>
-                {results}
+            <div className='flex flex-col gap-8 w-full'>
+                {header}
+                <div
+                    aria-busy={isPending}
+                    className={`transition-opacity duration-200 ${
+                        isPending ? 'pointer-events-none opacity-50' : 'opacity-100'
+                    }`}>
+                    {results}
+                </div>
             </div>
         </SearchNavContext.Provider>
     );
