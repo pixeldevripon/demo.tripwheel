@@ -1,6 +1,8 @@
 import Link from 'next/link';
 
 import { SearchPagination } from '@/components/frontend/search-pagination';
+import { SearchBrowser } from '@/components/frontend/search/search-browser';
+import { Reveal } from '@/components/frontend/reveal';
 import { TourCard } from '@/components/frontend/tour-card';
 import { getActiveDestinations, searchTours } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
@@ -78,54 +80,57 @@ export async function SearchResultsSection({
     const searchAllHref = `${localizeHref(locale, '/search')}?q=${encodeURIComponent(query)}${date ? `&date=${date}` : ''}`;
 
     return (
-        <>
-            {((results && results.total > 0) || destinationName) && (
-                <div className='flex flex-col gap-2'>
-                    {results && results.total > 0 && (
-                        <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
-                            {(results.total === 1 ? t.resultFor : t.resultsFor)
-                                .replace('{count}', String(results.total))
-                                .replace('{query}', query)}
-                        </p>
-                    )}
-                    {destinationName && (
-                        <Link
-                            href={searchAllHref}
-                            className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-border px-3 py-1.5 text-[13px] text-it-heading no-underline transition-colors hover:bg-it-surface'>
-                            {destinationName}
-                            <span
-                                aria-hidden='true'
-                                className='text-it-heading/50'>
-                                ✕
-                            </span>
-                        </Link>
-                    )}
-                </div>
-            )}
-
-            {query.length < 2 ? (
-                <EmptyState title={t.promptTitle} hint={t.promptHint} />
-            ) : results && results.total === 0 ? (
-                <EmptyState
-                    title={t.noResults.replace('{query}', query)}
-                    hint={t.noResultsHint}
-                />
-            ) : (
-                <>
-                    <div className='grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10'>
-                        {listings.map(tour => (
-                            <TourCard
-                                key={tour.id}
-                                tour={tour}
-                                dict={cardDict}
-                            />
-                        ))}
+        <SearchBrowser
+            header={
+                ((results && results.total > 0) || destinationName) ? (
+                    <div className='flex flex-col gap-2'>
+                        {results && results.total > 0 && (
+                            <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
+                                {(results.total === 1 ? t.resultFor : t.resultsFor)
+                                    .replace('{count}', String(results.total))
+                                    .replace('{query}', query)}
+                            </p>
+                        )}
+                        {destinationName && (
+                            <Link
+                                href={searchAllHref}
+                                className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-border px-3 py-1.5 text-[13px] text-it-heading no-underline transition-colors hover:bg-it-surface'>
+                                {destinationName}
+                                <span
+                                    aria-hidden='true'
+                                    className='text-it-heading/50'>
+                                    ✕
+                                </span>
+                            </Link>
+                        )}
                     </div>
+                ) : null
+            }
+            results={
+                query.length < 2 ? (
+                    <EmptyState title={t.promptTitle} hint={t.promptHint} />
+                ) : results && results.total === 0 ? (
+                    <EmptyState
+                        title={t.noResults.replace('{query}', query)}
+                        hint={t.noResultsHint}
+                    />
+                ) : (
+                    <Reveal className='flex flex-col gap-12 sm:gap-18'>
+                        <div className='grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10'>
+                            {listings.map(tour => (
+                                <TourCard
+                                    key={tour.id}
+                                    tour={tour}
+                                    dict={cardDict}
+                                />
+                            ))}
+                        </div>
 
-                    <SearchPagination pageCount={totalPages} />
-                </>
-            )}
-        </>
+                        <SearchPagination pageCount={totalPages} />
+                    </Reveal>
+                )
+            }
+        />
     );
 }
 
