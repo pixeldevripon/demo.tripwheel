@@ -250,7 +250,6 @@ const detailsSchema = z.object({
   wheelchairAccessible: z.boolean(),
   familyFriendly: z.boolean(),
   suitableForBeginners: z.boolean(),
-  isLocalsFavourite: z.boolean(),
   checkInMinutesBefore: z.coerce.number().int().min(0).max(240).optional().or(z.literal('')),
   reference: z.string().max(120).optional().or(z.literal('')),
   h1Override: z.string().max(200).optional().or(z.literal('')),
@@ -299,7 +298,6 @@ type DetailsFormValues = {
   wheelchairAccessible: boolean;
   familyFriendly: boolean;
   suitableForBeginners: boolean;
-  isLocalsFavourite: boolean;
   checkInMinutesBefore: string;
   reference: string;
   h1Override: string;
@@ -355,7 +353,6 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     wheelchairAccessible: trip.wheelchairAccessible,
     familyFriendly: trip.familyFriendly,
     suitableForBeginners: trip.suitableForBeginners,
-    isLocalsFavourite: trip.isLocalsFavourite,
     checkInMinutesBefore: trip.checkInMinutesBefore != null ? String(trip.checkInMinutesBefore) : '',
     reference: trip.reference ?? '',
     h1Override: trip.h1Override ?? '',
@@ -424,7 +421,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const wheelchairAccessible = watch('wheelchairAccessible');
   const familyFriendly = watch('familyFriendly');
   const suitableForBeginners = watch('suitableForBeginners');
-  const isLocalsFavourite = watch('isLocalsFavourite');
   const instantDelivery = watch('instantDelivery');
   const availabilityRequired = watch('availabilityRequired');
   const allowFreesale = watch('allowFreesale');
@@ -481,7 +477,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           wheelchairAccessible: values.wheelchairAccessible,
           familyFriendly: values.familyFriendly,
           suitableForBeginners: values.suitableForBeginners,
-          isLocalsFavourite: values.isLocalsFavourite,
           checkInMinutesBefore: values.checkInMinutesBefore !== '' ? Number(values.checkInMinutesBefore) : undefined,
           reference: values.reference || null,
           h1Override: values.h1Override || null,
@@ -956,16 +951,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
               />
               <Label htmlFor="suitableForBeginners" className="text-xs font-semibold uppercase cursor-pointer">
                 Suitable for beginners
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="isLocalsFavourite"
-                checked={isLocalsFavourite}
-                onCheckedChange={(c) => setValue('isLocalsFavourite', !!c)}
-              />
-              <Label htmlFor="isLocalsFavourite" className="text-xs font-semibold uppercase cursor-pointer">
-                Locals&apos; favourite
               </Label>
             </div>
           </div>

@@ -35,7 +35,7 @@ import { ToursService } from './tours.service';
 function createMockPrismaService() {
   const mock = {
     operator: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn() },
-    destination: { findUnique: jest.fn() },
+    destination: { findUnique: jest.fn(), findMany: jest.fn() },
     category: { findUnique: jest.fn(), findMany: jest.fn() },
     hub: { findUnique: jest.fn() },
     hubAllowedCategory: { findUnique: jest.fn(), count: jest.fn() },
@@ -50,6 +50,7 @@ function createMockPrismaService() {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      groupBy: jest.fn(),
     },
     tourCategory: {
       findUnique: jest.fn(),
@@ -1155,6 +1156,108 @@ describe('ToursService', () => {
       await expect(
         service.update('tour-1', { slug: 'taken-slug' }, 'admin', Role.ADMIN),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('locals-favourite (editorial)', () => {
+    it('setLocalsFavourite flags a LIVE tour and returns it', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.tour.update.mockResolvedValue({
+        id: 'tour-1',
+        isLocalsFavourite: true,
+      });
+
+      const result = await service.setLocalsFavourite('tour-1', true, 'admin');
+
+      expect(prisma.tour.update).toHaveBeenCalledWith({
+        where: { id: 'tour-1' },
+        data: { isLocalsFavourite: true },
+        select: { id: true, isLocalsFavourite: true },
+      });
+      expect(result).toEqual({ id: 'tour-1', isLocalsFavourite: true });
+    });
+
+    it('setLocalsFavourite rejects flagging a non-LIVE tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT }),
+      );
+      await expect(
+        service.setLocalsFavourite('tour-1', true, 'admin'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('setLocalsFavourite allows UN-flagging a non-LIVE tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.ARCHIVED, isLocalsFavourite: true }),
+      );
+      prisma.tour.update.mockResolvedValue({
+        id: 'tour-1',
+        isLocalsFavourite: false,
+      });
+
+      const result = await service.setLocalsFavourite('tour-1', false, 'admin');
+      expect(result).toEqual({ id: 'tour-1', isLocalsFavourite: false });
+    });
+
+    it('setLocalsFavourite throws NotFound for a missing tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(null);
+      await expect(
+        service.setLocalsFavourite('missing', true, 'admin'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('findAllAdmin filters by isLocalsFavourite when provided', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.findAllAdmin({ isLocalsFavourite: true });
+
+      const whereArg = prisma.tour.findMany.mock.calls[0][0].where;
+      expect(whereArg).toEqual({ isLocalsFavourite: true });
+    });
+
+    it('getLocalsFavouriteStats computes overall + per-destination coverage', async () => {
+      // groupBy is called twice: [0] live-by-dest, [1] flagged-by-dest.
+      prisma.tour.groupBy
+        .mockResolvedValueOnce([
+          { destinationId: 'dest-1', _count: { _all: 10 } },
+          { destinationId: 'dest-2', _count: { _all: 5 } },
+        ])
+        .mockResolvedValueOnce([
+          { destinationId: 'dest-1', _count: { _all: 3 } },
+        ]);
+      prisma.destination.findMany.mockResolvedValue([
+        { id: 'dest-1', name: 'Aruba' },
+        { id: 'dest-2', name: 'Curaçao' },
+      ]);
+
+      const stats = await service.getLocalsFavouriteStats();
+
+      expect(stats.totalLive).toBe(15);
+      expect(stats.flagged).toBe(3);
+      expect(stats.pct).toBe(20); // 3/15
+      expect(stats.target).toBe(30);
+      // Sorted by destination name: Aruba, then Curaçao.
+      expect(stats.perDestination).toEqual([
+        {
+          destinationId: 'dest-1',
+          destinationName: 'Aruba',
+          totalLive: 10,
+          flagged: 3,
+          pct: 30,
+        },
+        {
+          destinationId: 'dest-2',
+          destinationName: 'Curaçao',
+          totalLive: 5,
+          flagged: 0,
+          pct: 0,
+        },
+      ]);
     });
   });
 });

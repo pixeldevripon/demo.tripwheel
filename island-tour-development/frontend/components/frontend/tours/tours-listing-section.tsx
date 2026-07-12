@@ -1,12 +1,10 @@
-import { connection } from 'next/server';
-
 import {
     type FilterCategory,
     ToursFilterBar,
 } from '@/components/frontend/tours-filter-bar';
-import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
-import { ToursListing } from '@/components/frontend/tours-listing';
 import { EMPTY_FILTERS } from '@/components/frontend/tours-filter-modal';
+import { ToursListing } from '@/components/frontend/tours-listing';
+import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
 import {
     getCategoryFacets,
     getDestinationCategories,
@@ -24,10 +22,11 @@ import { searchHitToListing } from '@/lib/tours/listing';
 
 /**
  * Async, streamed listing of the All Tours page: the toolbar (filters / sort /
- * category pills) + the recommended-order, paginated, FILTERED tour grid. Marked
- * dynamic with `await connection()` so its `<Suspense>` skeleton streams under
- * Cache Components (the loaders stay cached). Filter + sort + page state all live
- * in the URL (`@/lib/tours/filters`); changing any of them re-renders this
+ * category pills) + the recommended-order, paginated, FILTERED tour grid. It is
+ * request-time dynamic because it reads `searchParams` (`await searchParams`
+ * below), which is what makes its `<Suspense>` skeleton stream under Cache
+ * Components (the loaders themselves stay cached). Filter + sort + page state all
+ * live in the URL (`@/lib/tours/filters`); changing any of them re-renders this
  * section and streams the new result behind the same skeleton.
  */
 
@@ -63,8 +62,6 @@ export async function ToursListingSection({
     searchParams,
     lockedCategory,
 }: ListingSectionProps) {
-    await connection();
-
     // Faceted filters (price bounds + attribute sections) and the destination's
     // categories are independent cached loaders, so fetch them together instead
     // of serially. Facets are category-scoped on the category page,
@@ -101,10 +98,10 @@ export async function ToursListingSection({
         const subs = lockedCategory.subCategories;
         const subIdBySlug = new Map(subs.map(s => [s.slug, s.id]));
         selectedCategories = filters.categories.filter(slug =>
-            subIdBySlug.has(slug),
+            subIdBySlug.has(slug)
         );
         const selectedSubIds = selectedCategories.map(
-            slug => subIdBySlug.get(slug)!,
+            slug => subIdBySlug.get(slug)!
         );
         categoryIds =
             (selectedSubIds.length
@@ -155,7 +152,7 @@ export async function ToursListingSection({
 
     // Cards keep the backend order; searchHitToListing carries the badge + flat URL.
     const tours = tourList.data.map(hit =>
-        searchHitToListing(hit, locale, dict.search),
+        searchHitToListing(hit, locale, dict.search)
     );
 
     return (
@@ -204,3 +201,4 @@ export async function ToursListingSection({
         />
     );
 }
+

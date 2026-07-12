@@ -1,4 +1,5 @@
-import { cn } from '@/lib/utils';
+import { Bar, CARD_GRID, GRID_PAGE_SIZE, PaginationSkeleton } from './skeleton-bar';
+import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
  * Loading skeletons for the All Tours page (`/[locale]/[destination]/tours`).
@@ -10,13 +11,6 @@ import { cn } from '@/lib/utils';
  * - `ToursListingSkeleton` -> <Suspense> fallback for the streamed toolbar + grid
  * - `ToursPageSkeleton`    -> the route `loading.tsx` (full first-paint shell)
  */
-
-/** A single shimmering placeholder bar (frontend-tokened, no layout of its own). */
-function Bar({ className }: { className?: string }) {
-    return (
-        <div className={cn('animate-pulse rounded-md bg-it-heading/10', className)} />
-    );
-}
 
 /** Breadcrumb bar - `Home › Destination › current` + full-width hairline. */
 export function ToursBreadcrumbSkeleton() {
@@ -87,17 +81,20 @@ export function ToursToolbarSkeleton() {
     );
 }
 
-/** Tour grid (2-col / 3-col) - mirrors ToursListing. */
+/**
+ * Tour grid (2-col / 3-col) - mirrors `ToursListing`: the `flex flex-col gap-12
+ * sm:gap-18` wrapper, a full page of `TourCard`s (same grid), and the pagination
+ * row beneath, so the listing streams in with no vertical shift.
+ */
 export function ToursGridSkeleton() {
     return (
-        <div className='grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3'>
-            {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className='flex flex-col gap-3'>
-                    <Bar className='aspect-4/3 w-full rounded-xl' />
-                    <Bar className='h-4 w-3/4' />
-                    <Bar className='h-4 w-1/2' />
-                </div>
-            ))}
+        <div className='flex flex-col gap-12 sm:gap-18'>
+            <div className={CARD_GRID}>
+                {Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
+                    <TourCardSkeleton key={i} />
+                ))}
+            </div>
+            <PaginationSkeleton />
         </div>
     );
 }

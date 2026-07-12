@@ -51,6 +51,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { makeTripColumns } from './trip-columns';
 import { OperatorFilterPopover } from './operator-filter-popover';
 import { useRemoveTrip } from '@/hooks/trips/use-trips';
+import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import { useSession } from '@/lib/auth-client';
 import type { TripListItem, TripStatus } from '@/types/trip';
@@ -91,10 +92,12 @@ export function TripsTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [operatorFilter, setOperatorFilter] = useState<string | undefined>(undefined);
+  const [destinationFilter, setDestinationFilter] = useState<string>('all');
 
   const { mutate: removeTrip } = useRemoveTrip();
   const { can } = useRole();
   const { data: session } = useSession();
+  const { data: destinations } = useActiveDestinations();
 
   const columns = makeTripColumns({
     showOperator: isAdminView,
@@ -137,6 +140,11 @@ export function TripsTable({
   function handleOperatorFilterChange(value: string | undefined) {
     setOperatorFilter(value);
     onFilterChange('operatorId', value);
+  }
+
+  function handleDestinationFilterChange(value: string) {
+    setDestinationFilter(value);
+    onFilterChange('destinationId', value === 'all' ? undefined : value);
   }
 
   function handleBulkDelete() {
@@ -192,6 +200,22 @@ export function TripsTable({
                       <SelectItem value='LIVE'>Live</SelectItem>
                       <SelectItem value='PAUSED'>Paused</SelectItem>
                       <SelectItem value='ARCHIVED'>Archived</SelectItem>
+                  </SelectContent>
+              </Select>
+
+              <Select
+                  value={destinationFilter}
+                  onValueChange={handleDestinationFilterChange}>
+                  <SelectTrigger className='w-44 shrink-0'>
+                      <SelectValue placeholder='Destination' />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value='all'>All Destinations</SelectItem>
+                      {(destinations ?? []).map(d => (
+                          <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                          </SelectItem>
+                      ))}
                   </SelectContent>
               </Select>
 

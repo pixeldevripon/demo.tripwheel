@@ -6,7 +6,6 @@ import { WishlistProvider } from '@/components/frontend/wishlist-provider';
 import { getActiveDestinations } from '@/lib/api/public';
 import { ALL_LOCALES, isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { Suspense } from 'react';
 
 /** Pre-render the shell for every supported locale. */
 export function generateStaticParams() {
@@ -51,9 +50,7 @@ export default async function LocaleLayout({
             />
             {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
                 as a dynamic hole so request-time routes don't block the shell. */}
-            <main className='pt-18 md:pt-20'>
-                <Suspense>{children}</Suspense>
-            </main>
+            <main className='pt-18 md:pt-20'>{children}</main>
             <Footer locale={locale} dict={dict.footer} />
         </WishlistProvider>
     );

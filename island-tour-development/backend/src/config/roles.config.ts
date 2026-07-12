@@ -21,6 +21,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.DELETE_OPERATOR,
     Permission.MANAGE_SYSTEM,
     Permission.MANAGE_TRIPS,
+    // Editorial curation (Locals' favourite etc.) — admin-only, never operators.
+    Permission.MANAGE_EDITORIAL,
     Permission.MANAGE_AVAILABILITY,
     Permission.CREATE_CONTENT,
     Permission.VIEW_CONTENT,

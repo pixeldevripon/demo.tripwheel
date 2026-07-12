@@ -1,7 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, BadgeCheckIcon, FolderIcon, NavigationIcon } from 'lucide-react';
+import { MapPinIcon, BadgeCheckIcon, FolderIcon, NavigationIcon, StarIcon, TicketIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +10,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatDate } from '@/lib/utils';
 import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripRowActions } from './trip-row-actions';
+
+// Shared style for clickable entity links inside table cells.
+const entityLink =
+  'hover:underline underline-offset-4 decoration-muted-foreground/50';
 
 const statusVariant: Record<TripStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   DRAFT: 'secondary',
@@ -27,11 +32,28 @@ const statusLabel: Record<TripStatus, string> = {
 interface MakeColumnsOptions {
   showOperator?: boolean;
   currentUserEmail?: string;
+  /** Render the row-selection checkbox column (for bulk actions). Default true. */
+  showSelect?: boolean;
+  /** Render Rating (★ + review count) and Booked columns. Default false. */
+  showPerformance?: boolean;
+  /**
+   * Trailing cell renderer. Defaults to the trip row-actions dropdown; the
+   * Locals' favourites table passes its toggle here instead.
+   */
+  actions?: (trip: TripListItem) => ReactNode;
 }
 
-export function makeTripColumns({ showOperator = false, currentUserEmail }: MakeColumnsOptions = {}): ColumnDef<TripListItem>[] {
-  const cols: ColumnDef<TripListItem>[] = [
-    {
+export function makeTripColumns({
+  showOperator = false,
+  currentUserEmail,
+  showSelect = true,
+  showPerformance = false,
+  actions,
+}: MakeColumnsOptions = {}): ColumnDef<TripListItem>[] {
+  const cols: ColumnDef<TripListItem>[] = [];
+
+  if (showSelect) {
+    cols.push({
       id: 'select',
       header: ({ table }) => (
         <Checkbox
@@ -57,7 +79,10 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       enableSorting: false,
       enableHiding: false,
       size: 48,
-    },
+    });
+  }
+
+  cols.push(
     {
       accessorKey: 'name',
       header: 'Trip',
@@ -114,7 +139,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       },
       enableSorting: true,
     },
-  ];
+  );
 
   if (showOperator) {
     cols.push({
@@ -129,7 +154,12 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
           <div className="flex items-start gap-1.5 min-w-0">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-medium truncate max-w-32">{displayName}</span>
+                <Link
+                  href={`/dashboard/tour-operators/${info.id}`}
+                  className={`text-sm font-medium truncate max-w-32 ${entityLink}`}
+                >
+                  {displayName}
+                </Link>
                 {isMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -177,6 +207,7 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       header: 'Category',
       cell: ({ row }) => {
         const primary = row.original.primaryCategoryName;
+        const primaryId = row.original.primaryCategoryId;
         const all = row.original.categoryNames ?? [];
         const extra = all.length > 1 ? all.length - 1 : 0;
         const label = primary ?? all[0];
@@ -184,7 +215,16 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
         return (
           <div className="flex items-center gap-1.5">
             <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
-            <span className="text-sm truncate max-w-28">{label}</span>
+            {primaryId ? (
+              <Link
+                href={`/dashboard/categories/${primaryId}/edit`}
+                className={`text-sm truncate max-w-28 ${entityLink}`}
+              >
+                {label}
+              </Link>
+            ) : (
+              <span className="text-sm truncate max-w-28">{label}</span>
+            )}
             {extra > 0 && (
               <span className="text-xs text-muted-foreground shrink-0">+{extra}</span>
             )}
@@ -205,7 +245,12 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
           <div className="flex items-start gap-1.5">
             <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <div className="text-sm truncate max-w-28">{dest}</div>
+              <Link
+                href={`/dashboard/destinations/${trip.destinationId}/edit`}
+                className={`text-sm truncate max-w-28 block ${entityLink}`}
+              >
+                {dest}
+              </Link>
               {hubs.length > 0 && (
                 <div className="text-xs text-muted-foreground truncate max-w-28">
                   {hubs.join(', ')}
@@ -217,6 +262,49 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
       },
       enableSorting: false,
     },
+  );
+
+  if (showPerformance) {
+    cols.push(
+      {
+        id: 'rating',
+        header: 'Rating',
+        cell: ({ row }) => {
+          const trip = row.original;
+          if (!trip.aggregateReviewCount) {
+            return <span className="text-xs text-muted-foreground">No reviews</span>;
+          }
+          return (
+            <div className="flex items-center gap-1.5">
+              <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-500" />
+              <span className="text-sm font-medium tabular-nums">
+                {trip.aggregateRating ?? '-'}
+              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                ({trip.aggregateReviewCount.toLocaleString()})
+              </span>
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'booked',
+        header: 'Booked',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <TicketIcon className="size-3.5 shrink-0" />
+            <span className="tabular-nums">
+              {row.original.bookingCount.toLocaleString()}
+            </span>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    );
+  }
+
+  cols.push(
     {
       accessorKey: 'updatedAt',
       header: 'Updated',
@@ -230,7 +318,8 @@ export function makeTripColumns({ showOperator = false, currentUserEmail }: Make
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => <TripRowActions trip={row.original} />,
+      cell: ({ row }) =>
+        actions ? actions(row.original) : <TripRowActions trip={row.original} />,
       enableSorting: false,
       enableHiding: false,
       size: 48,

@@ -37,6 +37,9 @@ enum Permission {
   VIEW_PERMISSIONS
   MANAGE_SYSTEM
   MANAGE_TRIPS
+  // Editorial curation (admin-only): manual flags never set by operators, e.g.
+  // is_locals_favourite. Deliberately distinct from MANAGE_TRIPS (operators hold that).
+  MANAGE_EDITORIAL
   MANAGE_OPERATORS
   CREATE_CONTENT
   VIEW_CONTENT

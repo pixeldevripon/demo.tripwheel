@@ -10,3 +10,4 @@ import { EntityPageSkeleton } from '@/components/skelitons/entity-page-skeleton'
 export default function Loading() {
     return <EntityPageSkeleton />;
 }
+

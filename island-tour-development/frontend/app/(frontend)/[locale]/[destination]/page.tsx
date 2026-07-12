@@ -6,15 +6,10 @@ import {
     DestinationLocalFavourites,
 } from '@/components/frontend/destination/destination-page-sections';
 import { FaqSection } from '@/components/frontend/faq-section';
-import {
-    DestinationHeroSkeleton,
-    DestinationListingsSkeleton,
-} from '@/components/skelitons/destination-page-skeleton';
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
 
 const LAUNCH_DESTINATION_SLUGS = [
     'curacao',
@@ -41,11 +36,12 @@ export async function generateStaticParams() {
  * Destination page - `/[locale]/[destination]` (e.g. /en/curacao).
  *
  * The route resolves the island + dictionary (fast cached loaders) and gates a
- * 404 for unknown/inactive islands, then streams each data-heavy section into its
- * own `<Suspense>` boundary behind a section-mirroring skeleton (Cache Components
- * PPR): hero + explore (hubs/categories) and locals' favorites (tours). The
- * About / Instagram / FAQ sections need only the name + dictionary, so they render
- * in the static shell. The route's `loading.tsx` covers the initial resolve.
+ * 404 for unknown/inactive islands. This route is prerendered
+ * (`generateStaticParams`), and every section reads only cached (`'use cache'`)
+ * data, so the whole page is baked static (instant, SEO content in the initial
+ * HTML, no skeleton flash) and kept fresh via cache tags. The route's
+ * `loading.tsx` covers client navigation and a cold island's first on-demand
+ * render.
  */
 export default async function DestinationPage({
     params,
@@ -67,33 +63,27 @@ export default async function DestinationPage({
 
     return (
         <>
-            <Suspense fallback={<DestinationHeroSkeleton />}>
-                <DestinationHeroSection
-                    destination={destination}
-                    locale={locale as Locale}
-                    dict={dict}
-                    destinationName={destinationName}
-                    heroImage={island.heroImage ?? undefined}
-                />
-            </Suspense>
+            <DestinationHeroSection
+                destination={destination}
+                locale={locale as Locale}
+                dict={dict}
+                destinationName={destinationName}
+                heroImage={island.heroImage ?? undefined}
+            />
 
-            <Suspense fallback={<DestinationListingsSkeleton />}>
-                <DestinationLocalFavourites
-                    destination={destination}
-                    locale={locale as Locale}
-                    dict={dict}
-                    islandId={island.id}
-                    destinationName={destinationName}
-                />
-            </Suspense>
+            <DestinationLocalFavourites
+                destination={destination}
+                locale={locale as Locale}
+                dict={dict}
+                islandId={island.id}
+                destinationName={destinationName}
+            />
 
-            <Suspense fallback={<DestinationListingsSkeleton />}>
-                <DestinationCollectionsSection
-                    destination={destination}
-                    locale={locale as Locale}
-                    dict={dict}
-                />
-            </Suspense>
+            <DestinationCollectionsSection
+                destination={destination}
+                locale={locale as Locale}
+                dict={dict}
+            />
 
             <DestinationInstagram dict={dict.destination.instagram} />
 

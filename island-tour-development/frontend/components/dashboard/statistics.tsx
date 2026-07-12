@@ -33,6 +33,8 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Suspense, use, useState } from 'react';
+
+import { StatisticsSkeleton } from '@/components/skelitons/statistics-skeleton';
 import {
     Area,
     AreaChart,
@@ -50,7 +52,25 @@ interface StatisticsProps {
     visibleSections: Record<string, boolean>;
 }
 
-export default function Statistics({ statsPromise, visibleSections }: StatisticsProps) {
+/**
+ * Wrapper that owns the `<Suspense>` boundary. The boundary must sit ABOVE the
+ * component that calls `use(statsPromise)` for the fallback to ever show, so the
+ * data-consuming body lives in `StatisticsContent` below. While the stats
+ * promise is pending, the stats area streams behind `StatisticsSkeleton`; the
+ * rest of the dashboard (toggler, setup guide) renders immediately.
+ */
+export default function Statistics(props: StatisticsProps) {
+    return (
+        <Suspense
+            fallback={
+                <StatisticsSkeleton visibleSections={props.visibleSections} />
+            }>
+            <StatisticsContent {...props} />
+        </Suspense>
+    );
+}
+
+function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
     // In a real app, we'd use 'use(statsPromise)' but for now we'll handle missing promise
     // To maintain exact logic, we'll use a fallback if promise is not provided
     const statsData = statsPromise ? use(statsPromise) : { result: { data: {} } };
@@ -309,8 +329,7 @@ export default function Statistics({ statsPromise, visibleSections }: Statistics
 
     return (
         <div className='mx-auto w-full space-y-6'>
-            <Suspense fallback={'loading...'}>
-                {/* Stats Grid */}
+            {/* Stats Grid */}
                 {visibleSections['statistics'] && (
                     <>
                         <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
@@ -1054,7 +1073,6 @@ export default function Statistics({ statsPromise, visibleSections }: Statistics
                         </Card>
                     </div>
                 )}
-            </Suspense>
         </div>
     );
 }

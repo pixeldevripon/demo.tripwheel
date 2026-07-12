@@ -25,6 +25,7 @@ export function TripsListView() {
         page,
         limit,
         ...(filters.status ? { status: filters.status as TripStatus } : {}),
+        ...(filters.destinationId ? { destinationId: filters.destinationId } : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
     };
 
@@ -33,6 +34,7 @@ export function TripsListView() {
         limit,
         ...(filters.status ? { status: filters.status as TripStatus } : {}),
         ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
+        ...(filters.destinationId ? { destinationId: filters.destinationId } : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
     };
 

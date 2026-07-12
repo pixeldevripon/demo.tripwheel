@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { HubTripsPanelSkeleton } from '@/components/skelitons/hub-trips-panel-skeleton';
 import {
     getDestinationBySlug,
     getDestinationCategories,
@@ -557,7 +559,7 @@ export async function HubPage({
             {/* Trips + charters split is the only tours-dependent block: stream it
                 with a mirroring skeleton (compare/discover panels inside reuse the
                 already-cached render, passed through). */}
-            <Suspense fallback={<HubTripsSkeleton />}>
+            <Suspense fallback={<HubTripsPanelSkeleton />}>
                 <HubTripsData
                     render={render}
                     destinationId={destination.id}
@@ -604,6 +606,12 @@ async function HubTripsData({
     locale: Locale;
     dict: Dictionary;
 }) {
+    // Force this into a request-time dynamic hole so the cached hub shell ships
+    // first and the trips/charters block streams behind its skeleton. The hub
+    // route is on-demand (not prerendered), and trips is a separate fetch from the
+    // hub render, so shell-first streaming is the right call here (mirrors the
+    // tour-detail page). The loader itself stays cached, so the stream is fast.
+    await connection();
     const toursRes = await getDestinationTours({
         destinationId,
         hubId: render.id,
@@ -762,33 +770,3 @@ async function HubTripsData({
     );
 }
 
-/** Skeleton mirroring the trips section (sticky tab row + card grid). */
-function HubTripsSkeleton() {
-    return (
-        <section className='it-section bg-it-white'>
-            <div className='it-container flex flex-col gap-8'>
-                <div className='flex gap-3'>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className='h-9 w-28 shrink-0 animate-pulse rounded-it-full bg-it-heading/10'
-                        />
-                    ))}
-                </div>
-                <div className='flex flex-col gap-2'>
-                    <div className='h-8 w-2/3 animate-pulse rounded bg-it-heading/10' />
-                    <div className='h-4 w-1/3 animate-pulse rounded bg-it-heading/10' />
-                </div>
-                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className='flex flex-col gap-3'>
-                            <div className='aspect-4/3 w-full animate-pulse rounded-it-lg bg-it-heading/10' />
-                            <div className='h-5 w-3/4 animate-pulse rounded bg-it-heading/10' />
-                            <div className='h-4 w-1/2 animate-pulse rounded bg-it-heading/10' />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-}

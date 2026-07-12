@@ -5,10 +5,7 @@ import { ToursBreadcrumb } from '@/components/frontend/tours-breadcrumb';
 import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
 import { ToursHeaderSection } from '@/components/frontend/tours/tours-header-section';
 import { ToursListingSection } from '@/components/frontend/tours/tours-listing-section';
-import {
-    ToursHeaderSkeleton,
-    ToursListingSkeleton,
-} from '@/components/skelitons/tours-page-skeleton';
+import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -76,13 +73,15 @@ export default async function AllToursPage({
                 <div className='it-container'>
                     {/* Content stack - 60px below the breadcrumb, 40px between blocks. */}
                     <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
-                        <Suspense fallback={<ToursHeaderSkeleton />}>
-                            <ToursHeaderSection
-                                destinationId={dest.id}
-                                destinationName={destinationName}
-                                dict={dict}
-                            />
-                        </Suspense>
+                        {/* Header is a cheap cached count on a prerendered route,
+                            so it bakes into the static shell (instant, no skeleton
+                            flash). Only the searchParams-driven listing below
+                            streams. */}
+                        <ToursHeaderSection
+                            destinationId={dest.id}
+                            destinationName={destinationName}
+                            dict={dict}
+                        />
 
                         <div
                             className='h-px w-full bg-it-heading/10'
