@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { TourCard, type TourCardDict } from '@/components/frontend/tour-card';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
+import { WishlistSkeleton } from '@/components/skelitons/wishlist-skeleton';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { searchHitToListing, type DurationDict } from '@/lib/tours/listing';
@@ -125,16 +126,3 @@ function Prompt({
     );
 }
 
-function WishlistSkeleton() {
-    return (
-        <div className='grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 xl:grid-cols-4'>
-            {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className='flex flex-col gap-3'>
-                    <div className='aspect-64/45 w-full animate-pulse rounded-[16px] bg-it-surface' />
-                    <div className='h-4 w-3/4 animate-pulse rounded bg-it-surface' />
-                    <div className='h-4 w-1/2 animate-pulse rounded bg-it-surface' />
-                </div>
-            ))}
-        </div>
-    );
-}

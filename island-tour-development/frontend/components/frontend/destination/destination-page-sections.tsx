@@ -14,13 +14,14 @@ import {
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { searchHitToListing } from '@/lib/tours/listing';
-import { connection } from 'next/server';
 
 /**
- * Async, streamed sections of the destination page. The route resolves the island
+ * Cached sections of the destination page. The route resolves the island
  * (name / id / hero image) + dictionary and passes them in; each section here does
- * its own extra fetch and is marked dynamic with `await connection()` so its
- * `<Suspense>` skeleton streams under Cache Components (data loaders stay cached).
+ * its own extra fetch against a `'use cache'` loader. The destination route is
+ * prerendered, so these render into the static shell (instant, kept fresh via
+ * cache tags) rather than streaming - the route's `loading.tsx` covers the initial
+ * paint on client navigation / cold on-demand renders.
  */
 
 interface HeroSectionProps {
@@ -42,7 +43,6 @@ export async function DestinationHeroSection({
     destinationName,
     heroImage,
 }: HeroSectionProps) {
-    await connection();
     const [categories, hubs] = await Promise.all([
         getDestinationCategories(destination, locale),
         getDestinationHubs(destination, locale),
@@ -64,10 +64,12 @@ export async function DestinationHeroSection({
     ];
 
     // Hero "Popular" quick links - same hubs-first ordering, capped at 4.
-    const activities = exploreTypes.slice(0, 4).map(item => ({
-        label: item.name,
-        href: localizeHref(locale, `/${destination}/${item.slug}`),
-    }));
+    const activities = exploreTypes
+        .slice(0, 4)
+        .map(item => ({
+            label: item.name,
+            href: localizeHref(locale, `/${destination}/${item.slug}`),
+        }));
 
     // Card labels for the hero typeahead live in the shared listings dictionary.
     const search = {
@@ -120,7 +122,6 @@ export async function DestinationLocalFavourites({
     islandId,
     destinationName,
 }: ListingsSectionProps) {
-    await connection();
     const [favouriteTours, allTours] = await Promise.all([
         getDestinationTours({
             destinationId: islandId,
@@ -153,8 +154,10 @@ export async function DestinationCollectionsSection({
     locale,
     dict,
 }: Omit<ListingsSectionProps, 'islandId' | 'destinationName'>) {
-    await connection();
-    const collections = await getActiveCollectionsForDestination(destination, locale);
+    const collections = await getActiveCollectionsForDestination(
+        destination,
+        locale
+    );
     if (collections.length === 0) return null;
 
     return (

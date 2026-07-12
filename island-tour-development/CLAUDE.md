@@ -315,6 +315,11 @@ PrismaModule inside individual modules.
     and is created confirmed at commit (no Stripe charge, no webhook).
 22. **Conversion value is `commission_amount` in EUR**, never GMV (tracking). A confirmed booking
     with a null `commission_amount` is data corruption: render error, no conversion fired.
+23. **`is_locals_favourite` is an editorial flag, never operator-set.** It is manual, never
+    tier-linked, target ~30% coverage. Only admins with `MANAGE_EDITORIAL` toggle it, via
+    `PATCH /tours/:id/locals-favourite` (curated on the `/dashboard/locals-favourites` page).
+    It is NOT in `CreateTourDto`/`UpdateTourDto` and must never be re-added to the operator
+    tour form. See `technical-doc/LOCALS-FAVOURITE-EDITORIAL-CHECKLIST.md`.
 
 ---
 

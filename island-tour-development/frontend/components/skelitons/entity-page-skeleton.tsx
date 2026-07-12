@@ -1,16 +1,5 @@
-import { cn } from '@/lib/utils';
-
-/** A single shimmering placeholder bar (frontend-tokened). */
-function Bar({ className }: { className?: string }) {
-    return (
-        <div
-            className={cn(
-                'animate-pulse rounded-md bg-it-heading/10',
-                className,
-            )}
-        />
-    );
-}
+import { Bar } from './skeleton-bar';
+import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
  * Neutral initial-load skeleton for the polymorphic `[slug]` route
@@ -43,11 +32,7 @@ export function EntityPageSkeleton() {
                 <Bar className='h-80 w-full rounded-2xl md:h-115' />
                 <div className='grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3'>
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className='flex flex-col gap-3'>
-                            <Bar className='aspect-4/3 w-full rounded-xl' />
-                            <Bar className='h-4 w-3/4' />
-                            <Bar className='h-4 w-1/2' />
-                        </div>
+                        <TourCardSkeleton key={i} />
                     ))}
                 </div>
             </div>

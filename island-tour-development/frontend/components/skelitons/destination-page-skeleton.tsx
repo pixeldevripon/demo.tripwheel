@@ -1,23 +1,17 @@
-import { cn } from '@/lib/utils';
-
-/** A single shimmering placeholder bar (frontend-tokened). */
-function Bar({ className }: { className?: string }) {
-    return (
-        <div
-            className={cn(
-                'animate-pulse rounded-md bg-it-heading/10',
-                className,
-            )}
-        />
-    );
-}
+import {
+    Bar,
+    DESTINATION_CARD_CELL,
+    DESTINATION_RAIL,
+} from './skeleton-bar';
+import { CollectionCardSkeleton } from './collection-card-skeleton';
+import { TourCardSkeleton } from './tour-card-skeleton';
 
 /** Hero band + "Explore by type" row (mirrors DestinationHero + DestinationExploreTypes). */
 export function DestinationHeroSkeleton() {
     return (
         <>
             {/* Hero: heading group (title + subtitle) + search pill + activities line. */}
-            <section className='relative flex h-136.75 items-end justify-center bg-it-surface pb-12 md:h-150 md:items-center md:pb-0'>
+            <section className='relative z-20 flex h-136.75 items-end justify-center bg-it-hero-bg [background-image:var(--it-hero-gradient)] pb-12 md:h-150 md:items-center md:pb-0'>
                 <div className='it-container flex w-full justify-center'>
                     <div className='flex w-full max-w-170.75 flex-col items-center gap-10'>
                         <div className='flex w-full flex-col items-center gap-1'>
@@ -50,26 +44,21 @@ export function DestinationHeroSkeleton() {
 }
 
 /**
- * "Locals' favorites" section (mirrors DestinationListings): single heading, the
- * mobile-carousel / lg-grid of 6 cards, and the centered "Browse all" CTA that
- * floats on a divider line.
+ * "Locals' favorites" section (mirrors DestinationListings): heading, the
+ * mobile-carousel / lg-grid of 6 `TourCardSkeleton`s in the real rail, and the
+ * centered "Browse all" CTA that floats on a divider line.
  */
-export function DestinationListingsSkeleton() {
+export function DestinationFavouritesSkeleton() {
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
                 <div className='flex flex-col gap-12'>
-                    <Bar className='h-7 w-56 max-w-full md:h-10' />
+                    <Bar className='h-8 w-56 max-w-full md:h-12' />
 
-                    {/* Mobile: wide swipe cards. lg: 3-col grid. */}
-                    <div className='flex gap-4 overflow-hidden px-4 lg:grid lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:px-0'>
+                    <div className={DESTINATION_RAIL}>
                         {Array.from({ length: 6 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className='flex w-[82vw] shrink-0 flex-col gap-3 min-[480px]:w-[64vw] sm:w-[42vw] lg:w-auto'>
-                                <Bar className='aspect-4/3 w-full rounded-xl' />
-                                <Bar className='h-4 w-3/4' />
-                                <Bar className='h-4 w-1/2' />
+                            <div key={i} className={DESTINATION_CARD_CELL}>
+                                <TourCardSkeleton />
                             </div>
                         ))}
                     </div>
@@ -83,6 +72,31 @@ export function DestinationListingsSkeleton() {
                         <div className='relative z-10 bg-it-white px-5 py-2.5'>
                             <Bar className='h-4 w-40 md:w-52' />
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/**
+ * Collections section (mirrors DestinationCollections): `!pt-0`, heading, and
+ * the mobile-carousel / lg-grid of 6 `CollectionCardSkeleton`s in the real rail.
+ * No "Browse all" CTA (the real section has none).
+ */
+export function DestinationCollectionsSkeleton() {
+    return (
+        <section className='it-section bg-it-white !pt-0'>
+            <div className='it-container'>
+                <div className='flex flex-col gap-12'>
+                    <Bar className='h-8 w-56 max-w-full md:h-12' />
+
+                    <div className={DESTINATION_RAIL}>
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className={DESTINATION_CARD_CELL}>
+                                <CollectionCardSkeleton />
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -110,13 +124,14 @@ export function DestinationAboutSkeleton() {
 /**
  * Full destination-page skeleton for the route's `loading.tsx` - composes the
  * section skeletons in page order so the initial load mirrors the real page and
- * hands off seamlessly to the per-section `<Suspense>` boundaries.
+ * hands off seamlessly to the fully-rendered (cached-static) page.
  */
 export function DestinationPageSkeleton() {
     return (
         <>
             <DestinationHeroSkeleton />
-            <DestinationListingsSkeleton />
+            <DestinationFavouritesSkeleton />
+            <DestinationCollectionsSkeleton />
             <DestinationAboutSkeleton />
         </>
     );

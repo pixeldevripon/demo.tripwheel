@@ -1,12 +1,11 @@
 import { DestinationPageSkeleton } from '@/components/skelitons/destination-page-skeleton';
 
 /**
- * Segment loading UI for `/{locale}/{destination}`. Shown while the page resolves
- * the dictionary + island (before the sections render), so the body never goes
- * blank. Mirrors the real page (hero + explore, listings, about) so the handoff to
- * the per-section `<Suspense>` boundaries is seamless.
+ * Route-level loading UI for `/[locale]/[destination]`. Shown during client
+ * navigation and on a cold (non-prerendered / newly-activated) island's first
+ * on-demand render - the page shell is fully cached-static, so this covers the
+ * brief resolve of the cached loaders, then hands off to the rendered page.
  */
 export default function Loading() {
     return <DestinationPageSkeleton />;
 }
-

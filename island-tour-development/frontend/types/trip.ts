@@ -397,6 +397,7 @@ export interface TourException {
 export interface MyTripsQueryParams {
   search?: string;
   status?: TripStatus;
+  destinationId?: string;
   page?: number;
   limit?: number;
 }
@@ -405,6 +406,8 @@ export interface AdminTripsQueryParams {
   search?: string;
   status?: TripStatus;
   operatorId?: string;
+  destinationId?: string;
+  isLocalsFavourite?: boolean;
   page?: number;
   limit?: number;
 }

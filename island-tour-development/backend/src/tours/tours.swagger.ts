@@ -10,8 +10,10 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Locale, PricingModel, TourStatus } from '@prisma/client';
 import {
+  LocalsFavouriteStatsDto,
   PaginatedToursResponseDto,
   RecomputeDemandResponseDto,
+  SetLocalsFavouriteResponseDto,
   TourDetailResponseDto,
   TourPublicDetailResponseDto,
   TourResponseDto,
@@ -176,6 +178,7 @@ export function ApiGetMyToursDocs() {
       summary: 'Get all tours for the authenticated operator (all statuses)',
     }),
     ApiQuery({ name: 'status', required: false, enum: TourStatus }),
+    ApiQuery({ name: 'destinationId', required: false, type: String }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     ApiResponse({ status: 200, type: PaginatedToursResponseDto }),
@@ -367,9 +370,43 @@ export function ApiAdminListToursDocs() {
     ApiQuery({ name: 'search', required: false, type: String }),
     ApiQuery({ name: 'status', required: false, enum: TourStatus }),
     ApiQuery({ name: 'operatorId', required: false, type: String }),
+    ApiQuery({ name: 'destinationId', required: false, type: String }),
+    ApiQuery({ name: 'isLocalsFavourite', required: false, type: Boolean }),
     ApiQuery({ name: 'page', required: false, type: Number, example: 1 }),
     ApiQuery({ name: 'limit', required: false, type: Number, example: 20 }),
     ApiResponse({ status: 200, type: PaginatedToursResponseDto }),
+    ...operatorErrors,
+  );
+}
+
+// ── Editorial: Locals' favourite (MANAGE_EDITORIAL) ────────────────────────────
+
+export function ApiGetLocalsFavouriteStatsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Locals' favourite coverage stats (editorial, admin only)",
+      description:
+        'Flagged vs LIVE tours overall and per destination, plus the master ~30% target. Requires MANAGE_EDITORIAL.',
+    }),
+    ApiResponse({ status: 200, type: LocalsFavouriteStatsDto }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiSetLocalsFavouriteDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Set a tour's Locals' favourite flag (editorial, admin only)",
+      description:
+        'Manual editorial flag (master §field-table): never operator-set, never tier-linked. Requires MANAGE_EDITORIAL.',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: SetLocalsFavouriteResponseDto }),
+    ApiResponse({
+      status: 404,
+      description: 'Not Found',
+      type: NotFoundErrorDto,
+    }),
     ...operatorErrors,
   );
 }

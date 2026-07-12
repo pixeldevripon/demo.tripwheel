@@ -920,13 +920,24 @@ export class ToursService {
   // ── Admin all tours ───────────────────────────────────────────────────────────
 
   async findAllAdmin(query: AdminToursQueryDto) {
-    const { search, status, operatorId, page = 1, limit = 20 } = query;
+    const {
+      search,
+      status,
+      operatorId,
+      destinationId,
+      isLocalsFavourite,
+      page = 1,
+      limit = 20,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.TourWhereInput = {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
     if (operatorId) where.operatorId = operatorId;
+    if (destinationId) where.destinationId = destinationId;
+    if (isLocalsFavourite !== undefined)
+      where.isLocalsFavourite = isLocalsFavourite;
 
     const [total, data] = await Promise.all([
       this.prisma.tour.count({ where }),
@@ -977,12 +988,13 @@ export class ToursService {
 
   async findMyTours(userId: string, userRole: Role, query: MyToursQueryDto) {
     const operatorId = await this.resolveOperatorId(userId, userRole);
-    const { search, status, page = 1, limit = 20 } = query;
+    const { search, status, destinationId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.TourWhereInput = { operatorId };
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
+    if (destinationId) where.destinationId = destinationId;
 
     const [total, data] = await Promise.all([
       this.prisma.tour.count({ where }),
@@ -1887,9 +1899,7 @@ export class ToursService {
           ...(dto.suitableForBeginners !== undefined && {
             suitableForBeginners: dto.suitableForBeginners,
           }),
-          ...(dto.isLocalsFavourite !== undefined && {
-            isLocalsFavourite: dto.isLocalsFavourite,
-          }),
+          // isLocalsFavourite is editorial-only (MANAGE_EDITORIAL); not writable here.
           ...(dto.likelyToSellOutOverride !== undefined && {
             likelyToSellOutOverride: dto.likelyToSellOutOverride,
           }),
@@ -2226,5 +2236,86 @@ export class ToursService {
 
     this.logger.log(`User ${userId} permanently deleted tour ${id}`);
     return { message: 'Tour permanently deleted' };
+  }
+
+  // ── Editorial: Locals' favourite (MANAGE_EDITORIAL, admin-only) ────────────────
+  // Manual editorial flag per master §field-table: never operator-set, never
+  // tier-linked, curated toward ~30% catalog coverage. Toggled only here — the
+  // operator tour-update path cannot write isLocalsFavourite.
+
+  async setLocalsFavourite(id: string, value: boolean, adminId: string) {
+    const tour = await this.findTourOrThrow(id);
+    // Only LIVE tours surface on the public "Locals' favourites" grid, so block
+    // flagging a non-live tour (avoids a "flagged but not showing" surprise).
+    // Un-flagging is always allowed, so a flag survives a later pause/archive.
+    if (value && tour.status !== TourStatus.LIVE) {
+      throw new BadRequestException(
+        'Only live tours can be marked as a Locals’ favourite',
+      );
+    }
+    const updated = await this.prisma.tour.update({
+      where: { id },
+      data: { isLocalsFavourite: value },
+      select: { id: true, isLocalsFavourite: true },
+    });
+    this.logger.log(
+      `Admin ${adminId} set isLocalsFavourite=${value} on tour ${id}`,
+    );
+    return updated;
+  }
+
+  /**
+   * Coverage stats for the Locals' favourite editorial surface. Denominator is
+   * LIVE tours (what travelers actually see); `target` is the master's ~30%.
+   */
+  async getLocalsFavouriteStats() {
+    const [liveByDest, flaggedByDest, destinations] = await Promise.all([
+      this.prisma.tour.groupBy({
+        by: ['destinationId'],
+        where: { status: TourStatus.LIVE },
+        _count: { _all: true },
+      }),
+      this.prisma.tour.groupBy({
+        by: ['destinationId'],
+        where: { status: TourStatus.LIVE, isLocalsFavourite: true },
+        _count: { _all: true },
+      }),
+      this.prisma.destination.findMany({ select: { id: true, name: true } }),
+    ]);
+
+    const liveMap = new Map(
+      liveByDest.map((r) => [r.destinationId, r._count._all]),
+    );
+    const flaggedMap = new Map(
+      flaggedByDest.map((r) => [r.destinationId, r._count._all]),
+    );
+    const nameMap = new Map(destinations.map((d) => [d.id, d.name]));
+
+    const pct = (flagged: number, total: number) =>
+      total === 0 ? 0 : Math.round((flagged / total) * 100);
+
+    const perDestination = [...liveMap.entries()]
+      .map(([destinationId, totalLive]) => {
+        const flagged = flaggedMap.get(destinationId) ?? 0;
+        return {
+          destinationId,
+          destinationName: nameMap.get(destinationId) ?? destinationId,
+          totalLive,
+          flagged,
+          pct: pct(flagged, totalLive),
+        };
+      })
+      .sort((a, b) => a.destinationName.localeCompare(b.destinationName));
+
+    const totalLive = [...liveMap.values()].reduce((s, n) => s + n, 0);
+    const flagged = [...flaggedMap.values()].reduce((s, n) => s + n, 0);
+
+    return {
+      totalLive,
+      flagged,
+      pct: pct(flagged, totalLive),
+      target: 30,
+      perDestination,
+    };
   }
 }

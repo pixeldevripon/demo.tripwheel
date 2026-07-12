@@ -98,6 +98,13 @@ const dashboardNav: NavItem[] = [
                 icon: Sparkles,
                 permissions: [Permission.APPROVE_SPOTLIGHT],
             },
+            // ─── Locals' favourites (editorial curation, admin-only) ─────────────────────
+            {
+                title: "Locals' Favourites",
+                url: 'locals-favourites',
+                icon: Star,
+                permissions: [Permission.MANAGE_EDITORIAL],
+            },
         ],
     },
 

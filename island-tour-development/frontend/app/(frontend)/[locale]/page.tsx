@@ -1,12 +1,10 @@
-
-
-import { Hero } from '@/components/frontend/home/hero';
-import { TrustStrip } from '@/components/frontend/trust-strip';
-import { TopExperiences } from '@/components/frontend/top-experiences';
-import { Testimonials } from '@/components/frontend/testimonials';
-import { ExploreIslands } from '@/components/frontend/explore-islands';
 import { EditorialBanner } from '@/components/frontend/editorial-banner';
+import { ExploreIslands } from '@/components/frontend/explore-islands';
 import { FaqSection } from '@/components/frontend/faq-section';
+import { Hero } from '@/components/frontend/home/hero';
+import { Testimonials } from '@/components/frontend/testimonials';
+import { TopExperiences } from '@/components/frontend/top-experiences';
+import { TrustStrip } from '@/components/frontend/trust-strip';
 import { getActiveDestinations } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -23,9 +21,9 @@ export default async function HomePage({
     ]);
     const { home } = dict;
     // Hero search + Popular are driven by the live destinations (name + slug).
-    const islands = destinations.map((d) => ({ name: d.name, slug: d.slug }));
+    const islands = destinations.map(d => ({ name: d.name, slug: d.slug }));
     // "Explore islands" cards need the hero image + live tour count too.
-    const exploreIslands = destinations.map((d) => ({
+    const exploreIslands = destinations.map(d => ({
         name: d.name,
         slug: d.slug,
         tours: d.tourCount,
@@ -34,7 +32,7 @@ export default async function HomePage({
     // The editorial banner copy is themed to the launch island (Curaçao); link
     // its CTA there if active, else the first destination, else all-tours search.
     const editorialIsland =
-        destinations.find((d) => d.slug === 'curacao') ?? destinations[0];
+        destinations.find(d => d.slug === 'curacao') ?? destinations[0];
     const editorialCtaHref = editorialIsland
         ? localizeHref(locale as Locale, `/${editorialIsland.slug}`)
         : localizeHref(locale as Locale, '/search');
@@ -60,3 +58,4 @@ export default async function HomePage({
         </>
     );
 }
+

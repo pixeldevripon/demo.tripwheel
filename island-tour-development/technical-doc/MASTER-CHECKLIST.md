@@ -288,7 +288,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] LD10 Real operator names in spec examples only — N/A code
 - [x] LD11 Provider Rating cold-start (<3 native AND operator ≥10 @ ≥4.0) — `reviews/review-display.util.resolveRatingSource` + `GET /reviews/summary`
 - [ ] LD12 Total price before checkout, fees itemized
-- [ ] LD13 Meta row rating · badge · location; `is_locals_favourite` boolean — field not present
+- [ ] LD13 Meta row rating · badge · location; `is_locals_favourite` boolean — flag + editorial curation built (admin-only `MANAGE_EDITORIAL`, `PATCH /tours/:id/locals-favourite`, `/dashboard/locals-favourites` page; NOT operator-set); public meta-row rendering still to verify
 - [x] LD14 Operator visibility "Supplied by {operator}" only
 - [ ] LD15 H1 `{Destination or Hub}: {Tour name}` Title Case 35–60 chars — `h1Override` exists; render not built
 - [ ] LD16 Sticky TOC, 7 items, fixed order
@@ -353,7 +353,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 ### E.3 tours — flags & accessibility
 
-- [x] min_age_years, fitness_level, weather_dependent, wheelchair_accessible, family_friendly, suitable_for_beginners, is_locals_favourite — Tour columns + trip create/update DTO + service + response
+- [x] min_age_years, fitness_level, weather_dependent, wheelchair_accessible, family_friendly, suitable_for_beginners — Tour columns + trip create/update DTO + service + response. `is_locals_favourite` is a Tour column but EDITORIAL-ONLY: not in create/update DTO; toggled via admin `MANAGE_EDITORIAL` endpoint (see LD13)
 - [x] guide_languages[] — `TourLanguage`
 
 ### E.3 tours — computed

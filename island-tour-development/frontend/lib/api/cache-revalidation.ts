@@ -57,7 +57,9 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // A tour appears (with price/rating baked in) on every discovery surface, so
     // its own detail busts `tour:<id>` while listings/search/renders that embed
     // it bust coarse `tours`/`search`. FAQ/translation/page-content sub-routes
-    // (`/tours/:id/...`) also carry the id at seg1.
+    // (`/tours/:id/...`) also carry the id at seg1. This also covers the editorial
+    // `PATCH /tours/:id/locals-favourite` toggle: the destination "Locals'
+    // favourites" grid (`getDestinationTours`) is tagged `tours`, so it regenerates.
     case 'tours':
       if (seg1 && seg1 !== 'slug') tags.push(`tour:${seg1}`);
       tags.push('tours', 'search', ...slug);
@@ -111,6 +113,18 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     case 'hubs':
       if (seg1) tags.push(`hub:${seg1}`);
       tags.push('hubs', ...slug);
+      break;
+
+    // Review moderation (approve/edit/delete). `getTourReviews` is tagged
+    // `reviews` (+ `tour:<id>`), and tour cards carry the rating aggregate via
+    // `tours`/`search`, so bust all three. NOTE: the tour DETAIL rating aggregate
+    // (`getTourBySlug`, tagged `tour:<id>`) is only refreshed here if the review
+    // write is nested under `/tours/:tourId/reviews/...` (handled by the `tours`
+    // branch, which pushes `tour:<tourId>`). If reviews get a top-level
+    // `/reviews/:id` write path instead, add `tour:<tourId>` busting when the
+    // reviews module lands (the write client knows the tourId).
+    case 'reviews':
+      tags.push('reviews', 'tours', 'search');
       break;
 
     // Profile edits hit `/users/me` (name/phone/location/timezone); getUserProfile

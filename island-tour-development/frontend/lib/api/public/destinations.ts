@@ -15,9 +15,9 @@ import { buildQuery, publicGet } from './fetch';
  * Active destinations for the given locale (name already localized server-side),
  * ordered alphabetically. Returns `[]` if the backend is unreachable.
  *
- * Cached hourly and tagged `destinations`; bust on demand with
- * `revalidateTag('destinations')` after an admin edit. `locale` is part of the
- * cache key.
+ * Cached hourly and tagged `destinations`; bust on demand via `updateTag`
+ * (fired from the dashboard-write revalidation hook) after an admin edit. `locale`
+ * is part of the cache key.
  */
 export async function getActiveDestinations(
   locale: Locale = DEFAULT_LOCALE,

@@ -99,7 +99,6 @@ export async function TourDetailContent({
     await connection();
     const detail = await getTourBySlug({ slug, destinationSlug, locale });
     if (!detail) notFound();
-    console.log(`details`, detail);
 
     const tourDict = dict.destination.tour;
 
@@ -624,7 +623,12 @@ export async function TourDetailContent({
 
                             {/* Full reviews section - streams from the reviews
                                 fetch; aggregate + histogram come from the tour. */}
-                            <Suspense fallback={<TourReviewsSectionSkeleton />}>
+                            <Suspense
+                                fallback={
+                                    <TourReviewsSectionSkeleton
+                                        count={Math.min(10, reviewCount)}
+                                    />
+                                }>
                                 <TourReviewsBlock
                                     tourId={detail.id}
                                     locale={locale}

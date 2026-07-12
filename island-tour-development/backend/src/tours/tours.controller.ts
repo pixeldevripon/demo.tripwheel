@@ -20,6 +20,7 @@ import {
   AdminToursQueryDto,
   CreateTourDto,
   MyToursQueryDto,
+  SetLocalsFavouriteDto,
   TourBySlugQueryDto,
   TourQueryDto,
   UpdateTourDto,
@@ -30,6 +31,7 @@ import {
   ApiCreateTourDocs,
   ApiDeleteTourDocs,
   ApiGetAllToursDocs,
+  ApiGetLocalsFavouriteStatsDocs,
   ApiGetMyToursDocs,
   ApiGetTourByIdDocs,
   ApiGetTourBySlugDocs,
@@ -37,6 +39,7 @@ import {
   ApiPublishTourDocs,
   ApiRecomputeDemandDocs,
   ApiRestoreTourDocs,
+  ApiSetLocalsFavouriteDocs,
   ApiUnpauseTourDocs,
   ApiUpdateTourDocs,
 } from './tours.swagger';
@@ -121,6 +124,15 @@ export class ToursController {
     return this.toursService.recomputeLikelyToSellOut(tourId);
   }
 
+  // ── Editorial: Locals' favourite (admin-only; static route before :id) ─────────
+
+  @Get('admin/locals-favourite/stats')
+  @RequirePermissions(Permission.MANAGE_EDITORIAL)
+  @ApiGetLocalsFavouriteStatsDocs()
+  localsFavouriteStats() {
+    return this.toursService.getLocalsFavouriteStats();
+  }
+
   // ── Create ────────────────────────────────────────────────────────────────────
 
   @Post()
@@ -196,5 +208,18 @@ export class ToursController {
   @ApiDeleteTourDocs()
   remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.toursService.remove(id, user.id, user.role);
+  }
+
+  // ── Editorial: Locals' favourite toggle (admin-only) ──────────────────────────
+
+  @Patch(':id/locals-favourite')
+  @RequirePermissions(Permission.MANAGE_EDITORIAL)
+  @ApiSetLocalsFavouriteDocs()
+  setLocalsFavourite(
+    @Param('id') id: string,
+    @Body() dto: SetLocalsFavouriteDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.setLocalsFavourite(id, dto.value, user.id);
   }
 }

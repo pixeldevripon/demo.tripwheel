@@ -6,6 +6,8 @@ export const Permission = {
   VIEW_PERMISSIONS: 'VIEW_PERMISSIONS',
   MANAGE_SYSTEM: 'MANAGE_SYSTEM',
   MANAGE_TRIPS: 'MANAGE_TRIPS',
+  // Editorial curation (Locals' favourite etc.) — admin-only, never operators.
+  MANAGE_EDITORIAL: 'MANAGE_EDITORIAL',
   MANAGE_OPERATORS: 'MANAGE_OPERATORS',
   CREATE_CONTENT: 'CREATE_CONTENT',
   VIEW_CONTENT: 'VIEW_CONTENT',
@@ -144,6 +146,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'MANAGE_OPERATOR_PAYMENTS',
     'MANAGE_SYSTEM',
     'MANAGE_TRIPS',
+    'MANAGE_EDITORIAL',
     'CREATE_CONTENT',
     'VIEW_CONTENT',
     'EDIT_CONTENT',

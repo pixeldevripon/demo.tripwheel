@@ -307,6 +307,36 @@ export class TourUpdateResponseDto {
   @ApiProperty({ type: [String], example: [] }) warnings!: string[];
 }
 
+// ── Editorial: Locals' favourite (master §field-table — manual, ~30% coverage) ──
+
+export class LocalsFavouriteDestinationStatDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  destinationId!: string;
+  @ApiProperty({ example: 'Curaçao' }) destinationName!: string;
+  @ApiProperty({ example: 40, description: 'LIVE tours in this destination' })
+  totalLive!: number;
+  @ApiProperty({ example: 12 }) flagged!: number;
+  @ApiProperty({ example: 30, description: 'flagged / totalLive, rounded %' })
+  pct!: number;
+}
+
+export class LocalsFavouriteStatsDto {
+  @ApiProperty({ example: 120, description: 'LIVE tours across the catalog' })
+  totalLive!: number;
+  @ApiProperty({ example: 34 }) flagged!: number;
+  @ApiProperty({ example: 28, description: 'flagged / totalLive, rounded %' })
+  pct!: number;
+  @ApiProperty({ example: 30, description: 'Master coverage target (%)' })
+  target!: number;
+  @ApiProperty({ type: [LocalsFavouriteDestinationStatDto] })
+  perDestination!: LocalsFavouriteDestinationStatDto[];
+}
+
+export class SetLocalsFavouriteResponseDto {
+  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
+  @ApiProperty({ example: true }) isLocalsFavourite!: boolean;
+}
+
 // ── Public detail inline DTOs (used by TourPublicDetailResponseDto) ───────────
 
 export class TourTranslationInlineDto {
@@ -695,6 +725,14 @@ export class MyToursQueryDto {
   @IsEnum(TourStatus)
   status?: TourStatus;
 
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description: 'Filter by destination ID',
+  })
+  @IsOptional()
+  @IsUUID()
+  destinationId?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -734,6 +772,29 @@ export class AdminToursQueryDto {
   @IsUUID()
   operatorId?: string;
 
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description: 'Filter by destination ID',
+  })
+  @IsOptional()
+  @IsUUID()
+  destinationId?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: "Filter by editorial Locals' favourite flag",
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true
+      ? true
+      : value === 'false' || value === false
+        ? false
+        : undefined,
+  )
+  @IsBoolean()
+  isLocalsFavourite?: boolean;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -751,6 +812,15 @@ export class AdminToursQueryDto {
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
+
+export class SetLocalsFavouriteDto {
+  @ApiProperty({
+    example: true,
+    description: "Whether the tour is flagged as a Locals' favourite",
+  })
+  @IsBoolean()
+  value!: boolean;
+}
 
 export class CreateTourDto {
   @ApiProperty({ example: 'Sunset Catamaran Cruise' })
@@ -1317,13 +1387,10 @@ export class UpdateTourDto {
   @IsBoolean()
   suitableForBeginners?: boolean;
 
-  @ApiPropertyOptional({
-    example: false,
-    description: 'Manual editorial flag (never tier-linked)',
-  })
-  @IsOptional()
-  @IsBoolean()
-  isLocalsFavourite?: boolean;
+  // NOTE: isLocalsFavourite is intentionally NOT settable here. It is a manual
+  // editorial flag (master §field-table) curated only by admins via the dedicated
+  // MANAGE_EDITORIAL endpoints (PATCH /tours/:id/locals-favourite), never by
+  // operators editing their own tour. See LOCALS-FAVOURITE-EDITORIAL-CHECKLIST.md.
 
   @ApiPropertyOptional({
     example: true,
