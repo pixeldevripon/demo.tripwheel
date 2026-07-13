@@ -1,12 +1,12 @@
-import { getSessionCookie } from 'better-auth/cookies';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
 import {
     ALL_LOCALES,
     DEFAULT_LOCALE,
     LOCALE_COOKIE,
     isLocale,
 } from '@/lib/constants/locales';
+import { getSessionCookie } from 'better-auth/cookies';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Path prefixes that are NOT part of the localized public site - they must
@@ -28,13 +28,14 @@ const NON_LOCALIZED_PREFIXES = [
 
 function isNonLocalized(pathname: string): boolean {
     return NON_LOCALIZED_PREFIXES.some(
-        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+        prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
 
 function hasLocalePrefix(pathname: string): boolean {
     return ALL_LOCALES.some(
-        (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
+        locale =>
+            pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)
     );
 }
 
@@ -47,7 +48,7 @@ function resolveLocale(request: NextRequest): string {
     if (acceptLanguage) {
         const preferred = acceptLanguage
             .split(',')
-            .map((part) => part.split(';')[0].trim().split('-')[0].toLowerCase());
+            .map(part => part.split(';')[0].trim().split('-')[0].toLowerCase());
         const match = preferred.find(isLocale);
         if (match) return match;
     }
@@ -120,23 +121,26 @@ function clearSessionCookies(request: NextRequest, response: NextResponse) {
     // --- Legacy Cross-Subdomain Logic ---
     // If you stop using Next.js rewrites and move the frontend and backend to the
     // same apex domain (e.g. app.domain.com and api.domain.com), uncomment this:
-    // const isProd = process.env.NODE_ENV === 'production';
-    // const domain = isProd
-    //     ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
-    //     : undefined;
-    //
-    // for (const { name } of request.cookies.getAll()) {
-    //     if (name.includes('session_token') || name.includes('session_data')) {
-    //         response.cookies.delete({ name, path: '/', ...(domain && { domain }) });
-    //     }
-    // }
-    // ------------------------------------
+    const isProd = process.env.NODE_ENV === 'production';
+    const domain = isProd
+        ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
+        : undefined;
 
     for (const { name } of request.cookies.getAll()) {
         if (name.includes('session_token') || name.includes('session_data')) {
-            response.cookies.delete({ name, path: '/' });
+            response.cookies.delete({
+                name,
+                path: '/',
+                ...(domain && { domain }),
+            });
         }
     }
+
+    /*    for (const { name } of request.cookies.getAll()) {
+        if (name.includes('session_token') || name.includes('session_data')) {
+            response.cookies.delete({ name, path: '/' });
+        }
+    } */
 }
 
 export async function proxy(request: NextRequest) {
@@ -189,3 +193,4 @@ export const config = {
     // Run on everything except Next internals and files with an extension.
     matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
+

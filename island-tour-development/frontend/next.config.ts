@@ -2,20 +2,6 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
-    async rewrites() {
-        // Only proxy requests in production. In development, the frontend talks directly 
-        // to localhost:5050 which doesn't have cross-domain cookie issues.
-        if (process.env.NODE_ENV !== 'production') {
-            return [];
-        }
-
-        return [
-            {
-                source: '/api/:path*',
-                destination: 'https://api.islandtours.esenc.cloud/api/:path*',
-            },
-        ];
-    },
     cacheComponents: true,
     experimental: {
         serverActions: {

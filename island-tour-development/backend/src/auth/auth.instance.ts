@@ -192,7 +192,7 @@ export const auth = betterAuth({
     // tossing / fixation blast radius). Override per-environment with
     // COOKIE_DOMAIN; the default stays scoped to this project's subtree.
     crossSubDomainCookies: {
-      enabled: false, //process.env.NODE_ENV === 'production',// will use when we enable cross subdomain cookie
+      enabled: process.env.NODE_ENV === 'production', // will use when we enable cross subdomain cookie
       domain: process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud',
     },
   },
