@@ -82,7 +82,7 @@ export function HubHero({
         // Figma: 465px (mobile) / 533px (desktop) band. Content is bottom-anchored
         // (not centered) - 49px bottom gap on mobile, 100px on desktop - which
         // reproduces the exact 152/154px top gaps at each breakpoint.
-        <section className='relative flex min-h-116.25 md:min-h-133.25 items-end justify-center overflow-hidden bg-it-hub-hero-bg [background-image:var(--it-hub-hero-gradient)] pb-12.25 md:pb-25'>
+        <section className='relative flex min-h-116.25 md:min-h-133.25 items-end justify-center overflow-hidden bg-it-hero-bg  pb-12.25 md:pb-25'>
             {image && (
                 <Image
                     src={image}
