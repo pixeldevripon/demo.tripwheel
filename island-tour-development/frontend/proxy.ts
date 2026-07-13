@@ -117,14 +117,24 @@ function guardDashboard(request: NextRequest) {
  * `backend/src/auth/auth.instance.ts` crossSubDomainCookies.domain.
  */
 function clearSessionCookies(request: NextRequest, response: NextResponse) {
-    const isProd = process.env.NODE_ENV === 'production';
-    const domain = isProd
-        ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
-        : undefined;
+    // --- Legacy Cross-Subdomain Logic ---
+    // If you stop using Next.js rewrites and move the frontend and backend to the
+    // same apex domain (e.g. app.domain.com and api.domain.com), uncomment this:
+    // const isProd = process.env.NODE_ENV === 'production';
+    // const domain = isProd
+    //     ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
+    //     : undefined;
+    //
+    // for (const { name } of request.cookies.getAll()) {
+    //     if (name.includes('session_token') || name.includes('session_data')) {
+    //         response.cookies.delete({ name, path: '/', ...(domain && { domain }) });
+    //     }
+    // }
+    // ------------------------------------
 
     for (const { name } of request.cookies.getAll()) {
         if (name.includes('session_token') || name.includes('session_data')) {
-            response.cookies.delete({ name, path: '/', ...(domain && { domain }) });
+            response.cookies.delete({ name, path: '/' });
         }
     }
 }
