@@ -369,6 +369,9 @@
     html:has(.frontend-root) {
         scrollbar-width: thin;
         scrollbar-color: var(--it-ink-muted) var(--it-surface);
+        /* Always reserve the scrollbar gutter so locking scroll (modals) never
+         * shifts the fixed navbar / sticky booking card sideways. */
+        scrollbar-gutter: stable;
     }
 }
 

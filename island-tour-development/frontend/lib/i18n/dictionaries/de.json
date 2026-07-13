@@ -388,10 +388,50 @@
         "balanceLater": "Rest später",
         "taxesIncluded": "Alle Steuern und Gebühren inbegriffen",
         "showDetails": "Details anzeigen",
-        "freeCancellation": "Kostenlose Stornierung bis {hours}h",
-        "payLater": "Nur {pct}% heute zahlen, Rest später",
+        "freeCancellation": "{link} bis {hours}h",
+        "freeCancellationLink": "Kostenlose Stornierung",
+        "payLater": "{link}, Rest später",
+        "payLaterLink": "Nur {pct}% heute zahlen",
         "sellOutTitle": "Schnell ausverkauft",
-        "sellOutSubtitle": "Buche heute und sichere dir deinen Platz"
+        "sellOutSubtitle": "Buche heute und sichere dir deinen Platz",
+        "selectDate": "Datum wählen",
+        "checkAvailability": "Verfügbarkeit prüfen",
+        "apply": "Übernehmen",
+        "perPersonShort": "/pro Person",
+        "free": "Kostenlos",
+        "bringingSpectators": "Zuschauer mitbringen?",
+        "spectatorNote": "Zuschauer kommen mit, nehmen aber nicht an der Aktivität teil",
+        "yes": "Ja",
+        "no": "Nein",
+        "spectators": "Zuschauer",
+        "capacityNote": "Nur noch {count} Plätze für diese Abfahrt",
+        "policyClose": "Schließen",
+        "cancellationModal": {
+          "title": "Kostenlose Stornierung bis {hours}h",
+          "introTitle": "Pläne ändern sich. Kein Problem.",
+          "introBody": "Storniere bis zu {hours} Stunden vor Beginn deiner Tour (Ortszeit). Volle Rückerstattung, keine Formulare, keine Rückfragen.",
+          "stepsTitle": "SO FUNKTIONIERT ES",
+          "steps": [
+            "Öffne deine Buchungsbestätigung per E-Mail",
+            "Tippe auf \"Buchung stornieren\"",
+            "Der gezahlte Betrag wird auf dein ursprüngliches Zahlungsmittel zurückerstattet"
+          ],
+          "outroTitle": "Weniger als {hours} Stunden vorher",
+          "outroBody": "Wenn du weniger als {hours} Stunden vor Beginn deiner Tour stornierst, können wir die Buchung nicht erstatten oder ändern. Muss aber der Anbieter absagen, bist du abgesichert: volle Rückerstattung oder kostenlose Umbuchung."
+        },
+        "depositModal": {
+          "title": "Nur {pct}% heute zahlen, Rest später",
+          "introTitle": "Bleib flexibel bei deinen Plänen.",
+          "introBody": "Reserviere deine Tour jetzt und zahle den Rest online, bevor es losgeht.",
+          "stepsTitle": "SO FUNKTIONIERT ES",
+          "steps": [
+            "Zahle heute {pct}%. Deine Buchung ist sofort bestätigt, mit allen Details in deiner E-Mail.",
+            "Du erhältst einen sicheren Link, um den Rest zu zahlen, mit Erinnerungen, je näher deine Tour rückt.",
+            "Zahle den Restbetrag bis {hours} Stunden vor Beginn deiner Tour (Ortszeit) oder storniere für eine volle Rückerstattung. Danach ist die Buchung verbindlich und die Anzahlung nicht erstattungsfähig."
+          ],
+          "outroTitle": "Warum wir das tun",
+          "outroBody": "Beliebte Touren sind schnell ausgebucht, daher sichert deine Anzahlung deinen Platz im Moment der Buchung, ohne dass du alles im Voraus zahlst. Außerdem unterstützt du damit die lokalen Inselbewohner, die diese Touren durchführen."
+        }
       },
       "reviews": {
         "title": "Was unsere Gäste sagen",

@@ -388,10 +388,50 @@
         "balanceLater": "Restante depois",
         "taxesIncluded": "Todos os impostos e taxas incluídos",
         "showDetails": "Ver detalhes",
-        "freeCancellation": "Cancelamento gratuito até {hours}h",
-        "payLater": "Pague só {pct}% hoje, o resto depois",
+        "freeCancellation": "{link} até {hours}h",
+        "freeCancellationLink": "Cancelamento gratuito",
+        "payLater": "{link}, o resto depois",
+        "payLaterLink": "Pague só {pct}% hoje",
         "sellOutTitle": "Pode esgotar",
-        "sellOutSubtitle": "Reserve hoje para garantir o seu lugar"
+        "sellOutSubtitle": "Reserve hoje para garantir o seu lugar",
+        "selectDate": "Selecionar data",
+        "checkAvailability": "Verificar disponibilidade",
+        "apply": "Aplicar",
+        "perPersonShort": "/por pessoa",
+        "free": "Grátis",
+        "bringingSpectators": "Vai levar espectadores?",
+        "spectatorNote": "Os espectadores acompanham mas não participam na atividade",
+        "yes": "Sim",
+        "no": "Não",
+        "spectators": "Espectadores",
+        "capacityNote": "Só restam {count} lugares para esta partida",
+        "policyClose": "Fechar",
+        "cancellationModal": {
+          "title": "Cancelamento gratuito até {hours}h",
+          "introTitle": "Os planos mudam. Sem problema.",
+          "introBody": "Cancele até {hours} horas antes de o seu passeio começar (hora local). Reembolso total, sem formulários nem perguntas.",
+          "stepsTitle": "COMO FUNCIONA",
+          "steps": [
+            "Abra o e-mail de confirmação da sua reserva",
+            "Toque em \"Cancelar reserva\"",
+            "O valor pago é reembolsado no seu método de pagamento original"
+          ],
+          "outroTitle": "Menos de {hours} horas antes",
+          "outroBody": "Se cancelar com menos de {hours} horas antes de o seu passeio começar, não podemos reembolsar nem alterar a reserva. Mas se o operador tiver de cancelar, você está protegido: reembolso total ou remarcação gratuita."
+        },
+        "depositModal": {
+          "title": "Pague só {pct}% hoje, o resto depois",
+          "introTitle": "Mantenha os seus planos flexíveis.",
+          "introBody": "Reserve o seu passeio agora e pague o resto online antes de ir.",
+          "stepsTitle": "COMO FUNCIONA",
+          "steps": [
+            "Pague {pct}% hoje. A sua reserva é confirmada de imediato, com todos os detalhes no seu e-mail.",
+            "Receberá um link seguro para pagar o resto, com lembretes à medida que o seu passeio se aproxima.",
+            "Pague o valor restante até {hours} horas antes de o seu passeio começar (hora local), ou cancele para um reembolso total. Depois disso, a reserva fica bloqueada e o depósito não é reembolsável."
+          ],
+          "outroTitle": "Porque fazemos isto",
+          "outroBody": "Os passeios populares esgotam depressa, por isso o seu depósito garante o seu lugar no momento em que reserva, sem pagar tudo adiantado. Também está a apoiar os ilhéus locais que realizam estes passeios."
+        }
       },
       "reviews": {
         "title": "O que dizem os nossos clientes",

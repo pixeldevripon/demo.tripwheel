@@ -388,10 +388,50 @@
         "balanceLater": "余款后付",
         "taxesIncluded": "含全部税费",
         "showDetails": "查看明细",
-        "freeCancellation": "{hours} 小时前免费取消",
-        "payLater": "今日仅付 {pct}%，余款后付",
+        "freeCancellation": "{hours} 小时前{link}",
+        "freeCancellationLink": "免费取消",
+        "payLater": "{link}，余款后付",
+        "payLaterLink": "今日仅付 {pct}%",
         "sellOutTitle": "可能售罄",
-        "sellOutSubtitle": "立即预订以确保名额"
+        "sellOutSubtitle": "立即预订以确保名额",
+        "selectDate": "选择日期",
+        "checkAvailability": "查看可订情况",
+        "apply": "应用",
+        "perPersonShort": "/每人",
+        "free": "免费",
+        "bringingSpectators": "需要带随行观众吗？",
+        "spectatorNote": "随行观众可同行，但不参与活动",
+        "yes": "是",
+        "no": "否",
+        "spectators": "随行观众",
+        "capacityNote": "该出发时段仅剩 {count} 个名额",
+        "policyClose": "关闭",
+        "cancellationModal": {
+          "title": "{hours} 小时前免费取消",
+          "introTitle": "计划有变？没问题。",
+          "introBody": "在行程开始前 {hours} 小时（当地时间）之前均可取消。全额退款，无需填表，无需理由。",
+          "stepsTitle": "如何操作",
+          "steps": [
+            "打开您的预订确认邮件",
+            "点击\"取消预订\"",
+            "已付款项将退回至您原来的付款方式"
+          ],
+          "outroTitle": "开始前不足 {hours} 小时",
+          "outroBody": "若在行程开始前不足 {hours} 小时取消，我们将无法退款或更改预订。但如果是运营商取消，您将获得保障：全额退款或免费改期。"
+        },
+        "depositModal": {
+          "title": "今日仅付 {pct}%，余款后付",
+          "introTitle": "让您的计划更灵活。",
+          "introBody": "现在预订行程，出发前在线支付余款即可。",
+          "stepsTitle": "如何操作",
+          "steps": [
+            "今日支付 {pct}%。您的预订立即确认，所有详情将发送至您的邮箱。",
+            "您将收到一个安全链接用于支付余款，并会随着行程临近收到提醒。",
+            "在行程开始前 {hours} 小时（当地时间）之前支付余款，或取消以获得全额退款。此后预订将锁定，且订金不可退还。"
+          ],
+          "outroTitle": "我们为何这样做",
+          "outroBody": "热门行程很快售罄，因此您的订金会在预订当下即刻为您锁定名额，无需一次性付清全款。您同时也在支持经营这些行程的当地岛民。"
+        }
       },
       "reviews": {
         "title": "我们的客人怎么说",

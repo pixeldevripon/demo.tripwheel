@@ -388,10 +388,50 @@
         "balanceLater": "Solde plus tard",
         "taxesIncluded": "Taxes et frais inclus",
         "showDetails": "Voir les détails",
-        "freeCancellation": "Annulation gratuite jusqu'à {hours}h",
-        "payLater": "Payez {pct}% aujourd'hui, le reste plus tard",
+        "freeCancellation": "{link} jusqu'à {hours}h",
+        "freeCancellationLink": "Annulation gratuite",
+        "payLater": "{link}, le reste plus tard",
+        "payLaterLink": "Payez {pct}% aujourd'hui",
         "sellOutTitle": "Risque de complet",
-        "sellOutSubtitle": "Réservez aujourd'hui pour garantir votre place"
+        "sellOutSubtitle": "Réservez aujourd'hui pour garantir votre place",
+        "selectDate": "Choisir une date",
+        "checkAvailability": "Vérifier la disponibilité",
+        "apply": "Appliquer",
+        "perPersonShort": "/par personne",
+        "free": "Gratuit",
+        "bringingSpectators": "Vous amenez des spectateurs ?",
+        "spectatorNote": "Les spectateurs vous accompagnent mais ne participent pas à l'activité",
+        "yes": "Oui",
+        "no": "Non",
+        "spectators": "Spectateurs",
+        "capacityNote": "Plus que {count} places pour ce départ",
+        "policyClose": "Fermer",
+        "cancellationModal": {
+          "title": "Annulation gratuite jusqu'à {hours}h",
+          "introTitle": "Les plans changent. Pas de souci.",
+          "introBody": "Annulez jusqu'à {hours} heures avant le début de votre visite (heure locale). Remboursement intégral, sans formulaire ni question.",
+          "stepsTitle": "COMMENT ÇA MARCHE",
+          "steps": [
+            "Ouvrez votre e-mail de confirmation de réservation",
+            "Appuyez sur \"Annuler la réservation\"",
+            "Le montant payé est remboursé sur votre moyen de paiement d'origine"
+          ],
+          "outroTitle": "Moins de {hours} heures avant",
+          "outroBody": "Si vous annulez moins de {hours} heures avant le début de votre visite, nous ne pouvons ni rembourser ni modifier la réservation. Mais si l'opérateur doit annuler, vous êtes couvert : remboursement intégral ou report gratuit."
+        },
+        "depositModal": {
+          "title": "Payez {pct}% aujourd'hui, le reste plus tard",
+          "introTitle": "Gardez vos plans flexibles.",
+          "introBody": "Réservez votre visite maintenant et payez le reste en ligne avant de partir.",
+          "stepsTitle": "COMMENT ÇA MARCHE",
+          "steps": [
+            "Payez {pct}% aujourd'hui. Votre réservation est confirmée immédiatement, avec tous les détails dans votre e-mail.",
+            "Vous recevrez un lien sécurisé pour payer le reste, avec des rappels à l'approche de votre visite.",
+            "Payez le solde jusqu'à {hours} heures avant le début de votre visite (heure locale), ou annulez pour un remboursement intégral. Passé ce délai, la réservation est verrouillée et l'acompte n'est pas remboursable."
+          ],
+          "outroTitle": "Pourquoi nous faisons cela",
+          "outroBody": "Les visites populaires se remplissent vite, donc votre acompte réserve votre place dès la réservation, sans tout payer d'avance. Vous soutenez aussi les habitants de l'île qui organisent ces visites."
+        }
       },
       "reviews": {
         "title": "Ce que disent nos clients",

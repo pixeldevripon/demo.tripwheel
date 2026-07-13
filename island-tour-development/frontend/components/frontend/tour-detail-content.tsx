@@ -346,16 +346,40 @@ export async function TourDetailContent({
 
             {/* Left column (gallery + reviews) + static booking card (right rail,
                 sticky on lg). Figma nodes 47940:12742 + 47936:3499 + 47936:3386. */}
-            <section className='bg-it-white pb-16 md:pb-18'>
+            {/* One two-column grid so the booking card (right rail) stays sticky
+                across the WHOLE page scroll: gallery (col 1, row 1) + all detail
+                content (col 1, row 2), with the card spanning both rows. Left
+                column keeps the gallery width; right rail stays clear.
+                Figma nodes 47940:12742 + 47936:3499 + 47936:3386 + 47936:3592. */}
+            <section className='bg-it-white pb-16 md:pb-24'>
                 <div className='it-container'>
-                    <div className='flex flex-col gap-10 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-6'>
-                        <div className='flex flex-col gap-10'>
+                    <div className='flex flex-col gap-10 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-x-6 lg:gap-y-10'>
+                        {/* Gallery (left column, top row) */}
+                        <div className='lg:col-start-1 lg:row-start-1'>
                             <TourGallery
                                 images={galleryImages}
                                 title={title}
                                 meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
+                        </div>
+
+                        {/* Booking card - right rail, sticky across the whole page
+                            scroll (spans both left-column rows). */}
+                        <div className='lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24'>
+                            {/* Dummy state for design/testing (3 demo slots, age
+                                bands, spectators). Swap to
+                                `data={buildTourBookingData(detail)}` to wire live
+                                tour pricing/availability. */}
+                            <TourBookingCard
+                                dict={tourDict.booking}
+                                locale={locale}
+                            />
+                        </div>
+
+                        {/* Left column content: reviews preview + section tabs +
+                            all detail sections + full reviews. */}
+                        <div className='flex min-w-0 flex-col gap-10 lg:col-start-1 lg:row-start-2'>
                             {/* Review preview streams in its own boundary; only
                                 rendered when the aggregate says there are reviews. */}
                             {reviewCount > 0 && (
@@ -370,21 +394,7 @@ export async function TourDetailContent({
                                     />
                                 </Suspense>
                             )}
-                        </div>
-                        <div className='lg:sticky lg:top-24'>
-                            <TourBookingCard dict={tourDict.booking} />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Detail sections - sticky tab nav (Figma 47936:3592) + collapsible
-                sections. Each section is separated by a hairline with 40px above
-                and below (the gap-10 rhythm includes the separators). */}
-            <section className='bg-it-white pb-16 md:pb-24'>
-                <div className='it-container'>
-                    <div className='flex flex-col gap-10'>
-                        <TourDetailTabs tabs={sectionTabs} />
+                            <TourDetailTabs tabs={sectionTabs} />
 
                         {/* Content sections - left-aligned readable measure. */}
                         <div className='flex max-w-178.5 flex-col gap-10'>
@@ -642,6 +652,7 @@ export async function TourDetailContent({
                                     }}
                                 />
                             </Suspense>
+                        </div>
                         </div>
                     </div>
                 </div>

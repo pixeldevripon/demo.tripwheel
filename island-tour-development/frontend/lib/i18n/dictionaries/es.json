@@ -388,10 +388,50 @@
         "balanceLater": "Resto después",
         "taxesIncluded": "Todos los impuestos y tasas incluidos",
         "showDetails": "Ver detalles",
-        "freeCancellation": "Cancelación gratuita hasta {hours}h",
-        "payLater": "Paga solo {pct}% hoy, el resto después",
+        "freeCancellation": "{link} hasta {hours}h",
+        "freeCancellationLink": "Cancelación gratuita",
+        "payLater": "{link}, el resto después",
+        "payLaterLink": "Paga solo {pct}% hoy",
         "sellOutTitle": "Probable que se agote",
-        "sellOutSubtitle": "Reserva hoy para asegurar tu lugar"
+        "sellOutSubtitle": "Reserva hoy para asegurar tu lugar",
+        "selectDate": "Selecciona la fecha",
+        "checkAvailability": "Comprobar disponibilidad",
+        "apply": "Aplicar",
+        "perPersonShort": "/por persona",
+        "free": "Gratis",
+        "bringingSpectators": "¿Traes espectadores?",
+        "spectatorNote": "Los espectadores te acompañan pero no participan en la actividad",
+        "yes": "Sí",
+        "no": "No",
+        "spectators": "Espectadores",
+        "capacityNote": "Solo quedan {count} plazas para esta salida",
+        "policyClose": "Cerrar",
+        "cancellationModal": {
+          "title": "Cancelación gratuita hasta {hours}h",
+          "introTitle": "Los planes cambian. Sin problema.",
+          "introBody": "Cancela hasta {hours} horas antes de que empiece tu tour (hora local). Reembolso completo, sin formularios ni preguntas.",
+          "stepsTitle": "CÓMO FUNCIONA",
+          "steps": [
+            "Abre tu correo de confirmación de la reserva",
+            "Toca \"Cancelar reserva\"",
+            "El importe pagado se reembolsa a tu método de pago original"
+          ],
+          "outroTitle": "Menos de {hours} horas antes",
+          "outroBody": "Si cancelas con menos de {hours} horas de antelación al inicio de tu tour, no podemos reembolsar ni cambiar la reserva. Pero si el operador tiene que cancelar, estás cubierto: reembolso completo o un cambio de fecha gratuito."
+        },
+        "depositModal": {
+          "title": "Paga solo {pct}% hoy, el resto después",
+          "introTitle": "Mantén tus planes flexibles.",
+          "introBody": "Reserva tu tour ahora y paga el resto en línea antes de ir.",
+          "stepsTitle": "CÓMO FUNCIONA",
+          "steps": [
+            "Paga {pct}% hoy. Tu reserva se confirma al instante, con todos los detalles en tu correo.",
+            "Recibirás un enlace seguro para pagar el resto, con recordatorios a medida que se acerca tu tour.",
+            "Paga el saldo hasta {hours} horas antes de que empiece tu tour (hora local), o cancela para un reembolso completo. Después, la reserva queda bloqueada y el depósito no es reembolsable."
+          ],
+          "outroTitle": "Por qué lo hacemos",
+          "outroBody": "Los tours populares se llenan rápido, así que tu depósito asegura tu plaza en el momento de reservar, sin pagarlo todo por adelantado. Además, apoyas a los isleños locales que organizan estos tours."
+        }
       },
       "reviews": {
         "title": "Lo que dicen nuestros clientes",

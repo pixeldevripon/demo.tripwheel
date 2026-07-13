@@ -388,10 +388,50 @@
         "balanceLater": "Balance later",
         "taxesIncluded": "All taxes and fees included",
         "showDetails": "Show Details",
-        "freeCancellation": "Free cancellation up to {hours}h",
-        "payLater": "Pay only {pct}% today, the rest later",
+        "freeCancellation": "{link} up to {hours}h",
+        "freeCancellationLink": "Free cancellation",
+        "payLater": "{link}, the rest later",
+        "payLaterLink": "Pay only {pct}% today",
         "sellOutTitle": "Likely to sell out",
-        "sellOutSubtitle": "Book today to secure your spot"
+        "sellOutSubtitle": "Book today to secure your spot",
+        "selectDate": "Select date",
+        "checkAvailability": "Check Availability",
+        "apply": "Apply",
+        "perPersonShort": "/per person",
+        "free": "Free",
+        "bringingSpectators": "Bringing Spectators?",
+        "spectatorNote": "Spectators join but don't participate in the activity",
+        "yes": "Yes",
+        "no": "No",
+        "spectators": "Spectators",
+        "capacityNote": "Only {count} spots left for this departure",
+        "policyClose": "Close",
+        "cancellationModal": {
+          "title": "Free cancellation up to {hours}h",
+          "introTitle": "Plans change. No problem.",
+          "introBody": "Cancel up to {hours} hours before your tour starts (local time). Full refund, no forms, no questions asked.",
+          "stepsTitle": "HOW IT WORKS",
+          "steps": [
+            "Open your booking confirmation email",
+            "Tap \"Cancel booking\"",
+            "The amount you paid is refunded to your original payment method"
+          ],
+          "outroTitle": "Less than {hours} hours before",
+          "outroBody": "If you cancel less than {hours} hours before your tour starts, we can't refund or change the booking. But if the operator has to cancel, you're covered: a full refund or a free reschedule."
+        },
+        "depositModal": {
+          "title": "Pay only {pct}% today, the rest later",
+          "introTitle": "Keep your plans flexible.",
+          "introBody": "Reserve your tour now and pay the rest online before you go.",
+          "stepsTitle": "HOW IT WORKS",
+          "steps": [
+            "Pay {pct}% today. Your booking is confirmed right away, with all the details in your email.",
+            "You'll get a secure link to pay the rest, with reminders as your tour nears.",
+            "Pay the balance up to {hours} hours before your tour starts (local time), or cancel for a full refund. After that, the booking is locked and the deposit is non-refundable."
+          ],
+          "outroTitle": "Why we do this",
+          "outroBody": "Popular tours fill up fast, so your deposit secures your spot the moment you book, without paying it all upfront. You're also supporting the local islanders who run these tours."
+        }
       },
       "reviews": {
         "title": "What our guests say",
