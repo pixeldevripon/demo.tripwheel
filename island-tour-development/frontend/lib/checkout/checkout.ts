@@ -1,0 +1,170 @@
+/**
+ * Pure helpers shared by the booking widget (which builds the checkout URL) and
+ * the checkout page (which parses it back and computes the summary). No
+ * server/client-only imports - safe on both sides.
+ *
+ * The booking widget owns the live selection (date / time / party); it hands
+ * that off to the checkout page through the query string so the page renders as
+ * a fresh server navigation. Pickup, contact, and payment are chosen on the
+ * checkout page itself.
+ *
+ * Pricing mirrors the widget exactly (same `TourBookingData`), so the totals a
+ * traveller saw in the card carry through to checkout unchanged. Real
+ * availability + a server-authoritative quote land with the booking module
+ * (BOOKING-FLOW-DESIGN-GUIDE.md §9); until then this is client-derived.
+ */
+import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
+
+/** The widget selection carried in the checkout URL. */
+export interface CheckoutSelection {
+    /** ISO calendar date `YYYY-MM-DD` (locale-free). */
+    date: string | null;
+    /** Wall-clock start time `HH:MM`. */
+    time: string | null;
+    /** Chosen count per band id (participants + spectators), zero rows omitted. */
+    counts: Record<string, number>;
+}
+
+/** A priced row in the checkout totals (band + chosen count). */
+export interface CheckoutLineItem {
+    band: BookingBand;
+    count: number;
+    lineTotal: number;
+}
+
+/** Money split for the commit block, mirroring the widget's price summary. */
+export interface CheckoutTotals {
+    lineItems: CheckoutLineItem[];
+    /** Total travellers + spectators. */
+    partySize: number;
+    total: number;
+    /** Amount charged today (deposit for deposit models, else the full total). */
+    payToday: number;
+    balanceLater: number;
+    requiresDeposit: boolean;
+}
+
+/** Local `YYYY-MM-DD` for a Date (no timezone shift, unlike `toISOString`). */
+export function toDateParam(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/** Parse a `YYYY-MM-DD` param into a local Date, or null if malformed. */
+export function fromDateParam(value: string | null): Date | null {
+    if (!value) return null;
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const date = new Date(y, m - 1, d);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Build the `?date=&time=&party=` query the widget appends to the checkout URL.
+ * Party is encoded as `bandId:count` pairs (zero rows dropped) so the page can
+ * rebuild the exact selection against the same band set.
+ */
+export function buildCheckoutQuery(selection: {
+    date: string | null;
+    time: string | null;
+    counts: Record<string, number>;
+}): string {
+    const params = new URLSearchParams();
+    if (selection.date) params.set('date', selection.date);
+    if (selection.time) params.set('time', selection.time);
+    const party = Object.entries(selection.counts)
+        .filter(([, count]) => count > 0)
+        .map(([id, count]) => `${id}:${count}`)
+        .join(',');
+    if (party) params.set('party', party);
+    return params.toString();
+}
+
+type RawSearchParams = Record<string, string | string[] | undefined>;
+
+/** Read back the widget selection from the checkout page's search params. */
+export function parseCheckoutSelection(
+    searchParams: RawSearchParams
+): CheckoutSelection {
+    const first = (key: string): string | null => {
+        const value = searchParams[key];
+        const raw = Array.isArray(value) ? value[0] : value;
+        return raw ?? null;
+    };
+
+    const counts: Record<string, number> = {};
+    const party = first('party');
+    if (party) {
+        for (const pair of party.split(',')) {
+            const [id, rawCount] = pair.split(':');
+            const count = Number(rawCount);
+            if (id && Number.isFinite(count) && count > 0) counts[id] = count;
+        }
+    }
+
+    return { date: first('date'), time: first('time'), counts };
+}
+
+/**
+ * Compute the price split from the widget data + chosen counts. Falls back to a
+ * sensible default party (the default band at the tour's minimum) when the URL
+ * carries no valid selection, so a direct visit still renders a coherent summary.
+ */
+export function computeCheckoutTotals(
+    data: TourBookingData,
+    counts: Record<string, number>
+): CheckoutTotals {
+    const effective = { ...counts };
+    const hasAny = Object.values(effective).some(n => n > 0);
+    if (!hasAny) {
+        const defaultBand =
+            data.bands.find(b => b.kind === 'participant' && b.isDefault) ??
+            data.bands.find(b => b.kind === 'participant');
+        if (defaultBand) {
+            effective[defaultBand.id] = Math.max(1, data.minPartySize);
+        }
+    }
+
+    const lineItems: CheckoutLineItem[] = data.bands
+        .map(band => ({ band, count: effective[band.id] ?? 0 }))
+        .filter(row => row.count > 0)
+        .map(row => ({ ...row, lineTotal: row.count * row.band.price }));
+
+    const partySize = lineItems.reduce((sum, row) => sum + row.count, 0);
+    const total = lineItems.reduce((sum, row) => sum + row.lineTotal, 0);
+    const payToday = data.requiresDeposit
+        ? Math.round((total * data.depositPct) / 100)
+        : total;
+
+    return {
+        lineItems,
+        partySize,
+        total,
+        payToday,
+        balanceLater: total - payToday,
+        requiresDeposit: data.requiresDeposit,
+    };
+}
+
+/** Short band label without the age qualifier, e.g. "Adult (age 13+)" -> "Adult". */
+export function shortBandLabel(band: BookingBand): string {
+    return band.label.split(' (')[0];
+}
+
+/** Aggregated party line for the summary, e.g. "2 Adult, 1 Child". */
+export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
+    return lineItems
+        .map(row => `${row.count} ${shortBandLabel(row.band)}`)
+        .join(', ');
+}
+
+/** `${symbol}${amount}` with locale grouping - matches the booking widget. */
+export function formatCheckoutMoney(
+    amount: number,
+    symbol: string,
+    locale: string
+): string {
+    return `${symbol}${amount.toLocaleString(locale)}`;
+}

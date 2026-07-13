@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { TourBookingCard } from './tour-booking-card';
+import { TourBookingCard } from './tour-booking-card/tour-booking-card';
 import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
 import { TourGallery, type TourGalleryMeta } from './tour-gallery';
 import { TourHeader } from './tour-header';
@@ -374,6 +374,8 @@ export async function TourDetailContent({
                             <TourBookingCard
                                 dict={tourDict.booking}
                                 locale={locale}
+                                destinationSlug={destinationSlug}
+                                tourSlug={slug}
                             />
                         </div>
 

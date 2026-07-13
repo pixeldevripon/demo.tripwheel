@@ -12,9 +12,10 @@ import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { CategoryAbout } from './category-about';
+
 import {
     CategoryYouMightLike,
-    type RelatedCategory,
+    RelatedCategory,
 } from './category-you-might-like';
 import { FaqSection } from './faq-section';
 import type { TourListing } from './tour-card';
@@ -208,7 +209,11 @@ export async function CategoryPage({
     // a `null` means 0 published tours → notFound().
     const [category, pageContent, faqs, activeCategories, destination] =
         await Promise.all([
-            getCategoryBySlugForDestination(destinationSlug, categorySlug, locale),
+            getCategoryBySlugForDestination(
+                destinationSlug,
+                categorySlug,
+                locale
+            ),
             getCategoryPageContent(categoryId, locale),
             getCategoryFaqs(categoryId, locale),
             getDestinationCategories(destinationSlug, locale),

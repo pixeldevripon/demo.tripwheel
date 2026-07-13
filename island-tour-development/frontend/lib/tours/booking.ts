@@ -9,6 +9,74 @@
  */
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
 
+/**
+ * Content for a policy modal (Figma nodes 48125:20233 / 48125:21537). Every
+ * string may carry `{hours}` / `{pct}` placeholders, filled from the tour data.
+ */
+export type PolicyModalDict = {
+    /** Big header title (32px). */
+    title: string;
+    /** Lead-in heading + paragraph. */
+    introTitle: string;
+    introBody: string;
+    /** Orange "HOW IT WORKS" box: heading + steps. */
+    stepsTitle: string;
+    steps: string[];
+    /** Closing heading + paragraph. */
+    outroTitle: string;
+    outroBody: string;
+};
+
+/** Copy/i18n contract for the booking widget, resolved by the page. */
+export type TourBookingDict = {
+    from: string;
+    perPerson: string;
+    continue: string;
+    selected: string;
+    soldOut: string;
+    /** "Only {count} left" */
+    onlyLeft: string;
+    /** "{count} Travelers" */
+    travelers: string;
+    total: string;
+    payToday: string;
+    balanceLater: string;
+    taxesIncluded: string;
+    showDetails: string;
+    /** Trust line with a `{link}` marker for the clickable part, e.g. "{link} up to {hours}h". */
+    freeCancellation: string;
+    /** Clickable/underlined phrase inside `freeCancellation` (opens the modal). */
+    freeCancellationLink: string;
+    /** Trust line with a `{link}` marker, e.g. "{link}, the rest later". */
+    payLater: string;
+    /** Clickable/underlined phrase inside `payLater` (opens the modal). */
+    payLaterLink: string;
+    sellOutTitle: string;
+    sellOutSubtitle: string;
+    // Booking Widget V2
+    selectDate: string;
+    checkAvailability: string;
+    apply: string;
+    /** "/per person" */
+    perPersonShort: string;
+    /** Price label for a free age band (infants). */
+    free: string;
+    bringingSpectators: string;
+    spectatorNote: string;
+    yes: string;
+    no: string;
+    /** Line-item label for spectator rows. */
+    spectators: string;
+    /** "Only {count} spots left for this departure" (party over slot capacity). */
+    capacityNote: string;
+    /** Aria-label for the policy-modal close button. */
+    policyClose: string;
+    /** Free-cancellation policy modal (opened from the trust line). */
+    cancellationModal: PolicyModalDict;
+    /** Deposit / pay-later policy modal (opened from the trust line). */
+    depositModal: PolicyModalDict;
+};
+
 /** A single priced row in the party selector (participant age band or spectator). */
 export interface BookingBand {
     id: string;
