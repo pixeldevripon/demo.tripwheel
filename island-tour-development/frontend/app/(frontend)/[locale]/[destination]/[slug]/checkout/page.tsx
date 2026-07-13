@@ -2,7 +2,8 @@ import { CheckoutClient } from '@/components/frontend/checkout/checkout-client';
 import type { CheckoutPickupOption } from '@/components/frontend/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/frontend/checkout/checkout-summary';
 import { CheckoutPageSkeleton } from '@/components/skelitons/checkout-page-skeleton';
-import { getTourBySlug } from '@/lib/api/public/tours';
+import { getActiveDestinations } from '@/lib/api/public';
+import { getDestinationTours, getTourBySlug } from '@/lib/api/public/tours';
 import {
     buildPartyLabel,
     computeCheckoutTotals,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/checkout/checkout';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { DEMO_PUBLIC_REF } from '@/lib/thank-you/thank-you';
 import { DUMMY_BOOKING_DATA } from '@/lib/tours/booking';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -21,6 +23,40 @@ type PageSearch = Record<string, string | string[] | undefined>;
 
 /** Checkout is a transactional surface - keep it out of the index (master §5.8). */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+/**
+ * Prerender one shell per active destination (its first LIVE tour). Cache
+ * Components requires at least one generateStaticParams entry - without it the
+ * route has no prerendered shell and every layout await surfaces as a
+ * request-time Blocking Route error. All other tours render on demand (default
+ * `dynamicParams`), streaming behind the route's skeleton.
+ */
+export async function generateStaticParams() {
+    try {
+        const destinations = await getActiveDestinations();
+        if (destinations && destinations.length > 0) {
+            const combos = await Promise.all(
+                destinations.map(async d => {
+                    const { data } = await getDestinationTours({
+                        destinationId: d.id,
+                        limit: 1,
+                    });
+                    return data.map(t => ({
+                        destination: d.slug,
+                        slug: t.slug,
+                    }));
+                })
+            );
+            const flat = combos.flat();
+            if (flat.length > 0) return flat;
+        }
+    } catch {
+        // backend unavailable at build - fall through to the demo-seed tour
+    }
+    return [
+        { destination: 'curacao', slug: 'klein-curacao-super-yacht-beach-house' },
+    ];
+}
 
 /** Wall-clock "HH:MM" -> localized "8:00 AM" (fixed UTC date, clock only). */
 function formatClock(hhmm: string, locale: string): string {
@@ -43,6 +79,7 @@ function formatClock(hhmm: string, locale: string): string {
 async function CheckoutBody({
     locale,
     tourHref,
+    thankYouHref,
     searchParams,
     dict,
     title,
@@ -51,6 +88,7 @@ async function CheckoutBody({
 }: {
     locale: Locale;
     tourHref: string;
+    thankYouHref: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
     title: string;
@@ -85,6 +123,7 @@ async function CheckoutBody({
             pickupFromLabel={null}
             payToday={totals.payToday}
             currencySymbol={data.currencySymbol}
+            thankYouHref={thankYouHref}
             summary={
                 <CheckoutSummary
                     dict={dict}
@@ -145,6 +184,9 @@ export default async function CheckoutPage({
         detail.images[0]?.url ??
         null;
     const tourHref = localizeHref(locale, `/${destination}/${slug}`);
+    // TYP is the one locale-less route (master API conventions); the demo ref
+    // stands in until POST /api/v1/bookings returns a real public_ref.
+    const thankYouHref = `/${destination}/thank-you/${DEMO_PUBLIC_REF}`;
 
     const pickupOptions: CheckoutPickupOption[] = detail.pickupLocations
         .slice()
@@ -157,6 +199,7 @@ export default async function CheckoutPage({
                 <CheckoutBody
                     locale={locale}
                     tourHref={tourHref}
+                    thankYouHref={thankYouHref}
                     searchParams={searchParams}
                     dict={dict.checkout}
                     title={title}

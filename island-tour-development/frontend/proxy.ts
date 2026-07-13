@@ -174,7 +174,17 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // 5. Public path without a locale → redirect to the locale-prefixed URL.
+    // 5. Thank-you page - the ONE public route with no locale prefix (master:
+    //    /{destination}/thank-you/{public_ref}, noindex). The page lives under
+    //    the [locale] tree, so serve it from the default-locale branch via a
+    //    URL-preserving rewrite instead of the locale redirect below.
+    if (/^\/[^/]+\/thank-you\/[^/]+$/.test(pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${DEFAULT_LOCALE}${pathname}`;
+        return NextResponse.rewrite(url);
+    }
+
+    // 6. Public path without a locale → redirect to the locale-prefixed URL.
     const locale = resolveLocale(request);
     const url = request.nextUrl.clone();
     url.pathname = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;

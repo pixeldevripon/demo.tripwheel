@@ -6,7 +6,8 @@ import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useId, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { type CheckoutPhase } from './checkout-steps';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -172,18 +173,24 @@ function Radio({ selected }: { selected: boolean }) {
 /** Full-width dark commit button (Figma r6, bg #2c2c2c, pad 23/32). */
 function DarkButton({
     onClick,
+    disabled,
     children,
 }: {
     onClick: () => void;
+    disabled?: boolean;
     children: ReactNode;
 }) {
     return (
         <motion.button
             type='button'
             onClick={onClick}
-            whileTap={{ scale: 0.98 }}
+            disabled={disabled}
+            aria-busy={disabled || undefined}
+            whileTap={disabled ? undefined : { scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className='flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[6px] border-none bg-it-heading px-8 py-[23px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-opacity hover:opacity-90'>
+            className={`flex w-full items-center justify-center gap-2.5 rounded-[6px] border-none bg-it-heading px-8 py-[23px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-opacity hover:opacity-90 ${
+                disabled ? 'cursor-default' : 'cursor-pointer'
+            }`}>
             {children}
         </motion.button>
     );
@@ -214,6 +221,8 @@ interface CheckoutFormProps {
     /** Amount charged today; 0 means operator_full (no payment phase). */
     payToday: number;
     currencySymbol: string;
+    /** TYP redirect target (`/{destination}/thank-you/{public_ref}`). */
+    thankYouHref: string;
 }
 
 /**
@@ -236,8 +245,17 @@ export function CheckoutForm({
     pickupFromLabel,
     payToday,
     currencySymbol,
+    thankYouHref,
 }: CheckoutFormProps) {
     const hasPayment = payToday > 0;
+    const router = useRouter();
+    const [processing, setProcessing] = useState(false);
+
+    // Warm the TYP route so the post-reserve transition lands on a prefetched
+    // page instead of a network round-trip.
+    useEffect(() => {
+        router.prefetch(thankYouHref);
+    }, [router, thankYouHref]);
 
     const [contact, setContact] = useState({
         fullName: '',
@@ -299,25 +317,53 @@ export function CheckoutForm({
     }
 
     function handleReserve() {
+        if (processing) return;
         if (hasPayment && !validatePayment()) return;
-        // Booking submission (POST /api/v1/bookings) + Stripe Elements confirm
-        // land with the booking/payments module; on success the traveller is
-        // redirected to /{destination}/thank-you/{public_ref}. UI-complete here.
+        // Demo commit: the real booking submission (POST /api/v1/bookings) +
+        // Stripe Elements confirm land with the booking/payments module. Until
+        // then the CTA shows a short processing state and hands off to the live
+        // TYP route with the demo public ref.
+        setProcessing(true);
+        setTimeout(() => router.push(thankYouHref), 1600);
     }
 
     const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
 
     const reserveButton = (onClick: () => void) => (
-        <DarkButton onClick={onClick}>
-            <span className='flex items-center gap-4'>
-                {dict.reserve}
-                {payToday > 0 && (
-                    <>
-                        <span className='size-1 shrink-0 rounded-full bg-it-white' />
-                        {dict.reservePay.replace('{amount}', money(payToday))}
-                    </>
+        <DarkButton onClick={onClick} disabled={processing}>
+            <AnimatePresence mode='wait' initial={false}>
+                {processing ? (
+                    <motion.span
+                        key='processing'
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className='flex items-center gap-2.5'>
+                        <span className='size-5 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                        {dict.processing}
+                    </motion.span>
+                ) : (
+                    <motion.span
+                        key='label'
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className='flex items-center gap-4'>
+                        {dict.reserve}
+                        {payToday > 0 && (
+                            <>
+                                <span className='size-1 shrink-0 rounded-full bg-it-white' />
+                                {dict.reservePay.replace(
+                                    '{amount}',
+                                    money(payToday),
+                                )}
+                            </>
+                        )}
+                    </motion.span>
                 )}
-            </span>
+            </AnimatePresence>
         </DarkButton>
     );
 

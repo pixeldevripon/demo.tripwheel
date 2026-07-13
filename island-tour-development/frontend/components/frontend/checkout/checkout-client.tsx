@@ -20,6 +20,8 @@ interface CheckoutClientProps {
     pickupFromLabel: string | null;
     payToday: number;
     currencySymbol: string;
+    /** TYP redirect target (`/{destination}/thank-you/{public_ref}`). */
+    thankYouHref: string;
     /** Server-rendered booking summary (right rail). */
     summary: ReactNode;
 }
@@ -52,6 +54,7 @@ export function CheckoutClient({
     pickupFromLabel,
     payToday,
     currencySymbol,
+    thankYouHref,
     summary,
 }: CheckoutClientProps) {
     const [phase, setPhase] = useState<CheckoutPhase>('contact');
@@ -122,6 +125,7 @@ export function CheckoutClient({
                             pickupFromLabel={pickupFromLabel}
                             payToday={payToday}
                             currencySymbol={currencySymbol}
+                            thankYouHref={thankYouHref}
                         />
                     </div>
                 </div>
