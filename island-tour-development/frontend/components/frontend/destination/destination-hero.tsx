@@ -40,7 +40,7 @@ export function DestinationHero({
         // z-20 keeps the search typeahead (which overflows the hero) above the next
         // section; the background image is clipped in its own wrapper so the section
         // itself doesn't clip the dropdown.
-        <section className='relative z-20 h-136.75 md:h-150 flex items-end justify-center bg-it-hero-bg [background-image:var(--it-hero-gradient)] pb-12 md:items-center md:pb-0'>
+        <section className='relative z-20 h-136.75 md:h-150 flex items-end justify-center bg-it-hero-bg pb-12 md:items-center md:pb-0'>
             {image && (
                 <div className='absolute inset-0 overflow-hidden'>
                     <Image src={image} alt={destinationName} fill priority className='object-cover' />
