@@ -2,6 +2,14 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
+    async rewrites() {
+        return [
+            {
+                source: '/:path*',
+                destination: 'https://api.islandtours.esenc.cloud/api/:path*',
+            },
+        ];
+    },
     cacheComponents: true,
     experimental: {
         serverActions: {
@@ -15,7 +23,8 @@ const nextConfig: NextConfig = {
         qualities: [100, 75],
         dangerouslyAllowSVG: true,
         contentDispositionType: 'attachment',
-        contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+        contentSecurityPolicy:
+            "default-src 'self'; script-src 'none'; sandbox;",
         remotePatterns: [
             {
                 protocol: 'https',
@@ -51,5 +60,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
 

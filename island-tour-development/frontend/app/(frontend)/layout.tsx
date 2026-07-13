@@ -1,3 +1,5 @@
+import { SmoothScroll } from '@/components/smooth-scroll';
+
 export default function FrontendLayout({
     children,
 }: {
@@ -9,6 +11,7 @@ export default function FrontendLayout({
     // descendants (the trips tab bar) working.
     return (
         <div className='frontend-root min-h-screen overflow-x-clip'>
+            <SmoothScroll />
             {children}
         </div>
     );
