@@ -127,9 +127,21 @@ export async function cleanDemo(): Promise<void> {
     where: { url: { contains: DEMO_WEBHOOK_HOST } },
   });
 
-  // 6) Demo media.
+  // 6) Demo media - the seeded assets (demo/ prefix) plus anything a demo
+  // account uploaded while testing the dashboard (blocks the user delete).
+  const demoUserIds = (
+    await prisma.user.findMany({
+      where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } },
+      select: { id: true },
+    })
+  ).map((u) => u.id);
   await prisma.mediaGallery.deleteMany({
-    where: { publicId: { startsWith: 'demo/' } },
+    where: {
+      OR: [
+        { publicId: { startsWith: 'demo/' } },
+        ...(demoUserIds.length ? [{ userId: { in: demoUserIds } }] : []),
+      ],
+    },
   });
 
   // 7) Operators (configs first; companyInfo cascades) for demo accounts.

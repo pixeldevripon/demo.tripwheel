@@ -4,8 +4,25 @@
 //
 // Enough reviews are APPROVED to clear the homepage social-proof gate (>=100).
 
-import { BookingStatus, Locale, Prisma, ReviewModerationStatus } from '@prisma/client';
-import { ALL_LOCALES, DEMO_TOUR_REF, img, intBetween, log, pick, prisma, rng, roundRating, section, stub } from './_shared';
+import {
+  BookingStatus,
+  Locale,
+  Prisma,
+  ReviewModerationStatus,
+} from '@prisma/client';
+import {
+  ALL_LOCALES,
+  DEMO_TOUR_REF,
+  intBetween,
+  log,
+  pick,
+  prisma,
+  rng,
+  roundRating,
+  section,
+  themedPhoto,
+  tourTheme,
+} from './_shared';
 import { SHOWCASE_MOST_POPULAR } from './tours';
 
 const COMMENTS_5 = [
@@ -28,7 +45,14 @@ const OPERATOR_RESPONSES = [
   'We really appreciate your feedback and are so glad you enjoyed the day. Safe travels!',
   'Thanks for the great review! We have shared it with the whole crew.',
 ];
-const TITLES = ['Unforgettable day', 'Highlight of our holiday', 'Exactly what we hoped for', 'Great local experience', 'Would book again', 'Loved every minute'];
+const TITLES = [
+  'Unforgettable day',
+  'Highlight of our holiday',
+  'Exactly what we hoped for',
+  'Great local experience',
+  'Would book again',
+  'Loved every minute',
+];
 
 function commentFor(rating: number, r: number): string {
   if (rating >= 5) return pick(COMMENTS_5, r);
@@ -41,7 +65,11 @@ export async function seedReviews(): Promise<void> {
 
   // Reviewable bookings = REDEEMED demo bookings without an existing review.
   const bookings = await prisma.booking.findMany({
-    where: { status: BookingStatus.REDEEMED, tour: { reference: DEMO_TOUR_REF }, review: { is: null } },
+    where: {
+      status: BookingStatus.REDEEMED,
+      tour: { reference: DEMO_TOUR_REF },
+      review: { is: null },
+    },
     select: {
       id: true,
       tourId: true,
@@ -80,15 +108,26 @@ export async function seedReviews(): Promise<void> {
     const rating = isMostPopular ? 5 : roll > 0.3 ? 5 : roll > 0.08 ? 4 : 3;
 
     // Moderation: most approved; a few pending/rejected for queue realism.
-    let moderationStatus: ReviewModerationStatus = ReviewModerationStatus.APPROVED;
-    if (!isMostPopular && i % 13 === 7) moderationStatus = ReviewModerationStatus.PENDING;
-    else if (!isMostPopular && i % 19 === 11) moderationStatus = ReviewModerationStatus.REJECTED;
+    let moderationStatus: ReviewModerationStatus =
+      ReviewModerationStatus.APPROVED;
+    if (!isMostPopular && i % 13 === 7)
+      moderationStatus = ReviewModerationStatus.PENDING;
+    else if (!isMostPopular && i % 19 === 11)
+      moderationStatus = ReviewModerationStatus.REJECTED;
 
     const initial = `${b.contactFirstName ?? 'Guest'} ${(b.contactLastName ?? 'T').charAt(0)}.`;
+    // Traveler photos match what the tour actually is (a snorkel review shows
+    // reef/turtle shots, a catamaran review shows the boat) - offset by the
+    // review index so different reviews of one tour show different photos.
     const hasPhotos = r() > 0.7;
-    const photos = hasPhotos ? Array.from({ length: intBetween(r(), 1, 3) }, (_, p) => img(`review-${i}-${p}`, 1080, 810)) : [];
+    const photos = hasPhotos
+      ? Array.from({ length: intBetween(r(), 1, 3) }, (_, p) =>
+          themedPhoto(tourTheme(b.tour.slug), i + p, 1080, 810),
+        )
+      : [];
     const comment = commentFor(rating, r());
-    const addResponse = moderationStatus === ReviewModerationStatus.APPROVED && r() > 0.7;
+    const addResponse =
+      moderationStatus === ReviewModerationStatus.APPROVED && r() > 0.7;
 
     await prisma.review.create({
       data: {
@@ -110,13 +149,16 @@ export async function seedReviews(): Promise<void> {
         isVerified: true,
         helpfulCount: intBetween(r(), 0, 28),
         moderationStatus,
-        rejectionReason: moderationStatus === ReviewModerationStatus.REJECTED ? 'Off-topic / does not describe the tour experience.' : null,
+        rejectionReason:
+          moderationStatus === ReviewModerationStatus.REJECTED
+            ? 'Off-topic / does not describe the tour experience.'
+            : null,
         operatorResponse: addResponse ? pick(OPERATOR_RESPONSES, r()) : null,
         operatorRespondedAt: addResponse ? new Date() : null,
         translations: {
           create: ALL_LOCALES.map((locale) => ({
             locale,
-            comment: locale === Locale.en ? comment : stub(locale, comment),
+            comment,
             isMachineTranslated: locale !== Locale.en,
           })),
         },
@@ -124,21 +166,29 @@ export async function seedReviews(): Promise<void> {
     });
     created++;
     if (moderationStatus === ReviewModerationStatus.APPROVED) approved++;
-    if (hasPhotos && moderationStatus === ReviewModerationStatus.APPROVED) withPhotos++;
+    if (hasPhotos && moderationStatus === ReviewModerationStatus.APPROVED)
+      withPhotos++;
     touchedTours.add(b.tourId);
     touchedOperators.add(b.operatorId);
   }
 
   // ── Recompute aggregates (mirror ReviewsService.recomputeAggregates + extras) ──
   for (const tourId of touchedTours) {
-    const where: Prisma.ReviewWhereInput = { tourId, moderationStatus: ReviewModerationStatus.APPROVED };
+    const where: Prisma.ReviewWhereInput = {
+      tourId,
+      moderationStatus: ReviewModerationStatus.APPROVED,
+    };
     const [agg, byStar, photoCount] = await Promise.all([
       prisma.review.aggregate({ where, _count: true, _avg: { rating: true } }),
       prisma.review.groupBy({ by: ['rating'], where, _count: true }),
-      prisma.review.count({ where: { ...where, NOT: { photos: { isEmpty: true } } } }),
+      prisma.review.count({
+        where: { ...where, NOT: { photos: { isEmpty: true } } },
+      }),
     ]);
     // [5★,4★,3★,2★,1★]
-    const distribution = [5, 4, 3, 2, 1].map((s) => byStar.find((g) => g.rating === s)?._count ?? 0);
+    const distribution = [5, 4, 3, 2, 1].map(
+      (s) => byStar.find((g) => g.rating === s)?._count ?? 0,
+    );
     await prisma.tour.update({
       where: { id: tourId },
       data: {
@@ -151,10 +201,26 @@ export async function seedReviews(): Promise<void> {
     });
   }
   for (const operatorId of touchedOperators) {
-    const agg = await prisma.review.aggregate({ where: { operatorId, moderationStatus: ReviewModerationStatus.APPROVED }, _count: true, _avg: { rating: true } });
-    await prisma.operator.update({ where: { id: operatorId }, data: { aggregateRating: roundRating(agg._avg.rating), aggregateReviewCount: agg._count, aggregatesUpdatedAt: new Date() } });
+    const agg = await prisma.review.aggregate({
+      where: { operatorId, moderationStatus: ReviewModerationStatus.APPROVED },
+      _count: true,
+      _avg: { rating: true },
+    });
+    await prisma.operator.update({
+      where: { id: operatorId },
+      data: {
+        aggregateRating: roundRating(agg._avg.rating),
+        aggregateReviewCount: agg._count,
+        aggregatesUpdatedAt: new Date(),
+      },
+    });
   }
 
-  log(`Reviews: ${created} created (${approved} approved, ${withPhotos} approved-with-photos). Aggregates recomputed for ${touchedTours.size} tours / ${touchedOperators.size} operators.`);
-  if (approved < 100) log(`! Only ${approved} approved reviews — homepage social-proof strip (>=100) will stay hidden.`);
+  log(
+    `Reviews: ${created} created (${approved} approved, ${withPhotos} approved-with-photos). Aggregates recomputed for ${touchedTours.size} tours / ${touchedOperators.size} operators.`,
+  );
+  if (approved < 100)
+    log(
+      `! Only ${approved} approved reviews — homepage social-proof strip (>=100) will stay hidden.`,
+    );
 }

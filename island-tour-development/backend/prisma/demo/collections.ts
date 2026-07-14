@@ -13,12 +13,22 @@ import {
 import {
   ALL_LOCALES,
   DEMO_TOUR_REF,
-  img,
   log,
+  photo,
+  type PhotoName,
   prisma,
   section,
-  stub,
 } from './_shared';
+
+// Topical hero per collection (what the collection is actually about).
+const COLLECTION_PHOTO: Record<string, PhotoName> = {
+  'best-things-to-do-in-curacao': 'willemstad',
+  'family-favourites-curacao': 'friendsBeach',
+  'local-legends-curacao': 'colonialStreet',
+  'best-of-aruba-adventures': 'jeepTrail',
+  'aruba-water-fun': 'watersports',
+  'sint-maarten-highlights': 'aerialCoast',
+};
 
 interface CollectionDef {
   destinationSlug: string;
@@ -170,8 +180,16 @@ export async function seedCollections(): Promise<void> {
           collectionType: def.type,
           tourIds: memberTours.map((t) => t.id), // legacy mirror
           filterQuery: def.filterQuery ?? Prisma.JsonNull,
-          heroImage: img(`collection-${def.slug}`, 1600, 900),
-          ogImage: img(`collection-${def.slug}-og`, 1200, 630),
+          heroImage: photo(
+            COLLECTION_PHOTO[def.slug] ?? 'beachClassic',
+            1600,
+            900,
+          ),
+          ogImage: photo(
+            COLLECTION_PHOTO[def.slug] ?? 'beachClassic',
+            1200,
+            630,
+          ),
           sortOrder: def.sortOrder ?? 'recommended',
           status: CollectionStatus.PUBLISHED,
           displayStyle: def.displayStyle,
@@ -186,15 +204,11 @@ export async function seedCollections(): Promise<void> {
           return {
             collectionId: collection.id,
             locale,
-            name: en ? def.name : stub(locale, def.name),
-            overview: en ? def.overview : stub(locale, def.overview),
-            curationNote: en
-              ? def.curationNote
-              : stub(locale, def.curationNote),
-            eyebrowLabel: en
-              ? def.eyebrowLabel
-              : stub(locale, def.eyebrowLabel),
-            breadcrumbLabel: en ? def.name : stub(locale, def.name),
+            name: def.name,
+            overview: def.overview,
+            curationNote: def.curationNote,
+            eyebrowLabel: def.eyebrowLabel,
+            breadcrumbLabel: def.name,
             isMachineTranslated: !en,
           };
         }),
@@ -204,13 +218,9 @@ export async function seedCollections(): Promise<void> {
         data: ALL_LOCALES.map((locale) => ({
           collectionId: collection.id,
           locale,
-          aboutText: locale === Locale.en ? def.about : stub(locale, def.about),
-          metaTitle:
-            locale === Locale.en
-              ? `${def.name} | Island Tours`
-              : stub(locale, `${def.name} | Island Tours`),
-          metaDescription:
-            locale === Locale.en ? def.overview : stub(locale, def.overview),
+          aboutText: def.about,
+          metaTitle: `${def.name} | Island Tours`,
+          metaDescription: def.overview,
         })),
       });
 
@@ -228,8 +238,7 @@ export async function seedCollections(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             collectionTourId: ct.id,
             locale,
-            rationale:
-              locale === Locale.en ? rationale : stub(locale, rationale),
+            rationale,
           })),
         });
       }

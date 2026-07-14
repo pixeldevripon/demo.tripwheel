@@ -17,18 +17,19 @@ import {
   ALL_LOCALES,
   DEMO_TOUR_REF,
   NON_EN_LOCALES,
-  img,
   log,
+  photo,
+  type PhotoName,
   prisma,
   section,
-  stub,
 } from './_shared';
+import { categoryName, tpl } from './i18n-templates';
 
 function faqsFor(label: string): { q: string; a: string }[] {
   return [
     {
       q: `What is the best time to visit ${label}?`,
-      a: `${label} is a year-round destination. The driest, sunniest months run from roughly January to August, while September to December brings warmer water and fewer crowds.`,
+      a: `${label} is a year-round destination. The driest, sunniest months run from roughly January to August, while September to December brings warmer water and fewer crowds - and prices dip outside the winter peak.`,
     },
     {
       q: `Do I need to book tours in ${label} in advance?`,
@@ -36,7 +37,19 @@ function faqsFor(label: string): { q: string; a: string }[] {
     },
     {
       q: `Can tours be cancelled if my plans change?`,
-      a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked.`,
+      a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked. Cancel online from your booking confirmation - no phone calls needed.`,
+    },
+    {
+      q: `How do I get around ${label}?`,
+      a: `A rental car gives the most freedom, but many tours include hotel pickup - check the tour page. Taxis are easy to find at hotels and the airport; agree the fare before you set off.`,
+    },
+    {
+      q: `Can I pay with US dollars or by card?`,
+      a: `US dollars and major credit cards are accepted almost everywhere, alongside the local currency. Keep a little cash for small beach bars, markets, and tips.`,
+    },
+    {
+      q: `Is ${label} good for families with children?`,
+      a: `Very. Calm bays, family-friendly boats, and short crossings make it an easy island for kids. Use the "family friendly" filter to see the tours best suited to younger travellers.`,
     },
   ];
 }
@@ -56,6 +69,18 @@ function categoryFaqsFor(label: string): { q: string; a: string }[] {
       q: `Can I cancel a booking if my plans change?`,
       a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked.`,
     },
+    {
+      q: `What should I bring?`,
+      a: `Reef-safe sunscreen, a towel, swimwear, and a little cash for tips cover most trips. Anything specific - water shoes, a light jacket, ID - is listed on the tour page under "What to bring".`,
+    },
+    {
+      q: `Are these tours suitable for children?`,
+      a: `Many are - check the age limits on each tour page. Tours carrying the "family friendly" label are the safest bet for younger kids.`,
+    },
+    {
+      q: `Is hotel pickup included?`,
+      a: `Some tours include pickup or offer it as an extra; otherwise the meeting point is shown clearly on the tour page with a map and check-in time.`,
+    },
   ];
 }
 
@@ -64,28 +89,37 @@ async function ensureFaqs(
   entityId: string,
   label: string,
   customItems?: { q: string; a: string }[],
+  /**
+   * Localized item set per non-EN locale (index-aligned with the EN set so the
+   * shared faqGroupId links the right rows). Falls back to the English text
+   * when absent or shorter than the EN set - real English beats a fake stub.
+   */
+  localizedItems?: (locale: Locale) => { q: string; a: string }[],
 ): Promise<number> {
-  const existing = await prisma.faq.findFirst({
-    where: { pageType, entityId },
-    select: { id: true },
-  });
-  if (existing) return 0;
+  // Deterministic: replace this entity's FAQ set each run (re-seed safe).
+  await prisma.faq.deleteMany({ where: { pageType, entityId } });
   const items =
     customItems ??
     (pageType === 'category' ? categoryFaqsFor(label) : faqsFor(label));
+  const localized = new Map<Locale, { q: string; a: string }[]>();
+  if (localizedItems) {
+    for (const locale of NON_EN_LOCALES)
+      localized.set(locale, localizedItems(locale));
+  }
   const rows: Prisma.FaqCreateManyInput[] = [];
   items.forEach((item, idx) => {
     // One faqGroupId per logical FAQ links its per-locale rows (English is the base).
     const faqGroupId = randomUUID();
     ALL_LOCALES.forEach((locale) => {
-      const en = locale === Locale.en;
+      const loc =
+        locale === Locale.en ? undefined : localized.get(locale)?.[idx];
       rows.push({
         pageType,
         entityId,
         faqGroupId,
         locale,
-        question: en ? item.q : stub(locale, item.q),
-        answer: en ? item.a : stub(locale, item.a),
+        question: loc?.q ?? item.q,
+        answer: loc?.a ?? item.a,
         displayOrder: idx,
         isActive: true,
       });
@@ -120,32 +154,32 @@ const KLEIN = {
     {
       heading: 'The White Beach',
       body: "Klein Curaçao has one of the longest white-sand beaches in the Caribbean: over a kilometre of fine, powdery sand along the calm, reef-protected south shore. The water runs in bands of turquoise to deep blue, shallow and clear right off the sand. It's the reason most people make the trip, a full day on an undeveloped beach with nothing built on it and no crowds beyond the day boats. The north shore is the opposite: rough, windswept, and where the wrecks lie.",
-      imageSeed: 'hub-klein-white-beach',
+      photoName: 'beachClassic' as PhotoName,
     },
     {
       heading: 'History',
       body: "In 1871, British mining engineer John Godden found phosphate on Klein Curaçao, left by centuries of nesting birds. Within fifteen years, they had dug out around 90,000 tons for fertiliser and cattle feed, leaving the island around 3 metres lower and stripped bare, which is why it's flat and treeless today. In the 1700s and 1800s, the West India Company used it as a quarantine station.",
-      imageSeed: 'hub-klein-history',
+      photoName: 'aerialIsland' as PhotoName,
     },
     {
       heading: 'Sea Turtles',
       body: "Klein Curaçao is a protected nesting ground for three sea turtle species: Hawksbill, Loggerhead, and Green sea turtles. The whole island is a protected Ramsar wetland and a designated Important Bird Area. Those hatched here return year after year to the same beach to nest. While snorkeling you'll very likely see them grazing in the shallows, with the best chance during nesting season, March to October. Watch and swim alongside them, but never touch.",
-      imageSeed: 'hub-klein-turtles',
+      photoName: 'turtleReef' as PhotoName,
     },
     {
       heading: 'Snorkeling & Diving',
       body: "Klein Curaçao's eastern reef is one of the healthiest untouched coral systems left in the Caribbean, rare in a region where bleaching has hit most reefs hard. With visibility up to 30 metres, you take in coral formations, underwater caves, and dense fish life: a real dive site, not just a snorkel stop. One operator runs the island's only dive school, and snorkel gear comes standard.",
-      imageSeed: 'hub-klein-snorkeling',
+      photoName: 'coralReef' as PhotoName,
     },
     {
       heading: 'The Pink Lighthouse',
       body: "Klein Curaçao's pink lighthouse, officially the Prins Hendrik tower, stands 20 metres tall in the middle of the island as its standout landmark. First built in 1850, it was destroyed by a hurricane in 1877, rebuilt in 1879, and first lit in 1913. Stairs added in 2017 let you climb to the top for a view over the whole island, though they're weathered and unmaintained now.",
-      imageSeed: 'hub-klein-lighthouse',
+      photoName: 'lighthouse' as PhotoName,
     },
     {
       heading: 'Shipwrecks',
       body: "Klein Curaçao's north shore holds three shipwrecks. Low and hard to spot, with strong currents, the island has caught out passing boats for centuries. The most visible is the Maria Bianca Guidesman, an oil tanker stranded in 1988. Two French sailing yachts lie nearby. Wind, salt, and sand are slowly reclaiming all three. The north-shore walk takes you right past them.",
-      imageSeed: 'hub-klein-shipwrecks',
+      photoName: 'scubaDiver' as PhotoName,
     },
   ],
   // "What we tell first-timers" (Local Tips).
@@ -265,6 +299,53 @@ const KLEIN = {
   ],
 };
 
+// ── Per-destination editorial content (real copy + topical photos) ─────────────
+const DEST_CONTENT: Record<
+  string,
+  { hero: PhotoName; gallery: PhotoName[]; overview: string; about: string }
+> = {
+  curacao: {
+    hero: 'willemstad',
+    gallery: ['boatReefAerial', 'beachCove', 'colonialStreet'],
+    overview:
+      'Curaçao pairs the painted waterfront of UNESCO-listed Willemstad with more than 35 beaches tucked into rocky coves. Offshore, the reef starts steps from the sand - and uninhabited Klein Curaçao is the day trip every islander insists on.',
+    about:
+      "Curaçao rewards travellers who dig a little deeper. Spend a morning snorkelling straight off Playa Lagun, an afternoon wandering Punda's colourful streets, and an evening on a catamaran sailing into the sunset. The island sits outside the hurricane belt, so the water stays calm and the boats run year-round. Every tour here is operated by a vetted local operator - many of them families who have run these routes for generations.",
+  },
+  aruba: {
+    hero: 'beachPalms',
+    gallery: ['flamingo', 'jeepTrail', 'beachChairs'],
+    overview:
+      'Aruba is the Caribbean at its easiest: powder-white Eagle Beach, steady trade winds, and a desert interior of cacti and hidden pools that jeeps rumble through every morning. One happy island, as the licence plates say.',
+    about:
+      'Aruba packs two islands into one. The west coast is all calm turquoise water, resort beaches, and sunset catamarans; the wild north-east is a desert of dramatic surf, caves, and the rugged Arikok National Park - best explored by UTV or on a jeep safari that ends with a swim in the Natural Pool. Days here are sunny virtually year-round, and everything on Island Tours confirms instantly with free cancellation.',
+  },
+  'sint-maarten': {
+    hero: 'aerialCoast',
+    gallery: ['yachtAerial', 'beachClassic', 'openOcean'],
+    overview:
+      'Half Dutch, half French, and all Caribbean: Sint Maarten squeezes 37 beaches, two cultures, and one famous runway approach into 87 square kilometres. Sail it, snorkel it, or watch the jets skim Maho Beach.',
+    about:
+      'Sint Maarten is two countries on one small island, and that is exactly the fun of it. Morning snorkelling off Pinel Island on the French side, lunch in Grand Case, and an afternoon catamaran back along the Dutch coast into Simpson Bay. The island is compact enough to circle in a day - which is why boat loops and two-nation sightseeing tours are its signature experiences.',
+  },
+  'saint-lucia': {
+    hero: 'pitons',
+    gallery: ['tropicalForest', 'hikingRidge', 'sunsetSea'],
+    overview:
+      'Saint Lucia rises straight out of the sea: the twin Pitons, rainforest canyons, and a drive-in volcano. It is the Caribbean for travellers who want their beach days with a side of adventure.',
+    about:
+      'Saint Lucia is the lush, mountainous side of the Caribbean. Hike the Gros Piton trail at dawn, soak in the volcanic mud baths at Soufrière, then finish with a sunset sail up the west coast. The island pairs dramatic scenery with warm village culture - and its best experiences are run by local guides who grew up on these trails and waters.',
+  },
+  bahamas: {
+    hero: 'aerialAtoll',
+    gallery: ['boatReefAerial', 'beachHammock', 'oceanWave'],
+    overview:
+      'Seven hundred islands, water in fifty shades of blue, and sandbars that appear at low tide: the Bahamas is boat country. From Nassau day sails to the famous swimming pigs of Exuma, life here happens on the water.',
+    about:
+      'The Bahamas is less a single destination than an archipelago of day trips. Hop a powerboat to the Exuma Cays to snorkel Thunderball Grotto, drift over blue holes, and meet the swimming pigs; or stay close to Nassau for reef snorkels and sunset cruises. The shallow banks keep the water impossibly clear - bring the camera.',
+  },
+};
+
 export async function seedEntityContent(): Promise<void> {
   section('Entity content (destinations / categories / hubs)');
 
@@ -276,102 +357,147 @@ export async function seedEntityContent(): Promise<void> {
   let destPc = 0;
   let faqRows = 0;
   for (const d of destinations) {
-    const overview = `Tucked into the southern Caribbean, ${d.name} pairs turquoise water and powder-soft beaches with a culture all its own. From reef snorkels to sunset sails, these are tours picked by locals who know every cove.`;
-    const about = `${d.name} is one of the Caribbean’s most rewarding islands to explore. Spend your days diving vibrant reefs, cruising to hidden beaches, and tasting the island’s blend of cultures. Every experience here is run by a vetted local operator.`;
-    // Demo media: hero, social-share (OG), and a small gallery for the destination page.
+    const content = DEST_CONTENT[d.slug];
+    const overview =
+      content?.overview ??
+      `Tucked into the southern Caribbean, ${d.name} pairs turquoise water and powder-soft beaches with a culture all its own. From reef snorkels to sunset sails, these are tours picked by locals who know every cove.`;
+    const about =
+      content?.about ??
+      `${d.name} is one of the Caribbean's most rewarding islands to explore. Spend your days diving vibrant reefs, cruising to hidden beaches, and tasting the island's blend of cultures. Every experience here is run by a vetted local operator.`;
+    // Demo media: hero, social-share (OG), and a small gallery, all topical to
+    // the island (Willemstad's waterfront for Curaçao, the Pitons for Saint
+    // Lucia) rather than random stock.
+    const hero = content?.hero ?? 'beachClassic';
+    const gallery = content?.gallery ?? [
+      'beachPalms',
+      'boatReefAerial',
+      'sunsetSea',
+    ];
     await prisma.destination.update({
       where: { id: d.id },
       data: {
-        heroImage: img(`dest-${d.slug}`, 1600, 900),
-        ogImage: img(`dest-${d.slug}-og`, 1200, 630),
-        galleryImages: [
-          img(`dest-${d.slug}-1`, 1200, 800),
-          img(`dest-${d.slug}-2`, 1200, 800),
-          img(`dest-${d.slug}-3`, 1200, 800),
-        ],
+        heroImage: photo(hero, 1600, 900),
+        ogImage: photo(hero, 1200, 630),
+        galleryImages: gallery.map((g) => photo(g, 1200, 800)),
       },
     });
-    // Destination names are proper nouns — keep the real name, localize only the prose.
+    // Destination names are proper nouns — keep the real name, localize the prose
+    // with the per-locale templates (real copy, not machine-translation stubs).
+    await prisma.destinationTranslation.deleteMany({
+      where: { destinationId: d.id },
+    });
     await prisma.destinationTranslation.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        destinationId: d.id,
-        locale,
-        name: d.name,
-        overview: locale === Locale.en ? overview : stub(locale, overview),
-        breadcrumbLabel: d.name,
-        isMachineTranslated: false,
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        return {
+          destinationId: d.id,
+          locale,
+          name: d.name,
+          overview: t ? t.destOverview(d.name) : overview,
+          breadcrumbLabel: d.name,
+          isMachineTranslated: locale !== Locale.en,
+        };
+      }),
       skipDuplicates: true,
     });
     destTr += ALL_LOCALES.length;
+    await prisma.destinationPageContent.deleteMany({
+      where: { destinationId: d.id },
+    });
     await prisma.destinationPageContent.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        destinationId: d.id,
-        locale,
-        aboutText: locale === Locale.en ? about : stub(locale, about),
-        metaTitle:
-          locale === Locale.en
-            ? `${d.name} Tours & Activities | Island Tours`
-            : stub(locale, `${d.name} Tours & Activities | Island Tours`),
-        metaDescription:
-          locale === Locale.en ? overview : stub(locale, overview),
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        return {
+          destinationId: d.id,
+          locale,
+          aboutText: t ? t.destAbout(d.name) : about,
+          metaTitle: t
+            ? t.destMetaTitle(d.name)
+            : `${d.name} Tours & Activities | Island Tours`,
+          metaDescription: t ? t.destOverview(d.name) : overview,
+        };
+      }),
       skipDuplicates: true,
     });
     destPc += ALL_LOCALES.length;
-    faqRows += await ensureFaqs('destination', d.id, d.name);
+    faqRows += await ensureFaqs(
+      'destination',
+      d.id,
+      d.name,
+      undefined,
+      (locale) => tpl(locale)?.destFaqs(d.name) ?? [],
+    );
   }
 
   // ── Categories ──
   const categories = await prisma.category.findMany({
-    select: { id: true, slug: true, name: true },
+    select: { id: true, slug: true, name: true, heroImage: true },
   });
   let catTr = 0;
   let catPc = 0;
   for (const c of categories) {
-    const overview = `Browse the best ${c.name.toLowerCase()} across the islands — each one vetted, instantly bookable, and backed by free cancellation.`;
-    const about = `Looking for ${c.name.toLowerCase()}? You are in the right place. Compare options by price, duration, and traveller rating, then book the one that fits your trip.`;
+    const overview = `Browse the best ${c.name.toLowerCase()} across the islands — each one vetted, instantly bookable, and backed by free cancellation. Compare prices, departure times, and real traveller reviews before you commit.`;
+    const about = `Looking for ${c.name.toLowerCase()}? You are in the right place. Compare options by price, duration, and traveller rating, then book the one that fits your trip. Every operator is vetted by our local team, and every booking confirms instantly with free cancellation up to the window shown on the tour page.`;
     const h1 = `Best ${c.name}`;
-    // Fill the entity-level gaps the prod seed leaves empty (OG image, canonical
-    // description). Icon stays null - the frontend falls back to
+    // Fill the entity-level gaps the prod seed leaves empty. The OG image reuses
+    // the category's curated topical hero (set by the prod seed) so the share
+    // card matches the page. Icon stays null - the frontend falls back to
     // CATEGORY_ICON_BY_SLUG.
     await prisma.category.update({
       where: { id: c.id },
       data: {
-        ogImage: img(`cat-${c.slug}-og`, 1200, 630),
+        ogImage: c.heroImage ?? photo('aerialCoast', 1200, 630),
         description: overview,
       },
     });
+    await prisma.categoryTranslation.deleteMany({
+      where: { categoryId: c.id },
+    });
     await prisma.categoryTranslation.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        categoryId: c.id,
-        locale,
-        // EN row keeps name null (falls back to Category.name); others get a stub name.
-        name: locale === Locale.en ? null : stub(locale, c.name),
-        overview: locale === Locale.en ? overview : stub(locale, overview),
-        h1Override: locale === Locale.en ? h1 : stub(locale, h1),
-        breadcrumbLabel: locale === Locale.en ? null : stub(locale, c.name),
-        isMachineTranslated: locale !== Locale.en,
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        const localName = categoryName(c.slug, locale, c.name);
+        return {
+          categoryId: c.id,
+          locale,
+          // EN row keeps name null (falls back to Category.name); other locales
+          // carry their real localized category name.
+          name: t ? localName : null,
+          overview: t ? t.catOverview(localName) : overview,
+          h1Override: t ? t.catH1(localName) : h1,
+          breadcrumbLabel: t ? localName : null,
+          isMachineTranslated: locale !== Locale.en,
+        };
+      }),
       skipDuplicates: true,
     });
     catTr += ALL_LOCALES.length;
+    await prisma.categoryPageContent.deleteMany({
+      where: { categoryId: c.id },
+    });
     await prisma.categoryPageContent.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        categoryId: c.id,
-        locale,
-        aboutText: locale === Locale.en ? about : stub(locale, about),
-        metaTitle:
-          locale === Locale.en
-            ? `${c.name} | Island Tours`
-            : stub(locale, `${c.name} | Island Tours`),
-        metaDescription:
-          locale === Locale.en ? overview : stub(locale, overview),
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        const localName = categoryName(c.slug, locale, c.name);
+        return {
+          categoryId: c.id,
+          locale,
+          aboutText: t ? t.catAbout(localName) : about,
+          metaTitle: t ? t.catMetaTitle(localName) : `${c.name} | Island Tours`,
+          metaDescription: t ? t.catOverview(localName) : overview,
+        };
+      }),
       skipDuplicates: true,
     });
     catPc += ALL_LOCALES.length;
-    faqRows += await ensureFaqs('category', c.id, c.name);
+    faqRows += await ensureFaqs(
+      'category',
+      c.id,
+      c.name,
+      undefined,
+      (locale) =>
+        tpl(locale)?.catFaqs(categoryName(c.slug, locale, c.name)) ?? [],
+    );
   }
 
   // ── Hubs (klein-curacao and any other seeded hub) ──
@@ -391,12 +517,13 @@ export async function seedEntityContent(): Promise<void> {
   for (const h of hubs) {
     const isKlein = h.slug === 'klein-curacao';
 
-    // Ensure the hub is published + has a hero (it was seeded minimal).
+    // Ensure the hub is published + has a topical hero (a boat over the reef -
+    // the signature Klein Curaçao crossing shot).
     await prisma.hub.update({
       where: { id: h.id },
       data: {
-        heroImage: h.heroImage ?? img(`hub-${h.slug}`, 1600, 900),
-        ogImage: img(`hub-${h.slug}-og`, 1200, 630),
+        heroImage: h.heroImage ?? photo('boatReefAerial', 1600, 900),
+        ogImage: photo('boatReefAerial', 1200, 630),
         status: HubStatus.PUBLISHED,
         latitude: 11.985,
         longitude: -68.645,
@@ -408,41 +535,47 @@ export async function seedEntityContent(): Promise<void> {
       : `Why ${h.name}? It is the day trip islanders send every visitor on - pristine sand, calm turquoise shallows, and snorkeling over shipwrecks and turtle grounds.`;
     const tagline = KLEIN.tagline;
     // Deterministic: replace the full editorial set each run (demo re-seed safe).
+    // The hero H1 is the experience, not the bare place name (Figma 48024:11158:
+    // "Klein Curaçao day trips") - localized per locale.
     await prisma.hubTranslation.deleteMany({ where: { hubId: h.id } });
     await prisma.hubTranslation.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        hubId: h.id,
-        locale,
-        name: h.name,
-        overview: locale === Locale.en ? overview : stub(locale, overview),
-        heroTagline: locale === Locale.en ? tagline : stub(locale, tagline),
-        // h1Override is required by the hub publish-readiness check, so seed it
-        // (otherwise a force-published demo hub fails its own guard).
-        h1Override: h.name,
-        breadcrumbLabel: h.name,
-        isMachineTranslated: false,
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        return {
+          hubId: h.id,
+          locale,
+          name: h.name,
+          overview: t ? t.hubLead(h.name) : overview,
+          heroTagline: t ? t.hubTagline : tagline,
+          // h1Override is required by the hub publish-readiness check.
+          h1Override: t
+            ? t.hubMetaTitle(h.name).replace(' | Island Tours', '')
+            : `${h.name} day trips`,
+          breadcrumbLabel: h.name,
+          isMachineTranslated: locale !== Locale.en,
+        };
+      }),
     });
     hubTr += ALL_LOCALES.length;
 
     const about = `${h.name} is a highlight of any trip to the island. Reachable only by boat, it rewards the early start with some of the clearest water in the Caribbean.`;
     await prisma.hubPageContent.deleteMany({ where: { hubId: h.id } });
     await prisma.hubPageContent.createMany({
-      data: ALL_LOCALES.map((locale) => ({
-        hubId: h.id,
-        locale,
-        aboutText: locale === Locale.en ? about : stub(locale, about),
-        metaTitle:
-          locale === Locale.en
-            ? `${h.name} | Island Tours`
-            : stub(locale, `${h.name} | Island Tours`),
-        metaDescription:
-          locale === Locale.en ? overview : stub(locale, overview),
-      })),
+      data: ALL_LOCALES.map((locale) => {
+        const t = tpl(locale);
+        return {
+          hubId: h.id,
+          locale,
+          aboutText: t ? t.hubAbout(h.name) : about,
+          metaTitle: t
+            ? t.hubMetaTitle(h.name)
+            : `${h.name} day trips | Island Tours`,
+          metaDescription: t ? t.hubLead(h.name) : overview,
+        };
+      }),
     });
 
     // FAQs: Klein gets the 7 AEO questions from the design; siblings the generic set.
-    await prisma.faq.deleteMany({ where: { pageType: 'hub', entityId: h.id } });
     faqRows += await ensureFaqs(
       'hub',
       h.id,
@@ -471,7 +604,7 @@ export async function seedEntityContent(): Promise<void> {
             heading: d.heading,
             body: d.body,
             order: i,
-            image: img(d.imageSeed, 1280, 854),
+            image: photo(d.photoName, 1280, 854),
           })),
           ...KLEIN.localTips.map((t, i) => ({
             type: HubSectionType.LOCAL_TIP,
@@ -504,14 +637,14 @@ export async function seedEntityContent(): Promise<void> {
             heading: 'Getting there',
             body: 'The crossing takes around 90 minutes by catamaran or speedboat. Most trips leave early to make the most of the calm morning water.',
             order: 0,
-            image: img(`hub-${h.slug}-getting-there`, 1280, 854),
+            image: photo('sailingHeel', 1280, 854),
           },
           {
             type: HubSectionType.DISCOVER,
             heading: 'What to do',
             body: 'Snorkel the reef, walk the coast, or simply claim a patch of sand and relax.',
             order: 1,
-            image: img(`hub-${h.slug}-what-to-do`, 1280, 854),
+            image: photo('beachPalms', 1280, 854),
           },
           {
             type: HubSectionType.LOCAL_TIP,
@@ -544,16 +677,19 @@ export async function seedEntityContent(): Promise<void> {
             order: i,
           })),
         ];
+    // Long-form editorial (discover cards, tips, fast facts) is authored in
+    // English; non-EN rows carry the same English text rather than a fake
+    // "[XX]" stub - real English reads fine on every locale until an operator
+    // or the AI-translation job localizes it.
     const sectionRows: Prisma.HubContentSectionCreateManyInput[] = [];
     for (const s of sections) {
       for (const locale of ALL_LOCALES) {
-        const en = locale === Locale.en;
         sectionRows.push({
           hubId: h.id,
           locale,
           sectionType: s.type,
-          heading: en ? s.heading : stub(locale, s.heading),
-          body: en ? s.body : stub(locale, s.body),
+          heading: s.heading,
+          body: s.body,
           image: s.image ?? null,
           displayOrder: s.order,
         });
@@ -608,7 +744,7 @@ export async function seedEntityContent(): Promise<void> {
         data: NON_EN_LOCALES.map((locale) => ({
           ourPickId: pick.id,
           locale,
-          description: stub(locale, p.description),
+          description: p.description,
         })),
       });
       hubExtras++;
@@ -647,7 +783,7 @@ export async function seedEntityContent(): Promise<void> {
         data: NON_EN_LOCALES.map((locale) => ({
           groupId: group.id,
           locale,
-          groupName: stub(locale, g.groupName),
+          groupName: g.groupName,
         })),
       });
       for (let i = 0; i < g.tours.length; i++) {
@@ -665,7 +801,7 @@ export async function seedEntityContent(): Promise<void> {
           data: NON_EN_LOCALES.map((locale) => ({
             comparisonTourId: ct.id,
             locale,
-            standoutNote: stub(locale, col.note),
+            standoutNote: col.note,
           })),
         });
       }
