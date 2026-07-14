@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 
-import { Footer } from '@/components/frontend/footer';
+import { Footer } from '@/components/frontend/footer/footer';
 import { Navbar } from '@/components/frontend/navbar/navbar';
+import { PageTransition } from '@/components/frontend/page-transition';
 import { WishlistProvider } from '@/components/frontend/wishlist-provider';
 import { getActiveDestinations } from '@/lib/api/public';
 import { ALL_LOCALES, isLocale, type Locale } from '@/lib/constants/locales';
@@ -49,8 +50,12 @@ export default async function LocaleLayout({
                 islands={islands}
             />
             {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
-                as a dynamic hole so request-time routes don't block the shell. */}
-            <main className='pt-18 md:pt-20'>{children}</main>
+                as a dynamic hole so request-time routes don't block the shell.
+                PageTransition adds the sitewide enter animation on client
+                navigations only (first paint stays un-animated for LCP). */}
+            <main className='pt-18 md:pt-20'>
+                <PageTransition>{children}</PageTransition>
+            </main>
             <Footer locale={locale} dict={dict.footer} />
         </WishlistProvider>
     );

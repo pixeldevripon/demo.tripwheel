@@ -13,8 +13,8 @@
  */
 import type { Locale } from '@/lib/constants/locales';
 import type { PublicReview } from '@/types/review';
-import type { TourReview } from '@/components/frontend/tour-reviews';
-import type { FullReview } from '@/components/frontend/tour-reviews-section';
+import type { TourReview } from '@/components/frontend/tour/tour-reviews';
+import type { FullReview } from '@/components/frontend/tour/tour-reviews-section';
 
 /** Localized long-form date, e.g. "12 March 2026" (locale-ordered). */
 function formatReviewDate(iso: string, locale: Locale): string {

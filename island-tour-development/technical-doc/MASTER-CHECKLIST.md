@@ -173,8 +173,8 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] 5.5 Activity Hub page (hero fast facts, sticky anchor nav, Our Pick, comparison table, FAQ, related) — backend our-picks/comparison built
 - [ ] 5.6 Collection page (editorial banner, intro, curated grid no sort/filter, FAQ, keep-exploring) — backend collections built
 - [x] 5.7 Tour detail page (breadcrumbs, H1 LD15, gallery, widget, overview LD22, ✓/✗ LD18, Meeting & Pickup LD19, Important Info LD23, reviews, related LD33)
-- [ ] 5.8 Checkout (single-page accordion, payment-model-aware, no payment section on operator_full)
-- [ ] 5.9 Thank You page (server-rendered, operator-first support, masked email)
+- [x] 5.8 Checkout (single-page accordion, payment-model-aware, no payment section on operator_full) - frontend UI live (Figma-mirrored two-phase form); booking submission + Stripe Elements pending bookings/payments module
+- [x] 5.9 Thank You page (server-rendered, operator-first support, masked email) - frontend page live at /{destination}/thank-you/{public_ref} (no locale prefix via proxy rewrite, noindex); demo payload - TYP lookup API, conversion firing, /payment/processing intermediate, and email masking pending bookings/tracking modules
 - [x] 5.10 Search results (Postgres, tours-only, two-stage ranking, noindex) — ⚠️ basic search exists, no two-stage ranking
 - [ ] 5.11 Help Center `/help` (FAQPage schema, LD21)
 

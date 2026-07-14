@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Island Tours · Booking Confirmation Email (wireframe)</title>
+<title>Island Tours · Booking Confirmation Email (locked template)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -45,7 +45,7 @@
 <div class="wrap">
   <header>
     <div class="brand">Island <span>Tours</span></div>
-    <h1 class="title">Booking confirmation email · wireframe</h1>
+    <h1 class="title">Booking confirmation email · locked template</h1>
     <div class="sub">One dynamic transactional template. Desktop 600px and mobile single-column. Sample data shown; all values are merge variables.</div>
   </header>
 
@@ -251,7 +251,7 @@
           <td style="vertical-align:top">
             <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">Klein Curaçao Day Trip</div>
             <div style="font-size:13.5px;color:#6B7280;margin-top:4px">Miss Ann Boat Trips</div>
-            <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">Fri, 22 May 2026 · 08:00</div>
+            <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">Friday, 22 May 2026 · 08:00</div>
           </td>
         </tr></table>
 
@@ -267,8 +267,12 @@
           </td><td style="padding:5px 0">Please be ready 5 minutes before pickup.</td></tr>
 
           <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5v14" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">Ends at: Jan Thiel Beach</td></tr>
+
+          <tr><td style="padding:5px 0;vertical-align:top">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#6B7280" stroke-width="1.6"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.6M20.5 19a5.5 5.5 0 0 0-3.4-5.1" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </td><td style="padding:5px 0">2 adults, 1 child</td></tr>
+          </td><td style="padding:5px 0">Guests: 2 adults, 1 child</td></tr>
 
           <tr><td style="padding:5px 0;vertical-align:top">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B7280" stroke-width="1.6"/><path d="M12 8v4l2.5 1.5" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -277,6 +281,10 @@
           <tr><td style="padding:5px 0;vertical-align:top">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B7280" stroke-width="1.6"/><path d="M3.5 9h17M3.5 15h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" stroke="#6B7280" stroke-width="1.3"/></svg>
           </td><td style="padding:5px 0">Language: English</td></tr>
+
+          <tr><td style="padding:5px 0;vertical-align:top">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 5h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#6B7280" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12h6" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </td><td style="padding:5px 0">Your note to the operator: Vegetarian lunch for one guest.</td></tr>
         </table>
         <a href="#" style="display:inline-block;margin-top:12px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">View tour details</a><span style="color:#D1D5DB;margin:0 9px">·</span><a href="#" style="font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">Add to calendar</a>
       </td></tr>
@@ -417,8 +425,12 @@
       b.classList.add('active');
       document.querySelectorAll('.stage').forEach(function(s){s.classList.remove('active')});
       document.getElementById(b.dataset.stage).classList.add('active');
+      if (history.replaceState) history.replaceState(null, '', '#' + b.dataset.stage);
     });
   });
+  if (location.hash === '#mobile') {
+    document.querySelector('[data-stage="mobile"]').click();
+  }
   document.querySelectorAll('a[href="#"]').forEach(function(a){ a.addEventListener('click',function(e){e.preventDefault();}); });
 </script>
 </body>

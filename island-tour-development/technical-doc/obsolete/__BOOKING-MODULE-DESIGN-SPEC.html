@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Island Tours - Booking Module Design Specification</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #e2e8f0;
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --code-bg: #1e293b;
+            --muted-text: #94a3b8;
+            --success: #10b981;
+            --error: #ef4444;
+            --info: #0ea5e9;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+        }
+
+        h2 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 50px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #ffffff;
+            font-size: 1.3rem;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            margin: 0 0 20px 0;
+            color: #cbd5e1;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        ul, ol {
+            margin: 0 0 20px 0;
+            padding-left: 20px;
+            color: #cbd5e1;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #f472b6;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            margin: 20px 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: var(--text-color);
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-left: 4px solid var(--primary);
+            background-color: #27272a;
+            border-radius: 0 8px 8px 0;
+            margin: 25px 0;
+        }
+
+        .alert-info {
+            border-left-color: var(--info);
+            background-color: rgba(14, 165, 233, 0.1);
+        }
+
+        .alert-warning {
+            border-left-color: var(--primary);
+            background-color: rgba(249, 115, 22, 0.1);
+        }
+
+        .mermaid {
+            background-color: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .toc {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+
+        .toc-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .badge-new {
+            background-color: var(--success);
+            color: #ffffff;
+        }
+
+        .badge-locked {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Island Tours: Booking Module Design Spec</h1>
+            <p style="color: var(--muted-text); margin: 0;">Canonical Integration Spec & Design Blueprint (Reconciled v1.9)</p>
+        </header>
+
+        <div class="toc">
+            <div class="toc-title">Table of Contents</div>
+            <ul>
+                <li><a href="#invariants">1. Core Principles & Design Invariants</a></li>
+                <li><a href="#payment-models">2. The Four Payment Models</a></li>
+                <li><a href="#state-machine">3. Booking Lifecycle & State Machine Diagram</a></li>
+                <li><a href="#refund-window">4. Unified Cancellation & Free Refund Window</a></li>
+                <li><a href="#availability-claims">5. Availability & Atomic Claims Flow</a></li>
+                <li><a href="#e2e-flow">6. End-to-End Sequence Diagram</a></li>
+                <li><a href="#data-models">7. Data Models & Database Schemas</a></li>
+                <li><a href="#analytics">8. Analytics & Conversion Tracking Details</a></li>
+                <li><a href="#edge-cases">9. Common Edge Cases & Mitigation Strategies</a></li>
+            </ul>
+        </div>
+
+        <section id="invariants">
+            <h2>1. Core Principles & Design Invariants</h2>
+            <ol>
+                <li><strong>Instant Confirmation, No Enquiries:</strong> The booking system operates on a direct seat-sale model. There is no "24-hour operator inquiry" phase; every booking immediately reserves inventory.</li>
+                <li><strong>Pre-Payment Agentless, Post-Booking Named (Anti-Disintermediation & Anti-Phishing):</strong>
+                    <ul>
+                        <li><strong>Pre-Payment:</strong> To prevent travelers from booking directly with operators outside the platform, the operator name is hidden or kept generic (e.g., "Local Partner") throughout the search, detail, widget, and checkout stages.</li>
+                        <li><strong>Post-Booking:</strong> Immediately upon booking (on the Thank-You Page and confirmation email), the operator's actual display name is shown. For <code>operator_link</code> tours, this is a critical security measure (referred to as the <strong>C2 Mitigation</strong>) to foreshadow that the operator will send a secure balance payment link, ensuring the traveler expects the email and does not flag it as phishing.</li>
+                    </ul>
+                </li>
+                <li><strong>Conversion Value is Commission (Not GMV):</strong> The value reported to analytics platforms (Google Ads, Meta CAPI, GA4) is the platform's margin (<code>commission_amount</code> in EUR), not the Gross Merchandise Value (<code>booking_total_eur</code> / <code>original_amount</code>). Firing a conversion with a null commission represents data corruption and is blocked.</li>
+                <li><strong>Guarded Single-Update Booking Claim:</strong> Overbooking is prevented via a single conditional SQL <code>UPDATE</code> statement that checks vacancy and increments booked seat counts atomically.</li>
+                <li><strong>Computed Transient States:</strong> Time-based states (booking cutoffs, live status of departures) are computed on-the-fly at read time rather than written to the database.</li>
+            </ol>
+        </section>
+
+        <section id="payment-models">
+            <h2>2. The Four Payment Models</h2>
+            <p>A tour must declare exactly one payment model, which is snapshotted onto the booking at creation as <code>payment_model</code>.</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Payment Model</th>
+                        <th>Charged at Checkout (Stripe)</th>
+                        <th>Balance Handling</th>
+                        <th>Created Status</th>
+                        <th>Visual / Widget Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong><code>operator_link</code></strong> (Default)</td>
+                        <td><code>deposit_pct</code>% deposit</td>
+                        <td>Operator emails secure link; balance paid online before deadline.</td>
+                        <td><code>ON_HOLD</code> &rarr; <code>CONFIRMED</code></td>
+                        <td>Shows Total, Pay today, Balance later.</td>
+                    </tr>
+                    <tr>
+                        <td><strong><code>on_arrival</code></strong></td>
+                        <td><code>deposit_pct</code>% deposit</td>
+                        <td>Balance paid in person on arrival (card or cash, or cash only, per tour configuration).</td>
+                        <td><code>ON_HOLD</code> &rarr; <code>CONFIRMED</code></td>
+                        <td>Shows Total, Pay today, Balance on arrival.</td>
+                    </tr>
+                    <tr>
+                        <td><strong><code>paid_in_full</code></strong></td>
+                        <td><strong>100%</strong></td>
+                        <td>Nothing later — fully paid at checkout.</td>
+                        <td><code>ON_HOLD</code> &rarr; <code>CONFIRMED</code></td>
+                        <td>Shows Total and Pay today (zero balance).</td>
+                    </tr>
+                    <tr>
+                        <td><strong><code>operator_full</code></strong></td>
+                        <td><strong>Nothing</strong></td>
+                        <td>Operator collects the full amount directly; checkout takes no payment.</td>
+                        <td><code>CONFIRMED</code> at commit</td>
+                        <td>Shows Total and Balance later (zero today). CTA is "Reserve my spot".</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="alert alert-warning">
+                <strong>Zero-Amount Money Rows:</strong> To ensure clean UX, any monetary line items representing $0 must be completely hidden (e.g., hiding "Balance later" for <code>paid_in_full</code>, or "Pay today" for <code>operator_full</code>).
+            </div>
+        </section>
+
+        <section id="state-machine">
+            <h2>3. Booking Lifecycle & State Machine Diagram</h2>
+            <p>This diagram shows the path a booking takes from checkout creation to confirmation, cancellation, or hold expiration.</p>
+            
+            <pre class="mermaid">
+stateDiagram-v2
+    [*] --> ON_HOLD : Customer submits checkout (Reserve API)
+    
+    state ON_HOLD {
+        [*] --> TimerActive
+        TimerActive --> Expired : utcExpiresAt passed
+    }
+    
+    ON_HOLD --> CONFIRMED : Stripe Webhook succeeds / manual confirm
+    ON_HOLD --> CANCELLED : Customer self-cancels request (Refund = NONE)
+    ON_HOLD --> EXPIRED : Hold-expiry sweeper runs
+    
+    state CONFIRMED {
+        [*] --> Booked
+        Booked --> Redeemed : Tour start time passed
+    }
+    
+    CONFIRMED --> CANCELLED : Customer submits cancel request / Admin cancels
+    
+    EXPIRED --> [*]
+    CANCELLED --> [*]
+    Redeemed --> [*]
+            </pre>
+        </section>
+
+        <section id="refund-window">
+            <h2>4. Unified Cancellation & Free Refund Window</h2>
+            <p>One per-tour window (<code>tour.cancellation_hours</code>) governs both the <strong>deadline for balance payments</strong> and <strong>free cancellations</strong>.</p>
+            <ul>
+                <li><strong>Allowed Values:</strong> Enum <code>[24, 48, 72, 168]</code> hours. Default is <strong>48 hours</strong>.</li>
+                <li><strong>Formula:</strong> <code>cancelDeadline = tourStartDateTime - cancellation_hours</code></li>
+                <li><strong>Time Zone:</strong> Always calculated and rendered in destination-local time, using the suffix <code>"(local time)"</code>.</li>
+            </ul>
+
+            <h3>Cancellation Request Process:</h3>
+            <ol>
+                <li>Traveler clicks "Cancel booking" in the email, opening a tokenized page on <code>island.tours</code>: <code>/{destination}/thank-you/{public_ref}</code>.</li>
+                <li>The page shows: <code>"Cancel {tour}, {date}? Refund ${deposit_amount}"</code> (refund line omitted if nothing was paid).</li>
+                <li>Submitting the cancellation sends a manual request notification to the admin dashboard.</li>
+                <li><strong>Deadline Invariant:</strong> Refund eligibility is judged on the traveler's <strong>request timestamp</strong> (<code>utcCancellationRequestedAt</code>), not the admin's action timestamp. Admin processing delays never penalize the traveler.</li>
+            </ol>
+        </section>
+
+        <section id="availability-claims">
+            <h2>5. Availability & Atomic Claims Flow</h2>
+            <p>This diagram represents the CQRS read/write boundary split. Weekly schedules and Exceptions write to <strong>Departures</strong>, which are then checked atomically at booking time.</p>
+            
+            <pre class="mermaid">
+graph TD
+    Op[Operator Dashboard] -->|Define Weekly Rules| S[AvailabilitySchedule]
+    Op -->|Define Date-Specific Deviations| E[AvailabilityException]
+    
+    S -->|Project| M[Materializer Service]
+    E -->|Override| M
+    
+    M -->|Idempotent Write| D[(Departures Table)]
+    
+    subgraph Read Path
+        D -->|liveDepartureStatus| API[Availability API]
+        API -->|Check Cutoff / Party Size| CUST[Booking Widget]
+    end
+    
+    subgraph Write/Claim Path
+        CUST -->|Reserve API| BS[Bookings Service]
+        BS -->|Atomic SQL UPDATE| D
+    end
+            </pre>
+
+            <div class="alert alert-info">
+                <strong>Anti-Scarcity Mask:</strong> Only show exact seat vacancy counts if remaining seats are between <strong>1 and 4</strong> (e.g. <em>"Only 2 left"</em>). If vacancies are 5 or higher, display a generic <em>"Available"</em>.
+            </div>
+        </section>
+
+        <section id="e2e-flow">
+            <h2>6. End-to-End Sequence Diagram</h2>
+            <p>This diagram outlines the complete sequence from slot selection, seat claim reservation, Stripe payment gateway transactions, to the webhook callback and GTM/CAPI analytics firing.</p>
+            
+            <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Traveler
+    participant Widget as Booking Widget (Frontend)
+    participant API as NestJS BookingsController
+    participant DB as PostgreSQL Database
+    participant Stripe as Stripe Gateway
+    participant Resend as Resend Email Service
+    participant Analytics as GTM / GA4 / Meta CAPI
+
+    Traveler->>Widget: Select Date, Time, Pax, Add-ons
+    Widget->>API: GET /availability/check { dateRange, seats }
+    API->>DB: Query departures (capacity vs booked_count)
+    DB-->>API: Active slots
+    API-->>Widget: Render slots (apply anti-scarcity mask)
+    
+    Traveler->>Widget: Fills checkout details & clicks Pay
+    Widget->>API: POST /api/v1/bookings (Reserve)
+    Note over API: Load context, run cutoff and party size checks
+    API->>DB: Start Transaction: Atomic SQL UPDATE to claim capacity
+    alt Capacity claims 0 rows (Sold out / past cutoff)
+        DB-->>API: 0 rows affected
+        API-->>Widget: Throw 422 Availability Conflict
+    else Capacity successfully claimed
+        API->>DB: INSERT Booking (status: ON_HOLD, default 30-min expiry)
+        DB-->>API: Saved booking reference
+        API-->>Widget: Return booking data (with Stripe client_secret)
+    end
+    
+    Traveler->>Widget: Completes Stripe Payment Form
+    Widget->>Stripe: Submit payment info
+    Stripe-->>Widget: Confirm success
+    Widget->>Widget: Redirect Traveler to /payment/processing (loading state)
+    
+    Note over Stripe: Stripe asynchronous callback
+    Stripe->>API: POST /api/v1/webhooks/stripe (payment_intent.succeeded)
+    Note over API: Signature verified & Event ID de-duplicated
+    API->>DB: UPDATE Booking status = CONFIRMED, snapshot billing info
+    DB-->>API: Confirm database updated
+    
+    API->>DB: check conversionFiredAt (Idempotency check)
+    alt conversionFiredAt is null
+        API->>DB: set conversionFiredAt = now(), normalize commission to EUR
+        DB-->>API: Commited transaction
+        
+        API->>Resend: Trigger confirmation email (with C2 Foreshadow)
+        Resend-->>Traveler: Deliver Confirmation Email
+        
+        API->>Analytics: Trigger Meta CAPI Purchase event (commission_amount in EUR)
+    end
+    
+    Widget->>API: Poll GET /api/v1/bookings/typ/:publicRef
+    API-->>Widget: Return thank-you page payload (conversion metadata)
+    Widget->>Widget: Render thank-you screen & push dataLayer 'booking_complete'
+    Widget->>Analytics: Fan out: GTM tags (Google Ads, GA4 purchase, Pixel)
+            </pre>
+        </section>
+
+        <section id="data-models">
+            <h2>7. Data Models & Database Schemas</h2>
+            <p>Highlights of the database models in <code>prisma/bookings.prisma</code>:</p>
+
+            <h3>Booking Model</h3>
+            <pre><code>model Booking {
+  id                   String        @id @default(uuid())
+  uuid                 String        @unique @default(uuid())
+  tourId               String
+  departureId          String?       
+  operatorId           String
+  userId               String?       
+  publicRef            String        @unique @default(uuid()) // TYP unguessable URL token
+  displayRef           String        @unique                  // Human readable IT-2026-XXXXX
+  status               BookingStatus @default(ON_HOLD)
+  island               String        @default("Curaçao")
+
+  // Lifecycle Timestamps
+  utcExpiresAt         DateTime?     
+  utcConfirmedAt       DateTime?
+  utcCancelledAt       DateTime?
+  utcCancellationRequestedAt DateTime? 
+
+  // Tour Datetime Snapshots
+  localDate            DateTime      @db.Date
+  startTime            String?       
+  tourStartDateTime    DateTime?     
+  tourEndDateTime      DateTime?     
+  tourTimeZone         String?       
+
+  // Payment Snapshots
+  paymentModel         PaymentModel
+  currency             Currency      // original display currency (USD / EUR)
+  pickupRequested      Boolean       @default(false)
+  pickupLocationId     String?
+  pickupAddress        String?       
+  notes                String?       // Capped at 500 chars
+
+  // Financial Snapshots
+  totalRetail          Decimal       @db.Decimal(10, 2)
+  totalNet             Decimal?      @db.Decimal(10, 2)
+  depositAmount        Decimal       @db.Decimal(10, 2)
+  balanceAmount        Decimal       @db.Decimal(10, 2)
+  commissionRate       Decimal?      @db.Decimal(5, 4)
+  commissionAmount     Decimal?      @db.Decimal(10, 2) // EUR conversion value
+  fxRateToEur          Decimal?      @db.Decimal(12, 6) 
+  totalEur             Decimal?      @db.Decimal(10, 2) 
+
+  // Contact (OCTO Contact)
+  contactFirstName     String?       // Stored split for tracking
+  contactLastName      String?       
+  contactEmail         String?       
+  contactPhone         String?       // Normalized E.164
+  ...
+}</code></pre>
+        </section>
+
+        <section id="analytics">
+            <h2>8. Analytics & Conversion Tracking Details</h2>
+            <p>At the Thank-You Page rendering, the frontend client pushes the following structure into the browser's <code>dataLayer</code>:</p>
+            <pre><code>{
+  "event": "booking_complete",
+  "booking_value": "15.00",            // commission_amount in EUR, never GMV!
+  "booking_currency": "EUR",           // Always EUR normalized
+  "booking_ref": "IT-2026-00042",       
+  "tour_id": "tour-uuid-here",
+  "tour_name": "Miss Ann Boat Trip",
+  "operator_id": "operator-uuid-here",
+  "operator_name": "Zipline Curacao",
+  "island": "curacao",
+  "user_id": "sha256-hashed-email",    
+  "user_data": {
+    "sha256_email_address": "hashed-email",
+    "sha256_phone_number": "hashed-phone-e164",
+    "sha256_first_name": "hashed-first-name",
+    "sha256_last_name": "hashed-last-name",
+    "address": {
+      "sha256_city": "hashed-city",
+      "sha256_postal_code": "hashed-zip",
+      "sha256_country": "hashed-country"
+    }
+  }
+}</code></pre>
+            <div class="alert alert-info">
+                <strong>Hashing Rule:</strong> All PII fields are lowercased, trimmed, and hashed using <strong>SHA-256 server-side</strong> before being outputted into the HTML layout.
+            </div>
+        </section>
+
+        <section id="edge-cases">
+            <h2>9. Common Edge Cases & Mitigation Strategies</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Edge Case</th>
+                        <th>Symptom</th>
+                        <th>Mitigation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Concurrently Fired Webhooks</strong></td>
+                        <td>Stripe confirmation fires twice, creating race conditions.</td>
+                        <td>Unique database index constraints on Stripe transaction/event log IDs. Wrapped in strict database isolation locks.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Double Firing of Tracking Pixels</strong></td>
+                        <td>Traveler refreshes their Thank-You Page or shares the link, double-counting ads conversion value.</td>
+                        <td>The <code>conversion_fired_at</code> column acts as a server-side lock. If populated, the thank-you payload returns <code>conversion: null</code> and tags are skipped.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Timezone Drifts on Deadlines</strong></td>
+                        <td>Server UTC checks close booking slots or judge cancellation periods incorrectly.</td>
+                        <td>The booking snapshots the local timezone string (<code>tourTimeZone</code>) at creation. All date logic uses localized conversion libraries.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose'
+        });
+    </script>
+</body>
+</html>

@@ -67,7 +67,7 @@ export function Hero({
                                                 locale,
                                                 `/${island.slug}`
                                             )}
-                                            className='text-it-hero-heading no-underline transition-colors hover:text-it-primary'>
+                                            className='text-it-hero-heading no-underline transition-colors duration-300 hover:text-it-primary'>
                                             {island.name}
                                         </Link>
                                         {i < popular.length - 1 && (

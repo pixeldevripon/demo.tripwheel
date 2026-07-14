@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 
-import { ToursBreadcrumb } from '@/components/frontend/tours-breadcrumb';
-import { ToursTrustStrip } from '@/components/frontend/tours-trust-strip';
+import { ToursBreadcrumb } from '@/components/frontend/tours/tours-breadcrumb';
+import { ToursTrustStrip } from '@/components/frontend/tours/tours-trust-strip';
 import { ToursHeaderSection } from '@/components/frontend/tours/tours-header-section';
 import { ToursListingSection } from '@/components/frontend/tours/tours-listing-section';
 import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';

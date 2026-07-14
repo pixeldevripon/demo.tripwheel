@@ -1,7 +1,18 @@
-/** Shared open/close animation for every navbar dropdown. */
-export const dropdownMotion = {
-    initial: { opacity: 0, y: -8, scale: 0.97 },
-    animate: { opacity: 1, y: 0, scale: 1 },
-    exit: { opacity: 0, y: -8, scale: 0.97 },
-    transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+import { dropdownItemMotion, dropdownMotion, springPop } from '@/lib/motion';
+
+/**
+ * Navbar motion - thin aliases over the canonical `@/lib/motion` standard
+ * (thank-you page language) so every navbar call site shares the exact
+ * sitewide values.
+ */
+export { dropdownItemMotion, dropdownMotion };
+
+/** Canonical press spring (re-exported for navbar call sites). */
+export const pressSpring = springPop;
+
+/** Icon-button press feedback - tap squash only (TYP language: hovers are
+ *  color/opacity transitions, never scale-ups). */
+export const iconPress = {
+    whileTap: { scale: 0.9 },
+    transition: springPop,
 } as const;

@@ -1,8 +1,10 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { dropdownMotion } from '@/lib/motion';
 import { formatDuration } from '@/lib/tours/listing';
 import type { SearchHit } from '@/types/search';
 
@@ -15,6 +17,11 @@ const currencySymbol = (code: string): string =>
  * Presentational typeahead panel - the live preview of matching tours shown
  * under the search field (shared by the desktop pill and the mobile overlay).
  * All data + href building is passed in; this only renders.
+ *
+ * The panel root carries `dropdownMotion` ITSELF (callers wrap in
+ * AnimatePresence, no extra motion wrapper): animating a positioned element
+ * directly avoids the transform-containing-block jump that a static wrapper
+ * causes when its transform is removed at animation end.
  */
 export function SearchTypeahead({
     hits,
@@ -36,7 +43,9 @@ export function SearchTypeahead({
     onSelect: () => void;
 }) {
     return (
-        <div className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-it-lg border border-it-border bg-it-white shadow-it-lg'>
+        <motion.div
+            {...dropdownMotion}
+            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-lg border border-it-border bg-it-white shadow-it-lg'>
             {loading && hits.length === 0 ? (
                 <p className='m-0 px-5 py-4 text-sm text-it-ink-muted'>
                     {dict.searching}
@@ -157,6 +166,6 @@ export function SearchTypeahead({
                     </Link>
                 </>
             )}
-        </div>
+        </motion.div>
     );
 }

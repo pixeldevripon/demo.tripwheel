@@ -106,15 +106,18 @@ export function DestinationListings({
                         their own typography via container queries (see TourCard).
                         sm+: standard 2 × 3 grid. */}
                     <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
-                        {tours.map(tour => (
+                        {tours.map((tour, i) => (
                             // Cards in view: ~1.2 (<480) → 1.5 (480+) → ~2.3 (640+ tablet);
                             // full 3-col grid from lg. Widths are viewport fractions so a
-                            // sliver of the next card always peeks.
-                            <div
+                            // sliver of the next card always peeks. Each cell staggers in
+                            // (the sitewide list rule; width='auto' keeps cell sizing).
+                            <Reveal
                                 key={tour.id}
+                                width='auto'
+                                delay={0.2 + i * 0.08}
                                 className='w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto'>
                                 <TourCard tour={tour} dict={cardDict} />
-                            </div>
+                            </Reveal>
                         ))}
                     </div>
 
@@ -129,14 +132,14 @@ export function DestinationListings({
                         {/* CTA floats above the line on a white pill */}
                         <Link
                             href={browseHref}
-                            className='group relative z-10 inline-flex items-center gap-1 bg-it-white px-5 py-2.5 font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-150 hover:text-it-primary-hover'>
+                            className='relative z-10 inline-flex items-center gap-1 bg-it-white px-5 py-2.5 font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
                             {browseLabel}
                             <Image
                                 src='/icons/cta-arrow-right.svg'
                                 alt=''
                                 width={20}
                                 height={20}
-                                className='size-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5'
+                                className='size-5 shrink-0'
                             />
                         </Link>
                     </div>

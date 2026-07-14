@@ -1,10 +1,10 @@
-import { EditorialBanner } from '@/components/frontend/editorial-banner';
-import { ExploreIslands } from '@/components/frontend/explore-islands';
+import { EditorialBanner } from '@/components/frontend/home/editorial-banner';
+import { ExploreIslands } from '@/components/frontend/home/explore-islands';
 import { FaqSection } from '@/components/frontend/faq-section';
 import { Hero } from '@/components/frontend/home/hero';
-import { Testimonials } from '@/components/frontend/testimonials';
-import { TopExperiences } from '@/components/frontend/top-experiences';
-import { TrustStrip } from '@/components/frontend/trust-strip';
+import { Testimonials } from '@/components/frontend/home/testimonials';
+import { TopExperiences } from '@/components/frontend/home/top-experiences';
+import { TrustStrip } from '@/components/frontend/home/trust-strip';
 import { getActiveDestinations } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';

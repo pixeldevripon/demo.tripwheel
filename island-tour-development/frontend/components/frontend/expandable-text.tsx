@@ -1,6 +1,8 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { springPop } from '@/lib/motion';
 
 /**
  * Generic "truncate + Read More / Read less" text block. A single client leaf
@@ -47,15 +49,17 @@ export function ExpandableText({
             {isLong && (
                 <>
                     {' '}
-                    <button
+                    <motion.button
                         type='button'
                         onClick={() => setExpanded(v => !v)}
+                        whileTap={{ scale: 0.98 }}
+                        transition={springPop}
                         className={
                             buttonClassName ??
                             'cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] whitespace-nowrap text-it-primary'
                         }>
                         {expanded ? lessLabel : moreLabel}
-                    </button>
+                    </motion.button>
                 </>
             )}
         </p>
