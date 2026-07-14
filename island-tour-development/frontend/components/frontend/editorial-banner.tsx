@@ -114,7 +114,6 @@ export function EditorialBanner({
                                         onClick={() => setTopIndex(i)}
                                         style={{ zIndex: isTop ? 30 : card.z }}
                                         animate={{ scale: isTop ? 1.04 : 1 }}
-                                        whileHover={{ scale: isTop ? 1.06 : 1.03 }}
                                         whileTap={{ scale: 0.98 }}
                                         transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                                         className={`absolute h-71 w-50 overflow-hidden rounded-[8px] border-none bg-it-border p-0 shadow-it-md cursor-pointer lg:h-100 lg:w-71.25 lg:rounded-[15px] ${card.position}`}

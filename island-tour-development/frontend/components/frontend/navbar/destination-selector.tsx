@@ -7,7 +7,11 @@ import { useRef, useState } from 'react';
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
-import { dropdownMotion } from './lib/navbar.constants';
+import {
+    dropdownItemMotion,
+    dropdownMotion,
+    pressSpring,
+} from './lib/navbar.constants';
 import type { Island, NavDict } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 
@@ -40,10 +44,12 @@ export function DestinationSelector({
 
     return (
         <div ref={ref} className='relative'>
-            <button
+            <motion.button
                 onClick={() => setOpen(v => !v)}
                 aria-label={dict.selectIsland}
                 aria-expanded={open}
+                whileTap={{ scale: 0.95 }}
+                transition={pressSpring}
                 className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
                 <Image
                     src='/icons/nav-location.svg'
@@ -57,7 +63,7 @@ export function DestinationSelector({
                         {currentIsland ? currentIsland.name : dict.selectIsland}
                     </span>
                 )}
-            </button>
+            </motion.button>
 
             <AnimatePresence>
                 {open && (
@@ -65,14 +71,15 @@ export function DestinationSelector({
                         {...dropdownMotion}
                         className={`absolute top-[calc(100%+18px)] ${menuAlign} min-w-45 bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50`}>
                         {islands.map(island => (
-                            <Link
-                                key={island.slug}
-                                href={localizeHref(locale, `/${island.slug}`)}
-                                onClick={() => setOpen(false)}
-                                aria-current={island.slug === currentIsland?.slug}
-                                className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
-                                {island.name}
-                            </Link>
+                            <motion.div key={island.slug} {...dropdownItemMotion}>
+                                <Link
+                                    href={localizeHref(locale, `/${island.slug}`)}
+                                    onClick={() => setOpen(false)}
+                                    aria-current={island.slug === currentIsland?.slug}
+                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                    {island.name}
+                                </Link>
+                            </motion.div>
                         ))}
                     </motion.div>
                 )}

@@ -166,10 +166,9 @@ export function DestinationHeroSearch({
                 <motion.button
                     type='submit'
                     aria-label={dict.searchPlaceholder}
-                    whileHover={{ scale: 1.06 }}
                     whileTap={{ scale: 0.94 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary'>
+                    className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary transition-colors hover:bg-it-primary-hover'>
                     <Image
                         src='/icons/hero-search-white.svg'
                         alt=''

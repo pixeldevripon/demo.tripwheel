@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { Reveal } from '@/components/frontend/reveal';
+import { springPop } from '@/lib/motion';
 import {
     ALL_CURRENCIES,
     ALL_LOCALES,
@@ -19,7 +21,8 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 
-const springFast = { type: 'spring', stiffness: 400, damping: 17 } as const;
+/** Canonical press/nudge spring (from the @/lib/motion standard). */
+const springFast = springPop;
 
 type FooterDict = {
     tagline: string;
@@ -94,12 +97,14 @@ function SelectorPill({
 }) {
     return (
         <div ref={pillRef} className='relative w-full'>
-            <button
+            <motion.button
                 type='button'
                 aria-label={ariaLabel}
                 aria-expanded={open}
                 aria-busy={busy}
                 onClick={onToggle}
+                whileTap={{ scale: 0.98 }}
+                transition={springFast}
                 className={`flex h-12.5 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 py-3 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
                 <span className='flex items-center gap-2'>
                     {icon}
@@ -113,20 +118,52 @@ function SelectorPill({
                     transition={{ duration: 0.2 }}>
                     <Image src='/footer/arrow-down.svg' alt='' width={24} height={24} className='size-6' />
                 </motion.span>
-            </button>
+            </motion.button>
             <AnimatePresence>{open && children}</AnimatePresence>
         </div>
     );
 }
 
-/** Dropdown list rendered above the pill. */
+/**
+ * Dropdown list rendered above the pill. Same spring + item-cascade language
+ * as the navbar dropdowns, mirrored for the upward opening direction.
+ */
+const footerMenuMotion = {
+    initial: 'closed',
+    animate: 'open',
+    exit: 'closed',
+    variants: {
+        open: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: {
+                ...springPop,
+                staggerChildren: 0.03,
+                delayChildren: 0.02,
+            },
+        },
+        closed: {
+            opacity: 0,
+            y: 10,
+            scale: 0.96,
+            transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] },
+        },
+    },
+} as const;
+
+/** Per-item cascade inside a `footerMenuMotion` list (rises with the panel). */
+const footerMenuItemMotion = {
+    variants: {
+        open: { opacity: 1, y: 0, transition: springPop },
+        closed: { opacity: 0, y: 6 },
+    },
+} as const;
+
 function SelectorMenu({ children }: { children: React.ReactNode }) {
     return (
         <motion.ul
-            initial={{ opacity: 0, y: 8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            {...footerMenuMotion}
             className='absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 m-0 list-none origin-bottom overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg'>
             {children}
         </motion.ul>
@@ -173,7 +210,7 @@ function CurrencySelector({ label }: { label: string }) {
             icon={<Image src='/footer/currency.svg' alt='' width={24} height={24} className='size-6' />}>
             <SelectorMenu>
                 {ALL_CURRENCIES.map((code) => (
-                    <li key={code}>
+                    <motion.li key={code} {...footerMenuItemMotion}>
                         <button
                             type='button'
                             onClick={() => selectCurrency(code)}
@@ -182,7 +219,7 @@ function CurrencySelector({ label }: { label: string }) {
                             <span>{CURRENCY_NAMES[code]}</span>
                             <span className='text-xs uppercase text-it-ink-muted'>{code}</span>
                         </button>
-                    </li>
+                    </motion.li>
                 ))}
             </SelectorMenu>
         </SelectorPill>
@@ -230,7 +267,7 @@ function LanguageSelector({ locale, label }: { locale: Locale; label: string }) 
             icon={<Image src='/footer/globe.svg' alt='' width={24} height={24} className='size-6' />}>
             <SelectorMenu>
                 {ALL_LOCALES.map((code) => (
-                    <li key={code}>
+                    <motion.li key={code} {...footerMenuItemMotion}>
                         <button
                             type='button'
                             onClick={() => switchLocale(code)}
@@ -239,7 +276,7 @@ function LanguageSelector({ locale, label }: { locale: Locale; label: string }) 
                             <span>{LOCALE_NATIVE_LABELS[code]}</span>
                             <span className='text-xs uppercase text-it-ink-muted'>{code}</span>
                         </button>
-                    </li>
+                    </motion.li>
                 ))}
             </SelectorMenu>
         </SelectorPill>
@@ -268,13 +305,8 @@ function LinkColumn({
                     <li key={link.label}>
                         <Link
                             href={localizeHref(locale, link.href)}
-                            className='inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors hover:text-it-white lg:text-base'>
-                            <motion.span
-                                className='inline-block'
-                                whileHover={{ x: 4 }}
-                                transition={springFast}>
-                                {link.label}
-                            </motion.span>
+                            className='inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
+                            {link.label}
                         </Link>
                     </li>
                 ))}
@@ -288,19 +320,14 @@ function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
     return (
         <div className='flex items-center justify-between gap-4'>
             {items.map((p) => (
-                <motion.span
+                <Image
                     key={p.alt}
-                    className='inline-flex'
-                    whileHover={{ scale: 1.1 }}
-                    transition={springFast}>
-                    <Image
-                        src={p.src}
-                        alt={p.alt}
-                        width={p.w}
-                        height={p.h}
-                        className={`${p.cls} object-contain`}
-                    />
-                </motion.span>
+                    src={p.src}
+                    alt={p.alt}
+                    width={p.w}
+                    height={p.h}
+                    className={`${p.cls} object-contain`}
+                />
             ))}
         </div>
     );
@@ -338,8 +365,9 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                     {/* ── Top section ──
                         Desktop uses justify-between (which naturally yields the ~110px
                         Figma gaps at 1440); only a small min-gap overrides the mobile
-                        gap-16 so the row fits cleanly from 1024 up without shrinking. */}
-                    <div className='flex flex-col gap-16 lg:flex-row lg:justify-between lg:gap-6'>
+                        gap-16 so the row fits cleanly from 1024 up without shrinking.
+                        Reveal = the sitewide scroll-in (footer is always below fold). */}
+                    <Reveal className='flex flex-col gap-16 lg:flex-row lg:justify-between lg:gap-6'>
                         {/* Brand + Explore - paired on mobile, flattened into the row on desktop */}
                         <div className='grid grid-cols-2 gap-x-6 lg:contents'>
                             <div className='flex flex-col gap-6 lg:w-52.5 lg:gap-8'>
@@ -361,7 +389,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                 <div className='flex flex-col gap-2 lg:gap-4'>
                                     <Link
                                         href={localizeHref(locale, '/about')}
-                                        className='inline-block w-fit text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors hover:text-it-white lg:text-base'>
+                                        className='inline-block w-fit text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
                                         {dict.ourStory}
                                     </Link>
                                     <div className='flex items-center gap-1.25 lg:gap-2'>
@@ -373,7 +401,6 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                                 className='inline-flex'>
                                                 <motion.span
                                                     className='inline-flex'
-                                                    whileHover={{ y: -3, scale: 1.08 }}
                                                     whileTap={{ scale: 0.9 }}
                                                     transition={springFast}>
                                                     <Image
@@ -436,10 +463,10 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                 />
                             </div>
                         </div>
-                    </div>
+                    </Reveal>
 
                     {/* ── Bottom bar ── */}
-                    <div>
+                    <Reveal delay={0.35} yOffset={20}>
                         <div className='h-px w-full bg-it-white/50' />
                         <div className='flex flex-col gap-2.5 py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
                             <div className='flex flex-wrap items-center gap-4 lg:gap-6'>
@@ -451,13 +478,15 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                     {dict.registration}
                                 </span>
                             </div>
-                            <button
+                            <motion.button
                                 type='button'
+                                whileTap={{ scale: 0.96 }}
+                                transition={springFast}
                                 className='w-fit cursor-pointer border-none bg-transparent p-0 text-left text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted transition-colors hover:text-it-white lg:text-base'>
                                 {dict.manageCookies}
-                            </button>
+                            </motion.button>
                         </div>
-                    </div>
+                    </Reveal>
                 </div>
             </div>
         </footer>

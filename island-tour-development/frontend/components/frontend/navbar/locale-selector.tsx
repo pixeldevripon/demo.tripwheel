@@ -12,7 +12,11 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 
-import { dropdownMotion } from './lib/navbar.constants';
+import {
+    dropdownItemMotion,
+    dropdownMotion,
+    pressSpring,
+} from './lib/navbar.constants';
 import type { NavDict } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 
@@ -57,11 +61,13 @@ export function LocaleSelector({
 
     return (
         <div ref={ref} className='relative'>
-            <button
+            <motion.button
                 onClick={() => setOpen(v => !v)}
                 aria-label={dict.language}
                 aria-expanded={open}
                 aria-busy={isPending}
+                whileTap={{ scale: 0.95 }}
+                transition={pressSpring}
                 className={`flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
                 <Image
                     src='/icons/nav-globe.svg'
@@ -75,7 +81,7 @@ export function LocaleSelector({
                         {locale}
                     </span>
                 )}
-            </button>
+            </motion.button>
 
             <AnimatePresence>
                 {open && (
@@ -83,7 +89,7 @@ export function LocaleSelector({
                         {...dropdownMotion}
                         className={`absolute top-[calc(100%+18px)] right-0 m-0 p-0 list-none ${menuWidth} origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50`}>
                         {ALL_LOCALES.map(code => (
-                            <li key={code}>
+                            <motion.li key={code} {...dropdownItemMotion}>
                                 <button
                                     onClick={() => switchLocale(code)}
                                     aria-current={code === locale}
@@ -93,7 +99,7 @@ export function LocaleSelector({
                                         {code}
                                     </span>
                                 </button>
-                            </li>
+                            </motion.li>
                         ))}
                     </motion.ul>
                 )}

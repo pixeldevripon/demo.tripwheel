@@ -15,6 +15,7 @@ import { DestinationSelector } from './destination-selector';
 import { LocaleSelector } from './locale-selector';
 import { MobileMenu } from './mobile-menu';
 import { NavSearch } from './nav-search';
+import { iconPress, pressSpring } from './lib/navbar.constants';
 import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
 import { WishlistLink } from './wishlist-link';
 
@@ -157,20 +158,22 @@ export function Navbar({
                         href='/login'
                         aria-label={dict.account}
                         className='flex items-center no-underline'>
-                        <Image
-                            src='/icons/nav-profile.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-6'
-                        />
+                        <motion.span className='inline-flex' {...iconPress}>
+                            <Image
+                                src='/icons/nav-profile.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-6'
+                            />
+                        </motion.span>
                     </Link>
                 </div>
 
                 {/* ── Mobile right: search + island + language + account + menu ── */}
                 <div className='flex md:hidden items-center gap-5'>
                     {!isHome && (
-                        <button
+                        <motion.button
                             type='button'
                             onClick={() => {
                                 setMobileOpen(false);
@@ -178,6 +181,7 @@ export function Navbar({
                             }}
                             aria-label={dict.search}
                             aria-expanded={mobileSearchOpen}
+                            {...iconPress}
                             className='flex items-center bg-transparent border-none cursor-pointer p-0'>
                             <Image
                                 src='/icons/nav-search.svg'
@@ -186,7 +190,7 @@ export function Navbar({
                                 height={24}
                                 className='size-6'
                             />
-                        </button>
+                        </motion.button>
                     )}
 
                     <DestinationSelector
@@ -202,19 +206,21 @@ export function Navbar({
                         href='/login'
                         aria-label={dict.account}
                         className='flex items-center no-underline'>
-                        <Image
-                            src='/icons/nav-profile.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-6'
-                        />
+                        <motion.span className='inline-flex' {...iconPress}>
+                            <Image
+                                src='/icons/nav-profile.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-6'
+                            />
+                        </motion.span>
                     </Link>
 
                     <motion.button
                         className='bg-transparent border-none cursor-pointer p-0 text-it-ink'
-                        whileTap={{ scale: 0.85 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={pressSpring}
                         aria-label={mobileOpen ? dict.close : dict.menu}
                         onClick={() => setMobileOpen(v => !v)}>
                         <AnimatePresence mode='wait' initial={false}>

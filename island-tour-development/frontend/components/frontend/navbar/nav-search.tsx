@@ -10,7 +10,7 @@ import { searchToursClient } from '@/lib/api/search';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
 
-import { dropdownMotion } from './lib/navbar.constants';
+import { dropdownMotion, iconPress, pressSpring } from './lib/navbar.constants';
 import type { Island, NavDict, SearchDict } from './lib/navbar.types';
 import { SearchTypeahead } from './search-typeahead';
 import { useClickOutside } from './lib/use-click-outside';
@@ -138,10 +138,11 @@ export function NavSearch({
                     <form
                         onSubmit={submit}
                         role='search'
-                        className='flex w-full items-center gap-2 rounded-it-full border border-[rgba(44,44,44,0.20)] px-4 py-3 bg-it-white'>
-                        <button
+                        className='flex w-full items-center gap-2 rounded-it-full border border-it-heading/20 px-4 py-3 bg-it-white transition-colors duration-300 focus-within:border-it-heading/40'>
+                        <motion.button
                             type='submit'
                             aria-label={nav.search}
+                            {...iconPress}
                             className='flex items-center bg-transparent border-none cursor-pointer p-0'>
                             <Image
                                 src='/icons/nav-search.svg'
@@ -150,7 +151,7 @@ export function NavSearch({
                                 height={18}
                                 className='size-4.5 shrink-0'
                             />
-                        </button>
+                        </motion.button>
                         <input
                             type='search'
                             value={query}
@@ -178,13 +179,15 @@ export function NavSearch({
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.18 }}
                         className='absolute inset-0 z-50 flex items-center gap-3 bg-it-white px-4 md:hidden'>
-                        <button
+                        <motion.button
                             type='button'
                             onClick={onMobileClose}
                             aria-label={nav.close}
+                            whileTap={{ scale: 0.9, x: -2 }}
+                            transition={pressSpring}
                             className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-heading'>
                             <ArrowLeft size={24} strokeWidth={1.5} />
-                        </button>
+                        </motion.button>
                         <form
                             onSubmit={submit}
                             role='search'
@@ -198,9 +201,10 @@ export function NavSearch({
                                 aria-label={nav.search}
                                 className='flex-1 min-w-0 bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
-                            <button
+                            <motion.button
                                 type='submit'
                                 aria-label={nav.search}
+                                {...iconPress}
                                 className='flex items-center bg-transparent border-none cursor-pointer p-0'>
                                 <Image
                                     src='/icons/nav-search.svg'
@@ -209,7 +213,7 @@ export function NavSearch({
                                     height={18}
                                     className='size-4.5 shrink-0'
                                 />
-                            </button>
+                            </motion.button>
                         </form>
                         {trimmed.length >= 2 && panel}
                     </motion.div>
