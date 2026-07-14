@@ -25,62 +25,254 @@ import {
 } from './_shared';
 import { categoryName, tpl } from './i18n-templates';
 
+// Destination-page FAQ set (Figma node 47361:19834): trust-focused questions
+// about booking with Island Tours, with the island name woven in.
 function faqsFor(label: string): { q: string; a: string }[] {
   return [
     {
-      q: `What is the best time to visit ${label}?`,
-      a: `${label} is a year-round destination. The driest, sunniest months run from roughly January to August, while September to December brings warmer water and fewer crowds - and prices dip outside the winter peak.`,
+      q: `Can I cancel if my plans change?`,
+      a: `Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email.`,
     },
     {
-      q: `Do I need to book tours in ${label} in advance?`,
-      a: `Popular tours sell out in high season, so booking ahead is recommended. Every tour on Island Tours offers instant confirmation and free cancellation, so there is no risk in securing your spot early.`,
+      q: `Do I have to pay in full now?`,
+      a: `No. On most tours you pay as little as 20% today to lock in your spot and settle the rest closer to your trip. The exact split is shown on each tour page before you book.`,
     },
     {
-      q: `Can tours be cancelled if my plans change?`,
-      a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked. Cancel online from your booking confirmation - no phone calls needed.`,
+      q: `Who is behind Island Tours?`,
+      a: `We are locals. We grew up on these islands, we know every operator on ${label} personally, and we only list tours we would send our own friends and family on.`,
     },
     {
-      q: `How do I get around ${label}?`,
-      a: `A rental car gives the most freedom, but many tours include hotel pickup - check the tour page. Taxis are easy to find at hotels and the airport; agree the fare before you set off.`,
-    },
-    {
-      q: `Can I pay with US dollars or by card?`,
-      a: `US dollars and major credit cards are accepted almost everywhere, alongside the local currency. Keep a little cash for small beach bars, markets, and tips.`,
-    },
-    {
-      q: `Is ${label} good for families with children?`,
-      a: `Very. Calm bays, family-friendly boats, and short crossings make it an easy island for kids. Use the "family friendly" filter to see the tours best suited to younger travellers.`,
+      q: `What if my tour gets cancelled?`,
+      a: `If an operator has to cancel - usually for weather or safety - you choose between a full refund or a free rebooking on the next available departure. We message you as soon as anything changes.`,
     },
   ];
 }
 
-function categoryFaqsFor(label: string): { q: string; a: string }[] {
+// Category-page FAQ pattern (Figma node 47070:2456): what's included, how to
+// choose between the options, kids, and the swim/experience question - with
+// per-category specifics so every category reads like it was hand-written.
+interface CategoryFaqDetail {
+  /** Answer to "What's included on a typical X?" */
+  included: string;
+  compareQ: string;
+  compareA: string;
+  skillsQ: string;
+  skillsA: string;
+}
+
+const CATEGORY_FAQ_DETAIL: Record<string, CategoryFaqDetail> = {
+  'boat-tours': {
+    included:
+      'A skipper and crew, fuel, snorkel gear on most boats, and drinks or a BBQ lunch on full-day trips. Each tour page lists its exact inclusions.',
+    compareQ: "What's the difference between catamaran and speedboat?",
+    compareA:
+      'Catamarans are stable, spacious, and relaxed - the classic full-day choice. Speedboats cut the crossing time in half and suit travellers who want maximum time on shore.',
+    skillsQ: 'Do I need to know how to swim?',
+    skillsA:
+      'No - you can enjoy the whole trip from the deck. For swim and snorkel stops, crews hand out flotation vests and stay close.',
+  },
+  snorkeling: {
+    included:
+      'Mask, snorkel and fins, a guide who knows the reef, and boat transport on offshore trips. Many tours add drinks and a light lunch.',
+    compareQ: 'Shore snorkel or boat snorkel - which should I pick?',
+    compareA:
+      'Shore trips are cheaper and great for first-timers; boat trips reach clearer water, wrecks, and turtle grounds you cannot swim to from the beach.',
+    skillsQ: 'Do I need to know how to swim?',
+    skillsA:
+      'Basic swimming is enough. Guides carry flotation vests, brief everyone before entering the water, and stay with the group throughout.',
+  },
+  'scuba-diving': {
+    included:
+      'All equipment, a certified instructor or divemaster, tank fills, and boat transport to the site.',
+    compareQ: 'Can I dive without a certification?',
+    compareA:
+      'Yes - discover-dives take complete beginners to shallow reefs one-on-one with an instructor. Certified divers can book two-tank reef, wreck, and night dives.',
+    skillsQ: 'Do I need to know how to swim?',
+    skillsA:
+      'Yes, comfortable swimming is required for all dives. Intro dives need nothing else; certified dives require your certification card.',
+  },
+  'sunset-cruises': {
+    included:
+      'Drinks (often an open bar), snacks or dinner bites, and a route timed so you are on the water for golden hour.',
+    compareQ: 'Sailing catamaran or motor yacht for sunset?',
+    compareA:
+      'Sailing catamarans are quiet and romantic; motor yachts fit bigger groups and steadier stomachs. Both chase the same sunset.',
+    skillsQ: 'What should I bring along?',
+    skillsA:
+      'Just a light layer for the breeze after sundown and your camera. Everything else is on board.',
+  },
+  'sightseeing-tours': {
+    included:
+      'Air-conditioned transport, a local guide, and entry to the stops on the route.',
+    compareQ: 'Small-group or private sightseeing - what is the difference?',
+    compareA:
+      'Small groups are social and cost less; private tours set their own pace and route. Same guides, same highlights.',
+    skillsQ: 'How much walking is involved?',
+    skillsA:
+      'Light walking at each stop - comfortable shoes are all you need. Tours with real hikes say so clearly on the tour page.',
+  },
+  'day-trips': {
+    included:
+      'Round-trip transport, a guide, and usually lunch - a day trip bundles the logistics so you do not have to plan anything.',
+    compareQ: 'How do I pick the right day trip?',
+    compareA:
+      'Start with how you like to travel: on the water (boat days), on wheels (island loops), or on foot (nature days) - then match the departure day to your itinerary.',
+    skillsQ: 'Do I need any experience to join?',
+    skillsA:
+      'None - day trips are built for everyone, and each page notes the pace so you know what you are signing up for.',
+  },
+  'off-road-tours': {
+    included:
+      'The vehicle, fuel, helmets and goggles, and a lead guide who knows every trail.',
+    compareQ: 'UTV, buggy or jeep - which should I choose?',
+    compareA:
+      'UTVs and buggies put you behind the wheel for the dusty, hands-on version; jeep safaris seat the whole family while a driver-guide does the work.',
+    skillsQ: 'Do I need a licence to drive?',
+    skillsA:
+      "Drivers need a standard driver's licence; passengers just need to hold on and enjoy. Minimum driver ages are on each tour page.",
+  },
+  'jet-ski': {
+    included:
+      'The jet ski, fuel, life vests, and a guide leading the route with photo stops along the way.',
+    compareQ: 'Can two people share a jet ski?',
+    compareA:
+      'Yes - most skis seat two and you can swap drivers at the stops. Solo riders get the same route with more throttle time.',
+    skillsQ: 'Do I need experience to ride?',
+    skillsA:
+      'No - the briefing covers everything, and guides set a pace everyone can follow. Drivers usually need to be 16-18+ with ID.',
+  },
+  parasailing: {
+    included:
+      'Harness, the boat ride out, and 10-15 minutes in the air per flight.',
+    compareQ: 'Can we fly together?',
+    compareA:
+      'Yes - tandem and even triple flights are standard, weather permitting and within the combined weight limit shown on the tour page.',
+    skillsQ: 'Will I get wet?',
+    skillsA:
+      'Barely - take-off and landing happen from the boat deck. Some captains offer a gentle toe-dip on request.',
+  },
+  'water-sports': {
+    included:
+      'All gear for the activity, a safety briefing, and instructors or spotters on the water.',
+    compareQ: 'Which water sport is easiest for beginners?',
+    compareA:
+      'Tubing and banana boats need zero skill; paddleboarding and kayaking take minutes to learn; flyboarding rewards a lesson - which is exactly what the beginner sessions are.',
+    skillsQ: 'Do I need to know how to swim?',
+    skillsA:
+      'For most activities yes, at a basic level - life vests are always provided. Each tour page lists its own age, weight, and swim requirements.',
+  },
+  'fishing-trips': {
+    included:
+      'Rods, tackle, bait, fishing licences, and a crew that will clean and fillet your catch.',
+    compareQ: 'Deep-sea or reef fishing - what is the difference?',
+    compareA:
+      'Deep-sea trips chase mahi-mahi, tuna, and marlin offshore; reef trips stay in calmer water with steadier action - better for kids and first-timers.',
+    skillsQ: 'Do I need fishing experience?',
+    skillsA:
+      'None - crews rig, bait, and coach you through every catch. Seasoned anglers are welcome to bring their own gear.',
+  },
+  'nature-wildlife-tours': {
+    included: 'A naturalist guide, park fees, and transport between spots.',
+    compareQ: 'What wildlife can I actually expect to see?',
+    compareA:
+      'Sea turtles, flamingos, iguanas, and seasonal seabirds are the reliable stars; dolphins and rays make regular guest appearances offshore.',
+    skillsQ: 'Do I need any experience to join?',
+    skillsA:
+      'None - routes are gentle and guides adapt the pace to the group. Bring binoculars if you have them.',
+  },
+  'hiking-tours': {
+    included:
+      'A local guide, trail fees, drinking water, and often a swim stop at the end.',
+    compareQ: 'How hard are the hikes?',
+    compareA:
+      'Most island hikes run 1.5-3 hours, with the heat being the real challenge - every tour page grades its difficulty honestly.',
+    skillsQ: 'What fitness level do I need?',
+    skillsA:
+      'A reasonable base level and closed shoes. Guides set a pace the whole group can hold and build in shade breaks.',
+  },
+  'adventure-tours': {
+    included: 'All activity gear, safety equipment, and certified guides.',
+    compareQ: 'How do I know an adventure tour is safe?',
+    compareA:
+      'Every operator is vetted, licensed, and insured, with maintained equipment and a briefing before anything begins - thrill is the point, risk is not.',
+    skillsQ: 'Do I need any experience to join?',
+    skillsA:
+      'Each tour lists its own age, health, and fitness requirements - read them before booking and you will be fine.',
+  },
+  'cultural-tours': {
+    included:
+      'A local guide with real stories, entry fees, and tastings where the route includes them.',
+    compareQ: 'What makes these different from a guidebook walk?',
+    compareA:
+      'The guides grew up here - you get family history, backstreets, and context no plaque will give you, plus your questions answered on the spot.',
+    skillsQ: 'How much walking is involved?',
+    skillsA:
+      'An easy stroll with plenty of stops - comfortable shoes and curiosity are all you need.',
+  },
+  'food-tours': {
+    included:
+      '5-8 tastings across multiple stops, a local foodie guide, and drink pairings on most routes.',
+    compareQ: 'Will there be enough food to count as a meal?',
+    compareA:
+      'Yes - come hungry. Most guests skip the meal before a tour; the tastings add up to more than a full plate.',
+    skillsQ: 'Can dietary requirements be accommodated?',
+    skillsA:
+      'Almost always - flag allergies or preferences at booking and the guide arranges alternatives at each stop.',
+  },
+  'attraction-tickets': {
+    included: 'Skip-the-line entry and everything listed on the ticket page.',
+    compareQ: 'Do tickets have a fixed date and time?',
+    compareA:
+      'Some are timed, many are flexible open tickets valid for a window - each ticket page states which before you book.',
+    skillsQ: 'Do I need to print anything?',
+    skillsA:
+      'No - show the ticket on your phone at the entrance and you are in.',
+  },
+  'luxury-experiences': {
+    included:
+      'Premium vessels or venues, a dedicated crew, and food and drink a clear step above the standard tours.',
+    compareQ: 'What makes an experience "luxury" here?',
+    compareA:
+      'Smaller guest counts, better boats, real service - we list an experience as luxury only when the difference is obvious on board, not just in the price.',
+    skillsQ: 'Is there a dress code?',
+    skillsA:
+      'Resort casual covers everything - the crew will tell you if a specific experience calls for more.',
+  },
+  'workshops-classes': {
+    included:
+      'All materials, hands-on instruction, and something to take home.',
+    compareQ: 'Do I need any prior experience?',
+    compareA:
+      'No - classes assume complete beginners, and instructors adjust the moment they see the group.',
+    skillsQ: 'Can children join the classes?',
+    skillsA:
+      'Many classes welcome kids from around 6-8 years old - the exact minimum age is on each class page.',
+  },
+};
+
+function categoryFaqsFor(
+  label: string,
+  slug?: string,
+): { q: string; a: string }[] {
   const lower = label.toLowerCase();
+  const singular = lower.split('&')[0].trim().replace(/s$/, '');
+  const d = (slug && CATEGORY_FAQ_DETAIL[slug]) || {
+    included:
+      'Everything you need for the activity, a local guide or crew, and any listed extras - each tour page shows its exact inclusions.',
+    compareQ: `How do I choose the right ${singular} for my trip?`,
+    compareA: `Compare ${lower} by price, duration, and traveller rating. Every listing shows exactly what is included, so you can pick the one that fits your group and budget.`,
+    skillsQ: 'Do I need any experience to join?',
+    skillsA:
+      'None for most tours - requirements, when they exist, are listed clearly on the tour page.',
+  };
   return [
+    { q: `What's included on a typical ${singular}?`, a: d.included },
+    { q: d.compareQ, a: d.compareA },
     {
-      q: `How do I choose the right ${lower.replace(/s$/, '')} for my trip?`,
-      a: `Compare ${lower} by price, duration, and traveller rating. Every listing shows exactly what is included, so you can pick the one that fits your group and budget.`,
-    },
-    {
-      q: `Do ${lower} need to be booked in advance?`,
-      a: `Popular departures sell out in high season, so booking ahead is recommended. Every tour on Island Tours confirms instantly, so there is no waiting for approval.`,
-    },
-    {
-      q: `Can I cancel a booking if my plans change?`,
-      a: `Yes. Every tour includes free cancellation up to the window shown on the tour page, with no questions asked.`,
-    },
-    {
-      q: `What should I bring?`,
-      a: `Reef-safe sunscreen, a towel, swimwear, and a little cash for tips cover most trips. Anything specific - water shoes, a light jacket, ID - is listed on the tour page under "What to bring".`,
-    },
-    {
-      q: `Are these tours suitable for children?`,
+      q: `Are ${lower} suitable for children?`,
       a: `Many are - check the age limits on each tour page. Tours carrying the "family friendly" label are the safest bet for younger kids.`,
     },
-    {
-      q: `Is hotel pickup included?`,
-      a: `Some tours include pickup or offer it as an extra; otherwise the meeting point is shown clearly on the tour page with a map and check-in time.`,
-    },
+    { q: d.skillsQ, a: d.skillsA },
   ];
 }
 
@@ -267,37 +459,94 @@ const KLEIN = {
       ],
     },
   ],
+  // Hub-page AEO FAQ set (Figma node 48024:12076) - 9 questions, answers
+  // grounded in the editorial above. Question ORDER matches hubFaqsFor() and
+  // the localized hubFaqs templates so per-locale rows align by index.
   faqs: [
     {
       q: 'Is Klein Curaçao worth it?',
-      a: 'Yes. Most visitors call it the highlight of their trip: over a kilometre of untouched white sand, water clear enough to snorkel straight off the beach, and no development beyond a lighthouse. It is a long day on the water, but the island itself is like nowhere else on Curaçao.',
+      a: "Yes. Most visitors find the day trip to Klein Curaçao well worth it for one of the longest and most beautiful white-sand beaches in the Caribbean. It's a full day on the sand and in the water, perfect for sunbathing, swimming, and snorkeling, with a protected reef and sea turtles in the shallows. The island is completely undeveloped, with no crowds beyond the day boats. We've yet to meet anyone who regretted going.",
+    },
+    {
+      q: 'What is there to do on Klein Curaçao?',
+      a: 'Claim a stretch of the kilometre-long white beach, snorkel the reef and swim with sea turtles, climb the pink lighthouse, and walk the wild north shore past the shipwrecks. Most trips include a BBQ lunch and beach beds, so the day organises itself.',
+    },
+    {
+      q: 'How much does a Klein Curaçao trip cost?',
+      a: 'Full-day trips start around $120 per person, usually including the crossing, snorkel gear, beach facilities, and a BBQ lunch. Private charters run higher and are priced per boat rather than per person.',
     },
     {
       q: 'How long is the boat trip to Klein Curaçao?',
       a: 'The crossing takes 45 minutes on a fast powerboat and up to about 1.5 hours by sailing catamaran, each way. Most trips leave early and give you five to six hours on the island.',
     },
     {
+      q: 'Will I get seasick on the way to Klein Curaçao?',
+      a: 'The outbound leg sails into the trade winds, so it can be lively. Sit at the back of the boat, keep your eyes on the horizon, and most stomachs settle quickly - and the return trip is much smoother. Prone to motion sickness? Take a tablet an hour before departure or pick the fast powerboat.',
+    },
+    {
       q: 'What should I bring to Klein Curaçao?',
       a: 'Reef-safe sunscreen, water shoes, a hat and sunglasses, and a towel. There is no shade beyond the boat awnings and beach palapas, so sun protection matters. Snorkel gear and lunch are included on most trips.',
     },
     {
-      q: 'Is there phone signal on Klein Curaçao?',
-      a: 'Barely. Signal is weak and patchy across the island, so plan to be largely off the grid for the day and let people at home know beforehand.',
+      q: 'Are there toilets on Klein Curaçao?',
+      a: 'Yes - on board every boat, and the operators with beach houses have basic facilities on the island. There is no public infrastructure beyond that, so go before you wander off to the lighthouse.',
     },
     {
-      q: 'Can you snorkel with sea turtles at Klein Curaçao?',
-      a: 'Very likely. The island is a protected nesting ground for Hawksbill, Loggerhead, and Green turtles, and you will often see them grazing in the shallows. Swim alongside them but never touch.',
-    },
-    {
-      q: 'Is Klein Curaçao suitable for families?',
+      q: 'Is Klein Curaçao suitable for families with young children?',
       a: 'Yes. Calmer, steady boats and shaded seating make the crossing easy for children, and the reef-protected south shore is shallow and clear. Choose a family boat or catamaran rather than the fastest powerboat for the smoothest ride.',
     },
     {
-      q: 'When is the best time to visit Klein Curaçao?',
-      a: 'Trips run year-round. The water is calmest and clearest in the morning, and turtle nesting season (March to October) is the best window for turtle sightings. Boats sell out weeks ahead in high season, so book early.',
+      q: 'What happens if the weather is bad on my Klein Curaçao trip?',
+      a: 'Captains monitor conditions daily and will cancel or reschedule if the crossing is not safe. You then choose between the next available departure or a full refund - no forms, no discussion.',
     },
   ],
 };
+
+/**
+ * Generic hub FAQ set (same 9 Figma questions as Klein, parameterized by hub
+ * name) for sibling hubs without hand-written answers. Question order MUST
+ * match KLEIN.faqs and the localized hubFaqs templates (index-aligned rows).
+ */
+function hubFaqsFor(name: string): { q: string; a: string }[] {
+  return [
+    {
+      q: `Is ${name} worth it?`,
+      a: `Yes. ${name} is the day trip islanders recommend first: unspoiled sand, calm turquoise water, and snorkeling straight off the beach. It is a full day out, and very few visitors regret it.`,
+    },
+    {
+      q: `What is there to do on ${name}?`,
+      a: `Swim and snorkel the reef, walk the coast, and settle into a stretch of quiet beach. Most trips include lunch and beach facilities, so the day takes care of itself.`,
+    },
+    {
+      q: `How much does a ${name} trip cost?`,
+      a: `Full-day trips typically start around $100-130 per person including the crossing, gear, and lunch. Private charters are priced per boat - see each tour page for exact pricing.`,
+    },
+    {
+      q: `How long is the boat trip to ${name}?`,
+      a: `Expect roughly 45 minutes to 1.5 hours each way depending on the boat. Trips leave early to make the most of the calm morning water.`,
+    },
+    {
+      q: `Will I get seasick on the way to ${name}?`,
+      a: `The open-water stretch can be lively. Sit toward the back, watch the horizon, and consider a motion-sickness tablet an hour before departure if you are prone - the return leg is usually smoother.`,
+    },
+    {
+      q: `What should I bring to ${name}?`,
+      a: `Reef-safe sunscreen, water shoes, a hat, and a towel. Shade is limited, so sun protection matters. Snorkel gear and lunch are included on most trips.`,
+    },
+    {
+      q: `Are there toilets on ${name}?`,
+      a: `On board every boat, yes - and operators with beach setups have basic facilities on shore. Beyond that the island is undeveloped.`,
+    },
+    {
+      q: `Is ${name} suitable for families with young children?`,
+      a: `Yes - pick a steadier family boat or catamaran for the smoothest crossing. The swimming areas are shallow, calm, and easy for kids.`,
+    },
+    {
+      q: `What happens if the weather is bad on my ${name} trip?`,
+      a: `Captains monitor conditions daily and cancel or reschedule when the crossing is not safe. You choose between the next available departure or a full refund.`,
+    },
+  ];
+}
 
 // ── Per-destination editorial content (real copy + topical photos) ─────────────
 const DEST_CONTENT: Record<
@@ -373,10 +622,13 @@ export async function seedEntityContent(): Promise<void> {
       'boatReefAerial',
       'sunsetSea',
     ];
+    // Hero images are intentionally NOT seeded (admin uploads real ones via the
+    // dashboard); pages render their neutral fallback until then. OG + gallery
+    // stay topical so share cards and page galleries still look real.
     await prisma.destination.update({
       where: { id: d.id },
       data: {
-        heroImage: photo(hero, 1600, 900),
+        heroImage: null,
         ogImage: photo(hero, 1200, 630),
         galleryImages: gallery.map((g) => photo(g, 1200, 800)),
       },
@@ -446,6 +698,7 @@ export async function seedEntityContent(): Promise<void> {
     await prisma.category.update({
       where: { id: c.id },
       data: {
+        heroImage: null,
         ogImage: c.heroImage ?? photo('aerialCoast', 1200, 630),
         description: overview,
       },
@@ -494,7 +747,7 @@ export async function seedEntityContent(): Promise<void> {
       'category',
       c.id,
       c.name,
-      undefined,
+      categoryFaqsFor(c.name, c.slug),
       (locale) =>
         tpl(locale)?.catFaqs(categoryName(c.slug, locale, c.name)) ?? [],
     );
@@ -522,7 +775,7 @@ export async function seedEntityContent(): Promise<void> {
     await prisma.hub.update({
       where: { id: h.id },
       data: {
-        heroImage: h.heroImage ?? photo('boatReefAerial', 1600, 900),
+        heroImage: null,
         ogImage: photo('boatReefAerial', 1200, 630),
         status: HubStatus.PUBLISHED,
         latitude: 11.985,
@@ -575,12 +828,15 @@ export async function seedEntityContent(): Promise<void> {
       }),
     });
 
-    // FAQs: Klein gets the 7 AEO questions from the design; siblings the generic set.
+    // FAQs: the 9 AEO questions from the hub design (Figma 48024:12076) -
+    // Klein with hand-written answers, siblings via the parameterized set;
+    // non-EN rows come from the localized hubFaqs templates (index-aligned).
     faqRows += await ensureFaqs(
       'hub',
       h.id,
       h.name,
-      isKlein ? KLEIN.faqs : undefined,
+      isKlein ? KLEIN.faqs : hubFaqsFor(h.name),
+      (locale) => tpl(locale)?.hubFaqs(h.name) ?? [],
     );
 
     // ── Content sections (Fast Facts / Discover / Local Tips), per locale ──

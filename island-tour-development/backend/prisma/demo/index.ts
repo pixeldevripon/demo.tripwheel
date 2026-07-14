@@ -82,7 +82,20 @@ export async function cleanDemo(): Promise<void> {
     where: { tour: { reference: DEMO_TOUR_REF } },
   });
 
-  // 2) Collections (demo slugs) + their slug_registry rows.
+  // 2) Collections (demo slugs) + their FAQs (polymorphic - no FK cascade) +
+  //    their slug_registry rows.
+  const demoCollections = await prisma.collection.findMany({
+    where: { slug: { in: COLLECTION_SLUGS } },
+    select: { id: true },
+  });
+  if (demoCollections.length) {
+    await prisma.faq.deleteMany({
+      where: {
+        pageType: 'collection',
+        entityId: { in: demoCollections.map((c) => c.id) },
+      },
+    });
+  }
   await prisma.collection.deleteMany({
     where: { slug: { in: COLLECTION_SLUGS } },
   });

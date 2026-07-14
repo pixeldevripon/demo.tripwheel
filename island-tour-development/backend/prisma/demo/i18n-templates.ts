@@ -5,6 +5,13 @@
 // hand-written translation set covers every destination/category/hub/tour
 // without ballooning the seed. `isMachineTranslated` stays true on non-EN rows
 // (the copy is seeded, not operator-reviewed).
+//
+// FAQ sets mirror the Figma designs and are INDEX-ALIGNED with their English
+// counterparts (the shared faqGroupId links per-locale rows by position):
+//   destFaqs (4)  <- destination page, Figma 47361:19834
+//   catFaqs  (4)  <- category page,    Figma 47070:2456
+//   hubFaqs  (9)  <- activity hub,     Figma 48024:12076
+//   collFaqs (6)  <- collection page,  Figma 47433:2306
 
 import { Locale } from '@prisma/client';
 
@@ -173,6 +180,8 @@ export function categoryName(slug: string, locale: Locale, en: string): string {
 }
 
 // ── Per-locale prose templates ──────────────────────────────────────────────────
+type Faq = { q: string; a: string };
+
 export interface LocaleTemplates {
   destOverview: (name: string) => string;
   destAbout: (name: string) => string;
@@ -187,10 +196,14 @@ export interface LocaleTemplates {
   hubMetaTitle: (name: string) => string;
   /** Card/detail overview for a tour in this locale (title stays English). */
   tourOverview: (title: string, destName: string) => string;
-  /** 6 destination FAQs, parameterized by island name. */
-  destFaqs: (name: string) => { q: string; a: string }[];
-  /** 6 category FAQs, parameterized by the localized category label. */
-  catFaqs: (label: string) => { q: string; a: string }[];
+  /** 4 destination FAQs (Figma 47361:19834), parameterized by island name. */
+  destFaqs: (name: string) => Faq[];
+  /** 4 category FAQs (Figma 47070:2456), parameterized by localized label. */
+  catFaqs: (label: string) => Faq[];
+  /** 9 hub FAQs (Figma 48024:12076), parameterized by hub name. */
+  hubFaqs: (name: string) => Faq[];
+  /** 6 collection FAQs (Figma 47433:2306), parameterized by destination name. */
+  collFaqs: (destName: string) => Faq[];
 }
 
 export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
@@ -217,54 +230,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t} is een van de best beoordeelde ervaringen op ${d}. Directe bevestiging, gratis annulering en een gescreende lokale aanbieder: boek online en je plek staat vast.`,
     destFaqs: (n) => [
       {
-        q: `Wat is de beste reistijd voor ${n}?`,
-        a: `${n} is het hele jaar door een goede keuze. De droogste, zonnigste maanden lopen van januari tot en met augustus; van september tot december is het water op zijn warmst en is het rustiger.`,
+        q: 'Kan ik annuleren als mijn plannen veranderen?',
+        a: 'De meeste tours zijn tot 24 uur voor vertrek gratis te annuleren, met volledige terugbetaling. Geen formulieren, geen vragen: annuleer direct vanuit je bevestigingsmail.',
       },
       {
-        q: `Moet ik tours op ${n} vooraf boeken?`,
-        a: `Populaire tours zijn in het hoogseizoen snel volgeboekt. Online reserveren is gratis annuleerbaar en direct bevestigd, dus vroeg boeken heeft geen nadelen.`,
+        q: 'Moet ik nu het hele bedrag betalen?',
+        a: "Nee. Bij de meeste tours betaal je vandaag slechts zo'n 20% om je plek vast te leggen; de rest volgt dichter bij je reis. De exacte verdeling zie je op elke tourpagina voordat je boekt.",
       },
       {
-        q: `Kan ik annuleren als mijn plannen veranderen?`,
-        a: `Ja. Elke tour heeft gratis annulering tot het tijdstip dat op de tourpagina staat, zonder vragen.`,
+        q: 'Wie zit er achter Island Tours?',
+        a: `Wij zijn locals. We zijn op deze eilanden opgegroeid, kennen elke aanbieder op ${n} persoonlijk en plaatsen alleen tours waar we onze eigen vrienden en familie naartoe zouden sturen.`,
       },
       {
-        q: `Hoe verplaats ik me op ${n}?`,
-        a: `Een huurauto geeft de meeste vrijheid, maar veel tours bieden hotelovername aan. Taxi's zijn er volop; spreek de prijs vooraf af.`,
-      },
-      {
-        q: `Kan ik overal met dollars of kaart betalen?`,
-        a: `Vrijwel overal worden Amerikaanse dollars en creditcards geaccepteerd. Kleine strandtentjes werken soms alleen met contant geld.`,
-      },
-      {
-        q: `Is ${n} geschikt voor gezinnen met kinderen?`,
-        a: `Zeker. Kalme baaien, familieboten en korte vaartijden maken het eiland heel kindvriendelijk. Filter op 'geschikt voor gezinnen' om de beste opties te zien.`,
+        q: 'Wat gebeurt er als mijn tour wordt geannuleerd?',
+        a: 'Moet een aanbieder annuleren - meestal door weer of veiligheid - dan kies je tussen volledige terugbetaling of gratis omboeken naar het eerstvolgende vertrek. We sturen je meteen bericht zodra er iets verandert.',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `Hoe kies ik de juiste tour binnen ${c.toLowerCase()}?`,
-        a: `Vergelijk op prijs, duur en beoordeling. Elke tourpagina laat precies zien wat er is inbegrepen, zodat je makkelijk de beste match voor je groep vindt.`,
+        q: `Wat is inbegrepen bij een typische tour uit ${c.toLowerCase()}?`,
+        a: "Alles wat je voor de activiteit nodig hebt, een lokale gids of bemanning en de vermelde extra's. Elke tourpagina toont exact wat is inbegrepen.",
       },
       {
-        q: `Moet ik vooraf reserveren?`,
-        a: `In het hoogseizoen wel: populaire vertrektijden zijn snel vol. Boeken is direct bevestigd, dus je hoeft nergens op te wachten.`,
+        q: `Hoe kies ik de juiste optie binnen ${c.toLowerCase()}?`,
+        a: 'Vergelijk op prijs, duur en beoordelingen. Elke tourpagina laat precies zien wat je krijgt, zodat je snel de beste match voor je gezelschap vindt.',
       },
       {
-        q: `Kan ik gratis annuleren?`,
-        a: `Ja, tot het annuleringsvenster dat op de tourpagina staat. Daarna gelden de voorwaarden van de aanbieder.`,
+        q: `Zijn ${c.toLowerCase()} geschikt voor kinderen?`,
+        a: "Veel wel: check de leeftijdsgrenzen op de tourpagina. Tours met het label 'geschikt voor gezinnen' zijn de veiligste keuze voor jonge kinderen.",
       },
       {
-        q: `Wat moet ik meenemen?`,
-        a: `Zonnebrand (rifvriendelijk), een handdoek, zwemkleding en een beetje contant geld voor fooien. Per tour staat aangegeven wat er verder nodig is.`,
+        q: 'Heb ik ervaring of speciale vaardigheden nodig?',
+        a: 'Voor de meeste tours niet. Waar wel eisen gelden (zwemmen, rijbewijs, minimumleeftijd) staan die duidelijk op de tourpagina.',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `Is ${n} de moeite waard?`,
+        a: `Ja. ${n} is het dagtripje dat eilandbewoners als eerste aanraden: ongerept zand, kalm turquoise water en snorkelen direct vanaf het strand. Het is een volle dag, en bijna niemand heeft er spijt van.`,
       },
       {
-        q: `Zijn deze tours geschikt voor kinderen?`,
-        a: `Veel wel: let op de leeftijdsgrenzen op de tourpagina. Tours met het label 'geschikt voor gezinnen' zijn de veiligste keuze.`,
+        q: `Wat is er te doen op ${n}?`,
+        a: 'Zwemmen en snorkelen boven het rif, de kust verkennen en neerstrijken op een rustig stuk strand. Bij de meeste tours zijn lunch en strandfaciliteiten inbegrepen.',
       },
       {
-        q: `Zit vervoer erbij inbegrepen?`,
-        a: `Bij sommige tours is hotelovername inbegrepen of bij te boeken; anders staat het ontmoetingspunt duidelijk op de tourpagina met kaart.`,
+        q: `Wat kost een trip naar ${n}?`,
+        a: 'Dagtochten beginnen doorgaans rond de $100-130 per persoon, inclusief overtocht, snorkelspullen en lunch. Privécharters worden per boot geprijsd; de exacte prijzen staan op elke tourpagina.',
+      },
+      {
+        q: `Hoe lang duurt de boottocht naar ${n}?`,
+        a: 'Reken op circa 45 minuten tot 1,5 uur per enkele reis, afhankelijk van de boot. Tochten vertrekken vroeg om te profiteren van het kalme ochtendwater.',
+      },
+      {
+        q: `Word ik zeeziek onderweg naar ${n}?`,
+        a: 'Het open stuk kan levendig zijn. Ga achterin zitten, houd je blik op de horizon en neem eventueel een uur van tevoren een reistablet; de terugtocht is meestal rustiger.',
+      },
+      {
+        q: `Wat moet ik meenemen naar ${n}?`,
+        a: 'Rifvriendelijke zonnebrand, waterschoenen, een pet en een handdoek. Schaduw is schaars, dus bescherming tegen de zon is belangrijk. Snorkelspullen en lunch zijn bij de meeste tours inbegrepen.',
+      },
+      {
+        q: `Zijn er toiletten op ${n}?`,
+        a: 'Aan boord van elke boot wel, en aanbieders met een strandhuis hebben basisvoorzieningen aan land. Verder is het eiland onbebouwd.',
+      },
+      {
+        q: `Is ${n} geschikt voor gezinnen met jonge kinderen?`,
+        a: 'Ja. Kies een stabiele familieboot of catamaran voor de rustigste overtocht; de zwemplekken zijn ondiep, kalm en ideaal voor kinderen.',
+      },
+      {
+        q: `Wat als het weer slecht is op de dag van mijn trip naar ${n}?`,
+        a: 'Kapiteins houden de omstandigheden dagelijks in de gaten en annuleren of verzetten als de overtocht niet veilig is. Jij kiest dan tussen het eerstvolgende vertrek of volledige terugbetaling.',
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `Wat zijn de leukste dingen om te doen op ${d}?`,
+        a: `De ervaringen in deze lijst zijn de klassiekers van ${d}: een mix van avontuur op het water en verkenning aan land, met de hand gekozen door ons lokale team.`,
+      },
+      {
+        q: 'Hoe ver van tevoren moet ik deze tours boeken?',
+        a: 'In het hoogseizoen raken populaire vertrektijden weken van tevoren vol. Boeken is direct bevestigd en gratis annuleerbaar, dus vroeg vastleggen kent geen risico.',
+      },
+      {
+        q: `Wat is de beste reistijd voor ${d}?`,
+        a: `${d} is het hele jaar door goed te bezoeken. Januari tot en met augustus is het droogst en zonnigst; september tot december is het water warmer en is het rustiger.`,
+      },
+      {
+        q: 'Is hotelovername bij deze tours inbegrepen?',
+        a: 'Sommige tours halen je op bij je hotel of bieden dat als extra aan; bij de andere staat het ontmoetingspunt duidelijk op de tourpagina met kaart en inchecktijd.',
+      },
+      {
+        q: 'Kan ik meerdere tours combineren in één reis?',
+        a: 'Zeker: de meeste tours duren een halve of hele dag, dus twee of drie ervaringen in een week is heel gebruikelijk. Plan een rustdag tussen lange bootdagen.',
+      },
+      {
+        q: 'Hoe bepaalt Island Tours welke tours hier staan?',
+        a: 'Ons lokale team selecteert op ervaring, beoordelingen en eigen indrukken ter plaatse. Een plek in deze lijst is niet te koop: een tour verdient hem.',
       },
     ],
   },
@@ -292,54 +353,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t} zählt zu den bestbewerteten Erlebnissen auf ${d}. Sofortige Bestätigung, kostenlose Stornierung und ein geprüfter lokaler Anbieter - online buchen und der Platz ist sicher.`,
     destFaqs: (n) => [
       {
-        q: `Wann ist die beste Reisezeit für ${n}?`,
-        a: `${n} ist ein Ganzjahresziel. Die trockensten, sonnigsten Monate sind Januar bis August; von September bis Dezember ist das Wasser am wärmsten und die Insel ruhiger.`,
+        q: 'Kann ich stornieren, wenn sich meine Pläne ändern?',
+        a: 'Die meisten Touren lassen sich bis 24 Stunden vor Beginn kostenlos stornieren - mit voller Rückerstattung. Keine Formulare, keine Rückfragen: Stornieren Sie direkt aus Ihrer Bestätigungs-E-Mail.',
       },
       {
-        q: `Sollte ich Touren auf ${n} im Voraus buchen?`,
-        a: `In der Hochsaison sind beliebte Touren schnell ausgebucht. Die Online-Buchung ist sofort bestätigt und kostenlos stornierbar - früh buchen hat also keine Nachteile.`,
+        q: 'Muss ich jetzt den vollen Preis bezahlen?',
+        a: 'Nein. Bei den meisten Touren zahlen Sie heute nur rund 20% an, der Rest folgt näher am Reisetermin. Die genaue Aufteilung sehen Sie vor der Buchung auf jeder Tourseite.',
       },
       {
-        q: `Kann ich stornieren, wenn sich meine Pläne ändern?`,
-        a: `Ja. Jede Tour lässt sich bis zu dem auf der Tourseite angegebenen Zeitpunkt kostenlos stornieren - ohne Rückfragen.`,
+        q: 'Wer steht hinter Island Tours?',
+        a: `Wir sind Einheimische. Wir sind auf diesen Inseln aufgewachsen, kennen jeden Anbieter auf ${n} persönlich und listen nur Touren, auf die wir auch unsere eigenen Freunde und Familie schicken würden.`,
       },
       {
-        q: `Wie komme ich auf ${n} von A nach B?`,
-        a: `Ein Mietwagen bietet die größte Freiheit, viele Touren beinhalten aber einen Hoteltransfer. Taxis sind überall verfügbar - den Preis vorher vereinbaren.`,
-      },
-      {
-        q: `Kann ich mit Dollar oder Karte bezahlen?`,
-        a: `US-Dollar und Kreditkarten werden fast überall akzeptiert. Kleine Strandbars nehmen manchmal nur Bargeld.`,
-      },
-      {
-        q: `Ist ${n} für Familien mit Kindern geeignet?`,
-        a: `Absolut. Ruhige Buchten, Familienboote und kurze Überfahrten machen die Insel sehr kinderfreundlich. Filtern Sie nach 'familienfreundlich' für die besten Optionen.`,
+        q: 'Was passiert, wenn meine Tour abgesagt wird?',
+        a: 'Muss ein Anbieter absagen - meist wegen Wetter oder Sicherheit - wählen Sie zwischen voller Rückerstattung und kostenloser Umbuchung auf die nächste verfügbare Abfahrt. Wir informieren Sie sofort, sobald sich etwas ändert.',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `Wie finde ich die richtige Tour in der Kategorie ${c}?`,
-        a: `Vergleichen Sie Preis, Dauer und Bewertungen. Jede Tourseite zeigt genau, was enthalten ist - so finden Sie schnell die beste Wahl für Ihre Gruppe.`,
+        q: `Was ist bei einer typischen Tour aus der Kategorie ${c} enthalten?`,
+        a: 'Alles, was Sie für die Aktivität brauchen, ein lokaler Guide oder eine Crew sowie die angegebenen Extras. Jede Tourseite listet die genauen Leistungen auf.',
       },
       {
-        q: `Muss ich im Voraus reservieren?`,
-        a: `In der Hochsaison ja: Beliebte Abfahrten sind schnell voll. Die Buchung wird sofort bestätigt, es gibt keine Wartezeit.`,
+        q: `Wie wähle ich die richtige Option in der Kategorie ${c}?`,
+        a: 'Vergleichen Sie Preis, Dauer und Bewertungen. Jede Tourseite zeigt genau, was enthalten ist - so finden Sie schnell die beste Wahl für Ihre Gruppe.',
       },
       {
-        q: `Kann ich kostenlos stornieren?`,
-        a: `Ja, bis zu dem auf der Tourseite angegebenen Storno-Fenster. Danach gelten die Bedingungen des Anbieters.`,
+        q: `Sind ${c} für Kinder geeignet?`,
+        a: "Viele ja - prüfen Sie die Altersangaben auf der Tourseite. Touren mit dem Label 'familienfreundlich' sind für kleine Kinder die sicherste Wahl.",
       },
       {
-        q: `Was sollte ich mitbringen?`,
-        a: `Riff-freundliche Sonnencreme, ein Handtuch, Badesachen und etwas Bargeld für Trinkgeld. Alles Weitere steht auf der jeweiligen Tourseite.`,
+        q: 'Brauche ich Erfahrung oder besondere Fähigkeiten?',
+        a: 'Für die meisten Touren nicht. Wo Anforderungen gelten (Schwimmen, Führerschein, Mindestalter), stehen sie klar auf der Tourseite.',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `Lohnt sich ${n}?`,
+        a: `Ja. ${n} ist der Tagesausflug, den Einheimische zuerst empfehlen: unberührter Sand, ruhiges türkisfarbenes Wasser und Schnorcheln direkt vom Strand. Es ist ein voller Tag - und kaum jemand bereut ihn.`,
       },
       {
-        q: `Sind die Touren für Kinder geeignet?`,
-        a: `Viele ja - achten Sie auf die Altersangaben auf der Tourseite. Touren mit dem Label 'familienfreundlich' sind die sicherste Wahl.`,
+        q: `Was kann man auf ${n} unternehmen?`,
+        a: 'Schwimmen und über dem Riff schnorcheln, die Küste erkunden und sich ein ruhiges Stück Strand sichern. Bei den meisten Touren sind Mittagessen und Strandausstattung inklusive.',
       },
       {
-        q: `Ist der Transfer inbegriffen?`,
-        a: `Bei manchen Touren ist der Hoteltransfer enthalten oder zubuchbar; ansonsten ist der Treffpunkt mit Karte klar auf der Tourseite angegeben.`,
+        q: `Was kostet ein Ausflug nach ${n}?`,
+        a: 'Ganztagestouren starten meist bei etwa 100-130 $ pro Person - inklusive Überfahrt, Ausrüstung und Mittagessen. Private Charter werden pro Boot berechnet; die genauen Preise stehen auf jeder Tourseite.',
+      },
+      {
+        q: `Wie lange dauert die Bootsfahrt nach ${n}?`,
+        a: 'Je nach Boot etwa 45 Minuten bis 1,5 Stunden pro Strecke. Die Touren starten früh, um das ruhige Morgenwasser zu nutzen.',
+      },
+      {
+        q: `Werde ich auf der Fahrt nach ${n} seekrank?`,
+        a: 'Der offene Abschnitt kann bewegt sein. Setzen Sie sich nach hinten, halten Sie den Blick auf den Horizont und nehmen Sie bei Anfälligkeit eine Stunde vorher eine Reisetablette - die Rückfahrt ist meist ruhiger.',
+      },
+      {
+        q: `Was sollte ich nach ${n} mitnehmen?`,
+        a: 'Riff-freundliche Sonnencreme, Wasserschuhe, eine Kappe und ein Handtuch. Schatten ist knapp, Sonnenschutz daher wichtig. Schnorchelausrüstung und Mittagessen sind meist inklusive.',
+      },
+      {
+        q: `Gibt es Toiletten auf ${n}?`,
+        a: 'An Bord jedes Bootes ja - und Anbieter mit Strandhaus haben einfache Einrichtungen an Land. Darüber hinaus ist die Insel unbebaut.',
+      },
+      {
+        q: `Ist ${n} für Familien mit kleinen Kindern geeignet?`,
+        a: 'Ja - wählen Sie ein ruhigeres Familienboot oder einen Katamaran für die sanfteste Überfahrt. Die Badebereiche sind flach, ruhig und kinderfreundlich.',
+      },
+      {
+        q: `Was passiert bei schlechtem Wetter an meinem ${n}-Ausflugstag?`,
+        a: 'Die Kapitäne beobachten die Bedingungen täglich und sagen ab oder verschieben, wenn die Überfahrt nicht sicher ist. Sie wählen dann zwischen der nächsten Abfahrt und voller Rückerstattung.',
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `Was sind die besten Aktivitäten auf ${d}?`,
+        a: `Die Erlebnisse in dieser Liste sind die Klassiker von ${d}: eine Mischung aus Abenteuern auf dem Wasser und Erkundungen an Land, handverlesen von unserem lokalen Team.`,
+      },
+      {
+        q: 'Wie weit im Voraus sollte ich diese Touren buchen?',
+        a: 'In der Hochsaison sind beliebte Abfahrten Wochen vorher ausgebucht. Die Buchung wird sofort bestätigt und ist kostenlos stornierbar - früh buchen hat also keine Nachteile.',
+      },
+      {
+        q: `Wann ist die beste Reisezeit für ${d}?`,
+        a: `${d} ist ganzjährig ein gutes Ziel. Januar bis August ist am trockensten und sonnigsten; von September bis Dezember ist das Wasser wärmer und die Insel ruhiger.`,
+      },
+      {
+        q: 'Ist bei diesen Touren der Hoteltransfer inbegriffen?',
+        a: 'Manche Touren holen Sie am Hotel ab oder bieten das als Extra an; bei den übrigen ist der Treffpunkt mit Karte und Check-in-Zeit klar auf der Tourseite angegeben.',
+      },
+      {
+        q: 'Kann ich mehrere Touren in einer Reise kombinieren?',
+        a: 'Auf jeden Fall - die meisten Touren dauern einen halben oder ganzen Tag, zwei bis drei Erlebnisse pro Woche sind üblich. Planen Sie zwischen langen Bootstagen einen Ruhetag ein.',
+      },
+      {
+        q: 'Wie entscheidet Island Tours, welche Touren hier erscheinen?',
+        a: 'Unser lokales Team wählt nach Erfahrung, Bewertungen und eigenen Eindrücken vor Ort aus. Ein Platz auf dieser Liste ist nicht käuflich - eine Tour muss ihn sich verdienen.',
       },
     ],
   },
@@ -367,54 +476,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t} fait partie des expériences les mieux notées à ${d}. Confirmation immédiate, annulation gratuite et opérateur local vérifié : réservez en ligne, votre place est garantie.`,
     destFaqs: (n) => [
       {
-        q: `Quelle est la meilleure période pour visiter ${n} ?`,
-        a: `${n} se visite toute l'année. Les mois les plus secs et ensoleillés vont de janvier à août ; de septembre à décembre, l'eau est plus chaude et l'île plus calme.`,
+        q: 'Puis-je annuler si mes plans changent ?',
+        a: "La plupart des excursions sont annulables jusqu'à 24 h avant le départ, avec remboursement intégral. Pas de formulaire, pas de questions : annulez directement depuis votre e-mail de confirmation.",
       },
       {
-        q: `Faut-il réserver les excursions à ${n} à l'avance ?`,
-        a: `En haute saison, les excursions populaires affichent vite complet. La réservation en ligne est confirmée immédiatement et annulable gratuitement : réserver tôt ne présente aucun risque.`,
+        q: 'Dois-je payer la totalité maintenant ?',
+        a: "Non. Sur la plupart des excursions, vous ne versez qu'environ 20 % aujourd'hui pour bloquer votre place, et le reste plus près du départ. La répartition exacte est affichée sur chaque page avant de réserver.",
       },
       {
-        q: `Puis-je annuler si mes plans changent ?`,
-        a: `Oui. Chaque excursion est annulable gratuitement jusqu'au délai indiqué sur sa page, sans justification.`,
+        q: 'Qui se cache derrière Island Tours ?',
+        a: `Nous sommes des locaux. Nous avons grandi sur ces îles, nous connaissons personnellement chaque opérateur de ${n} et nous ne listons que des excursions où nous enverrions nos propres amis et notre famille.`,
       },
       {
-        q: `Comment se déplacer à ${n} ?`,
-        a: `La voiture de location offre le plus de liberté, mais beaucoup d'excursions proposent la prise en charge à l'hôtel. Les taxis sont nombreux : convenez du prix avant de partir.`,
-      },
-      {
-        q: `Peut-on payer en dollars ou par carte ?`,
-        a: `Les dollars américains et les cartes bancaires sont acceptés presque partout. Les petites paillotes de plage ne prennent parfois que les espèces.`,
-      },
-      {
-        q: `${n} convient-elle aux familles avec enfants ?`,
-        a: `Tout à fait. Baies calmes, bateaux familiaux et traversées courtes en font une île très adaptée aux enfants. Filtrez sur « adapté aux familles » pour voir les meilleures options.`,
+        q: 'Que se passe-t-il si mon excursion est annulée ?',
+        a: 'Si un opérateur doit annuler - le plus souvent pour la météo ou la sécurité - vous choisissez entre un remboursement intégral et une nouvelle réservation gratuite sur le prochain départ. Nous vous prévenons dès que quelque chose change.',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `Comment choisir la bonne excursion en ${c.toLowerCase()} ?`,
-        a: `Comparez le prix, la durée et les avis. Chaque page d'excursion détaille précisément ce qui est inclus, pour trouver facilement la meilleure option pour votre groupe.`,
+        q: `Que comprend une excursion type en ${c.toLowerCase()} ?`,
+        a: "Tout le nécessaire pour l'activité, un guide ou un équipage local et les extras indiqués. Chaque page d'excursion détaille précisément ce qui est inclus.",
       },
       {
-        q: `Faut-il réserver à l'avance ?`,
-        a: `En haute saison, oui : les départs populaires se remplissent vite. La réservation est confirmée immédiatement, sans attente.`,
+        q: `Comment choisir la bonne option en ${c.toLowerCase()} ?`,
+        a: 'Comparez le prix, la durée et les avis. Chaque page montre exactement ce qui est compris, pour trouver rapidement la meilleure option pour votre groupe.',
       },
       {
-        q: `L'annulation est-elle gratuite ?`,
-        a: `Oui, jusqu'au délai d'annulation indiqué sur la page de l'excursion. Au-delà, les conditions de l'opérateur s'appliquent.`,
+        q: `Les ${c.toLowerCase()} conviennent-elles aux enfants ?`,
+        a: "Beaucoup, oui : vérifiez les limites d'âge sur la page de l'excursion. Le label « adapté aux familles » est la valeur la plus sûre pour les plus jeunes.",
       },
       {
-        q: `Que faut-il apporter ?`,
-        a: `De la crème solaire sans danger pour les récifs, une serviette, un maillot et un peu d'espèces pour les pourboires. Le reste est précisé sur chaque page.`,
+        q: "Faut-il de l'expérience ou des compétences particulières ?",
+        a: 'Pour la plupart des excursions, non. Les exigences éventuelles (natation, permis, âge minimum) sont clairement indiquées sur la page.',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `${n}, ça vaut le coup ?`,
+        a: `Oui. ${n} est l'excursion que les habitants recommandent en premier : sable intact, eau turquoise calme et snorkeling directement depuis la plage. C'est une journée complète, et presque personne ne la regrette.`,
       },
       {
-        q: `Ces excursions conviennent-elles aux enfants ?`,
-        a: `Beaucoup, oui : vérifiez les limites d'âge sur la page de l'excursion. Le label « adapté aux familles » est la valeur la plus sûre.`,
+        q: `Que faire sur ${n} ?`,
+        a: "Nager, faire du snorkeling au-dessus du récif, longer la côte et s'installer sur un coin de plage tranquille. La plupart des excursions incluent le déjeuner et les équipements de plage.",
       },
       {
-        q: `Le transport est-il inclus ?`,
-        a: `Certaines excursions incluent (ou proposent en option) la prise en charge à l'hôtel ; sinon, le point de rendez-vous est clairement indiqué avec une carte.`,
+        q: `Combien coûte une excursion à ${n} ?`,
+        a: 'Les journées complètes démarrent autour de 100-130 $ par personne, traversée, équipement et déjeuner compris. Les charters privés sont facturés au bateau ; les prix exacts figurent sur chaque page.',
+      },
+      {
+        q: `Combien de temps dure la traversée vers ${n} ?`,
+        a: "Comptez entre 45 minutes et 1 h 30 par trajet selon le bateau. Les départs sont matinaux pour profiter d'une mer calme.",
+      },
+      {
+        q: `Vais-je avoir le mal de mer en allant à ${n} ?`,
+        a: "La partie en pleine mer peut être remuante. Installez-vous à l'arrière, gardez les yeux sur l'horizon et prenez un comprimé une heure avant si vous y êtes sujet - le retour est en général plus doux.",
+      },
+      {
+        q: `Que faut-il apporter à ${n} ?`,
+        a: "De la crème solaire sans danger pour les récifs, des chaussures d'eau, une casquette et une serviette. L'ombre est rare, la protection solaire compte. Équipement de snorkeling et déjeuner sont inclus sur la plupart des excursions.",
+      },
+      {
+        q: `Y a-t-il des toilettes sur ${n} ?`,
+        a: "Oui, à bord de chaque bateau - et les opérateurs disposant d'une installation de plage ont des sanitaires basiques à terre. Au-delà, l'île est vierge.",
+      },
+      {
+        q: `${n} convient-elle aux familles avec de jeunes enfants ?`,
+        a: 'Oui - choisissez un bateau familial ou un catamaran, plus stables, pour la traversée la plus douce. Les zones de baignade sont peu profondes et calmes.',
+      },
+      {
+        q: `Que se passe-t-il en cas de mauvais temps le jour de mon excursion à ${n} ?`,
+        a: "Les capitaines surveillent les conditions chaque jour et annulent ou reportent si la traversée n'est pas sûre. Vous choisissez alors entre le prochain départ disponible et un remboursement intégral.",
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `Quelles sont les meilleures choses à faire à ${d} ?`,
+        a: `Les expériences de cette liste sont les grands classiques de ${d} : un mélange d'aventures en mer et d'explorations à terre, sélectionnées à la main par notre équipe locale.`,
+      },
+      {
+        q: "Combien de temps à l'avance réserver ces excursions ?",
+        a: "En haute saison, les départs populaires affichent complet des semaines à l'avance. La réservation est confirmée immédiatement et annulable gratuitement : réserver tôt ne présente aucun risque.",
+      },
+      {
+        q: `Quelle est la meilleure période pour visiter ${d} ?`,
+        a: `${d} se visite toute l'année. De janvier à août, c'est la période la plus sèche et ensoleillée ; de septembre à décembre, l'eau est plus chaude et l'île plus calme.`,
+      },
+      {
+        q: "Ces excursions incluent-elles la prise en charge à l'hôtel ?",
+        a: "Certaines l'incluent ou la proposent en option ; pour les autres, le point de rendez-vous est clairement indiqué sur la page avec une carte et l'heure d'enregistrement.",
+      },
+      {
+        q: 'Puis-je combiner plusieurs excursions dans un même voyage ?',
+        a: 'Bien sûr : la plupart durent une demi-journée ou une journée, donc deux ou trois expériences par semaine sont tout à fait courantes. Prévoyez une journée de repos entre deux longues sorties en mer.',
+      },
+      {
+        q: 'Comment Island Tours choisit-il les excursions mises en avant ?',
+        a: "Notre équipe locale sélectionne selon l'expérience, les avis et ses propres impressions sur place. Une place dans cette liste ne s'achète pas : elle se mérite.",
       },
     ],
   },
@@ -442,54 +599,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t} está entre las experiencias mejor valoradas de ${d}. Confirmación inmediata, cancelación gratuita y un operador local verificado: reserva online y tu plaza queda garantizada.`,
     destFaqs: (n) => [
       {
-        q: `¿Cuál es la mejor época para visitar ${n}?`,
-        a: `${n} es un destino para todo el año. Los meses más secos y soleados van de enero a agosto; de septiembre a diciembre el agua está más cálida y hay menos gente.`,
+        q: '¿Puedo cancelar si cambian mis planes?',
+        a: 'La mayoría de los tours se pueden cancelar hasta 24 h antes del inicio con reembolso completo. Sin formularios ni preguntas: cancela directamente desde tu correo de confirmación.',
       },
       {
-        q: `¿Conviene reservar los tours en ${n} con antelación?`,
-        a: `En temporada alta los tours populares se agotan rápido. Reservar online tiene confirmación inmediata y cancelación gratuita, así que adelantarse no tiene riesgo.`,
+        q: '¿Tengo que pagar todo ahora?',
+        a: 'No. En la mayoría de los tours hoy pagas solo un 20% para asegurar tu plaza y el resto más cerca del viaje. El desglose exacto aparece en cada página antes de reservar.',
       },
       {
-        q: `¿Puedo cancelar si cambian mis planes?`,
-        a: `Sí. Todos los tours tienen cancelación gratuita hasta el plazo indicado en su página, sin preguntas.`,
+        q: '¿Quién está detrás de Island Tours?',
+        a: `Somos locales. Crecimos en estas islas, conocemos personalmente a cada operador de ${n} y solo publicamos tours a los que mandaríamos a nuestros propios amigos y familia.`,
       },
       {
-        q: `¿Cómo me muevo por ${n}?`,
-        a: `Un coche de alquiler da la mayor libertad, pero muchos tours incluyen recogida en el hotel. Hay taxis por todas partes: acuerda el precio antes de subir.`,
-      },
-      {
-        q: `¿Se puede pagar con dólares o tarjeta?`,
-        a: `Los dólares estadounidenses y las tarjetas se aceptan casi en todas partes. Algunos chiringuitos pequeños solo aceptan efectivo.`,
-      },
-      {
-        q: `¿Es ${n} adecuada para familias con niños?`,
-        a: `Sin duda. Bahías tranquilas, barcos familiares y travesías cortas la hacen muy apta para niños. Filtra por 'apto para familias' para ver las mejores opciones.`,
+        q: '¿Qué pasa si cancelan mi tour?',
+        a: 'Si un operador tiene que cancelar - normalmente por clima o seguridad - eliges entre reembolso completo o cambio gratuito a la siguiente salida disponible. Te avisamos en cuanto algo cambia.',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `¿Cómo elijo el tour adecuado de ${c.toLowerCase()}?`,
-        a: `Compara precio, duración y valoraciones. Cada página del tour detalla exactamente qué incluye, así encuentras fácil la mejor opción para tu grupo.`,
+        q: `¿Qué incluye un tour típico de ${c.toLowerCase()}?`,
+        a: 'Todo lo necesario para la actividad, un guía o tripulación local y los extras indicados. Cada página del tour detalla exactamente qué incluye.',
       },
       {
-        q: `¿Hace falta reservar con antelación?`,
-        a: `En temporada alta sí: las salidas populares se llenan rápido. La reserva se confirma al instante, sin esperas.`,
+        q: `¿Cómo elijo la opción adecuada de ${c.toLowerCase()}?`,
+        a: 'Compara precio, duración y valoraciones. Cada página muestra exactamente qué está incluido, así encuentras rápido la mejor opción para tu grupo.',
       },
       {
-        q: `¿La cancelación es gratuita?`,
-        a: `Sí, hasta el plazo de cancelación indicado en la página del tour. Después aplican las condiciones del operador.`,
+        q: `¿Los ${c.toLowerCase()} son aptos para niños?`,
+        a: "Muchos sí: revisa los límites de edad en la página del tour. Los tours con la etiqueta 'apto para familias' son la opción más segura para los pequeños.",
       },
       {
-        q: `¿Qué debo llevar?`,
-        a: `Protector solar respetuoso con el arrecife, toalla, bañador y algo de efectivo para propinas. Lo demás se indica en cada tour.`,
+        q: '¿Necesito experiencia o habilidades especiales?',
+        a: 'Para la mayoría de los tours, no. Cuando hay requisitos (nadar, licencia, edad mínima) aparecen claros en la página del tour.',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `¿Merece la pena ${n}?`,
+        a: `Sí. ${n} es la excursión que los isleños recomiendan primero: arena intacta, aguas turquesas tranquilas y esnórquel directamente desde la playa. Es un día completo, y casi nadie se arrepiente.`,
       },
       {
-        q: `¿Son aptos para niños?`,
-        a: `Muchos sí: revisa los límites de edad en la página del tour. Los tours con la etiqueta 'apto para familias' son la opción más segura.`,
+        q: `¿Qué se puede hacer en ${n}?`,
+        a: 'Nadar y hacer esnórquel sobre el arrecife, recorrer la costa e instalarte en un tramo tranquilo de playa. La mayoría de los tours incluyen almuerzo e instalaciones de playa.',
       },
       {
-        q: `¿Incluyen transporte?`,
-        a: `Algunos tours incluyen recogida en el hotel o la ofrecen como extra; si no, el punto de encuentro aparece claro en la página con un mapa.`,
+        q: `¿Cuánto cuesta una excursión a ${n}?`,
+        a: 'Los días completos parten de unos 100-130 $ por persona, con travesía, equipo y almuerzo incluidos. Los chárteres privados se cobran por barco; los precios exactos están en cada página.',
+      },
+      {
+        q: `¿Cuánto dura el trayecto en barco a ${n}?`,
+        a: 'Entre 45 minutos y 1,5 horas por trayecto según el barco. Las salidas son temprano para aprovechar el mar en calma de la mañana.',
+      },
+      {
+        q: `¿Me marearé de camino a ${n}?`,
+        a: 'El tramo de mar abierto puede moverse. Siéntate atrás, mantén la vista en el horizonte y toma una pastilla una hora antes si eres propenso: la vuelta suele ser más suave.',
+      },
+      {
+        q: `¿Qué debo llevar a ${n}?`,
+        a: 'Protector solar respetuoso con el arrecife, escarpines, gorra y toalla. La sombra escasea, así que la protección solar importa. El equipo de esnórquel y el almuerzo van incluidos en la mayoría de los tours.',
+      },
+      {
+        q: `¿Hay baños en ${n}?`,
+        a: 'Sí, a bordo de todos los barcos, y los operadores con casa de playa tienen instalaciones básicas en tierra. Más allá de eso, la isla está sin urbanizar.',
+      },
+      {
+        q: `¿Es ${n} adecuada para familias con niños pequeños?`,
+        a: 'Sí: elige un barco familiar o un catamarán, más estables, para la travesía más suave. Las zonas de baño son poco profundas y tranquilas.',
+      },
+      {
+        q: `¿Qué pasa si hace mal tiempo el día de mi excursión a ${n}?`,
+        a: 'Los capitanes vigilan las condiciones a diario y cancelan o reprograman si la travesía no es segura. Entonces eliges entre la siguiente salida disponible o el reembolso completo.',
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `¿Cuáles son las mejores cosas que hacer en ${d}?`,
+        a: `Las experiencias de esta lista son los clásicos de ${d}: una mezcla de aventuras en el mar y exploración en tierra, elegidas a mano por nuestro equipo local.`,
+      },
+      {
+        q: '¿Con cuánta antelación debo reservar estos tours?',
+        a: 'En temporada alta las salidas populares se agotan con semanas de antelación. La reserva se confirma al instante y se cancela gratis, así que adelantarse no tiene riesgo.',
+      },
+      {
+        q: `¿Cuándo es la mejor época para visitar ${d}?`,
+        a: `${d} se puede visitar todo el año. De enero a agosto es la época más seca y soleada; de septiembre a diciembre el agua está más cálida y hay menos gente.`,
+      },
+      {
+        q: '¿Estos tours incluyen recogida en el hotel?',
+        a: 'Algunos la incluyen o la ofrecen como extra; en los demás, el punto de encuentro aparece claro en la página con mapa y hora de presentación.',
+      },
+      {
+        q: '¿Puedo combinar varios tours en un mismo viaje?',
+        a: 'Claro: la mayoría duran medio día o un día completo, así que dos o tres experiencias por semana es lo habitual. Deja un día de descanso entre jornadas largas de barco.',
+      },
+      {
+        q: '¿Cómo decide Island Tours qué tours destacar?',
+        a: 'Nuestro equipo local selecciona por experiencia, valoraciones y sus propias impresiones sobre el terreno. Un puesto en esta lista no se compra: se gana.',
       },
     ],
   },
@@ -517,54 +722,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t} está entre as experiências mais bem avaliadas de ${d}. Confirmação imediata, cancelamento grátis e um operador local verificado: reserve online e sua vaga está garantida.`,
     destFaqs: (n) => [
       {
-        q: `Qual é a melhor época para visitar ${n}?`,
-        a: `${n} é um destino para o ano inteiro. Os meses mais secos e ensolarados vão de janeiro a agosto; de setembro a dezembro a água está mais quente e a ilha mais tranquila.`,
+        q: 'Posso cancelar se meus planos mudarem?',
+        a: 'A maioria dos passeios pode ser cancelada até 24 h antes do início, com reembolso total. Sem formulários, sem perguntas: cancele direto do seu e-mail de confirmação.',
       },
       {
-        q: `Preciso reservar os passeios em ${n} com antecedência?`,
-        a: `Na alta temporada os passeios populares esgotam rápido. A reserva online tem confirmação imediata e cancelamento grátis, então antecipar não tem risco.`,
+        q: 'Preciso pagar tudo agora?',
+        a: 'Não. Na maioria dos passeios você paga hoje apenas cerca de 20% para garantir a vaga e o restante mais perto da viagem. A divisão exata aparece em cada página antes de reservar.',
       },
       {
-        q: `Posso cancelar se meus planos mudarem?`,
-        a: `Sim. Todo passeio tem cancelamento grátis até o prazo indicado na página, sem perguntas.`,
+        q: 'Quem está por trás do Island Tours?',
+        a: `Somos moradores locais. Crescemos nestas ilhas, conhecemos pessoalmente cada operador de ${n} e só listamos passeios para os quais mandaríamos nossos próprios amigos e família.`,
       },
       {
-        q: `Como me desloco em ${n}?`,
-        a: `Um carro alugado dá mais liberdade, mas muitos passeios incluem busca no hotel. Táxis são fáceis de achar: combine o preço antes de embarcar.`,
-      },
-      {
-        q: `Dá para pagar em dólar ou cartão?`,
-        a: `Dólares americanos e cartões são aceitos em quase todo lugar. Barraquinhas de praia menores às vezes só aceitam dinheiro.`,
-      },
-      {
-        q: `${n} é boa para famílias com crianças?`,
-        a: `Com certeza. Baías calmas, barcos familiares e travessias curtas tornam a ilha muito amigável para crianças. Filtre por 'ideal para famílias' para ver as melhores opções.`,
+        q: 'E se o meu passeio for cancelado?',
+        a: 'Se um operador precisar cancelar - normalmente por clima ou segurança - você escolhe entre reembolso total ou remarcação gratuita para a próxima saída disponível. Avisamos assim que algo mudar.',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `Como escolho o passeio certo de ${c.toLowerCase()}?`,
-        a: `Compare preço, duração e avaliações. Cada página de passeio mostra exatamente o que está incluído, facilitando achar a melhor opção para o seu grupo.`,
+        q: `O que está incluído em um passeio típico de ${c.toLowerCase()}?`,
+        a: 'Tudo o que você precisa para a atividade, um guia ou tripulação local e os extras indicados. Cada página de passeio detalha exatamente o que está incluído.',
       },
       {
-        q: `Preciso reservar com antecedência?`,
-        a: `Na alta temporada sim: as saídas populares lotam rápido. A reserva é confirmada na hora, sem espera.`,
+        q: `Como escolho a opção certa de ${c.toLowerCase()}?`,
+        a: 'Compare preço, duração e avaliações. Cada página mostra exatamente o que está incluído, facilitando achar a melhor opção para o seu grupo.',
       },
       {
-        q: `O cancelamento é grátis?`,
-        a: `Sim, até o prazo de cancelamento indicado na página do passeio. Depois disso valem as condições do operador.`,
+        q: `Os ${c.toLowerCase()} são adequados para crianças?`,
+        a: "Muitos sim: confira os limites de idade na página do passeio. Os passeios com selo 'ideal para famílias' são a escolha mais segura para os pequenos.",
       },
       {
-        q: `O que devo levar?`,
-        a: `Protetor solar que não agrida os recifes, toalha, roupa de banho e um pouco de dinheiro para gorjetas. O restante está indicado em cada passeio.`,
+        q: 'Preciso de experiência ou habilidades especiais?',
+        a: 'Para a maioria dos passeios, não. Quando há requisitos (nadar, habilitação, idade mínima), eles aparecem claramente na página.',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `${n} vale a pena?`,
+        a: `Sim. ${n} é o passeio que os moradores recomendam primeiro: areia intocada, águas calmas azul-turquesa e snorkel direto da praia. É um dia inteiro - e quase ninguém se arrepende.`,
       },
       {
-        q: `Os passeios são bons para crianças?`,
-        a: `Muitos sim: confira os limites de idade na página do passeio. Os passeios com selo 'ideal para famílias' são a escolha mais segura.`,
+        q: `O que fazer em ${n}?`,
+        a: 'Nadar e fazer snorkel sobre o recife, caminhar pela costa e se acomodar num trecho tranquilo de praia. A maioria dos passeios inclui almoço e estrutura de praia.',
       },
       {
-        q: `O transporte está incluído?`,
-        a: `Alguns passeios incluem busca no hotel ou oferecem como extra; nos demais, o ponto de encontro aparece claramente na página com mapa.`,
+        q: `Quanto custa um passeio a ${n}?`,
+        a: 'Os passeios de dia inteiro partem de cerca de US$ 100-130 por pessoa, incluindo travessia, equipamento e almoço. Charters privados são cobrados por barco; os preços exatos estão em cada página.',
+      },
+      {
+        q: `Quanto tempo dura a travessia de barco até ${n}?`,
+        a: 'Entre 45 minutos e 1,5 hora por trecho, dependendo do barco. As saídas são cedo para aproveitar o mar calmo da manhã.',
+      },
+      {
+        q: `Vou enjoar no caminho para ${n}?`,
+        a: 'O trecho de mar aberto pode balançar. Sente-se atrás, mantenha o olhar no horizonte e tome um comprimido uma hora antes se for propenso - a volta costuma ser mais tranquila.',
+      },
+      {
+        q: `O que devo levar para ${n}?`,
+        a: 'Protetor solar que não agrida os recifes, sapatilhas aquáticas, boné e toalha. Sombra é rara, então proteção solar importa. Equipamento de snorkel e almoço estão incluídos na maioria dos passeios.',
+      },
+      {
+        q: `Há banheiros em ${n}?`,
+        a: 'Sim, a bordo de todos os barcos - e os operadores com casa de praia têm instalações básicas em terra. Fora isso, a ilha é intocada.',
+      },
+      {
+        q: `${n} é adequada para famílias com crianças pequenas?`,
+        a: 'Sim - escolha um barco familiar ou catamarã, mais estáveis, para a travessia mais suave. As áreas de banho são rasas e calmas.',
+      },
+      {
+        q: `O que acontece se o tempo estiver ruim no dia do meu passeio a ${n}?`,
+        a: 'Os capitães monitoram as condições diariamente e cancelam ou remarcam se a travessia não for segura. Você então escolhe entre a próxima saída disponível ou o reembolso total.',
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `Quais são as melhores coisas para fazer em ${d}?`,
+        a: `As experiências desta lista são os clássicos de ${d}: uma mistura de aventuras no mar e exploração em terra, escolhidas a dedo pela nossa equipe local.`,
+      },
+      {
+        q: 'Com quanta antecedência devo reservar estes passeios?',
+        a: 'Na alta temporada, as saídas populares esgotam com semanas de antecedência. A reserva é confirmada na hora e cancelável de graça: antecipar não tem risco.',
+      },
+      {
+        q: `Qual é a melhor época para visitar ${d}?`,
+        a: `${d} recebe bem o ano todo. De janeiro a agosto é a época mais seca e ensolarada; de setembro a dezembro a água está mais quente e a ilha mais tranquila.`,
+      },
+      {
+        q: 'Estes passeios incluem busca no hotel?',
+        a: 'Alguns incluem ou oferecem como extra; nos demais, o ponto de encontro aparece claro na página com mapa e horário de check-in.',
+      },
+      {
+        q: 'Posso combinar vários passeios na mesma viagem?',
+        a: 'Claro: a maioria dura meio dia ou um dia inteiro, então duas ou três experiências por semana é o normal. Deixe um dia de descanso entre dias longos de barco.',
+      },
+      {
+        q: 'Como o Island Tours escolhe quais passeios destacar?',
+        a: 'Nossa equipe local seleciona por experiência, avaliações e impressões próprias no local. Um lugar nesta lista não se compra: se conquista.',
       },
     ],
   },
@@ -592,54 +845,102 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `${t}是${d}评分最高的体验之一。即时确认、免费取消、本地运营商经过审核：在线预订即可锁定名额。`,
     destFaqs: (n) => [
       {
-        q: `什么时候去${n}最合适？`,
-        a: `${n}全年都适合游览。1 月至 8 月最干燥、阳光最充足；9 月至 12 月海水更温暖，游客也更少。`,
+        q: '行程有变可以取消吗？',
+        a: '大多数行程可在出发前 24 小时内免费取消并全额退款。无需填表、无需说明理由，直接从确认邮件里取消即可。',
       },
       {
-        q: `${n}的行程需要提前预订吗？`,
-        a: `旺季热门行程很快售罄。在线预订即时确认且可免费取消，提前锁定没有任何风险。`,
+        q: '现在需要付全款吗？',
+        a: '不需要。大多数行程今天只需支付约 20% 的定金即可锁定名额，余款临近出行再付。具体比例在预订前的行程页面上写得很清楚。',
       },
       {
-        q: `行程有变可以取消吗？`,
-        a: `可以。每个行程都支持在页面标明的时限前免费取消，无需说明理由。`,
+        q: 'Island Tours 是什么团队？',
+        a: `我们是本地人，在这些海岛上长大，认识${n}的每一家运营商，只上架我们愿意推荐给自己亲友的行程。`,
       },
       {
-        q: `在${n}如何出行？`,
-        a: `租车最自由，许多行程也提供酒店接送。出租车随处可见，上车前请先谈好价格。`,
-      },
-      {
-        q: `可以用美元或银行卡付款吗？`,
-        a: `美元和银行卡几乎在所有地方都可使用，部分小型海滩餐吧只收现金。`,
-      },
-      {
-        q: `${n}适合带孩子的家庭吗？`,
-        a: `非常适合。平静的海湾、家庭友好的船只和较短的航程都很适合儿童。可筛选"适合家庭"标签查看最佳选择。`,
+        q: '如果行程被取消怎么办？',
+        a: '若运营商因天气或安全原因取消，您可以选择全额退款或免费改期到下一个可用班次。一旦有变动我们会第一时间通知您。',
       },
     ],
     catFaqs: (c) => [
       {
-        q: `如何挑选合适的${c}？`,
-        a: `对比价格、时长和评分。每个行程页面都清楚列出包含内容，方便您为同行伙伴找到最佳选择。`,
+        q: `一次典型的${c}都包含什么？`,
+        a: '活动所需的全部装备、本地向导或船员，以及页面列明的附加项目。每个行程页面都会写清具体包含内容。',
       },
       {
-        q: `需要提前预订吗？`,
-        a: `旺季需要：热门出发时段很快订满。预订即时确认，无需等待。`,
+        q: `如何在${c}中挑选合适的行程？`,
+        a: '对比价格、时长和评分。每个行程页面都清楚列出包含内容，很快就能为同行伙伴找到最合适的选择。',
       },
       {
-        q: `可以免费取消吗？`,
-        a: `可以，在行程页面标明的取消时限内免费取消，之后按运营商条款处理。`,
+        q: `${c}适合儿童参加吗？`,
+        a: '许多都适合：请查看行程页面的年龄限制。带有"适合家庭"标签的行程对幼儿来说最稳妥。',
       },
       {
-        q: `需要带什么？`,
-        a: `珊瑚友好型防晒霜、毛巾、泳衣，以及少量现金用于小费。其余物品在各行程页面均有说明。`,
+        q: '需要经验或特殊技能吗？',
+        a: '大多数行程不需要。如有要求（游泳、驾照、最低年龄），都会在行程页面上明确标注。',
+      },
+    ],
+    hubFaqs: (n) => [
+      {
+        q: `${n}值得去吗？`,
+        a: `值得。${n}是本地人首推的一日游：未经开发的沙滩、平静的碧绿海水，下水就能浮潜。虽然是完整的一天行程，但几乎没有人后悔。`,
       },
       {
-        q: `这些行程适合儿童吗？`,
-        a: `许多都适合：请查看行程页面的年龄限制。带有"适合家庭"标签的行程是最稳妥的选择。`,
+        q: `在${n}能做什么？`,
+        a: '在珊瑚礁上方游泳浮潜、沿海岸漫步，或找一片安静的沙滩躺下。大多数行程包含午餐和沙滩设施。',
       },
       {
-        q: `是否包含接送？`,
-        a: `部分行程包含酒店接送或可加购；其余行程的集合地点都在页面上配有地图清晰标注。`,
+        q: `去${n}的行程要花多少钱？`,
+        a: '全天行程通常每人 100-130 美元起，包含船程、装备和午餐。私人包船按整船计价，具体价格见各行程页面。',
+      },
+      {
+        q: `到${n}的船程要多久？`,
+        a: '视船型而定，单程约 45 分钟至 1.5 小时。行程通常清早出发，以利用平静的晨间海面。',
+      },
+      {
+        q: `去${n}的路上会晕船吗？`,
+        a: '外海航段可能颠簸。请坐在船尾、注视地平线；容易晕船的话可提前一小时服用晕船药，返程通常平稳许多。',
+      },
+      {
+        q: `去${n}要带什么？`,
+        a: '珊瑚友好型防晒霜、溯溪鞋、帽子和毛巾。岛上遮荫很少，防晒很重要。浮潜装备和午餐大多包含在行程里。',
+      },
+      {
+        q: `${n}上有洗手间吗？`,
+        a: '每艘船上都有；设有海滩小屋的运营商在岸上也有基础设施。除此之外，岛上没有其他建筑。',
+      },
+      {
+        q: `${n}适合带小孩的家庭吗？`,
+        a: '适合。选择更平稳的家庭船或双体船，航程最舒适；游泳区水浅浪静，非常适合儿童。',
+      },
+      {
+        q: `如果出行当天${n}天气不好怎么办？`,
+        a: '船长每天监测海况，若航行不安全会取消或改期。届时您可选择下一个可用班次或全额退款。',
+      },
+    ],
+    collFaqs: (d) => [
+      {
+        q: `${d}最值得做的事情有哪些？`,
+        a: `这份榜单上的体验正是${d}的招牌：海上冒险与陆地探索兼备，由我们的本地团队亲手挑选。`,
+      },
+      {
+        q: '这些行程需要提前多久预订？',
+        a: '旺季热门班次会提前数周订满。预订即时确认且可免费取消，提前锁定没有任何风险。',
+      },
+      {
+        q: `什么时候去${d}最合适？`,
+        a: `${d}全年皆宜。1 月至 8 月最干燥、阳光最充足；9 月至 12 月海水更温暖，游客也更少。`,
+      },
+      {
+        q: '这些行程包含酒店接送吗？',
+        a: '部分行程包含接送或可加购；其余行程的集合地点都在页面上配有地图和签到时间，标注清晰。',
+      },
+      {
+        q: '一次旅行可以安排多个行程吗？',
+        a: '当然可以：大多数行程为半天或一天，一周安排两三项体验很常见。建议在长时间出海的日子之间留出一天休息。',
+      },
+      {
+        q: 'Island Tours 如何决定推荐哪些行程？',
+        a: '我们的本地团队根据体验质量、真实评价和实地考察来甄选。榜单位置无法购买，只能靠品质赢得。',
       },
     ],
   },

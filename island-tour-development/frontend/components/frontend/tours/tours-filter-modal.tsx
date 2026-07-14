@@ -223,7 +223,10 @@ export function PriceRange({
     const trackRef = useRef<HTMLDivElement>(null);
     const [drag, setDrag] = useState<null | 0 | 1>(null);
     const span = Math.max(1, max - PRICE_MIN);
-    const pct = (v: number) => ((v - PRICE_MIN) / span) * 100;
+    // 0..1 position of a value within the track.
+    const frac = (v: number) => (v - PRICE_MIN) / span;
+    // Percentage position (0–100) for inline style props.
+    const pct = (v: number) => frac(v) * 100;
 
     useEffect(() => {
         if (drag === null) return;
@@ -249,10 +252,12 @@ export function PriceRange({
     }, [drag, value, onChange, span]);
 
     return (
+        // Figma 48248:5397: a 16px-tall pill track (r-30) with the selected
+        // span in ink and 16px white handles riding INSIDE the pill.
         <div ref={trackRef} className='relative flex h-4 items-center'>
-            <span className='absolute inset-x-0 h-1.5 rounded-it-full bg-it-border' />
+            <span className='absolute inset-0 rounded-[30px] bg-it-border' />
             <span
-                className='absolute h-1.5 rounded-it-full bg-it-heading'
+                className='absolute inset-y-0 rounded-[30px] bg-it-heading'
                 style={{
                     left: `${pct(value[0])}%`,
                     right: `${100 - pct(value[1])}%`,
@@ -264,8 +269,8 @@ export function PriceRange({
                     type='button'
                     aria-label={i === 0 ? 'Minimum price' : 'Maximum price'}
                     onPointerDown={() => setDrag(i)}
-                    style={{ left: `${pct(value[i])}%` }}
-                    className='absolute size-4 -translate-x-1/2 cursor-grab touch-none rounded-full border border-it-border bg-it-white shadow-it-sm active:cursor-grabbing'
+                    style={{ left: `calc(8px + ${pct(value[i])}% * 0.96)` }}
+                    className='absolute size-4 -translate-x-1/2 cursor-grab touch-none rounded-full border-none bg-it-white shadow-it-sm active:cursor-grabbing'
                 />
             ))}
         </div>
@@ -281,7 +286,7 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <div className='flex flex-col gap-4 border-b border-it-heading/10 py-8'>
+        <div className='flex flex-col gap-2 border-b border-it-heading/10 py-4 sm:gap-4 sm:py-8'>
             {title && (
                 <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {title}
@@ -327,10 +332,23 @@ export function ToursFilterModal({
         if (!open) return;
         const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
         window.addEventListener('keydown', onKey);
-        document.body.style.overflow = 'hidden';
+
+        // iOS-safe scroll lock: position:fixed prevents Safari viewport scroll;
+        // we save & restore scrollY so the page doesn't jump on close.
+        const scrollY = window.scrollY;
+        const body = document.body;
+        body.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollY}px`;
+        body.style.width = '100%';
+
         return () => {
             window.removeEventListener('keydown', onKey);
-            document.body.style.overflow = '';
+            body.style.overflow = '';
+            body.style.position = '';
+            body.style.top = '';
+            body.style.width = '';
+            window.scrollTo(0, scrollY);
         };
     }, [open, onClose]);
 
@@ -380,7 +398,8 @@ export function ToursFilterModal({
                         aria-hidden='true'
                     />
 
-                    {/* Panel */}
+                    {/* Panel — flex-col; header + footer are shrink-0 so only
+                         the middle section div scrolls (flex-1 min-h-0). */}
                     <motion.div
                         role='dialog'
                         aria-modal='true'
@@ -392,9 +411,10 @@ export function ToursFilterModal({
                             duration: 0.22,
                             ease: [0.21, 0.47, 0.32, 0.98],
                         }}
-                        className='relative flex max-h-[90vh] w-full max-w-[752px] flex-col overflow-y-auto rounded-it-lg bg-it-white p-8'>
-                        {/* Header */}
-                        <div className='flex items-center justify-between border-b border-it-heading/10 pb-6'>
+                        className='relative flex max-h-[96vh] w-full max-w-210 flex-col rounded-it-lg bg-it-white'>
+
+                        {/* Header — never scrolls */}
+                        <div className='flex shrink-0 items-center justify-between border-b border-it-heading/10 px-5 pb-4 pt-5 sm:px-8 sm:pb-6 sm:pt-8'>
                             <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                 {dict.title}
                             </h2>
@@ -415,141 +435,144 @@ export function ToursFilterModal({
                             </motion.button>
                         </div>
 
-                        {/* Price */}
-                        <Section title={dict.price}>
-                            <PriceRange
-                                value={draft.price}
-                                max={priceMax}
-                                onChange={price =>
-                                    setDraft(d => ({ ...d, price }))
-                                }
-                            />
-                            <div className='flex items-center justify-between text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                <span>${draft.price[0]}</span>
-                                <span>${draft.price[1]}</span>
-                            </div>
-                        </Section>
+                        {/* Scrollable body — flex-1 + min-h-0 is required for
+                             overflow-y:auto to trigger inside a flex-col parent. */}
+                        <div className='it-modal-scroll min-h-0 flex-1 px-5 sm:px-8'>
 
-                        {/* Duration */}
-                        <Section title={dict.duration}>
-                            <div className='grid grid-cols-1 gap-x-12 gap-y-2.5 sm:grid-cols-2'>
-                                {durationItems.map(item => (
-                                    <Checkbox
-                                        key={item.key}
-                                        label={item.label}
-                                        checked={draft.durations.includes(
-                                            item.key
-                                        )}
-                                        onChange={() =>
-                                            toggleArray('durations', item.key)
-                                        }
-                                    />
-                                ))}
-                            </div>
-                        </Section>
-
-                        {/* Time of day */}
-                        <Section title={dict.timeOfDay}>
-                            <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                {timeItems.map(item => (
-                                    <Checkbox
-                                        key={item.key}
-                                        label={item.label}
-                                        checked={draft.times.includes(item.key)}
-                                        onChange={() =>
-                                            toggleArray('times', item.key)
-                                        }
-                                    />
-                                ))}
-                            </div>
-                        </Section>
-
-                        {/* Free cancellation */}
-                        <Section>
-                            <div className='flex flex-col'>
-                                <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {dict.freeCancellation}
-                                </h3>
-                                <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    {dict.freeCancellationNote}{' '}
-                                    {dict.cancellationLabel}
-                                </p>
-                            </div>
-                            <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                {cancellationItems.map(item => (
-                                    <Radio
-                                        key={item.key}
-                                        label={item.label}
-                                        checked={
-                                            draft.cancellation === item.key
-                                        }
-                                        onChange={() =>
-                                            setDraft(d => ({
-                                                ...d,
-                                                cancellation:
-                                                    d.cancellation === item.key
-                                                        ? null
-                                                        : item.key,
-                                            }))
-                                        }
-                                    />
-                                ))}
-                            </div>
-                        </Section>
-
-                        {/* Pickup available */}
-                        <Section>
-                            <div className='flex items-center justify-between'>
-                                <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {dict.pickupAvailable}
-                                </h3>
-                                <Toggle
-                                    on={draft.pickupAvailable}
-                                    onChange={() =>
-                                        setDraft(d => ({
-                                            ...d,
-                                            pickupAvailable: !d.pickupAvailable,
-                                        }))
+                            {/* Price */}
+                            <Section title={dict.price}>
+                                <PriceRange
+                                    value={draft.price}
+                                    max={priceMax}
+                                    onChange={price =>
+                                        setDraft(d => ({ ...d, price }))
                                     }
                                 />
-                            </div>
-                        </Section>
+                                <div className='flex items-center justify-between text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                    <span>${draft.price[0]}</span>
+                                    <span>${draft.price[1]}</span>
+                                </div>
+                            </Section>
 
-                        {/* Ratings - hidden until tours in this catalogue have reviews */}
-                        {hasReviews && (
-                            <Section title={dict.ratings}>
-                                <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
-                                    {ratingItems.map(item => (
-                                        <Radio
+                            {/* Duration */}
+                            <Section title={dict.duration}>
+                                <div className='grid grid-cols-1 gap-x-12 gap-y-2.5 sm:grid-cols-2'>
+                                    {durationItems.map(item => (
+                                        <Checkbox
                                             key={item.key}
-                                            checked={draft.rating === item.key}
+                                            label={item.label}
+                                            checked={draft.durations.includes(
+                                                item.key
+                                            )}
                                             onChange={() =>
-                                                setDraft(d => ({
-                                                    ...d,
-                                                    rating:
-                                                        d.rating === item.key
-                                                            ? null
-                                                            : item.key,
-                                                }))
-                                            }
-                                            label={
-                                                <>
-                                                    <Stars
-                                                        rating={item.stars}
-                                                    />
-                                                    <span className='ml-1.5'>
-                                                        {item.label}
-                                                    </span>
-                                                </>
+                                                toggleArray('durations', item.key)
                                             }
                                         />
                                     ))}
                                 </div>
                             </Section>
-                        )}
 
-                        {/* Footer */}
-                        <div className='flex items-center justify-between pt-6'>
+                            {/* Time of day */}
+                            <Section title={dict.timeOfDay}>
+                                <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                                    {timeItems.map(item => (
+                                        <Checkbox
+                                            key={item.key}
+                                            label={item.label}
+                                            checked={draft.times.includes(item.key)}
+                                            onChange={() =>
+                                                toggleArray('times', item.key)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </Section>
+
+                            {/* Free cancellation */}
+                            <Section>
+                                <div className='flex flex-col'>
+                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        {dict.freeCancellation}
+                                    </h3>
+                                    <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                        {dict.freeCancellationNote}{' '}
+                                        {dict.cancellationLabel}
+                                    </p>
+                                </div>
+                                <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                                    {cancellationItems.map(item => (
+                                        <Radio
+                                            key={item.key}
+                                            label={item.label}
+                                            checked={
+                                                draft.cancellation === item.key
+                                            }
+                                            onChange={() =>
+                                                setDraft(d => ({
+                                                    ...d,
+                                                    cancellation:
+                                                        d.cancellation === item.key
+                                                            ? null
+                                                            : item.key,
+                                                }))
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </Section>
+
+                            {/* Pickup available */}
+                            <Section>
+                                <div className='flex items-center justify-between'>
+                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        {dict.pickupAvailable}
+                                    </h3>
+                                    <Toggle
+                                        on={draft.pickupAvailable}
+                                        onChange={() =>
+                                            setDraft(d => ({
+                                                ...d,
+                                                pickupAvailable: !d.pickupAvailable,
+                                            }))
+                                        }
+                                    />
+                                </div>
+                            </Section>
+
+                            {/* Ratings — hidden until catalogue has reviews */}
+                            {hasReviews && (
+                                <Section title={dict.ratings}>
+                                    <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                                        {ratingItems.map(item => (
+                                            <Radio
+                                                key={item.key}
+                                                checked={draft.rating === item.key}
+                                                onChange={() =>
+                                                    setDraft(d => ({
+                                                        ...d,
+                                                        rating:
+                                                            d.rating === item.key
+                                                                ? null
+                                                                : item.key,
+                                                    }))
+                                                }
+                                                label={
+                                                    <>
+                                                        <Stars rating={item.stars} />
+                                                        <span className='ml-1.5'>
+                                                            {item.label}
+                                                        </span>
+                                                    </>
+                                                }
+                                            />
+                                        ))}
+                                    </div>
+                                </Section>
+                            )}
+                        </div>
+
+                        {/* Footer — never scrolls, always visible */}
+                        <div className='flex shrink-0 items-center justify-between border-t border-it-heading/10 px-5 pb-5 pt-4 sm:px-8 sm:pb-8 sm:pt-6'>
                             <motion.button
                                 type='button'
                                 onClick={() => setDraft(EMPTY_FILTERS)}
