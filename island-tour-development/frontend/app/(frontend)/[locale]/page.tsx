@@ -1,6 +1,6 @@
+import { FaqSection } from '@/components/frontend/faq-section';
 import { EditorialBanner } from '@/components/frontend/home/editorial-banner';
 import { ExploreIslands } from '@/components/frontend/home/explore-islands';
-import { FaqSection } from '@/components/frontend/faq-section';
 import { Hero } from '@/components/frontend/home/hero';
 import { Testimonials } from '@/components/frontend/home/testimonials';
 import { TopExperiences } from '@/components/frontend/home/top-experiences';
@@ -27,7 +27,7 @@ export default async function HomePage({
         name: d.name,
         slug: d.slug,
         tours: d.tourCount,
-        image: d.heroImage ?? '/images/home-page/islands/curacao.jpg',
+        image: d.heroImage,
     }));
     // The editorial banner copy is themed to the launch island (Curaçao); link
     // its CTA there if active, else the first destination, else all-tours search.

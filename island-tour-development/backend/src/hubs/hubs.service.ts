@@ -143,6 +143,18 @@ export class HubService {
    * `ToursService`'s public card select (prices stay raw Decimal, matching the
    * `/tours` listing). `translations` is added inline per call (locale-scoped).
    */
+  /**
+   * Card image set: hero first, then gallery order, capped - the card
+   * hover-carousel needs the full set, not just the hero. Mirrors
+   * ToursService.cardImagesArgs. Declared separately (not inside the outer
+   * `as const`) because Prisma's orderBy inputs are mutable arrays.
+   */
+  private readonly cardTourImages = {
+    select: { url: true, altText: true } as const,
+    orderBy: [{ isHero: 'desc' as const }, { displayOrder: 'asc' as const }],
+    take: 5 as const,
+  };
+
   private readonly cardTourSelect = {
     id: true,
     slug: true,
@@ -157,11 +169,7 @@ export class HubService {
     durationMinutesFrom: true,
     durationMinutesTo: true,
     bookingCount: true,
-    images: {
-      where: { isHero: true },
-      select: { url: true, altText: true },
-      take: 1,
-    },
+    images: this.cardTourImages,
   } as const;
 
   /** Map an enriched tour row (cardTourSelect + locale title) to a card summary. */
@@ -188,6 +196,8 @@ export class HubService {
       title: this.tourTitle(tour),
       heroImage: tour.images[0]?.url ?? null,
       heroImageAlt: tour.images[0]?.altText ?? null,
+      // Full (capped) hero-first image set for the card hover-carousel.
+      images: tour.images,
       basePrice: tour.basePrice,
       priceFrom: tour.priceFrom,
       currency: tour.defaultCurrency,

@@ -5,13 +5,14 @@ import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
 
-// Live destinations, mapped from getActiveDestinations in the page
-// (image already falls back upstream, so it is always a usable URL here).
+// Live destinations, mapped from getActiveDestinations in the page. A missing
+// hero image falls back to the card's grey `bg-it-border` (the sitewide image
+// fallback), not a stand-in photo.
 type Island = {
     name: string;
     slug: string;
     tours: number;
-    image: string;
+    image: string | null;
 };
 
 export function ExploreIslands({
@@ -46,13 +47,15 @@ export function ExploreIslands({
                                 whileTap={{ scale: 0.99 }}
                                 transition={springPop}
                                 className='group relative block h-51 w-40.5 shrink-0 overflow-hidden rounded-it-lg bg-it-border md:h-90.25 md:w-96'>
-                                <Image
-                                    src={island.image}
-                                    alt={island.name}
-                                    fill
-                                    sizes='(max-width: 768px) 162px, 384px'
-                                    className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
-                                />
+                                {island.image && (
+                                    <Image
+                                        src={island.image}
+                                        alt={island.name}
+                                        fill
+                                        sizes='(max-width: 768px) 162px, 384px'
+                                        className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                                    />
+                                )}
 
                                 {/* Bottom gradient scrim - transparent → #1a1a1a */}
                                 <div className='pointer-events-none absolute inset-x-0 bottom-0 h-28.25 bg-linear-to-b from-transparent to-it-ink md:h-61.75' />

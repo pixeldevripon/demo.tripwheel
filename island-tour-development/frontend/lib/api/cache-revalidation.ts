@@ -67,8 +67,11 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
 
     // Recurring schedules / date exceptions. No cached public availability read
     // exists (it is fetched dynamically), but date-filtered tour listings cache
-    // under `tours`, so bust those.
+    // under `tours`, so bust those. `POST /availability/check` is a READ shaped
+    // as a POST (the public date-availability lookup) - revalidating on it loops:
+    // bust -> RSC refresh -> new props -> the hub date filter re-fires the check.
     case 'availability':
+      if (seg1 === 'check') break;
       tags.push('tours', 'search');
       break;
 

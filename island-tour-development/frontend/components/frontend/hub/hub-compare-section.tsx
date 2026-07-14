@@ -1,5 +1,7 @@
 import Image from 'next/image';
 import { Fragment } from 'react';
+import { springPop } from '@/lib/motion';
+import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
 
 /**
@@ -35,6 +37,8 @@ export type CompareBoat = {
     price: number;
     /** Show a leading green check before the price (e.g. lowest price). */
     priceCheck?: boolean;
+    /** Flat tour detail URL (locale-prefixed); the Book CTA links to it. */
+    href?: string;
 };
 
 export type CompareRow = {
@@ -219,7 +223,7 @@ function CompareTableCard({
                                     last ? '' : 'border-r'
                                 }`}>
                                 <PriceLabel boat={boat} from={dict.from} />
-                                <BookButton label={dict.book} />
+                                <BookButton label={dict.book} href={boat.href} />
                             </div>
                         );
                     })}
@@ -230,7 +234,7 @@ function CompareTableCard({
             {lead && (
                 <div className='flex flex-col items-center gap-1.5 border-t border-it-heading/10 px-4 py-2 lg:hidden'>
                     <PriceLabel boat={lead} from={dict.from} />
-                    <BookButton label={dict.book} full />
+                    <BookButton label={dict.book} href={lead.href} full />
                 </div>
             )}
         </div>
@@ -288,14 +292,35 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
     );
 }
 
-/** Orange "Book ->" pill. Full-width on mobile, hugged on desktop. */
-function BookButton({ label, full }: { label: string; full?: boolean }) {
+/**
+ * Orange "Book ->" pill. Full-width on mobile, hugged on desktop. Links to the
+ * boat's tour detail page when `href` is supplied (plain button otherwise).
+ */
+function BookButton({
+    label,
+    href,
+    full,
+}: {
+    label: string;
+    href?: string;
+    full?: boolean;
+}) {
+    const className = `inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-it-full bg-it-primary font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover ${
+        full ? 'h-[46px] w-full px-10' : 'h-[34px] px-5'
+    }`;
+    if (href) {
+        return (
+            <MotionLink
+                href={href}
+                whileTap={{ scale: 0.97 }}
+                transition={springPop}
+                className={className}>
+                {label} {'→'}
+            </MotionLink>
+        );
+    }
     return (
-        <button
-            type='button'
-            className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-it-full bg-it-primary font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover ${
-                full ? 'h-[46px] w-full px-10' : 'h-[34px] px-5'
-            }`}>
+        <button type='button' className={className}>
             {label} {'→'}
         </button>
     );

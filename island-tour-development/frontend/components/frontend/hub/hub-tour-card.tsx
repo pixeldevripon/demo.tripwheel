@@ -7,6 +7,7 @@ import { Fragment } from 'react';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
+import { TourCardCarousel } from '../tour-card-carousel';
 
 export type HubTourBadge =
     | 'sponsored'
@@ -22,8 +23,8 @@ export type HubTour = {
      * propagation so it never triggers navigation.
      */
     href?: string;
-    /** Single hero image (no carousel in this card variant). */
-    image?: string | null;
+    /** Hero-first image set for the hover carousel. */
+    images: string[];
     badge: HubTourBadge;
     rating: number;
     reviewCount: number;
@@ -83,15 +84,12 @@ export function HubTourCard({
                 the card fills cream and the image's bottom corners square off so it
                 merges into the inset content area (mirrors <TourCard>). */}
             <div className='relative aspect-177/148 w-full shrink-0 overflow-hidden rounded-[8px] bg-it-border transition-[border-radius] duration-300 ease-in-out group-hover:rounded-b-none md:aspect-384/270 md:rounded-[16px]'>
-                {tour.image && (
-                    <Image
-                        src={tour.image}
-                        alt={tour.title}
-                        fill
-                        className='object-cover'
-                    />
-                )}
-                <div className='absolute inset-0 flex items-start justify-between p-2.5 md:p-4'>
+                <TourCardCarousel
+                    images={tour.images}
+                    alt={tour.title}
+                    sizes='(max-width: 1024px) 50vw, 384px'
+                />
+                <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between p-2.5 md:p-4'>
                     {badgeLabel ? (
                         <span
                             className={`inline-flex h-7 items-center rounded-it-full px-3 text-[10px] leading-[1.6] tracking-[-0.012em] md:h-8 md:px-3.5 md:text-[14px] ${BADGE_STYLE[tour.badge!]}`}>
@@ -111,7 +109,7 @@ export function HubTourCard({
                         aria-pressed={saved}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-shadow duration-300 hover:shadow-it-md md:size-10'>
+                        className='pointer-events-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-shadow duration-300 hover:shadow-it-md md:size-10'>
                         <Image
                             src={
                                 saved

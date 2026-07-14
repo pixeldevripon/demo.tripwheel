@@ -190,6 +190,8 @@ export interface OurPickTourSummary {
   // are raw Decimal, serialized as string|number (mirrors the /tours card).
   heroImage?: string | null;
   heroImageAlt?: string | null;
+  /** Hero-first (capped) image set for the card hover-carousel. */
+  images?: { url: string; altText: string | null }[];
   priceFrom?: number | string | null;
   basePrice?: number | string | null;
   currency?: string;

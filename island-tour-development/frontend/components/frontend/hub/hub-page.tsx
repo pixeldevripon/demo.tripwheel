@@ -295,7 +295,7 @@ function hitToHubTour(
     return {
         id: hit.id,
         href: localizeHref(locale, `/${destinationSlug}/${hit.slug}`),
-        image: hit.images?.[0]?.url ?? null,
+        images: (hit.images ?? []).map((img) => img.url).filter(Boolean),
         badge: toHubBadge(hit.badge),
         rating: hit.aggregateRating ?? 0,
         reviewCount: hit.aggregateReviewCount,
@@ -312,10 +312,12 @@ function pickToHubPick(
     pick: HubRenderOurPick,
     labelText: Record<HubPickLabel, string>,
     durationLabels: Pick<CardLabels, 'day' | 'days'>,
+    tourHref: (slug: string) => string,
 ): HubPick {
     const label = PICK_LABEL_BY_TYPE[pick.pickType] ?? 'best';
     return {
         id: pick.id,
+        href: tourHref(pick.tour.slug),
         label,
         labelText: labelText[label],
         title: pick.tour.title,
@@ -329,13 +331,16 @@ function pickToHubPick(
         description: pick.description,
         duration: formatDuration(pick.tour.durationMinutesFrom, durationLabels),
         price: num(pick.tour.priceFrom ?? pick.tour.basePrice),
-        image: pick.tour.heroImage ?? null,
+        images: (pick.tour.images ?? [])
+            .map((img) => img.url)
+            .filter(Boolean),
     };
 }
 
 function groupToCompareTable(
     group: HubRenderComparisonGroup,
     whatStandsOutLabel: string,
+    tourHref: (slug: string) => string,
 ): CompareTable {
     // Editorial lead row: each column's standout note, split on commas into
     // bullet-joined fragments (e.g. "Dive school, massage with a view").
@@ -356,6 +361,7 @@ function groupToCompareTable(
         boats: group.tours.map((ct) => ({
             name: ct.tour.title,
             price: num(ct.tour.priceFrom ?? ct.tour.basePrice),
+            href: tourHref(ct.tour.slug),
         })),
         // "What stands out" (editorial, from standoutNote) sits above the curated
         // attribute rows (backend template). A BOOLEAN true renders a green check;
@@ -638,6 +644,8 @@ async function HubTripsData({
 
     const linkTour = (hit: SearchHit): HubTour =>
         hitToHubTour(hit, locale, destinationSlug, cardLabels);
+    const tourHref = (slug: string) =>
+        localizeHref(locale, `/${destinationSlug}/${slug}`);
 
     // Partition: whole-unit tours are the private charters; the rest are trips.
     const trips = toursRes.data
@@ -655,11 +663,11 @@ async function HubTripsData({
         families: picksDict.families,
     };
     const picks: HubPick[] = render.ourPicks.map((p) =>
-        pickToHubPick(p, pickLabelText, cardLabels),
+        pickToHubPick(p, pickLabelText, cardLabels, tourHref),
     );
 
     const compareTables = render.comparisonGroups.map((g) =>
-        groupToCompareTable(g, hubDict.comparison.whatStandsOut),
+        groupToCompareTable(g, hubDict.comparison.whatStandsOut, tourHref),
     );
     const discoverItems = render.discover.map(sectionToDiscoverItem);
     const discoverTitle = discoverDict.titlePattern.replace(
