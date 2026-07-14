@@ -1,5 +1,5 @@
-import { DestinationAbout } from '@/components/frontend/destination-about';
-import { DestinationInstagram } from '@/components/frontend/destination-instagram';
+import { DestinationAbout } from '@/components/frontend/destination/destination-about';
+import { DestinationInstagram } from '@/components/frontend/destination/destination-instagram';
 import {
     DestinationCollectionsSection,
     DestinationHeroSection,

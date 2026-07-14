@@ -1,11 +1,12 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { dropdownItemMotion, dropdownMotion, springPop } from '@/lib/motion';
 
 import type { HeroDestination } from './lib/hero.types';
 
@@ -96,15 +97,14 @@ export function HeroSearch({
                     aria-label='Search'
                     className='shrink-0 flex items-center justify-center size-10 md:size-12.5 rounded-it-full bg-it-primary hover:bg-it-primary-hover transition-colors border-none cursor-pointer'
                     initial='rest'
-                    whileHover='hover'
                     whileTap='tap'
                     animate='rest'
-                    variants={{ rest: { scale: 1 }, hover: { scale: 1.06 }, tap: { scale: 0.92 } }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
+                    variants={{ rest: { scale: 1 }, tap: { scale: 0.94 } }}
+                    transition={springPop}>
                     <motion.span
                         className='inline-flex'
-                        variants={{ rest: { x: 0 }, hover: { x: 3 }, tap: { x: 7 } }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}>
+                        variants={{ rest: { x: 0 }, tap: { x: 6 } }}
+                        transition={springPop}>
                         <Image
                             src='/icons/hero-arrow-right.svg'
                             alt=''
@@ -116,27 +116,31 @@ export function HeroSearch({
                 </motion.button>
             </form>
 
-            {open && matches.length > 0 && (
-                <ul className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 m-0 list-none overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg text-left'>
-                    {matches.map(d => (
-                        <li key={d.slug}>
-                            <button
-                                type='button'
-                                onClick={() => go(d.slug)}
-                                className='flex w-full items-center gap-2 px-5 py-3 text-left text-sm text-it-ink bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface'>
-                                <Image
-                                    src='/icons/hero-location.svg'
-                                    alt=''
-                                    width={18}
-                                    height={18}
-                                    className='size-4.5 shrink-0'
-                                />
-                                {d.name}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <AnimatePresence>
+                {open && matches.length > 0 && (
+                    <motion.ul
+                        {...dropdownMotion}
+                        className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 m-0 list-none origin-top overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg text-left'>
+                        {matches.map(d => (
+                            <motion.li key={d.slug} {...dropdownItemMotion}>
+                                <button
+                                    type='button'
+                                    onClick={() => go(d.slug)}
+                                    className='flex w-full items-center gap-2 px-5 py-3 text-left text-sm text-it-ink bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface'>
+                                    <Image
+                                        src='/icons/hero-location.svg'
+                                        alt=''
+                                        width={18}
+                                        height={18}
+                                        className='size-4.5 shrink-0'
+                                    />
+                                    {d.name}
+                                </button>
+                            </motion.li>
+                        ))}
+                    </motion.ul>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

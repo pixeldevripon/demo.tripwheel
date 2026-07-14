@@ -50,7 +50,7 @@ export function CategoriesMenu({
                 <motion.button
                     onClick={() => setOpen(v => !v)}
                     aria-expanded={open}
-                    whileTap={{ scale: 0.95 }}
+                    whileTap={{ scale: 0.98 }}
                     transition={pressSpring}
                     className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
                     <Image

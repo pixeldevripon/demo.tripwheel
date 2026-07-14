@@ -1,7 +1,7 @@
-import { CategoryPage } from '@/components/frontend/category-page';
-import { CollectionPage } from '@/components/frontend/collection-page';
-import { HubPage } from '@/components/frontend/hub-page';
-import { TourPage } from '@/components/frontend/tour-page';
+import { CategoryPage } from '@/components/frontend/category/category-page';
+import { CollectionPage } from '@/components/frontend/collection/collection-page';
+import { HubPage } from '@/components/frontend/hub/hub-page';
+import { TourPage } from '@/components/frontend/tour/tour-page';
 import {
     getActiveDestinations,
     getCategoryBySlugForDestination,

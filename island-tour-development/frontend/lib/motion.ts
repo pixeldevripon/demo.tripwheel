@@ -24,3 +24,84 @@ export const swapFade = { duration: 0.15 } as const;
 
 /** Card/phase cross-fade (pair with y +-8 inside AnimatePresence mode='wait'). */
 export const crossFade = { duration: 0.2, ease: [0.4, 0, 0.2, 1] } as const;
+
+/**
+ * Sitewide page-enter (PageTransition): a whole page needs a longer, softer
+ * settle than a card swap - same easing family as `Reveal` so route entrances
+ * and section reveals feel like one system. Pair with y 16.
+ */
+export const pageEnter = {
+    duration: 0.5,
+    ease: [0.21, 0.47, 0.32, 0.98],
+} as const;
+
+/**
+ * Dropdown/menu open-close (opens DOWNWARD). Variants-based: the panel springs
+ * open and anything inside carrying `dropdownItemMotion` cascades in behind it;
+ * closing is a fast clean fade so dismissal never feels laggy. Wrap the panel
+ * in `AnimatePresence` and give it an `origin-top-*` class.
+ */
+export const dropdownMotion = {
+    initial: 'closed',
+    animate: 'open',
+    exit: 'closed',
+    variants: {
+        open: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: {
+                ...springPop,
+                staggerChildren: 0.03,
+                delayChildren: 0.02,
+            },
+        },
+        closed: {
+            opacity: 0,
+            y: -10,
+            scale: 0.96,
+            transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] },
+        },
+    },
+} as const;
+
+/** Per-item cascade inside a `dropdownMotion` panel (inherits open/closed). */
+export const dropdownItemMotion = {
+    variants: {
+        open: { opacity: 1, y: 0, transition: springPop },
+        closed: { opacity: 0, y: -6 },
+    },
+} as const;
+
+/** `dropdownMotion` mirrored for menus that open UPWARD (e.g. footer pills). */
+export const dropdownUpMotion = {
+    initial: 'closed',
+    animate: 'open',
+    exit: 'closed',
+    variants: {
+        open: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: {
+                ...springPop,
+                staggerChildren: 0.03,
+                delayChildren: 0.02,
+            },
+        },
+        closed: {
+            opacity: 0,
+            y: 10,
+            scale: 0.96,
+            transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] },
+        },
+    },
+} as const;
+
+/** Per-item cascade inside a `dropdownUpMotion` panel (rises with it). */
+export const dropdownUpItemMotion = {
+    variants: {
+        open: { opacity: 1, y: 0, transition: springPop },
+        closed: { opacity: 0, y: 6 },
+    },
+} as const;

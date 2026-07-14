@@ -6,7 +6,7 @@ import { TourCardSkeleton } from './tour-card-skeleton';
  * section it stands in for property-for-property (same containers, radius, grid,
  * gaps, and heights) so the page streams in with no layout shift and never goes
  * blank while its data loads. Used as `<Suspense fallback={...}>` for each
- * independent fetch on `components/frontend/tour-page.tsx`: detail (main),
+ * independent fetch on `components/frontend/tour/tour-page.tsx`: detail (main),
  * reviews preview, full reviews, related tours.
  */
 

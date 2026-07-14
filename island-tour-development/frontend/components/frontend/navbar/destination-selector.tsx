@@ -48,7 +48,7 @@ export function DestinationSelector({
                 onClick={() => setOpen(v => !v)}
                 aria-label={dict.selectIsland}
                 aria-expanded={open}
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: .98 }}
                 transition={pressSpring}
                 className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
                 <Image

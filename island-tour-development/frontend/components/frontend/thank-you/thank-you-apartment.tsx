@@ -1,9 +1,8 @@
-'use client';
-
+import { MotionA } from '@/components/frontend/motion-primitives';
 import { Reveal } from '@/components/frontend/reveal';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { springPop } from '@/lib/motion';
 import type { ThankYouApartment } from '@/lib/thank-you/thank-you';
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 type ThankYouDict = Dictionary['thankYou'];
@@ -102,19 +101,15 @@ export function ThankYouApartmentPromo({
                                     </div>
                                 </div>
                             </div>
-                            <motion.a
+                            <MotionA
                                 href={apartment.airbnbUrl}
                                 target='_blank'
                                 rel='noopener noreferrer'
                                 whileTap={{ scale: 0.98 }}
-                                transition={{
-                                    type: 'spring',
-                                    stiffness: 500,
-                                    damping: 30,
-                                }}
+                                transition={springPop}
                                 className='flex h-12 w-full max-w-[340px] items-center justify-center rounded-full border border-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5'>
                                 {dict.aptCta}
-                            </motion.a>
+                            </MotionA>
                         </div>
                     </div>
                 </Reveal>

@@ -1,5 +1,4 @@
-'use client';
-
+import { MotionLink } from '@/components/frontend/motion-link';
 import { Reveal } from '@/components/frontend/reveal';
 import {
     TourCard,
@@ -7,8 +6,7 @@ import {
     type TourListing,
 } from '@/components/frontend/tour-card';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
+import { springPop } from '@/lib/motion';
 
 type ThankYouDict = Dictionary['thankYou'];
 
@@ -52,16 +50,13 @@ export function ThankYouRelatedTours({
                 </div>
                 <Reveal className='relative flex h-[46px] items-center justify-center'>
                     <span className='absolute inset-x-0 top-1/2 h-px bg-it-heading/10' />
-                    <motion.span
+                    <MotionLink
+                        href={toursHref}
                         whileTap={{ scale: 0.97 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className='relative'>
-                        <Link
-                            href={toursHref}
-                            className='block bg-it-white p-2.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:text-it-primary-hover'>
-                            {dict.browsePicks}
-                        </Link>
-                    </motion.span>
+                        transition={springPop}
+                        className='relative block bg-it-white p-2.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
+                        {dict.browsePicks}
+                    </MotionLink>
                 </Reveal>
             </div>
         </section>

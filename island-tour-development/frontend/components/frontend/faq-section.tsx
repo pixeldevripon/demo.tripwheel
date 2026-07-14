@@ -1,29 +1,8 @@
-'use client';
-
-import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useState } from 'react';
+import { springPop } from '@/lib/motion';
+import { FaqAccordion } from './faq-accordion';
+import { MotionA } from './motion-primitives';
 import { Reveal } from './reveal';
-
-// Exact Figma caret (vuesax/linear arrow-down) - colour inherits via currentColor, rotates open
-function Caret({ className }: { className?: string }) {
-    return (
-        <svg
-            viewBox='0 0 24 24'
-            fill='none'
-            aria-hidden='true'
-            className={className}>
-            <path
-                d='M4.07992 8.9502L10.5999 15.4702C11.3699 16.2402 12.6299 16.2402 13.3999 15.4702L19.9199 8.9502'
-                stroke='currentColor'
-                strokeWidth='1.5'
-                strokeMiterlimit='10'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-            />
-        </svg>
-    );
-}
 
 type FaqDict = {
     title: string;
@@ -51,8 +30,6 @@ export function FaqSection({
     dict: FaqDict;
     minimal?: boolean;
 }) {
-    const [openIndex, setOpenIndex] = useState(0);
-
     return (
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
@@ -99,14 +76,11 @@ export function FaqSection({
                                                 className='size-full object-cover'
                                             />
                                         </div>
-                                        <motion.a
+                                        <MotionA
                                             href='#'
-                                            className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px] hover:bg-it-green/90  transition-colors'
-                                            transition={{
-                                                type: 'spring',
-                                                stiffness: 400,
-                                                damping: 18,
-                                            }}>
+                                            className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px] hover:bg-it-green/90 transition-colors'
+                                            whileTap={{ scale: 0.98 }}
+                                            transition={springPop}>
                                             <Image
                                                 src='/icons/whatsapp.svg'
                                                 alt=''
@@ -117,7 +91,7 @@ export function FaqSection({
                                             <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
                                                 {dict.whatsapp}
                                             </span>
-                                        </motion.a>
+                                        </MotionA>
                                     </div>
 
                                     <ul className='m-0 flex list-none flex-col gap-2 p-0'>
@@ -160,74 +134,8 @@ export function FaqSection({
                         </div>
                     )}
 
-                    {/* Right - accordion */}
-                    <div className='flex flex-1 flex-col gap-3 lg:gap-4'>
-                        {dict.items.map((faq, i) => {
-                            const open = i === openIndex;
-                            return (
-                                <div
-                                    key={faq.q}
-                                    className={`rounded-it-md border border-it-heading/10 transition-colors ${open ? 'bg-it-white' : 'bg-transparent'}`}>
-                                    <button
-                                        type='button'
-                                        aria-expanded={open}
-                                        onClick={() =>
-                                            setOpenIndex(open ? -1 : i)
-                                        }
-                                        className='flex w-full items-center justify-between gap-4 border-none bg-transparent p-2.5 text-left cursor-pointer lg:gap-6 lg:px-6 lg:py-5'>
-                                        <span className='font-medium text-[16px] lg:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {faq.q}
-                                        </span>
-                                        <motion.span
-                                            className='inline-flex shrink-0 text-it-heading'
-                                            animate={{ rotate: open ? 180 : 0 }}
-                                            transition={{
-                                                duration: 0.3,
-                                                ease: [0.22, 1, 0.36, 1],
-                                            }}>
-                                            <Caret className='size-6' />
-                                        </motion.span>
-                                    </button>
-
-                                    <AnimatePresence initial={false}>
-                                        {open && (
-                                            <motion.div
-                                                key='content'
-                                                initial={{ height: 0 }}
-                                                animate={{ height: 'auto' }}
-                                                exit={{ height: 0 }}
-                                                transition={{
-                                                    duration: 0.4,
-                                                    ease: [0.22, 1, 0.36, 1],
-                                                }}
-                                                className='overflow-hidden'>
-                                                <motion.div
-                                                    initial={{
-                                                        opacity: 0,
-                                                        y: -6,
-                                                    }}
-                                                    animate={{
-                                                        opacity: 1,
-                                                        y: 0,
-                                                    }}
-                                                    exit={{ opacity: 0, y: -6 }}
-                                                    transition={{
-                                                        duration: 0.25,
-                                                        ease: 'easeOut',
-                                                    }}
-                                                    className='px-2.5 pb-2.5 lg:px-6 lg:pb-5'>
-                                                    <div className='mb-3 h-px w-full bg-it-heading/10 lg:mb-4' />
-                                                    <p className='m-0 text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                                        {faq.a}
-                                                    </p>
-                                                </motion.div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    {/* Right - accordion (the interactive client leaf) */}
+                    <FaqAccordion items={dict.items} />
                 </Reveal>
             </div>
         </section>

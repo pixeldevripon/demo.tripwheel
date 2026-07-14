@@ -1,12 +1,14 @@
 'use client';
 
 import useEmblaCarousel from 'embla-carousel-react';
+import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { MountReveal } from '../mount-reveal';
+import { springPop } from '@/lib/motion';
+import { MotionLink } from '../motion-link';
+import { Reveal } from '../reveal';
 
 export type ExploreType = { name: string; slug: string; tours: number; image?: string };
 
@@ -47,12 +49,10 @@ export function DestinationExploreTypes({
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
-                {/* Entrance plays on mount (not scroll): this section is streamed
-                    and often above the fold, where whileInView can fail to fire. */}
-                <MountReveal
-                    delay={0.2}
-                    yOffset={40}
-                    className='flex flex-col gap-10 md:gap-12'>
+                {/* Static-shell section: PageTransition owns the page-enter, so no
+                    section-level mount animation (it would flash on hydration).
+                    The cards stagger on scroll instead. */}
+                <div className='flex flex-col gap-10 md:gap-12'>
                     <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         {dict.title}
                     </h2>
@@ -62,13 +62,19 @@ export function DestinationExploreTypes({
                             ref={emblaRef}
                             className='overflow-x-scroll it-scrollbar-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden '>
                             <div className='flex gap-4 md:gap-6'>
-                                {categories.map(cat => (
-                                    <Link
+                                {categories.map((cat, i) => (
+                                    <Reveal
                                         key={cat.slug}
+                                        width='auto'
+                                        delay={0.2 + i * 0.08}
+                                        className='shrink-0'>
+                                    <MotionLink
                                         href={localizeHref(
                                             locale,
                                             `/${destinationSlug}/${cat.slug}`
                                         )}
+                                        whileTap={{ scale: 0.98 }}
+                                        transition={springPop}
                                         className='group relative block size-40 md:size-45 shrink-0 overflow-hidden rounded-[16px] bg-it-border'>
                                         {cat.image && (
                                             <Image
@@ -89,33 +95,38 @@ export function DestinationExploreTypes({
                                                 {cat.tours} {dict.tours}
                                             </span>
                                         </div>
-                                    </Link>
+                                    </MotionLink>
+                                    </Reveal>
                                 ))}
                             </div>
                         </div>
 
                         {/* Side arrows - gutter-outset on desktop; swipe on smaller screens */}
-                        <button
+                        <motion.button
                             type='button'
                             aria-label='Previous'
                             onClick={() => emblaApi?.scrollPrev()}
                             disabled={!canPrev}
+                            whileTap={canPrev ? { scale: 0.9 } : undefined}
+                            transition={springPop}
                             className='hidden lg:grid absolute top-1/2 left-0 size-12 -translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
                             <ChevronLeft className='size-7' strokeWidth={1.5} />
-                        </button>
-                        <button
+                        </motion.button>
+                        <motion.button
                             type='button'
                             aria-label='Next'
                             onClick={() => emblaApi?.scrollNext()}
                             disabled={!canNext}
+                            whileTap={canNext ? { scale: 0.9 } : undefined}
+                            transition={springPop}
                             className='hidden lg:grid absolute top-1/2 right-0 size-12 translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
                             <ChevronRight
                                 className='size-7'
                                 strokeWidth={1.5}
                             />
-                        </button>
+                        </motion.button>
                     </div>
-                </MountReveal>
+                </div>
             </div>
         </section>
     );

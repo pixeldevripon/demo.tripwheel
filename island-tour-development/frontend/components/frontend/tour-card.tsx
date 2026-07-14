@@ -9,12 +9,12 @@
  *   import type { TourListing, TourCardDict } from '@/components/frontend/tour-card';
  */
 
+import { useWishlist } from '@/components/frontend/wishlist-provider';
+import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
 
 // ── Dictionary type ─────────────────────────────────────────────────────────
@@ -76,7 +76,10 @@ export type TourListing = {
 // ── BadgeChip ───────────────────────────────────────────────────────────────
 interface BadgeChipProps {
     type: TourBadge;
-    dict: Pick<TourCardDict, 'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored'>;
+    dict: Pick<
+        TourCardDict,
+        'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored'
+    >;
     className?: string;
 }
 
@@ -96,7 +99,7 @@ export function BadgeChip({ type, dict, className = '' }: BadgeChipProps) {
         <TourBadgeChip
             type={type}
             label={label}
-            size="responsive"
+            size='responsive'
             className={className}
         />
     );
@@ -116,6 +119,7 @@ export interface TourCardProps {
  */
 export function TourCard(props: TourCardProps) {
     if (props.tour.rank != null) return <RankedTourCard {...props} />;
+
     return <DefaultTourCard {...props} />;
 }
 
@@ -132,8 +136,8 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
         e.preventDefault();
         e.stopPropagation();
         if (tour.images.length > 0) {
-            setActiveImageIndex((prev) =>
-                prev === 0 ? tour.images.length - 1 : prev - 1,
+            setActiveImageIndex(prev =>
+                prev === 0 ? tour.images.length - 1 : prev - 1
             );
         }
     };
@@ -142,8 +146,8 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
         e.preventDefault();
         e.stopPropagation();
         if (tour.images.length > 0) {
-            setActiveImageIndex((prev) =>
-                prev === tour.images.length - 1 ? 0 : prev + 1,
+            setActiveImageIndex(prev =>
+                prev === tour.images.length - 1 ? 0 : prev + 1
             );
         }
     };
@@ -256,7 +260,7 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                         </motion.div>
                     )}
                 </AnimatePresence>
-           
+
                 {/* Pagination dots (only on hover, animated smoothly) */}
                 <AnimatePresence>
                     {isHovered && tour.images.length > 1 && (
@@ -452,7 +456,7 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={cn(
                 '@container flex flex-col gap-3 overflow-hidden rounded-[16px] pb-3 @[220px]:gap-4 @[220px]:rounded-[24px] @[220px]:pb-4',
-                className,
+                className
             )}>
             {/* Image + rank badge (top-left) */}
             <motion.div
@@ -563,5 +567,4 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
 
     return card;
 }
-
 

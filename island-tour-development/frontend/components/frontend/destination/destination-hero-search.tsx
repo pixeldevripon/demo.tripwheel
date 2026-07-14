@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import { searchToursClient } from '@/lib/api/search';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { springPop } from '@/lib/motion';
 import type { SearchHit } from '@/types/search';
 
 /**
@@ -134,17 +135,19 @@ export function DestinationHeroSearch({
                 {/* Date picker - "Select date" text on both mobile and desktop */}
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                     <PopoverTrigger asChild>
-                        <button
+                        <motion.button
                             type='button'
                             aria-label={dict.selectDate}
-                            className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                            
+                            transition={springPop}
+                            className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
                             {date ? format(date, 'd MMM yyyy') : dict.selectDate}
-                        </button>
+                        </motion.button>
                     </PopoverTrigger>
                     <PopoverContent
                         align='start'
                         sideOffset={28}
-                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading'>
+                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
                         <Calendar
                             mode='single'
                             selected={date}
@@ -166,8 +169,8 @@ export function DestinationHeroSearch({
                 <motion.button
                     type='submit'
                     aria-label={dict.searchPlaceholder}
-                    whileTap={{ scale: 0.94 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={springPop}
                     className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary transition-colors hover:bg-it-primary-hover'>
                     <Image
                         src='/icons/hero-search-white.svg'
@@ -179,18 +182,20 @@ export function DestinationHeroSearch({
                 </motion.button>
             </form>
 
-            {showPanel && (
-                <SearchTypeahead
-                    hits={hits}
-                    total={total}
-                    loading={loading}
-                    query={trimmed}
-                    dict={search}
-                    searchHref={searchHref}
-                    tourHref={tourHref}
-                    onSelect={() => setFocused(false)}
-                />
-            )}
+            <AnimatePresence>
+                {showPanel && (
+                    <SearchTypeahead
+                        hits={hits}
+                        total={total}
+                        loading={loading}
+                        query={trimmed}
+                        dict={search}
+                        searchHref={searchHref}
+                        tourHref={tourHref}
+                        onSelect={() => setFocused(false)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

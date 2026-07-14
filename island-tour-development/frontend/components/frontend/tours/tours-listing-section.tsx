@@ -1,10 +1,10 @@
+import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
 import {
     type FilterCategory,
     ToursFilterBar,
-} from '@/components/frontend/tours-filter-bar';
-import { EMPTY_FILTERS } from '@/components/frontend/tours-filter-modal';
-import { ToursListing } from '@/components/frontend/tours-listing';
-import { ToursBrowser } from '@/components/frontend/tours/tours-browser';
+} from '@/components/frontend/tours/tours-filter-bar';
+import { EMPTY_FILTERS } from '@/components/frontend/tours/tours-filter-modal';
+import { ToursListing } from '@/components/frontend/tours/tours-listing';
 import {
     getCategoryFacets,
     getDestinationCategories,
@@ -151,6 +151,7 @@ export async function ToursListingSection({
     }
 
     // Cards keep the backend order; searchHitToListing carries the badge + flat URL.
+
     const tours = tourList.data.map(hit =>
         searchHitToListing(hit, locale, dict.search)
     );

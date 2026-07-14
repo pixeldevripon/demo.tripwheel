@@ -1,4 +1,4 @@
-import { ToursHeader } from '@/components/frontend/tours-header';
+import { ToursHeader } from '@/components/frontend/tours/tours-header';
 import { getDestinationTours } from '@/lib/api/public';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 

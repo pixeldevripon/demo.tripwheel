@@ -5,8 +5,10 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 interface RevealProps {
     children: React.ReactNode;
-    /** Wrapper width - '100%' (default) or shrink to content */
-    width?: 'fit-content' | '100%';
+    /** Wrapper width - '100%' (default), shrink to content, or 'auto' to set
+     *  NO inline width so `className` fully controls sizing (grid cells,
+     *  fixed-width scroller items). */
+    width?: 'fit-content' | '100%' | 'auto';
     /** Delay before the reveal starts (seconds) - use for staggering siblings */
     delay?: number;
     /** Animation duration (seconds) */
@@ -57,7 +59,7 @@ export const Reveal = ({
                 ease: [0.21, 0.47, 0.32, 0.98],
             }}
             className={className}
-            style={{ width }}>
+            style={width === 'auto' ? undefined : { width }}>
             {children}
         </motion.div>
     );

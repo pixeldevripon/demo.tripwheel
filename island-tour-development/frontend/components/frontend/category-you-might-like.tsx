@@ -1,14 +1,12 @@
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { springPop } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { cn } from '@/lib/utils';
+import { MotionLink } from './motion-link';
 import { Reveal } from './reveal';
 
-export type RelatedCategory = {
-    name: string;
-    slug: string;
-    image?: string;
-};
+export type RelatedCategory = { name: string; slug: string; image?: string };
 
 /** Optional "Not sure yet? See all X tours ->" CTA row shown under the grid. */
 export type YouMightLikeFooter = {
@@ -58,7 +56,7 @@ export function CategoryYouMightLike({
         <section
             className={cn(
                 'it-section max-md:py-[32px]!',
-                isCollection ? 'bg-it-white' : 'bg-it-surface',
+                isCollection ? 'bg-it-white' : 'bg-it-surface'
             )}>
             <div className='it-container'>
                 <Reveal>
@@ -71,40 +69,47 @@ export function CategoryYouMightLike({
                         {/* Mobile: horizontal snap-scroll of 274px cards (16px gap).
                             lg+: static 3-column grid (24px gap). */}
                         <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible'>
-                            {items.map((item) => (
-                                <Link
+                            {items.map((item, i) => (
+                                <Reveal
                                     key={item.slug}
-                                    href={localizeHref(
-                                        locale,
-                                        `/${destinationSlug}/${item.slug}`,
-                                    )}
-                                    className={cn(
-                                        'group relative block w-68.5 shrink-0 snap-start overflow-hidden rounded-[8px] bg-it-border lg:w-auto lg:rounded-[16px]',
-                                        isCollection
-                                            ? 'aspect-384/361'
-                                            : 'aspect-384/292',
-                                    )}>
-                                    {item.image && (
-                                        <Image
-                                            src={item.image}
-                                            alt={item.name}
-                                            fill
-                                            sizes='(min-width: 1024px) 384px, 274px'
-                                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
-                                        />
-                                    )}
-                                    {/* Bottom scrim - transparent -> #1a1a1a over the lower 139px (Figma). */}
-                                    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
-                                    <span
+                                    width='auto'
+                                    delay={0.2 + i * 0.1}
+                                    className='w-68.5 shrink-0 snap-start lg:w-auto'>
+                                    <MotionLink
+                                        href={localizeHref(
+                                            locale,
+                                            `/${destinationSlug}/${item.slug}`
+                                        )}
+                                        whileTap={{ scale: 0.99 }}
+                                        transition={springPop}
                                         className={cn(
-                                            'absolute bottom-6 left-6 font-medium tracking-[-0.012em] text-it-white',
+                                            'group relative block overflow-hidden rounded-[8px] bg-it-border lg:rounded-[16px]',
                                             isCollection
-                                                ? 'text-[20px] leading-[1.2] md:text-[24px]'
-                                                : 'text-[16px] leading-[1.6]',
+                                                ? 'aspect-384/361'
+                                                : 'aspect-384/292'
                                         )}>
-                                        {item.name}
-                                    </span>
-                                </Link>
+                                        {item.image && (
+                                            <Image
+                                                src={item.image}
+                                                alt={item.name}
+                                                fill
+                                                sizes='(min-width: 1024px) 384px, 274px'
+                                                className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                                            />
+                                        )}
+                                        {/* Bottom scrim - transparent -> #1a1a1a over the lower 139px (Figma). */}
+                                        <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
+                                        <span
+                                            className={cn(
+                                                'absolute bottom-6 left-6 font-medium tracking-[-0.012em] text-it-white',
+                                                isCollection
+                                                    ? 'text-[20px] leading-[1.2] md:text-[24px]'
+                                                    : 'text-[16px] leading-[1.6]'
+                                            )}>
+                                            {item.name}
+                                        </span>
+                                    </MotionLink>
+                                </Reveal>
                             ))}
                         </div>
                     </div>
@@ -124,7 +129,7 @@ export function CategoryYouMightLike({
                                 <Link
                                     href={localizeHref(locale, footer.href)}
                                     className='group inline-flex items-center gap-1'>
-                                    <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2'>
+                                    <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-colors duration-300 group-hover:text-it-primary-hover'>
                                         {footer.cta}
                                     </span>
                                     <Image
@@ -133,7 +138,7 @@ export function CategoryYouMightLike({
                                         width={20}
                                         height={20}
                                         aria-hidden='true'
-                                        className='size-6 transition-transform duration-150 group-hover:translate-x-0.5'
+                                        className='size-6'
                                     />
                                 </Link>
                             </span>
@@ -144,3 +149,4 @@ export function CategoryYouMightLike({
         </section>
     );
 }
+

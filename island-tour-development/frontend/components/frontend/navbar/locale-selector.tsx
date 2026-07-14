@@ -66,7 +66,7 @@ export function LocaleSelector({
                 aria-label={dict.language}
                 aria-expanded={open}
                 aria-busy={isPending}
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.98 }}
                 transition={pressSpring}
                 className={`flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink transition-opacity duration-300 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
                 <Image

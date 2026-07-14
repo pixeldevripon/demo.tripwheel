@@ -10,7 +10,7 @@ import { searchToursClient } from '@/lib/api/search';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
 
-import { dropdownMotion, iconPress, pressSpring } from './lib/navbar.constants';
+import { iconPress, pressSpring } from './lib/navbar.constants';
 import type { Island, NavDict, SearchDict } from './lib/navbar.types';
 import { SearchTypeahead } from './search-typeahead';
 import { useClickOutside } from './lib/use-click-outside';
@@ -163,9 +163,7 @@ export function NavSearch({
                         />
                     </form>
                     <AnimatePresence>
-                        {showDesktopPanel && (
-                            <motion.div {...dropdownMotion}>{panel}</motion.div>
-                        )}
+                        {showDesktopPanel && panel}
                     </AnimatePresence>
                 </div>
             )}
@@ -191,7 +189,7 @@ export function NavSearch({
                         <form
                             onSubmit={submit}
                             role='search'
-                            className='flex flex-1 items-center gap-2 rounded-it-full border border-it-heading px-4 py-2.5 bg-it-white'>
+                            className='flex flex-1 items-center gap-2 rounded-it-full border border-it-heading-subtle px-4 py-2.5 bg-it-white'>
                             <input
                                 ref={mobileInputRef}
                                 type='search'
