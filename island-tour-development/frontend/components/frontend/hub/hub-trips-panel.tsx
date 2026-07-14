@@ -70,9 +70,15 @@ export function HubTripsPanel({
     const [availableIds, setAvailableIds] = useState<Set<string> | null>(null);
     const [checking, setChecking] = useState(false);
 
+    // Keyed by VALUE (joined ids), not array identity: an RSC refresh streams
+    // new props objects for the same data, and an identity-keyed effect would
+    // re-fire the whole availability sweep on every refresh.
+    const tourIdsKey = panel.groups
+        .flatMap(g => g.tours.map(t => t.id))
+        .join(',');
     const allTourIds = useMemo(
-        () => panel.groups.flatMap(g => g.tours.map(t => t.id)),
-        [panel.groups]
+        () => (tourIdsKey ? tourIdsKey.split(',') : []),
+        [tourIdsKey]
     );
 
     // When a date is picked, ask the backend which of this panel's tours run that

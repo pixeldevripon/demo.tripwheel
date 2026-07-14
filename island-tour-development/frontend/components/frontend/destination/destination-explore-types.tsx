@@ -1,16 +1,21 @@
 'use client';
 
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { springPop } from '@/lib/motion';
 import useEmblaCarousel from 'embla-carousel-react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
 
-export type ExploreType = { name: string; slug: string; tours: number; image?: string };
+export type ExploreType = {
+    name: string;
+    slug: string;
+    tours: number;
+    image?: string;
+};
 
 export function DestinationExploreTypes({
     dict,
@@ -66,36 +71,35 @@ export function DestinationExploreTypes({
                                     <Reveal
                                         key={cat.slug}
                                         width='auto'
-                                        delay={0.2 + i * 0.08}
                                         className='shrink-0'>
-                                    <MotionLink
-                                        href={localizeHref(
-                                            locale,
-                                            `/${destinationSlug}/${cat.slug}`
-                                        )}
-                                        whileTap={{ scale: 0.98 }}
-                                        transition={springPop}
-                                        className='group relative block size-40 md:size-45 shrink-0 overflow-hidden rounded-[16px] bg-it-border'>
-                                        {cat.image && (
-                                            <Image
-                                                src={cat.image}
-                                                alt={cat.name}
-                                                fill
-                                                sizes='180px'
-                                                className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
-                                            />
-                                        )}
-                                        {/* Bottom scrim - transparent → #1a1a1a over the lower 77% */}
-                                        <div className='pointer-events-none absolute inset-x-0 bottom-0 h-[77%] bg-linear-to-b from-transparent to-it-ink' />
-                                        <div className='absolute bottom-6 left-6 flex flex-col'>
-                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                                {cat.name}
-                                            </span>
-                                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
-                                                {cat.tours} {dict.tours}
-                                            </span>
-                                        </div>
-                                    </MotionLink>
+                                        <MotionLink
+                                            href={localizeHref(
+                                                locale,
+                                                `/${destinationSlug}/${cat.slug}`
+                                            )}
+                                            whileTap={{ scale: 0.98 }}
+                                            transition={springPop}
+                                            className='group relative block size-40 md:size-45 shrink-0 overflow-hidden rounded-[16px] bg-it-border'>
+                                            {cat.image && (
+                                                <Image
+                                                    src={cat.image}
+                                                    alt={cat.name}
+                                                    fill
+                                                    sizes='180px'
+                                                    className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                                                />
+                                            )}
+                                            {/* Bottom scrim - transparent → #1a1a1a over the lower 77% */}
+                                            <div className='pointer-events-none absolute inset-x-0 bottom-0 h-[77%] bg-linear-to-b from-transparent to-it-ink' />
+                                            <div className='absolute bottom-6 left-6 flex flex-col'>
+                                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                    {cat.name}
+                                                </span>
+                                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
+                                                    {cat.tours} {dict.tours}
+                                                </span>
+                                            </div>
+                                        </MotionLink>
                                     </Reveal>
                                 ))}
                             </div>

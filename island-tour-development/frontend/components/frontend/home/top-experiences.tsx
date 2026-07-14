@@ -179,7 +179,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                 return (
                                     <div key={`${card.key}-${i}`} className='shrink-0 w-55'>
                                         <div
-                                            className='relative w-full overflow-hidden rounded-it-lg'
+                                            className='relative w-full overflow-hidden rounded-it-lg bg-it-border'
                                             style={{ height: H_MIN }}
                                         >
                                             {/* Base layer - the image stays mounted for the video's

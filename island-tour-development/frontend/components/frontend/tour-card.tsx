@@ -11,11 +11,13 @@
 
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { cn } from '@/lib/utils';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { springPop } from '@/lib/motion';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
+import { TourCardCarousel } from './tour-card-carousel';
 
 // ── Dictionary type ─────────────────────────────────────────────────────────
 export type TourCardDict = {
@@ -127,41 +129,14 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
-    const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     const priceLabel = tour.priceUnit === 'per' ? dict.per : dict.perGroup;
-
-    // Handle gallery navigation
-    const handlePrev = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (tour.images.length > 0) {
-            setActiveImageIndex(prev =>
-                prev === 0 ? tour.images.length - 1 : prev - 1
-            );
-        }
-    };
-
-    const handleNext = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (tour.images.length > 0) {
-            setActiveImageIndex(prev =>
-                prev === tour.images.length - 1 ? 0 : prev + 1
-            );
-        }
-    };
-
-    const activeImage = tour.images[activeImageIndex] || '';
 
     const card = (
         <motion.article
             aria-label={tour.title}
             onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => {
-                setIsHovered(false);
-                setActiveImageIndex(0); // Reset to first image
-            }}
+            onMouseLeave={() => setIsHovered(false)}
             animate={{ backgroundColor: isHovered ? '#fdf6f0' : '#ffffff' }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={[
@@ -180,21 +155,17 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                     borderBottomRightRadius: isHovered ? '0px' : '16px',
                 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}>
-                {activeImage && (
-                    <Image
-                        src={activeImage}
-                        alt={`${tour.title} - view ${activeImageIndex + 1}`}
-                        fill
-                        sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
-                        className='object-cover'
-                        priority={activeImageIndex === 0}
-                    />
-                )}
+                <TourCardCarousel
+                    images={tour.images}
+                    alt={tour.title}
+                    sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
+                    priority
+                />
                 {/* Badge (top-left) + Wishlist button (top-right) */}
                 <div className='absolute inset-x-4 top-4 flex items-start justify-between gap-2 z-10'>
                     <BadgeChip type={tour.badge} dict={dict} />
 
-                    <button
+                    <motion.button
                         type='button'
                         aria-label={
                             wishlisted
@@ -206,7 +177,9 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                             e.stopPropagation();
                             toggle(tour.id);
                         }}
-                        className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-all duration-150 active:scale-90 hover:shadow-it-md'>
+                        whileTap={{ scale: 0.9 }}
+                        transition={springPop}
+                        className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-shadow duration-300 hover:shadow-it-md'>
                         <Image
                             src={
                                 wishlisted
@@ -219,80 +192,8 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                             className='size-5 @[220px]:size-6'
                             aria-hidden='true'
                         />
-                    </button>
+                    </motion.button>
                 </div>
-                {/* Left/Right Slider Navigation (only on hover, animated smoothly) */}
-                <AnimatePresence>
-                    {isHovered && tour.images.length > 1 && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className='absolute inset-x-4 top-1/2 -translate-y-1/2 flex items-center justify-between z-10 pointer-events-none'>
-                            <button
-                                type='button'
-                                onClick={handlePrev}
-                                aria-label='Previous image'
-                                className='pointer-events-auto flex size-8 items-center justify-center rounded-full bg-it-white border-none cursor-pointer shadow-it-sm transition-all duration-150 hover:bg-it-white/90 active:scale-90'>
-                                <Image
-                                    src='/icons/arrow-right-listings.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    aria-hidden='true'
-                                />
-                            </button>
-                            <button
-                                type='button'
-                                onClick={handleNext}
-                                aria-label='Next image'
-                                className='pointer-events-auto flex size-8 items-center justify-center rounded-full bg-it-white border-none cursor-pointer shadow-it-sm transition-all duration-150 hover:bg-it-white/90 active:scale-90'>
-                                <Image
-                                    src='/icons/arrow-right-listings.svg'
-                                    alt=''
-                                    className='rotate-180'
-                                    width={24}
-                                    height={24}
-                                    aria-hidden='true'
-                                />
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Pagination dots (only on hover, animated smoothly) */}
-                <AnimatePresence>
-                    {isHovered && tour.images.length > 1 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.2 }}
-                            className='absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10'
-                            aria-hidden='true'>
-                            {tour.images.map((_, i) => (
-                                <motion.div
-                                    key={i}
-                                    layout
-                                    animate={{
-                                        width: i === activeImageIndex ? 26 : 8,
-                                        height: 8,
-                                        backgroundColor:
-                                            i === activeImageIndex
-                                                ? '#ffffff'
-                                                : 'rgba(255, 255, 255, 0.6)',
-                                    }}
-                                    transition={{
-                                        duration: 0.2,
-                                        ease: 'easeInOut',
-                                    }}
-                                    className='rounded-full'
-                                />
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </motion.div>
 
             {/* ── Card info ────────────────────────────────────────────────── */}
@@ -434,13 +335,13 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
 // ── RankedTourCard ────────────────────────────────────────────────────────────
 /**
  * Ranked collection card (Figma node 47433:2088). A surface (#f8f8f8) card,
- * radius 24, with a numbered badge over a single photo, then rating, title,
- * a short description, a combined "duration · From $price" row, and a free
- * cancellation note. No carousel, no wishlist - the whole card links out.
+ * radius 24, with a numbered badge over the image carousel (hover-revealed
+ * arrows + dots, like every tour card), then rating, title, a short
+ * description, a combined "duration · From $price" row, and a free
+ * cancellation note. No wishlist - the whole card links out.
  */
 function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const image = tour.images[0] || '';
     const rank = String(tour.rank).padStart(2, '0');
 
     const card = (
@@ -455,10 +356,10 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
             animate={{ backgroundColor: isHovered ? '#fdf6f0' : '#f8f8f8' }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={cn(
-                '@container flex flex-col gap-3 overflow-hidden rounded-[16px] pb-3 @[220px]:gap-4 @[220px]:rounded-[24px] @[220px]:pb-4',
+                '@container group flex flex-col gap-3 overflow-hidden rounded-[16px] pb-3 @[220px]:gap-4 @[220px]:rounded-[24px] @[220px]:pb-4',
                 className
             )}>
-            {/* Image + rank badge (top-left) */}
+            {/* Image carousel + rank badge (top-left) */}
             <motion.div
                 className='relative aspect-[384/270] w-full shrink-0 overflow-hidden bg-it-border'
                 animate={{
@@ -468,16 +369,12 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                     borderBottomRightRadius: isHovered ? '0px' : '16px',
                 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}>
-                {image && (
-                    <Image
-                        src={image}
-                        alt={tour.title}
-                        fill
-                        sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 384px'
-                        className='object-cover'
-                    />
-                )}
-                <span className='absolute left-2.5 top-2.5 grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:left-4 @[220px]:top-4 @[220px]:size-10 @[220px]:text-[16px]'>
+                <TourCardCarousel
+                    images={tour.images}
+                    alt={tour.title}
+                    sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 384px'
+                />
+                <span className='absolute left-2.5 top-2.5 z-10 grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:left-4 @[220px]:top-4 @[220px]:size-10 @[220px]:text-[16px]'>
                     {rank}
                 </span>
             </motion.div>

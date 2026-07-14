@@ -6,19 +6,32 @@ import {
   CollectionDisplayStyle,
   CollectionStatus,
   CollectionType,
+  FaqPageType,
   Locale,
   Prisma,
   SlugEntityType,
 } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import {
   ALL_LOCALES,
   DEMO_TOUR_REF,
-  img,
   log,
+  photo,
+  type PhotoName,
   prisma,
   section,
-  stub,
 } from './_shared';
+import { tpl } from './i18n-templates';
+
+// Topical hero per collection (what the collection is actually about).
+const COLLECTION_PHOTO: Record<string, PhotoName> = {
+  'best-things-to-do-in-curacao': 'willemstad',
+  'family-favourites-curacao': 'friendsBeach',
+  'local-legends-curacao': 'colonialStreet',
+  'best-of-aruba-adventures': 'jeepTrail',
+  'aruba-water-fun': 'watersports',
+  'sint-maarten-highlights': 'aerialCoast',
+};
 
 interface CollectionDef {
   destinationSlug: string;
@@ -121,6 +134,96 @@ const COLLECTIONS: CollectionDef[] = [
 
 export const COLLECTION_SLUGS = COLLECTIONS.map((c) => c.slug);
 
+// Destination display names + signature-experience lines for the FAQ answers.
+const DEST_DISPLAY: Record<string, { name: string; highlights: string }> = {
+  curacao: {
+    name: 'Curaçao',
+    highlights:
+      'Klein Curaçao day trips, reef snorkels, sunset cruises, and off-road buggy tours',
+  },
+  aruba: {
+    name: 'Aruba',
+    highlights:
+      'UTV desert adventures, Palm Beach water sports, catamaran sails, and the Natural Pool',
+  },
+  'sint-maarten': {
+    name: 'Sint Maarten',
+    highlights:
+      'sunset catamaran cruises, Pinel Island snorkelling, and two-nation sightseeing loops',
+  },
+};
+
+/**
+ * Collection-page FAQ set (Figma node 47433:2306) - 6 questions about the
+ * destination's signature experiences and the booking basics. Question ORDER
+ * matches the localized collFaqs templates (per-locale rows align by index).
+ */
+function collectionFaqsFor(def: CollectionDef): { q: string; a: string }[] {
+  const dest = DEST_DISPLAY[def.destinationSlug] ?? {
+    name: def.destinationSlug,
+    highlights: 'boat days, reef snorkels, and island sightseeing',
+  };
+  return [
+    {
+      q: `What are the best things to do in ${dest.name}?`,
+      a: `The best things to do in ${dest.name} include ${dest.highlights}. These are the island's signature experiences - a mix of offshore adventures and on-island exploration that covers everything ${dest.name} is known for.`,
+    },
+    {
+      q: `How far in advance should I book these tours?`,
+      a: `In high season the popular departures sell out weeks ahead, so book as soon as your dates are fixed. Every booking confirms instantly and cancels free up to the window on the tour page, so reserving early carries no risk.`,
+    },
+    {
+      q: `When is the best time to visit ${dest.name}?`,
+      a: `${dest.name} is a year-round destination. January to August is the driest, sunniest stretch; September to December brings warmer water and fewer crowds - and these tours run in every season.`,
+    },
+    {
+      q: `Do these tours include hotel pickup?`,
+      a: `Some include pickup or offer it as an extra; the rest list a clear meeting point with a map and check-in time on the tour page, always close to the main hotel areas.`,
+    },
+    {
+      q: `Can I combine multiple tours in one trip?`,
+      a: `Absolutely - most tours run a half or full day, so two or three experiences in a week is completely normal. Leave a rest day between long boat days and you have the perfect itinerary.`,
+    },
+    {
+      q: `How does Island Tours choose which tours to feature?`,
+      a: `Our local team picks on experience, traveller reviews, and how our own staff rate each operator on the water. A spot on this list cannot be bought - a tour earns it.`,
+    },
+  ];
+}
+
+/** Deterministic per-collection FAQ rows (replace on each run), all locales. */
+async function seedCollectionFaqs(
+  tx: Prisma.TransactionClient,
+  collectionId: string,
+  def: CollectionDef,
+): Promise<void> {
+  await tx.faq.deleteMany({
+    where: { pageType: FaqPageType.collection, entityId: collectionId },
+  });
+  const items = collectionFaqsFor(def);
+  const destName = (
+    DEST_DISPLAY[def.destinationSlug] ?? { name: def.destinationSlug }
+  ).name;
+  const rows: Prisma.FaqCreateManyInput[] = [];
+  items.forEach((item, idx) => {
+    const faqGroupId = randomUUID();
+    for (const locale of ALL_LOCALES) {
+      const loc = tpl(locale)?.collFaqs(destName)[idx];
+      rows.push({
+        pageType: FaqPageType.collection,
+        entityId: collectionId,
+        faqGroupId,
+        locale,
+        question: loc?.q ?? item.q,
+        answer: loc?.a ?? item.a,
+        displayOrder: idx,
+        isActive: true,
+      });
+    }
+  });
+  await tx.faq.createMany({ data: rows });
+}
+
 export async function seedCollections(): Promise<void> {
   section('Collections');
 
@@ -170,8 +273,14 @@ export async function seedCollections(): Promise<void> {
           collectionType: def.type,
           tourIds: memberTours.map((t) => t.id), // legacy mirror
           filterQuery: def.filterQuery ?? Prisma.JsonNull,
-          heroImage: img(`collection-${def.slug}`, 1600, 900),
-          ogImage: img(`collection-${def.slug}-og`, 1200, 630),
+          // Hero intentionally not seeded (dashboard-managed); the page
+          // renders its neutral fallback. OG stays topical for share cards.
+          heroImage: null,
+          ogImage: photo(
+            COLLECTION_PHOTO[def.slug] ?? 'beachClassic',
+            1200,
+            630,
+          ),
           sortOrder: def.sortOrder ?? 'recommended',
           status: CollectionStatus.PUBLISHED,
           displayStyle: def.displayStyle,
@@ -186,15 +295,11 @@ export async function seedCollections(): Promise<void> {
           return {
             collectionId: collection.id,
             locale,
-            name: en ? def.name : stub(locale, def.name),
-            overview: en ? def.overview : stub(locale, def.overview),
-            curationNote: en
-              ? def.curationNote
-              : stub(locale, def.curationNote),
-            eyebrowLabel: en
-              ? def.eyebrowLabel
-              : stub(locale, def.eyebrowLabel),
-            breadcrumbLabel: en ? def.name : stub(locale, def.name),
+            name: def.name,
+            overview: def.overview,
+            curationNote: def.curationNote,
+            eyebrowLabel: def.eyebrowLabel,
+            breadcrumbLabel: def.name,
             isMachineTranslated: !en,
           };
         }),
@@ -204,13 +309,9 @@ export async function seedCollections(): Promise<void> {
         data: ALL_LOCALES.map((locale) => ({
           collectionId: collection.id,
           locale,
-          aboutText: locale === Locale.en ? def.about : stub(locale, def.about),
-          metaTitle:
-            locale === Locale.en
-              ? `${def.name} | Island Tours`
-              : stub(locale, `${def.name} | Island Tours`),
-          metaDescription:
-            locale === Locale.en ? def.overview : stub(locale, def.overview),
+          aboutText: def.about,
+          metaTitle: `${def.name} | Island Tours`,
+          metaDescription: def.overview,
         })),
       });
 
@@ -228,11 +329,13 @@ export async function seedCollections(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             collectionTourId: ct.id,
             locale,
-            rationale:
-              locale === Locale.en ? rationale : stub(locale, rationale),
+            rationale,
           })),
         });
       }
+
+      // FAQs about the list itself (rendered by the collection page).
+      await seedCollectionFaqs(tx, collection.id, def);
 
       // COLLECTION slug_registry row (same transaction).
       await tx.slugRegistry.upsert({

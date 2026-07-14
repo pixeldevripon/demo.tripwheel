@@ -2,12 +2,16 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
+import { TourCardCarousel } from '../tour-card-carousel';
 
 export type HubPickLabel = 'best' | 'popular' | 'families';
 
 export type HubPick = {
     id: string;
+    /** Flat tour detail URL (locale-prefixed); the Book CTA links to it. */
+    href: string;
     label: HubPickLabel;
     /** Localized label text, e.g. "BEST OVERALL". */
     labelText: string;
@@ -20,7 +24,8 @@ export type HubPick = {
     /** e.g. "Full day". */
     duration: string;
     price: number;
-    image?: string | null;
+    /** Hero-first image set for the hover carousel. */
+    images: string[];
 };
 
 export type HubPickCardDict = {
@@ -52,7 +57,7 @@ export function HubPickCard({
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <article className='flex overflow-hidden rounded-[8px] border border-it-heading/10 bg-it-surface md:rounded-[16px]'>
+        <article className='group flex overflow-hidden rounded-[8px] border border-it-heading/10 bg-it-surface md:rounded-[16px]'>
             {/* Content */}
             <div className='flex flex-1 flex-col justify-between gap-10 p-4 md:gap-6 md:p-8'>
                 <div className='flex flex-col gap-3 md:gap-6'>
@@ -132,29 +137,23 @@ export function HubPickCard({
                     </div>
                 </div>
 
-                {/* Book this Trip - outlined orange */}
+                {/* Book this Trip - outlined orange, links to the tour page */}
                 <MotionLink
-                    href={`/trips/${pick.id}`}
-                    type='button'
-                    whileTap={{ scale: 0.97 }}
-                    aria-label={dict.bookTrip}
-                    role='link'
-                    title={dict.bookTrip}
-                    className='inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:min-w-85 md:text-[16px]'>
+                    href={pick.href}
+                    whileTap={{ scale: 0.98 }}
+                    transition={springPop}
+                    className='inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors duration-300 hover:bg-it-primary/5 md:h-12 md:w-auto md:min-w-85 md:text-[16px]'>
                     {dict.bookTrip}
                 </MotionLink>
             </div>
 
-            {/* Image */}
-            <div className='relative w-[42%] shrink-0 self-stretch bg-it-border md:w-[49%]'>
-                {pick.image && (
-                    <Image
-                        src={pick.image}
-                        alt={pick.title}
-                        fill
-                        className='object-cover'
-                    />
-                )}
+            {/* Image carousel - controls reveal on card hover */}
+            <div className='relative w-[42%] shrink-0 self-stretch overflow-hidden bg-it-border md:w-[49%]'>
+                <TourCardCarousel
+                    images={pick.images}
+                    alt={pick.title}
+                    sizes='(max-width: 768px) 42vw, 600px'
+                />
             </div>
         </article>
     );

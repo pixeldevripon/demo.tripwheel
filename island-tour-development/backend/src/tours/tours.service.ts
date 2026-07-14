@@ -272,6 +272,18 @@ export class ToursService {
     displayOrder: true,
   } as const;
 
+  /**
+   * Card image set for public listing feeds: hero first, then gallery order,
+   * capped so list payloads stay lean. Powers the card hover-carousel (the
+   * frontend shows arrows/dots only when a card has more than one image).
+   */
+  private readonly cardImagesArgs = {
+    select: this.heroImageSelect,
+    // Not `as const`: Prisma's orderBy input types are mutable arrays.
+    orderBy: [{ isHero: 'desc' as const }, { displayOrder: 'asc' as const }],
+    take: 5 as const,
+  };
+
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   async findTourOrThrow(id: string) {
@@ -368,11 +380,7 @@ export class ToursService {
       where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
       select: {
         ...this.tourSelect,
-        images: {
-          where: { isHero: true },
-          select: this.heroImageSelect,
-          take: 1,
-        },
+        images: this.cardImagesArgs,
       },
     });
     const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
@@ -456,11 +464,7 @@ export class ToursService {
           // show a localized title without a second round-trip.
           destination: { select: { slug: true } },
           translations: { where: { locale }, select: { title: true } },
-          images: {
-            where: { isHero: true },
-            select: this.heroImageSelect,
-            take: 1,
-          },
+          images: this.cardImagesArgs,
         },
         orderBy: this.buildOrderBy(TourSort.recommended),
         skip,
@@ -709,11 +713,7 @@ export class ToursService {
           // Destination slug so a listing item can build its flat URL even when
           // the list is not scoped to a single destination.
           destination: { select: { slug: true } },
-          images: {
-            where: { isHero: true },
-            select: this.heroImageSelect,
-            take: 1,
-          },
+          images: this.cardImagesArgs,
         },
         orderBy,
         skip,

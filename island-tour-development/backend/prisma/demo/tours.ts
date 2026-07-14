@@ -31,37 +31,41 @@ import {
   NON_EN_LOCALES,
   TIER_MAP,
   dayOffset,
-  img,
+  themedPhoto,
+  tourTheme,
   log,
   money,
   prisma,
   section,
-  stub,
 } from './_shared';
+import { categoryName, tpl } from './i18n-templates';
 import { OPERATORS, operatorEmail } from './users-operators';
 
 // ── Per-destination geo + timezone anchors ───────────────────────────────────────
 const DEST_META: Record<
   string,
-  { lat: number; lng: number; tz: string; city: string }
+  { lat: number; lng: number; tz: string; city: string; name: string }
 > = {
   curacao: {
     lat: 12.1696,
     lng: -68.99,
     tz: 'America/Curacao',
     city: 'Willemstad',
+    name: 'Curaçao',
   },
   aruba: {
     lat: 12.5211,
     lng: -70.0086,
     tz: 'America/Aruba',
     city: 'Oranjestad',
+    name: 'Aruba',
   },
   'sint-maarten': {
     lat: 18.0425,
     lng: -63.0548,
     tz: 'America/Lower_Princes',
     city: 'Philipsburg',
+    name: 'Sint Maarten',
   },
 };
 
@@ -2009,36 +2013,38 @@ function localizedTranslations(bp: Blueprint, categoryDisplay: string) {
   const localTipBody =
     'The earliest slot has the calmest water, the best light for photos, and the smallest crowds.';
   const intro = `Here is what a typical ${bp.name} looks like, step by step.`;
+  const destName = DEST_META[bp.destinationSlug].name;
+  // Non-EN policy (real-feeling, reasonable volume): tour titles stay English
+  // (they are effectively brand names), the overview/meta get a real localized
+  // template, the localized category label comes from the shared dictionary,
+  // and long-form editorial keeps its real English text (marked machine-
+  // translated) instead of a fake "[XX]" stub.
   return ALL_LOCALES.map((locale) => {
     const isEn = locale === Locale.en;
+    const t = tpl(locale);
+    const localizedOverview = t
+      ? t.tourOverview(bp.name, destName)
+      : bp.overview;
     return {
       locale,
-      title: isEn ? bp.name : stub(locale, bp.name),
-      overview: isEn ? bp.overview : stub(locale, bp.overview),
-      description: isEn ? description : stub(locale, bp.overview),
-      shortDescription: isEn
-        ? bp.shortDescription
-        : stub(locale, bp.shortDescription),
-      whatToBring: isEn
-        ? c.whatToBring
-        : c.whatToBring.map((t) => stub(locale, t)),
-      knowBeforeYouGo: isEn
-        ? c.knowBeforeYouGo
-        : c.knowBeforeYouGo.map((t) => stub(locale, t)),
-      notSuitableFor: isEn
-        ? c.notSuitableFor
-        : c.notSuitableFor.map((t) => stub(locale, t)),
-      whatToExpectIntro: isEn ? intro : stub(locale, intro),
-      categoryDisplay: isEn ? categoryDisplay : stub(locale, categoryDisplay),
-      localTipTitle: isEn ? localTipTitle : stub(locale, localTipTitle),
-      localTipBody: isEn ? localTipBody : stub(locale, localTipBody),
-      meetingPointText: isEn ? meeting : stub(locale, meeting),
-      metaTitle: isEn
-        ? `${bp.name} | Island Tours`
-        : stub(locale, `${bp.name} | Island Tours`),
-      metaDescription: isEn
-        ? bp.shortDescription
-        : stub(locale, bp.shortDescription),
+      title: bp.name,
+      overview: isEn ? bp.overview : localizedOverview,
+      description: isEn
+        ? description
+        : `${localizedOverview}\n\n${description}`,
+      shortDescription: bp.shortDescription,
+      whatToBring: c.whatToBring,
+      knowBeforeYouGo: c.knowBeforeYouGo,
+      notSuitableFor: c.notSuitableFor,
+      whatToExpectIntro: intro,
+      categoryDisplay: t
+        ? categoryName(bp.primaryCategory, locale, categoryDisplay)
+        : categoryDisplay,
+      localTipTitle,
+      localTipBody,
+      meetingPointText: meeting,
+      metaTitle: `${bp.name} | Island Tours`,
+      metaDescription: isEn ? bp.shortDescription : localizedOverview,
       isMachineTranslated: !isEn,
     };
   });
@@ -2149,7 +2155,7 @@ export async function seedTours(): Promise<void> {
           firstPublishedAt: tourPublishedAt,
           publishedAt: tourPublishedAt,
           // SEO / content
-          ogImage: img(`${bp.slug}-og`, 1200, 630),
+          ogImage: themedPhoto(tourTheme(bp.slug), 0, 1200, 630),
           breadcrumbLabel: bp.name,
           // meeting point
           meetingPointLat: meta.lat,
@@ -2210,8 +2216,8 @@ export async function seedTours(): Promise<void> {
       await tx.tourImage.createMany({
         data: Array.from({ length: 6 }, (_, i) => ({
           tourId: tour.id,
-          url: img(`${bp.slug}-${i}`),
-          urlWebp: img(`${bp.slug}-${i}`),
+          url: themedPhoto(tourTheme(bp.slug), i),
+          urlWebp: themedPhoto(tourTheme(bp.slug), i),
           isHero: i === 0,
           altText: `${bp.name} photo ${i + 1}`,
           displayOrder: i,
@@ -2251,17 +2257,14 @@ export async function seedTours(): Promise<void> {
           data: {
             tourId: tour.id,
             displayOrder: i,
-            imageUrl: i === 0 ? img(`${bp.slug}-0`) : null,
+            imageUrl: i === 0 ? themedPhoto(tourTheme(bp.slug), 0) : null,
           },
         });
         await tx.tourHighlightTranslation.createMany({
           data: ALL_LOCALES.map((locale) => ({
             highlightId: hl.id,
             locale,
-            text:
-              locale === Locale.en
-                ? highlights[i]
-                : stub(locale, highlights[i]),
+            text: highlights[i],
             isMachineTranslated: locale !== Locale.en,
           })),
         });
@@ -2276,10 +2279,7 @@ export async function seedTours(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             inclusionId: inc.id,
             locale,
-            label:
-              locale === Locale.en
-                ? c.inclusions[i]
-                : stub(locale, c.inclusions[i]),
+            label: c.inclusions[i],
             isMachineTranslated: locale !== Locale.en,
           })),
         });
@@ -2301,7 +2301,7 @@ export async function seedTours(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             exclusionId: row.id,
             locale,
-            label: locale === Locale.en ? ex.label : stub(locale, ex.label),
+            label: ex.label,
             isMachineTranslated: locale !== Locale.en,
           })),
         });
@@ -2335,7 +2335,7 @@ export async function seedTours(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             featureId: row.id,
             locale,
-            text: locale === Locale.en ? f.text : stub(locale, f.text),
+            text: f.text,
             isMachineTranslated: locale !== Locale.en,
           })),
         });
@@ -2387,9 +2387,8 @@ export async function seedTours(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             locationId: row.id,
             locale,
-            title: locale === Locale.en ? l.title : stub(locale, l.title),
-            shortDescription:
-              locale === Locale.en ? l.short : stub(locale, l.short),
+            title: l.title,
+            shortDescription: l.short,
             isMachineTranslated: locale !== Locale.en,
           })),
         });
@@ -2415,23 +2414,15 @@ export async function seedTours(): Promise<void> {
           data: ALL_LOCALES.map((locale) => ({
             pickupLocationId: pl.id,
             locale,
-            title:
-              locale === Locale.en
-                ? `${meta.city} hotel pickup`
-                : stub(locale, `${meta.city} hotel pickup`),
+            title: `${meta.city} hotel pickup`,
             directions:
-              locale === Locale.en
-                ? 'Wait in your hotel lobby; our driver will call your name.'
-                : stub(
-                    locale,
-                    'Wait in your hotel lobby; our driver will call your name.',
-                  ),
+              'Wait in your hotel lobby; our driver will call your name.',
             isMachineTranslated: locale !== Locale.en,
           })),
         });
       }
 
-      // Translations (EN real + stubs)
+      // Translations (EN real + localized templates; titles stay English)
       await tx.tourTranslation.createMany({
         data: localizedTranslations(bp, categoryDisplay).map((t) => ({
           ...t,
