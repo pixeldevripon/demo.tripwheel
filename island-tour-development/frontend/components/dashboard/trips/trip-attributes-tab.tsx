@@ -21,6 +21,7 @@ import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useAttributes, useTripAttributes, useSetTripAttributes } from '@/hooks/attributes/use-attributes';
 import type { TripListItem } from '@/types/trip';
 import type { AttributeDefinition } from '@/types/attribute';
+import { isDerivedAttribute } from '@/lib/config/derived-attributes';
 
 function parseMulti(value: string | undefined): string[] {
   if (!value) return [];
@@ -46,31 +47,62 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
   const { data: current, isLoading: valuesLoading } = useTripAttributes(trip.id);
   const { mutate: save, isPending } = useSetTripAttributes(trip.id);
 
-  // Local form state: key -> value (string; ENUM_MULTI stored as comma-joined)
+  // Local form state: key -> value (string; ENUM_MULTI stored as comma-joined). Editable keys only.
   const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!current) return;
     const next: Record<string, string> = {};
     for (const a of current) {
+      // Derived attributes are computed by the backend from the tour's Details -
+      // they are never shown or edited here (single source of truth).
+      if (a.derived) continue;
       next[a.key] = a.dataType === 'ENUM_MULTI' ? parseMulti(a.value).join(',') : a.value;
     }
     setValues(next);
   }, [current]);
 
-  const activeDefs = (defs ?? []).filter(d => {
-    if (!d.isActive) return false;
+  // Only genuine (operator-set) attributes are editable here; derived ones are
+  // owned by the Details tab and computed on read.
+  const editableDefs = (defs ?? []).filter(d => {
+    if (!d.isActive || isDerivedAttribute(d.key)) return false;
     const applies = d.appliesToCategories ?? [];
     // Global (empty) applies everywhere; otherwise must intersect the tour's categories.
     return applies.length === 0 || applies.some(slug => tourCategorySlugs.has(slug));
   });
+
+  // Group editable attributes by applicability: global first, then per category.
+  const categoryName = (slug: string) =>
+    (categories ?? []).find(c => c.slug === slug)?.name ?? slug;
+  const editableGroups = useMemo(() => {
+    const general: AttributeDefinition[] = [];
+    const byCategory = new Map<string, AttributeDefinition[]>();
+    for (const d of editableDefs) {
+      const applies = d.appliesToCategories ?? [];
+      if (applies.length === 0) {
+        general.push(d);
+        continue;
+      }
+      const slug = applies.find(s => tourCategorySlugs.has(s)) ?? applies[0];
+      const list = byCategory.get(slug) ?? [];
+      list.push(d);
+      byCategory.set(slug, list);
+    }
+    const groups: { id: string; title: string; defs: AttributeDefinition[] }[] = [];
+    if (general.length) groups.push({ id: 'general', title: 'General features', defs: general });
+    for (const [slug, list] of byCategory) {
+      groups.push({ id: slug, title: categoryName(slug), defs: list });
+    }
+    return groups;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableDefs, categories, tourCategorySlugs]);
 
   function setVal(key: string, v: string) {
     setValues(prev => ({ ...prev, [key]: v }));
   }
 
   function onSave() {
-    const attributes = activeDefs
+    const attributes = editableDefs
       .map(d => ({ key: d.key, value: (values[d.key] ?? '').trim() }))
       .filter(a => a.value !== '');
     save(
@@ -93,24 +125,33 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
           Attributes
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Global attributes + those for this tour&apos;s categories
-          {tourCategorySlugs.size > 0 ? ` (${[...tourCategorySlugs].join(', ')})` : ''}. These power public filters.
+          Extra properties for this tour&apos;s categories
+          {tourCategorySlugs.size > 0 ? ` (${[...tourCategorySlugs].join(', ')})` : ''}. These power
+          public filters. Booking, policy, audience and accessibility properties are set on the
+          Details tab and derived automatically.
         </p>
       </CardHeader>
       <CardContent className="pt-8">
-        {activeDefs.length === 0 ? (
+        {editableGroups.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No attributes apply to this trip&apos;s categories.
+            No editable attributes apply to this trip&apos;s categories.
           </p>
         ) : (
-          <div className="space-y-6">
-            {activeDefs.map(def => (
-              <AttributeInput
-                key={def.key}
-                def={def}
-                value={values[def.key] ?? ''}
-                onChange={v => setVal(def.key, v)}
-              />
+          <div className="space-y-8">
+            {editableGroups.map(group => (
+              <div key={group.id} className="space-y-6">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  {group.title}
+                </h3>
+                {group.defs.map(def => (
+                  <AttributeInput
+                    key={def.key}
+                    def={def}
+                    value={values[def.key] ?? ''}
+                    onChange={v => setVal(def.key, v)}
+                  />
+                ))}
+              </div>
             ))}
             <div className="flex justify-end pt-2">
               <Button type="button" onClick={onSave} disabled={isPending}>

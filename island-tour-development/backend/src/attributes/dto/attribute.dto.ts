@@ -52,6 +52,12 @@ export class TourAttributeResponseDto {
   @ApiPropertyOptional({ example: 'Boat Type' }) displayName!: string | null;
   @ApiPropertyOptional({ enum: AttributeDataType })
   dataType!: AttributeDataType | null;
+  @ApiProperty({
+    example: false,
+    description:
+      'Derived from a first-class Tour field (managed in the Details tab). Read-only: cannot be set via this endpoint.',
+  })
+  derived!: boolean;
 }
 
 export class DeleteMessageResponseDto {

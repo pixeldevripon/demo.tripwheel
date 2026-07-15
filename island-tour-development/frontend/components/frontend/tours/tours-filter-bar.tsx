@@ -550,7 +550,7 @@ export function ToursFilterBar({
             {/* ── Row 2 - counter + chips + clear all · sort ──────────────────
                 Mobile: counter/chips/clear-all scroll horizontally (clear-all sits
                 off-screen, reachable by scroll); sort stays pinned right. */}
-            <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4'>
+            <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4 '>
                 {/* Left - counter, applied chips, clear all */}
                 <div
                     ref={metaRowRef}
@@ -573,7 +573,7 @@ export function ToursFilterBar({
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.15 }}
-                                    className='flex shrink-0 items-center gap-2 md:flex-wrap'>
+                                    className='flex shrink-0 items-center gap-2 md:flex-wrap max-w-275'>
                                     <AnimatePresence initial={false}>
                                         {chips.map(chip => (
                                             <motion.button

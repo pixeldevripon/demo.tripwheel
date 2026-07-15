@@ -16,15 +16,17 @@ import { Collapse } from './collapse';
 export function PriceSummary() {
     const {
         dict,
-        data,
         money,
         ready,
         detailsOpen,
         toggleDetails,
-        lineItems,
+        priceRows,
         total,
         payToday,
         balanceLater,
+        showPayToday,
+        showBalance,
+        balanceLabel,
     } = useBooking();
 
     return (
@@ -34,18 +36,12 @@ export function PriceSummary() {
                 <Collapse open={detailsOpen}>
                     <div className='flex flex-col gap-3.5 pt-3.5'>
                         <div className='flex flex-col gap-2'>
-                            {lineItems.map(({ band, count }) => (
+                            {priceRows.map(row => (
                                 <div
-                                    key={band.id}
+                                    key={row.id}
                                     className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    <span>
-                                        {`${
-                                            band.kind === 'spectator'
-                                                ? dict.spectators
-                                                : band.label
-                                        } x ${count} x ${money(band.price)}`}
-                                    </span>
-                                    <span>{money(count * band.price)}</span>
+                                    <span>{row.text}</span>
+                                    <span>{money(row.amount)}</span>
                                 </div>
                             ))}
                         </div>
@@ -57,19 +53,21 @@ export function PriceSummary() {
                         <span>{dict.total}</span>
                         <span>{money(total)}</span>
                     </div>
-                    {data.requiresDeposit && (
-                        <>
-                            <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                <span>{dict.payToday}</span>
-                                <span className='text-it-primary'>
-                                    {money(payToday)}
-                                </span>
-                            </div>
-                            <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                <span>{dict.balanceLater}</span>
-                                <span>{money(balanceLater)}</span>
-                            </div>
-                        </>
+                    {/* Money rows are model-driven: pay-today and balance rows
+                        each show only when non-zero (master §6.1). */}
+                    {showPayToday && (
+                        <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span>{dict.payToday}</span>
+                            <span className='text-it-primary'>
+                                {money(payToday)}
+                            </span>
+                        </div>
+                    )}
+                    {showBalance && (
+                        <div className='flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span>{balanceLabel}</span>
+                            <span>{money(balanceLater)}</span>
+                        </div>
                     )}
                     <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
                         {dict.taxesIncluded}

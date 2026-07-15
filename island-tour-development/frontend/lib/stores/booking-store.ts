@@ -35,6 +35,24 @@ export interface CalendarDayState {
 /** A single band row for the price breakdown (band + its chosen count). */
 export type BookingLineItem = { band: BookingBand; count: number };
 
+/**
+ * A rendered price-breakdown row: `text` is the full left-hand label (e.g.
+ * "Adult x 2 x $120" or "Charter (up to 10 guests)"), `amount` the right-hand
+ * money value. Both pricing models produce these so the summary renders one way.
+ */
+export type PriceRow = { id: string; text: string; amount: number };
+
+/**
+ * The payment trust line rendered under free-cancellation. `modal` (deposit
+ * models) carries a clickable `{link}` phrase that opens the deposit modal;
+ * `plain` (paid_in_full) is a static statement; `null` (operator_full) renders
+ * no payment line.
+ */
+export type PaymentTrust =
+    | { kind: 'modal'; before: string; link: string; after: string }
+    | { kind: 'plain'; text: string }
+    | null;
+
 /** Static, per-tour configuration derived once when the store is created. */
 export interface BookingConfig {
     data: TourBookingData;
@@ -171,31 +189,125 @@ export function deriveBooking(s: BookingStore) {
     const isLive = s.tourId != null;
     const slots = effectiveSlotsOf(s);
 
-    // `ready` (summary shown, CTA = "Continue") is gated on the availability
-    // check; selectors stay editable until it passes.
-    const ready = s.availabilityChecked;
-    const editingParty = !s.availabilityChecked;
-
-    const lineItems: BookingLineItem[] = s.data.bands
-        .map(b => ({ band: b, count: s.counts[b.id] ?? 0 }))
-        .filter(row => row.count > 0);
-    const total = lineItems.reduce(
-        (sum, row) => sum + row.count * row.band.price,
-        0
-    );
-    const payToday = s.data.requiresDeposit
-        ? Math.round((total * s.data.depositPct) / 100)
-        : total;
-    const balanceLater = total - payToday;
+    // Readiness (price summary shown, CTA = the reserve action). In LIVE mode the
+    // backend already pre-verified availability (the calendar only offers open
+    // days and `/availability/check` only returns bookable slots), so a complete,
+    // in-capacity selection is immediately ready - there is nothing left to
+    // "check", and the party stays editable after ready (steppers remain). The
+    // design/demo card (no tour id) keeps the explicit two-phase check click.
+    const selectionComplete =
+        s.selectedDate != null &&
+        s.selectedTime != null &&
+        travelerCount >= 1 &&
+        !overCapacity;
+    const ready = isLive ? selectionComplete : s.availabilityChecked;
+    const editingParty = isLive ? true : !s.availabilityChecked;
 
     const cur = s.data.currencySymbol;
     const money = (n: number) => `${cur}${n.toLocaleString(s.locale)}`;
+
+    // Price breakdown rows + grand total, per pricing model.
+    const isUnit = s.data.pricingModel === 'UNIT';
+    let priceRows: PriceRow[];
+    let total: number;
+    if (isUnit) {
+        // Whole-unit charter (master §3.2): base covers up to
+        // `unitIncludedGuests`; each guest beyond that adds `extraPersonPrice`.
+        const guests = travelerCount;
+        const included = s.data.unitIncludedGuests ?? guests;
+        const extra = Math.max(0, guests - included);
+        priceRows = [
+            {
+                id: 'charter',
+                text: s.dict.unitCharterLine.replace(
+                    '{count}',
+                    String(included)
+                ),
+                amount: s.data.basePrice,
+            },
+        ];
+        if (extra > 0) {
+            priceRows.push({
+                id: 'extra-guests',
+                text: `${s.dict.unitExtraGuests} x ${extra} x ${money(
+                    s.data.extraPersonPrice
+                )}`,
+                amount: extra * s.data.extraPersonPrice,
+            });
+        }
+        total = s.data.basePrice + extra * s.data.extraPersonPrice;
+    } else {
+        priceRows = s.data.bands
+            .map(b => ({ band: b, count: s.counts[b.id] ?? 0 }))
+            .filter(row => row.count > 0)
+            .map(({ band, count }) => ({
+                id: band.id,
+                text: `${
+                    band.kind === 'spectator' ? s.dict.spectators : band.label
+                } x ${count} x ${money(band.price)}`,
+                amount: count * band.price,
+            }));
+        total = priceRows.reduce((sum, r) => sum + r.amount, 0);
+    }
+
+    // ── Payment-model conditional (master §3.1 / §5.8 / §6.1) ────────────────
+    // The card's money rows, CTA label, and trust lines are all driven by the
+    // tour's real `paymentModel` + `depositPct`.
+    const paymentModel = s.data.paymentModel;
+    const isDepositModel =
+        paymentModel === 'OPERATOR_LINK' || paymentModel === 'ON_ARRIVAL';
+    const isFullModel = paymentModel === 'PAID_IN_FULL';
+    const isOperatorFull = paymentModel === 'OPERATOR_FULL';
+    // operator_full is dropped in v1 (founder decision, SETTLEMENT-AND-PAYOUTS):
+    // the widget must never offer a payment-free reserve. A tour still carrying
+    // it is not bookable here.
+    const bookingBlocked = isOperatorFull;
+
+    const usesDeposit =
+        isDepositModel && s.data.depositPct > 0 && s.data.depositPct < 100;
+    const payToday = usesDeposit
+        ? Math.round((total * s.data.depositPct) / 100)
+        : isOperatorFull
+          ? 0
+          : total;
+    const balanceLater = total - payToday;
+
+    // Money rows: hide zero-amount rows (master §6.1).
+    const showPayToday = payToday > 0;
+    const showBalance = balanceLater > 0;
+    const balanceLabel =
+        paymentModel === 'ON_ARRIVAL'
+            ? s.dict.balanceOnArrival
+            : s.dict.balanceLater;
 
     // Interpolate policy-copy placeholders from the live tour data.
     const fillPolicy = (str: string) =>
         str
             .replace(/\{hours\}/g, String(s.data.cancellationHours))
             .replace(/\{pct\}/g, String(s.data.depositPct));
+
+    // Payment trust line (below free-cancellation), model-specific:
+    //  - deposit models: clickable "{link}, the rest via the operator's secure
+    //    link" / "... on arrival" opening the deposit modal;
+    //  - paid_in_full: a plain "Pay in full now" statement (no modal);
+    //  - operator_full: none.
+    const paymentTrust: PaymentTrust = isDepositModel
+        ? (() => {
+              const template =
+                  paymentModel === 'ON_ARRIVAL'
+                      ? s.dict.payOnArrival
+                      : s.dict.payLater;
+              const [before, after] = fillPolicy(template).split('{link}');
+              return {
+                  kind: 'modal',
+                  before,
+                  link: fillPolicy(s.dict.payLaterLink),
+                  after,
+              };
+          })()
+        : isFullModel
+          ? { kind: 'plain', text: fillPolicy(s.dict.payInFull) }
+          : null;
 
     const bandPriceLabel = (band: BookingBand): string =>
         band.price > 0
@@ -219,10 +331,16 @@ export function deriveBooking(s: BookingStore) {
         capacityReason,
         ready,
         editingParty,
-        lineItems,
+        isUnit,
+        priceRows,
         total,
         payToday,
         balanceLater,
+        showPayToday,
+        showBalance,
+        balanceLabel,
+        bookingBlocked,
+        paymentTrust,
         money,
         fillPolicy,
         bandPriceLabel,

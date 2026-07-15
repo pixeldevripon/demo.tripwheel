@@ -15,6 +15,12 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  DERIVED_ATTRIBUTE_KEYS,
+  deriveTourAttributeMap,
+  derivedAttributeTourSelect,
+  type DerivedAttributeTour,
+} from '@/attributes/derived-attributes';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -223,18 +229,39 @@ export class HubService {
     const attrsByTour = new Map<string, Map<string, string>>();
     if (tourIds.length === 0) return attrsByTour;
 
-    const rows = await this.prisma.tourAttribute.findMany({
-      where: { tourId: { in: tourIds } },
-      select: { tourId: true, attributeKey: true, attributeValue: true },
-    });
+    const [rows, tours] = await Promise.all([
+      this.prisma.tourAttribute.findMany({
+        where: { tourId: { in: tourIds } },
+        select: { tourId: true, attributeKey: true, attributeValue: true },
+      }),
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, ...derivedAttributeTourSelect },
+      }),
+    ]);
 
+    // Stored values, minus derived keys (computed from the tour's fields below).
     for (const r of rows) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(r.attributeKey)) continue;
       let m = attrsByTour.get(r.tourId);
       if (!m) {
         m = new Map();
         attrsByTour.set(r.tourId, m);
       }
       m.set(r.attributeKey, r.attributeValue);
+    }
+
+    // Derived values (e.g. cancellation_window_hours, maximum_travelers) from the
+    // tour's first-class fields - the single source of truth for the comparison rows.
+    for (const t of tours) {
+      let m = attrsByTour.get(t.id);
+      if (!m) {
+        m = new Map();
+        attrsByTour.set(t.id, m);
+      }
+      for (const [key, value] of deriveTourAttributeMap(t)) {
+        m.set(key, value);
+      }
     }
     return attrsByTour;
   }

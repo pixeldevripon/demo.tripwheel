@@ -19,6 +19,7 @@ export function PartySelector() {
     const {
         dict,
         data,
+        isUnit,
         travelerCount,
         headerHasChevron,
         showInlineStepper,
@@ -35,7 +36,8 @@ export function PartySelector() {
         setBandCount,
     } = useBooking();
 
-    const travelersLabel = dict.travelers.replace(
+    // UNIT (charter) tours count "guests"; everything else counts "travelers".
+    const travelersLabel = (isUnit ? dict.guests : dict.travelers).replace(
         '{count}',
         String(travelerCount)
     );

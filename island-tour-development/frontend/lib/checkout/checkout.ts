@@ -127,6 +127,33 @@ export function computeCheckoutTotals(
         }
     }
 
+    // UNIT (whole-unit / charter): one guests count; total is basePrice plus a
+    // per-guest surcharge beyond `unitIncludedGuests` (master §3.2), NOT a sum of
+    // per-person bands. Mirrors the widget's `deriveBooking`.
+    if (data.pricingModel === 'UNIT') {
+        const guests =
+            Object.values(effective).reduce((sum, n) => sum + n, 0) ||
+            Math.max(1, data.minPartySize);
+        const included = data.unitIncludedGuests ?? guests;
+        const extra = Math.max(0, guests - included);
+        const total = data.basePrice + extra * data.extraPersonPrice;
+        const guestsBand = data.bands[0];
+        const lineItems: CheckoutLineItem[] = guestsBand
+            ? [{ band: guestsBand, count: guests, lineTotal: total }]
+            : [];
+        const payToday = data.requiresDeposit
+            ? Math.round((total * data.depositPct) / 100)
+            : total;
+        return {
+            lineItems,
+            partySize: guests,
+            total,
+            payToday,
+            balanceLater: total - payToday,
+            requiresDeposit: data.requiresDeposit,
+        };
+    }
+
     const lineItems: CheckoutLineItem[] = data.bands
         .map(band => ({ band, count: effective[band.id] ?? 0 }))
         .filter(row => row.count > 0)

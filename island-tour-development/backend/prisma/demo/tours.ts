@@ -69,15 +69,6 @@ const DEST_META: Record<
   },
 };
 
-const ISO_TO_GUIDE_LANG: Record<string, string> = {
-  en: 'english',
-  es: 'spanish',
-  nl: 'dutch',
-  fr: 'french',
-  de: 'german',
-  pt: 'portuguese',
-};
-
 type AttrValue = string | number | boolean | string[];
 function attrVal(v: AttrValue): string {
   if (Array.isArray(v)) return JSON.stringify(v);
@@ -1981,25 +1972,16 @@ function buildAgeBands(bp: Blueprint): Prisma.TourAgeBandCreateManyTourInput[] {
 
 export function buildAttributes(bp: Blueprint): Record<string, string> {
   const c = CATEGORY_CONTENT[bp.primaryCategory];
-  const langValues = (bp.languages ?? L_DEFAULT)
-    .map((iso) => ISO_TO_GUIDE_LANG[iso])
-    .filter(Boolean);
+  // NOTE: derived attributes (booking_type, duration_minutes, pickup_available,
+  // instant_confirmation, free_cancellation, guide_languages, the accessibility
+  // flags, cancellation_window_hours, maximum_travelers, minimum_age) are NOT
+  // stored - they are computed on read from the tour's first-class fields
+  // (src/attributes/derived-attributes.ts). Only genuine operator attributes
+  // (category attrs + per-tour overrides) are persisted here.
   const raw: Record<string, AttrValue> = {
-    booking_type: bp.bookingType.toLowerCase(),
-    duration_minutes: bp.durationFrom,
-    pickup_available: !!bp.pickup,
-    instant_confirmation: true,
-    free_cancellation: true,
-    guide_languages: langValues,
-    wheelchair_accessible: bp.flags?.wheelchairAccessible ?? false,
-    family_friendly: bp.flags?.familyFriendly ?? false,
-    suitable_for_beginners: bp.flags?.suitableForBeginners ?? false,
-    cancellation_window_hours: bp.cancellationHours ?? 48,
-    maximum_travelers: bp.maxPartySize ?? 20,
     ...c.attrs,
     ...(bp.attrOverrides ?? {}),
   };
-  if (bp.minAgeYears && bp.minAgeYears > 0) raw.minimum_age = bp.minAgeYears;
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) out[k] = attrVal(v);
   return out;

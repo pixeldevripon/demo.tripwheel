@@ -232,6 +232,7 @@ export class AvailabilityMaterializerService {
         startTime: true,
         capacity: true,
         bookedCount: true,
+        status: true,
         manuallyEdited: true,
         source: true,
       },

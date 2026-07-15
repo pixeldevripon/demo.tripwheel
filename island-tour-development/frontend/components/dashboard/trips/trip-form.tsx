@@ -169,12 +169,6 @@ export function TripForm() {
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
   const pricingModel = watch('pricingModel');
-  const pickupRequired = watch('pickupRequired');
-  const instantConfirmation = watch('instantConfirmation');
-  const weatherDependent = watch('weatherDependent');
-  const wheelchairAccessible = watch('wheelchairAccessible');
-  const familyFriendly = watch('familyFriendly');
-  const suitableForBeginners = watch('suitableForBeginners');
 
   const { data: hubs } = useActiveHubs(destinationId || undefined);
 
@@ -565,136 +559,10 @@ export function TripForm() {
             </Field>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="instantConfirmation"
-                checked={instantConfirmation}
-                onCheckedChange={(c) => setValue('instantConfirmation', !!c)}
-              />
-              <Label htmlFor="instantConfirmation" className="text-xs font-semibold uppercase cursor-pointer">
-                Instant confirmation
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="pickupRequired"
-                checked={pickupRequired}
-                onCheckedChange={(c) => setValue('pickupRequired', !!c)}
-              />
-              <Label htmlFor="pickupRequired" className="text-xs font-semibold uppercase cursor-pointer">
-                Pickup required
-              </Label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Min Party Size</Label>
-              <Input {...register('minPartySize')} type="number" min={1} placeholder="1" />
-              <FieldDescription>Minimum travelers per booking.</FieldDescription>
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Max Party Size</Label>
-              <Input {...register('maxPartySize')} type="number" min={1} placeholder="Optional" />
-              <FieldDescription>Leave empty for no limit.</FieldDescription>
-            </Field>
-          </div>
-
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
-            <Input {...register('bookingCutoffMinutes')} type="number" min={0} placeholder="0" />
-            <FieldDescription>How many minutes before departure bookings close.</FieldDescription>
-          </Field>
-
-          {/* Meeting point */}
-          <div className="grid grid-cols-3 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Departure City</Label>
-              <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meeting Lat</Label>
-              <Input {...register('meetingPointLat')} placeholder="e.g. 12.1091" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meeting Lng</Label>
-              <Input {...register('meetingPointLng')} placeholder="e.g. -68.9316" />
-            </Field>
-          </div>
-
-          {/* Audience */}
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Minimum Age</Label>
-              <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Fitness Level</Label>
-              <Controller
-                name="fitnessLevel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EASY">Easy</SelectItem>
-                      <SelectItem value="MODERATE">Moderate</SelectItem>
-                      <SelectItem value="CHALLENGING">Challenging</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="weatherDependent"
-                checked={weatherDependent}
-                onCheckedChange={(c) => setValue('weatherDependent', !!c)}
-              />
-              <Label htmlFor="weatherDependent" className="text-xs font-semibold uppercase cursor-pointer">
-                Weather dependent
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="wheelchairAccessible"
-                checked={wheelchairAccessible}
-                onCheckedChange={(c) => setValue('wheelchairAccessible', !!c)}
-              />
-              <Label htmlFor="wheelchairAccessible" className="text-xs font-semibold uppercase cursor-pointer">
-                Wheelchair accessible
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="familyFriendly"
-                checked={familyFriendly}
-                onCheckedChange={(c) => setValue('familyFriendly', !!c)}
-              />
-              <Label htmlFor="familyFriendly" className="text-xs font-semibold uppercase cursor-pointer">
-                Family friendly
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="suitableForBeginners"
-                checked={suitableForBeginners}
-                onCheckedChange={(c) => setValue('suitableForBeginners', !!c)}
-              />
-              <Label htmlFor="suitableForBeginners" className="text-xs font-semibold uppercase cursor-pointer">
-                Suitable for beginners
-              </Label>
-            </div>
-          </div>
-
           <p className="text-xs text-muted-foreground">
-            These can be changed any time from the trip&apos;s Details tab.
+            Pickup, party size, booking cutoff, meeting point, audience and
+            accessibility are optional - add them any time after creating the trip,
+            from its Details tab.
           </p>
 
           <div className="flex justify-end pt-2">

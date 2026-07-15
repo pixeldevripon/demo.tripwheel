@@ -11,6 +11,13 @@ import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.valida
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
 import { isDepartureLiveBookable } from '@/availability/availability-status.util';
+import {
+  DERIVED_ATTRIBUTE_KEYS,
+  deriveTourAttributes,
+  derivedAttributeTourSelect,
+  buildDerivedAttributeWhere,
+  type DerivedAttributeTour,
+} from '@/attributes/derived-attributes';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import {
   BadRequestException,
@@ -169,7 +176,7 @@ export class ToursService {
     >();
     if (tourIds.length === 0) return result;
 
-    const [rows, defs] = await Promise.all([
+    const [rows, defs, toursForDerive] = await Promise.all([
       this.prisma.tourAttribute.findMany({
         where: { tourId: { in: tourIds } },
         select: { tourId: true, attributeKey: true, attributeValue: true },
@@ -178,15 +185,33 @@ export class ToursService {
         where: { isActive: true },
         select: { key: true, dataType: true },
       }),
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, ...derivedAttributeTourSelect },
+      }),
     ]);
     const dataTypeByKey = new Map(defs.map((d) => [d.key, d.dataType]));
 
+    // Stored chips, minus derived keys (those are computed from the tour's fields
+    // below - the Details are the single source of truth).
     for (const r of rows) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(r.attributeKey)) continue;
       const dataType = dataTypeByKey.get(r.attributeKey);
       if (!dataType) continue; // definition inactive/removed - skip
       const list = result.get(r.tourId) ?? [];
       list.push({ key: r.attributeKey, value: r.attributeValue, dataType });
       result.set(r.tourId, list);
+    }
+
+    // Derived chips computed from first-class fields.
+    for (const t of toursForDerive) {
+      const list = result.get(t.id) ?? [];
+      for (const d of deriveTourAttributes(t)) {
+        const dataType = dataTypeByKey.get(d.key);
+        if (!dataType) continue; // definition inactive/removed - skip
+        list.push({ key: d.key, value: d.value, dataType });
+      }
+      if (list.length) result.set(t.id, list);
     }
     return result;
   }
@@ -891,28 +916,50 @@ export class ToursService {
     );
     if (candidates.length === 0) return [];
 
-    const defs = await this.prisma.attributeDefinition.findMany({
-      where: { key: { in: candidates }, isFilterable: true, isActive: true },
-      select: { key: true },
-    });
-    const validKeys = new Set(defs.map((d) => d.key));
-
-    const filters: Prisma.TourWhereInput[] = [];
-    for (const key of candidates) {
-      if (!validKeys.has(key)) continue;
-      const values = String(rawQuery[key])
+    const valuesOf = (key: string) =>
+      String(rawQuery[key])
         .split(',')
         .map((v) => v.trim())
         .filter(Boolean);
-      if (values.length === 0) continue;
-      // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
-      const valueOr = values.flatMap((v) => [
-        { attributeValue: v },
-        { attributeValue: { contains: JSON.stringify(v) } },
-      ]);
-      filters.push({
-        attributes: { some: { attributeKey: key, OR: valueOr } },
+
+    const filters: Prisma.TourWhereInput[] = [];
+
+    // Derived keys are filtered against the first-class Tour columns (single
+    // source of truth), never the tour_attributes join. Genuine attributes go
+    // through the dictionary + the attributes.some join below.
+    const genuineCandidates: string[] = [];
+    for (const key of candidates) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(key)) {
+        const where = buildDerivedAttributeWhere(key, valuesOf(key));
+        if (where) filters.push(where);
+      } else {
+        genuineCandidates.push(key);
+      }
+    }
+
+    if (genuineCandidates.length > 0) {
+      const defs = await this.prisma.attributeDefinition.findMany({
+        where: {
+          key: { in: genuineCandidates },
+          isFilterable: true,
+          isActive: true,
+        },
+        select: { key: true },
       });
+      const validKeys = new Set(defs.map((d) => d.key));
+      for (const key of genuineCandidates) {
+        if (!validKeys.has(key)) continue;
+        const values = valuesOf(key);
+        if (values.length === 0) continue;
+        // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
+        const valueOr = values.flatMap((v) => [
+          { attributeValue: v },
+          { attributeValue: { contains: JSON.stringify(v) } },
+        ]);
+        filters.push({
+          attributes: { some: { attributeKey: key, OR: valueOr } },
+        });
+      }
     }
     return filters;
   }

@@ -8,6 +8,7 @@
  * are derived from the tour's `startTimes` and every slot is selectable for now.
  */
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
+import type { PaymentModel, PricingModel } from '@/types/trip';
 
 /**
  * Content for a policy modal (Figma nodes 48125:20233 / 48125:21537). Every
@@ -44,24 +45,44 @@ export type TourBookingDict = {
     onlyLeft: string;
     /** "{count} Travelers" */
     travelers: string;
+    /** "{count} Guests" - party header for a UNIT (whole-unit / charter) tour. */
+    guests: string;
+    /** Headline suffix for a UNIT tour ("per group") in place of "per person". */
+    perGroup: string;
+    /** UNIT headline sub-line: base coverage, e.g. "Up to {count} guests". */
+    unitIncludes: string;
+    /** UNIT headline sub-line: surcharge, e.g. "+{price} per extra guest". */
+    unitExtra: string;
+    /** UNIT price-breakdown base row, e.g. "Charter (up to {count} guests)". */
+    unitCharterLine: string;
+    /** UNIT price-breakdown surcharge row label ("Extra guests"). */
+    unitExtraGuests: string;
     total: string;
     payToday: string;
     balanceLater: string;
+    /** Balance-row label for the `on_arrival` model ("Balance on arrival"). */
+    balanceOnArrival: string;
     taxesIncluded: string;
     showDetails: string;
     /** Trust line with a `{link}` marker for the clickable part, e.g. "{link} up to {hours}h". */
     freeCancellation: string;
     /** Clickable/underlined phrase inside `freeCancellation` (opens the modal). */
     freeCancellationLink: string;
-    /** Trust line with a `{link}` marker, e.g. "{link}, the rest later". */
+    /** Deposit trust line (`operator_link`): `{link}` marker, "the rest via the operator's secure link". */
     payLater: string;
-    /** Clickable/underlined phrase inside `payLater` (opens the modal). */
+    /** Deposit trust line (`on_arrival`): `{link}` marker, "the rest on arrival". */
+    payOnArrival: string;
+    /** Full-payment trust line (`paid_in_full`): plain statement, no modal link. */
+    payInFull: string;
+    /** Clickable/underlined phrase inside the deposit trust line (opens the modal). */
     payLaterLink: string;
     sellOutTitle: string;
     sellOutSubtitle: string;
     // Booking Widget V2
     selectDate: string;
     checkAvailability: string;
+    /** Shown in place of the CTA when the tour's payment model is not bookable in v1. */
+    bookingUnavailable: string;
     apply: string;
     /** "/per person" */
     perPersonShort: string;
@@ -117,12 +138,28 @@ export interface BookingSlot {
 export interface TourBookingData {
     /** Currency glyph for the tour's default currency ("$" / "€"). */
     currencySymbol: string;
-    /** Headline "From" price (per person). */
+    /** Headline "From" price (per person for PER_PERSON, group base for UNIT). */
     priceFrom: number;
+    /**
+     * Pricing model. `PER_PERSON` sums the age-band steppers; `UNIT` (whole-unit
+     * / charter) charges `basePrice` for up to `unitIncludedGuests`, then
+     * `extraPersonPrice` per extra guest (§3.2).
+     */
+    pricingModel: PricingModel;
+    /** UNIT: whole-unit base price (covers up to `unitIncludedGuests`). */
+    basePrice: number;
+    /** UNIT: guests covered by `basePrice` before the per-head surcharge (null for PER_PERSON). */
+    unitIncludedGuests: number | null;
+    /** UNIT: surcharge per guest beyond `unitIncludedGuests` (0 for PER_PERSON). */
+    extraPersonPrice: number;
+    /** UNIT: the unit kind (BOAT / VEHICLE / ...), for labelling. */
+    wholeUnitType: string | null;
     /** Priced party rows in display order (participants first, then spectators). */
     bands: BookingBand[];
     /** Departure-time slots offered by the tour. */
     slots: BookingSlot[];
+    /** Payment model - drives the CTA label, money rows, and trust lines (§3.1). */
+    paymentModel: PaymentModel;
     /** Free-cancellation window in hours (enum-bound, NOT NULL). */
     cancellationHours: number;
     /** Deposit percentage taken today (0-100). */
@@ -145,6 +182,11 @@ export interface TourBookingData {
 export const DUMMY_BOOKING_DATA: TourBookingData = {
     currencySymbol: '$',
     priceFrom: 120,
+    pricingModel: 'PER_PERSON',
+    basePrice: 120,
+    unitIncludedGuests: null,
+    extraPersonPrice: 0,
+    wholeUnitType: null,
     bands: [
         { id: 'adult', kind: 'participant', label: 'Adult (age 13+)', price: 120, isDefault: true },
         { id: 'child', kind: 'participant', label: 'Child (age 4-12)', price: 65, isDefault: false },
@@ -157,6 +199,7 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
         { time: '13:00', status: 'available', remaining: 2 },
         { time: '16:00', status: 'sold_out', remaining: 0 },
     ],
+    paymentModel: 'OPERATOR_LINK',
     cancellationHours: 48,
     depositPct: 20,
     requiresDeposit: true,
@@ -187,16 +230,25 @@ function mapBand(band: PublicTourAgeBand): BookingBand {
 }
 
 /**
- * Build the widget's data model from a tour detail payload. Age bands drive the
- * party selector (participants + optional spectators); a tour with no bands gets
- * a single synthetic "Adult" band priced at its `priceFrom` so the widget still
- * works (Pattern A - inline stepper).
+ * Build the widget's data model from a tour detail payload.
+ *
+ * PER_PERSON tours drive the party selector from age bands (participants +
+ * optional spectators); a tour with no bands gets a single synthetic "Adult"
+ * band at its `priceFrom`. UNIT (whole-unit / charter) tours ignore the age
+ * bands entirely and expose a single "guests" stepper - the total is computed
+ * from `basePrice` + surcharge in `deriveBooking`, not by summing bands, so the
+ * synthetic guests band is priced 0 (Pattern A - inline stepper).
  */
 export function buildTourBookingData(detail: PublicTourDetail): TourBookingData {
     const symbol = currencySymbol(detail.defaultCurrency);
-    const priceFrom = Math.round(
-        toNumber(detail.priceFrom ?? detail.basePrice)
-    );
+    const pricingModel = detail.pricingModel;
+    const isUnit = pricingModel === 'UNIT';
+    const basePrice = Math.round(toNumber(detail.basePrice ?? detail.priceFrom));
+    const extraPersonPrice = Math.round(toNumber(detail.extraPersonPrice));
+    // Headline: group base for UNIT, per-person "from" for PER_PERSON.
+    const priceFrom = isUnit
+        ? basePrice
+        : Math.round(toNumber(detail.priceFrom ?? detail.basePrice));
 
     const ordered = [...detail.ageBands].sort(
         (a, b) => a.displayOrder - b.displayOrder
@@ -205,7 +257,19 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
     const spectators = ordered.filter(b => b.participation === 'SPECTATOR');
 
     let bands: BookingBand[];
-    if (participants.length === 0) {
+    if (isUnit) {
+        // Whole-unit charter: a single guests counter, priced 0 here (the UNIT
+        // total is derived from basePrice + per-guest surcharge downstream).
+        bands = [
+            {
+                id: 'unit-guests',
+                kind: 'participant',
+                label: 'Guests',
+                price: 0,
+                isDefault: true,
+            },
+        ];
+    } else if (participants.length === 0) {
         // No age bands configured: one participant row at the headline price.
         bands = [
             {
@@ -237,8 +301,14 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
     return {
         currencySymbol: symbol,
         priceFrom,
+        pricingModel,
+        basePrice,
+        unitIncludedGuests: isUnit ? detail.unitIncludedGuests : null,
+        extraPersonPrice,
+        wholeUnitType: detail.wholeUnitType,
         bands,
         slots,
+        paymentModel: model,
         cancellationHours: detail.cancellationHours,
         depositPct,
         requiresDeposit,

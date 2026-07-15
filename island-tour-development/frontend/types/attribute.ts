@@ -52,6 +52,8 @@ export interface TourAttribute {
   value: string; // scalar, or a JSON-array string for ENUM_MULTI
   displayName: string | null;
   dataType: AttributeDataType | null;
+  /** Derived from a first-class Tour field (managed in Details). Read-only. */
+  derived: boolean;
 }
 
 export interface SetTourAttributesPayload {
