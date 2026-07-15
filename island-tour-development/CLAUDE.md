@@ -19,6 +19,9 @@
 > `technical-doc/02-architecture/SLUG-REGISTRY.md`
 > Implementation: `technical-doc/03-implementation/IMPLEMENTATION-GUIDE.md` · Trip module:
 > `technical-doc/03-implementation/TRIP-MODULE.md`
+> Booking flow: `technical-doc/03-implementation/BOOKING-FLOW-DESIGN-GUIDE.md` · **Booking checklist
+> (every booking/settlement/queue task + build status + flaws, cross-checked vs code):
+> `technical-doc/03-implementation/BOOKING-CHECKLIST.md`**
 > Multilingual: `technical-doc/04-multilingual/MULTILINGUAL-CONTENT.md` · Access:
 > `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
 > Frontend/widget reference: `CLAUDE-reference.md`
