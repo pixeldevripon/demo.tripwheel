@@ -118,4 +118,102 @@ describe('computeBookingPricing', () => {
     });
     expect(p.totalNet).toBeNull();
   });
+
+  // ── UNIT (whole-unit / charter) pricing (D1 / D1a) ──────────────────────────
+  function computeUnit(
+    unit: Parameters<typeof computeBookingPricing>[0]['unit'],
+    over: Partial<Parameters<typeof computeBookingPricing>[0]> = {},
+  ) {
+    return computeBookingPricing({
+      unit,
+      currency: Currency.EUR,
+      paymentModel: PaymentModel.OPERATOR_LINK,
+      depositPct: D('20'),
+      commissionTier: D('20'),
+      ...over,
+    });
+  }
+
+  it('UNIT GROUP: base covers included guests, surcharge on the rest', () => {
+    // base 1450 covers 10; 2 extra @ 220 => 1450 + 440 = 1890
+    const p = computeUnit({
+      guests: 12,
+      basePrice: D('1450'),
+      unitIncludedGuests: 10,
+      extraPersonPrice: D('220'),
+      priceNet: null,
+    });
+    expect(p.totalRetail.toString()).toBe('1890');
+    expect(p.pax).toBe(12);
+    // one item per guest for the manifest; whole-unit retail rides on the first
+    expect(p.unitItems).toHaveLength(12);
+    expect(p.unitItems.every((u) => u.ageBandId === null)).toBe(true);
+    expect(p.unitItems[0].priceRetail.toString()).toBe('1890');
+    const sum = p.unitItems.reduce((s, u) => s.plus(u.priceRetail), D('0'));
+    expect(sum.toString()).toBe('1890');
+  });
+
+  it('UNIT GROUP: no surcharge when guests within the included count', () => {
+    const p = computeUnit({
+      guests: 4,
+      basePrice: D('1450'),
+      unitIncludedGuests: 10,
+      extraPersonPrice: D('220'),
+      priceNet: null,
+    });
+    expect(p.totalRetail.toString()).toBe('1450');
+    expect(p.pax).toBe(4);
+    expect(p.unitItems).toHaveLength(4);
+  });
+
+  it('UNIT flat (non-GROUP): a flat whole-unit price regardless of guests', () => {
+    // boat/vehicle/aircraft/package pass null included/extra => flat basePrice
+    const p = computeUnit({
+      guests: 8,
+      basePrice: D('1200'),
+      unitIncludedGuests: null,
+      extraPersonPrice: null,
+      priceNet: null,
+    });
+    expect(p.totalRetail.toString()).toBe('1200');
+    expect(p.pax).toBe(8);
+    expect(p.unitItems).toHaveLength(8);
+  });
+
+  it('UNIT: PER_PERSON add-ons still multiply by the guest headcount', () => {
+    const p = computeUnit(
+      {
+        guests: 5,
+        basePrice: D('1000'),
+        unitIncludedGuests: null,
+        extraPersonPrice: null,
+        priceNet: null,
+      },
+      {
+        addOns: [
+          {
+            addOnId: 'a1',
+            name: 'Lunch',
+            unit: AddOnUnit.PER_PERSON,
+            quantity: 1,
+            unitPrice: D('10'),
+          },
+        ],
+      },
+    );
+    // 1000 + 10*5 = 1050
+    expect(p.totalRetail.toString()).toBe('1050');
+  });
+
+  it('throws when neither lines nor unit is supplied', () => {
+    expect(() =>
+      computeBookingPricing({
+        lines: [],
+        currency: Currency.EUR,
+        paymentModel: PaymentModel.OPERATOR_LINK,
+        depositPct: D('20'),
+        commissionTier: D('20'),
+      }),
+    ).toThrow(/lines or unit/);
+  });
 });

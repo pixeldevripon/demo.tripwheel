@@ -361,7 +361,12 @@
           "drinks": "Drankjes",
           "snorkeling": "Snorkelen"
         },
-        "perUnit": "/pp"
+        "perUnit": "/pp",
+        "perGroup": "/per groep",
+        "perBoat": "/per boot",
+        "perVehicle": "/per voertuig",
+        "perAircraft": "/per vliegtuig",
+        "perPackage": "/per pakket"
       },
       "heroInclusion": {
         "bbq": "BBQ-lunch",
@@ -388,10 +393,15 @@
         "travelers": "{count} reizigers",
         "guests": "{count} gasten",
         "perGroup": "per groep",
+        "perBoat": "per boot",
+        "perVehicle": "per voertuig",
+        "perAircraft": "per vliegtuig",
+        "perPackage": "per pakket",
         "unitIncludes": "Tot {count} gasten",
         "unitExtra": "+{price} per extra gast",
         "unitCharterLine": "Charter (tot {count} gasten)",
         "unitExtraGuests": "Extra gasten",
+        "privateCharter": "Privécharter - deze afvaart is helemaal voor jou",
         "total": "Totaal",
         "payToday": "Vandaag betalen",
         "balanceLater": "Rest later",
@@ -558,7 +568,11 @@
       "priceVaries": "Prijs varieert per groepsgrootte",
       "from": "vanaf",
       "per": "/per",
-      "perGroup": "/per groep"
+      "perGroup": "/per groep",
+      "perBoat": "/per boot",
+      "perVehicle": "/per voertuig",
+      "perAircraft": "/per vliegtuig",
+      "perPackage": "/per pakket"
     },
     "collections": {
       "title": "Uitgelichte Collecties",

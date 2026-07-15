@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -27,7 +26,11 @@ import { BookingStatus, CancelledBy, CancellationRefund } from '@prisma/client';
 
 export class BookingUnitItemResponseDto {
   @ApiProperty() id!: string;
-  @ApiProperty() ageBandId!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Null for UNIT-priced tours (no age bands).',
+  })
+  ageBandId!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
   @ApiProperty({ example: '79.99' }) priceRetail!: string;
 }
@@ -238,12 +241,37 @@ export class ReserveBookingDto {
   @IsString()
   departureId!: string;
 
-  @ApiProperty({ type: [ReserveItemDto] })
+  @ApiPropertyOptional({
+    type: [ReserveItemDto],
+    description:
+      'PER_PERSON tours: one line per age band (required). Omit for UNIT tours - send `guests` instead.',
+  })
+  @IsOptional()
   @IsArray()
-  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => ReserveItemDto)
-  items!: ReserveItemDto[];
+  items?: ReserveItemDto[];
+
+  @ApiPropertyOptional({
+    example: 6,
+    description:
+      'UNIT (whole-unit / charter) tours: total guest headcount (required for UNIT, rejected for PER_PERSON). Drives the charter surcharge and capacity.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  guests?: number;
+
+  @ApiPropertyOptional({
+    example: [34, 30, 8],
+    description:
+      'UNIT tours: optional per-guest ages (enforced against the tour minimum age).',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  travelerAges?: number[];
 
   @ApiPropertyOptional({ type: [ReserveAddOnDto] })
   @IsOptional()

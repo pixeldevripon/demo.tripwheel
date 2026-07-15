@@ -8,7 +8,15 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { BookingStatus, PaymentModel, Prisma, Role } from '@prisma/client';
+import {
+  BookingStatus,
+  PaymentModel,
+  Prisma,
+  PricingModel,
+  Role,
+  TourBookingType,
+  WholeUnitType,
+} from '@prisma/client';
 import { BookingsService } from './bookings.service';
 
 const D = (v: string | number) => new Prisma.Decimal(v);
@@ -79,6 +87,7 @@ function fakeBooking(over: Record<string, unknown> = {}) {
     commissionRate: D('0.2'),
     commissionAmount: D('31.99'),
     paymentModel: PaymentModel.OPERATOR_LINK,
+    exclusiveDeparture: false,
     cancellationRefund: null,
     cancelledBy: null,
     cancellationReason: null,
@@ -159,6 +168,67 @@ const reserveDto = {
   tourId: 't1',
   departureId: 'dep1',
   items: [{ ageBandId: 'adult', quantity: 2 }],
+};
+
+/**
+ * Reserve context for a UNIT (whole-unit / charter) tour: no age bands, priced from
+ * basePrice + per-guest surcharge. `over` tweaks the tour (e.g. bookingType, GROUP fields).
+ */
+function setupUnitReserveContext(
+  prisma: any,
+  over: Record<string, unknown> = {},
+) {
+  const m = prisma;
+  m.booking.findUnique.mockResolvedValue(null);
+  m.tour.findUnique.mockResolvedValue({
+    operatorId: 'op1',
+    timeZone: 'America/Curacao',
+    bookingCutoffMinutes: 120,
+    defaultCurrency: 'EUR',
+    paymentModel: PaymentModel.OPERATOR_LINK,
+    depositPct: D('20'),
+    commissionTier: D('20'),
+    minPartySize: 1,
+    maxPartySize: 12,
+    durationMinutesFrom: 180,
+    minAgeYears: null,
+    pricingModel: PricingModel.UNIT,
+    wholeUnitType: WholeUnitType.BOAT,
+    basePrice: D('1200'),
+    unitIncludedGuests: null,
+    extraPersonPrice: null,
+    bookingType: TourBookingType.PRIVATE,
+    destination: { slug: 'sint-maarten' },
+    ...over,
+  });
+  m.departure.findFirst.mockResolvedValue({
+    id: 'dep1',
+    date: day('2030-06-05'),
+    startTime: time('16:30'),
+    capacity: 12,
+    bookedCount: 0,
+  });
+  m.$executeRaw.mockResolvedValue(1);
+  m.booking.create.mockImplementation(
+    ({ data }: { data: Record<string, unknown> }) =>
+      fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
+  );
+  m.booking.update.mockImplementation(
+    ({ data }: { data: Record<string, unknown> }) => fakeBooking(data),
+  );
+}
+
+/** Joined text of every raw SQL call (for asserting which claim/release ran). */
+function rawSqlTexts(m: any): string[] {
+  return m.$executeRaw.mock.calls.map((c: any[]) =>
+    Array.isArray(c[0]) ? c[0].join('?') : String(c[0]),
+  );
+}
+
+const unitReserveDto = {
+  tourId: 't1',
+  departureId: 'dep1',
+  guests: 6,
 };
 
 describe('BookingsService', () => {
@@ -301,6 +371,106 @@ describe('BookingsService', () => {
       await expect(
         svc.reserve({ ...reserveDto, pickupLocationId: 'pk1' }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+  });
+
+  describe('reserve (UNIT / charter)', () => {
+    it('prices from basePrice + guests and creates one null-band item per guest', async () => {
+      setupUnitReserveContext(prisma);
+      await svc.reserve(unitReserveDto);
+      const data = m.booking.create.mock.calls[0][0].data;
+      // Flat BOAT charter: 6 guests still pay the flat basePrice 1200.
+      expect(data.totalRetail.toString()).toBe('1200');
+      expect(data.unitItems.create).toHaveLength(6);
+      expect(
+        data.unitItems.create.every((u: any) => u.ageBandId === null),
+      ).toBe(true);
+    });
+
+    it('GROUP charter applies the per-guest surcharge beyond the included count', async () => {
+      setupUnitReserveContext(prisma, {
+        wholeUnitType: WholeUnitType.GROUP,
+        basePrice: D('1450'),
+        unitIncludedGuests: 10,
+        extraPersonPrice: D('220'),
+        maxPartySize: 12,
+      });
+      await svc.reserve({ ...unitReserveDto, guests: 12 });
+      const data = m.booking.create.mock.calls[0][0].data;
+      // 1450 + 2 extra * 220 = 1890
+      expect(data.totalRetail.toString()).toBe('1890');
+      expect(data.unitItems.create).toHaveLength(12);
+    });
+
+    it('PRIVATE unit claims the WHOLE departure (exclusive) and flags the booking', async () => {
+      setupUnitReserveContext(prisma, { bookingType: TourBookingType.PRIVATE });
+      await svc.reserve(unitReserveDto);
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.exclusiveDeparture).toBe(true);
+      // The exclusive claim sets booked_count to capacity (not the guest count).
+      expect(
+        rawSqlTexts(m).some((t) => t.includes('booked_count = capacity')),
+      ).toBe(true);
+    });
+
+    it('SHARED unit consumes only the guest headcount (non-exclusive count-up)', async () => {
+      setupUnitReserveContext(prisma, { bookingType: TourBookingType.SHARED });
+      await svc.reserve(unitReserveDto);
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.exclusiveDeparture).toBe(false);
+      expect(rawSqlTexts(m).some((t) => t.includes('booked_count + '))).toBe(
+        true,
+      );
+    });
+
+    it('rejects age-band items on a unit tour', async () => {
+      setupUnitReserveContext(prisma);
+      await expect(svc.reserve({ ...reserveDto })).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('rejects a unit reserve with no guests count', async () => {
+      setupUnitReserveContext(prisma);
+      await expect(
+        svc.reserve({ tourId: 't1', departureId: 'dep1' }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejects a guests count above the maximum party size', async () => {
+      setupUnitReserveContext(prisma, { maxPartySize: 4 });
+      await expect(
+        svc.reserve({ ...unitReserveDto, guests: 6 }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+  });
+
+  describe('cancel (exclusive charter)', () => {
+    it('frees the WHOLE departure when releasing an exclusive booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          exclusiveDeparture: true,
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 12,
+        bookedCount: 12,
+        status: 'SOLD_OUT',
+        soldOutAt: new Date('2030-06-04T00:00:00.000Z'),
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CANCELLED }),
+      );
+      await svc.cancel('b1', {});
+      // Release resets the fill to zero rather than counting down the headcount.
+      expect(rawSqlTexts(m).some((t) => t.includes('booked_count = 0'))).toBe(
+        true,
+      );
     });
   });
 

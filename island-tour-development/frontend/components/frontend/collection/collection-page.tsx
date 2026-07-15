@@ -119,6 +119,10 @@ export async function CollectionPage({
                     from: listings.from,
                     per: listings.per,
                     perGroup: listings.perGroup,
+                    perBoat: listings.perBoat,
+                    perVehicle: listings.perVehicle,
+                    perAircraft: listings.perAircraft,
+                    perPackage: listings.perPackage,
                 }}
             />
 

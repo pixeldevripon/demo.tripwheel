@@ -214,20 +214,8 @@ const detailsSchema = z.object({
   categoryIds: z.array(z.string()).min(1, 'Select at least one category'),
   primaryCategoryId: z.string().optional(),
   hubIds: z.array(z.string()).optional(),
-  pricingModel: z.enum(['PER_PERSON', 'UNIT']),
-  wholeUnitType: z.enum(['GROUP', 'BOAT', 'VEHICLE', 'AIRCRAFT', 'PACKAGE']).optional().or(z.literal('')),
-  defaultCurrency: z.enum(['USD', 'EUR']),
-  basePrice: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
-    .optional()
-    .or(z.literal('')),
-  unitIncludedGuests: z.coerce.number().int().min(1).optional().or(z.literal('')),
-  extraPersonPrice: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
-    .optional()
-    .or(z.literal('')),
+  // Pricing fields (pricingModel, currency, basePrice, unit fields) live on the
+  // Pricing tab - the single home for how a tour is priced.
   durationMinutesFrom: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   durationMinutesTo: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
@@ -270,12 +258,6 @@ type DetailsFormValues = {
   categoryIds: string[];
   primaryCategoryId: string;
   hubIds: string[];
-  pricingModel: 'PER_PERSON' | 'UNIT';
-  wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
-  defaultCurrency: 'USD' | 'EUR';
-  basePrice: string;
-  unitIncludedGuests: string;
-  extraPersonPrice: string;
   durationMinutesFrom: string;
   durationMinutesTo: string;
   pickupModel: 'NONE' | 'INCLUDED' | 'PAID_ADDON';
@@ -324,12 +306,6 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     categoryIds: trip.categoryIds,
     primaryCategoryId: trip.primaryCategoryId ?? trip.categoryIds[0] ?? '',
     hubIds: trip.hubIds,
-    pricingModel: trip.pricingModel,
-    wholeUnitType: trip.wholeUnitType ?? '',
-    defaultCurrency: trip.defaultCurrency,
-    basePrice: trip.basePrice ?? '',
-    unitIncludedGuests: trip.unitIncludedGuests != null ? String(trip.unitIncludedGuests) : '',
-    extraPersonPrice: trip.extraPersonPrice ?? '',
     durationMinutesFrom: trip.durationMinutesFrom != null ? String(trip.durationMinutesFrom) : '',
     durationMinutesTo: trip.durationMinutesTo != null ? String(trip.durationMinutesTo) : '',
     pickupModel: trip.pickupModel,
@@ -409,7 +385,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const isActiveValue = watch('isActive');
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
-  const pricingModel = watch('pricingModel');
   const durationFromWatch = watch('durationMinutesFrom');
   const pickupRequired = watch('pickupRequired');
   const instantConfirmation = watch('instantConfirmation');
@@ -440,18 +415,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           categoryIds: values.categoryIds,
           primaryCategoryId: values.primaryCategoryId || values.categoryIds[0],
           hubIds: values.hubIds,
-          pricingModel: values.pricingModel,
-          wholeUnitType: values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
-          defaultCurrency: values.defaultCurrency,
-          basePrice: values.basePrice || undefined,
-          unitIncludedGuests:
-            values.pricingModel === 'UNIT' && values.unitIncludedGuests
-              ? Number(values.unitIncludedGuests)
-              : undefined,
-          extraPersonPrice:
-            values.pricingModel === 'UNIT' && values.extraPersonPrice
-              ? values.extraPersonPrice
-              : undefined,
           durationMinutesFrom: values.durationMinutesFrom ? Number(values.durationMinutesFrom) : undefined,
           durationMinutesTo: values.durationMinutesTo ? Number(values.durationMinutesTo) : undefined,
           pickupModel: values.pickupModel,
@@ -589,131 +552,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
               Optional discovery tags (0–n). A hub must allow one of the trip&apos;s categories.
             </FieldDescription>
           </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
-              <Controller
-                name="pricingModel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PER_PERSON">Per Person</SelectItem>
-                      <SelectItem value="UNIT">Per Unit (whole asset)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-
-            {pricingModel === 'UNIT' ? (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
-                <Controller
-                  name="wholeUnitType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GROUP">Group</SelectItem>
-                        <SelectItem value="BOAT">Boat</SelectItem>
-                        <SelectItem value="VEHICLE">Vehicle</SelectItem>
-                        <SelectItem value="AIRCRAFT">Aircraft</SelectItem>
-                        <SelectItem value="PACKAGE">Package</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            ) : (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
-                <Controller
-                  name="defaultCurrency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Base Price</Label>
-              <Input
-                {...register('basePrice')}
-                placeholder="e.g. 49.99"
-                aria-invalid={!!errors.basePrice}
-              />
-              <FieldError>{errors.basePrice?.message}</FieldError>
-            </Field>
-            {pricingModel === 'UNIT' && (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
-                <Controller
-                  name="defaultCurrency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            )}
-          </div>
-
-          {/* UNIT (charter) pricing: base covers N guests; extra guests cost a
-              per-person surcharge. Card reads "from $X /N people + $Y per extra person". */}
-          {pricingModel === 'UNIT' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Guests Included in Base Price</Label>
-                <Input
-                  {...register('unitIncludedGuests')}
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 10"
-                  aria-invalid={!!errors.unitIncludedGuests}
-                />
-                <FieldDescription>Travelers covered by the base price. Shown on the card as &ldquo;/N people&rdquo;.</FieldDescription>
-                <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
-              </Field>
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Extra Person Price</Label>
-                <Input
-                  {...register('extraPersonPrice')}
-                  placeholder="e.g. 175.00"
-                  aria-invalid={!!errors.extraPersonPrice}
-                />
-                <FieldDescription>Charged per traveler beyond the included count, up to max party size.</FieldDescription>
-                <FieldError>{errors.extraPersonPrice?.message}</FieldError>
-              </Field>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field>

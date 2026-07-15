@@ -361,7 +361,12 @@
           "drinks": "Drinks",
           "snorkeling": "Snorkeling"
         },
-        "perUnit": "/per"
+        "perUnit": "/per",
+        "perGroup": "/per group",
+        "perBoat": "/per boat",
+        "perVehicle": "/per vehicle",
+        "perAircraft": "/per aircraft",
+        "perPackage": "/per package"
       },
       "heroInclusion": {
         "bbq": "BBQ lunch",
@@ -388,10 +393,15 @@
         "travelers": "{count} Travelers",
         "guests": "{count} Guests",
         "perGroup": "per group",
+        "perBoat": "per boat",
+        "perVehicle": "per vehicle",
+        "perAircraft": "per aircraft",
+        "perPackage": "per package",
         "unitIncludes": "Up to {count} guests",
         "unitExtra": "+{price} per extra guest",
         "unitCharterLine": "Charter (up to {count} guests)",
         "unitExtraGuests": "Extra guests",
+        "privateCharter": "Private charter - this departure is exclusively yours",
         "total": "Total",
         "payToday": "Pay today",
         "balanceLater": "Balance later",
@@ -558,7 +568,11 @@
       "priceVaries": "Price varies by group size",
       "from": "from",
       "per": "/per",
-      "perGroup": "/per group"
+      "perGroup": "/per group",
+      "perBoat": "/per boat",
+      "perVehicle": "/per vehicle",
+      "perAircraft": "/per aircraft",
+      "perPackage": "/per package"
     },
     "collections": {
       "title": "Curated Collections",

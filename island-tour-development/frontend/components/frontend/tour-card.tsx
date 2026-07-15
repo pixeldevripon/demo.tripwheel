@@ -16,6 +16,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { springPop } from '@/lib/motion';
+import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
 import { TourCardCarousel } from './tour-card-carousel';
 
@@ -31,6 +32,10 @@ export type TourCardDict = {
     from: string;
     per: string;
     perGroup: string;
+    perBoat: string;
+    perVehicle: string;
+    perAircraft: string;
+    perPackage: string;
 };
 
 // ── Data types ──────────────────────────────────────────────────────────────
@@ -60,8 +65,8 @@ export type TourListing = {
     duration: string;
     pickupAvailable: boolean;
     price: number;
-    /** 'per' → "/per person"  |  'perGroup' → "/per group" */
-    priceUnit: 'per' | 'perGroup';
+    /** Price-unit i18n key: 'per' (per person) or a per-unit_type key ('perBoat' …). */
+    priceUnit: PriceUnitKey;
     priceVaries?: boolean;
     freeCancellation?: boolean;
     /**
@@ -130,7 +135,7 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
     const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
 
-    const priceLabel = tour.priceUnit === 'per' ? dict.per : dict.perGroup;
+    const priceLabel = dict[tour.priceUnit];
 
     const card = (
         <motion.article

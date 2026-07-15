@@ -40,6 +40,11 @@ model Booking {
   pickupLocationId String? // selected pickup point (null = no pickup / meet-on-site)
   pickupAddress    String? // snapshot of the selected pickup point address (booking immutability) — master E.8
 
+  // UNIT + PRIVATE exclusivity (master E.3 "one booking takes the whole departure").
+  // True when a private, unit-priced charter claims the entire departure; release
+  // then frees the whole departure rather than the guest headcount.
+  exclusiveDeparture Boolean @default(false)
+
   // Pricing snapshot (Decimal; minor units at boundary). `currency` above = booking/original currency.
   totalRetail      Decimal  @db.Decimal(10, 2)
   totalNet         Decimal? @db.Decimal(10, 2)
@@ -123,10 +128,10 @@ model Booking {
 
 // One per traveler/ticket, priced at the age band it was sold at.
 model BookingUnitItem {
-  id        String @id @default(uuid())
-  uuid      String @unique @default(uuid())
+  id        String  @id @default(uuid())
+  uuid      String  @unique @default(uuid())
   bookingId String
-  ageBandId String
+  ageBandId String? // null for UNIT-priced tours (no age bands — the item is a guest seat on the whole unit)
 
   status        BookingStatus @default(ON_HOLD)
   utcRedeemedAt DateTime?
@@ -145,8 +150,8 @@ model BookingUnitItem {
   ticketDeliveryFormat DeliveryFormat?
   ticketUrl            String?
 
-  booking Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  ageBand TourAgeBand @relation(fields: [ageBandId], references: [id])
+  booking Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ageBand TourAgeBand? @relation(fields: [ageBandId], references: [id])
 
   @@index([bookingId])
   @@map("booking_unit_items")

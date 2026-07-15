@@ -1916,19 +1916,11 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
 
 // ── Builders ───────────────────────────────────────────────────────────────────
 function buildAgeBands(bp: Blueprint): Prisma.TourAgeBandCreateManyTourInput[] {
+  // UNIT (whole-unit / charter) tours have NO age bands (D4): the booking engine prices
+  // them from basePrice + per-guest surcharge against a single guests count. priceFrom
+  // falls back to basePrice below.
+  if (bp.pricingModel === PricingModel.UNIT) return [];
   const adult = money(bp.basePrice);
-  if (bp.pricingModel === PricingModel.UNIT) {
-    return [
-      {
-        bandType: AgeBandType.ADULT,
-        participation: BandParticipation.PARTICIPANT,
-        label: `Private charter (up to ${bp.maxPartySize ?? 12})`,
-        price: adult,
-        isDefault: true,
-        displayOrder: 0,
-      },
-    ];
-  }
   const child = money(Number(bp.basePrice) * 0.6);
   const bands: Prisma.TourAgeBandCreateManyTourInput[] = [
     {
@@ -2106,9 +2098,17 @@ export async function seedTours(): Promise<void> {
           isBookable: true,
           reference: DEMO_TOUR_REF,
           timeZone: meta.tz,
-          // pricing
+          // pricing. The included-guests + extra-person surcharge applies ONLY to
+          // GROUP pricing; a blueprint that declares those fields is a group-priced
+          // charter, so it is forced to unit_type GROUP. Other unit types
+          // (boat/vehicle/aircraft/package) are a flat whole-unit price.
           pricingModel: bp.pricingModel ?? PricingModel.PER_PERSON,
-          wholeUnitType: bp.wholeUnitType ?? null,
+          wholeUnitType:
+            bp.pricingModel === PricingModel.UNIT
+              ? bp.unitIncludedGuests != null || bp.extraPersonPrice != null
+                ? WholeUnitType.GROUP
+                : (bp.wholeUnitType ?? null)
+              : null,
           defaultCurrency: currency,
           basePrice: money(bp.basePrice),
           unitIncludedGuests: bp.unitIncludedGuests ?? null,

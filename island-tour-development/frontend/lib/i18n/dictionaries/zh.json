@@ -361,7 +361,12 @@
           "drinks": "饮品",
           "snorkeling": "浮潜"
         },
-        "perUnit": "/人"
+        "perUnit": "/人",
+        "perGroup": "/每团",
+        "perBoat": "/每船",
+        "perVehicle": "/每车",
+        "perAircraft": "/每架飞机",
+        "perPackage": "/每套餐"
       },
       "heroInclusion": {
         "bbq": "BBQ 午餐",
@@ -388,10 +393,15 @@
         "travelers": "{count} 位旅客",
         "guests": "{count} 位宾客",
         "perGroup": "每团",
+        "perBoat": "每船",
+        "perVehicle": "每车",
+        "perAircraft": "每架飞机",
+        "perPackage": "每套餐",
         "unitIncludes": "最多 {count} 位宾客",
         "unitExtra": "每增加一位宾客 +{price}",
         "unitCharterLine": "包船（最多 {count} 位宾客）",
         "unitExtraGuests": "额外宾客",
+        "privateCharter": "私人包船 - 此班次由您专属",
         "total": "总计",
         "payToday": "今日支付",
         "balanceLater": "余款后付",
@@ -558,7 +568,11 @@
       "priceVaries": "价格因团体人数而异",
       "from": "起",
       "per": "/人",
-      "perGroup": "/每组"
+      "perGroup": "/每组",
+      "perBoat": "/每船",
+      "perVehicle": "/每车",
+      "perAircraft": "/每架飞机",
+      "perPackage": "/每套餐"
     },
     "collections": {
       "title": "精选系列",

@@ -11,6 +11,15 @@ import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
  * - Commission is snapshotted as a fraction (`commissionRate`) and an **EUR** amount
  *   (master rule #22). FX (USD→EUR) arrives in Phase 6; until then EUR bookings get a
  *   real `commissionAmount` and non-EUR bookings leave it null (filled at Phase 6).
+ *
+ * ## Pricing models (checklist §1.3, decisions D1/D1a)
+ * - `PER_PERSON`: `lines` (age-band × qty) sum to the retail; one unit item per seat.
+ * - `UNIT`: a single whole-unit charter price. Formula:
+ *     `unitTotal = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice`
+ *   The surcharge only ever applies to GROUP charters; boat/vehicle/aircraft/package are
+ *   flat, so the caller passes `unitIncludedGuests: null` / `extraPersonPrice: null` and the
+ *   formula degrades to a flat `basePrice`. `guests` still expands to one unit item per seat
+ *   (manifest + capacity headcount); the whole-unit retail rides on the first item.
  */
 
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
@@ -24,6 +33,20 @@ export interface PriceLineInput {
   priceNet: Prisma.Decimal | null;
 }
 
+/**
+ * Whole-unit (charter) pricing input. `unitIncludedGuests` / `extraPersonPrice` are
+ * non-null only for GROUP charters (D1a); for flat unit types they are null and the
+ * total reduces to a flat `basePrice`.
+ */
+export interface UnitPricingInput {
+  guests: number;
+  basePrice: Prisma.Decimal;
+  unitIncludedGuests: number | null;
+  extraPersonPrice: Prisma.Decimal | null;
+  /** Whole-unit net cost, if known (usually null until margin data exists). */
+  priceNet: Prisma.Decimal | null;
+}
+
 export interface AddOnLineInput {
   addOnId: string | null;
   name: string;
@@ -33,7 +56,7 @@ export interface AddOnLineInput {
 }
 
 export interface ExpandedUnitItem {
-  ageBandId: string;
+  ageBandId: string | null;
   priceRetail: Prisma.Decimal;
   priceNet: Prisma.Decimal | null;
 }
@@ -62,7 +85,10 @@ export interface BookingPricing {
 }
 
 interface ComputeInput {
-  lines: PriceLineInput[];
+  /** Per-person path: age-band lines. Provide exactly one of `lines` / `unit`. */
+  lines?: PriceLineInput[];
+  /** Unit path: whole-unit charter. Provide exactly one of `lines` / `unit`. */
+  unit?: UnitPricingInput;
   addOns?: AddOnLineInput[];
   currency: Currency;
   paymentModel: PaymentModel;
@@ -75,6 +101,7 @@ interface ComputeInput {
 export function computeBookingPricing(input: ComputeInput): BookingPricing {
   const {
     lines,
+    unit,
     addOns = [],
     currency,
     paymentModel,
@@ -82,25 +109,14 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     commissionTier,
   } = input;
 
-  const pax = lines.reduce((s, l) => s + l.quantity, 0);
-
-  // ── Unit lines: expand to one item per seat; sum retail/net ──
-  const unitItems: ExpandedUnitItem[] = [];
-  let unitsRetail = D(0);
-  let unitsNet = D(0);
-  let anyNetMissing = false;
-  for (const l of lines) {
-    for (let i = 0; i < l.quantity; i++) {
-      unitItems.push({
-        ageBandId: l.ageBandId,
-        priceRetail: l.priceRetail,
-        priceNet: l.priceNet,
-      });
-    }
-    unitsRetail = unitsRetail.plus(l.priceRetail.times(l.quantity));
-    if (l.priceNet === null) anyNetMissing = true;
-    else unitsNet = unitsNet.plus(l.priceNet.times(l.quantity));
+  if ((lines?.length ?? 0) === 0 && !unit) {
+    throw new Error('computeBookingPricing requires either lines or unit');
   }
+
+  // ── Participant expansion: one unit item per seat; sum retail/net ──
+  const { unitItems, unitsRetail, unitsNet, anyNetMissing, pax } = unit
+    ? computeUnitLines(unit)
+    : computePerPersonLines(lines ?? []);
 
   // ── Add-ons: PER_PERSON multiplies by pax; FLAT does not ──
   const expandedAddOns: ExpandedAddOn[] = [];
@@ -143,6 +159,70 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     unitItems,
     addOns: expandedAddOns,
     pax,
+  };
+}
+
+interface ParticipantExpansion {
+  unitItems: ExpandedUnitItem[];
+  unitsRetail: Prisma.Decimal;
+  unitsNet: Prisma.Decimal;
+  anyNetMissing: boolean;
+  pax: number;
+}
+
+/** PER_PERSON: expand each age-band line to one item per seat and sum retail/net. */
+function computePerPersonLines(lines: PriceLineInput[]): ParticipantExpansion {
+  const unitItems: ExpandedUnitItem[] = [];
+  let unitsRetail = D(0);
+  let unitsNet = D(0);
+  let anyNetMissing = false;
+  let pax = 0;
+  for (const l of lines) {
+    pax += l.quantity;
+    for (let i = 0; i < l.quantity; i++) {
+      unitItems.push({
+        ageBandId: l.ageBandId,
+        priceRetail: l.priceRetail,
+        priceNet: l.priceNet,
+      });
+    }
+    unitsRetail = unitsRetail.plus(l.priceRetail.times(l.quantity));
+    if (l.priceNet === null) anyNetMissing = true;
+    else unitsNet = unitsNet.plus(l.priceNet.times(l.quantity));
+  }
+  return { unitItems, unitsRetail, unitsNet, anyNetMissing, pax };
+}
+
+/**
+ * UNIT: one flat whole-unit charter total (D1). The surcharge only applies to GROUP
+ * charters (D1a) - flat unit types pass null included/extra and reduce to `basePrice`.
+ * `guests` expands to one item per seat for the manifest/capacity headcount; the whole
+ * retail rides on the first seat (the rest are 0) so the item sum equals the unit total.
+ */
+function computeUnitLines(unit: UnitPricingInput): ParticipantExpansion {
+  const guests = Math.max(1, unit.guests);
+  const included = unit.unitIncludedGuests ?? guests; // null => everyone included (flat)
+  const extraGuests = Math.max(0, guests - included);
+  const surcharge = unit.extraPersonPrice
+    ? unit.extraPersonPrice.times(extraGuests)
+    : D(0);
+  const unitTotal = money(unit.basePrice.plus(surcharge));
+
+  const unitItems: ExpandedUnitItem[] = Array.from(
+    { length: guests },
+    (_, i) => ({
+      ageBandId: null,
+      priceRetail: i === 0 ? unitTotal : money(D(0)),
+      priceNet: i === 0 ? unit.priceNet : null,
+    }),
+  );
+
+  return {
+    unitItems,
+    unitsRetail: unitTotal,
+    unitsNet: unit.priceNet ?? D(0),
+    anyNetMissing: unit.priceNet === null,
+    pax: guests,
   };
 }
 

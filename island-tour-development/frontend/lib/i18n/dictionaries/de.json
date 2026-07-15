@@ -361,7 +361,12 @@
           "drinks": "Getränke",
           "snorkeling": "Schnorcheln"
         },
-        "perUnit": "/pP"
+        "perUnit": "/pP",
+        "perGroup": "/pro Gruppe",
+        "perBoat": "/pro Boot",
+        "perVehicle": "/pro Fahrzeug",
+        "perAircraft": "/pro Flugzeug",
+        "perPackage": "/pro Paket"
       },
       "heroInclusion": {
         "bbq": "BBQ-Mittagessen",
@@ -388,10 +393,15 @@
         "travelers": "{count} Reisende",
         "guests": "{count} Gäste",
         "perGroup": "pro Gruppe",
+        "perBoat": "pro Boot",
+        "perVehicle": "pro Fahrzeug",
+        "perAircraft": "pro Flugzeug",
+        "perPackage": "pro Paket",
         "unitIncludes": "Bis zu {count} Gäste",
         "unitExtra": "+{price} pro zusätzlichem Gast",
         "unitCharterLine": "Charter (bis zu {count} Gäste)",
         "unitExtraGuests": "Zusätzliche Gäste",
+        "privateCharter": "Privatcharter - diese Abfahrt gehört ganz Ihnen",
         "total": "Gesamt",
         "payToday": "Heute zahlen",
         "balanceLater": "Rest später",
@@ -558,7 +568,11 @@
       "priceVaries": "Preis variiert je nach Gruppengröße",
       "from": "ab",
       "per": "/pro",
-      "perGroup": "/pro Gruppe"
+      "perGroup": "/pro Gruppe",
+      "perBoat": "/pro Boot",
+      "perVehicle": "/pro Fahrzeug",
+      "perAircraft": "/pro Flugzeug",
+      "perPackage": "/pro Paket"
     },
     "collections": {
       "title": "Kuratierte Kollektionen",

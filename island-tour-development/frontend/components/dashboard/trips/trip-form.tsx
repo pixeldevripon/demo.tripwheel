@@ -58,6 +58,21 @@ const createTripSchema = z.object({
     .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
     .optional()
     .or(z.literal('')),
+  // UNIT/GROUP charter surcharge: base covers `unitIncludedGuests`; each extra
+  // guest costs `extraPersonPrice`. Only meaningful for GROUP (D1a); other unit
+  // types are a flat basePrice and never collect these.
+  unitIncludedGuests: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .optional()
+    .or(z.literal('')),
+  extraPersonPrice: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
+    .optional()
+    .or(z.literal('')),
   durationMinutesFrom: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   durationMinutesTo: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
@@ -78,6 +93,25 @@ const createTripSchema = z.object({
   wheelchairAccessible: z.boolean(),
   familyFriendly: z.boolean(),
   suitableForBeginners: z.boolean(),
+}).superRefine((val, ctx) => {
+  // A unit-priced tour needs a base price and a unit type to be bookable (mirrors the
+  // backend publish gate). PER_PERSON finishes its price (age bands) in the Pricing tab.
+  if (val.pricingModel === 'UNIT') {
+    if (!val.basePrice) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['basePrice'],
+        message: 'Base price is required for a unit-priced tour',
+      });
+    }
+    if (!val.wholeUnitType) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['wholeUnitType'],
+        message: 'Unit type is required for a unit-priced tour',
+      });
+    }
+  }
 });
 
 type CreateTripFormValues = {
@@ -91,6 +125,8 @@ type CreateTripFormValues = {
   wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
   defaultCurrency: 'USD' | 'EUR';
   basePrice: string;
+  unitIncludedGuests: string;
+  extraPersonPrice: string;
   durationMinutesFrom: string;
   durationMinutesTo: string;
   pickupModel: 'NONE' | 'INCLUDED' | 'PAID_ADDON';
@@ -141,6 +177,8 @@ export function TripForm() {
       wholeUnitType: '',
       defaultCurrency: 'USD',
       basePrice: '',
+      unitIncludedGuests: '',
+      extraPersonPrice: '',
       durationMinutesFrom: '',
       durationMinutesTo: '',
       pickupModel: 'NONE',
@@ -169,6 +207,8 @@ export function TripForm() {
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
   const pricingModel = watch('pricingModel');
+  const wholeUnitType = watch('wholeUnitType');
+  const isGroupUnit = pricingModel === 'UNIT' && wholeUnitType === 'GROUP';
 
   const { data: hubs } = useActiveHubs(destinationId || undefined);
 
@@ -203,6 +243,19 @@ export function TripForm() {
         wholeUnitType: values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
         defaultCurrency: values.defaultCurrency,
         basePrice: values.basePrice || undefined,
+        // Surcharge is GROUP-only (D1a); other unit types are a flat basePrice.
+        unitIncludedGuests:
+          values.pricingModel === 'UNIT' &&
+          values.wholeUnitType === 'GROUP' &&
+          values.unitIncludedGuests
+            ? Number(values.unitIncludedGuests)
+            : undefined,
+        extraPersonPrice:
+          values.pricingModel === 'UNIT' &&
+          values.wholeUnitType === 'GROUP' &&
+          values.extraPersonPrice
+            ? values.extraPersonPrice
+            : undefined,
         durationMinutesFrom: values.durationMinutesFrom ? Number(values.durationMinutesFrom) : undefined,
         durationMinutesTo: values.durationMinutesTo ? Number(values.durationMinutesTo) : undefined,
         pickupModel: values.pickupModel,
@@ -392,6 +445,7 @@ export function TripForm() {
                     </Select>
                   )}
                 />
+                <FieldError>{errors.wholeUnitType?.message}</FieldError>
                 <FieldDescription>The whole-asset type priced as one unit.</FieldDescription>
               </Field>
             ) : (
@@ -447,6 +501,42 @@ export function TripForm() {
               </Field>
             )}
           </div>
+
+          {/* GROUP charter surcharge (D1a): base covers N guests; extras cost more.
+              Only GROUP collects these; other unit types are a flat base price. */}
+          {isGroupUnit && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  Guests Included in Base
+                </Label>
+                <Input
+                  {...register('unitIncludedGuests')}
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 10"
+                  aria-invalid={!!errors.unitIncludedGuests}
+                />
+                <FieldDescription>
+                  Guests the base price covers before extra charges apply.
+                </FieldDescription>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  Extra Person Price
+                </Label>
+                <Input
+                  {...register('extraPersonPrice')}
+                  placeholder="e.g. 220"
+                  aria-invalid={!!errors.extraPersonPrice}
+                />
+                <FieldError>{errors.extraPersonPrice?.message}</FieldError>
+                <FieldDescription>
+                  Surcharge per guest beyond the included count.
+                </FieldDescription>
+              </Field>
+            </div>
+          )}
 
           {/* Duration range */}
           <div className="grid grid-cols-2 gap-4">

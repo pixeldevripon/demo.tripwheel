@@ -7,6 +7,7 @@ import type { TourBadge } from '@/components/frontend/tour-badge';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { CollectionRenderTour } from '@/types/collection';
 import type { SearchHit } from '@/types/search';
+import { priceUnitKey } from '@/lib/tours/pricing-label';
 
 /**
  * Client-side mirror of the backend `deriveTourBadge` (master §3.6 priority:
@@ -120,7 +121,7 @@ export function collectionTourToListing(
     duration: formatDuration(tour.durationMinutesFrom, tour.durationMinutesTo, duration),
     pickupAvailable: tour.pickupModel !== 'NONE',
     price,
-    priceUnit: tour.pricingModel === 'PER_PERSON' ? 'per' : 'perGroup',
+    priceUnit: priceUnitKey(tour),
     priceVaries: false,
     freeCancellation: (tour.cancellationHours ?? 0) > 0,
   };
@@ -148,7 +149,7 @@ export function searchHitToListing(
     duration: formatDuration(hit.durationMinutesFrom, hit.durationMinutesTo, duration),
     pickupAvailable: hit.pickupModel !== 'NONE',
     price,
-    priceUnit: hit.pricingModel === 'PER_PERSON' ? 'per' : 'perGroup',
+    priceUnit: priceUnitKey(hit),
     priceVaries: false,
     freeCancellation: (hit.cancellationHours ?? 0) > 0,
   };

@@ -24,6 +24,8 @@ export type HubPick = {
     /** e.g. "Full day". */
     duration: string;
     price: number;
+    /** Localized price-unit suffix (e.g. "/per boat" or "/per"); appended after the price. */
+    priceUnit: string;
     /** Hero-first image set for the hover carousel. */
     images: string[];
 };
@@ -131,6 +133,12 @@ export function HubPickCard({
                                     <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em]'>
                                         ${pick.price.toLocaleString()}
                                     </span>
+                                    {pick.priceUnit ? (
+                                        <span className='text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                            {' '}
+                                            {pick.priceUnit}
+                                        </span>
+                                    ) : null}
                                 </span>
                             </p>
                         </div>

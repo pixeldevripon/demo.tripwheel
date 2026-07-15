@@ -35,6 +35,8 @@ export type CompareBoat = {
     name: string;
     /** "from" price (whole number, rendered with a `$` prefix). */
     price: number;
+    /** Localized price-unit suffix (e.g. "/per boat" or "/per"); appended after the price. */
+    priceUnit?: string;
     /** Show a leading green check before the price (e.g. lowest price). */
     priceCheck?: boolean;
     /** Flat tour detail URL (locale-prefixed); the Book CTA links to it. */
@@ -287,6 +289,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
                 <span className='font-bold text-it-heading'>
                     ${boat.price.toLocaleString()}
                 </span>
+                {boat.priceUnit ? ` ${boat.priceUnit}` : ''}
             </span>
         </span>
     );

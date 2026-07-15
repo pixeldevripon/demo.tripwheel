@@ -352,6 +352,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] cancellation_hours enum [24,48,72,168] default 48 — DTO `@IsIn`, service default 48 (master rule #20)
 - [x] free_cancellation derivable (cancellation_hours NOT NULL — no standalone field)
 - [x] payment_model, instant_confirmation, booking_type, duration_minutes_max(durationMinutesTo) — trip create/update DTO + service; deposit_pct surfaced read-only (tier-driven)
+- [x] UNIT (whole-unit/charter) pricing engine — `basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice` (surcharge GROUP-only, D1a); UNIT+PRIVATE claims the whole departure (exclusive sell-out). `booking-pricing.util.ts` + `bookings.service.ts`; see `03-implementation/PRICING-MODEL-AND-UNIT-CHECKLIST.md`
 - [x] start_times[] — `Tour.startTimes` column; availability schedules validate slots against it
 - [x] check_in_minutes_before — Tour column (default 30); pickup window (windowStart/windowEnd) — `PickupLocation`
 - [x] meeting_point_lat / meeting_point_lng (+ departure_city; localized meeting_point_text on `TourTranslation`)

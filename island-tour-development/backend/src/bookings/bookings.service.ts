@@ -13,8 +13,10 @@ import {
   CancelledBy,
   DepartureStatus,
   PaymentModel,
+  PricingModel,
   Prisma,
   Role,
+  TourBookingType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
@@ -39,6 +41,7 @@ import {
   computeBookingPricing,
   type AddOnLineInput,
   type PriceLineInput,
+  type UnitPricingInput,
 } from './booking-pricing.util';
 import type {
   CancelBookingDto,
@@ -106,7 +109,7 @@ export class BookingsService {
     if (prior) return mapBooking(prior);
 
     const ctx = await this.loadContext(dto);
-    this.validateRestrictions(ctx, dto);
+    this.validateRestrictions(ctx);
 
     const now = localNow(ctx.tour.timeZone);
     // Cutoff is computed live (master §4): now >= start - bookingCutoffMinutes → closed.
@@ -140,22 +143,24 @@ export class BookingsService {
 
     const pricing = computeBookingPricing({
       lines: ctx.lines,
+      unit: ctx.unit,
       addOns: ctx.addOnLines,
       currency: ctx.tour.defaultCurrency,
       paymentModel: ctx.tour.paymentModel,
       depositPct: ctx.tour.depositPct,
       commissionTier: effectiveTier,
     });
+    // Guest headcount (manifest + add-on multiplier). For a private unit charter the
+    // inventory claim below takes the WHOLE departure regardless of this count (D5).
     const seats = pricing.pax;
 
-    // Per-seat traveler ages, expanded in the same order as pricing.unitItems
-    // (one entry per seat, grouped by dto.items order). master child ages.
-    const seatAges: (number | null)[] = [];
-    for (const item of dto.items) {
-      for (let i = 0; i < item.quantity; i++) {
-        seatAges.push(item.travelerAge ?? null);
-      }
-    }
+    // Per-seat traveler ages, expanded in the same order as pricing.unitItems.
+    const seatAges = ctx.seatAges;
+
+    // UNIT + PRIVATE = exclusive charter: one booking takes the whole departure
+    // (master E.3). SHARED unit + all per-person bookings consume the guest headcount.
+    const exclusive =
+      ctx.isUnit && ctx.tour.bookingType === TourBookingType.PRIVATE;
 
     // Full local end instant = local start + tour duration (master E.8 TYP time range).
     const tourEndDateTime =
@@ -166,23 +171,40 @@ export class BookingsService {
     const operatorFull = ctx.tour.paymentModel === PaymentModel.OPERATOR_FULL;
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Atomic guarded count-up - the overbooking backstop (master §5). Claims only an
-      // OPEN departure with room, and flips it to SOLD_OUT (stamping soldOutAt) when full.
-      const claimed = await tx.$executeRaw`
-        UPDATE departures
-           SET booked_count = booked_count + ${seats},
-               status = CASE WHEN booked_count + ${seats} >= capacity
-                             THEN 'sold_out'::departure_status ELSE status END,
-               sold_out_at = CASE WHEN booked_count + ${seats} >= capacity AND sold_out_at IS NULL
-                                  THEN now() ELSE sold_out_at END,
-               updated_at = now()
-         WHERE id = ${dto.departureId}
-           AND tour_id = ${dto.tourId}
-           AND status = 'open'::departure_status
-           AND booked_count + ${seats} <= capacity`;
+      // Atomic guarded seat claim - the overbooking backstop (master §5).
+      const claimed = exclusive
+        ? // Exclusive charter (D5): claim the ENTIRE departure. Only an OPEN, still-empty
+          // departure can be taken; it flips to SOLD_OUT at full capacity. This makes the
+          // departure un-bookable by anyone else - "one booking takes the whole departure".
+          await tx.$executeRaw`
+            UPDATE departures
+               SET booked_count = capacity,
+                   status = 'sold_out'::departure_status,
+                   sold_out_at = COALESCE(sold_out_at, now()),
+                   updated_at = now()
+             WHERE id = ${dto.departureId}
+               AND tour_id = ${dto.tourId}
+               AND status = 'open'::departure_status
+               AND booked_count = 0`
+        : // Shared / per-person: guarded count-up. Claims only an OPEN departure with room,
+          // and flips it to SOLD_OUT (stamping soldOutAt) when full.
+          await tx.$executeRaw`
+            UPDATE departures
+               SET booked_count = booked_count + ${seats},
+                   status = CASE WHEN booked_count + ${seats} >= capacity
+                                 THEN 'sold_out'::departure_status ELSE status END,
+                   sold_out_at = CASE WHEN booked_count + ${seats} >= capacity AND sold_out_at IS NULL
+                                      THEN now() ELSE sold_out_at END,
+                   updated_at = now()
+             WHERE id = ${dto.departureId}
+               AND tour_id = ${dto.tourId}
+               AND status = 'open'::departure_status
+               AND booked_count + ${seats} <= capacity`;
       if (claimed === 0) {
         throw new UnprocessableEntityException(
-          'Not enough availability for this departure',
+          exclusive
+            ? 'This departure is no longer available for a private charter'
+            : 'Not enough availability for this departure',
         );
       }
 
@@ -213,6 +235,7 @@ export class BookingsService {
                   (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
               ),
           utcConfirmedAt: operatorFull ? new Date() : null,
+          exclusiveDeparture: exclusive,
           pickupRequested: dto.pickupRequested ?? false,
           pickupLocationId: dto.pickupLocationId ?? null,
           pickupAddress: ctx.pickupAddress,
@@ -535,7 +558,12 @@ export class BookingsService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (booking.departureId) {
-        await this.releaseSeats(tx, booking.departureId, seats);
+        await this.releaseSeats(
+          tx,
+          booking.departureId,
+          seats,
+          booking.exclusiveDeparture,
+        );
       }
       await tx.bookingUnitItem.updateMany({
         where: { bookingId: booking.id },
@@ -637,6 +665,7 @@ export class BookingsService {
         localDate: true,
         operatorId: true,
         publicRef: true,
+        exclusiveDeparture: true,
         _count: { select: { unitItems: true } },
       },
     });
@@ -646,7 +675,12 @@ export class BookingsService {
       try {
         await this.prisma.$transaction(async (tx) => {
           if (b.departureId) {
-            await this.releaseSeats(tx, b.departureId, b._count.unitItems);
+            await this.releaseSeats(
+              tx,
+              b.departureId,
+              b._count.unitItems,
+              b.exclusiveDeparture,
+            );
           }
           await tx.bookingUnitItem.updateMany({
             where: { bookingId: b.id },
@@ -834,6 +868,13 @@ export class BookingsService {
         maxPartySize: true,
         durationMinutesFrom: true,
         minAgeYears: true,
+        // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
+        pricingModel: true,
+        wholeUnitType: true,
+        basePrice: true,
+        unitIncludedGuests: true,
+        extraPersonPrice: true,
+        bookingType: true,
         destination: { select: { slug: true } },
       },
     });
@@ -841,7 +882,13 @@ export class BookingsService {
 
     const departure = await this.prisma.departure.findFirst({
       where: { id: dto.departureId, tourId: dto.tourId },
-      select: { id: true, date: true, startTime: true },
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        capacity: true,
+        bookedCount: true,
+      },
     });
     if (!departure)
       throw new UnprocessableEntityException('Invalid departureId');
@@ -860,6 +907,56 @@ export class BookingsService {
       pickupAddress = pickup.address ?? pickup.name;
     }
 
+    const addOnLines = await this.loadAddOns(dto);
+    const isUnit = tour.pricingModel === PricingModel.UNIT;
+
+    // ── UNIT (whole-unit / charter): a single guests count, no age bands (D4). ──
+    if (isUnit) {
+      if (dto.items?.length) {
+        throw new UnprocessableEntityException(
+          'Unit-priced tours take a single guests count, not age-band items',
+        );
+      }
+      const guests = dto.guests;
+      if (guests == null) {
+        throw new UnprocessableEntityException(
+          'guests is required for a unit-priced tour',
+        );
+      }
+      if (tour.basePrice == null) {
+        throw new UnprocessableEntityException(
+          'Tour is not bookable: unit price is not configured',
+        );
+      }
+      // Surcharge only applies to GROUP charters (D1a); flat unit types leave the
+      // included/extra fields null so the total reduces to a flat basePrice.
+      const unit: UnitPricingInput = {
+        guests,
+        basePrice: tour.basePrice,
+        unitIncludedGuests: tour.unitIncludedGuests,
+        extraPersonPrice: tour.extraPersonPrice,
+        priceNet: null,
+      };
+      const seatAges = (dto.travelerAges ?? []).slice(0, guests);
+      return {
+        tour,
+        departure,
+        isUnit: true as const,
+        guests,
+        lines: [] as PriceLineInput[],
+        unit,
+        seatAges,
+        addOnLines,
+        pickupAddress,
+      };
+    }
+
+    // ── PER_PERSON: age-band lines. ──
+    if (!dto.items?.length) {
+      throw new UnprocessableEntityException(
+        'items (age-band lines) are required for a per-person tour',
+      );
+    }
     const ageBands = await this.prisma.tourAgeBand.findMany({
       where: { tourId: dto.tourId },
       select: { id: true, label: true, price: true, priceNet: true },
@@ -881,9 +978,26 @@ export class BookingsService {
       };
     });
 
-    const addOnLines = await this.loadAddOns(dto);
+    // Per-seat traveler ages, expanded in dto.items order (one entry per seat).
+    const seatAges: (number | null)[] = [];
+    for (const item of dto.items) {
+      for (let i = 0; i < item.quantity; i++) {
+        seatAges.push(item.travelerAge ?? null);
+      }
+    }
+    const guests = lines.reduce((s, l) => s + l.quantity, 0);
 
-    return { tour, departure, ageBandsById, lines, addOnLines, pickupAddress };
+    return {
+      tour,
+      departure,
+      isUnit: false as const,
+      guests,
+      lines,
+      unit: undefined,
+      seatAges,
+      addOnLines,
+      pickupAddress,
+    };
   }
 
   private async loadAddOns(dto: ReserveBookingDto): Promise<AddOnLineInput[]> {
@@ -910,9 +1024,11 @@ export class BookingsService {
 
   private validateRestrictions(
     ctx: Awaited<ReturnType<BookingsService['loadContext']>>,
-    dto: ReserveBookingDto,
   ): void {
-    const seats = dto.items.reduce((s, i) => s + i.quantity, 0);
+    // Party-size limits apply to the guest headcount in both models (all bands count
+    // toward capacity - master E.9). For UNIT that's `guests`; for PER_PERSON it's the
+    // summed line quantities. Both are resolved in loadContext as ctx.guests.
+    const seats = ctx.guests;
     const minUnits = ctx.tour.minPartySize;
     const maxUnits = ctx.tour.maxPartySize;
     if (seats < minUnits) {
@@ -927,11 +1043,11 @@ export class BookingsService {
     }
 
     // Min-age enforcement (master child ages): reject any supplied traveler age below
-    // the tour minimum. Ages are optional, so only enforced when both sides are present.
+    // the tour minimum. Ages are optional, so only enforced when supplied.
     const minAge = ctx.tour.minAgeYears;
     if (minAge != null) {
-      for (const item of dto.items) {
-        if (item.travelerAge != null && item.travelerAge < minAge) {
+      for (const age of ctx.seatAges) {
+        if (age != null && age < minAge) {
           throw new UnprocessableEntityException(
             `Travelers must be at least ${minAge} years old for this tour`,
           );
@@ -941,19 +1057,29 @@ export class BookingsService {
   }
 
   /**
-   * Release `seats` back to a departure (cancel / expiry) and re-derive its stored
-   * status. The count-down is clamped at zero; a SOLD_OUT departure with room reopens to
-   * OPEN, while CLOSED/CANCELLED stay sticky and `soldOutAt` history is preserved (§3).
+   * Release seats back to a departure (cancel / expiry) and re-derive its stored status.
+   * A SOLD_OUT departure with room reopens to OPEN, while CLOSED/CANCELLED stay sticky and
+   * `soldOutAt` history is preserved (§3). An `exclusive` (private-unit) booking claimed the
+   * WHOLE departure, so releasing it resets the fill to zero (D5); otherwise the guest
+   * headcount is counted down, clamped at zero.
    */
   private async releaseSeats(
     tx: Prisma.TransactionClient,
     departureId: string,
     seats: number,
+    exclusive = false,
   ): Promise<void> {
-    await tx.$executeRaw`
-      UPDATE departures
-         SET booked_count = GREATEST(0, booked_count - ${seats}), updated_at = now()
-       WHERE id = ${departureId}`;
+    if (exclusive) {
+      await tx.$executeRaw`
+        UPDATE departures
+           SET booked_count = 0, updated_at = now()
+         WHERE id = ${departureId}`;
+    } else {
+      await tx.$executeRaw`
+        UPDATE departures
+           SET booked_count = GREATEST(0, booked_count - ${seats}), updated_at = now()
+         WHERE id = ${departureId}`;
+    }
     await this.recomputeStoredStatus(tx, departureId);
   }
 

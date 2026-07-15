@@ -47,8 +47,12 @@ export type TourBookingDict = {
     travelers: string;
     /** "{count} Guests" - party header for a UNIT (whole-unit / charter) tour. */
     guests: string;
-    /** Headline suffix for a UNIT tour ("per group") in place of "per person". */
+    /** Headline suffix per unit type (in place of "per person"): group/boat/vehicle/aircraft/package. */
     perGroup: string;
+    perBoat: string;
+    perVehicle: string;
+    perAircraft: string;
+    perPackage: string;
     /** UNIT headline sub-line: base coverage, e.g. "Up to {count} guests". */
     unitIncludes: string;
     /** UNIT headline sub-line: surcharge, e.g. "+{price} per extra guest". */
@@ -57,6 +61,8 @@ export type TourBookingDict = {
     unitCharterLine: string;
     /** UNIT price-breakdown surcharge row label ("Extra guests"). */
     unitExtraGuests: string;
+    /** PRIVATE unit badge, e.g. "Private charter - you get the whole {unit}". */
+    privateCharter: string;
     total: string;
     payToday: string;
     balanceLater: string;
@@ -154,6 +160,8 @@ export interface TourBookingData {
     extraPersonPrice: number;
     /** UNIT: the unit kind (BOAT / VEHICLE / ...), for labelling. */
     wholeUnitType: string | null;
+    /** Booking exclusivity (PRIVATE / SHARED); PRIVATE + UNIT gets the whole unit. */
+    bookingType: string | null;
     /** Priced party rows in display order (participants first, then spectators). */
     bands: BookingBand[];
     /** Departure-time slots offered by the tour. */
@@ -187,6 +195,7 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
     unitIncludedGuests: null,
     extraPersonPrice: 0,
     wholeUnitType: null,
+    bookingType: null,
     bands: [
         { id: 'adult', kind: 'participant', label: 'Adult (age 13+)', price: 120, isDefault: true },
         { id: 'child', kind: 'participant', label: 'Child (age 4-12)', price: 65, isDefault: false },
@@ -243,8 +252,14 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
     const symbol = currencySymbol(detail.defaultCurrency);
     const pricingModel = detail.pricingModel;
     const isUnit = pricingModel === 'UNIT';
+    // The included-guests + extra-person surcharge applies ONLY to GROUP unit
+    // pricing; boat/vehicle/aircraft/package charters are a flat whole-unit price.
+    // Guarding here keeps the card correct even against stale data.
+    const isGroupUnit = isUnit && detail.wholeUnitType === 'GROUP';
     const basePrice = Math.round(toNumber(detail.basePrice ?? detail.priceFrom));
-    const extraPersonPrice = Math.round(toNumber(detail.extraPersonPrice));
+    const extraPersonPrice = isGroupUnit
+        ? Math.round(toNumber(detail.extraPersonPrice))
+        : 0;
     // Headline: group base for UNIT, per-person "from" for PER_PERSON.
     const priceFrom = isUnit
         ? basePrice
@@ -303,9 +318,10 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
         priceFrom,
         pricingModel,
         basePrice,
-        unitIncludedGuests: isUnit ? detail.unitIncludedGuests : null,
+        unitIncludedGuests: isGroupUnit ? detail.unitIncludedGuests : null,
         extraPersonPrice,
         wholeUnitType: detail.wholeUnitType,
+        bookingType: detail.bookingType,
         bands,
         slots,
         paymentModel: model,

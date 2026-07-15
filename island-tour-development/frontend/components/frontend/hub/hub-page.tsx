@@ -17,6 +17,7 @@ import type {
     HubRenderSection,
 } from '@/types/hub';
 import type { SearchHit } from '@/types/search';
+import { priceUnitLabel, type PriceUnitLabels } from '@/lib/tours/pricing-label';
 import {
     HubAlsoWorthSection,
     type HubAlsoWorthItem,
@@ -72,8 +73,12 @@ type CardLabels = {
     amenities: Record<AmenityLabelKey, string>;
     /** Per-person price unit, e.g. "/per". */
     perPerson: string;
-    /** UNIT included-guests template, e.g. "/{count} people". */
-    peopleIncluded: string;
+    /** Per-unit_type price nouns (e.g. "/per boat"). */
+    perGroup: string;
+    perBoat: string;
+    perVehicle: string;
+    perAircraft: string;
+    perPackage: string;
     /** UNIT surcharge template, e.g. "+ {price} per extra person". */
     perExtra: string;
 };
@@ -176,13 +181,19 @@ function cardPrice(
     if (hit.pricingModel !== 'UNIT') {
         return { price, priceUnit: labels.perPerson };
     }
-    const priceUnit =
-        hit.unitIncludedGuests != null
-            ? labels.peopleIncluded.replace(
-                  '{count}',
-                  String(hit.unitIncludedGuests),
-              )
-            : '';
+    // Unit-type-aware noun ("/per boat" etc.). The per-extra-guest note only
+    // shows for GROUP pricing (non-GROUP charters carry no extraPersonPrice).
+    const priceUnit = priceUnitLabel(
+        { pricingModel: hit.pricingModel, wholeUnitType: hit.wholeUnitType },
+        {
+            per: labels.perPerson,
+            perGroup: labels.perGroup,
+            perBoat: labels.perBoat,
+            perVehicle: labels.perVehicle,
+            perAircraft: labels.perAircraft,
+            perPackage: labels.perPackage,
+        },
+    );
     const extra = Number(hit.extraPersonPrice ?? 0);
     const priceNote =
         extra > 0
@@ -312,6 +323,7 @@ function pickToHubPick(
     pick: HubRenderOurPick,
     labelText: Record<HubPickLabel, string>,
     durationLabels: Pick<CardLabels, 'day' | 'days'>,
+    priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
 ): HubPick {
     const label = PICK_LABEL_BY_TYPE[pick.pickType] ?? 'best';
@@ -331,6 +343,13 @@ function pickToHubPick(
         description: pick.description,
         duration: formatDuration(pick.tour.durationMinutesFrom, durationLabels),
         price: num(pick.tour.priceFrom ?? pick.tour.basePrice),
+        priceUnit: priceUnitLabel(
+            {
+                pricingModel: pick.tour.pricingModel,
+                wholeUnitType: pick.tour.unitType,
+            },
+            priceUnitLabels,
+        ),
         images: (pick.tour.images ?? [])
             .map((img) => img.url)
             .filter(Boolean),
@@ -340,6 +359,7 @@ function pickToHubPick(
 function groupToCompareTable(
     group: HubRenderComparisonGroup,
     whatStandsOutLabel: string,
+    priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
 ): CompareTable {
     // Editorial lead row: each column's standout note, split on commas into
@@ -361,6 +381,13 @@ function groupToCompareTable(
         boats: group.tours.map((ct) => ({
             name: ct.tour.title,
             price: num(ct.tour.priceFrom ?? ct.tour.basePrice),
+            priceUnit: priceUnitLabel(
+                {
+                    pricingModel: ct.tour.pricingModel,
+                    wholeUnitType: ct.tour.unitType,
+                },
+                priceUnitLabels,
+            ),
             href: tourHref(ct.tour.slug),
         })),
         // "What stands out" (editorial, from standoutNote) sits above the curated
@@ -638,8 +665,22 @@ async function HubTripsData({
         familyFriendly: hubDict.cardChips.familyFriendly,
         amenities: hubDict.cardChips.amenities,
         perPerson: hubDict.cardChips.perUnit,
-        peopleIncluded: hubDict.cardChips.peopleIncluded,
+        perGroup: hubDict.cardChips.perGroup,
+        perBoat: hubDict.cardChips.perBoat,
+        perVehicle: hubDict.cardChips.perVehicle,
+        perAircraft: hubDict.cardChips.perAircraft,
+        perPackage: hubDict.cardChips.perPackage,
         perExtra: hubDict.cardChips.perExtraPerson,
+    };
+
+    // Price-unit labels for the pick + comparison cards (unit-type-aware).
+    const priceUnitLabels: PriceUnitLabels = {
+        per: cardLabels.perPerson,
+        perGroup: cardLabels.perGroup,
+        perBoat: cardLabels.perBoat,
+        perVehicle: cardLabels.perVehicle,
+        perAircraft: cardLabels.perAircraft,
+        perPackage: cardLabels.perPackage,
     };
 
     const linkTour = (hit: SearchHit): HubTour =>
@@ -663,11 +704,16 @@ async function HubTripsData({
         families: picksDict.families,
     };
     const picks: HubPick[] = render.ourPicks.map((p) =>
-        pickToHubPick(p, pickLabelText, cardLabels, tourHref),
+        pickToHubPick(p, pickLabelText, cardLabels, priceUnitLabels, tourHref),
     );
 
     const compareTables = render.comparisonGroups.map((g) =>
-        groupToCompareTable(g, hubDict.comparison.whatStandsOut, tourHref),
+        groupToCompareTable(
+            g,
+            hubDict.comparison.whatStandsOut,
+            priceUnitLabels,
+            tourHref,
+        ),
     );
     const discoverItems = render.discover.map(sectionToDiscoverItem);
     const discoverTitle = discoverDict.titlePattern.replace(

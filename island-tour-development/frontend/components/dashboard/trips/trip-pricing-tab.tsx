@@ -30,6 +30,7 @@ import {
   useCreateAgeBand,
   useUpdateAgeBand,
   useRemoveAgeBand,
+  useUpdateTrip,
 } from '@/hooks/trips/use-trips';
 import type {
   AddOnUnit,
@@ -37,6 +38,7 @@ import type {
   BandParticipation,
   TourAddOn,
   TourAgeBand,
+  TripListItem,
 } from '@/types/trip';
 
 // ── Age Bands ─────────────────────────────────────────────────────────────────
@@ -477,11 +479,232 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
   );
 }
 
-interface TripPricingTabProps {
-  tripId: string;
+// ── Pricing basics (model + currency + base/unit fields) ────────────────────────
+
+const pricingSchema = z
+  .object({
+    pricingModel: z.enum(['PER_PERSON', 'UNIT']),
+    defaultCurrency: z.enum(['USD', 'EUR']),
+    basePrice: z
+      .string()
+      .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
+      .optional()
+      .or(z.literal('')),
+    wholeUnitType: z
+      .enum(['GROUP', 'BOAT', 'VEHICLE', 'AIRCRAFT', 'PACKAGE'])
+      .optional()
+      .or(z.literal('')),
+    unitIncludedGuests: z.coerce.number().int().min(1).optional().or(z.literal('')),
+    extraPersonPrice: z
+      .string()
+      .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
+      .optional()
+      .or(z.literal('')),
+  })
+  .superRefine((v, ctx) => {
+    // Unit-priced tours need a whole-unit base price + a unit type.
+    if (v.pricingModel === 'UNIT') {
+      if (!v.basePrice)
+        ctx.addIssue({ code: 'custom', path: ['basePrice'], message: 'Unit-priced tours need a base price.' });
+      if (!v.wholeUnitType)
+        ctx.addIssue({ code: 'custom', path: ['wholeUnitType'], message: 'Select a unit type.' });
+    }
+  });
+
+type PricingFormValues = {
+  pricingModel: 'PER_PERSON' | 'UNIT';
+  defaultCurrency: 'USD' | 'EUR';
+  basePrice: string;
+  wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
+  unitIncludedGuests: string;
+  extraPersonPrice: string;
+};
+
+function PricingBasicsCard({ trip }: { trip: TripListItem }) {
+  const { mutate: updateTrip, isPending } = useUpdateTrip();
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    formState: { errors },
+  } = useForm<PricingFormValues>({
+    resolver: zodResolver(pricingSchema) as unknown as Resolver<PricingFormValues>,
+    defaultValues: {
+      pricingModel: trip.pricingModel,
+      defaultCurrency: trip.defaultCurrency,
+      basePrice: trip.basePrice ?? '',
+      wholeUnitType: trip.wholeUnitType ?? '',
+      unitIncludedGuests: trip.unitIncludedGuests != null ? String(trip.unitIncludedGuests) : '',
+      extraPersonPrice: trip.extraPersonPrice ?? '',
+    },
+  });
+  const isUnit = watch('pricingModel') === 'UNIT';
+  // The included-guests + extra-person surcharge applies ONLY to GROUP pricing;
+  // boat/vehicle/aircraft/package charters are a flat whole-unit price.
+  const isGroupUnit = isUnit && watch('wholeUnitType') === 'GROUP';
+
+  function onSubmit(values: PricingFormValues) {
+    updateTrip(
+      {
+        id: trip.id,
+        payload: {
+          pricingModel: values.pricingModel,
+          defaultCurrency: values.defaultCurrency,
+          basePrice: values.basePrice || undefined,
+          wholeUnitType:
+            values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
+          unitIncludedGuests:
+            values.pricingModel === 'UNIT' && values.unitIncludedGuests
+              ? Number(values.unitIncludedGuests)
+              : undefined,
+          extraPersonPrice:
+            values.pricingModel === 'UNIT' && values.extraPersonPrice ? values.extraPersonPrice : undefined,
+        },
+      },
+      {
+        onSuccess: () => toast.success('Pricing saved.'),
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save pricing.'),
+      }
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Pricing</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          How this tour is priced. Per-person tours use age bands (below); unit-priced tours charge for
+          the whole unit plus a per-extra-guest surcharge.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
+              <Controller
+                name="pricingModel"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PER_PERSON">Per Person</SelectItem>
+                      <SelectItem value="UNIT">Per Unit (whole asset)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Currency</Label>
+              <Controller
+                name="defaultCurrency"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <Label className="text-xs font-semibold uppercase">Base Price</Label>
+              <Input {...register('basePrice')} placeholder="e.g. 49.99" aria-invalid={!!errors.basePrice} />
+              <FieldDescription>
+                {isUnit
+                  ? 'Whole-unit price (covers the included guests).'
+                  : 'Optional "from" fallback when there are no age bands.'}
+              </FieldDescription>
+              <FieldError>{errors.basePrice?.message}</FieldError>
+            </Field>
+            {isUnit && (
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
+                <Controller
+                  name="wholeUnitType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={!!errors.wholeUnitType}>
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GROUP">Group</SelectItem>
+                        <SelectItem value="BOAT">Boat</SelectItem>
+                        <SelectItem value="VEHICLE">Vehicle</SelectItem>
+                        <SelectItem value="AIRCRAFT">Aircraft</SelectItem>
+                        <SelectItem value="PACKAGE">Package</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError>{errors.wholeUnitType?.message}</FieldError>
+              </Field>
+            )}
+          </div>
+
+          {isGroupUnit && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Guests Included in Base Price</Label>
+                <Input
+                  {...register('unitIncludedGuests')}
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 10"
+                  aria-invalid={!!errors.unitIncludedGuests}
+                />
+                <FieldDescription>Travelers covered by the base price.</FieldDescription>
+                <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
+              </Field>
+              <Field>
+                <Label className="text-xs font-semibold uppercase">Extra Person Price</Label>
+                <Input
+                  {...register('extraPersonPrice')}
+                  placeholder="e.g. 175.00"
+                  aria-invalid={!!errors.extraPersonPrice}
+                />
+                <FieldDescription>Charged per traveler beyond the included count.</FieldDescription>
+                <FieldError>{errors.extraPersonPrice?.message}</FieldError>
+              </Field>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isPending}>
+              {isPending ? 'Saving...' : 'Save Pricing'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
 
-export function TripPricingTab({ tripId }: TripPricingTabProps) {
+interface TripPricingTabProps {
+  trip: TripListItem;
+}
+
+export function TripPricingTab({ trip }: TripPricingTabProps) {
+  const tripId = trip.id;
+  // Age bands are a PER_PERSON construct. UNIT (whole-unit / charter) tours are
+  // priced by the unit formula (base + per-extra-guest) set in Details, so the
+  // age-band manager is hidden for them (the backend also rejects age bands on
+  // UNIT tours).
+  const isUnit = trip.pricingModel === 'UNIT';
   const { data: ageBands, isLoading: isLoadingAgeBands } = useAgeBands(tripId);
   const { mutate: createAgeBand, isPending: isCreatingAgeBand } = useCreateAgeBand();
 
@@ -593,7 +816,24 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Age Bands - flat per-traveler pricing (Adult / Child / Infant ...) */}
+      {/* Pricing basics: model + currency + base/unit fields (single home for pricing). */}
+      <PricingBasicsCard trip={trip} />
+
+      {/* Age Bands - PER_PERSON only. UNIT tours use a single guests count. */}
+      {isUnit ? (
+        <Card>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              This is a unit-priced tour (whole {(trip.wholeUnitType ?? 'unit').toLowerCase()}). It uses a
+              single guests count, not age bands. Set the base price, included guests, and
+              extra-person price in the Details tab.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardHeader className="border-b pb-4">
           <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
@@ -764,6 +1004,7 @@ export function TripPricingTab({ tripId }: TripPricingTabProps) {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Add-Ons */}
       <Card>

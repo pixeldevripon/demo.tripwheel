@@ -16,7 +16,6 @@ import {
   deriveTourAttributes,
   derivedAttributeTourSelect,
   buildDerivedAttributeWhere,
-  type DerivedAttributeTour,
 } from '@/attributes/derived-attributes';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import {
@@ -32,9 +31,11 @@ import {
   BandParticipation,
   DepartureStatus,
   PickupModel,
+  PricingModel,
   Role,
   SlugEntityType,
   TourStatus,
+  WholeUnitType,
 } from '@prisma/client';
 import {
   AdminToursQueryDto,
@@ -377,19 +378,24 @@ export class ToursService {
     const client = tx ?? this.prisma;
     const tour = await client.tour.findUnique({
       where: { id: tourId },
-      select: { basePrice: true },
+      select: { basePrice: true, pricingModel: true },
     });
     if (!tour) return null;
 
-    // priceFrom anchors off the cheapest TourAgeBand once bands are entered, and
-    // falls back to basePrice when none exist yet.
-    const cheapestBand = await client.tourAgeBand.findFirst({
-      where: { tourId, participation: BandParticipation.PARTICIPANT },
-      orderBy: { price: 'asc' },
-      select: { price: true },
-    });
-    const priceFrom: Prisma.Decimal | null =
-      cheapestBand?.price ?? tour.basePrice ?? null;
+    // UNIT (whole-unit / charter): priceFrom is always the whole-unit base price
+    // (age bands do not apply). PER_PERSON: anchor off the cheapest participant
+    // TourAgeBand once bands are entered, falling back to basePrice when none exist.
+    let priceFrom: Prisma.Decimal | null;
+    if (tour.pricingModel === PricingModel.UNIT) {
+      priceFrom = tour.basePrice ?? null;
+    } else {
+      const cheapestBand = await client.tourAgeBand.findFirst({
+        where: { tourId, participation: BandParticipation.PARTICIPANT },
+        orderBy: { price: 'asc' },
+        select: { price: true },
+      });
+      priceFrom = cheapestBand?.price ?? tour.basePrice ?? null;
+    }
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
@@ -676,10 +682,13 @@ export class ToursService {
     if (isLocalsFavourite !== undefined)
       where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
+    // Price filter runs against `priceFrom` (the displayed "From" anchor: cheapest
+    // participant band for PER_PERSON, basePrice for UNIT), so it agrees with the
+    // price shown on the card - not the raw `basePrice`.
     if (minPrice !== undefined || maxPrice !== undefined) {
-      where.basePrice = {};
-      if (minPrice !== undefined) where.basePrice.gte = minPrice;
-      if (maxPrice !== undefined) where.basePrice.lte = maxPrice;
+      where.priceFrom = {};
+      if (minPrice !== undefined) where.priceFrom.gte = minPrice;
+      if (maxPrice !== undefined) where.priceFrom.lte = maxPrice;
     }
     if (durationMin !== undefined || durationMax !== undefined) {
       where.durationMinutesFrom = {};
@@ -1644,14 +1653,29 @@ export class ToursService {
             destinationId: dto.destinationId,
             timeZone: tourTimeZone,
             pricingModel: dto.pricingModel,
-            wholeUnitType: dto.wholeUnitType ?? null,
+            // Unit fields only apply to UNIT pricing; force them null for
+            // PER_PERSON so the two models never carry each other's data.
+            wholeUnitType:
+              dto.pricingModel === PricingModel.UNIT
+                ? (dto.wholeUnitType ?? null)
+                : null,
             ...(dto.defaultCurrency !== undefined && {
               defaultCurrency: dto.defaultCurrency,
             }),
             basePrice: dto.basePrice ?? null,
-            priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
-            unitIncludedGuests: dto.unitIncludedGuests ?? null,
-            extraPersonPrice: dto.extraPersonPrice ?? null,
+            priceFrom: dto.basePrice ?? null, // from = base; recomputed from bands (PER_PERSON) or kept as base (UNIT)
+            // Included-guests + extra-person surcharge applies ONLY to GROUP unit
+            // pricing. Boat/vehicle/aircraft/package charters are a flat unit price.
+            unitIncludedGuests:
+              dto.pricingModel === PricingModel.UNIT &&
+              dto.wholeUnitType === WholeUnitType.GROUP
+                ? (dto.unitIncludedGuests ?? null)
+                : null,
+            extraPersonPrice:
+              dto.pricingModel === PricingModel.UNIT &&
+              dto.wholeUnitType === WholeUnitType.GROUP
+                ? (dto.extraPersonPrice ?? null)
+                : null,
             durationMinutesFrom: dto.durationMinutesFrom ?? null,
             durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
@@ -1846,19 +1870,37 @@ export class ToursService {
           ...(dto.pricingModel !== undefined && {
             pricingModel: dto.pricingModel,
           }),
-          ...(dto.wholeUnitType !== undefined && {
-            wholeUnitType: dto.wholeUnitType,
-          }),
           ...(dto.defaultCurrency !== undefined && {
             defaultCurrency: dto.defaultCurrency,
           }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
-          ...(dto.unitIncludedGuests !== undefined && {
-            unitIncludedGuests: dto.unitIncludedGuests,
-          }),
-          ...(dto.extraPersonPrice !== undefined && {
-            extraPersonPrice: dto.extraPersonPrice,
-          }),
+          // Unit fields: applied for UNIT, force-nulled for PER_PERSON (the two
+          // models never carry each other's data). Within UNIT, the included-guests
+          // + extra-person surcharge applies ONLY to the GROUP unit type; other
+          // charters (boat/vehicle/aircraft/package) are a flat unit price. Uses
+          // the effective model/unit-type (incoming dto value, else the tour's).
+          ...((dto.pricingModel ?? tour.pricingModel) === PricingModel.UNIT
+            ? {
+                ...(dto.wholeUnitType !== undefined && {
+                  wholeUnitType: dto.wholeUnitType,
+                }),
+                ...((dto.wholeUnitType ?? tour.wholeUnitType) ===
+                WholeUnitType.GROUP
+                  ? {
+                      ...(dto.unitIncludedGuests !== undefined && {
+                        unitIncludedGuests: dto.unitIncludedGuests,
+                      }),
+                      ...(dto.extraPersonPrice !== undefined && {
+                        extraPersonPrice: dto.extraPersonPrice,
+                      }),
+                    }
+                  : { unitIncludedGuests: null, extraPersonPrice: null }),
+              }
+            : {
+                wholeUnitType: null,
+                unitIncludedGuests: null,
+                extraPersonPrice: null,
+              }),
           ...(dto.durationMinutesFrom !== undefined && {
             durationMinutesFrom: dto.durationMinutesFrom,
           }),
@@ -2027,8 +2069,9 @@ export class ToursService {
       });
     });
 
-    // Keep the "From $X" anchor in sync if basePrice changed.
-    if (dto.basePrice !== undefined) {
+    // Keep the "From $X" anchor in sync when basePrice or the pricing model
+    // changed (UNIT anchors on basePrice, PER_PERSON on the cheapest band).
+    if (dto.basePrice !== undefined || dto.pricingModel !== undefined) {
       updated.priceFrom = await this.recomputePriceFrom(id);
     }
 
@@ -2083,8 +2126,19 @@ export class ToursService {
     if (tour.highlights.length < 3)
       errors.push('At least 3 highlights are required to publish');
 
-    // Price required: either a flat basePrice or at least one priced age band.
-    if (tour.basePrice == null && tour._count.ageBands === 0) {
+    // Price required, per pricing model:
+    // - UNIT (whole-unit / charter): a base price (the whole-unit price) + a unit type.
+    // - PER_PERSON: at least one priced age band, or a flat base-price fallback.
+    if (tour.pricingModel === PricingModel.UNIT) {
+      if (tour.basePrice == null)
+        errors.push(
+          'Unit-priced tours require a base price (the whole-unit price) to publish',
+        );
+      if (!tour.wholeUnitType)
+        errors.push(
+          'Unit-priced tours require a unit type (group / boat / vehicle / aircraft / package) to publish',
+        );
+    } else if (tour.basePrice == null && tour._count.ageBands === 0) {
       errors.push(
         'A price is required to publish (set a base price or add an age band)',
       );
