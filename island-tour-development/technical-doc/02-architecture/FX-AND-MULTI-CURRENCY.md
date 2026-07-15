@@ -5,8 +5,9 @@
 > (`island-tours-platform-master.html` v1.9), the master wins.
 >
 > Status: backend M1 (FX foundation) + M2 (pricing/quote/reserve wiring) + M3 (public-API
-> display conversion via `money`) BUILT and tested. M4 (refresh scheduler + real provider)
-> and M5 (frontend) are tracked in `03-implementation/BOOKING-CHECKLIST.md` section 6.
+> display conversion via `money`) + M4 (refresh scheduler + startup warm-up) BUILT and
+> tested. Still on the STATIC provider - a real `FxProvider` (Stripe FX Quotes) and M5
+> (frontend) are tracked in `03-implementation/BOOKING-CHECKLIST.md` section 6.
 
 ---
 
@@ -27,7 +28,8 @@ commission never drift.
 | `fx-provider.interface.ts` | `FxProvider` interface + `FX_PROVIDER` DI token + `FxQuote`/`ProviderRate`/`FxPair` types. The swappable seam - booking/tour code never touches a provider response shape. |
 | `providers/static-fx.provider.ts` -> `StaticFxProvider` | The provider wired RIGHT NOW. Derives `USD<->EUR` from `FX_USD_TO_EUR` (default `0.92`) with no network call, so local/dev/tests convert without any account. NOT production-grade. |
 | `fx-rates.service.ts` -> `FxRatesService` | The single API everyone calls (see below). |
-| `fx.module.ts` -> `FxModule` | Binds `FX_PROVIDER -> StaticFxProvider`, exports `FxRatesService`. Registered in `AppModule`; imported by `BookingsModule` (and, in M3, the public read modules). |
+| `fx-refresh.service.ts` -> `FxRefreshService` | Keeps the cache warm (M4). One refresh at **startup** + a dynamic **interval** every `FX_RATE_REFRESH_MINUTES` (default 30). In-process `@nestjs/schedule` (no BullMQ - same convention as `NightlyJobsService`). Failures are logged and swallowed so boot/interval never die; correctness is enforced downstream (booking fails closed, display falls back). |
+| `fx.module.ts` -> `FxModule` | Binds `FX_PROVIDER -> StaticFxProvider`, provides `FxRefreshService`, exports `FxRatesService`. Registered in `AppModule`; imported by `BookingsModule` (and, in M3, the public read modules). Relies on the global `ScheduleModule.forRoot()` in `AppModule` for `SchedulerRegistry`. |
 | `dto/money.dto.ts` -> `MoneyDto` | Canonical converted-price display object for public reads (M3): `{ currency, sourceCurrency, fxRate, priceFrom, basePrice }`. |
 
 ---
@@ -130,19 +132,21 @@ Swapping in a real provider = implement the `FxProvider` interface + rebind `FX_
 | `FX_USD_TO_EUR` | `0.92` | The static `USD->EUR` rate used by `StaticFxProvider` (`EUR->USD` is its inverse). |
 | `FX_RATE_TTL_MINUTES` | `120` | How long a fetched rate stays "fresh" for booking quotes. |
 | `FX_RATE_STALE_DISPLAY_HOURS` | `24` | How stale a rate may be for the public-display fallback. |
+| `FX_RATE_REFRESH_MINUTES` | `30` | `FxRefreshService` interval cadence (M4). Keep well below the TTL so a rate never expires between refreshes. |
+
+All are validated as positive numbers in `env.validate.ts` when set (optional - code
+defaults apply when unset).
 
 **Local:** nothing required - runs on defaults. Optionally set `FX_USD_TO_EUR` to test rates.
 
 ### Production (guide-listed, NOT YET consumed)
 
-These activate only when a real provider + the refresh scheduler (M4) land:
+These activate only when a real provider class lands (the scheduler in M4 already runs; it
+just refreshes via `StaticFxProvider` until a real provider is bound):
 
 ```
 FX_PROVIDER=stripe            # selects the provider impl (no effect yet)
 FX_PROVIDER_API_KEY=...       # provider credential (no effect yet)
-FX_RATE_REFRESH_MINUTES=30    # scheduler cadence (M4)
-FX_RATE_TTL_MINUTES=120
-FX_RATE_STALE_DISPLAY_HOURS=24
 ```
 
 > WARNING: setting `FX_PROVIDER` / `FX_PROVIDER_API_KEY` does nothing today - the binding is
@@ -155,6 +159,7 @@ FX_RATE_STALE_DISPLAY_HOURS=24
 
 | Scenario | Behavior |
 |---|---|
+| Provider down at boot | Startup refresh is logged + swallowed; app boots. Cached DB rows (if any) still serve; the interval keeps retrying. |
 | Provider down, fresh cached rate exists | Use cached rate. |
 | Provider down, only stale display rate exists | Public display only (source-currency fallback); booking quote blocks. |
 | Provider down, no cached rate | Same-currency only; cross-currency **quote/reserve returns 503**. |
@@ -163,11 +168,40 @@ FX_RATE_STALE_DISPLAY_HOURS=24
 
 ---
 
+## Refresh scheduler & startup (M4)
+
+`FxRefreshService` (in `FxModule`) keeps `fx_rates` warm:
+
+- **Startup** (`onApplicationBootstrap`): one `refreshRates()` so the first booking quote
+  does not pay the provider round-trip and cross-currency works immediately when reachable.
+- **Interval**: registered dynamically via `SchedulerRegistry` every
+  `FX_RATE_REFRESH_MINUTES` (default 30), well inside the 120-minute TTL.
+- **Non-fatal**: a refresh that throws is logged and swallowed - boot and the interval never
+  die. Correctness is enforced per-request downstream (booking quote 503s, display falls back
+  to source currency), not by blocking the app.
+- **Convention**: in-process `@nestjs/schedule` (no BullMQ), matching `NightlyJobsService`.
+  FX refresh is an idempotent recompute, not a retry/concurrency queue.
+- `onModuleDestroy` clears the interval defensively (tests / hot-reload leave no live timer).
+
+## When the real (non-static) provider gets wired
+
+The swap is intentionally tiny because the seam already exists:
+
+1. Write ONE class implementing `FxProvider` (`fetchRates(pairs) -> ProviderRate[]`), e.g.
+   `StripeFxProvider`.
+2. Change ONE line in `FxModule` (`useExisting: StaticFxProvider` -> the real provider,
+   selected by `FX_PROVIDER`). Nothing else changes - all consumers depend only on
+   `FxRatesService`, and the M4 scheduler already refreshes whatever provider is bound.
+
+**Timing:** do it before production checkout serves cross-currency, alongside the Stripe
+PaymentIntent work (still pending in the booking phase). **Stripe FX Quotes** is recommended
+because it locks a quote you can attach to the PaymentIntent, so the displayed converted
+amount and the charged amount share one rate.
+
 ## What is still needed for true production
 
-1. A real `FxProvider` implementation (Stripe FX Quotes) + rebind in `FxModule`.
-2. The refresh scheduler + startup behavior (M4) so `fx_rates` stays warm.
-3. Then production genuinely fails closed on cross-currency when the provider is down, instead
+1. A real `FxProvider` implementation (Stripe FX Quotes) + rebind in `FxModule` (see above).
+2. Then production genuinely fails closed on cross-currency when the provider is down, instead
    of leaning on the static default.
 
 ---
@@ -198,6 +232,8 @@ money: { currency, sourceCurrency, fxRate, priceFrom, basePrice }   // amounts a
 
 - `src/fx/fx-rates.service.spec.ts` - identity rate, fresh cache hit, lazy refresh, fail-closed
   503, `convert`, `refreshRates` write+deactivate, non-positive rejection, stale-display window.
+- `src/fx/fx-refresh.service.spec.ts` - startup refresh + interval registration, swallowed
+  startup failure, scheduled-tick cadence, no double-register, interval cleared on destroy.
 - `src/bookings/booking-pricing.util.spec.ts` - source==booking (rate 1), USD tour -> EUR
   booking, EUR tour -> USD booking with EUR commission.
 - `src/bookings/bookings.service.spec.ts` - quote + reserve conversion, source snapshot, default
