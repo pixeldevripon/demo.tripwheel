@@ -19,6 +19,7 @@ export class SearchController {
       destinationSlug: query.destinationSlug,
       date: query.date,
       locale: query.locale,
+      currency: query.currency,
       page: query.page,
       limit: query.limit,
     });

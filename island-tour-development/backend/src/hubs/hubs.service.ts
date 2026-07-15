@@ -32,11 +32,14 @@ import {
 import {
   AttributeDataType,
   AvailabilityScheduleStatus,
+  Currency,
   HubSectionType,
   HubStatus,
+  Prisma,
   SlugEntityType,
   TourStatus,
 } from '@prisma/client';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -62,7 +65,61 @@ export class HubService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Attach a converted-price `money` object to a page of hub tour cards, in place
+   * (guide §20.9). Mirrors ToursService.attachMoney: resolves each distinct source
+   * currency's display rate once, converts each card, falls back to source currency
+   * (rate 1) when no rate is available. The card's `currency` field is the source.
+   */
+  private async attachHubMoney(
+    cards: Array<{
+      currency: string;
+      basePrice?: unknown;
+      priceFrom?: unknown;
+      money?: unknown;
+    }>,
+    target?: Currency,
+  ): Promise<void> {
+    if (cards.length === 0) return;
+    const rateBySource = new Map<
+      string,
+      { currency: string; rate: Prisma.Decimal }
+    >();
+    for (const src of new Set(cards.map((c) => c.currency))) {
+      const tgt = target ?? (src as Currency);
+      if (src === tgt) {
+        rateBySource.set(src, { currency: src, rate: new Prisma.Decimal(1) });
+        continue;
+      }
+      const display = await this.fx.getDisplayRate(src as Currency, tgt);
+      rateBySource.set(
+        src,
+        display
+          ? { currency: tgt, rate: display.rate }
+          : { currency: src, rate: new Prisma.Decimal(1) },
+      );
+    }
+    for (const c of cards) {
+      const { currency, rate } = rateBySource.get(c.currency)!;
+      const conv = (v: unknown): string | null =>
+        v == null
+          ? null
+          : new Prisma.Decimal(v as Prisma.Decimal.Value)
+              .mul(rate)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+              .toString();
+      c.money = {
+        currency,
+        sourceCurrency: c.currency,
+        fxRate: rate.toString(),
+        priceFrom: conv(c.priceFrom),
+        basePrice: conv(c.basePrice),
+      };
+    }
+  }
 
   // Hub translation select including `heroTagline` (absent from the shared translationSelect util).
   private readonly hubTranslationSelect = {
@@ -1182,7 +1239,7 @@ export class HubService {
     return this.getOurPicks(id, Locale.en);
   }
 
-  async getOurPicks(id: string, locale: Locale = Locale.en) {
+  async getOurPicks(id: string, locale: Locale = Locale.en, target?: Currency) {
     await this.findHubOrThrow(id);
 
     const rows = await this.prisma.hubOurPick.findMany({
@@ -1220,6 +1277,10 @@ export class HubService {
       },
     }));
 
+    await this.attachHubMoney(
+      ourPicks.map((p) => p.tour),
+      target,
+    );
     return { count: ourPicks.length, ourPicks };
   }
 
@@ -1337,7 +1398,11 @@ export class HubService {
     return this.getComparison(id, Locale.en);
   }
 
-  async getComparison(id: string, locale: Locale = Locale.en) {
+  async getComparison(
+    id: string,
+    locale: Locale = Locale.en,
+    target?: Currency,
+  ) {
     await this.findHubOrThrow(id);
 
     const groups = await this.prisma.hubComparisonGroup.findMany({
@@ -1392,6 +1457,10 @@ export class HubService {
       };
     });
 
+    await this.attachHubMoney(
+      mapped.flatMap((g) => g.tours.map((t) => t.tour)),
+      target,
+    );
     return { count: mapped.length, groups: mapped };
   }
 
@@ -1615,8 +1684,8 @@ export class HubService {
           select: this.contentSectionSelect,
           orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
         }),
-        this.getOurPicks(hub.id, locale),
-        this.getComparison(hub.id, locale),
+        this.getOurPicks(hub.id, locale, query.currency),
+        this.getComparison(hub.id, locale, query.currency),
         this.prisma.faq.findMany({
           where: {
             pageType: FAQ_PAGE_TYPE.HUB,

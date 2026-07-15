@@ -13,7 +13,28 @@ import {
   ConflictErrorDto,
   NotFoundErrorDto,
 } from '@/common/dto/error-responses.dto';
-import { BookingResponseDto, ThankYouResponseDto } from './dto/booking.dto';
+import {
+  BookingQuoteResponseDto,
+  BookingResponseDto,
+  ThankYouResponseDto,
+} from './dto/booking.dto';
+
+export const ApiQuoteDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Quote a booking price (server-authoritative, no side effects)',
+      description:
+        'Computes totals, deposit/balance split, and the commission snapshot for a prospective ' +
+        'booking without claiming seats or persisting anything. Priced in the tour default ' +
+        'currency (multi-currency FX is a later phase).',
+    }),
+    ApiOkResponse({ type: BookingQuoteResponseDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiUnprocessableEntityResponse({
+      description: 'Invalid items/guests, party-size, or age restriction.',
+    }),
+  );
 
 export const ApiReserveDocs = () =>
   applyDecorators(

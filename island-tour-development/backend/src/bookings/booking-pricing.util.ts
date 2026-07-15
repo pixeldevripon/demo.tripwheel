@@ -31,6 +31,8 @@ export interface PriceLineInput {
   quantity: number;
   priceRetail: Prisma.Decimal;
   priceNet: Prisma.Decimal | null;
+  /** Age-band label, carried for the quote breakdown (unused by the money math). */
+  label?: string;
 }
 
 /**
@@ -71,16 +73,24 @@ export interface ExpandedAddOn {
 }
 
 export interface BookingPricing {
+  // Charged/display (booking) currency.
   totalRetail: Prisma.Decimal;
   totalNet: Prisma.Decimal | null;
   depositAmount: Prisma.Decimal;
   balanceAmount: Prisma.Decimal;
+  // Original tour (source) currency snapshot (guide §20.2) - equal to the booking-currency
+  // figures when source == booking (rate 1).
+  sourceTotalRetail: Prisma.Decimal;
+  sourceDepositAmount: Prisma.Decimal;
+  sourceBalanceAmount: Prisma.Decimal;
+  sourceFxRateToBooking: Prisma.Decimal;
+  // Commission is always EUR (rule #22).
   commissionRate: Prisma.Decimal;
   commissionAmount: Prisma.Decimal | null;
   totalEur: Prisma.Decimal | null;
   fxRateToEur: Prisma.Decimal | null;
-  unitItems: ExpandedUnitItem[];
-  addOns: ExpandedAddOn[];
+  unitItems: ExpandedUnitItem[]; // priced in BOOKING currency (guide §20.8.7)
+  addOns: ExpandedAddOn[]; // priced in BOOKING currency
   pax: number;
 }
 
@@ -90,7 +100,14 @@ interface ComputeInput {
   /** Unit path: whole-unit charter. Provide exactly one of `lines` / `unit`. */
   unit?: UnitPricingInput;
   addOns?: AddOnLineInput[];
-  currency: Currency;
+  /** Tour (source) currency the age-band/base prices are expressed in. */
+  sourceCurrency: Currency;
+  /** Currency the traveler is charged/quoted in (== sourceCurrency when not converting). */
+  bookingCurrency: Currency;
+  /** Rate: sourceCurrency → bookingCurrency (1 when same). Snapshotted for audit. */
+  sourceFxRateToBooking: Prisma.Decimal;
+  /** Rate: bookingCurrency → EUR, or null when unresolved (commission then null). */
+  fxRateToEur: Prisma.Decimal | null;
   paymentModel: PaymentModel;
   /** Tour deposit percentage (e.g. 20.0 = 20%). */
   depositPct: Prisma.Decimal;
@@ -103,7 +120,8 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     lines,
     unit,
     addOns = [],
-    currency,
+    sourceFxRateToBooking,
+    fxRateToEur,
     paymentModel,
     depositPct,
     commissionTier,
@@ -113,36 +131,60 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     throw new Error('computeBookingPricing requires either lines or unit');
   }
 
-  // ── Participant expansion: one unit item per seat; sum retail/net ──
-  const { unitItems, unitsRetail, unitsNet, anyNetMissing, pax } = unit
+  // Convert a SOURCE-currency amount into BOOKING currency, rounded HALF_UP to 2dp at the
+  // line boundary (guide §20.5 rounding policy). Same-currency uses rate 1 → identity.
+  const toBooking = (v: Prisma.Decimal) =>
+    money(v.times(sourceFxRateToBooking));
+
+  // ── Participant expansion in SOURCE currency: one unit item per seat ──
+  const src = unit
     ? computeUnitLines(unit)
     : computePerPersonLines(lines ?? []);
+  const pax = src.pax;
 
-  // ── Add-ons: PER_PERSON multiplies by pax; FLAT does not ──
+  // ── Convert each participant seat to booking currency; sum for retail ──
+  let unitsRetail = D(0);
+  const unitItems: ExpandedUnitItem[] = src.unitItems.map((u) => {
+    const priceRetail = toBooking(u.priceRetail);
+    unitsRetail = unitsRetail.plus(priceRetail);
+    return {
+      ageBandId: u.ageBandId,
+      priceRetail,
+      priceNet: u.priceNet != null ? toBooking(u.priceNet) : null,
+    };
+  });
+  const unitsNet = toBooking(src.unitsNet);
+
+  // ── Add-ons: convert unit price, then PER_PERSON multiplies by pax; FLAT does not ──
   const expandedAddOns: ExpandedAddOn[] = [];
   let addOnsRetail = D(0);
+  let sourceAddOnsRetail = D(0);
   for (const a of addOns) {
     const multiplier =
       a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
-    const totalPrice = money(a.unitPrice.times(multiplier));
+    sourceAddOnsRetail = sourceAddOnsRetail.plus(a.unitPrice.times(multiplier));
+    const unitPrice = toBooking(a.unitPrice);
+    const totalPrice = money(unitPrice.times(multiplier));
     addOnsRetail = addOnsRetail.plus(totalPrice);
-    expandedAddOns.push({ ...a, totalPrice });
+    expandedAddOns.push({ ...a, unitPrice, totalPrice });
   }
 
+  // ── Totals: booking currency (charged) + source currency (audit snapshot) ──
   const totalRetail = money(unitsRetail.plus(addOnsRetail));
-  const totalNet = anyNetMissing ? null : money(unitsNet);
+  const totalNet = src.anyNetMissing ? null : money(unitsNet);
+  const sourceTotalRetail = money(src.unitsRetail.plus(sourceAddOnsRetail));
 
-  // ── Deposit / balance split (master rule #21) ──
+  // ── Deposit / balance split (master rule #21), computed in each currency ──
   const { depositAmount, balanceAmount } = splitDeposit(
     totalRetail,
     paymentModel,
     depositPct,
   );
+  const source = splitDeposit(sourceTotalRetail, paymentModel, depositPct);
 
-  // ── Commission snapshot (master rule #22 - EUR) ──
+  // ── Commission snapshot (master rule #22 - always EUR) ──
   const commissionRate = commissionTier.dividedBy(100).toDecimalPlaces(4);
-  const fxRateToEur = currency === Currency.EUR ? D(1) : null;
-  const totalEur = fxRateToEur ? totalRetail : null;
+  const totalEur = fxRateToEur ? money(totalRetail.times(fxRateToEur)) : null;
   const commissionAmount = totalEur
     ? money(totalEur.times(commissionRate))
     : null;
@@ -152,6 +194,10 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     totalNet,
     depositAmount,
     balanceAmount,
+    sourceTotalRetail,
+    sourceDepositAmount: source.depositAmount,
+    sourceBalanceAmount: source.balanceAmount,
+    sourceFxRateToBooking,
     commissionRate,
     commissionAmount,
     totalEur,
@@ -235,18 +281,21 @@ function splitDeposit(
     case PaymentModel.PAID_IN_FULL:
       // Platform collects the whole amount up front.
       return { depositAmount: totalRetail, balanceAmount: money(D(0)) };
-    case PaymentModel.OPERATOR_LINK: {
-      // Platform takes the deposit; operator collects the balance on site.
+    case PaymentModel.OPERATOR_LINK:
+    case PaymentModel.ON_ARRIVAL: {
+      // Deposit models (master §2 / guide §20.6): platform captures the deposit up
+      // front, operator collects the balance on site. ON_ARRIVAL is a deposit model,
+      // NOT zero-upfront - the deposit secures the booking and the commission.
       const depositAmount = money(totalRetail.times(depositPct).dividedBy(100));
       return {
         depositAmount,
         balanceAmount: money(totalRetail.minus(depositAmount)),
       };
     }
-    case PaymentModel.ON_ARRIVAL:
     case PaymentModel.OPERATOR_FULL:
     default:
-      // No up-front charge; full amount settled with the operator.
+      // No up-front charge; full amount settled with the operator. (OPERATOR_FULL is
+      // dropped for v1 and rejected at reserve - kept here only for exhaustiveness.)
       return { depositAmount: money(D(0)), balanceAmount: totalRetail };
   }
 }

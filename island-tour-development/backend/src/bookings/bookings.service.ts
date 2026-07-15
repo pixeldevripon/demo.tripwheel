@@ -11,12 +11,14 @@ import {
   BookingStatus,
   CancellationRefund,
   CancelledBy,
+  Currency,
   DepartureStatus,
   PaymentModel,
   PricingModel,
   Prisma,
   Role,
   TourBookingType,
+  WholeUnitType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
@@ -37,22 +39,45 @@ import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { cutoffReached } from '@/availability/availability-status.util';
 import { storedStatusForFill } from '@/availability/availability-status.util';
 import { TiersService } from '@/tiers/tiers.service';
+import { FxRatesService } from '@/fx/fx-rates.service';
+import type { FxQuote } from '@/fx/fx-provider.interface';
 import {
   computeBookingPricing,
   type AddOnLineInput,
+  type BookingPricing,
   type PriceLineInput,
   type UnitPricingInput,
 } from './booking-pricing.util';
 import type {
+  BookingQuoteResponseDto,
   CancelBookingDto,
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  QuoteBookingDto,
+  QuoteLineDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
 
 const DEFAULT_HOLD_MINUTES = 30;
+/** Quote validity window (guide §20.4: 10-15 min is enough). */
+const QUOTE_TTL_MINUTES = 15;
+
+/**
+ * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
+ * Shared by the authoritative `reserve` write and the read-only `quote` preview.
+ */
+type PricingInput = Pick<
+  ReserveBookingDto,
+  | 'tourId'
+  | 'departureId'
+  | 'items'
+  | 'guests'
+  | 'travelerAges'
+  | 'addOns'
+  | 'pickupLocationId'
+>;
 
 type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
 
@@ -66,7 +91,55 @@ export class BookingsService {
     private readonly tracking: TrackingService,
     private readonly notifications: NotificationsService,
     private readonly tiers: TiersService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Resolve the FX-aware pricing for a booking context: source (tour) currency, the
+   * charged/booking currency (shopper choice, default = source), and the two rates it
+   * needs - source→booking and booking→EUR. Both rates come from {@link FxRatesService}
+   * (fails closed with 503 if a cross-currency rate is unavailable) and are snapshotted
+   * onto the booking so the conversion is auditable and never redone (guide §20.5/§20.8).
+   */
+  private async resolvePricing(
+    ctx: Awaited<ReturnType<BookingsService['loadContext']>>,
+    bookingCurrency: Currency,
+    now: Date,
+  ): Promise<{
+    sourceCurrency: Currency;
+    bookingCurrency: Currency;
+    sourceRate: FxQuote;
+    eurRate: FxQuote;
+    pricing: BookingPricing;
+  }> {
+    const sourceCurrency = ctx.tour.defaultCurrency;
+    const sourceRate = await this.fx.getRate(sourceCurrency, bookingCurrency);
+    const eurRate = await this.fx.getRate(bookingCurrency, Currency.EUR);
+
+    // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
+    const effectiveRate = await this.tiers.effectiveCommissionRate(
+      ctx.tourId,
+      now,
+    );
+    const effectiveTier = new Prisma.Decimal(effectiveRate)
+      .mul(100)
+      .toDecimalPlaces(2);
+
+    const pricing = computeBookingPricing({
+      lines: ctx.lines,
+      unit: ctx.unit,
+      addOns: ctx.addOnLines,
+      sourceCurrency,
+      bookingCurrency,
+      sourceFxRateToBooking: sourceRate.rate,
+      fxRateToEur: eurRate.rate,
+      paymentModel: ctx.tour.paymentModel,
+      depositPct: ctx.tour.depositPct,
+      commissionTier: effectiveTier,
+    });
+
+    return { sourceCurrency, bookingCurrency, sourceRate, eurRate, pricing };
+  }
 
   /** Fire the inventory + booking-status webhooks for a booking (fire-and-forget). */
   private emitBookingEvents(
@@ -130,26 +203,13 @@ export class BookingsService {
       );
     }
 
-    // Effective commission: an ACTIVE Destination Spotlight overlays 35% over the tour's
-    // tier rate (SPOTLIGHT-DATA.md §3). effectiveCommissionRate returns a fraction; the
-    // pricing util expects a percentage. Snapshotted onto the booking, never retroactive.
-    const effectiveRate = await this.tiers.effectiveCommissionRate(
-      dto.tourId,
-      now,
-    );
-    const effectiveTier = new Prisma.Decimal(effectiveRate)
-      .mul(100)
-      .toDecimalPlaces(2);
-
-    const pricing = computeBookingPricing({
-      lines: ctx.lines,
-      unit: ctx.unit,
-      addOns: ctx.addOnLines,
-      currency: ctx.tour.defaultCurrency,
-      paymentModel: ctx.tour.paymentModel,
-      depositPct: ctx.tour.depositPct,
-      commissionTier: effectiveTier,
-    });
+    // FX-aware pricing: charge in the shopper currency (default = tour currency),
+    // snapshotting the source-currency quote + both rates. Commission stays EUR
+    // (rule #22). The effective commission (tier + any ACTIVE Spotlight) is resolved
+    // inside resolvePricing and snapshotted, never retroactive.
+    const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
+    const { sourceCurrency, sourceRate, eurRate, pricing } =
+      await this.resolvePricing(ctx, bookingCurrency, now);
     // Guest headcount (manifest + add-on multiplier). For a private unit charter the
     // inventory claim below takes the WHOLE departure regardless of this count (D5).
     const seats = pricing.pax;
@@ -221,7 +281,7 @@ export class BookingsService {
           displayRef: makeDisplayRef(id, localStart),
           status,
           paymentModel: ctx.tour.paymentModel,
-          currency: ctx.tour.defaultCurrency,
+          currency: bookingCurrency,
           localDate: ctx.departure.date,
           startTime: timeOfDay(ctx.departure.startTime),
           tourStartDateTime: localStart,
@@ -241,11 +301,9 @@ export class BookingsService {
           pickupAddress: ctx.pickupAddress,
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
-          couponCode: dto.couponCode ?? null,
-          discountAmount:
-            dto.discountAmount != null
-              ? new Prisma.Decimal(dto.discountAmount)
-              : null,
+          // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
+          // engine, a client-supplied discount is untrusted, so we never write one -
+          // the full price stays authoritative. Wire this when the coupon engine exists.
           totalRetail: pricing.totalRetail,
           totalNet: pricing.totalNet,
           depositAmount: pricing.depositAmount,
@@ -254,6 +312,17 @@ export class BookingsService {
           commissionAmount: pricing.commissionAmount,
           totalEur: pricing.totalEur,
           fxRateToEur: pricing.fxRateToEur,
+          // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
+          // frozen here and never refetched at payment/TYP/email/tracking time.
+          sourceCurrency,
+          sourceTotalRetail: pricing.sourceTotalRetail,
+          sourceDepositAmount: pricing.sourceDepositAmount,
+          sourceBalanceAmount: pricing.sourceBalanceAmount,
+          sourceFxRateToBooking: pricing.sourceFxRateToBooking,
+          sourceFxProvider: sourceRate.provider,
+          sourceFxProviderAsOf: sourceRate.providerAsOf,
+          eurFxProvider: eurRate.provider,
+          eurFxProviderAsOf: eurRate.providerAsOf,
           unitItems: {
             create: pricing.unitItems.map((u, idx) => ({
               ageBandId: u.ageBandId,
@@ -291,6 +360,111 @@ export class BookingsService {
       return mapBooking(finalized);
     }
     return mapBooking(created);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Quote - server-authoritative price preview (no side effects, master §5)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Compute the server-authoritative price for a prospective booking WITHOUT
+   * claiming seats or persisting anything (guide §20.4). It reuses the exact
+   * pricing pipeline `reserve` uses (`loadContext` + `computeBookingPricing`), so
+   * the preview and the eventual write agree; `reserve` still recomputes and is
+   * the source of truth (a quote is never trusted for a persisted booking).
+   *
+   * Priced in the shopper currency (`dto.currency`, default = tour currency): the totals
+   * and per-line breakdown are BOOKING currency, with the original tour-currency quote in
+   * `source*` and both FX rates snapshotted (fails closed 503 if a cross rate is missing).
+   * Discounts/coupons are deferred (flaw #2) until a coupon-validation engine exists.
+   */
+  async quote(dto: QuoteBookingDto): Promise<BookingQuoteResponseDto> {
+    const ctx = await this.loadContext(dto);
+    this.validateRestrictions(ctx);
+
+    const now = localNow(ctx.tour.timeZone);
+    const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
+    const { sourceCurrency, sourceRate, pricing } = await this.resolvePricing(
+      ctx,
+      bookingCurrency,
+      now,
+    );
+
+    // Convert a source-currency amount into booking currency for the breakdown, using
+    // the same per-line rounding as the money math so the lines reconcile to the total.
+    const toBooking = (v: Prisma.Decimal) =>
+      v.times(sourceRate.rate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+    // ── Human-readable breakdown in BOOKING currency (participants, then add-ons) ──
+    const addOnsTotal = pricing.addOns.reduce(
+      (sum, a) => sum.plus(a.totalPrice),
+      new Prisma.Decimal(0),
+    );
+    const lines: QuoteLineDto[] = [];
+    if (ctx.isUnit) {
+      // The charter subtotal is the whole-unit retail (total minus add-ons).
+      const charterSubtotal = pricing.totalRetail.minus(addOnsTotal);
+      lines.push({
+        kind: 'participant',
+        ageBandId: null,
+        label: unitCharterLabel(ctx.tour.wholeUnitType),
+        quantity: ctx.guests,
+        unitPrice: (ctx.tour.basePrice != null
+          ? toBooking(ctx.tour.basePrice)
+          : charterSubtotal
+        ).toString(),
+        lineTotal: charterSubtotal.toString(),
+      });
+    } else {
+      for (const l of ctx.lines) {
+        const unitPrice = toBooking(l.priceRetail);
+        lines.push({
+          kind: 'participant',
+          ageBandId: l.ageBandId,
+          label: l.label ?? 'Participant',
+          quantity: l.quantity,
+          unitPrice: unitPrice.toString(),
+          lineTotal: unitPrice
+            .times(l.quantity)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+            .toString(),
+        });
+      }
+    }
+    for (const a of pricing.addOns) {
+      lines.push({
+        kind: 'addon',
+        ageBandId: null,
+        label: a.name,
+        quantity: a.quantity,
+        unitPrice: a.unitPrice.toString(),
+        lineTotal: a.totalPrice.toString(),
+      });
+    }
+
+    return {
+      quoteId: randomUUID(),
+      expiresAt: new Date(
+        Date.now() + QUOTE_TTL_MINUTES * 60_000,
+      ).toISOString(),
+      tourCurrency: sourceCurrency,
+      currency: bookingCurrency,
+      sourceFxRateToBooking: pricing.sourceFxRateToBooking.toString(),
+      fxRateToEur: pricing.fxRateToEur ? pricing.fxRateToEur.toString() : null,
+      sourceTotalRetail: pricing.sourceTotalRetail.toString(),
+      totalRetail: pricing.totalRetail.toString(),
+      sourceDepositAmount: pricing.sourceDepositAmount.toString(),
+      depositAmount: pricing.depositAmount.toString(),
+      sourceBalanceAmount: pricing.sourceBalanceAmount.toString(),
+      balanceAmount: pricing.balanceAmount.toString(),
+      commissionRate: pricing.commissionRate.toString(),
+      commissionAmount: pricing.commissionAmount
+        ? pricing.commissionAmount.toString()
+        : null,
+      paymentModel: ctx.tour.paymentModel,
+      pax: pricing.pax,
+      lines,
+    };
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -485,8 +659,9 @@ export class BookingsService {
         partySize: booking.unitItems.length,
         currency: booking.currency,
         totalRetail: booking.totalRetail.toString(),
+        // OPERATOR_FULL takes no online payment (deposit shown as null); every other
+        // model (incl. ON_ARRIVAL, now a deposit model) captures a deposit up front.
         depositPaid:
-          booking.paymentModel === PaymentModel.ON_ARRIVAL ||
           booking.paymentModel === PaymentModel.OPERATOR_FULL
             ? null
             : booking.depositAmount.toString(),
@@ -853,7 +1028,7 @@ export class BookingsService {
     throw new ForbiddenException('You do not have access to this booking');
   }
 
-  private async loadContext(dto: ReserveBookingDto) {
+  private async loadContext(dto: PricingInput) {
     const tour = await this.prisma.tour.findUnique({
       where: { id: dto.tourId },
       select: {
@@ -879,6 +1054,15 @@ export class BookingsService {
       },
     });
     if (!tour) throw new NotFoundException('Tour not found');
+
+    // OPERATOR_FULL was dropped for v1 (founder, 2026-07-15): it takes no payment and
+    // would create a confirmed, unpaid booking - an operator could bypass payment
+    // entirely. Reject it here so neither reserve nor quote can proceed (flaw #6).
+    if (tour.paymentModel === PaymentModel.OPERATOR_FULL) {
+      throw new UnprocessableEntityException(
+        'This tour is not bookable online (unsupported payment model)',
+      );
+    }
 
     const departure = await this.prisma.departure.findFirst({
       where: { id: dto.departureId, tourId: dto.tourId },
@@ -939,6 +1123,7 @@ export class BookingsService {
       };
       const seatAges = (dto.travelerAges ?? []).slice(0, guests);
       return {
+        tourId: dto.tourId,
         tour,
         departure,
         isUnit: true as const,
@@ -975,6 +1160,7 @@ export class BookingsService {
         quantity: item.quantity,
         priceRetail: band.price,
         priceNet: band.priceNet,
+        label: band.label,
       };
     });
 
@@ -988,6 +1174,7 @@ export class BookingsService {
     const guests = lines.reduce((s, l) => s + l.quantity, 0);
 
     return {
+      tourId: dto.tourId,
       tour,
       departure,
       isUnit: false as const,
@@ -1000,7 +1187,7 @@ export class BookingsService {
     };
   }
 
-  private async loadAddOns(dto: ReserveBookingDto): Promise<AddOnLineInput[]> {
+  private async loadAddOns(dto: PricingInput): Promise<AddOnLineInput[]> {
     if (!dto.addOns?.length) return [];
     const ids = dto.addOns.map((a) => a.addOnId);
     const rows = await this.prisma.tourAddOn.findMany({
@@ -1162,6 +1349,24 @@ function actorToCancelledBy(role?: Role): CancelledBy {
   if (role === Role.ADMIN) return CancelledBy.ADMIN;
   if (role === Role.TOUR_OPERATOR) return CancelledBy.OPERATOR;
   return CancelledBy.CUSTOMER;
+}
+
+/** Fallback English label for a whole-unit charter line in a quote breakdown. */
+function unitCharterLabel(type: WholeUnitType | null): string {
+  switch (type) {
+    case WholeUnitType.GROUP:
+      return 'Group charter';
+    case WholeUnitType.BOAT:
+      return 'Boat charter';
+    case WholeUnitType.VEHICLE:
+      return 'Vehicle charter';
+    case WholeUnitType.AIRCRAFT:
+      return 'Aircraft charter';
+    case WholeUnitType.PACKAGE:
+      return 'Package';
+    default:
+      return 'Charter';
+  }
 }
 
 function mapBooking(b: BookingWithItems) {

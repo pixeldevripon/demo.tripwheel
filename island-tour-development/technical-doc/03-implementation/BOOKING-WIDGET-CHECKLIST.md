@@ -111,7 +111,7 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 ## 5. Server-authoritative pricing (quote)
 
-- [ ] **`POST /bookings/quote`** and consume it in the widget + checkout instead of client math; remove the duplicated `deriveBooking`/`computeCheckoutTotals` totals for anything persisted. `Ref:` [Guide §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · **Backend dependency:** quote endpoint not built ([BOOKING-CHECKLIST §6](./BOOKING-CHECKLIST.md)). Interim: keep client estimate but mark it non-authoritative.
+- [~] **`POST /bookings/quote`** and consume it in the widget + checkout instead of client math; remove the duplicated `deriveBooking`/`computeCheckoutTotals` totals for anything persisted. `Ref:` [Guide §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · **Backend BUILT** (stateless single-currency quote, `bookings.service.ts:quote()`, [BOOKING-CHECKLIST §6](./BOOKING-CHECKLIST.md)). **Frontend consume PENDING** (task = widget money phase): fetch the quote for the card/checkout totals, keep the client `deriveBooking`/`computeCheckoutTotals` only as an optimistic estimate.
 
 ---
 
@@ -153,7 +153,7 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 The card can be made conditional now on data already exposed, but these backend gaps must close for real money/flow:
 
-- [ ] `ON_ARRIVAL` deposit split + charge (flaw 1) · [ ] discount applied (flaw 2) · [ ] UNIT pricing (flaw 3) · [ ] `POST /bookings/quote` (§6) · [ ] reject `operator_full` v1 (flaw 6) · [ ] `/payment/processing` depends on webhook->CONFIRMED (built) + Mollie confirm (flaw 7). `Ref:` [BOOKING-CHECKLIST §0](./BOOKING-CHECKLIST.md)
+- [ ] `ON_ARRIVAL` deposit split + charge (flaw 1) · [ ] discount applied (flaw 2) · [x] UNIT pricing (flaw 3) · [x] `POST /bookings/quote` (§6, stateless single-currency) · [ ] reject `operator_full` v1 (flaw 6) · [ ] `/payment/processing` depends on webhook->CONFIRMED (built) + Mollie confirm (flaw 7). `Ref:` [BOOKING-CHECKLIST §0](./BOOKING-CHECKLIST.md)
 
 ---
 

@@ -2,6 +2,7 @@ import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   AttributeDataType,
+  Currency,
   HubPickType,
   HubSectionType,
   HubStatus,
@@ -9,6 +10,7 @@ import {
   PricingModel,
   WholeUnitType,
 } from '@prisma/client';
+import { MoneyDto } from '@/fx/dto/money.dto';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -212,6 +214,12 @@ export class OurPickTourSummaryDto {
       'boat_type attribute value (for the pick card); null if unset.',
   })
   boatType?: string | null;
+  @ApiPropertyOptional({
+    type: MoneyDto,
+    description:
+      'Converted-price display object (guide §20.9). Canonical for display in the requested `?currency`; prefer over the raw `priceFrom`/`basePrice`/`currency` above.',
+  })
+  money?: MoneyDto;
 }
 
 export class HubOurPickItemDto {
@@ -439,6 +447,15 @@ export class LocaleQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; tour cards carry a converted `money` object (guide §20.9).',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 export class FaqLocaleQueryDto {
@@ -548,6 +565,15 @@ export class HubRenderQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; Our Picks + Comparison tour cards carry a converted `money` object (guide §20.9).',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 // ── Request DTOs ───────────────────────────────────────────────────────────────

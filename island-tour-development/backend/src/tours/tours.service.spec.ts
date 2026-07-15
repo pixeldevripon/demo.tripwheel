@@ -30,6 +30,7 @@ import {
 } from '@prisma/client';
 import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
 import { AvailabilityService } from '@/availability/availability.service';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
@@ -154,6 +155,11 @@ describe('ToursService', () => {
         ToursService,
         { provide: PrismaService, useValue: prisma },
         { provide: AvailabilityService, useValue: availability },
+        {
+          provide: FxRatesService,
+          // No conversion in unit tests (no ?currency) -> money falls back to source.
+          useValue: { getDisplayRate: jest.fn().mockResolvedValue(null) },
+        },
       ],
     }).compile();
     service = module.get(ToursService);

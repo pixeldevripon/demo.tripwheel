@@ -22,9 +22,10 @@ import type { PaymentIntentResponseDto } from './dto/payment.dto';
  * Payments - Stripe charges per booking + idempotent webhook settlement.
  *
  * The platform collects only its slice up front (master rule #21):
- * - OPERATOR_LINK → deposit (`depositAmount`); operator collects the balance.
+ * - OPERATOR_LINK / ON_ARRIVAL → deposit (`depositAmount`); operator collects the
+ *   balance (payment link vs on-site/cash on arrival). Both are deposit models.
  * - PAID_IN_FULL  → the whole `totalRetail`.
- * - ON_ARRIVAL / OPERATOR_FULL → no charge (paymentRequired = false).
+ * - OPERATOR_FULL → no charge (paymentRequired = false; dropped for v1 at reserve).
  *
  * A booking is truly CONFIRMED when its charge succeeds: the webhook calls
  * `BookingsService.confirmFromPayment`, which fires the EUR conversion (rule #22).
@@ -75,7 +76,7 @@ export class PaymentsService {
       booking.totalRetail,
     );
     if (!charge || charge.amount.lte(0)) {
-      return { paymentRequired: false }; // ON_ARRIVAL / OPERATOR_FULL / nothing due
+      return { paymentRequired: false }; // OPERATOR_FULL / nothing due
     }
 
     if (!(await this.stripe.isConfigured())) {
@@ -295,10 +296,12 @@ function chargeFor(
 ): { amount: Prisma.Decimal; kind: PaymentKind } | null {
   switch (model) {
     case PaymentModel.OPERATOR_LINK:
+    case PaymentModel.ON_ARRIVAL:
+      // Deposit models: platform captures the deposit; operator collects the balance
+      // (payment link vs on-site). ON_ARRIVAL is a deposit model (guide §20.7).
       return { amount: deposit, kind: PaymentKind.DEPOSIT };
     case PaymentModel.PAID_IN_FULL:
       return { amount: total, kind: PaymentKind.FULL };
-    case PaymentModel.ON_ARRIVAL:
     case PaymentModel.OPERATOR_FULL:
       return null;
   }

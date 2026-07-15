@@ -238,6 +238,7 @@ describe('BookingsService', () => {
   let tracking: any;
   let notifications: any;
   let tiers: any;
+  let fx: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -253,7 +254,21 @@ describe('BookingsService', () => {
     };
     // No active spotlight by default → effective rate = tour tier (0.20 in the mock).
     tiers = { effectiveCommissionRate: jest.fn().mockResolvedValue(0.2) };
-    svc = new BookingsService(prisma, mail, tracking, notifications, tiers);
+    // Identity FX by default (same-currency, rate 1). Override per test for conversion.
+    fx = {
+      getRate: jest.fn().mockImplementation((from: any, to: any) =>
+        Promise.resolve({
+          baseCurrency: from,
+          quoteCurrency: to,
+          rate: D('1'),
+          provider: 'same-currency',
+          providerAsOf: PAST,
+          fetchedAt: PAST,
+          expiresAt: PAST,
+        }),
+      ),
+    };
+    svc = new BookingsService(prisma, mail, tracking, notifications, tiers, fx);
   });
 
   describe('reserve', () => {
@@ -303,13 +318,12 @@ describe('BookingsService', () => {
       );
     });
 
-    it('OPERATOR_FULL is created CONFIRMED with no hold expiry', async () => {
+    it('rejects OPERATOR_FULL (dropped in v1 - would create an unpaid confirmed booking)', async () => {
       setupReserveContext(prisma, { paymentModel: PaymentModel.OPERATOR_FULL });
-      await svc.reserve(reserveDto);
-      const data = m.booking.create.mock.calls[0][0].data;
-      expect(data.status).toBe(BookingStatus.CONFIRMED);
-      expect(data.utcExpiresAt).toBeNull();
-      expect(data.utcConfirmedAt).toBeInstanceOf(Date);
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(m.booking.create).not.toHaveBeenCalled();
     });
 
     it('snapshots E.8 fields (tour window, pickup address, island, marketing opt-in)', async () => {
@@ -318,8 +332,6 @@ describe('BookingsService', () => {
         ...reserveDto,
         pickupLocationId: 'pk1',
         newsletterOptIn: true,
-        couponCode: 'SUMMER10',
-        discountAmount: 5,
       });
       const data = m.booking.create.mock.calls[0][0].data;
       expect(data.tourStartDateTime).toBeInstanceOf(Date);
@@ -333,7 +345,9 @@ describe('BookingsService', () => {
       expect(data.pickupAddress).toBe('Piscadera Bay, Willemstad');
       expect(data.island).toBe('curacao');
       expect(data.newsletterOptIn).toBe(true);
-      expect(data.couponCode).toBe('SUMMER10');
+      // Discount deferred (flaw #2): no client discount is ever written.
+      expect(data.couponCode).toBeUndefined();
+      expect(data.discountAmount).toBeUndefined();
     });
 
     it('persists per-seat travelerAge supplied on a reserve item', async () => {
@@ -442,6 +456,172 @@ describe('BookingsService', () => {
       await expect(
         svc.reserve({ ...unitReserveDto, guests: 6 }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+  });
+
+  describe('quote', () => {
+    it('prices a per-person booking with a per-band breakdown and no side effects', async () => {
+      setupReserveContext(prisma);
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+      });
+      // 2 adults * 79.99 = 159.98.
+      expect(res.totalRetail).toBe('159.98');
+      expect(res.pax).toBe(2);
+      expect(res.paymentModel).toBe(PaymentModel.OPERATOR_LINK);
+      expect(res.currency).toBe('EUR');
+      expect(res.tourCurrency).toBe('EUR');
+      expect(res.sourceTotalRetail).toBe(res.totalRetail);
+      expect(res.sourceFxRateToBooking).toBe('1');
+      expect(res.commissionRate).toBe('0.2');
+      expect(res.lines).toEqual([
+        {
+          kind: 'participant',
+          ageBandId: 'adult',
+          label: 'Adult',
+          quantity: 2,
+          unitPrice: '79.99',
+          lineTotal: '159.98',
+        },
+      ]);
+      expect(res.quoteId).toEqual(expect.any(String));
+      expect(res.expiresAt).toEqual(expect.any(String));
+      // A quote is a preview: it never claims seats or writes a booking.
+      expect(m.$executeRaw).not.toHaveBeenCalled();
+      expect(m.booking.create).not.toHaveBeenCalled();
+    });
+
+    it('applies the OPERATOR_LINK deposit split to the quote', async () => {
+      setupReserveContext(prisma);
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+      });
+      // 20% of 159.98 = 31.996 -> 32.00; balance = 127.98.
+      expect(res.depositAmount).toBe('32');
+      expect(res.balanceAmount).toBe('127.98');
+    });
+
+    it('prices a flat UNIT charter (basePrice, one line, pax = guests)', async () => {
+      setupUnitReserveContext(prisma);
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        guests: 6,
+      });
+      expect(res.totalRetail).toBe('1200');
+      expect(res.pax).toBe(6);
+      expect(res.lines).toEqual([
+        {
+          kind: 'participant',
+          ageBandId: null,
+          label: 'Boat charter',
+          quantity: 6,
+          unitPrice: '1200',
+          lineTotal: '1200',
+        },
+      ]);
+    });
+
+    it('applies the GROUP surcharge beyond the included count in a UNIT quote', async () => {
+      setupUnitReserveContext(prisma, {
+        wholeUnitType: WholeUnitType.GROUP,
+        basePrice: D('1450'),
+        unitIncludedGuests: 10,
+        extraPersonPrice: D('220'),
+        maxPartySize: 12,
+      });
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        guests: 12,
+      });
+      // 1450 + 2 extra * 220 = 1890.
+      expect(res.totalRetail).toBe('1890');
+      expect(res.lines[0].label).toBe('Group charter');
+      expect(res.lines[0].lineTotal).toBe('1890');
+    });
+
+    it('rejects a party below the minimum size (validated, not priced)', async () => {
+      setupReserveContext(prisma, { minPartySize: 5 });
+      await expect(
+        svc.quote({
+          tourId: 't1',
+          departureId: 'dep1',
+          items: [{ ageBandId: 'adult', quantity: 2 }],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+  });
+
+  describe('multi-currency (FX)', () => {
+    // USD source -> EUR booking at 0.9; EUR->EUR at 1.
+    function convertingFx() {
+      fx.getRate.mockImplementation((from: any, to: any) =>
+        Promise.resolve({
+          baseCurrency: from,
+          quoteCurrency: to,
+          rate: from === to ? D('1') : D('0.9'),
+          provider: from === to ? 'same-currency' : 'static-dev',
+          providerAsOf: PAST,
+          fetchedAt: PAST,
+          expiresAt: PAST,
+        }),
+      );
+    }
+
+    it('quote: USD tour + EUR shopper returns EUR totals with a USD source snapshot', async () => {
+      setupReserveContext(prisma, { defaultCurrency: 'USD' });
+      convertingFx();
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+        currency: 'EUR',
+      });
+      expect(res.currency).toBe('EUR');
+      expect(res.tourCurrency).toBe('USD');
+      expect(res.sourceFxRateToBooking).toBe('0.9');
+      // 79.99*0.9=71.99 (x2) = 143.98 EUR; source stays 159.98 USD.
+      expect(res.totalRetail).toBe('143.98');
+      expect(res.sourceTotalRetail).toBe('159.98');
+      expect(res.lines[0].unitPrice).toBe('71.99');
+    });
+
+    it('reserve: USD tour + EUR shopper charges EUR and snapshots the source/rate', async () => {
+      setupReserveContext(prisma, { defaultCurrency: 'USD' });
+      convertingFx();
+      await svc.reserve({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+        currency: 'EUR',
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.currency).toBe('EUR');
+      expect(data.totalRetail.toString()).toBe('143.98');
+      expect(data.sourceCurrency).toBe('USD');
+      expect(data.sourceTotalRetail.toString()).toBe('159.98');
+      expect(data.sourceFxRateToBooking.toString()).toBe('0.9');
+      expect(data.sourceFxProvider).toBe('static-dev');
+    });
+
+    it('reserve: defaults booking currency to the tour currency when none given', async () => {
+      setupReserveContext(prisma, { defaultCurrency: 'USD' });
+      convertingFx();
+      await svc.reserve({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      // No dto.currency -> booking currency == source (USD), rate 1.
+      expect(data.currency).toBe('USD');
+      expect(data.sourceFxRateToBooking.toString()).toBe('1');
+      expect(data.totalRetail.toString()).toBe('159.98');
     });
   });
 

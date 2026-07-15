@@ -1,0 +1,241 @@
+import {
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Currency, Prisma } from '@prisma/client';
+import { PrismaService } from '@/prisma/prisma.service';
+import {
+  FX_PROVIDER,
+  type FxPair,
+  type FxProvider,
+  type FxQuote,
+} from './fx-provider.interface';
+
+const DEFAULT_TTL_MINUTES = 120;
+const DEFAULT_STALE_DISPLAY_HOURS = 24;
+/** Identity rate never expires (same-currency, no provider). */
+const IDENTITY_TTL_MS = 3_650 * 24 * 60 * 60 * 1000; // ~10y
+
+/** Pairs the platform actively converts (both directions of the launch currencies). */
+const REQUIRED_PAIRS: FxPair[] = [
+  { from: Currency.USD, to: Currency.EUR },
+  { from: Currency.EUR, to: Currency.USD },
+];
+
+function envInt(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/**
+ * Single source for FX rates (guide §20.1). Cross-currency rates come only from the
+ * provider-backed `fx_rates` cache; a rate used by a quote/payment is snapshotted onto
+ * the booking and never refetched. Fails closed: if no acceptable rate exists, the
+ * booking path throws `503` rather than guessing.
+ *
+ * All money/rate math uses `Decimal` (never JS float).
+ */
+@Injectable()
+export class FxRatesService {
+  private readonly logger = new Logger(FxRatesService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(FX_PROVIDER) private readonly provider: FxProvider,
+  ) {}
+
+  /**
+   * A FRESH, non-expired rate (booking quote / payment path). If none is cached, it
+   * lazily refreshes once (so dev/test are self-sufficient; the scheduler keeps it warm
+   * in prod), then fails closed with `503` if still unavailable.
+   */
+  async getRate(from: Currency, to: Currency): Promise<FxQuote> {
+    if (from === to) return this.identityRate(from, to);
+
+    const fresh = await this.latestActive(from, to, { allowStale: false });
+    if (fresh) return fresh;
+
+    // No fresh cached rate: attempt a single on-demand refresh, then re-read.
+    await this.refreshRates().catch((err) =>
+      this.logger.error('FX on-demand refresh failed', err as Error),
+    );
+    const after = await this.latestActive(from, to, { allowStale: false });
+    if (after) return after;
+
+    throw new ServiceUnavailableException(
+      'Payments temporarily unavailable (no FX rate)',
+    );
+  }
+
+  /**
+   * A rate for PUBLIC DISPLAY only: prefers fresh, but accepts a stale rate within the
+   * display window. Returns null when not even a stale rate is available (caller should
+   * then fall back to source-currency display, never block the page).
+   */
+  async getDisplayRate(from: Currency, to: Currency): Promise<FxQuote | null> {
+    if (from === to) return this.identityRate(from, to);
+    const fresh = await this.latestActive(from, to, { allowStale: false });
+    if (fresh) return fresh;
+    return this.latestActive(from, to, { allowStale: true });
+  }
+
+  /** Convert an amount using a fresh rate; rounds HALF_UP to 2dp at the boundary. */
+  async convert(
+    amount: Prisma.Decimal,
+    from: Currency,
+    to: Currency,
+  ): Promise<{ amount: Prisma.Decimal; rate: FxQuote }> {
+    const rate = await this.getRate(from, to);
+    return {
+      amount: amount
+        .mul(rate.rate)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+      rate,
+    };
+  }
+
+  /**
+   * Build the canonical converted-price `money` object for a PUBLIC display response
+   * (guide §20.9). Uses a display rate (stale allowed); if none is available it falls
+   * back to source currency (rate 1) so a page never blocks on FX. Amounts are strings.
+   */
+  async buildMoney(
+    sourceCurrency: Currency,
+    targetCurrency: Currency,
+    amounts: {
+      priceFrom?: Prisma.Decimal | null;
+      basePrice?: Prisma.Decimal | null;
+    },
+  ): Promise<{
+    currency: Currency;
+    sourceCurrency: Currency;
+    fxRate: string;
+    priceFrom: string | null;
+    basePrice: string | null;
+  }> {
+    const display =
+      sourceCurrency === targetCurrency
+        ? null
+        : await this.getDisplayRate(sourceCurrency, targetCurrency);
+    // Fall back to source currency when no rate is available - never block a page.
+    const currency = display ? targetCurrency : sourceCurrency;
+    const rate = display ? display.rate : new Prisma.Decimal(1);
+    const conv = (v: Prisma.Decimal | null | undefined): string | null =>
+      v == null
+        ? null
+        : v
+            .mul(rate)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+            .toString();
+    return {
+      currency,
+      sourceCurrency,
+      fxRate: rate.toString(),
+      priceFrom: conv(amounts.priceFrom),
+      basePrice: conv(amounts.basePrice),
+    };
+  }
+
+  /**
+   * Fetch the required pairs from the provider, validate they are positive, write a new
+   * active row per pair, and deactivate the prior active row for that pair (immutable
+   * history). Safe to call repeatedly (the scheduler and on-demand path both use it).
+   */
+  async refreshRates(): Promise<void> {
+    const rows = await this.provider.fetchRates(REQUIRED_PAIRS);
+    const now = new Date();
+    const ttlMs = envInt('FX_RATE_TTL_MINUTES', DEFAULT_TTL_MINUTES) * 60_000;
+
+    let written = 0;
+    for (const r of rows) {
+      if (!r.rate.gt(0)) {
+        this.logger.warn(
+          `Rejected non-positive ${r.baseCurrency}->${r.quoteCurrency} rate from ${this.provider.name}`,
+        );
+        continue;
+      }
+      const expiresAt = new Date(now.getTime() + ttlMs);
+      await this.prisma.$transaction([
+        this.prisma.fxRate.updateMany({
+          where: {
+            baseCurrency: r.baseCurrency,
+            quoteCurrency: r.quoteCurrency,
+            isActive: true,
+          },
+          data: { isActive: false },
+        }),
+        this.prisma.fxRate.create({
+          data: {
+            baseCurrency: r.baseCurrency,
+            quoteCurrency: r.quoteCurrency,
+            rate: r.rate,
+            provider: this.provider.name,
+            providerAsOf: r.providerAsOf,
+            expiresAt,
+          },
+        }),
+      ]);
+      written++;
+    }
+    if (written) {
+      this.logger.log(
+        `FX refreshed ${written} pair(s) via ${this.provider.name}`,
+      );
+    }
+  }
+
+  // ── internals ──────────────────────────────────────────────────────────────
+
+  private identityRate(from: Currency, to: Currency): FxQuote {
+    const now = new Date();
+    return {
+      baseCurrency: from,
+      quoteCurrency: to,
+      rate: new Prisma.Decimal(1),
+      provider: 'same-currency',
+      providerAsOf: now,
+      fetchedAt: now,
+      expiresAt: new Date(now.getTime() + IDENTITY_TTL_MS),
+    };
+  }
+
+  private async latestActive(
+    from: Currency,
+    to: Currency,
+    { allowStale }: { allowStale: boolean },
+  ): Promise<FxQuote | null> {
+    const now = new Date();
+    const row = await this.prisma.fxRate.findFirst({
+      where: {
+        baseCurrency: from,
+        quoteCurrency: to,
+        isActive: true,
+        ...(allowStale ? {} : { expiresAt: { gt: now } }),
+      },
+      orderBy: { providerAsOf: 'desc' },
+    });
+    if (!row) return null;
+
+    if (allowStale) {
+      // Reject a rate older than the display staleness window entirely.
+      const staleCutoff = new Date(
+        now.getTime() -
+          envInt('FX_RATE_STALE_DISPLAY_HOURS', DEFAULT_STALE_DISPLAY_HOURS) *
+            3_600_000,
+      );
+      if (row.providerAsOf < staleCutoff) return null;
+    }
+
+    return {
+      baseCurrency: row.baseCurrency,
+      quoteCurrency: row.quoteCurrency,
+      rate: row.rate,
+      provider: row.provider,
+      providerAsOf: row.providerAsOf,
+      fetchedAt: row.fetchedAt,
+      expiresAt: row.expiresAt,
+    };
+  }
+}

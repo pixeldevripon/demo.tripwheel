@@ -15,7 +15,7 @@ export const ApiCreateIntentDocs = () =>
       summary: 'Create (or fetch) the up-front payment intent for a booking',
       description:
         'Returns a Stripe PaymentIntent client secret for the platform charge (deposit or full). ' +
-        'ON_ARRIVAL / OPERATOR_FULL return `{ paymentRequired: false }`. Idempotent per (booking, kind).',
+        'OPERATOR_FULL returns `{ paymentRequired: false }`; ON_ARRIVAL captures a deposit. Idempotent per (booking, kind).',
     }),
     ApiCreatedResponse({ type: PaymentIntentResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),

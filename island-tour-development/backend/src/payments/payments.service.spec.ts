@@ -87,14 +87,32 @@ describe('PaymentsService', () => {
       );
     });
 
-    it('requires no payment for ON_ARRIVAL / OPERATOR_FULL', async () => {
-      for (const pm of [PaymentModel.ON_ARRIVAL, PaymentModel.OPERATOR_FULL]) {
-        prisma.booking.findUnique.mockResolvedValue(
-          booking({ paymentModel: pm }),
-        );
-        const res = await svc.createIntentForBooking('b1');
-        expect(res.paymentRequired).toBe(false);
-      }
+    it('charges in the Booking currency, not the tour currency (§20.7)', async () => {
+      // A USD-charged booking must create a USD PaymentIntent (guide §20.7).
+      prisma.booking.findUnique.mockResolvedValue(booking({ currency: 'USD' }));
+      await svc.createIntentForBooking('b1');
+      expect(stripe.createPaymentIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'USD' }),
+      );
+    });
+
+    it('charges the deposit for ON_ARRIVAL (deposit model, guide §20.7)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({ paymentModel: PaymentModel.ON_ARRIVAL }),
+      );
+      const res = await svc.createIntentForBooking('b1');
+      expect(res.paymentRequired).toBe(true);
+      expect(stripe.createPaymentIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 4199 }), // deposit 41.99
+      );
+    });
+
+    it('requires no payment for OPERATOR_FULL', async () => {
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({ paymentModel: PaymentModel.OPERATOR_FULL }),
+      );
+      const res = await svc.createIntentForBooking('b1');
+      expect(res.paymentRequired).toBe(false);
       expect(stripe.createPaymentIntent).not.toHaveBeenCalled();
     });
 

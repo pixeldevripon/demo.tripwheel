@@ -1,5 +1,6 @@
 import { Locale } from '@/common/constants/locales';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Currency } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -48,6 +49,15 @@ export class SearchQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; each hit carries a converted `money` object (guide §20.9).',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

@@ -32,6 +32,7 @@ import {
 import {
   CollectionStatus,
   CollectionType,
+  Currency,
   PricingModel,
   Prisma,
   SlugEntityType,
@@ -187,15 +188,18 @@ export class CollectionsService {
   }
 
   /** MANUAL → ordered tourIds; DYNAMIC → filterQuery resolved via the tour-listing engine. */
-  private async resolveTours(collection: {
-    destinationId: string;
-    collectionType: CollectionType;
-    tourIds: string[];
-    filterQuery: Prisma.JsonValue;
-    sortOrder: string;
-  }) {
+  private async resolveTours(
+    collection: {
+      destinationId: string;
+      collectionType: CollectionType;
+      tourIds: string[];
+      filterQuery: Prisma.JsonValue;
+      sortOrder: string;
+    },
+    target?: Currency,
+  ) {
     if (collection.collectionType === CollectionType.MANUAL) {
-      return this.toursService.findPublicByIds(collection.tourIds);
+      return this.toursService.findPublicByIds(collection.tourIds, target);
     }
     const fq = (collection.filterQuery ?? {}) as CollectionFilterQueryDto;
     const pricingModel =
@@ -234,6 +238,7 @@ export class CollectionsService {
           : undefined,
       pricingModel,
       sort: this.toTourSort(collection.sortOrder),
+      currency: target,
       page: 1,
       limit: 100,
     };
@@ -1083,6 +1088,7 @@ export class CollectionsService {
     slug: string,
     destinationId: string,
     locale: Locale = Locale.en,
+    currency?: Currency,
   ) {
     const collection = await this.prisma.collection.findUnique({
       where: { destinationId_slug: { destinationId, slug } },
@@ -1108,8 +1114,12 @@ export class CollectionsService {
     // Resolve tours (+ per-tour rationale for MANUAL).
     const tours: Array<Record<string, unknown>> =
       collection.collectionType === CollectionType.MANUAL
-        ? await this.resolveManualToursWithRationale(collection.id, locale)
-        : await this.resolveTours(collection);
+        ? await this.resolveManualToursWithRationale(
+            collection.id,
+            locale,
+            currency,
+          )
+        : await this.resolveTours(collection, currency);
 
     const fastStats = this.computeFastStats(tours);
 
@@ -1154,6 +1164,7 @@ export class CollectionsService {
   private async resolveManualToursWithRationale(
     collectionId: string,
     locale: Locale,
+    target?: Currency,
   ) {
     const members = await this.prisma.collectionTour.findMany({
       where: { collectionId },
@@ -1180,6 +1191,7 @@ export class CollectionsService {
     const orderedIds = members.map((m) => m.tourId);
     const cards = (await this.toursService.findPublicByIds(
       orderedIds,
+      target,
     )) as Array<{ id: string }>;
     return cards.map((card) => ({
       ...card,

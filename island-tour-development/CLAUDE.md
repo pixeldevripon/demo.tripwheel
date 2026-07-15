@@ -10,6 +10,8 @@
 > Booking & payments: `technical-doc/02-architecture/BOOKING-AND-PAYMENTS.md` · Availability:
 > `technical-doc/02-architecture/AVAILABILITY-AND-DEPARTURES.md` · Tracking:
 > `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`
+> FX & multi-currency (how conversion works, providers, env, snapshots, spotlight commission):
+> `technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md`
 > Settlement & payouts (v1/v2 money flow, settlements ledger):
 > `technical-doc/02-architecture/SETTLEMENT-AND-PAYOUTS.md` (visual:
 > `technical-doc/02-architecture/settlement-payout-flow.html`) · Event-driven & queues (BullMQ,

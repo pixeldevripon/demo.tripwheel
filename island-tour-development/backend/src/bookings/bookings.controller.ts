@@ -17,6 +17,7 @@ import {
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  QuoteBookingDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
@@ -26,6 +27,7 @@ import {
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
+  ApiQuoteDocs,
   ApiReserveDocs,
   ApiThankYouDocs,
   ApiUpdateBookingDocs,
@@ -47,6 +49,14 @@ import {
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService) {}
+
+  // Static routes BEFORE dynamic (:id) routes - NestJS matches top-to-bottom.
+  @Post('quote')
+  @Public()
+  @ApiQuoteDocs()
+  quote(@Body() dto: QuoteBookingDto) {
+    return this.bookings.quote(dto);
+  }
 
   @Post()
   @Public()

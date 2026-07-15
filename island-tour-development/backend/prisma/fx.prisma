@@ -1,0 +1,21 @@
+// Multi-currency FX rates (guide §20.1). Provider-backed rates snapshotted into a
+// small cache so booking quotes, payment intents, and EUR tracking snapshots all read
+// the SAME auditable rate. The frontend never fetches FX; this table is the single
+// source. Rows are immutable history: a refresh writes a new row and marks the prior
+// active row for the pair inactive. Amounts/rates use Decimal (never JS float).
+model FxRate {
+  id            String   @id @default(uuid())
+  baseCurrency  Currency
+  quoteCurrency Currency
+  rate          Decimal  @db.Decimal(18, 8)
+  provider      String
+  providerAsOf  DateTime // provider's own timestamp for the rate
+  fetchedAt     DateTime @default(now())
+  expiresAt     DateTime // fresh window; getRate() returns only non-expired active rows
+  isActive      Boolean  @default(true)
+
+  @@unique([baseCurrency, quoteCurrency, providerAsOf, provider])
+  @@index([baseCurrency, quoteCurrency, isActive])
+  @@index([expiresAt])
+  @@map("fx_rates")
+}

@@ -26,17 +26,19 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
 import {
   BandParticipation,
+  Currency,
   DepartureStatus,
   PickupModel,
+  Prisma,
   PricingModel,
   Role,
   SlugEntityType,
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import {
   AdminToursQueryDto,
   CreateTourDto,
@@ -54,7 +56,62 @@ export class ToursService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Attach the converted-price `money` object (guide §20.9) to a page of flattened tour
+   * cards, in place. Resolves each DISTINCT source currency's display rate once (≤2 DB
+   * reads per page), then converts each card synchronously. When no `target` is given (or
+   * a rate is unavailable) the card shows its own source currency at rate 1 - a display
+   * fallback that never blocks the page. Uses the raw Decimal `priceFrom`/`basePrice`.
+   */
+  private async attachMoney(
+    items: Array<{
+      defaultCurrency: Currency;
+      priceFrom?: Prisma.Decimal | null;
+      basePrice?: Prisma.Decimal | null;
+      money?: unknown;
+    }>,
+    target?: Currency,
+  ): Promise<void> {
+    if (items.length === 0) return;
+    const rateBySource = new Map<
+      Currency,
+      { currency: Currency; rate: Prisma.Decimal }
+    >();
+    for (const src of new Set(items.map((i) => i.defaultCurrency))) {
+      const tgt = target ?? src;
+      if (src === tgt) {
+        rateBySource.set(src, { currency: src, rate: new Prisma.Decimal(1) });
+        continue;
+      }
+      const display = await this.fx.getDisplayRate(src, tgt);
+      rateBySource.set(
+        src,
+        display
+          ? { currency: tgt, rate: display.rate }
+          : { currency: src, rate: new Prisma.Decimal(1) }, // fallback: show source
+      );
+    }
+    for (const it of items) {
+      const { currency, rate } = rateBySource.get(it.defaultCurrency)!;
+      const conv = (v: Prisma.Decimal | null | undefined): string | null =>
+        v == null
+          ? null
+          : new Prisma.Decimal(v)
+              .mul(rate)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+              .toString();
+      it.money = {
+        currency,
+        sourceCurrency: it.defaultCurrency,
+        fxRate: rate.toString(),
+        priceFrom: conv(it.priceFrom),
+        basePrice: conv(it.basePrice),
+      };
+    }
+  }
 
   private readonly tourSelect = {
     id: true,
@@ -405,7 +462,7 @@ export class ToursService {
    * Resolves an ordered list of tour ids to flattened LIVE tours, preserving the input
    * order and dropping any that are missing/not live. Used by manual Collections.
    */
-  async findPublicByIds(ids: string[]) {
+  async findPublicByIds(ids: string[], target?: Currency) {
     if (!ids.length) return [];
     const tours = await this.prisma.tour.findMany({
       where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
@@ -415,9 +472,11 @@ export class ToursService {
       },
     });
     const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
-    return ids
+    const result = ids
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
+    await this.attachMoney(result, target);
+    return result;
   }
 
   /**
@@ -431,6 +490,7 @@ export class ToursService {
     destinationSlug?: string;
     date?: string;
     locale?: Locale;
+    currency?: Currency;
     page?: number;
     limit?: number;
   }) {
@@ -502,15 +562,17 @@ export class ToursService {
         take: limit,
       }),
     ]);
+    const hits = data.map((t) => ({
+      ...this.flattenSearchHit(t),
+      badge: this.deriveTourBadge(t),
+    }));
+    await this.attachMoney(hits, params.currency);
     return {
       total,
       page,
       limit,
       query: term,
-      data: data.map((t) => ({
-        ...this.flattenSearchHit(t),
-        badge: this.deriveTourBadge(t),
-      })),
+      data: hits,
     };
   }
 
@@ -773,6 +835,7 @@ export class ToursService {
     const ordered =
       sort === TourSort.recommended ? this.applyDiversityPass(mapped) : mapped;
 
+    await this.attachMoney(ordered, query.currency);
     return { total, page, limit, sort, data: ordered };
   }
 
@@ -1127,6 +1190,7 @@ export class ToursService {
     id: string,
     requesterId: string | null,
     requesterRole: Role | null,
+    target?: Currency,
   ) {
     const tour = await this.prisma.tour.findUnique({
       where: { id },
@@ -1172,7 +1236,9 @@ export class ToursService {
       }
     }
 
-    return this.flattenCounts(tour);
+    const result = this.flattenCounts(tour);
+    await this.attachMoney([result], target);
+    return result;
   }
 
   // ── Public slug-based lookup (tour detail page) ───────────────────────────────
@@ -1472,7 +1538,7 @@ export class ToursService {
         )?.text ?? '',
     }));
 
-    return {
+    const detail = {
       ...this.flattenTour(rest),
       operatorName:
         operator?.companyInfo?.companyName ?? operator?.user?.name ?? null,
@@ -1486,6 +1552,8 @@ export class ToursService {
       features: resolvedFeatures,
       languages: languages.map((l) => l.language),
     };
+    await this.attachMoney([detail], query.currency);
+    return detail;
   }
 
   // ── Slug uniqueness resolution ────────────────────────────────────────────────

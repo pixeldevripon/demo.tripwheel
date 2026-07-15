@@ -20,6 +20,7 @@ import {
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
+import { MoneyDto } from '@/fx/dto/money.dto';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -95,6 +96,12 @@ export class TourResponseDto {
   @ApiProperty({ enum: Currency }) defaultCurrency!: Currency;
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
   @ApiPropertyOptional({ example: '75.00' }) priceFrom!: string | null;
+  @ApiPropertyOptional({
+    type: MoneyDto,
+    description:
+      'Converted-price display object (guide §20.9). Canonical for display: shows prices in the requested `?currency` (falls back to the tour currency). Prefer this over the raw `priceFrom`/`basePrice`/`defaultCurrency` above.',
+  })
+  money?: MoneyDto;
   @ApiPropertyOptional({
     example: 10,
     nullable: true,
@@ -681,6 +688,15 @@ export class TourQueryDto {
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency. Prices are returned converted in each card `money` object (guide §20.9); omit to show tour currency.',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -708,6 +724,15 @@ export class TourBySlugQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency. The detail `money` object returns converted prices (guide §20.9); omit to show tour currency.',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 export class MyToursQueryDto {
