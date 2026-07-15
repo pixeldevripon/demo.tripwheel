@@ -10,6 +10,10 @@
 > Booking & payments: `technical-doc/02-architecture/BOOKING-AND-PAYMENTS.md` · Availability:
 > `technical-doc/02-architecture/AVAILABILITY-AND-DEPARTURES.md` · Tracking:
 > `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`
+> Settlement & payouts (v1/v2 money flow, settlements ledger):
+> `technical-doc/02-architecture/SETTLEMENT-AND-PAYOUTS.md` (visual:
+> `technical-doc/02-architecture/settlement-payout-flow.html`) · Event-driven & queues (BullMQ,
+> outbox, no-queue-for-capacity): `technical-doc/02-architecture/EVENT-DRIVEN-AND-QUEUES.md`
 > Data model: `technical-doc/02-architecture/DATA-MODEL.md` · Routing:
 > `technical-doc/02-architecture/ROUTING-AND-RESOLUTION.md` · Slug registry:
 > `technical-doc/02-architecture/SLUG-REGISTRY.md`
