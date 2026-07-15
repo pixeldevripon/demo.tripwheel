@@ -381,6 +381,9 @@
         "continue": "Weiter",
         "selected": "Ausgewählt",
         "soldOut": "Ausverkauft",
+        "available": "Verfügbar",
+        "calendarNoDepartures": "Keine Abfahrten",
+        "calendarClosed": "Geschlossen",
         "onlyLeft": "Nur noch {count} frei",
         "travelers": "{count} Reisende",
         "total": "Gesamt",
@@ -405,6 +408,7 @@
         "no": "Nein",
         "spectators": "Zuschauer",
         "capacityNote": "Nur noch {count} Plätze für diese Abfahrt",
+        "maxPerBooking": "Bis zu {count} Reisende pro Buchung",
         "policyClose": "Schließen",
         "cancellationModal": {
           "title": "Kostenlose Stornierung bis {hours}h",

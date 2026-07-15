@@ -381,6 +381,9 @@
         "continue": "Continuar",
         "selected": "Selecionado",
         "soldOut": "Esgotado",
+        "available": "Disponível",
+        "calendarNoDepartures": "Sem partidas",
+        "calendarClosed": "Fechado",
         "onlyLeft": "Só restam {count}",
         "travelers": "{count} viajantes",
         "total": "Total",
@@ -405,6 +408,7 @@
         "no": "Não",
         "spectators": "Espectadores",
         "capacityNote": "Só restam {count} lugares para esta partida",
+        "maxPerBooking": "Até {count} viajantes por reserva",
         "policyClose": "Fechar",
         "cancellationModal": {
           "title": "Cancelamento gratuito até {hours}h",

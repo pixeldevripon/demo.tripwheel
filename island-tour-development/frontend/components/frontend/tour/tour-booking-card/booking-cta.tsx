@@ -18,7 +18,9 @@ export function BookingCta() {
     const {
         dict,
         ready,
-        overCapacity,
+        editingParty,
+        atCapacity,
+        capacityReason,
         effectiveMax,
         fillPolicy,
         handleCtaClick,
@@ -68,9 +70,14 @@ export function BookingCta() {
 
     return (
         <div className='flex flex-col gap-5'>
-            {overCapacity && (
+            {/* While choosing the party, if the plus button is capped, say why
+                (master §3.3.1): genuine slot scarcity vs the per-booking max. */}
+            {editingParty && atCapacity && (
                 <span className='text-center text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
-                    {dict.capacityNote.replace('{count}', String(effectiveMax))}
+                    {(capacityReason === 'slot'
+                        ? dict.capacityNote
+                        : dict.maxPerBooking
+                    ).replace('{count}', String(effectiveMax))}
                 </span>
             )}
             <motion.button

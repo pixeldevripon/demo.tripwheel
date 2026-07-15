@@ -16,6 +16,7 @@
 import {
     DUMMY_BOOKING_DATA,
     type BookingBand,
+    type BookingSlot,
     type TourBookingData,
     type TourBookingDict,
 } from '@/lib/tours/booking';
@@ -23,6 +24,13 @@ import { createStore } from 'zustand';
 
 /** Which policy modal (if any) is open, opened from the trust lines. */
 export type PolicyModalKind = null | 'cancellation' | 'deposit';
+
+/** Per-day availability for the month calendar (from `/availability/calendar`). */
+export interface CalendarDayState {
+    available: boolean;
+    status: string;
+    remaining: number | null;
+}
 
 /** A single band row for the price breakdown (band + its chosen count). */
 export type BookingLineItem = { band: BookingBand; count: number };
@@ -32,6 +40,10 @@ export interface BookingConfig {
     data: TourBookingData;
     dict: TourBookingDict;
     locale: string;
+    /** Live tour id - enables real availability (calendar + per-date slots). When
+     *  absent (design/demo), the card falls back to the static `data.slots` and an
+     *  always-open calendar. */
+    tourId?: string;
     /** Destination + tour slug for the checkout URL on Continue (optional: the
      *  card still works in isolation, e.g. design/demo, when they're absent). */
     destinationSlug?: string;
@@ -58,6 +70,14 @@ export interface BookingState {
     spectatorsApplied: boolean;
     availabilityChecked: boolean;
     policyModal: PolicyModalKind;
+    /** Month-calendar availability keyed by `yyyy-MM-dd`; null until first load
+     *  (live mode only - stays null in demo/design mode). */
+    calendarDays: Record<string, CalendarDayState> | null;
+    calendarLoading: boolean;
+    /** Real bookable slots for `selectedDate`; null until fetched for the current
+     *  date (live mode only). */
+    daySlots: BookingSlot[] | null;
+    slotsLoading: boolean;
 }
 
 /** Everything the sections can trigger. */
@@ -74,6 +94,12 @@ export interface BookingActions {
     pickDate: (date: Date) => void;
     selectTime: (time: string) => void;
     handleCtaClick: () => void;
+    /** Set by the availability sync once the calendar range resolves. */
+    setCalendarDays: (days: Record<string, CalendarDayState>) => void;
+    setCalendarLoading: (loading: boolean) => void;
+    /** Set by the availability sync once slots for the picked date resolve. */
+    setDaySlots: (slots: BookingSlot[]) => void;
+    setSlotsLoading: (loading: boolean) => void;
 }
 
 export type BookingStore = BookingConfig & BookingState & BookingActions;
@@ -83,6 +109,7 @@ export interface BookingInit {
     dict: TourBookingDict;
     data?: TourBookingData;
     locale?: string;
+    tourId?: string;
     destinationSlug?: string;
     tourSlug?: string;
 }
@@ -93,12 +120,20 @@ function travelerCountOf(s: BookingConfig & BookingState): number {
     return s.data.bands.reduce((n, b) => n + (s.counts[b.id] ?? 0), 0);
 }
 
+// The slots in effect right now: live per-date departures when a tour id is set
+// (booking), else the tour's static start times (design/demo).
+function effectiveSlotsOf(s: BookingConfig & BookingState): BookingSlot[] {
+    return s.tourId != null ? (s.daySlots ?? []) : s.data.slots;
+}
+
 // Largest party allowed right now: the tour max, further capped by the slot's
-// remaining capacity (null remaining = ample room, so only the tour max applies).
+// true seats left (`seatsLeft`, always known). Falls back to the disclosed
+// `remaining` for the demo dataset, then to the tour max (ample room).
 function effectiveMaxOf(s: BookingConfig & BookingState): number {
     if (s.selectedTime == null) return s.maxParty;
-    const slot = s.data.slots.find(x => x.time === s.selectedTime) ?? null;
-    const slotCapacity = slot?.remaining ?? s.maxParty;
+    const slot =
+        effectiveSlotsOf(s).find(x => x.time === s.selectedTime) ?? null;
+    const slotCapacity = slot?.seatsLeft ?? slot?.remaining ?? s.maxParty;
     return Math.min(s.maxParty, slotCapacity);
 }
 
@@ -114,6 +149,27 @@ export function deriveBooking(s: BookingStore) {
     const travelerCount = travelerCountOf(s);
     const effectiveMax = effectiveMaxOf(s);
     const overCapacity = s.selectedTime != null && travelerCount > effectiveMax;
+
+    // At (or over) the cap the plus button is disabled, so the widget must say
+    // WHY (master §3.3.1: "plus button disables at capacity, inline Only N left").
+    // Slot scarcity (fewer true seats than the tour normally allows) earns the
+    // "Only N left" copy; the tour's per-booking max earns a neutral limit line
+    // (no fake scarcity - master ethical CRO).
+    const atCapacity = effectiveMax > 0 && travelerCount >= effectiveMax;
+    const selectedSlot =
+        s.selectedTime != null
+            ? (effectiveSlotsOf(s).find(x => x.time === s.selectedTime) ?? null)
+            : null;
+    const slotSeatsLeft = selectedSlot
+        ? (selectedSlot.seatsLeft ?? selectedSlot.remaining ?? null)
+        : null;
+    const capacityReason: 'slot' | 'booking' =
+        slotSeatsLeft != null && slotSeatsLeft < s.maxParty ? 'slot' : 'booking';
+
+    // Live availability: real per-date slots + month calendar when a tour id is
+    // set; otherwise the static demo slots and an always-open calendar.
+    const isLive = s.tourId != null;
+    const slots = effectiveSlotsOf(s);
 
     // `ready` (summary shown, CTA = "Continue") is gated on the availability
     // check; selectors stay editable until it passes.
@@ -159,6 +215,8 @@ export function deriveBooking(s: BookingStore) {
         travelerCount,
         effectiveMax,
         overCapacity,
+        atCapacity,
+        capacityReason,
         ready,
         editingParty,
         lineItems,
@@ -172,6 +230,11 @@ export function deriveBooking(s: BookingStore) {
         headerHasChevron,
         showInlineStepper,
         showPartyBody,
+        isLive,
+        slots,
+        slotsLoading: s.slotsLoading,
+        calendarDays: s.calendarDays,
+        calendarLoading: s.calendarLoading,
     };
 }
 
@@ -192,6 +255,7 @@ export function createBookingStore(init: BookingInit) {
         data,
         dict: init.dict,
         locale,
+        tourId: init.tourId,
         destinationSlug: init.destinationSlug,
         tourSlug: init.tourSlug,
         participantBands,
@@ -223,6 +287,10 @@ export function createBookingStore(init: BookingInit) {
         spectatorsApplied: false,
         availabilityChecked: false,
         policyModal: null,
+        calendarDays: null,
+        calendarLoading: false,
+        daySlots: null,
+        slotsLoading: false,
     };
 
     return createStore<BookingStore>()((set, get) => ({
@@ -267,12 +335,16 @@ export function createBookingStore(init: BookingInit) {
             }),
 
         pickDate: date =>
-            set({
+            set(s => ({
                 selectedDate: date,
                 selectedTime: null,
                 availabilityChecked: false,
                 calendarOpen: false,
-            }),
+                // Drop the previous date's slots and show loading (live only) until
+                // the sync fetches this date's departures.
+                daySlots: null,
+                slotsLoading: s.tourId != null,
+            })),
 
         selectTime: time =>
             set({ selectedTime: time, availabilityChecked: false }),
@@ -287,7 +359,10 @@ export function createBookingStore(init: BookingInit) {
             if (s.selectedTime == null || travelerCountOf(s) < 1) return;
             // Party won't fit this slot: keep the selectors open (capped at
             // capacity) so the counts can be brought down to fit.
-            if (s.selectedTime != null && travelerCountOf(s) > effectiveMaxOf(s)) {
+            if (
+                s.selectedTime != null &&
+                travelerCountOf(s) > effectiveMaxOf(s)
+            ) {
                 if (s.isPatternB) set({ partyOpen: true });
                 return;
             }
@@ -297,6 +372,12 @@ export function createBookingStore(init: BookingInit) {
                 availabilityChecked: true,
             });
         },
+
+        setCalendarDays: days =>
+            set({ calendarDays: days, calendarLoading: false }),
+        setCalendarLoading: loading => set({ calendarLoading: loading }),
+        setDaySlots: slots => set({ daySlots: slots, slotsLoading: false }),
+        setSlotsLoading: loading => set({ slotsLoading: loading }),
     }));
 }
 

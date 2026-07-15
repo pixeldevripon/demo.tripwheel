@@ -13,7 +13,7 @@ import {
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { DEMO_PUBLIC_REF } from '@/lib/thank-you/thank-you';
-import { DUMMY_BOOKING_DATA } from '@/lib/tours/booking';
+import { buildTourBookingData, type TourBookingData } from '@/lib/tours/booking';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
@@ -85,6 +85,7 @@ async function CheckoutBody({
     title,
     heroImage,
     pickupOptions,
+    data,
 }: {
     locale: Locale;
     tourHref: string;
@@ -94,9 +95,9 @@ async function CheckoutBody({
     title: string;
     heroImage: string | null;
     pickupOptions: CheckoutPickupOption[];
+    data: TourBookingData;
 }) {
     const sp = await searchParams;
-    const data = DUMMY_BOOKING_DATA;
 
     const selection = parseCheckoutSelection(sp);
     const totals = computeCheckoutTotals(data, selection.counts);
@@ -157,8 +158,8 @@ async function CheckoutBody({
  * Suspense-wrapped `CheckoutBody`, whose `CheckoutPageSkeleton` fallback
  * mirrors the layout 1:1 (and doubles as the route `loading.tsx`).
  *
- * Pricing mirrors the booking widget (currently `DUMMY_BOOKING_DATA`), so the
- * numbers carry through from the card unchanged; the live tour supplies the
+ * Pricing mirrors the booking widget (live `buildTourBookingData(detail)`), so
+ * the numbers carry through from the card unchanged; the live tour supplies the
  * title, image, and pickup options. A server-authoritative quote + live booking
  * submission land with the booking/payments module (BOOKING-FLOW-DESIGN-GUIDE).
  */
@@ -193,6 +194,10 @@ export default async function CheckoutPage({
         .sort((a, b) => a.displayOrder - b.displayOrder)
         .map(p => ({ id: p.id, label: p.title || p.name }));
 
+    // Live tour pricing / bands / deposit - mirrors the booking widget so the
+    // numbers carry through from the card unchanged (server quote lands later).
+    const data = buildTourBookingData(detail);
+
     return (
         <section className='it-section !pt-0 bg-white'>
             <Suspense fallback={<CheckoutPageSkeleton />}>
@@ -205,6 +210,7 @@ export default async function CheckoutPage({
                     title={title}
                     heroImage={heroImage}
                     pickupOptions={pickupOptions}
+                    data={data}
                 />
             </Suspense>
         </section>

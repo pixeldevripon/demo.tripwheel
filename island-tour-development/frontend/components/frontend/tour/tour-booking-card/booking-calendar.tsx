@@ -1,10 +1,11 @@
 'use client';
 
 import { useBooking } from '@/hooks/tours/use-booking';
-import { springPop } from '@/lib/motion';
+import { toDateParam } from '@/lib/checkout/checkout';
+import { crossFade, springPop } from '@/lib/motion';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     COLLAPSE_EASE,
     DAY_MS,
@@ -29,15 +30,40 @@ export function BookingCalendar() {
         calendarOpen,
         toggleCalendar,
         pickDate,
+        isLive,
+        calendarDays,
+        calendarLoading,
     } = useBooking();
 
     // `today` is only read once the calendar opens (post-mount) so it never
     // reaches the server-rendered HTML - no hydration mismatch.
     const [today] = useState(() => startOfDay(new Date()));
+    // Which disabled day is hovered, so its "why" hint tooltip shows.
+    const [hoveredKey, setHoveredKey] = useState<string | null>(null);
     const [view, setView] = useState(() => {
         const d = startOfDay(new Date());
         return { year: d.getFullYear(), month: d.getMonth() };
     });
+
+    // First day with availability (yyyy-MM-dd), once the live calendar resolves.
+    const firstAvailable = useMemo(() => {
+        if (!isLive || !calendarDays) return null;
+        const open = Object.keys(calendarDays)
+            .filter(k => calendarDays[k].available)
+            .sort();
+        return open[0] ?? null;
+    }, [isLive, calendarDays]);
+
+    // Auto-advance the month view to the first available month (only before the
+    // traveller has picked a date), so a tour whose next departure is months out
+    // does not open on an all-disabled month.
+    useEffect(() => {
+        if (!firstAvailable || selectedDate) return;
+        const [y, m] = firstAvailable.split('-').map(Number);
+        setView(v =>
+            v.year === y && v.month === m - 1 ? v : { year: y, month: m - 1 }
+        );
+    }, [firstAvailable, selectedDate]);
 
     // ── Calendar grid (Monday-first, prev/next month spill greyed + disabled). ──
     const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
@@ -152,8 +178,15 @@ export function BookingCalendar() {
                             </motion.button>
                         </div>
 
-                        {/* Weekday headers */}
-                        <div className='grid grid-cols-7 gap-y-2 text-center'>
+                        {/* Weekday headers + day cells (pulse while the live
+                            calendar is still loading). */}
+                        <div
+                            aria-busy={isLive && calendarLoading}
+                            className={`grid grid-cols-7 gap-y-2 text-center ${
+                                isLive && calendarLoading && !calendarDays
+                                    ? 'animate-pulse'
+                                    : ''
+                            }`}>
                             {weekdays.map(w => (
                                 <span
                                     key={w}
@@ -163,33 +196,95 @@ export function BookingCalendar() {
                             ))}
                             {/* Day cells */}
                             {calendarCells.map(({ date, inMonth }) => {
+                                const key = date.toISOString();
                                 const isPast = date.getTime() < today.getTime();
-                                const disabled = !inMonth || isPast;
+                                // Live mode: only days the backend reports as
+                                // available are selectable (absent = no
+                                // departures, present-but-unavailable = sold
+                                // out / closed). Demo mode: every future day is
+                                // open.
+                                const dayState = isLive
+                                    ? calendarDays?.[toDateParam(date)]
+                                    : undefined;
+                                const dayOpen = !isLive || dayState?.available === true;
+                                const disabled = !inMonth || isPast || !dayOpen;
                                 const isSelected =
                                     selectedDate != null &&
                                     startOfDay(date).getTime() ===
                                         startOfDay(selectedDate).getTime();
+                                // Hover hint: why a future in-month day can't be
+                                // picked (live only). Absent day = no schedule,
+                                // sold-out / closed = an exception or full slots.
+                                let hint: string | null = null;
+                                if (isLive && inMonth && !isPast && !dayOpen) {
+                                    hint = !dayState
+                                        ? dict.calendarNoDepartures
+                                        : dayState.status === 'SOLD_OUT'
+                                          ? dict.soldOut
+                                          : dict.calendarClosed;
+                                }
                                 return (
-                                    <motion.button
-                                        key={date.toISOString()}
-                                        type='button'
-                                        disabled={disabled}
-                                        onClick={() => pickDate(date)}
-                                        whileTap={
-                                            disabled
-                                                ? undefined
-                                                : { scale: 0.9 }
+                                    <div
+                                        key={key}
+                                        className='relative flex justify-center'
+                                        onMouseEnter={
+                                            hint
+                                                ? () => setHoveredKey(key)
+                                                : undefined
                                         }
-                                        transition={springPop}
-                                        className={`mx-auto grid size-9 place-items-center rounded-it-full text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${
-                                            isSelected
-                                                ? 'bg-it-primary font-medium text-it-white'
-                                                : disabled
-                                                  ? 'cursor-not-allowed text-it-ink-muted/50'
-                                                  : 'cursor-pointer text-it-heading hover:bg-it-surface'
-                                        }`}>
-                                        {date.getDate()}
-                                    </motion.button>
+                                        onMouseLeave={
+                                            hint
+                                                ? () => setHoveredKey(null)
+                                                : undefined
+                                        }>
+                                        <motion.button
+                                            type='button'
+                                            disabled={disabled}
+                                            title={hint ?? undefined}
+                                            onClick={() => pickDate(date)}
+                                            whileTap={
+                                                disabled
+                                                    ? undefined
+                                                    : { scale: 0.9 }
+                                            }
+                                            transition={springPop}
+                                            className={`grid size-9 place-items-center rounded-it-full text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${
+                                                isSelected
+                                                    ? 'bg-it-primary font-medium text-it-white'
+                                                    : disabled
+                                                      ? 'cursor-not-allowed text-it-ink-muted/50'
+                                                      : 'cursor-pointer text-it-heading hover:bg-it-surface'
+                                            }`}>
+                                            {date.getDate()}
+                                        </motion.button>
+                                        <AnimatePresence>
+                                            {hint && hoveredKey === key && (
+                                                <div className='pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2'>
+                                                    <motion.span
+                                                        role='tooltip'
+                                                        initial={{
+                                                            opacity: 0,
+                                                            y: 4,
+                                                            scale: 0.96,
+                                                        }}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            y: 0,
+                                                            scale: 1,
+                                                        }}
+                                                        exit={{
+                                                            opacity: 0,
+                                                            y: 4,
+                                                            scale: 0.96,
+                                                        }}
+                                                        transition={crossFade}
+                                                        className='block origin-bottom whitespace-nowrap rounded-[6px] bg-it-heading px-2 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white shadow-it-md'>
+                                                        {hint}
+                                                    </motion.span>
+                                                </div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -199,4 +294,3 @@ export function BookingCalendar() {
         </div>
     );
 }
-

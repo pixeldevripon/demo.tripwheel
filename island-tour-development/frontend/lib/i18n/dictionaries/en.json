@@ -381,6 +381,9 @@
         "continue": "Continue",
         "selected": "Selected",
         "soldOut": "Sold out",
+        "available": "Available",
+        "calendarNoDepartures": "No departures",
+        "calendarClosed": "Closed",
         "onlyLeft": "Only {count} left",
         "travelers": "{count} Travelers",
         "total": "Total",
@@ -405,6 +408,7 @@
         "no": "No",
         "spectators": "Spectators",
         "capacityNote": "Only {count} spots left for this departure",
+        "maxPerBooking": "Up to {count} travellers per booking",
         "policyClose": "Close",
         "cancellationModal": {
           "title": "Free cancellation up to {hours}h",

@@ -34,6 +34,12 @@ export type TourBookingDict = {
     continue: string;
     selected: string;
     soldOut: string;
+    /** Default per-slot status line ("Available") when not selected/scarce/sold out. */
+    available: string;
+    /** Calendar hover hint for a day with no departures (no schedule that weekday). */
+    calendarNoDepartures: string;
+    /** Calendar hover hint for a day whose departures are all closed (e.g. an exception). */
+    calendarClosed: string;
     /** "Only {count} left" */
     onlyLeft: string;
     /** "{count} Travelers" */
@@ -67,8 +73,11 @@ export type TourBookingDict = {
     no: string;
     /** Line-item label for spectator rows. */
     spectators: string;
-    /** "Only {count} spots left for this departure" (party over slot capacity). */
+    /** "Only {count} spots left for this departure" (party at/over slot capacity). */
     capacityNote: string;
+    /** "Up to {count} travellers per booking" (party at the tour's per-booking max,
+     *  not scarcity - keeps capacity messaging honest per master ethical CRO). */
+    maxPerBooking: string;
     /** Aria-label for the policy-modal close button. */
     policyClose: string;
     /** Free-cancellation policy modal (opened from the trust line). */
@@ -96,8 +105,12 @@ export interface BookingSlot {
     time: string;
     /** `sold_out` slots render disabled; everything else is selectable. */
     status: 'available' | 'sold_out';
-    /** Low-capacity hint ("Only N left"); null when there's plenty of room. */
+    /** Low-capacity hint ("Only N left") for DISPLAY; withheld (null) above the
+     *  anti-scarcity threshold (master §4). Do not use this to cap the party. */
     remaining: number | null;
+    /** True seats left (capacity - booked), used to CAP the party even when
+     *  `remaining` is withheld. Optional (absent in the design/demo dataset). */
+    seatsLeft?: number | null;
 }
 
 /** Everything the booking widget needs, resolved from a single tour fetch. */

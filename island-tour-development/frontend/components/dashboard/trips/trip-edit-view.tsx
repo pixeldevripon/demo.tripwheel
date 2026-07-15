@@ -368,6 +368,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                     <TripSchedulesTab
                         tripId={id}
                         maxPartySize={trip.maxPartySize}
+                        declaredStartTimes={trip.startTimes ?? []}
                     />
                 </TabsContent>
 

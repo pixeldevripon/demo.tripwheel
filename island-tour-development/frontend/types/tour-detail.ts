@@ -1,5 +1,5 @@
 /**
- * Public tour detail — the response shape of `GET /tours/slug/:slug`
+ * Public tour detail - the response shape of `GET /tours/slug/:slug`
  * (backend `TourPublicDetailResponseDto`, served by `ToursService.findBySlug`).
  *
  * All localized fields are already resolved to the requested locale with a
@@ -157,6 +157,10 @@ export interface PublicTourDetail {
   defaultCurrency: Currency;
   basePrice: string | null;
   priceFrom: string | null;
+  /** UNIT pricing: guests covered by basePrice before per-head surcharge. null for PER_PERSON. */
+  unitIncludedGuests: number | null;
+  /** UNIT pricing: surcharge per traveler beyond unitIncludedGuests. null for PER_PERSON. */
+  extraPersonPrice: string | null;
   durationMinutesFrom: number | null;
   durationMinutesTo: number | null;
 

@@ -381,6 +381,9 @@
         "continue": "Doorgaan",
         "selected": "Geselecteerd",
         "soldOut": "Uitverkocht",
+        "available": "Beschikbaar",
+        "calendarNoDepartures": "Geen vertrekken",
+        "calendarClosed": "Gesloten",
         "onlyLeft": "Nog {count} beschikbaar",
         "travelers": "{count} reizigers",
         "total": "Totaal",
@@ -405,6 +408,7 @@
         "no": "Nee",
         "spectators": "Toeschouwers",
         "capacityNote": "Nog maar {count} plekken voor dit vertrek",
+        "maxPerBooking": "Tot {count} reizigers per boeking",
         "policyClose": "Sluiten",
         "cancellationModal": {
           "title": "Gratis annuleren tot {hours}u",

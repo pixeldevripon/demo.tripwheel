@@ -248,3 +248,12 @@ These are ranked. Each is expanded in its section below.
 5. Add the `Settlement` model + write rows at confirmation; then the scheduled `paid_in_full` payout job (flaw 8, §12).
 6. Capture attribution at reserve (flaw 9), then finish Mollie confirm (flaw 7).
 7. Then multi-currency (quote endpoint, source fields, provider FX) as its own phase (§6, Guide §19-23).
+
+
+Recommended sequence
+
+1. Frontend, unblocked (steps 1-4): wire live data (data={buildTourBookingData(detail)}), add the 2 missing type fields + widen availability types, then payment-model conditional (CTA/money-rows/trust), real availability, pickup, add-ons. This ships a working dynamic card.
+2. Backend slice (before step 6): UNIT pricing + POST /bookings/quote + the 3 flaws + /payment/processing's webhook dependency.
+3. Frontend, money phase (steps 5-7): UNIT UI, real submission -> quote -> booking POST -> Stripe element -> processing page -> TYP real data + conversion.
+
+One caveat worth flagging: for anything persisted (the actual booking total), the client math in deriveBooking/computeCheckoutTotals must not be authoritative - the server quote wins. During phase 1 that's fine as a display estimate; just don't let it become the source of truth for a real booking. That's exactly the phase-2 boundary above.

@@ -20,6 +20,7 @@ export function BookingStoreProvider({
     dict,
     data,
     locale,
+    tourId,
     destinationSlug,
     tourSlug,
     children,
@@ -27,7 +28,14 @@ export function BookingStoreProvider({
     // Create the store exactly once for this card (stable across re-renders); a
     // new tour route remounts the provider and gets a fresh store.
     const [store] = useState(() =>
-        createBookingStore({ dict, data, locale, destinationSlug, tourSlug })
+        createBookingStore({
+            dict,
+            data,
+            locale,
+            tourId,
+            destinationSlug,
+            tourSlug,
+        })
     );
     return (
         <BookingStoreContext.Provider value={store}>

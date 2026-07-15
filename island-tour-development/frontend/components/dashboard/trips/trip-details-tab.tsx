@@ -51,8 +51,6 @@ const DELIVERY_METHOD_OPTIONS: { value: DeliveryMethod; label: string }[] = [
   { value: 'TICKET', label: 'Ticket' },
 ];
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 const COMMON_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'nl', label: 'Dutch' },
@@ -262,7 +260,7 @@ const detailsSchema = z.object({
   deliveryFormats: z.array(z.enum(['PDF_URL', 'QRCODE', 'CODE128', 'PKPASS_URL'])),
   deliveryMethods: z.array(z.enum(['VOUCHER', 'TICKET'])),
   // timeZone is derived from the destination and not operator-editable (shown read-only below).
-  startTimes: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
+  // startTimes are managed on the Schedules tab (declared alongside the recurring schedules that use them).
   isActive: z.boolean().optional(),
 });
 
@@ -309,7 +307,6 @@ type DetailsFormValues = {
   allowFreesale: boolean;
   deliveryFormats: DeliveryFormat[];
   deliveryMethods: DeliveryMethod[];
-  startTimes: string[];
   isActive: boolean;
 };
 
@@ -364,7 +361,6 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     allowFreesale: trip.allowFreesale,
     deliveryFormats: trip.deliveryFormats ?? [],
     deliveryMethods: trip.deliveryMethods ?? [],
-    startTimes: trip.startTimes ?? [],
     isActive: trip.isActive,
   };
 }
@@ -424,7 +420,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const instantDelivery = watch('instantDelivery');
   const availabilityRequired = watch('availabilityRequired');
   const allowFreesale = watch('allowFreesale');
-  const [startTimeDraft, setStartTimeDraft] = useState('');
 
   // Keep primary valid within the selected set.
   useEffect(() => {
@@ -488,7 +483,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           allowFreesale: values.allowFreesale,
           deliveryFormats: values.deliveryFormats,
           deliveryMethods: values.deliveryMethods,
-          startTimes: values.startTimes,
           isActive: values.isActive,
         },
       },
@@ -1170,60 +1164,10 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
             <Field>
               <Label className="text-xs font-semibold uppercase">Start Times</Label>
-              <Controller
-                name="startTimes"
-                control={control}
-                render={({ field }) => {
-                  function addTime() {
-                    const value = startTimeDraft.trim();
-                    if (!TIME_PATTERN.test(value)) {
-                      toast.error('Enter a valid time in HH:MM (24-hour).');
-                      return;
-                    }
-                    if (field.value.includes(value)) {
-                      toast.error('That start time is already added.');
-                      return;
-                    }
-                    field.onChange([...field.value, value].sort());
-                    setStartTimeDraft('');
-                  }
-                  return (
-                    <div className="space-y-3">
-                      {field.value.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {field.value.map((time) => (
-                            <Badge key={time} variant="secondary" className="gap-1.5 pr-1">
-                              <span>{time}</span>
-                              <button
-                                type="button"
-                                onClick={() => field.onChange(field.value.filter((t) => t !== time))}
-                                className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
-                                aria-label={`Remove ${time}`}
-                              >
-                                <XIcon className="size-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-end gap-2">
-                        <Input
-                          value={startTimeDraft}
-                          onChange={(e) => setStartTimeDraft(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTime())}
-                          placeholder="HH:MM (e.g. 09:30)"
-                          className="max-w-45"
-                        />
-                        <Button type="button" size="sm" onClick={addTime}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                }}
-              />
               <FieldDescription>
-                The tour&apos;s start times. Availability schedules switch these on per weekday.
+                Managed on the <span className="font-medium">Schedules</span> tab,
+                where they are declared alongside the recurring schedules that use
+                them.
               </FieldDescription>
             </Field>
           </CardContent>

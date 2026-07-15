@@ -1,6 +1,7 @@
 'use client';
 
 import { BookingStoreProvider } from '@/contexts/booking-context';
+import { useAvailabilitySync } from '@/hooks/tours/use-availability-sync';
 import { useBooking } from '@/hooks/tours/use-booking';
 import type { TourBookingData, TourBookingDict } from '@/lib/tours/booking';
 import { BookingCalendar } from './booking-calendar';
@@ -21,6 +22,8 @@ export type { PolicyModalDict, TourBookingDict } from '@/lib/tours/booking';
  */
 function TourBookingCardLayout() {
     const { dict, policyModal, setPolicyModal, fillPolicy } = useBooking();
+    // Loads the month calendar + per-date slots from the backend (no-op in demo).
+    useAvailabilitySync();
 
     return (
         <div className='flex flex-col gap-4'>
@@ -85,6 +88,7 @@ export function TourBookingCard({
     dict,
     data,
     locale = 'en',
+    tourId,
     destinationSlug,
     tourSlug,
 }: {
@@ -92,6 +96,9 @@ export function TourBookingCard({
     /** Live tour data; falls back to `DUMMY_BOOKING_DATA` for design/testing. */
     data?: TourBookingData;
     locale?: string;
+    /** Live tour id; enables real availability (calendar + per-date slots). Omit
+     *  for the design/demo card (static start times, always-open calendar). */
+    tourId?: string;
     /** Destination + tour slug so "Continue" can route to the checkout page. */
     destinationSlug?: string;
     tourSlug?: string;
@@ -101,6 +108,7 @@ export function TourBookingCard({
             dict={dict}
             data={data}
             locale={locale}
+            tourId={tourId}
             destinationSlug={destinationSlug}
             tourSlug={tourSlug}>
             <TourBookingCardLayout />

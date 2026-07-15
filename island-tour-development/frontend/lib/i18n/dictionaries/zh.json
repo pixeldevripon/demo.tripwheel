@@ -381,6 +381,9 @@
         "continue": "继续",
         "selected": "已选择",
         "soldOut": "售罄",
+        "available": "可预订",
+        "calendarNoDepartures": "无出发班次",
+        "calendarClosed": "已关闭",
         "onlyLeft": "仅剩 {count} 个",
         "travelers": "{count} 位旅客",
         "total": "总计",
@@ -405,6 +408,7 @@
         "no": "否",
         "spectators": "随行观众",
         "capacityNote": "该出发时段仅剩 {count} 个名额",
+        "maxPerBooking": "每次预订最多 {count} 位旅客",
         "policyClose": "关闭",
         "cancellationModal": {
           "title": "{hours} 小时前免费取消",

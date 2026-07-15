@@ -14,25 +14,45 @@
 
 ---
 
+## 0. Session progress (2026-07-15, branch `rendering-caching`, uncommitted)
+
+- `[x]` **Step 1 - live data** wired into the widget + checkout (§1, §2).
+- `[x]` **Step 3 - real availability** wired (calendar month map + per-date slots, cutoff, "only N left", auto-advance) (§4).
+- `[x]` **Capacity enforcement during selection** - party caps at true seats-left (`BookingSlot.seatsLeft = capacity - bookedCount`, always known even when `remaining` is withheld above 5); `effectiveMaxOf` uses it. Master §3.3.1.
+- `[x]` **Stepper silent-stop fixed** - inline note at capacity (`atCapacity`/`capacityReason` in `deriveBooking`; `booking-cta.tsx`): slot scarcity -> "Only N spots left", per-booking max -> "Up to N travellers per booking" (new `maxPerBooking` dict key, 7 locales). Master §3.3.1.
+- `[x]` **Every slot chip shows a status line** - default "Available" (new `available` dict key, 7 locales) besides selected/soldOut/onlyLeft.
+- `[x]` **Calendar disables + hover hints** - no-schedule / closed / sold-out days blocked with reason tooltip (new `calendarNoDepartures`, `calendarClosed` dict keys, 7 locales); tooltip animates via `AnimatePresence` + `crossFade`.
+- **STILL PENDING (next):** Step 2 payment-model conditional (§3.1), pickup (§3.3), add-ons (§3.5), UNIT UI (§3.2), server quote (§5), real submission + payment (§6), `/payment/processing` (§7), TYP real data + conversion (§8).
+
+### Dashboard + backend availability fixes done alongside (Schedules tab / materializer)
+
+- `[x]` **Start Times moved from Details tab to Schedules tab** (`trip-schedules-tab.tsx` `StartTimesSection`, persists via `useUpdateTrip`; removed from `trip-details-tab.tsx`). Declared times now managed beside the schedules that consume them; removal blocked (tooltip) while a schedule uses a time.
+- `[x]` **Schedule/exception forms: inline field + server errors** (replaced most toasts; row-action toasts kept).
+- `[x]` **Free time inputs -> 24-hour HH:MM text** (native `type="time"` showed ambiguous `12:00 --` AM/PM in 12h locales); placeholder + accurate help.
+- `[x]` **Backend materializer flaw fixed** - CLOSE_DATE / CLOSE_SLOT now close a **booked** departure (status synced; capacity/bookings/source still protected; `manuallyEdited`/API stay hands-off). Previously a partially-booked slot kept selling through a closed date. `backend/src/availability/availability-materializer.service.ts` reconcile split; +4 unit tests (52 availability tests pass). Backend is confirmed 24-hour-time compatible end to end.
+
+---
+
 ## 1. Current state (what the card does today)
 
 - Widget lives in `frontend/components/frontend/tour/tour-booking-card/` (`TourBookingCard` + sections: `price-header`, `booking-calendar`, `departure-times`, `party-selector`, `spectators-panel`, `price-summary`, `booking-cta`, `policy-modal`, `sell-out-notice`). State/math: `frontend/lib/stores/booking-store.ts` (`deriveBooking`); mapper: `frontend/lib/tours/booking.ts` (`buildTourBookingData`, `DUMMY_BOOKING_DATA`); hook `frontend/hooks/tours/use-booking.ts`; provider `frontend/contexts/booking-context.tsx`.
-- `[~]` **Fed DUMMY data, not the live tour.** `tour-detail-content.tsx:380-387` renders `<TourBookingCard>` with **no `data` prop** -> store falls back to `DUMMY_BOOKING_DATA`. Same in `checkout/page.tsx:99`. So every tour shows the same `$120/$65/free`, 3 fixed slots, 20% deposit.
+- `[x]` **Fed live tour data.** `tour-detail-content.tsx` now passes `data={buildTourBookingData(detail)}`; `checkout/page.tsx` builds the same from the live tour and threads it into `CheckoutBody`. `DUMMY_BOOKING_DATA` remains only as the store's design-time fallback. (Real availability - remaining/sold-out - still lands in §4.)
 - `[~]` **Payment model not branched.** Only a boolean `requiresDeposit = (OPERATOR_LINK||ON_ARRIVAL) && 0<depositPct<100` (`booking.ts:211`). All 4 models collapse to deposit-vs-full; `PAID_IN_FULL` and `OPERATOR_FULL` both just set `payToday = total`.
 - `[~]` **Trust lines unconditional** (`booking-cta.tsx:56-67`): always renders "Pay {pct}% now, the rest later" AND "Free cancellation up to {hours}h", even for full-payment tours.
 - `[~]` **Pricing is client-side and duplicated** (`deriveBooking` + `lib/checkout/checkout.ts:computeCheckoutTotals`). No server quote.
 - `[~]` **Submission is mock.** Widget CTA only pushes to `/checkout?date&time&party`; `checkout-form.tsx:319 handleReserve()` is a 1.6s `setTimeout` then `router.push` to TYP with a hardcoded `DEMO_PUBLIC_REF`. No booking POST, no Stripe.
 - `[~]` **Departure times capped at 3** (`departure-times.tsx:21 slice(0,3)`); slots forced `status:'available'`, `remaining:null` (`booking.ts:218`) - no real availability.
-- **Not consumed at all:** `pricingModel`, `wholeUnitType`, `bookingType`, `instantConfirmation`, `bookingCutoffMinutes`, `pickupModel`, `pickupRequired`, `pickupLocations`, `addOns`, `unitIncludedGuests`, `extraPersonPrice`.
+- **Not consumed at all:** `pricingModel`, `wholeUnitType`, `bookingType`, `instantConfirmation`, `bookingCutoffMinutes`, `pickupModel`, `pickupRequired`, `pickupLocations`, `addOns`, `unitIncludedGuests`, `extraPersonPrice`. 
+and no countdown the hold time for a slot to booking.
 
 ---
 
 ## 2. Data contract (what the widget needs vs what is exposed)
 
 - `[x]` **Backend returns every field needed** on `GET /tours/slug/:slug` (`TourPublicDetailResponseDto`): paymentModel, depositPct, pricingModel, basePrice, unitIncludedGuests, extraPersonPrice, wholeUnitType, bookingType, instantConfirmation, bookingCutoffMinutes, pickupModel, pickupRequired, cancellationHours, durationMinutesFrom/To, startTimes, defaultCurrency, ageBands (price/priceOriginal/priceNet/bandType/min-maxAge), addOns (price/unit/maxQuantity), pickupLocations, min/maxPartySize, timeZone. `Ref:` [Guide §9](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic)
-- `[ ]` **Add `unitIncludedGuests` + `extraPersonPrice` to `PublicTourDetail`** (`frontend/types/tour-detail.ts`). Backend sends them; the FE type omits them, so UNIT pricing is untyped/unusable. `Ref:` [Guide §9 UNIT](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic)
-- `[ ]` **Widen `AvailabilityDeparture`** (`frontend/lib/api/availability.ts:11`) to keep `capacity`, `bookedCount`, `remaining`, `soldOutAt` (backend `DepartureResponseDto` sends them; FE type drops them) - needed for "Only N left" and sold-out. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
-- `[ ]` **Add a frontend client for `POST /availability/calendar`** (month map). The endpoint exists (`CalendarDayResponseDto[]`) but has NO frontend caller; the widget's month calendar needs it. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+- `[x]` **Added `unitIncludedGuests` + `extraPersonPrice` to `PublicTourDetail`** (`frontend/types/tour-detail.ts`). Backend sends them; the FE type now carries them so UNIT pricing is typed. `Ref:` [Guide §9 UNIT](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic)
+- `[x]` **Widened `AvailabilityDeparture`** (`frontend/lib/api/availability.ts`) to match backend `DepartureResponseDto`: `tourId`, `capacity`, `bookedCount`, `remaining`, `soldOutAt`, `manuallyEdited` - needed for "Only N left" and sold-out. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+- `[x]` **Added a frontend client for `POST /availability/calendar`** (`getTourCalendar` in `frontend/lib/api/availability.ts`, `CalendarDay` type). Feeds the widget's month calendar. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
 
 ---
 
@@ -74,9 +94,12 @@
 
 ## 4. Availability (real slots, not dummy)
 
-- `[ ]` Wire the calendar to `POST /availability/calendar` (month map: per-day open/closed/sold_out/none, `remaining` only under 5). `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
-- `[ ]` Wire time chips to `POST /availability/check` (bookable slots for the picked date), remove the `slice(0,3)` cap, show all real slots. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
-- `[ ]` Show "Only N left" only when `remaining < 5`; render sold-out/closed states; auto-advance to `first_available_date`. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-booking-card.tsx`), driving new store state (`calendarDays`, `daySlots`, `calendarLoading`, `slotsLoading`, `tourId`, `isLive`). A no-op in demo mode (no `tourId`) so the design card still works off `DUMMY_BOOKING_DATA`.
+
+- `[x]` Wired the calendar to `POST /availability/calendar` (one fetch over the bookable horizon on mount -> per-day availability map). Days present+open are selectable; present-but-unavailable (sold out / closed) and absent (no departures) days render disabled; past days disabled. Auto-advances the month view to the first available month before a date is picked. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+- `[x]` Wired time chips to `POST /availability/check` (bookable slots for the picked date), removed the `slice(0,3)` cap, show all real slots with a loading skeleton while they resolve. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+- `[x]` Show "Only N left" only when `remaining < 5` (backend already nulls `remaining` above the threshold). Auto-advance to first-available month done. **Note:** `/availability/check` returns ONLY bookable slots (sold-out / closed / past-cutoff filtered server-side), so per-time sold-out chips do not appear in live mode - date-level sold-out is reflected by the calendar day being disabled. The `sold_out` slot state remains only for the demo dataset. `Ref:` [Availability §4](../02-architecture/AVAILABILITY-AND-DEPARTURES.md#4-read-contract)
+- `[ ]` Empty-date edge (a day the calendar reported open returns zero live slots on a race): the chips section stays collapsed. Acceptable for now; a "no times available" message would need a new i18n key.
 
 ---
 
@@ -130,10 +153,20 @@ The card can be made conditional now on data already exposed, but these backend 
 
 ## Suggested build order
 
-1. Wire live data: pass `data={buildTourBookingData(detail)}` in `tour-detail-content.tsx` and `checkout/page.tsx`; add the two missing type fields + widen availability types.
+1. `[x]` Wire live data: pass `data={buildTourBookingData(detail)}` in `tour-detail-content.tsx` and `checkout/page.tsx`; add the two missing type fields + widen availability types. (Done - typechecks clean.)
 2. Payment-model conditional (CTA, money rows, trust lines) on real `paymentModel`/`depositPct`/`cancellationHours` (§3.1). Guard out `operator_full` for v1.
-3. Real availability (calendar month map + slots, cutoff, "only N left"), remove the 3-slot cap (§4).
+3. `[x]` Real availability (calendar month map + slots, cutoff, "only N left"), remove the 3-slot cap (§4). (Done - typechecks + lints clean.)
 4. Pickup (§3.3) and add-ons (§3.5) in the widget/checkout + payload.
 5. `pricingModel` UNIT UI (§3.2) once backend UNIT pricing lands.
 6. Real submission: quote -> booking POST -> payment intent -> Stripe element (§5, §6).
 7. `/payment/processing` page (§7), then TYP real data + conversion (§8).
+
+
+
+Recommended sequence
+
+1. Frontend, unblocked (steps 1-4): wire live data (data={buildTourBookingData(detail)}), add the 2 missing type fields + widen availability types, then payment-model conditional (CTA/money-rows/trust), real availability, pickup, add-ons. This ships a working dynamic card.
+2. Backend slice (before step 6): UNIT pricing + POST /bookings/quote + the 3 flaws + /payment/processing's webhook dependency.
+3. Frontend, money phase (steps 5-7): UNIT UI, real submission -> quote -> booking POST -> Stripe element -> processing page -> TYP real data + conversion.
+
+One caveat worth flagging: for anything persisted (the actual booking total), the client math in deriveBooking/computeCheckoutTotals must not be authoritative - the server quote wins. During phase 1 that's fine as a display estimate; just don't let it become the source of truth for a real booking. That's exactly the phase-2 boundary above.
