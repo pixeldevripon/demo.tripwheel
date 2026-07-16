@@ -23,6 +23,7 @@ import type {
   TripStatus,
   WholeUnitType,
 } from './trip';
+import type { Money } from './money';
 
 /** Resolved (locale → EN fallback) tour translation row. */
 export interface PublicTourTranslation {
@@ -155,6 +156,8 @@ export interface PublicTourDetail {
   pricingModel: PricingModel;
   wholeUnitType: WholeUnitType | null;
   defaultCurrency: Currency;
+  /** Converted display prices when `?currency` was requested (guide §20.9). */
+  money?: Money;
   basePrice: string | null;
   priceFrom: string | null;
   /** UNIT pricing: guests covered by basePrice before per-head surcharge. null for PER_PERSON. */

@@ -74,6 +74,9 @@ export class HubService {
    * currency's display rate once, converts each card, falls back to source currency
    * (rate 1) when no rate is available. The card's `currency` field is the source.
    */
+  /** Attach the display `money` object to each hub card (guide §20.9). Delegates to
+   *  the single reusable implementation in {@link FxRatesService.attachMoney}; hub
+   *  cards hold their source currency in `currency`. */
   private async attachHubMoney(
     cards: Array<{
       currency: string;
@@ -83,42 +86,7 @@ export class HubService {
     }>,
     target?: Currency,
   ): Promise<void> {
-    if (cards.length === 0) return;
-    const rateBySource = new Map<
-      string,
-      { currency: string; rate: Prisma.Decimal }
-    >();
-    for (const src of new Set(cards.map((c) => c.currency))) {
-      const tgt = target ?? (src as Currency);
-      if (src === tgt) {
-        rateBySource.set(src, { currency: src, rate: new Prisma.Decimal(1) });
-        continue;
-      }
-      const display = await this.fx.getDisplayRate(src as Currency, tgt);
-      rateBySource.set(
-        src,
-        display
-          ? { currency: tgt, rate: display.rate }
-          : { currency: src, rate: new Prisma.Decimal(1) },
-      );
-    }
-    for (const c of cards) {
-      const { currency, rate } = rateBySource.get(c.currency)!;
-      const conv = (v: unknown): string | null =>
-        v == null
-          ? null
-          : new Prisma.Decimal(v as Prisma.Decimal.Value)
-              .mul(rate)
-              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-              .toString();
-      c.money = {
-        currency,
-        sourceCurrency: c.currency,
-        fxRate: rate.toString(),
-        priceFrom: conv(c.priceFrom),
-        basePrice: conv(c.basePrice),
-      };
-    }
+    await this.fx.attachMoney(cards, target, 'currency');
   }
 
   // Hub translation select including `heroTagline` (absent from the shared translationSelect util).

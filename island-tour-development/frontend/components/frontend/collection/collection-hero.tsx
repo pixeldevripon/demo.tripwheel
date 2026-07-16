@@ -14,7 +14,8 @@ interface CollectionHeroProps {
     subtitle: string | null;
     heroImage: string | null;
     tourCount: number;
-    startingPrice?: number | null;
+    /** Localized "from" price incl. currency symbol (e.g. "$120"), or null to hide. */
+    startingPrice?: string | null;
     dict: CollectionHeroDict;
 }
 
@@ -102,7 +103,7 @@ export function CollectionHero({
                                                 {dict.from}
                                             </span>
                                             <span className='font-medium text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                                ${startingPrice}
+                                                {startingPrice}
                                             </span>
                                         </span>
                                     </>

@@ -9,6 +9,7 @@
  * when the endpoint exists - the lookup stays UNCACHED (per-traveller data).
  */
 import type { TourListing } from '@/components/frontend/tour-card';
+import { formatPriceFrom } from '@/lib/currency/current';
 
 /** Demo TYP token - checkout's demo reserve flow redirects here. */
 export const DEMO_PUBLIC_REF = 'pr-demo-2026-04821';
@@ -124,6 +125,8 @@ const DEMO_BOOKING: ThankYouBooking = {
             duration: '4h',
             pickupAvailable: false,
             price: 89,
+            currency: 'EUR',
+            priceDisplay: formatPriceFrom(89, 'EUR', 'en'),
             priceUnit: 'per',
         },
         {
@@ -136,6 +139,8 @@ const DEMO_BOOKING: ThankYouBooking = {
             duration: '3h',
             pickupAvailable: false,
             price: 65,
+            currency: 'EUR',
+            priceDisplay: formatPriceFrom(65, 'EUR', 'en'),
             priceUnit: 'per',
         },
         {
@@ -148,6 +153,8 @@ const DEMO_BOOKING: ThankYouBooking = {
             duration: '3h',
             pickupAvailable: false,
             price: 75,
+            currency: 'EUR',
+            priceDisplay: formatPriceFrom(75, 'EUR', 'en'),
             priceUnit: 'per',
         },
     ],

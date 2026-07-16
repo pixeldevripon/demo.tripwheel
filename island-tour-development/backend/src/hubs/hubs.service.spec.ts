@@ -220,7 +220,10 @@ describe('HubService', () => {
         { provide: FaqGroupService, useValue: mockFaqGroups },
         {
           provide: FxRatesService,
-          useValue: { getDisplayRate: jest.fn().mockResolvedValue(null) },
+          useValue: {
+            getDisplayRate: jest.fn().mockResolvedValue(null),
+            attachMoney: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

@@ -9,7 +9,7 @@ import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
 
 import type { HubByDestination, HubPageContent, HubRender } from '@/types/hub';
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
 
@@ -50,12 +50,13 @@ export async function getHubRender(
   slug: string,
   destinationId: string,
   locale: Locale = DEFAULT_LOCALE,
+  currency?: Currency,
 ): Promise<HubRender | null> {
   'use cache';
   cacheLife('hours');
 
   const data = await publicGet<HubRender>(
-    `/hubs/render/${slug}${buildQuery({ destinationId, locale })}`,
+    `/hubs/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
   );
   cacheTag('tours', data ? `hub:${data.id}` : 'hubs');
   return data;

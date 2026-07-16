@@ -15,7 +15,7 @@ import type {
   CollectionPageContent,
   CollectionRender,
 } from '@/types/collection';
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
 
@@ -54,12 +54,13 @@ export async function getCollectionRender(
   slug: string,
   destinationId: string,
   locale: Locale = DEFAULT_LOCALE,
+  currency?: Currency,
 ): Promise<CollectionRender | null> {
   'use cache';
   cacheLife('hours');
 
   const data = await publicGet<CollectionRender>(
-    `/collections/render/${slug}${buildQuery({ destinationId, locale })}`,
+    `/collections/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
   );
   cacheTag('tours', data ? `collection:${data.id}` : 'collections');
   return data;

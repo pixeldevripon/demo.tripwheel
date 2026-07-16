@@ -34,7 +34,7 @@ export class WishlistController {
     @AuthenticatedUser() user: TypedAuthUser,
     @Query() query: WishlistQueryDto,
   ) {
-    return this.wishlistService.list(user.id, query.locale);
+    return this.wishlistService.list(user.id, query.locale, query.currency);
   }
 
   @Get('ids')

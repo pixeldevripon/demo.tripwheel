@@ -31,7 +31,8 @@ export type HubTour = {
     title: string;
     /** Short attribute tags, dot-separated - e.g. ['8h','Yacht','Beach house']. */
     attributes: string[];
-    price: number;
+    /** Localized "from" price incl. currency symbol, e.g. "$140" / "2.200 €". */
+    priceDisplay: string;
     /** e.g. "/per" or "/8 people". */
     priceUnit: string;
     /** Optional trailing note that wraps below on narrow cards, e.g. "+ $175 per extra person". */
@@ -173,7 +174,7 @@ export function HubTourCard({
                         {dict.from}{' '}
                     </span>
                     <span className='font-medium text-[12px] md:text-[16px]'>
-                        ${tour.price.toLocaleString()}
+                        {tour.priceDisplay}
                     </span>
                     <span className='text-[10px] text-it-heading/70 md:text-[12px]'>
                         {tour.priceUnit}

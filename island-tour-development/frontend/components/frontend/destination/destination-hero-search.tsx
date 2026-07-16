@@ -13,7 +13,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import { searchToursClient } from '@/lib/api/search';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import {
+    localizeHref,
+    LOCALE_CURRENCY,
+    type Currency,
+    type Locale,
+} from '@/lib/constants/locales';
+import { currencyFromCookie } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
 import type { SearchHit } from '@/types/search';
 
@@ -43,11 +49,19 @@ export function DestinationHeroSearch({
     const [focused, setFocused] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [dateOpen, setDateOpen] = useState(false);
+    const [currency, setCurrency] = useState<Currency>(
+        LOCALE_CURRENCY[locale] ?? 'EUR'
+    );
 
     const ref = useRef<HTMLDivElement>(null);
     const trimmed = query.trim();
     const showPanel = focused && trimmed.length >= 2;
     const isoDate = date ? format(date, 'yyyy-MM-dd') : undefined;
+
+    // Sync display currency from the cookie on mount (client-only, no SSR mismatch).
+    useEffect(() => {
+        setCurrency(currencyFromCookie(document.cookie, locale));
+    }, [locale]);
 
     // Close the typeahead on an outside pointerdown (the date popover is portalled,
     // so clicks inside it don't count as outside).
@@ -76,7 +90,7 @@ export function DestinationHeroSearch({
         const controller = new AbortController();
         const timer = setTimeout(() => {
             searchToursClient(
-                { q, locale, destinationSlug, date: isoDate, limit: 6 },
+                { q, locale, currency, destinationSlug, date: isoDate, limit: 6 },
                 controller.signal
             )
                 .then(res => {
@@ -90,7 +104,7 @@ export function DestinationHeroSearch({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [query, locale, destinationSlug, isoDate]);
+    }, [query, locale, currency, destinationSlug, isoDate]);
 
     const searchHref = (q: string) => {
         const sp = new URLSearchParams({ q });
@@ -189,6 +203,8 @@ export function DestinationHeroSearch({
                         total={total}
                         loading={loading}
                         query={trimmed}
+                        locale={locale}
+                        currency={currency}
                         dict={search}
                         searchHref={searchHref}
                         tourHref={tourHref}

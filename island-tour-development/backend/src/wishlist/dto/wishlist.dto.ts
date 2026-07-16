@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Locale } from '@prisma/client';
+import { Currency, Locale } from '@prisma/client';
 import { IsEnum, IsOptional } from 'class-validator';
+import { MoneyDto } from '@/fx/dto/money.dto';
 
 // ── Query ─────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,15 @@ export class WishlistQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; adds a converted `money` object per card',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 // ── Response ────────────────────────────────────────────────────────────────
@@ -47,6 +57,11 @@ export class WishlistTourDto {
   @ApiProperty({ example: '39', nullable: true }) priceFrom!: string | null;
   @ApiProperty({ example: '65', nullable: true }) basePrice!: string | null;
   @ApiProperty({ example: 'USD' }) defaultCurrency!: string;
+  @ApiPropertyOptional({
+    type: MoneyDto,
+    description: 'Converted display prices when `currency` was requested',
+  })
+  money?: MoneyDto;
   @ApiProperty({ example: 'PER_PERSON' }) pricingModel!: string;
   @ApiProperty({ example: 120, nullable: true }) durationMinutesFrom!:
     | number

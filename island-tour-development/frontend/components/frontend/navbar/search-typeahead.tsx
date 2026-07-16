@@ -4,14 +4,17 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import {
+    isCurrency,
+    type Currency,
+    type Locale,
+} from '@/lib/constants/locales';
+import { formatPriceFrom } from '@/lib/currency/current';
 import { dropdownMotion } from '@/lib/motion';
 import { formatDuration } from '@/lib/tours/listing';
 import type { SearchHit } from '@/types/search';
 
 import type { SearchDict } from './lib/navbar.types';
-
-const currencySymbol = (code: string): string =>
-    code === 'EUR' ? '€' : code === 'GBP' ? '£' : '$';
 
 /**
  * Presentational typeahead panel - the live preview of matching tours shown
@@ -28,6 +31,8 @@ export function SearchTypeahead({
     total,
     loading,
     query,
+    locale,
+    currency,
     dict,
     searchHref,
     tourHref,
@@ -37,6 +42,9 @@ export function SearchTypeahead({
     total: number;
     loading: boolean;
     query: string;
+    locale: Locale;
+    /** Shopper display currency (fallback label when a hit carries no `money`). */
+    currency: Currency;
     dict: SearchDict;
     searchHref: (q: string) => string;
     tourHref: (hit: SearchHit) => string;
@@ -127,15 +135,20 @@ export function SearchTypeahead({
                                             <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs'>
                                                 <span className='font-medium text-it-ink'>
                                                     {dict.from}{' '}
-                                                    {currencySymbol(
-                                                        hit.defaultCurrency
-                                                    )}
-                                                    {Math.round(
-                                                        Number(
+                                                    {formatPriceFrom(
+                                                        hit.money?.priceFrom ??
                                                             hit.priceFrom ??
-                                                                hit.basePrice ??
-                                                                0
+                                                            hit.basePrice ??
+                                                            0,
+                                                        isCurrency(
+                                                            hit.money?.currency ??
+                                                                hit.defaultCurrency
                                                         )
+                                                            ? (hit.money
+                                                                  ?.currency ??
+                                                                  (hit.defaultCurrency as Currency))
+                                                            : currency,
+                                                        locale
                                                     )}
                                                 </span>
                                                 {(hit.cancellationHours ?? 0) >

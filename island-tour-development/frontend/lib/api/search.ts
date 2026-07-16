@@ -3,7 +3,7 @@
  * keystroke). The results page uses the server-cached loader in
  * `lib/api/public/search.ts`; this one runs in the browser.
  */
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { SearchResults } from '@/types/search';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
@@ -15,7 +15,14 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:505
  * any failure (including aborts) so callers never need a try/catch.
  */
 export async function searchToursClient(
-  params: { q: string; locale?: Locale; destinationSlug?: string; date?: string; limit?: number },
+  params: {
+    q: string;
+    locale?: Locale;
+    currency?: Currency;
+    destinationSlug?: string;
+    date?: string;
+    limit?: number;
+  },
   signal?: AbortSignal,
 ): Promise<SearchResults> {
   const q = params.q.trim();
@@ -24,6 +31,7 @@ export async function searchToursClient(
 
   const qs = new URLSearchParams({ q });
   if (params.locale) qs.set('locale', params.locale);
+  if (params.currency) qs.set('currency', params.currency);
   if (params.destinationSlug) qs.set('destinationSlug', params.destinationSlug);
   if (params.date) qs.set('date', params.date);
   qs.set('limit', String(params.limit ?? 8));

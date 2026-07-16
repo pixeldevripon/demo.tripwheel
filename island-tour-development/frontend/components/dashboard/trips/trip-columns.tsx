@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
+import { formatPriceFrom } from '@/lib/currency/current';
 import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripRowActions } from './trip-row-actions';
 
@@ -189,7 +190,11 @@ export function makeTripColumns({
           <div className="flex items-center gap-1.5">
             {price ? (
               <>
-                <span className="font-medium text-sm">${price}</span>
+                {/* Admin view: each tour shows its OWN currency (defaultCurrency),
+                    never the public shopper NEXT_CURRENCY. */}
+                <span className="font-medium text-sm">
+                  {formatPriceFrom(price, trip.defaultCurrency, 'en')}
+                </span>
                 <Badge variant="secondary" className="text-xs">
                   {trip.pricingModel === 'PER_PERSON' ? '/person' : '/unit'}
                 </Badge>

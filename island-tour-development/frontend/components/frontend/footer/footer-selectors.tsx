@@ -12,6 +12,7 @@ import {
     CURRENCY_NAMES,
     isCurrency,
     LOCALE_COOKIE,
+    LOCALE_CURRENCY,
     LOCALE_NATIVE_LABELS,
     type Currency,
     type Locale,
@@ -91,14 +92,31 @@ function SelectorMenu({ children }: { children: React.ReactNode }) {
     );
 }
 
-/** Interactive currency selector - opens upward, defaults to USD. */
-export function CurrencySelector({ label }: { label: string }) {
+/**
+ * Interactive currency selector - opens upward. Its initial value matches the
+ * locale's default currency (what the server uses when no cookie is set), so the
+ * pill and the server-rendered prices agree on first paint; a stored cookie
+ * overrides it once mounted. Selecting a currency writes the cookie and calls
+ * `router.refresh()` so every server component refetches currency-aware prices
+ * (guide §21.2).
+ */
+export function CurrencySelector({
+    locale,
+    label,
+}: {
+    locale: Locale;
+    label: string;
+}) {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
-    const [currency, setCurrency] = useState<Currency>('USD');
+    const [isPending, startTransition] = useTransition();
+    const [currency, setCurrency] = useState<Currency>(
+        LOCALE_CURRENCY[locale] ?? 'EUR',
+    );
     const ref = useRef<HTMLDivElement>(null);
 
-    // Restore a previously chosen currency once mounted (starts from USD on both
-    // server and client to avoid a hydration mismatch).
+    // Restore a previously chosen currency once mounted (the initial state mirrors
+    // the server's locale default, so this only diverges when a cookie exists).
     useEffect(() => {
         const stored = document.cookie
             .split('; ')
@@ -117,14 +135,21 @@ export function CurrencySelector({ label }: { label: string }) {
 
     function selectCurrency(next: Currency) {
         setOpen(false);
+        if (next === currency) return;
         setCurrency(next);
         document.cookie = `${CURRENCY_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        // Re-run server components so every price refetches in the new currency
+        // (the cookie is the source of truth read by getServerCurrency).
+        startTransition(() => {
+            router.refresh();
+        });
     }
 
     return (
         <SelectorPill
             pillRef={ref}
             ariaLabel={label}
+            busy={isPending}
             label={CURRENCY_LABELS[currency]}
             open={open}
             onToggle={() => setOpen((v) => !v)}

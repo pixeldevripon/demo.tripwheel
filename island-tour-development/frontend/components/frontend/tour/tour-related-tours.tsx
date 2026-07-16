@@ -1,5 +1,6 @@
 import { connection } from 'next/server';
 import { type Locale } from '@/lib/constants/locales';
+import { getServerCurrency } from '@/lib/currency/server';
 import { getTourBySlug, getDestinationTours } from '@/lib/api/public/tours';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { searchHitToListing } from '@/lib/tours/listing';
@@ -33,7 +34,12 @@ export async function TourRelatedTours({
     dict,
 }: TourRelatedToursProps) {
     await connection();
-    const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    // `detail` (for destination + category ids) and the shopper currency are
+    // independent, so resolve them together.
+    const [detail, currency] = await Promise.all([
+        getTourBySlug({ slug, destinationSlug, locale }),
+        getServerCurrency(locale),
+    ]);
     if (!detail) return null;
 
     // Localized primary-category name for the same-category grid's heading.
@@ -52,6 +58,7 @@ export async function TourRelatedTours({
                   destinationId: detail.destinationId,
                   categoryId: detail.primaryCategoryId,
                   locale,
+                  currency,
                   sort: 'recommended',
                   limit: RELATED_COUNT + 4,
               })
@@ -59,6 +66,7 @@ export async function TourRelatedTours({
         getDestinationTours({
             destinationId: detail.destinationId,
             locale,
+            currency,
             sort: 'recommended',
             limit: RELATED_COUNT + 8,
         }),

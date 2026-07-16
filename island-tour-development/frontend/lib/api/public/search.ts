@@ -7,7 +7,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import type { SearchResults } from '@/types/search';
 import { buildQuery, publicGet } from './fetch';
@@ -33,6 +33,8 @@ const EMPTY = (query: string): SearchResults => ({
 export async function searchTours(params: {
   q: string;
   locale?: Locale;
+  /** Shopper display currency; adds converted `money` to each hit (guide §20.9). */
+  currency?: Currency;
   destinationSlug?: string;
   /** YYYY-MM-DD — restricts to tours with an OPEN departure on that date. */
   date?: string;
@@ -46,9 +48,16 @@ export async function searchTours(params: {
   const q = params.q?.trim() ?? '';
   if (q.length < 2) return EMPTY(q);
 
-  const { locale = DEFAULT_LOCALE, destinationSlug, date, page, limit } = params;
+  const {
+    locale = DEFAULT_LOCALE,
+    currency,
+    destinationSlug,
+    date,
+    page,
+    limit,
+  } = params;
   const data = await publicGet<SearchResults>(
-    `/search${buildQuery({ q, locale, destinationSlug, date, page, limit })}`,
+    `/search${buildQuery({ q, locale, currency, destinationSlug, date, page, limit })}`,
   );
   return data ?? EMPTY(q);
 }

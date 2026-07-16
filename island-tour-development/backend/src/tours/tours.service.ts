@@ -66,6 +66,9 @@ export class ToursService {
    * a rate is unavailable) the card shows its own source currency at rate 1 - a display
    * fallback that never blocks the page. Uses the raw Decimal `priceFrom`/`basePrice`.
    */
+  /** Attach the display `money` object to each card (guide §20.9). Delegates to the
+   *  single reusable implementation in {@link FxRatesService.attachMoney}; the tour
+   *  shape holds its source currency in `defaultCurrency`. */
   private async attachMoney(
     items: Array<{
       defaultCurrency: Currency;
@@ -75,42 +78,7 @@ export class ToursService {
     }>,
     target?: Currency,
   ): Promise<void> {
-    if (items.length === 0) return;
-    const rateBySource = new Map<
-      Currency,
-      { currency: Currency; rate: Prisma.Decimal }
-    >();
-    for (const src of new Set(items.map((i) => i.defaultCurrency))) {
-      const tgt = target ?? src;
-      if (src === tgt) {
-        rateBySource.set(src, { currency: src, rate: new Prisma.Decimal(1) });
-        continue;
-      }
-      const display = await this.fx.getDisplayRate(src, tgt);
-      rateBySource.set(
-        src,
-        display
-          ? { currency: tgt, rate: display.rate }
-          : { currency: src, rate: new Prisma.Decimal(1) }, // fallback: show source
-      );
-    }
-    for (const it of items) {
-      const { currency, rate } = rateBySource.get(it.defaultCurrency)!;
-      const conv = (v: Prisma.Decimal | null | undefined): string | null =>
-        v == null
-          ? null
-          : new Prisma.Decimal(v)
-              .mul(rate)
-              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-              .toString();
-      it.money = {
-        currency,
-        sourceCurrency: it.defaultCurrency,
-        fxRate: rate.toString(),
-        priceFrom: conv(it.priceFrom),
-        basePrice: conv(it.basePrice),
-      };
-    }
+    await this.fx.attachMoney(items, target, 'defaultCurrency');
   }
 
   private readonly tourSelect = {

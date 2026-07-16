@@ -139,6 +139,72 @@ export class FxRatesService {
   }
 
   /**
+   * Attach the public display `money` object (guide §20.9) to each card/detail item
+   * IN PLACE. The single reusable implementation shared by every listing surface
+   * (tours, hubs, collections, wishlist): it resolves each DISTINCT source currency's
+   * display rate once (<= number-of-currencies DB reads), then converts synchronously.
+   * Falls back to the item's own source currency (rate 1) when no rate is available,
+   * so a page never blocks on FX.
+   *
+   * @param items      cards to annotate (mutated: `item.money` is set)
+   * @param target     the shopper display currency; when omitted, money = source
+   * @param sourceKey  the property holding each item's source currency
+   *                   ('defaultCurrency' for the tour shape, 'currency' for hub cards)
+   */
+  async attachMoney(
+    items: Array<
+      Record<string, unknown> & {
+        priceFrom?: unknown;
+        basePrice?: unknown;
+        money?: unknown;
+      }
+    >,
+    target?: Currency,
+    sourceKey: 'defaultCurrency' | 'currency' = 'defaultCurrency',
+  ): Promise<void> {
+    if (items.length === 0) return;
+    const srcOf = (it: Record<string, unknown>): string =>
+      String(it[sourceKey]);
+
+    const rateBySource = new Map<
+      string,
+      { currency: string; rate: Prisma.Decimal }
+    >();
+    for (const src of new Set(items.map(srcOf))) {
+      const tgt = target ?? (src as Currency);
+      if (src === tgt) {
+        rateBySource.set(src, { currency: src, rate: new Prisma.Decimal(1) });
+        continue;
+      }
+      const display = await this.getDisplayRate(src as Currency, tgt);
+      rateBySource.set(
+        src,
+        display
+          ? { currency: tgt, rate: display.rate }
+          : { currency: src, rate: new Prisma.Decimal(1) }, // fallback: show source
+      );
+    }
+
+    for (const it of items) {
+      const { currency, rate } = rateBySource.get(srcOf(it))!;
+      const conv = (v: unknown): string | null =>
+        v == null
+          ? null
+          : new Prisma.Decimal(v as Prisma.Decimal.Value)
+              .mul(rate)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+              .toString();
+      it.money = {
+        currency,
+        sourceCurrency: srcOf(it),
+        fxRate: rate.toString(),
+        priceFrom: conv(it.priceFrom),
+        basePrice: conv(it.basePrice),
+      };
+    }
+  }
+
+  /**
    * Fetch the required pairs from the provider, validate they are positive, write a new
    * active row per pair, and deactivate the prior active row for that pair (immutable
    * history). Safe to call repeatedly (the scheduler and on-demand path both use it).

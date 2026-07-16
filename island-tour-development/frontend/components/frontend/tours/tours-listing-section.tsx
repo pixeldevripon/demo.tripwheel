@@ -12,6 +12,7 @@ import {
     getDestinationTours,
 } from '@/lib/api/public';
 import type { Locale } from '@/lib/constants/locales';
+import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
     filtersToTourQuery,
@@ -68,13 +69,14 @@ export async function ToursListingSection({
     // destination-wide on All Tours; a null (backend down / unknown) falls back
     // to static bounds + no attribute sections. `destinationCategories` is only
     // needed on All Tours (the category page derives pills from its sub-tree).
-    const [facets, destinationCategories] = await Promise.all([
+    const [facets, destinationCategories, currency] = await Promise.all([
         lockedCategory
             ? getCategoryFacets(destination, lockedCategory.slug)
             : getDestinationFacets(destination),
         lockedCategory
             ? Promise.resolve(null)
             : getDestinationCategories(destination, locale),
+        getServerCurrency(locale),
     ]);
     const priceMax =
         facets?.priceRange?.max != null
@@ -131,6 +133,7 @@ export async function ToursListingSection({
         getDestinationTours({
             destinationId,
             locale,
+            currency,
             limit: TOURS_LIMIT,
             page: p,
             categoryIds,

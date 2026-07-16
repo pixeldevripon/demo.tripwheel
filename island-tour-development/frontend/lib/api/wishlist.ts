@@ -3,7 +3,7 @@
  * The wishlist is a per-user, dynamic resource, so it is always fetched in the
  * browser — never in the cached server shell.
  */
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
@@ -37,10 +37,14 @@ export const wishlistApi = {
     return call<string[]>('/wishlist/ids');
   },
 
-  /** Full saved-tour list (newest first), localized, ready for card rendering. */
-  list(locale?: Locale): Promise<WishlistTour[]> {
-    const q = locale ? `?locale=${locale}` : '';
-    return call<WishlistTour[]>(`/wishlist${q}`);
+  /** Full saved-tour list (newest first), localized + currency-converted, ready for
+   *  card rendering. */
+  list(locale?: Locale, currency?: Currency): Promise<WishlistTour[]> {
+    const qs = new URLSearchParams();
+    if (locale) qs.set('locale', locale);
+    if (currency) qs.set('currency', currency);
+    const q = qs.toString();
+    return call<WishlistTour[]>(`/wishlist${q ? `?${q}` : ''}`);
   },
 
   add(tourId: string): Promise<{ tourId: string; saved: boolean }> {

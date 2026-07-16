@@ -7,7 +7,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { searchToursClient } from '@/lib/api/search';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import {
+    localizeHref,
+    LOCALE_CURRENCY,
+    type Currency,
+    type Locale,
+} from '@/lib/constants/locales';
+import { currencyFromCookie } from '@/lib/currency/current';
 import type { SearchHit } from '@/types/search';
 
 import { iconPress, pressSpring } from './lib/navbar.constants';
@@ -47,6 +53,11 @@ export function NavSearch({
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [focused, setFocused] = useState(false);
+    // Display currency for the typeahead prices. Starts from the locale default
+    // (matches SSR) and syncs to the shopper's cookie once mounted.
+    const [currency, setCurrency] = useState<Currency>(
+        LOCALE_CURRENCY[locale] ?? 'EUR'
+    );
 
     const desktopRef = useRef<HTMLDivElement>(null);
     const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +66,12 @@ export function NavSearch({
     const showDesktopPanel = focused && trimmed.length >= 2;
 
     useClickOutside(desktopRef, () => setFocused(false), focused);
+
+    // Resolve the shopper currency from the cookie on mount (client-only, so it
+    // never causes a hydration mismatch against the locale-default initial state).
+    useEffect(() => {
+        setCurrency(currencyFromCookie(document.cookie, locale));
+    }, [locale]);
 
     // Live previews as the user types (debounced 250ms, abortable).
     useEffect(() => {
@@ -69,7 +86,13 @@ export function NavSearch({
         const controller = new AbortController();
         const timer = setTimeout(() => {
             searchToursClient(
-                { q, locale, destinationSlug: currentIsland?.slug, limit: 6 },
+                {
+                    q,
+                    locale,
+                    currency,
+                    destinationSlug: currentIsland?.slug,
+                    limit: 6,
+                },
                 controller.signal
             )
                 .then(res => {
@@ -83,7 +106,7 @@ export function NavSearch({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [query, locale, currentIsland?.slug]);
+    }, [query, locale, currency, currentIsland?.slug]);
 
     // Focus the mobile field as soon as the overlay expands.
     useEffect(() => {
@@ -121,6 +144,8 @@ export function NavSearch({
             total={total}
             loading={loading}
             query={trimmed}
+            locale={locale}
+            currency={currency}
             dict={search}
             searchHref={searchHref}
             tourHref={tourHref}

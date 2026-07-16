@@ -4,7 +4,8 @@
  */
 import type { TourListing } from '@/components/frontend/tour-card';
 import type { TourBadge } from '@/components/frontend/tour-badge';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { isCurrency, localizeHref, type Locale } from '@/lib/constants/locales';
+import { formatPriceFrom, resolveDisplayPrice } from '@/lib/currency/current';
 import type { CollectionRenderTour } from '@/types/collection';
 import type { SearchHit } from '@/types/search';
 import { priceUnitKey } from '@/lib/tours/pricing-label';
@@ -45,6 +46,8 @@ export function tourPerfSummary(t: {
   bookingCount?: number;
   priceFrom?: number | string | null;
   basePrice?: number | string | null;
+  /** The tour's own currency; admin views always show it (never the shopper cookie). */
+  defaultCurrency?: string | null;
 }): string {
   const parts: string[] = [];
   const reviews = t.aggregateReviewCount ?? 0;
@@ -55,7 +58,10 @@ export function tourPerfSummary(t: {
   }
   parts.push(`${(t.bookingCount ?? 0).toLocaleString()} booked`);
   const price = Math.round(Number(t.priceFrom ?? t.basePrice ?? 0));
-  if (Number.isFinite(price) && price > 0) parts.push(`From $${price}`);
+  if (Number.isFinite(price) && price > 0) {
+    const currency = isCurrency(t.defaultCurrency) ? t.defaultCurrency : 'EUR';
+    parts.push(`From ${formatPriceFrom(price, currency, 'en')}`);
+  }
   return parts.join(' · ');
 }
 
@@ -103,7 +109,7 @@ export function collectionTourToListing(
   duration: DurationDict,
   rank?: number,
 ): TourListing {
-  const price = Math.round(Number(tour.priceFrom ?? tour.basePrice ?? 0));
+  const { price, currency, priceDisplay } = resolveDisplayPrice(tour, locale);
   const hasReviews = tour.aggregateReviewCount > 0;
   return {
     id: tour.id,
@@ -121,6 +127,8 @@ export function collectionTourToListing(
     duration: formatDuration(tour.durationMinutesFrom, tour.durationMinutesTo, duration),
     pickupAvailable: tour.pickupModel !== 'NONE',
     price,
+    currency,
+    priceDisplay,
     priceUnit: priceUnitKey(tour),
     priceVaries: false,
     freeCancellation: (tour.cancellationHours ?? 0) > 0,
@@ -133,7 +141,7 @@ export function searchHitToListing(
   locale: Locale,
   duration: DurationDict,
 ): TourListing {
-  const price = Math.round(Number(hit.priceFrom ?? hit.basePrice ?? 0));
+  const { price, currency, priceDisplay } = resolveDisplayPrice(hit, locale);
   const hasReviews = hit.aggregateReviewCount > 0;
   return {
     id: hit.id,
@@ -149,6 +157,8 @@ export function searchHitToListing(
     duration: formatDuration(hit.durationMinutesFrom, hit.durationMinutesTo, duration),
     pickupAvailable: hit.pickupModel !== 'NONE',
     price,
+    currency,
+    priceDisplay,
     priceUnit: priceUnitKey(hit),
     priceVaries: false,
     freeCancellation: (hit.cancellationHours ?? 0) > 0,

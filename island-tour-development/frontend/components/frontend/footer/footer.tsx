@@ -219,7 +219,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         <div className='flex w-full flex-col gap-8 min-[480px]:max-w-92.5 lg:w-55.25 lg:max-w-none lg:gap-12'>
                             <div className='flex flex-col gap-4'>
                                 <LanguageSelector locale={locale} label={dict.language} />
-                                <CurrencySelector label={dict.currency} />
+                                <CurrencySelector locale={locale} label={dict.currency} />
                             </div>
 
                             <div className='flex flex-col gap-8 lg:gap-6'>

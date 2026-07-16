@@ -158,7 +158,10 @@ describe('ToursService', () => {
         {
           provide: FxRatesService,
           // No conversion in unit tests (no ?currency) -> money falls back to source.
-          useValue: { getDisplayRate: jest.fn().mockResolvedValue(null) },
+          useValue: {
+            getDisplayRate: jest.fn().mockResolvedValue(null),
+            attachMoney: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

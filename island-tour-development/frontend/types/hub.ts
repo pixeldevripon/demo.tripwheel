@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/constants/locales';
+import type { Money } from '@/types/money';
 import type { HubPickType, HubSectionType, HubStatus, HubType } from '@/types/enums';
 export type { Locale } from '@/lib/constants/locales';
 export type { HubPickType, HubSectionType, HubStatus, HubType } from '@/types/enums';
@@ -195,6 +196,8 @@ export interface OurPickTourSummary {
   priceFrom?: number | string | null;
   basePrice?: number | string | null;
   currency?: string;
+  /** Converted display prices when `?currency` was requested (guide §20.9). */
+  money?: Money;
   pricingModel?: string;
   unitType?: string | null;
   rating?: number | null;
