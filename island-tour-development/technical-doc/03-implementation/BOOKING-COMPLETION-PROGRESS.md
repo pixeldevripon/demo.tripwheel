@@ -763,3 +763,66 @@ Founder queued two items ahead of the tracking push (#42/#39):
   dropped, so `useBookingQuote` re-quotes in the new currency automatically.
 
 Order per founder: PRICE1 first, then the listing pages, then resume #42/#39 tracking.
+
+- [x] **DASH polish (same day):** native date inputs in the Bookings/Payments/Cancellation-Requests
+  toolbars replaced with the shared shadcn `DatePickerField` (Calendar-in-Popover, clearable);
+  toolbar control widths aligned to the tours page exactly (search `flex-1 min-w-36`, selects
+  `w-32`/`w-44`, date pickers `w-36`).
+
+---
+
+## NEXT - serial execution order (2026-07-16, after PRICE1-3 + DASH1-3; follow top to bottom)
+
+Dependency-ordered plan to clear every remaining `[ ]`/`[~]` across BOOKING-CHECKLIST,
+BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; skip and continue.
+
+**Phase A - Tracking & conversion (resume point; tasks #42/#39, #43-#45)**
+1. A1 = #42+#39: `booking_complete` dataLayer push on the TYP, fired ONCE per booking - server-side
+   `conversion_pushed_at` guard (fire-point reconciliation), value = EUR `commission_amount`
+   (rule #22, CONFIRMED + non-null commission only; corrupt -> render error, no push).
+2. A2: click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at reserve (columns exist, flaw 9) +
+   decide the `gclid` vs generic `clickId` column question.
+3. A3 = #43: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
+   Matching payloads.
+4. A4 = #44: Meta CAPI server-side send (dedup by event id; inline first, queued in B6).
+5. A5 = #45: GTM fan-out (4 tags) + Consent Mode v2 - BLOCKED on founder: GTM container id,
+   Pixel id, CMP choice (Cookiebot/Iubenda).
+
+**Phase B - Money correctness (CP2-CP7; tasks #41/#46-#51)**
+6. B1 = CP2: operator-balance email on `operator_link` (C1, names operator + secure balance link)
+   + C5 verify never-name-operator-pre-payment in template copy; Resend provider switch (C4) is
+   BLOCKED on founder confirm.
+7. B2 = CP3: hold-expiry sweeper (BullMQ repeatable -> `expireStaleHolds`) + the
+   payment-succeeds-after-expiry reconciliation branch in `confirmFromPayment`.
+8. B3 = CP4: `Settlement` model + one row per booking at confirmation + `net_position` sign
+   convention (deposit models net ~0).
+9. B4 = CP5: scheduled `paid_in_full` payout after the cancel window (delayed job, clawback-safe,
+   RECORDED -> PAID_OUT).
+10. B5 = CP6: REAL Stripe refund execution + `REFUND` Payment row + payment-model-aware
+    `computeRefund` + the locked "3 to 5 business days" C23-aware FINAL cancellation-confirmation
+    emails (traveller + operator) - wire onto the new `/dashboard/cancellation-requests` Mark
+    cancelled action.
+11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
+    (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
+
+**Phase C - Product gaps (widget §3 + master 6.4/6.6; tasks #52, #59, #60)**
+12. C1: widget add-ons (PER_PERSON x party / FLAT once, maxQuantity) into totals + reserve payload.
+13. C2: `bookingCutoffMinutes` consumed in the widget (server already computes it);
+    `pickupRequired` enforcement + pickup surfacing widget-side; `instantConfirmation` +
+    `bookingType` affordances.
+14. C3: B.34 booking-lookup login (email + `display_ref`, rate-limited) - the account fallback
+    half of master 6.4.
+15. C4 = WA2/WA3: WhatsApp placements per master 6.6 (footer, tour description, error states) +
+    email footer CTA/anti-fraud line, `?text={greeting}` x7 locales.
+
+**Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
+16. D1: real FX provider implementation behind the ready seam (Stripe FX Quotes) + currency-change
+    guard on `defaultCurrency`.
+17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
+    completion, quote-currency 5C (#28).
+18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator
+    non-payment forfeit flow (guide §15), Mollie webhook confirm (Mollie stays block-commented).
+
+Blocked-on-founder ledger: GTM/Pixel/CMP creds (A5), Resend confirm (B1), two Cloudinary
+accounts, `start:prod` path bug, Segoe-UI Gmail fallback (wireframe edit), master wording update
+for the superseded "lowest applicable" from-price line.
