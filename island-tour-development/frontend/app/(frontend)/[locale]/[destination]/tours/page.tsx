@@ -5,7 +5,7 @@ import { ToursBreadcrumb } from '@/components/frontend/tours/tours-breadcrumb';
 import { ToursTrustStrip } from '@/components/frontend/tours/tours-trust-strip';
 import { ToursHeaderSection } from '@/components/frontend/tours/tours-header-section';
 import { ToursListingSection } from '@/components/frontend/tours/tours-listing-section';
-import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
+import { ToursListingSkeleton } from '@/components/frontend/skeletons/tours-page-skeleton';
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';

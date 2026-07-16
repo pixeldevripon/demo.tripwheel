@@ -1,4 +1,4 @@
-import { DestinationPageSkeleton } from '@/components/skelitons/destination-page-skeleton';
+import { DestinationPageSkeleton } from '@/components/frontend/skeletons/destination-page-skeleton';
 
 /**
  * Route-level loading UI for `/[locale]/[destination]`. Shown during client

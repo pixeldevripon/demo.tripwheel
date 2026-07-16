@@ -1,7 +1,7 @@
 import { CheckoutClient } from '@/components/frontend/checkout/checkout-client';
 import type { CheckoutPickupOption } from '@/components/frontend/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/frontend/checkout/checkout-summary';
-import { CheckoutPageSkeleton } from '@/components/skelitons/checkout-page-skeleton';
+import { CheckoutPageSkeleton } from '@/components/frontend/skeletons/checkout-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import { getDestinationTours, getTourBySlug } from '@/lib/api/public/tours';
 import {

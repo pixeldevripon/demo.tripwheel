@@ -1,5 +1,5 @@
 import { OnboardingForm } from '@/components/onboarding/onboarding-form';
-import OnboardingSkeleton from '@/components/skelitons/onboarding-skelitons';
+import OnboardingSkeleton from '@/components/dashboard/skeletons/onboarding-skeletons';
 import { authClient } from '@/lib/auth-client';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';

@@ -1,4 +1,4 @@
-import { HubTripsPanelSkeleton } from '@/components/skelitons/hub-trips-panel-skeleton';
+import { HubTripsPanelSkeleton } from '@/components/frontend/skeletons/hub-trips-panel-skeleton';
 import {
     getDestinationBySlug,
     getDestinationCategories,

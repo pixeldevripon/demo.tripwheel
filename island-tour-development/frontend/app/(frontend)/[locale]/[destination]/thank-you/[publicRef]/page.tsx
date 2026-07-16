@@ -4,7 +4,7 @@ import { ThankYouNextSteps } from '@/components/frontend/thank-you/thank-you-nex
 import { ThankYouQuestion } from '@/components/frontend/thank-you/thank-you-question';
 import { ThankYouRelatedTours } from '@/components/frontend/thank-you/thank-you-related-tours';
 import { ThankYouSummary } from '@/components/frontend/thank-you/thank-you-summary';
-import { ThankYouPageSkeleton } from '@/components/skelitons/thank-you-page-skeleton';
+import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import {
     DEFAULT_LOCALE,

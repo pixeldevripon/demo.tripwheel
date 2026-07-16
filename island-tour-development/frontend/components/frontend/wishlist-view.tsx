@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { TourCard, type TourCardDict } from '@/components/frontend/tour-card';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
-import { WishlistSkeleton } from '@/components/skelitons/wishlist-skeleton';
+import { WishlistSkeleton } from '@/components/frontend/skeletons/wishlist-skeleton';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';

@@ -34,7 +34,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Suspense, use, useState } from 'react';
 
-import { StatisticsSkeleton } from '@/components/skelitons/statistics-skeleton';
+import { StatisticsSkeleton } from '@/components/dashboard/skeletons/statistics-skeleton';
 import {
     Area,
     AreaChart,

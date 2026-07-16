@@ -1,7 +1,7 @@
 'use client';
 
-import { AppSidebar } from '@/components/app-sidebar';
-import { SiteHeader } from '@/components/site-header';
+import { AppSidebar } from '@/components/dashboard/shell/app-sidebar';
+import { SiteHeader } from '@/components/dashboard/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
 import { pageEnter } from '@/lib/motion';

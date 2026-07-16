@@ -1,4 +1,4 @@
-import { ModeToggle } from "@/components/mode-toggle"
+import { ModeToggle } from "@/components/dashboard/shell/mode-toggle"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"

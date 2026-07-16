@@ -1,4 +1,4 @@
-import { ToursListingSkeleton } from '@/components/skelitons/tours-page-skeleton';
+import { ToursListingSkeleton } from '@/components/frontend/skeletons/tours-page-skeleton';
 import {
     getCategoryBySlugForDestination,
     getCategoryFaqs,

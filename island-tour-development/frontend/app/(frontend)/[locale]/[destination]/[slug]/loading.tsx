@@ -1,4 +1,4 @@
-import { EntityPageSkeleton } from '@/components/skelitons/entity-page-skeleton';
+import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 
 /**
  * Segment loading UI for the polymorphic `/{locale}/{destination}/{slug}` route.

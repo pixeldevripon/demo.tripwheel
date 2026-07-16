@@ -1,4 +1,4 @@
-import { SmoothScroll } from '@/components/smooth-scroll';
+import { SmoothScroll } from '@/components/frontend/smooth-scroll';
 
 export default function FrontendLayout({
     children,

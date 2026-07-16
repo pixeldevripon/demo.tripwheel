@@ -1,4 +1,4 @@
-import { CheckoutPageSkeleton } from '@/components/skelitons/checkout-page-skeleton';
+import { CheckoutPageSkeleton } from '@/components/frontend/skeletons/checkout-page-skeleton';
 
 /**
  * Checkout route skeleton - renders the shared `CheckoutPageSkeleton` (back

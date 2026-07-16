@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 
 import { SearchResultsSection } from '@/components/frontend/search/search-results-section';
-import { SearchResultsSkeleton } from '@/components/skelitons/search-page-skeleton';
+import { SearchResultsSkeleton } from '@/components/frontend/skeletons/search-page-skeleton';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
