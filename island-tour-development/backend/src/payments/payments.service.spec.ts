@@ -6,8 +6,10 @@ import {
   BookingStatus,
   PaymentKind,
   PaymentModel,
+  PaymentProvider,
   PaymentStatus,
   Prisma,
+  Role,
 } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 
@@ -16,7 +18,13 @@ const D = (v: string | number) => new Prisma.Decimal(v);
 function mockPrisma() {
   return {
     booking: { findUnique: jest.fn() },
-    payment: { upsert: jest.fn(), updateMany: jest.fn() },
+    payment: {
+      upsert: jest.fn(),
+      updateMany: jest.fn(),
+      count: jest.fn(),
+      findMany: jest.fn(),
+    },
+    operator: { findUnique: jest.fn() },
     stripeWebhookEvent: { create: jest.fn(), update: jest.fn() },
     mollieWebhookEvent: { create: jest.fn(), update: jest.fn() },
   } as any;
@@ -69,6 +77,84 @@ describe('PaymentsService', () => {
     };
     bookings = { confirmFromPayment: jest.fn().mockResolvedValue(undefined) };
     svc = new PaymentsService(prisma, stripe, bookings);
+  });
+
+  // Dashboard payments table (DASH2): scoping + row mapping.
+  describe('list (dashboard)', () => {
+    const paymentRow = (over: Record<string, unknown> = {}) => ({
+      id: 'pay1',
+      bookingId: 'b1',
+      provider: PaymentProvider.STRIPE,
+      kind: PaymentKind.DEPOSIT,
+      status: PaymentStatus.SUCCEEDED,
+      amount: D('41.99'),
+      currency: 'EUR',
+      intentId: 'pi_1',
+      methodType: 'card',
+      createdAt: new Date('2030-06-01T10:00:00.000Z'),
+      updatedAt: new Date('2030-06-01T10:05:00.000Z'),
+      booking: {
+        displayRef: 'IT-2026-AAAA',
+        publicRef: 'pub-1',
+        contactFullName: 'Jane Doe',
+        localDate: new Date('2030-06-05T00:00:00.000Z'),
+        paymentModel: PaymentModel.OPERATOR_LINK,
+        tour: { name: 'Klein Curacao Day Trip' },
+      },
+      ...over,
+    });
+
+    it('maps the row with booking context (admin, no scope filter)', async () => {
+      prisma.payment.count.mockResolvedValue(1);
+      prisma.payment.findMany.mockResolvedValue([paymentRow()]);
+      const res = await svc.list({}, { id: 'admin-1', role: Role.ADMIN });
+      expect(res.total).toBe(1);
+      const row = res.data[0];
+      expect(row.amount).toBe('41.99');
+      expect(row.bookingDisplayRef).toBe('IT-2026-AAAA');
+      expect(row.tourName).toBe('Klein Curacao Day Trip');
+      expect(row.bookingLocalDate).toBe('2030-06-05');
+      const args = prisma.payment.findMany.mock.calls.at(-1)[0];
+      expect(args.where.booking).toBeUndefined();
+    });
+
+    it('scopes TOUR_OPERATOR to payments on their own tours', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-9' });
+      prisma.payment.count.mockResolvedValue(0);
+      prisma.payment.findMany.mockResolvedValue([]);
+      await svc.list({}, { id: 'user-9', role: Role.TOUR_OPERATOR });
+      const args = prisma.payment.findMany.mock.calls.at(-1)[0];
+      expect(args.where.booking).toEqual({ operatorId: 'op-9' });
+    });
+
+    it('applies status/kind/search/date filters', async () => {
+      prisma.payment.count.mockResolvedValue(0);
+      prisma.payment.findMany.mockResolvedValue([]);
+      await svc.list(
+        {
+          status: PaymentStatus.FAILED,
+          kind: PaymentKind.DEPOSIT,
+          search: 'pi_1',
+          from: '2030-06-01',
+          to: '2030-06-30',
+        },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const args = prisma.payment.findMany.mock.calls.at(-1)[0];
+      expect(args.where.status).toBe(PaymentStatus.FAILED);
+      expect(args.where.kind).toBe(PaymentKind.DEPOSIT);
+      expect(args.where.OR).toEqual(
+        expect.arrayContaining([
+          { intentId: { contains: 'pi_1', mode: 'insensitive' } },
+        ]),
+      );
+      expect(args.where.createdAt.gte).toEqual(
+        new Date('2030-06-01T00:00:00.000Z'),
+      );
+      expect(args.where.createdAt.lte).toEqual(
+        new Date('2030-06-30T23:59:59.999Z'),
+      );
+    });
   });
 
   describe('createIntentForBooking', () => {

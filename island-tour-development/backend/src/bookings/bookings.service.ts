@@ -1727,6 +1727,19 @@ export class BookingsService {
 
     if (query.tourId) where.tourId = query.tourId;
     if (query.status) where.status = query.status;
+    if (query.paymentModel) where.paymentModel = query.paymentModel;
+    if (query.cancellationRequested)
+      where.utcCancellationRequestedAt = { not: null };
+    if (query.search?.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { displayRef: { contains: q, mode: 'insensitive' } },
+        { publicRef: { contains: q, mode: 'insensitive' } },
+        { contactFullName: { contains: q, mode: 'insensitive' } },
+        { contactEmail: { contains: q, mode: 'insensitive' } },
+        { tour: { name: { contains: q, mode: 'insensitive' } } },
+      ];
+    }
     if (query.from || query.to) {
       where.localDate = {};
       if (query.from)
@@ -1738,13 +1751,20 @@ export class BookingsService {
       this.prisma.booking.count({ where }),
       this.prisma.booking.findMany({
         where,
-        include: { unitItems: true },
-        orderBy: { createdAt: 'desc' },
+        include: {
+          unitItems: true,
+          tour: { select: { name: true, cancellationHours: true } },
+        },
+        // Cancellation-request queues surface oldest-unprocessed first;
+        // everything else reads newest bookings first.
+        orderBy: query.cancellationRequested
+          ? { utcCancellationRequestedAt: 'asc' }
+          : { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
     ]);
-    return { total, page, limit, data: rows.map(mapBooking) };
+    return { total, page, limit, data: rows.map(mapBookingListItem) };
   }
 
   // ── internals ──────────────────────────────────────────────────────────────
@@ -2137,6 +2157,41 @@ function unitCharterLabel(type: WholeUnitType | null): string {
     default:
       return 'Charter';
   }
+}
+
+/**
+ * Dashboard list row: the booking plus display context (tour name, guest
+ * contact, party size, cancellation-request judgement). The free-cancellation
+ * deadline is computed (start - cancellationHours, wall clock - guide §14) and
+ * the in/out-of-window verdict is judged at the REQUEST instant (C23), so the
+ * admin queue shows the refund entitlement without recomputing it client-side.
+ */
+function mapBookingListItem(
+  b: BookingWithItems & {
+    tour: { name: string; cancellationHours: number };
+  },
+) {
+  const deadline = b.tourStartDateTime
+    ? new Date(
+        b.tourStartDateTime.getTime() - b.tour.cancellationHours * 3_600_000,
+      )
+    : null;
+  return {
+    ...mapBooking(b),
+    tourName: b.tour.name,
+    contactFullName: b.contactFullName,
+    contactEmail: b.contactEmail,
+    partySize: b.unitItems.length,
+    createdAt: b.createdAt.toISOString(),
+    utcCancellationRequestedAt: b.utcCancellationRequestedAt
+      ? b.utcCancellationRequestedAt.toISOString()
+      : null,
+    freeCancelDeadline: deadline ? deadline.toISOString() : null,
+    requestedInFreeWindow:
+      b.utcCancellationRequestedAt && deadline
+        ? b.utcCancellationRequestedAt.getTime() <= deadline.getTime()
+        : null,
+  };
 }
 
 function mapBooking(b: BookingWithItems) {

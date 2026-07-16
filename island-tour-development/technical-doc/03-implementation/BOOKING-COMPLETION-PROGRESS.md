@@ -712,11 +712,34 @@ Founder queued two items ahead of the tracking push (#42/#39):
   (verified: priceFrom = default-band price, cheapest ignored). Frontend reads `priceFrom` as-is -
   zero client changes. NOTE: master field-table line "'from' price on cards is the lowest
   applicable" is SUPERSEDED by this founder decision; master wording needs an update.
-- [ ] **DASH1 - `/dashboard/bookings` list page** (TanStack table like tours: pagination, filters,
-  search, date-range; backend list endpoint + operator scoping; RBAC-gated).
-- [ ] **DASH2 - `/dashboard/payments` list page** (same table pattern + endpoint + gating).
-- [ ] **DASH3 - `/dashboard/cancellation-requests` page** (bookings with
-  `utcCancellationRequestedAt`; admin executes master 6.4 from here; same pattern).
+- [x] **DASH1 - `/dashboard/bookings` list page.** Backend `GET /bookings` extended (`search` on
+  refs/guest/tour, `paymentModel`, `cancellationRequested`; `BookingListItemDto` adds tourName,
+  contact, partySize, createdAt, freeCancelDeadline + `requestedInFreeWindow` judged at the
+  REQUEST instant per C23). Frontend TanStack table mirroring the trips table (debounced search,
+  status/model selects, travel-date range inputs, columns toggle, server pagination); commission
+  columns ADMIN-only (rule #22 snapshot); row actions = details dialog, copy ref, admin
+  "Mark cancelled" (ConfirmDialog -> `POST /bookings/:id/cancel`, EDIT_BOOKING-gated, refund
+  verdict shown in the confirm copy). `Code:` `components/dashboard/bookings/*`,
+  `lib/api/bookings-dashboard.ts`, `hooks/bookings/use-bookings.ts`, `types/booking.ts`.
+- [x] **DASH2 - `/dashboard/payments` list page.** NEW backend `GET /payments`
+  (`@RequirePermissions(VIEW_PAYMENTS)`, operator scoping via `booking.operatorId`, filters
+  status/kind/provider/search/created-date-range) + same table pattern (amount+kind, provider/
+  method + intent id, booking context columns). `Code:` `payments.service.ts:list`,
+  `components/dashboard/payments/*`, `hooks/payments/use-payments.ts`.
+- [x] **DASH3 - `/dashboard/cancellation-requests` queue.** Bookings table in queue mode
+  (`cancellationRequested=true`, OLDEST request first) with Requested / Free-window / Refund-due
+  columns. This is master 6.4's "admin marks cancelled" done properly (master v1 literally says
+  "admin marks cancelled in Supabase"; the queue replaces raw DB edits - C23 copy + 3-party
+  notification flow unchanged; REAL refund money movement stays CP6). New nav item + page gated
+  `VIEW_BOOKINGS`; TOUR_OPERATOR granted `VIEW_BOOKINGS` in BOTH role configs (master roles doc:
+  operators "view own bookings"; scoping is server-side).
+- **Master answers recorded (founder asked mid-build):** admin visibility = the
+  `VIEW_BOOKINGS`/`MANAGE_BOOKINGS` + `VIEW_PAYMENTS` permission tier (roles doc table); the
+  master has NO separate "commission listing" page - commission is the per-booking snapshot
+  (rule #22) surfaced as admin-only columns on Bookings, and the true commission/settlement
+  REPORT arrives with the CP4 settlements ledger.
+- Verified: backend 1063 tests / 50 suites green (new `list (dashboard)` specs in both services);
+  frontend `pnpm build` green.
 
 - [x] **PRICE2 - widget shows exact decimal prices.** The card rounded every amount to whole units
   (Senior $63.75 rendered "$64" in the From header + band labels while the quote total said

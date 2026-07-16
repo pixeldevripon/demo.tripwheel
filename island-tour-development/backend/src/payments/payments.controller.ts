@@ -2,20 +2,27 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { Permission } from '@prisma/client';
 import { Public } from '@/auth/decorators/public.decorator';
+import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
+import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
+import type { TypedAuthUser } from '@/auth/auth.types';
 import { PaymentsService } from './payments.service';
-import { MollieWebhookDto } from './dto/payment.dto';
+import { ListPaymentsQueryDto, MollieWebhookDto } from './dto/payment.dto';
 import {
   ApiCreateIntentDocs,
+  ApiListPaymentsDocs,
   ApiMollieWebhookDocs,
   ApiStripeWebhookDocs,
 } from './payments.swagger';
@@ -32,6 +39,16 @@ import {
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
+
+  @Get()
+  @RequirePermissions(Permission.VIEW_PAYMENTS)
+  @ApiListPaymentsDocs()
+  list(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: ListPaymentsQueryDto,
+  ) {
+    return this.payments.list(query, { id: user.id, role: user.role });
+  }
 
   @Post('bookings/:id/intent')
   @Public()

@@ -211,15 +211,24 @@ Three new dashboard menus, each reusing the tours TanStack table pattern (same U
 comprehensive filters, search, date-range) and permission-gated per master RBAC + `lib/config/rbac.ts`
 (operators scoped to their own tours' rows; admin sees all).
 
-- [ ] **Bookings list page** (`/dashboard/bookings`): ref, tour, traveller, date, party, payment
-  model, amounts, status; backend list endpoint w/ query DTO (status/model/date-range/search) +
-  operator scoping. `Task:` DASH1
-- [ ] **Payments list page** (`/dashboard/payments`): booking ref, tour, charged/deposit/balance,
-  currency, intent status, model, timestamps; backend endpoint + scoping. `Task:` DASH2
-- [ ] **Cancellation Requests page** (`/dashboard/cancellation-requests`): bookings with
-  `utcCancellationRequestedAt` set - requested-at, tour date, in/out of free-window judgement,
-  refund amount, status. This is where the admin executes master 6.4 (mark cancelled -> final
-  emails + CP6 refund). `Task:` DASH3
+- [x] **Bookings list page** (`/dashboard/bookings`) - BUILT 2026-07-16. Backend: `GET /bookings`
+  query DTO extended (`search` on refs/guest/tour, `paymentModel`, `cancellationRequested`) +
+  `BookingListItemDto` (tourName, contact, partySize, createdAt, freeCancelDeadline,
+  requestedInFreeWindow judged at request instant per C23). Frontend: reusable TanStack table
+  (search, status/model selects, travel-date range, columns toggle, pagination), commission
+  columns ADMIN-only (rule #22), row actions (details dialog, copy ref, admin Mark cancelled via
+  `POST /bookings/:id/cancel`). `Code:` `components/dashboard/bookings/*`,
+  `lib/api/bookings-dashboard.ts`, `hooks/bookings/use-bookings.ts`
+- [x] **Payments list page** (`/dashboard/payments`) - BUILT 2026-07-16. Backend: NEW
+  `GET /payments` (`@RequirePermissions(VIEW_PAYMENTS)`, operator scoped via `booking.operatorId`,
+  filters status/kind/provider/search/created-range). Frontend: same table pattern.
+  `Code:` `payments.service.ts:list`, `components/dashboard/payments/*`
+- [x] **Cancellation Requests page** (`/dashboard/cancellation-requests`) - BUILT 2026-07-16.
+  Same bookings table in queue mode (`cancellationRequested=true`, OLDEST request first) with
+  Requested / Free-window / Refund-due columns; admin executes master 6.4 "marks cancelled" from
+  the row action (refund STILL manual until CP6 wires real Stripe refunds). Operator role granted
+  `VIEW_BOOKINGS` in BOTH role configs (master roles doc: operators "view own bookings"; scoping
+  server-side). Nav: new "Cancellation Requests" item gated on `VIEW_BOOKINGS`.
 
 ---
 

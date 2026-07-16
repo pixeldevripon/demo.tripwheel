@@ -16,6 +16,7 @@ import {
 import {
   BookingQuoteResponseDto,
   BookingResponseDto,
+  ListBookingsResponseDto,
   RequestCancellationResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
@@ -176,5 +177,5 @@ export const ApiListBookingsDocs = () =>
       summary:
         'List bookings (admin: all · operator: their tours · user: their own)',
     }),
-    ApiOkResponse({ type: BookingResponseDto, isArray: true }),
+    ApiOkResponse({ type: ListBookingsResponseDto }),
   );

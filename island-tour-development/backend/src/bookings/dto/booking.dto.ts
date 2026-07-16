@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -270,6 +270,46 @@ export class BookingResponseDto {
   cancellationRefund!: CancellationRefund | null;
   @ApiProperty({ type: [BookingUnitItemResponseDto] })
   unitItems!: BookingUnitItemResponseDto[];
+}
+
+/**
+ * One row of the dashboard bookings/cancellation-requests tables: the booking
+ * plus the display context the list needs (tour name, guest contact, request
+ * timestamps and the computed free-window judgement).
+ */
+export class BookingListItemDto extends BookingResponseDto {
+  @ApiProperty({ example: 'Klein Curacao Day Trip' }) tourName!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'Jane Doe' })
+  contactFullName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'jane@example.com' })
+  contactEmail!: string | null;
+  @ApiProperty({ example: 4 }) partySize!: number;
+  @ApiProperty() createdAt!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'When the traveller requested cancellation (master 6.4).',
+  })
+  utcCancellationRequestedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Free-cancellation deadline (tour start - cancellationHours, wall clock).',
+  })
+  freeCancelDeadline!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Whether the cancellation request landed inside the free window ' +
+      '(judged at the request instant - C23). Null when never requested.',
+  })
+  requestedInFreeWindow!: boolean | null;
+}
+
+export class ListBookingsResponseDto {
+  @ApiProperty({ example: 128 }) total!: number;
+  @ApiProperty({ example: 1 }) page!: number;
+  @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ type: [BookingListItemDto] }) data!: BookingListItemDto[];
 }
 
 /** One priced row of a quote breakdown (age-band participants or an add-on). */
@@ -708,6 +748,30 @@ export class ListBookingsQueryDto {
   @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
+
+  @ApiPropertyOptional({ enum: PaymentModel })
+  @IsOptional()
+  @IsEnum(PaymentModel)
+  paymentModel?: PaymentModel;
+
+  @ApiPropertyOptional({
+    example: 'IT-2026-0A1B2C',
+    description: 'Matches booking refs, guest name/email, or tour name.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Only bookings where the traveller requested cancellation (master 6.4).',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  cancellationRequested?: boolean;
 
   @ApiPropertyOptional({ example: '2026-07-01' })
   @IsOptional()
