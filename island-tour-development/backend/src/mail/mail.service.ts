@@ -1,12 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as fs from 'fs';
 import * as nodemailer from 'nodemailer';
+import * as path from 'path';
 import {
-  bookingConfirmationTemplate,
   emailVerificationTemplate,
   operatorInviteTemplate,
   passwordResetTemplate,
-  type BookingConfirmationTemplateProps,
 } from './templates';
+import {
+  findUnresolvedTokens,
+  renderEmailTemplate,
+  type EmailTemplateContext,
+} from './templates/email-template.renderer';
+
+/**
+ * The LOCKED confirmation-email template (master 6.5 + its HTML wireframe), read
+ * once at boot. It is design-owned markup rather than TypeScript, so `nest build`
+ * has to copy it: see the `assets` entry in `nest-cli.json` - without it this throws
+ * at startup in production while passing every test locally.
+ */
+const BOOKING_CONFIRMATION_TEMPLATE = fs.readFileSync(
+  path.join(__dirname, 'templates', 'booking-confirmation-email.template.html'),
+  'utf8',
+);
 
 export interface SendMailOptions {
   to: string;
@@ -118,15 +134,36 @@ export class MailService {
   }
 
   // ── Booking confirmation ────────────────────────────────────────────────────
+
+  /**
+   * Render + send the locked confirmation template. The caller owns the token
+   * context (`bookings/booking-email.context.ts`) and the subject, so this stays a
+   * transport concern.
+   *
+   * A token the context forgot is left literal by the renderer, which would email a
+   * raw `{whatToBring}`. The template spec is the real guard, but tests only cover
+   * the shapes they enumerate - so log loudly here too rather than let a genuinely
+   * novel booking ship broken copy to a traveler.
+   */
   async sendBookingConfirmationEmail(
     to: string,
-    props: BookingConfirmationTemplateProps,
+    subject: string,
+    context: EmailTemplateContext,
+    text: string,
   ): Promise<void> {
-    const { html, text } = bookingConfirmationTemplate(props);
+    const missing = findUnresolvedTokens(
+      BOOKING_CONFIRMATION_TEMPLATE,
+      context,
+    );
+    if (missing.length) {
+      this.logger.error(
+        `Confirmation email context is missing tokens: ${missing.join(', ')}`,
+      );
+    }
     await this.sendMail({
       to,
-      subject: `Booking confirmed - ${props.displayRef}`,
-      html,
+      subject,
+      html: renderEmailTemplate(BOOKING_CONFIRMATION_TEMPLATE, context),
       text,
     });
   }

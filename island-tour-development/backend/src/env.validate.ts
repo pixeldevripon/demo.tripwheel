@@ -56,6 +56,12 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
     if (v.length < 12) return 'must be at least 12 characters';
     return null;
   },
+  // Public origin for API links opened OUTSIDE the app (the confirmation email's
+  // "Add to calendar" .ics link, clicked in a mail client with no session).
+  // Defaults to BETTER_AUTH_URL, which is this API's own public origin; set only
+  // when the API is fronted by a different hostname.
+  PUBLIC_API_URL: (v) =>
+    /^https?:\/\//.test(v) ? null : 'must be an absolute http(s) URL',
   SMTP_HOST: () => null,
   SMTP_PORT: (v) =>
     isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null,

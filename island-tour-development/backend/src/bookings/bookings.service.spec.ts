@@ -41,7 +41,11 @@ function mockPrisma() {
       count: jest.fn(),
       findMany: jest.fn(),
     },
-    tour: { findUnique: jest.fn() },
+    tour: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    // The confirmation email reads site branding (logo + WhatsApp). Default to the
+    // singleton being absent: the template's wordmark/no-WhatsApp fallbacks are the
+    // correct render then, and no test should depend on real settings rows.
+    siteInfo: { findFirst: jest.fn().mockResolvedValue(null) },
     departure: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -988,26 +992,47 @@ describe('BookingsService', () => {
         ...over,
       });
 
+    /** The shape the confirmation-email loader selects (relations included). */
+    const emailTour = (over: Record<string, unknown> = {}) => ({
+      name: 'Klein Curacao Day Trip',
+      slug: 'klein-curacao-day-trip',
+      durationMinutesFrom: 540,
+      cancellationHours: 48,
+      checkInMinutesBefore: 30,
+      meetingPointLat: null,
+      meetingPointLng: null,
+      destinationId: 'd1',
+      destination: { name: 'Curacao', slug: 'curacao' },
+      ageBands: [],
+      images: [],
+      languages: [],
+      translations: [],
+      locations: [],
+      ...over,
+    });
+
     it('resends to the address stored on the booking', async () => {
       m.booking.findUnique.mockResolvedValue(confirmed());
-      m.tour.findUnique.mockResolvedValue({ name: 'Klein Curacao Day Trip' });
+      m.tour.findUnique.mockResolvedValue(emailTour());
 
       await expect(svc.resendConfirmation('p1')).resolves.toEqual({
         sent: true,
       });
 
       expect(mail.sendBookingConfirmationEmail).toHaveBeenCalledTimes(1);
-      const [to, props] = mail.sendBookingConfirmationEmail.mock.calls[0];
+      const [to, subject, context] =
+        mail.sendBookingConfirmationEmail.mock.calls[0];
       // The recipient must come from the record, never from the caller - this is
       // what stops a @Public endpoint being an open relay.
       expect(to).toBe('guest@example.test');
-      expect(props.displayRef).toBe('IT-2030-AAAA');
-      expect(props.tourTitle).toBe('Klein Curacao Day Trip');
+      expect(context.bookingRef).toBe('IT-2030-AAAA');
+      expect(context.tourName).toBe('Klein Curacao Day Trip');
+      expect(subject).toContain('Klein Curacao Day Trip');
     });
 
     it('looks the booking up by publicRef, not id', async () => {
       m.booking.findUnique.mockResolvedValue(confirmed());
-      m.tour.findUnique.mockResolvedValue({ name: 'T' });
+      m.tour.findUnique.mockResolvedValue(emailTour());
       await svc.resendConfirmation('p1');
       expect(m.booking.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({ where: { publicRef: 'p1' } }),
@@ -1045,7 +1070,7 @@ describe('BookingsService', () => {
 
     it('propagates a send failure (unlike confirm, which swallows it)', async () => {
       m.booking.findUnique.mockResolvedValue(confirmed());
-      m.tour.findUnique.mockResolvedValue({ name: 'T' });
+      m.tour.findUnique.mockResolvedValue(emailTour());
       mail.sendBookingConfirmationEmail.mockRejectedValueOnce(
         new Error('smtp down'),
       );

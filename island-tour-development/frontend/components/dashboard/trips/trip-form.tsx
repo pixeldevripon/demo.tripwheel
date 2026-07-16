@@ -79,6 +79,7 @@ const createTripSchema = z.object({
   pickupRequired: z.boolean(),
   bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
   paymentModel: z.enum(['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL']),
+  onArrivalPayment: z.enum(['CARD_OR_CASH', 'CASH_ONLY']),
   instantConfirmation: z.boolean(),
   minPartySize: z.coerce.number().int().min(1).optional(),
   maxPartySize: z.coerce.number().int().min(1).optional().or(z.literal('')),
@@ -133,6 +134,7 @@ type CreateTripFormValues = {
   pickupRequired: boolean;
   bookingType: '' | 'PRIVATE' | 'SHARED';
   paymentModel: 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+  onArrivalPayment: 'CARD_OR_CASH' | 'CASH_ONLY';
   instantConfirmation: boolean;
   minPartySize: string;
   maxPartySize: string;
@@ -185,6 +187,7 @@ export function TripForm() {
       pickupRequired: false,
       bookingType: '',
       paymentModel: 'OPERATOR_LINK',
+      onArrivalPayment: 'CARD_OR_CASH',
       instantConfirmation: true,
       minPartySize: '1',
       maxPartySize: '',
@@ -206,6 +209,7 @@ export function TripForm() {
   const destinationId = watch('destinationId');
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
+  const watchedPaymentModel = watch('paymentModel');
   const pricingModel = watch('pricingModel');
   const wholeUnitType = watch('wholeUnitType');
   const isGroupUnit = pricingModel === 'UNIT' && wholeUnitType === 'GROUP';
@@ -262,6 +266,7 @@ export function TripForm() {
         pickupRequired: values.pickupRequired,
         bookingType: values.bookingType || undefined,
         paymentModel: values.paymentModel,
+        onArrivalPayment: values.onArrivalPayment,
         instantConfirmation: values.instantConfirmation,
         minPartySize: Number(values.minPartySize),
         maxPartySize: values.maxPartySize ? Number(values.maxPartySize) : undefined,
@@ -648,6 +653,38 @@ export function TripForm() {
               <FieldDescription>Free-cancellation window before departure.</FieldDescription>
             </Field>
           </div>
+
+          {/* Only ON_ARRIVAL tours collect on site, so this is meaningless on any
+              other model. It picks between the two on_arrival confirmation-email
+              variants, and each booking snapshots it at reserve. */}
+          {watchedPaymentModel === 'ON_ARRIVAL' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  On-arrival Payment
+                </Label>
+                <Controller
+                  name="onArrivalPayment"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CARD_OR_CASH">Card or cash</SelectItem>
+                        <SelectItem value="CASH_ONLY">Cash only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldDescription>
+                  Cash only tells travellers to bring the balance in cash, since there
+                  is no card machine or ATM on site.
+                </FieldDescription>
+              </Field>
+            </div>
+          )}
 
           <p className="text-xs text-muted-foreground">
             Pickup, party size, booking cutoff, meeting point, audience and

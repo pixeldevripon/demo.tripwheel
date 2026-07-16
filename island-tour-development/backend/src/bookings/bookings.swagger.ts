@@ -120,6 +120,31 @@ export const ApiResendConfirmationDocs = () =>
     }),
   );
 
+export const ApiCalendarDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Download the booking as an .ics calendar file (public TYP token)',
+      description:
+        'Backs the confirmation email\'s "Add to calendar" link, so it is opened straight from ' +
+        'a mail client with no session. Keyed on the unguessable publicRef and limited to the ' +
+        'details the email already carries. Confirmed bookings only. Times are real UTC instants.',
+    }),
+    ApiOkResponse({
+      description: 'RFC 5545 VCALENDAR with a single VEVENT.',
+      content: { 'text/calendar': { schema: { type: 'string' } } },
+    }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description: 'Booking is not CONFIRMED, so it has no calendar entry',
+    }),
+    ApiUnprocessableEntityResponse({
+      description:
+        'Booking has no resolvable start instant (no timezone snapshot).',
+    }),
+  );
+
 export const ApiGetBookingDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'Get a booking by uuid (auth-scoped)' }),

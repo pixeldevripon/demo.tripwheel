@@ -222,6 +222,7 @@ const detailsSchema = z.object({
   pickupRequired: z.boolean(),
   bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
   paymentModel: z.enum(['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL']),
+  onArrivalPayment: z.enum(['CARD_OR_CASH', 'CASH_ONLY']),
   instantConfirmation: z.boolean(),
   minPartySize: z.coerce.number().int().min(1),
   maxPartySize: z.coerce.number().int().min(1).optional().or(z.literal('')),
@@ -264,6 +265,7 @@ type DetailsFormValues = {
   pickupRequired: boolean;
   bookingType: '' | 'PRIVATE' | 'SHARED';
   paymentModel: 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+  onArrivalPayment: 'CARD_OR_CASH' | 'CASH_ONLY';
   instantConfirmation: boolean;
   minPartySize: string;
   maxPartySize: string;
@@ -312,6 +314,7 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     pickupRequired: trip.pickupRequired,
     bookingType: trip.bookingType ?? '',
     paymentModel: trip.paymentModel,
+    onArrivalPayment: trip.onArrivalPayment ?? 'CARD_OR_CASH',
     instantConfirmation: trip.instantConfirmation,
     minPartySize: String(trip.minPartySize),
     maxPartySize: trip.maxPartySize != null ? String(trip.maxPartySize) : '',
@@ -387,6 +390,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const primaryCategoryId = watch('primaryCategoryId');
   const durationFromWatch = watch('durationMinutesFrom');
   const pickupRequired = watch('pickupRequired');
+  const watchedPaymentModel = watch('paymentModel');
   const instantConfirmation = watch('instantConfirmation');
   const weatherDependent = watch('weatherDependent');
   const wheelchairAccessible = watch('wheelchairAccessible');
@@ -421,6 +425,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           pickupRequired: values.pickupRequired,
           bookingType: values.bookingType || undefined,
           paymentModel: values.paymentModel,
+          onArrivalPayment: values.onArrivalPayment,
           instantConfirmation: values.instantConfirmation,
           minPartySize: Number(values.minPartySize),
           maxPartySize: values.maxPartySize ? Number(values.maxPartySize) : undefined,
@@ -652,6 +657,39 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
               />
             </Field>
           </div>
+
+          {/* Only ON_ARRIVAL tours collect on site, so this is meaningless on any
+              other model. It picks between the two on_arrival confirmation-email
+              variants, and each booking snapshots it at reserve - editing it never
+              rewrites what an existing traveler was already told. */}
+          {watchedPaymentModel === 'ON_ARRIVAL' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  On-arrival Payment
+                </Label>
+                <Controller
+                  name="onArrivalPayment"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CARD_OR_CASH">Card or cash</SelectItem>
+                        <SelectItem value="CASH_ONLY">Cash only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cash only tells travellers to bring the balance in cash, since there
+                  is no card machine or ATM on site.
+                </p>
+              </Field>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">

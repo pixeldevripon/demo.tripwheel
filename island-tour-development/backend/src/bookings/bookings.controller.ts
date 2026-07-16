@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Post,
@@ -23,6 +24,7 @@ import {
   UpdateBookingDto,
 } from './dto/booking.dto';
 import {
+  ApiCalendarDocs,
   ApiCancelDocs,
   ApiConfirmDocs,
   ApiExtendDocs,
@@ -138,6 +140,28 @@ export class BookingsController {
   @ApiResendConfirmationDocs()
   resendConfirmation(@Param('publicRef') publicRef: string) {
     return this.bookings.resendConfirmation(publicRef);
+  }
+
+  /**
+   * GET /bookings/typ/:publicRef/calendar.ics
+   *
+   * The confirmation email's "Add to calendar" link. `@Public` and keyed on the
+   * unguessable `publicRef` because it is opened straight from an email client,
+   * which carries no session.
+   *
+   * Returns `text/calendar` as an attachment so mail clients and browsers hand it
+   * to the OS calendar rather than rendering it as text.
+   */
+  @Get('typ/:publicRef/calendar.ics')
+  @Public()
+  @Header('Content-Type', 'text/calendar; charset=utf-8')
+  @Header(
+    'Content-Disposition',
+    'attachment; filename="island-tours-booking.ics"',
+  )
+  @ApiCalendarDocs()
+  calendar(@Param('publicRef') publicRef: string) {
+    return this.bookings.getCalendar(publicRef);
   }
 
   @Get()

@@ -116,6 +116,7 @@ export class ToursService {
     instantConfirmation: true,
     // Booking / payment (master E.3)
     paymentModel: true,
+    onArrivalPayment: true,
     depositPct: true,
     bookingType: true,
     // Meeting point / departure (master E.3)
@@ -1728,6 +1729,9 @@ export class ToursService {
             ...(dto.paymentModel !== undefined && {
               paymentModel: dto.paymentModel,
             }),
+            ...(dto.onArrivalPayment !== undefined && {
+              onArrivalPayment: dto.onArrivalPayment,
+            }),
             bookingType: dto.bookingType ?? null,
             meetingPointLat: dto.meetingPointLat ?? null,
             meetingPointLng: dto.meetingPointLng ?? null,
@@ -1987,6 +1991,11 @@ export class ToursService {
           // operator-editable, so it is intentionally not updated here.
           ...(dto.paymentModel !== undefined && {
             paymentModel: dto.paymentModel,
+          }),
+          // Not retroactive (rule #21): each booking snapshots its own terms at
+          // reserve, so changing this only affects future bookings.
+          ...(dto.onArrivalPayment !== undefined && {
+            onArrivalPayment: dto.onArrivalPayment,
           }),
           ...(dto.instantConfirmation !== undefined && {
             instantConfirmation: dto.instantConfirmation,

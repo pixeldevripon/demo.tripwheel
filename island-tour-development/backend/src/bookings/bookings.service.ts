@@ -13,11 +13,13 @@ import {
   CancelledBy,
   Currency,
   DepartureStatus,
+  Locale,
   PaymentModel,
   PricingModel,
   Prisma,
   Role,
   TourBookingType,
+  TourStatus,
   WholeUnitType,
   type Booking,
   type BookingUnitItem,
@@ -48,6 +50,20 @@ import {
   type PriceLineInput,
   type UnitPricingInput,
 } from './booking-pricing.util';
+import type { EmailTemplateContext } from '@/mail/templates/email-template.renderer';
+import {
+  buildConfirmationEmailContext,
+  buildConfirmationEmailSubject,
+  buildConfirmationEmailText,
+  buildPartyLines,
+  depositPctOf,
+  durationLabel,
+  emailIconBase,
+  preferLocale,
+  toLocale,
+  type RelatedTourInput,
+} from './booking-email.context';
+import { buildBookingIcs } from './booking-ics.util';
 import type {
   BookingQuoteResponseDto,
   CancelBookingDto,
@@ -80,6 +96,27 @@ type PricingInput = Pick<
 >;
 
 type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
+
+/**
+ * The selected pickup point, frozen at reserve time. Snapshotted rather than joined
+ * live because the confirmation email renders the pickup TIME: a later operator edit
+ * to the PickupLocation must never rewrite what a confirmed traveler was told
+ * (guide §17, same immutability rule as `payment_model`).
+ */
+type PickupSnapshot = {
+  address: string | null;
+  minutesPrior: number | null;
+  windowStart: string | null;
+  windowEnd: string | null;
+};
+
+/** No pickup selected: meet-on-site, so every pickup column stays null. */
+const EMPTY_PICKUP: PickupSnapshot = {
+  address: null,
+  minutesPrior: null,
+  windowStart: null,
+  windowEnd: null,
+};
 
 @Injectable()
 export class BookingsService {
@@ -310,7 +347,16 @@ export class BookingsService {
           exclusiveDeparture: exclusive,
           pickupRequested: dto.pickupRequested ?? false,
           pickupLocationId: dto.pickupLocationId ?? null,
-          pickupAddress: ctx.pickupAddress,
+          pickupAddress: ctx.pickupSnapshot.address,
+          pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
+          pickupWindowStart: ctx.pickupSnapshot.windowStart,
+          pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+          // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
+          // (and misleading in the email) on any other model.
+          onArrivalPayment:
+            ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
+              ? ctx.tour.onArrivalPayment
+              : null,
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
           // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
@@ -645,7 +691,7 @@ export class BookingsService {
       select: { name: true, destination: { select: { slug: true } } },
     });
 
-    await this.sendConfirmationEmail(updated, tour?.name ?? 'Your tour');
+    await this.sendConfirmationEmail(updated);
     if (commissionAmount != null) {
       await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
     }
@@ -660,33 +706,23 @@ export class BookingsService {
    */
   private async sendConfirmationEmail(
     booking: BookingWithItems,
-    tourTitle: string,
     { rethrow = false }: { rethrow?: boolean } = {},
   ): Promise<void> {
     if (!booking.contactEmail) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
-    const manageUrl =
-      process.env.FRONTEND_URL && booking.island
-        ? `${process.env.FRONTEND_URL}/${booking.island}/thank-you/${booking.publicRef}`
-        : null;
     try {
-      await this.mail.sendBookingConfirmationEmail(booking.contactEmail, {
-        customerName: booking.contactFirstName,
-        displayRef: booking.displayRef,
-        tourTitle,
-        localDate: dateKey(booking.localDate),
-        startTime: booking.startTime,
-        partySize: booking.unitItems.length,
-        currency: booking.currency,
-        totalRetail: booking.totalRetail.toString(),
-        // OPERATOR_FULL takes no online payment (deposit shown as null); every other
-        // model (incl. ON_ARRIVAL, now a deposit model) captures a deposit up front.
-        depositPaid:
-          booking.paymentModel === PaymentModel.OPERATOR_FULL
-            ? null
-            : booking.depositAmount.toString(),
-        balanceDue: booking.balanceAmount.toString(),
-        manageUrl,
+      const context = await this.assembleConfirmationContext(booking);
+      const subject = buildConfirmationEmailSubject({
+        tourName: String(context.tourName ?? 'Your tour'),
+        dateShort: String(context.dateShort ?? ''),
+        start: booking.tourStartDateTime,
+        localNow: localNow(booking.tourTimeZone ?? 'UTC'),
       });
+      await this.mail.sendBookingConfirmationEmail(
+        booking.contactEmail,
+        subject,
+        context,
+        buildConfirmationEmailText(context),
+      );
     } catch (err) {
       this.logger.error(
         `Confirmation email failed for ${booking.displayRef}`,
@@ -694,6 +730,228 @@ export class BookingsService {
       );
       if (rethrow) throw err;
     }
+  }
+
+  /**
+   * Load everything the locked confirmation template needs and fold it into the
+   * token context. The assembly itself is a pure function
+   * ({@link buildConfirmationEmailContext}) so the wireframe's formatting rules are
+   * testable without a database; this method is only the I/O around it.
+   */
+  private async assembleConfirmationContext(
+    booking: BookingWithItems,
+  ): Promise<EmailTemplateContext> {
+    const locale = toLocale(booking.customerLocale);
+
+    const [tour, operator, site] = await Promise.all([
+      this.prisma.tour.findUnique({
+        where: { id: booking.tourId },
+        select: {
+          name: true,
+          slug: true,
+          durationMinutesFrom: true,
+          cancellationHours: true,
+          checkInMinutesBefore: true,
+          meetingPointLat: true,
+          meetingPointLng: true,
+          destinationId: true,
+          destination: { select: { name: true, slug: true } },
+          ageBands: { select: { id: true, label: true } },
+          images: {
+            where: { isHero: true },
+            select: { url: true },
+            take: 1,
+          },
+          languages: { select: { language: true } },
+          // English is the canonical fallback when a locale has no translation row
+          // (master: every content endpoint falls back to en).
+          translations: {
+            where: { locale: { in: [locale, Locale.en] } },
+            select: {
+              locale: true,
+              whatToBring: true,
+              knowBeforeYouGo: true,
+              meetingPointText: true,
+            },
+          },
+          locations: {
+            select: {
+              types: true,
+              streetAddress: true,
+              translations: {
+                where: { locale: { in: [locale, Locale.en] } },
+                select: { locale: true, title: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          contactPhone: true,
+          companyInfo: {
+            select: {
+              companyName: true,
+              companyEmail: true,
+              companyPhone: true,
+            },
+          },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({
+        select: {
+          logo: true,
+          whatsappNumber: true,
+          enableWhatsappChat: true,
+        },
+      }),
+    ]);
+    if (!tour) throw new NotFoundException('Tour not found');
+
+    const related = await this.loadRelatedTours(
+      tour.destinationId,
+      booking.tourId,
+    );
+
+    const pickLocation = (type: string): string | null => {
+      const loc = tour.locations.find((l) => l.types.includes(type));
+      if (!loc) return null;
+      const title = preferLocale(loc.translations, locale)?.title ?? null;
+      return title ?? loc.streetAddress ?? null;
+    };
+
+    const translation = preferLocale(tour.translations, locale);
+    const meetingPoint =
+      pickLocation('START') ?? translation?.meetingPointText ?? null;
+
+    // Free-cancellation deadline = start - cancellationHours, in LOCAL wall-clock
+    // space (same rule as the TYP; computed, never stored - guide §14).
+    const cancelDeadline = booking.tourStartDateTime
+      ? new Date(
+          booking.tourStartDateTime.getTime() -
+            tour.cancellationHours * 3_600_000,
+        )
+      : null;
+
+    return buildConfirmationEmailContext({
+      booking: {
+        displayRef: booking.displayRef,
+        publicRef: booking.publicRef,
+        island: booking.island,
+        currency: booking.currency,
+        customerLocale: locale,
+        contactFirstName: booking.contactFirstName,
+        paymentModel: booking.paymentModel,
+        onArrivalPayment: booking.onArrivalPayment,
+        depositPct: depositPctOf(
+          booking.depositAmount.toString(),
+          booking.totalRetail.toString(),
+        ),
+        depositAmount: booking.depositAmount.toString(),
+        balanceAmount: booking.balanceAmount.toString(),
+        totalAmount: booking.totalRetail.toString(),
+        tourStartDateTime: booking.tourStartDateTime,
+        localDate: booking.localDate,
+        startTime: booking.startTime,
+        pickupRequested: booking.pickupRequested,
+        pickupAddress: booking.pickupAddress,
+        pickupMinutesPrior: booking.pickupMinutesPrior,
+        pickupWindowStart: booking.pickupWindowStart,
+        pickupWindowEnd: booking.pickupWindowEnd,
+        notes: booking.notes,
+        cancelDeadline,
+        partyLines: buildPartyLines(
+          booking.unitItems,
+          new Map(tour.ageBands.map((b) => [b.id, b.label])),
+        ),
+      },
+      tour: {
+        name: tour.name,
+        slug: tour.slug,
+        heroImageUrl: tour.images[0]?.url ?? null,
+        durationLabel: durationLabel(tour.durationMinutesFrom),
+        languageLabel: tour.languages.map((l) => l.language).join(', ') || null,
+        checkInMinutesBefore: tour.checkInMinutesBefore,
+        meetingPoint,
+        meetingPointLat: tour.meetingPointLat,
+        meetingPointLng: tour.meetingPointLng,
+        endPoint: pickLocation('END'),
+        whatToBring: translation?.whatToBring ?? [],
+        knowBeforeYouGo: translation?.knowBeforeYouGo ?? [],
+        // No per-tour/per-booking operator note is modelled yet, so the blue card
+        // stays hidden rather than inventing copy the operator never wrote.
+        operatorNote: null,
+      },
+      operator: {
+        name: operator?.companyInfo?.companyName ?? null,
+        email:
+          operator?.contactEmail ?? operator?.companyInfo?.companyEmail ?? null,
+        phone:
+          operator?.contactPhone ?? operator?.companyInfo?.companyPhone ?? null,
+      },
+      site: {
+        logoUrl: site?.logo ?? null,
+        whatsappNumber: site?.whatsappNumber ?? null,
+        whatsappEnabled: site?.enableWhatsappChat ?? false,
+      },
+      destination: {
+        name: tour.destination.name,
+        slug: tour.destination.slug,
+      },
+      relatedTours: related,
+      config: {
+        frontendUrl: process.env.FRONTEND_URL ?? 'https://island.tours',
+        // BETTER_AUTH_URL is this API's own public origin (it is what Better Auth
+        // builds callback URLs from) and is a REQUIRED env, so it is the one value
+        // guaranteed to be right here. PUBLIC_API_URL overrides it if the API is
+        // ever fronted by a different host.
+        apiUrl:
+          process.env.PUBLIC_API_URL ??
+          process.env.BETTER_AUTH_URL ??
+          'https://api.island.tours',
+        emailIconBase: emailIconBase(),
+      },
+    });
+  }
+
+  /**
+   * The two "More {island} experiences" cards: same destination, live, bookable,
+   * excluding the booked tour, in the master §7.2 canonical order
+   * (`tier_rank ASC, quality_score DESC, id ASC`) - the same order the listing uses,
+   * so the email never contradicts the site.
+   */
+  private async loadRelatedTours(
+    destinationId: string,
+    excludeTourId: string,
+  ): Promise<RelatedTourInput[]> {
+    const rows = await this.prisma.tour.findMany({
+      where: {
+        destinationId,
+        id: { not: excludeTourId },
+        status: TourStatus.LIVE,
+        isBookable: true,
+      },
+      orderBy: [{ tierRank: 'asc' }, { qualityScore: 'desc' }, { id: 'asc' }],
+      take: 2,
+      select: {
+        name: true,
+        slug: true,
+        priceFrom: true,
+        defaultCurrency: true,
+        aggregateRating: true,
+        images: { where: { isHero: true }, select: { url: true }, take: 1 },
+      },
+    });
+    return rows.map((t) => ({
+      name: t.name,
+      slug: t.slug,
+      imageUrl: t.images[0]?.url ?? null,
+      aggregateRating: t.aggregateRating,
+      priceFrom: t.priceFrom?.toString() ?? null,
+      currency: t.defaultCurrency,
+    }));
   }
 
   /**
@@ -727,16 +985,68 @@ export class BookingsService {
       );
     }
 
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: booking.tourId },
-      select: { name: true },
-    });
-
     this.logger.log(`Resending confirmation for ${booking.displayRef}`);
-    await this.sendConfirmationEmail(booking, tour?.name ?? 'Your tour', {
-      rethrow: true,
-    });
+    await this.sendConfirmationEmail(booking, { rethrow: true });
     return { sent: true };
+  }
+
+  /**
+   * The confirmation email's "Add to calendar" target: a one-event .ics for this
+   * booking.
+   *
+   * Keyed on `publicRef` and `@Public` for the same reason as the TYP - the link is
+   * clicked from an email client with no session. It exposes only what the email
+   * already told the traveler, and the ref is unguessable (master rule #7).
+   *
+   * Emitted in real UTC (`localWallClockToUtc`): a calendar entry is an absolute
+   * moment, and the stored start is local wall clock.
+   */
+  async getCalendar(publicRef: string): Promise<string> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        publicRef: true,
+        displayRef: true,
+        status: true,
+        tourStartDateTime: true,
+        tourEndDateTime: true,
+        tourTimeZone: true,
+        pickupAddress: true,
+        tour: { select: { name: true } },
+        operator: {
+          select: { companyInfo: { select: { companyName: true } } },
+        },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    // A cancelled booking must not keep handing out a calendar entry.
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking has a calendar entry',
+      );
+    }
+
+    const toUtc = (local: Date | null): Date | null =>
+      local && booking.tourTimeZone
+        ? localWallClockToUtc(local, booking.tourTimeZone)
+        : null;
+
+    const ics = buildBookingIcs({
+      publicRef: booking.publicRef,
+      displayRef: booking.displayRef,
+      tourName: booking.tour?.name ?? 'Your tour',
+      operatorName: booking.operator?.companyInfo?.companyName ?? null,
+      startUtc: toUtc(booking.tourStartDateTime),
+      endUtc: toUtc(booking.tourEndDateTime),
+      location: booking.pickupAddress,
+      description: `Booking reference: ${booking.displayRef}`,
+    });
+    if (!ics) {
+      throw new UnprocessableEntityException(
+        'This booking has no scheduled start time',
+      );
+    }
+    return ics;
   }
 
   private async fireConversion(
@@ -1189,6 +1499,7 @@ export class BookingsService {
         bookingCutoffMinutes: true,
         defaultCurrency: true,
         paymentModel: true,
+        onArrivalPayment: true,
         depositPct: true,
         commissionTier: true,
         minPartySize: true,
@@ -1229,18 +1540,33 @@ export class BookingsService {
     if (!departure)
       throw new UnprocessableEntityException('Invalid departureId');
 
-    // Snapshot the selected pickup point address (booking immutability — the
-    // PickupLocation row can change after booking). master E.8 `pickup_address`.
-    let pickupAddress: string | null = null;
+    // Snapshot the selected pickup point (booking immutability — the PickupLocation
+    // row can change after booking). master E.8 `pickup_address`; the TIMING fields
+    // are snapshotted for the same reason (guide §17): the confirmation email renders
+    // them, so joining live would retroactively rewrite the pickup time a confirmed
+    // traveler was already told.
+    let pickupSnapshot: PickupSnapshot = EMPTY_PICKUP;
     if (dto.pickupLocationId) {
       const pickup = await this.prisma.pickupLocation.findUnique({
         where: { id: dto.pickupLocationId },
-        select: { tourId: true, name: true, address: true },
+        select: {
+          tourId: true,
+          name: true,
+          address: true,
+          minutesPrior: true,
+          windowStart: true,
+          windowEnd: true,
+        },
       });
       if (!pickup || pickup.tourId !== dto.tourId) {
         throw new UnprocessableEntityException('Invalid pickupLocationId');
       }
-      pickupAddress = pickup.address ?? pickup.name;
+      pickupSnapshot = {
+        address: pickup.address ?? pickup.name,
+        minutesPrior: pickup.minutesPrior,
+        windowStart: pickup.windowStart,
+        windowEnd: pickup.windowEnd,
+      };
     }
 
     const addOnLines = await this.loadAddOns(dto);
@@ -1284,7 +1610,7 @@ export class BookingsService {
         unit,
         seatAges,
         addOnLines,
-        pickupAddress,
+        pickupSnapshot,
       };
     }
 
@@ -1335,7 +1661,7 @@ export class BookingsService {
       unit: undefined,
       seatAges,
       addOnLines,
-      pickupAddress,
+      pickupSnapshot,
     };
   }
 

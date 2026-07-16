@@ -91,10 +91,10 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 - [ ] C3 Pre-tour reminder (24h before; no payment links)
 - [ ] C4 Switch provider SMTP -> Resend (Postmark fallback)
 - [ ] C5 Verify template never names/spotlights operator before payment
-- [ ] **C6 Confirmation email follows the locked wireframe** (`technical-doc/island-tours-booking-confirmation-email-wireframe.html`
-  -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **The .html template is
-  NOT wired** - `mail.service.ts` sends the lean `booking-confirmation.template.ts` instead. See the
-  contract + data-gap analysis below.
+- [x] **C6 Confirmation email follows the locked wireframe** (`technical-doc/island-tours-booking-confirmation-email-wireframe.html`
+  -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **WIRED 2026-07-16** -
+  `mail.service.ts` now renders the locked template; the lean `booking-confirmation.template.ts` is
+  retired. See "C6 - wiring complete" below.
 - [ ] **C7 "Booking Received" notification email to the tour operator** (NEW scope). Sent on every
   booking, distinct from the traveller confirmation and from the `operator_link` payment link.
   Operator contact resolution already exists (`operator.contactEmail ?? companyInfo.companyEmail`,
@@ -207,12 +207,81 @@ Conditions: `hasPickup`, `duration`, `endPoint`, `tourLanguage`, `specialRequest
   the anti-fraud line are the **C2 anti-phishing mitigation** and must stay **above the fold of the
   payment area**, never in the footer; cancel is a **tokenized link** to a request form, never a raw
   one-click cancel (ties to B3); hero image `alt` = tour name; max 600px single column.
-- [ ] THEN: dashboard field for `Tour.onArrivalPayment`; snapshot the 4 fields at reserve; build the
-  token context; wire `mail.service.ts` off `booking-confirmation.template.ts` onto the html template.
-  The **full token contract** (37 tokens) is now enumerated in
-  `booking-confirmation-email.template.spec.ts` - build the context against that list, and
-  `findUnresolvedTokens()` will fail the spec if the wiring misses one. `emailIconBase` and
-  `siteLogoUrl` are part of it (`siteLogoUrl` = `SiteInfo.logo`; `whatsappUrl` = `buildWhatsappUrl()`).
+#### C6 - wiring complete (2026-07-16). 1024 tests / 48 suites green.
+
+The template is **live**: `mail.service.ts` renders the locked HTML and the lean
+`booking-confirmation.template.ts` is gone. TYP resend picks it up automatically (same code path).
+
+- [x] **Reserve now snapshots the 4 remaining fields** (rule #21, never retroactive):
+  `onArrivalPayment` (null unless `paymentModel = ON_ARRIVAL`), `pickupMinutesPrior`,
+  `pickupWindowStart`, `pickupWindowEnd`. `loadContext`'s `pickupAddress` local became a
+  `PickupSnapshot`. Pickup TIMING is snapshotted, never joined live: the email states a pickup time,
+  so a later edit to the `PickupLocation` must not rewrite what a confirmed traveler was told (§17).
+- [x] **Token context = `bookings/booking-email.context.ts`, a PURE function** (46 tokens + 3
+  condition-only fields). `BookingsService.assembleConfirmationContext` does the I/O; the assembly is
+  DB-free so every wireframe rule is unit-testable. **Deliberately render-agnostic** - if C4 ports to
+  React Email, only the render step changes, the context survives.
+- [x] **The loop is closed by a test**: `booking-email.context.spec.ts` renders the REAL shipped
+  template with the REAL builder output and asserts `findUnresolvedTokens() === []` for **all 5
+  payment models** plus a minimal booking. A forgotten token now fails CI, not an inbox.
+- [x] **Dashboard field for `Tour.onArrivalPayment`** - Details tab + create form, shown only when
+  `paymentModel = ON_ARRIVAL`; Create/Update DTO + service (`onArrivalPayment` never retroactive).
+- [x] **ICS endpoint built** (founder-approved): `GET /bookings/typ/:publicRef/calendar.ics`,
+  `@Public`, keyed on `publicRef` like the TYP/resend (opened from a mail client, no session).
+  Confirmed bookings only. `booking-ics.util.ts` is hand-rolled RFC 5545: CRLF, escaping, **75-OCTET**
+  folding on UTF-8 boundaries, real UTC via `localWallClockToUtc`.
+- [x] **Wireframe formatting rules honoured + tested**: times **24-hour in all 7 locales**
+  (`hourCycle: 'h23'` - en-GB and zh-CN both default to 12-hour, so this was a real trap); dates/money
+  locale-formatted; money always in the **charged** currency (never the locale's default - that would
+  relabel a real charge); `en` -> **en-GB** (the wireframe's "22 May 2026", and master 8.3 superseded
+  the tracking spec's en-US-only dates).
+- [x] **Subject implements the master's <24h variant** ("You're booked for tomorrow: {tour}" /
+  "today"), which doubles as the reminder for last-minute bookings since C3 fires at 24h and skips them.
+- [x] **Real `text/plain` part** (`buildConfirmationEmailText`). Not optional: the old
+  `html.replace(/<[^>]*>/g,'')` fallback would have dumped the template's `<style>` CSS into the body,
+  and a junk text part costs real spam score - deliverability is the actual lever on the C2 mitigation.
+
+Bugs found and fixed while wiring (each one would have shipped):
+
+1. **`nest build` never copied the .html** - no `assets` entry, so `readFileSync` threw at startup in
+   production while every test passed locally. Fixed in `nest-cli.json` (`outDir: dist/src`, matching
+   the real emit layout); verified the file lands in `dist`.
+2. **`Booking.customerLocale` is a free-form `String?`, not the `Locale` enum** - the compiler caught
+   the whole Prisma `select` silently widening. Added `toLocale()` coercion ("en-US"/junk -> `en`).
+3. **`calendarUrl` was built off `FRONTEND_URL`** - it is an API route, so it would have 404'd in
+   every inbox. Now `PUBLIC_API_URL ?? BETTER_AUTH_URL` (added to `env.validate.ts` OPTIONAL +
+   both `.env.example` and `.env.production.example`).
+4. **en-GB renders USD as "US$220.00"** - the wireframe locks "$60.00" / "from $45".
+   Fixed with `currencyDisplay: 'narrowSymbol'`, keeping locale number formatting ("€ 220,00" for nl).
+5. **Redundant tour query** - `resendConfirmation` loaded the tour just for its name, which the
+   context already loads. Dropped; `sendConfirmationEmail` no longer takes `tourTitle`.
+6. **`render-email-preview.ts` hand-rolled its context**, so the preview could look perfect while
+   production shipped something else. It now builds through the real builder.
+
+Decisions taken while wiring (grounded, not invented):
+
+- **`cancelUrl` -> `/cancel/{publicRef}`** per **master 6.4/C1**: "a tokenized confirmation page on
+  island.tours, not a cancel-on-raw-click". **That page does not exist yet (B3)** - the link is
+  correct but currently dead. B3 is now the blocking follow-up.
+- **`operatorNote` renders nothing** - no per-tour/per-booking operator note is modelled. The blue
+  card hides rather than inventing copy the operator never wrote.
+- **Related tours** = same destination, LIVE, bookable, master **§7.2** order
+  (`tier_rank ASC, quality_score DESC, id ASC`) - the same order the listing uses, so the email never
+  contradicts the site. No rating is fabricated for an unreviewed tour (LD11 cold start).
+- **`depositPct` is derived from the booked amounts**, not read from `Tour.depositPct` (tier-driven
+  and mutable) - the snapshot is what the traveler actually paid.
+
+**Open conflicts for the founder (do not silently resolve):**
+
+1. **`accountUrl` vs master C1.** The template's footer says "your booking details, history, and
+   invoice are always in your Island Tours account at {accountUrl}", but master C1 states **"No
+   account area in v1"** and asks instead for "a lightweight booking-lookup fallback (booking
+   reference + email), not a full account area, for lost emails". `/bookings` DOES exist in the code
+   (built after the master was written). Currently pointing at `{FRONTEND_URL}/bookings`.
+2. **Two Cloudinary accounts** (unchanged): `SiteInfo.logo` -> `djqinkh2c`, `backend/.env` ->
+   `dsfms7jb4`.
+3. **`start:prod` is `node dist/main`, but the build emits `dist/src/main.js`** (pre-existing, not
+   introduced here) - production start would fail. Flagged, not fixed.
 
 #### TYP correctness fixes (2026-07-16, founder-spotted)
 

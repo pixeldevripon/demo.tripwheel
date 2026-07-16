@@ -11,6 +11,7 @@ import {
   FeatureType,
   FitnessLevel,
   OctoAvailabilityType,
+  OnArrivalPayment,
   PaymentModel,
   PickupModel,
   PricingModel,
@@ -140,6 +141,13 @@ export class TourResponseDto {
 
   // ── Booking / payment (master E.3) ──
   @ApiProperty({ enum: PaymentModel }) paymentModel!: PaymentModel;
+  @ApiProperty({
+    enum: OnArrivalPayment,
+    description:
+      'On-site payment terms. Only meaningful when paymentModel = ON_ARRIVAL; ' +
+      'selects between the two on_arrival confirmation-email variants.',
+  })
+  onArrivalPayment!: OnArrivalPayment;
   @ApiProperty({
     example: '20.0',
     description: 'Deposit %, tier-driven (system-managed)',
@@ -1006,6 +1014,17 @@ export class CreateTourDto {
   paymentModel?: PaymentModel;
 
   @ApiPropertyOptional({
+    enum: OnArrivalPayment,
+    default: OnArrivalPayment.CARD_OR_CASH,
+    description:
+      'Whether the operator takes card on site or cash only. Ignored unless ' +
+      'paymentModel = ON_ARRIVAL. Snapshotted onto each booking at reserve.',
+  })
+  @IsOptional()
+  @IsEnum(OnArrivalPayment)
+  onArrivalPayment?: OnArrivalPayment;
+
+  @ApiPropertyOptional({
     type: [String],
     example: ['09:00', '13:00'],
     description: 'Tour slot set; values must be HH:MM.',
@@ -1287,6 +1306,16 @@ export class UpdateTourDto {
   @IsOptional()
   @IsEnum(PaymentModel)
   paymentModel?: PaymentModel;
+
+  @ApiPropertyOptional({
+    enum: OnArrivalPayment,
+    description:
+      'Whether the operator takes card on site or cash only. Ignored unless ' +
+      'paymentModel = ON_ARRIVAL. Existing bookings keep their snapshot.',
+  })
+  @IsOptional()
+  @IsEnum(OnArrivalPayment)
+  onArrivalPayment?: OnArrivalPayment;
 
   @ApiPropertyOptional({
     type: [String],

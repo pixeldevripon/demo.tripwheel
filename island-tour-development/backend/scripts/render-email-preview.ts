@@ -4,18 +4,28 @@
  *
  * Run:  pnpm email:preview [paymentModel]   (from backend/)
  *       pnpm email:preview on_arrival
+ *       pnpm email:preview on_arrival cash_only
  *
- * Preview only - never imported by the app. The real send path builds its token
- * context from the booking record.
+ * Only the BOOKING is fake. The token context comes from the real
+ * `buildConfirmationEmailContext`, so this preview cannot drift from what the
+ * send path actually mails - a preview built from a hand-written context would
+ * happily look perfect while production shipped something else.
  */
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  renderEmailTemplate,
-  type EmailTemplateContext,
-} from '../src/mail/templates/email-template.renderer';
+  Currency,
+  Locale,
+  OnArrivalPayment,
+  PaymentModel,
+} from '@prisma/client';
+import {
+  buildConfirmationEmailContext,
+  emailIconBase,
+} from '../src/bookings/booking-email.context';
+import { renderEmailTemplate } from '../src/mail/templates/email-template.renderer';
 
 dotenv.config();
 
@@ -32,71 +42,112 @@ const TEMPLATE = fs.readFileSync(
 );
 
 const cloud = process.env.CLOUDINARY_CLOUD_NAME ?? 'demo';
-const ICON_BASE = `https://res.cloudinary.com/${cloud}/image/upload/f_png,w_34/islandtours/email/icons`;
+const modelArg = (process.argv[2] ?? 'operator_link').toUpperCase();
+const onArrivalArg = (process.argv[3] ?? 'card_or_cash').toUpperCase();
 
-const paymentModel = process.argv[2] ?? 'operator_link';
+const paymentModel = PaymentModel[modelArg as keyof typeof PaymentModel];
+if (!paymentModel) {
+  throw new Error(
+    `Unknown payment model "${process.argv[2]}". One of: ${Object.keys(
+      PaymentModel,
+    )
+      .map((k) => k.toLowerCase())
+      .join(', ')}`,
+  );
+}
 
-const ctx: EmailTemplateContext = {
-  emailIconBase: ICON_BASE,
-  siteLogoUrl: `https://res.cloudinary.com/${cloud}/image/upload/v1784205640/logo_oizw6t.png`,
-  firstName: 'Denley',
-  bookingRef: 'IT-2026-04821',
-  tourName: 'Klein Curacao Day Trip',
-  operatorName: 'Miss Ann Boat Trips',
-  featuredImageUrl:
-    'https://res.cloudinary.com/demo/image/upload/w_192,h_192,c_fill/sample.jpg',
-  dateLong: 'Friday, 22 May 2026',
-  dateShort: '22 May 2026',
-  startTime: '08:00',
-  locale: 'en',
-  hasPickup: true,
-  pickupLocation: 'Hotel Brion',
-  pickupTime: '07:15',
-  meetingPoint: 'Sint Annabaai Pier',
-  mapUrl: 'https://maps.google.com/?q=Hotel+Brion',
-  arrivalBufferMin: 5,
-  endPoint: 'Jan Thiel Beach',
-  partyBreakdown: '2 adults, 1 child',
-  duration: '9 hours',
-  tourLanguage: 'English',
-  specialRequests: 'Vegetarian lunch for one',
-  operatorNote: 'Bring a towel and reef-safe sunscreen. We leave on time.',
-  paymentModel,
-  onArrivalPayment: paymentModel === 'on_arrival' ? 'card_or_cash' : '',
-  depositPct: 30,
-  depositAmount: '$60.00',
-  balanceAmount: '$160.00',
-  totalAmount: '$220.00',
-  paidAmount: '$220.00',
-  paymentMethodLine: 'Visa ending 4242',
-  whatsappUrl: 'https://wa.me/8801913509868',
-  tourUrl: 'https://island.tours/curacao/klein-curacao-day-trip',
-  calendarUrl: 'https://island.tours/ics/IT-2026-04821',
-  cancelUrl: 'https://island.tours/cancel/abc',
-  accountUrl: 'https://island.tours/bookings',
-  bookingsUrl: 'https://island.tours/bookings',
-  browseUrl: 'https://island.tours/curacao/tours',
-  allToursUrl: 'https://island.tours/curacao/tours',
-  whatToBring: 'Swimwear, towel, reef-safe sunscreen, a hat',
-  knowBeforeYouGo:
-    'Bring a valid ID. The crossing is about 90 minutes each way.',
-  freeCancellationDeadline: 'Wednesday 20 May, 08:00',
-  cancelDeadlineDateTime: 'Wednesday 20 May 2026, 08:00',
-  operatorPhone: '+5999 123 4567',
-  operatorEmail: 'hello@missannboattrips.test',
-  islandName: 'Curacao',
-  relatedTourOneImageUrl:
-    'https://res.cloudinary.com/demo/image/upload/w_500,h_300,c_fill/sample.jpg',
-  relatedTourOneName: 'Blue Room Snorkel Tour',
-  relatedTourOneRating: '4.8',
-  relatedTourOnePrice: 'from $45',
-  relatedTourTwoImageUrl:
-    'https://res.cloudinary.com/demo/image/upload/w_500,h_300,c_fill/sample.jpg',
-  relatedTourTwoName: 'Christoffel Sunrise Hike',
-  relatedTourTwoRating: '4.7',
-  relatedTourTwoPrice: 'from $35',
-};
+const demoImage =
+  'https://res.cloudinary.com/demo/image/upload/w_500,h_300,c_fill/sample.jpg';
 
-const out = path.join(os.tmpdir(), `email-preview-${paymentModel}.html`);
+// Local wall clock is stored Z-labelled - build the fixture the same way.
+const start = new Date(Date.UTC(2026, 4, 22, 8, 0));
+
+const ctx = buildConfirmationEmailContext({
+  booking: {
+    displayRef: 'IT-2026-04821',
+    publicRef: 'demo-public-ref',
+    island: 'curacao',
+    currency: Currency.USD,
+    customerLocale: Locale.en,
+    contactFirstName: 'Denley',
+    paymentModel,
+    onArrivalPayment:
+      paymentModel === PaymentModel.ON_ARRIVAL
+        ? (OnArrivalPayment[onArrivalArg as keyof typeof OnArrivalPayment] ??
+          OnArrivalPayment.CARD_OR_CASH)
+        : null,
+    depositPct: '30',
+    depositAmount: '60.00',
+    balanceAmount: '160.00',
+    totalAmount: '220.00',
+    tourStartDateTime: start,
+    localDate: new Date(Date.UTC(2026, 4, 22)),
+    startTime: '08:00',
+    pickupRequested: true,
+    pickupAddress: 'Hotel Brion, Otrobanda',
+    pickupMinutesPrior: 45,
+    pickupWindowStart: '07:15',
+    pickupWindowEnd: '07:30',
+    notes: 'Vegetarian lunch for one',
+    cancelDeadline: new Date(Date.UTC(2026, 4, 20, 8, 0)),
+    partyLines: ['2 adults', '1 child'],
+  },
+  tour: {
+    name: 'Klein Curacao Day Trip',
+    slug: 'klein-curacao-day-trip',
+    heroImageUrl:
+      'https://res.cloudinary.com/demo/image/upload/w_192,h_192,c_fill/sample.jpg',
+    durationLabel: '9 hours',
+    languageLabel: 'English',
+    checkInMinutesBefore: 30,
+    meetingPoint: 'Sint Annabaai Pier',
+    meetingPointLat: 12.1091,
+    meetingPointLng: -68.9316,
+    endPoint: 'Jan Thiel Beach',
+    whatToBring: ['Swimwear', 'Towel', 'Reef-safe sunscreen', 'A hat'],
+    knowBeforeYouGo: [
+      'Bring a valid ID',
+      'The crossing is about 90 minutes each way',
+    ],
+    operatorNote: 'Bring a towel and reef-safe sunscreen. We leave on time.',
+  },
+  operator: {
+    name: 'Miss Ann Boat Trips',
+    email: 'hello@missannboattrips.test',
+    phone: '+5999 123 4567',
+  },
+  site: {
+    logoUrl: `https://res.cloudinary.com/${cloud}/image/upload/v1784205640/logo_oizw6t.png`,
+    whatsappNumber: '+599 9 123 4567',
+    whatsappEnabled: true,
+  },
+  destination: { name: 'Curacao', slug: 'curacao' },
+  relatedTours: [
+    {
+      name: 'Blue Room Snorkel Tour',
+      slug: 'blue-room-snorkel-tour',
+      imageUrl: demoImage,
+      aggregateRating: 4.8,
+      priceFrom: '45.00',
+      currency: Currency.USD,
+    },
+    {
+      name: 'Christoffel Sunrise Hike',
+      slug: 'christoffel-sunrise-hike',
+      imageUrl: demoImage,
+      aggregateRating: 4.7,
+      priceFrom: '35.00',
+      currency: Currency.USD,
+    },
+  ],
+  config: {
+    frontendUrl: process.env.FRONTEND_URL ?? 'https://island.tours',
+    apiUrl: process.env.BETTER_AUTH_URL ?? 'https://api.island.tours',
+    emailIconBase: emailIconBase(),
+  },
+});
+
+const label = paymentModel.toLowerCase();
+const out = path.join(os.tmpdir(), `email-preview-${label}.html`);
 fs.writeFileSync(out, renderEmailTemplate(TEMPLATE, ctx));
-console.log(`rendered [${paymentModel}] -> ${out}`);
+console.log(`rendered [${label}] -> ${out}`);
