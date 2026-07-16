@@ -79,12 +79,135 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 - [ ] B3 Tokenized cancel confirmation page (no raw-click) + account fallback
 - [ ] B4 Operator non-payment -> admin confirm -> forfeit deposit + release (no auto-forfeit)
 
-### C. Email (0/5)
+### C. Email (0/7)
+
+> **Founder requirement 2026-07-16: 2 emails per booking, 3 on `operator_link`.**
+> 1. Confirmation email to the traveller (C6 - must follow the LOCKED wireframe)
+> 2. **"Booking Received" notification to the tour operator** (C7 - NEW, was untracked)
+> 3. Secure payment link for the remainder, `operator_link` only (C1)
+
 - [ ] C1 Operator-balance email on `operator_link` (names operator + secure balance link)
 - [ ] C2 Invoice attachment (from Stripe/Mollie) on confirmation
 - [ ] C3 Pre-tour reminder (24h before; no payment links)
 - [ ] C4 Switch provider SMTP -> Resend (Postmark fallback)
 - [ ] C5 Verify template never names/spotlights operator before payment
+- [ ] **C6 Confirmation email follows the locked wireframe** (`technical-doc/island-tours-booking-confirmation-email-wireframe.html`
+  -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **The .html template is
+  NOT wired** - `mail.service.ts` sends the lean `booking-confirmation.template.ts` instead. See the
+  contract + data-gap analysis below.
+- [ ] **C7 "Booking Received" notification email to the tour operator** (NEW scope). Sent on every
+  booking, distinct from the traveller confirmation and from the `operator_link` payment link.
+  Operator contact resolution already exists (`operator.contactEmail ?? companyInfo.companyEmail`,
+  see `getThankYou`).
+
+#### C6 - locked template contract (extracted 2026-07-16)
+
+Mini-language: `{token}` placeholders + `[IF cond]…[ELSE]…[/IF]` blocks (supports `=`, `AND`, `OR`).
+Needs a small renderer - none exists. **44 tokens, 14 distinct conditions.**
+
+Conditions: `hasPickup`, `duration`, `endPoint`, `tourLanguage`, `specialRequests`, `operatorNote`,
+`paymentModel = operator_link | on_arrival | paid_in_full | operator_full` (+ the `OR` pairs), and
+`paymentModel = on_arrival AND onArrivalPayment = card_or_cash | cash_only`.
+
+**Data we already have** (post-E3): `firstName`, `bookingRef`, `tourName`, `operatorName/Email/Phone`,
+`dateLong`, `dateShort`, `startTime`, `duration`, `partyBreakdown`, `pickupLocation`, `totalAmount`,
+`depositAmount`, `depositPct`, `balanceAmount`, `islandName`, `specialRequests` (`Booking.notes`),
+`cancelDeadlineDateTime`, `locale`, related tours (via `getThankYouRelatedTours`).
+
+**Data with NO model - needs a decision before C6 can be faithful:**
+
+| Token / condition | Gap |
+|---|---|
+| `onArrivalPayment` (`card_or_cash` / `cash_only`) | Not modelled anywhere. Drives 2 whole template variants. Needs a Tour column + operator UI, or a fixed default. |
+| `arrivalBufferMin` | Not modelled ("be ready N minutes before"). Tour column or platform constant? |
+| `pickupTime` | Not modelled (pickup time vs departure start). Derive from start - buffer, or new field? |
+| `meetingPoint` | No field for the non-pickup meeting point. |
+| `endPoint` | No field (tour end location). |
+| `operatorNote` | No field (per-tour or per-booking note from the operator). |
+| `whatToBring`, `knowBeforeYouGo` | Tour editorial content - confirm which existing fields map here. |
+| `tourLanguage` | Tour languages exist; confirm which to render for a booking. |
+| `whatsappUrl`, `mapUrl`, `cancelUrl`, `accountUrl` | Routes/handles not defined yet (cancel needs the tokenised page, B3). |
+| `featuredImageUrl` | Tour hero image - available, confirm the source field. |
+
+#### C6 - locked decisions (founder, 2026-07-16)
+
+1. **`onArrivalPayment` = new `Tour` enum column** (`CARD_OR_CASH | CASH_ONLY`) + operator dashboard
+   field, **snapshotted onto `Booking` at reserve** (same rule as `payment_model`, #21 - never
+   retroactive). Needs a migration.
+2. ~~`arrivalBufferMin` = platform constant; `pickupTime` = start - buffer.~~ **SUPERSEDED on
+   inspection - NO constant is needed, every field already exists:**
+   - non-pickup "arrive N minutes early" -> **`Tour.checkInMinutesBefore`** (`@default(30)`, already
+     labelled "Please arrive N minutes early for check-in" - Figma, master default 30)
+   - pickup "be ready N minutes before" -> **`PickupLocation.minutesPrior`**
+   Original (also correct) findings:
+   - `PickupLocation.minutesPrior` ("pickup happens N minutes before departure")
+   - `PickupLocation.windowStart` / `windowEnd` (`'HH:MM'`, the Figma "7:45-8:15 AM window")
+   -> `pickupTime` = the pickup window (or start - `minutesPrior` when no window);
+     `arrivalBufferMin` = `minutesPrior` for pickup tours. A **platform constant is only the
+     fallback** (no `minutesPrior` set) and for the non-pickup "arrive N minutes early" line.
+   - Booking already snapshots `pickupAddress` + `pickupLocationId`; the timing fields are NOT
+     snapshotted, so decide whether to snapshot them at reserve (booking immutability) or join live.
+3. **`meetingPoint` = the tour's `START` `TourLocation`** (`TourLocation.types` contains `'START'`),
+   rendered from `TourLocationTranslation.title` (**already localized**) + `streetAddress`. No
+   migration. Same source gives **`endPoint`** for free (`types` contains `'END'`) - so that block
+   can be populated rather than hidden.
+
+#### C6 - progress 2026-07-16
+
+- [x] **Renderer built + tested** - `mail/templates/email-template.renderer.ts` (+ spec, 20 tests).
+  Recursive (handles the 2-deep nesting), supports `{token}` / `[IF]` / `[ELSE]` / `=` / `AND` / `OR`.
+  Unknown tokens are left **literal** (a loud `{whatToBring}` beats a silently-blanked sentence);
+  `findUnresolvedTokens()` is the guard. Values are HTML-escaped; CSS braces are untouched; it throws
+  on an unbalanced block rather than emitting half an email. Tests render the **real shipped
+  template** and assert the wireframe's per-model money rows, so a future designer edit fails here
+  and not in a traveller's inbox.
+- [x] **Migration applied** `20260716122726_on_arrival_payment_and_pickup_timing_snapshot`
+  (additive/safe): `OnArrivalPayment` enum; `Tour.onArrivalPayment` (NOT NULL default `CARD_OR_CASH`);
+  `Booking.onArrivalPayment` + `pickupMinutesPrior` + `pickupWindowStart` + `pickupWindowEnd`
+  (all nullable snapshots). **925 tests / 44 suites green.**
+- [ ] **NOT DONE - the template still deviates from the wireframe (verified 2026-07-16).** Founder
+  rule: the email must match the wireframe **exactly**; rebuild from the wireframe where it drifts
+  ([[feedback_email_wireframe_source_of_truth]]).
+  - **Structure + copy: MATCH.** Every wireframe block is present (`How to pay the rest`,
+    `A note from {operatorName}`, `Cancel for a full refund up to`, `Browse all …`, `Ends at:`,
+    `Duration:`, `Guests:`), and the money-row logic now matches (fixed above).
+  - **ICONS: DO NOT MATCH - the one real remaining gap.** The wireframe ships **14 `<svg>` line
+    icons** (`stroke="#6B7280"` neutral gray, plus `#16A34A` green check / `#3B6AA0`; sizes 16/17px
+    on 20/24 viewBoxes). The template ships **0 `<svg>`** and instead uses **9 unicode glyphs**
+    (`✓ ⌖ ⌛ ↦ ☷ ◷ ◎ ▱ ⓘ`). This directly violates the wireframe's own build note:
+    *"SVG line icons in neutral gray #6B7280 per LD20 (**no emoji in the body**)"*. Glyphs also
+    render inconsistently across mail clients, which is why LD20 bans them.
+  - **TODO:** port the 14 SVGs from the wireframe into the template, replacing every glyph site.
+- [ ] Other wireframe build-note rules to honour when wiring (from the wireframe's own notes):
+  **times 24-hour across all locales** (note: the TYP renders 12-hour - the email rule differs);
+  currency/date locale-formatted (USD for EN/ZH, EUR for NL/DE/FR/ES/PT); `How to pay the rest` +
+  the anti-fraud line are the **C2 anti-phishing mitigation** and must stay **above the fold of the
+  payment area**, never in the footer; cancel is a **tokenized link** to a request form, never a raw
+  one-click cancel (ties to B3); hero image `alt` = tour name; max 600px single column.
+- [ ] THEN: dashboard field for `Tour.onArrivalPayment`; snapshot the 4 fields at reserve; build the
+  token context; wire `mail.service.ts` off `booking-confirmation.template.ts` onto the html template.
+
+#### C6 - defects found in the locked template (FIXED 2026-07-16)
+
+- [x] **One unclosed `[IF`** (28 `[IF` vs 27 `[/IF]`; depth trace ended at 1). The renderer's test
+  pinpointed it: `[IF paymentModel = operator_link OR on_arrival]` opened **inside a `<td>`** on the
+  deposit row and never closed.
+- [x] **`[ELSEIF]` is not in the language** - the template used
+  `[IF … operator_link]Balance due[ELSEIF … on_arrival]Balance due on arrival[/IF]`, but `[ELSEIF]`
+  appears **nowhere in the wireframe** and nothing implements it. Rewritten as a nested `[ELSE]`
+  inside the `operator_link OR on_arrival` block (the else-branch *is* on_arrival), so no new
+  construct was needed.
+- [x] **Money rows conditioned only the LABEL, not the row.** `paid_in_full`/`operator_full` would
+  have rendered a **bare `{depositAmount}` with no label**. Per the wireframe the whole `<tr>` must
+  vanish: `operator_link` = deposit/Balance due/Total · `on_arrival` = deposit/Balance due on
+  arrival/Total · `paid_in_full` = **Paid in full only** · `operator_full` = **Total only**. Now
+  wrapped at `<tr>` level and asserted by 4 tests.
+- The **wireframe and the template are different artifacts** and must not be confused:
+  `island-tours-booking-confirmation-email-wireframe.html` is the **visual mockup** (zero tokens - it
+  lays every payment-model variant out side by side as the design reference);
+  `booking-confirmation-email.template.html` is the **tokenized** template that actually renders.
+- Tokens that are **optional and hide cleanly** when absent (no action needed): `endPoint`,
+  `operatorNote`, `tourLanguage`, `duration`, `specialRequests`.
 
 ### D. Async / queue hardening (0/8)
 - [ ] D1 Transactional outbox (`OutboxEvent` written in booking txn; relay -> BullMQ)

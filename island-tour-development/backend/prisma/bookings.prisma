@@ -28,17 +28,25 @@ model Booking {
 
   // Snapshot at booking time
   paymentModel      PaymentModel
+  // On-site payment terms snapshot; null unless paymentModel = ON_ARRIVAL (rule #21).
+  onArrivalPayment  OnArrivalPayment?
   currency          Currency
-  localDate         DateTime     @db.Date
+  localDate         DateTime          @db.Date
   startTime         String?
   tourStartDateTime DateTime? // full local start instant (TYP range, ICS, reminder, deadline calc) — master E.8
   tourEndDateTime   DateTime? // local end = start + duration (TYP "8:00 AM – 5:00 PM") — master E.8
   tourTimeZone      String? // IANA zone snapshot (cancellation window + review eligibility stay correct if the tour/destination zone later changes)
 
   // Pickup (octo/pickups; D12)
-  pickupRequested  Boolean @default(false)
-  pickupLocationId String? // selected pickup point (null = no pickup / meet-on-site)
-  pickupAddress    String? // snapshot of the selected pickup point address (booking immutability) — master E.8
+  pickupRequested    Boolean @default(false)
+  pickupLocationId   String? // selected pickup point (null = no pickup / meet-on-site)
+  pickupAddress      String? // snapshot of the selected pickup point address (booking immutability) — master E.8
+  // Pickup TIMING snapshot (guide §17: later pickup edits must not mutate existing
+  // bookings). Confirmation email renders these — joining PickupLocation live would
+  // retroactively change the pickup time a confirmed traveler was already told.
+  pickupMinutesPrior Int? // PickupLocation.minutesPrior at booking time
+  pickupWindowStart  String? // 'HH:MM' — Figma "7:45–8:15 AM window"
+  pickupWindowEnd    String? // 'HH:MM'
 
   // UNIT + PRIVATE exclusivity (master E.3 "one booking takes the whole departure").
   // True when a private, unit-priced charter claims the entire departure; release
