@@ -140,7 +140,7 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.VIEW_PAYMENTS],
     },
     // ─── Users / Customers ─────────────────────────────────────────────────────
-    {
+ /*    {
         title: 'Users',
         icon: Users,
         permissions: [Permission.VIEW_USERS, Permission.MANAGE_USERS],
@@ -155,15 +155,8 @@ const dashboardNav: NavItem[] = [
                 url: 'users/new',
                 permissions: [Permission.CREATE_USER],
             },
-            // ─── Profile ───────────────────────────────────────────────────────────────
-            {
-                title: 'Your Profile',
-                url: 'profile',
-                icon: CircleUser,
-                permissions: [Permission.VIEW_PROFILE],
-            },
         ],
-    },
+    }, */
     // ─── Tour Operators ──────────────────────────────────────────────────────
     {
         title: 'Tour Operators',
@@ -184,7 +177,7 @@ const dashboardNav: NavItem[] = [
     },
 
     // ─── Enquiries ─────────────────────────────────────────────────────────────
-/*     {
+    /*     {
         title: 'Enquiries',
         url: 'enquiries',
         icon: Mail,
@@ -192,7 +185,7 @@ const dashboardNav: NavItem[] = [
     }, */
 
     // ─── Leads ─────────────────────────────────────────────────────────────────
-/*     {
+    /*     {
         title: 'Leads',
         url: 'leads',
         icon: MessageSquare,
@@ -200,7 +193,7 @@ const dashboardNav: NavItem[] = [
     }, */
 
     // ─── Reviews ───────────────────────────────────────────────────────────────
-/*     {
+    /*     {
         title: 'Reviews',
         url: 'reviews',
         icon: Star,
@@ -220,6 +213,12 @@ const dashboardNav: NavItem[] = [
             Permission.MANAGE_OPERATOR_PAYMENTS,
         ],
     },
+    {
+        title: 'Your Profile',
+        url: 'profile',
+        icon: CircleUser,
+        permissions: [Permission.VIEW_PROFILE],
+    },
 ];
 
 export interface NavigationMap {
@@ -229,6 +228,7 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+
 
 
 
