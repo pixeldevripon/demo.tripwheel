@@ -28,54 +28,12 @@
  * a stepping stone to that, not the destination (02B §8).
  */
 
-/**
- * Coarse cache tags used across the `'use cache'` data layer. Busting one
- * regenerates every cached read that carries it - use for aggregates (listings,
- * search, facets) and cross-entity ripple (a tour appears on many pages).
- *
- * `slug-registry` guards the router's slug->entity resolver; `user-profile` is
- * the per-user dashboard profile cache (not public content, but the same
- * invalidation mechanism).
- *
- * THIS UNION IS HALF OF A CROSS-REPO CONTRACT. The public site validates every
- * tag it receives against its own copy and rejects the whole batch with a 400 on
- * anything it does not recognise. So a tag renamed on one side and not the other
- * fails loudly on the first write rather than going quietly stale forever. If
- * you touch these names, touch `app/api/revalidate/route.ts` in the public repo
- * in the same change.
- */
-export type CoarseCacheTag =
-  | 'tours'
-  | 'search'
-  | 'hubs'
-  | 'categories'
-  | 'collections'
-  | 'destinations'
-  | 'reviews'
-  | 'slug-registry'
-  // Public SiteInfo (logo, WhatsApp number + flag, Instagram). Read by the
-  // footer and every NeedHelp surface, so a Settings > General save has to bust
-  // it or the site keeps serving the old number until the cacheLife expires.
-  | 'site-info'
-  | 'user-profile';
-
-/**
- * Granular per-entity tags. A detail/render read tags itself `type:<id>` so
- * editing ONE entity regenerates only that entity's page, not every page of its
- * type. The id is the entity UUID (the dashboard mutation path carries it).
- */
-export type GranularCacheTag =
-  | `tour:${string}`
-  | `destination:${string}`
-  | `hub:${string}`
-  | `category:${string}`
-  | `collection:${string}`
-  // Operator company name/logo is embedded on the tour detail page (only there,
-  // not on cards); an operator edit busts this to refresh exactly that operator's
-  // tour pages without touching every tour.
-  | `operator:${string}`;
-
-export type CacheTag = CoarseCacheTag | GranularCacheTag;
+// The tag vocabulary is the cross-repo contract and lives in `lib/cache-tags.ts`,
+// byte-identical to the public repo's copy at the same path. It is imported
+// rather than declared here for two reasons: a `'use server'` file is the wrong
+// home for a shared type, and the public site must be able to validate against
+// the same list it is being sent.
+import type { CacheTag } from '@/lib/cache-tags';
 
 // Same backoff vocabulary as `lib/api/fetch.ts`, deliberately: one retry shape
 // for the whole codebase.

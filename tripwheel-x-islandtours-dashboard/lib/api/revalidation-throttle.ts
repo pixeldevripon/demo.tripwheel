@@ -26,7 +26,8 @@
  * site", and must see the change. So the leading edge fires immediately and only
  * genuine bursts get coalesced. That is the no-regression guarantee.
  */
-import { revalidateCacheTags, type CacheTag } from '@/app/_actions/revalidate';
+import { revalidateCacheTags } from '@/app/_actions/revalidate';
+import type { CacheTag } from '@/lib/cache-tags';
 
 /**
  * Short enough to be invisible against the human hop to the public site, long

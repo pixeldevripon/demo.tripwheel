@@ -17,7 +17,7 @@
  * slug-registry lookups) trigger no revalidation. Settings is a partial
  * exception: only `/settings/site` backs a public read (see that case).
  */
-import type { CacheTag } from '@/app/_actions/revalidate';
+import type { CacheTag } from '@/lib/cache-tags';
 import { enqueueRevalidation } from './revalidation-throttle';
 
 const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
