@@ -57,7 +57,7 @@ export function OperatorLogin() {
     //             : raw.replace(/\D/g, '').length >= 6;
     //     if (!ok) { setCodeError(true); return; }
     //     setCodeError(false);
-    //     router.push('/dashboard');
+    //     router.push('/');
     //     router.refresh();
     // }
     // ──────────────────────────────────────────────────────────────────────

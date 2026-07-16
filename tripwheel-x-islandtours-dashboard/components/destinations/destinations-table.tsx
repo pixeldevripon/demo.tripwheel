@@ -215,7 +215,7 @@ export function DestinationsTable({
           </DropdownMenu>
           {can('CREATE_DESTINATION') && (
             <Button asChild size="sm">
-              <Link href="/dashboard/destinations/new">
+              <Link href="/destinations/new">
                 <PlusIcon />
                 Add Destination
               </Link>

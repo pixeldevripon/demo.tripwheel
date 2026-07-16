@@ -50,7 +50,7 @@ export function makeCollectionColumns({
         if (!canEdit) return <span className="text-sm font-medium">{row.original.name}</span>;
         return (
           <Link 
-            href={`/dashboard/collections/${row.original.id}/edit`} 
+            href={`/collections/${row.original.id}/edit`} 
             className="text-sm font-medium hover:underline underline-offset-4"
           >
             {row.original.name}
@@ -122,39 +122,39 @@ export function makeCollectionColumns({
               {canEdit && (
                 <>
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/collections/${c.id}/edit`}>
+                    <Link href={`/collections/${c.id}/edit`}>
                       <PencilIcon />
                       Edit Details
                     </Link>
                   </DropdownMenuItem>
                   {c.collectionType === 'MANUAL' && (
                     <DropdownMenuItem asChild>
-                      <Link href={`/dashboard/collections/${c.id}/edit?tab=tours`}>
+                      <Link href={`/collections/${c.id}/edit?tab=tours`}>
                         <ListOrderedIcon />
                         Manage Tours
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/collections/${c.id}/edit?tab=translations`}>
+                    <Link href={`/collections/${c.id}/edit?tab=translations`}>
                       <LanguagesIcon />
                       Manage Translations
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/collections/${c.id}/edit?tab=page-content`}>
+                    <Link href={`/collections/${c.id}/edit?tab=page-content`}>
                       <FileTextIcon />
                       Page Content
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/collections/${c.id}/edit?tab=faqs`}>
+                    <Link href={`/collections/${c.id}/edit?tab=faqs`}>
                       <HelpCircleIcon />
                       Manage FAQs
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/collections/${c.id}/edit?tab=seo`}>
+                    <Link href={`/collections/${c.id}/edit?tab=seo`}>
                       <SearchIcon />
                       SEO
                     </Link>

@@ -37,7 +37,7 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
         if (!canManage) return <span className="text-sm font-medium">{row.original.displayName}</span>;
         return (
           <Link 
-            href={`/dashboard/attributes/${row.original.key}/edit`} 
+            href={`/attributes/${row.original.key}/edit`} 
             className="text-sm font-medium hover:underline underline-offset-4"
           >
             {row.original.displayName}
@@ -100,7 +100,7 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/attributes/${attr.key}/edit`}>
+                <Link href={`/attributes/${attr.key}/edit`}>
                   <PencilIcon />
                   Edit Attribute
                 </Link>

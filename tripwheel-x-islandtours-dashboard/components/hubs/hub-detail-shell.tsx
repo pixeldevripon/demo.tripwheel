@@ -16,13 +16,13 @@ export function HubDetailShell({ id, name, isLoading, subtitle, children }: HubD
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Hubs', href: '/dashboard/hubs' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Hubs', href: '/hubs' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (name ?? 'Hub'),
-            href: `/dashboard/hubs/${id}/edit`,
+            href: `/hubs/${id}/edit`,
           },
           { label: subtitle },
         ]}

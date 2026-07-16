@@ -53,7 +53,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
       }
       if (e.metaKey && e.key.toLowerCase() === '/') {
         if (!pathname.includes('/profile')) {
-          router.push(`/dashboard/profile`);
+          router.push(`/profile`);
         }
       }
       if (e.key === 'Escape') {
@@ -135,7 +135,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
                   }
                   label='View Profile'
                   linkTo={
-                    !pathname.includes(`/dashboard/profile`) && `/dashboard/profile`
+                    !pathname.includes(`/profile`) && `/profile`
                   }
                   shortcut='⌘ + /'
                   onClick={() => handleItemClick('viewProfile')}

@@ -104,7 +104,7 @@ export function makeTripColumns({
             </div>
             <div className="min-w-0">
               <Link
-                href={`/dashboard/trips/${trip.id}/edit`}
+                href={`/trips/${trip.id}/edit`}
                 className="font-medium hover:underline underline-offset-4 truncate max-w-50 block"
               >
                 {trip.name}
@@ -156,7 +156,7 @@ export function makeTripColumns({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <Link
-                  href={`/dashboard/tour-operators/${info.id}`}
+                  href={`/tour-operators/${info.id}`}
                   className={`text-sm font-medium truncate max-w-32 ${entityLink}`}
                 >
                   {displayName}
@@ -222,7 +222,7 @@ export function makeTripColumns({
             <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
             {primaryId ? (
               <Link
-                href={`/dashboard/categories/${primaryId}/edit`}
+                href={`/categories/${primaryId}/edit`}
                 className={`text-sm truncate max-w-28 ${entityLink}`}
               >
                 {label}
@@ -251,7 +251,7 @@ export function makeTripColumns({
             <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="min-w-0">
               <Link
-                href={`/dashboard/destinations/${trip.destinationId}/edit`}
+                href={`/destinations/${trip.destinationId}/edit`}
                 className={`text-sm truncate max-w-28 block ${entityLink}`}
               >
                 {dest}

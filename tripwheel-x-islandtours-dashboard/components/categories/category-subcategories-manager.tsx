@@ -122,7 +122,7 @@ export function CategorySubcategoriesManager({ parent }: Props) {
                 className="flex items-center justify-between gap-3 px-4 py-3"
               >
                 <Link
-                  href={`/dashboard/categories/${child.id}/edit`}
+                  href={`/categories/${child.id}/edit`}
                   className="text-sm font-medium hover:underline"
                 >
                   {child.name}

@@ -285,7 +285,7 @@ export function TripForm() {
       {
         onSuccess: (created) => {
           toast.success('Trip created successfully.');
-          router.push(`/dashboard/trips/${created.id}/edit`);
+          router.push(`/trips/${created.id}/edit`);
         },
         onError: (err) => {
           const message = err instanceof Error ? err.message : 'Failed to create trip.';

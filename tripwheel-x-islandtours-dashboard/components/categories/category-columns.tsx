@@ -67,7 +67,7 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
             )}
           </div>
           <Link
-            href={`/dashboard/categories/${category.id}`}
+            href={`/categories/${category.id}`}
             className="font-medium hover:underline underline-offset-4 truncate max-w-50"
           >
             {category.name}

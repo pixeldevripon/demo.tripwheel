@@ -250,7 +250,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
           }}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          onSuccess={() => router.push('/dashboard/tour-operators')}
+          onSuccess={() => router.push('/tour-operators')}
         />
       )}
     </div>

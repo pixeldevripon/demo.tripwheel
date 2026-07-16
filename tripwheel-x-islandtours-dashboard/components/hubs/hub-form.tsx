@@ -147,7 +147,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           onSuccess: (created) => {
             toast.success('Hub created successfully.');
             onSuccess?.(created);
-            router.push(`/dashboard/hubs/${created.id}/edit`);
+            router.push(`/hubs/${created.id}/edit`);
           },
           onError: (err) => {
             toast.error(err instanceof Error ? err.message : 'Failed to create hub.');
@@ -376,7 +376,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
           hub={hub}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          onSuccess={() => router.push('/dashboard/hubs')}
+          onSuccess={() => router.push('/hubs')}
         />
       )}
     </div>

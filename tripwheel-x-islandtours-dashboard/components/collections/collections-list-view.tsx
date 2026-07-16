@@ -74,7 +74,7 @@ export function CollectionsListView() {
           actionSlot={
             can('CREATE_COLLECTION') && (
               <Button asChild size="sm">
-                <Link href="/dashboard/collections/new">
+                <Link href="/collections/new">
                   <PlusIcon /> New Collection
                 </Link>
               </Button>

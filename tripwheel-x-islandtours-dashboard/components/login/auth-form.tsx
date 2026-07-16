@@ -31,7 +31,7 @@ export default function AuthForm() {
                 setError(authError.message || 'Invalid email or password.');
             } else {
                 // When 2FA is enabled: setStep(2) instead of redirect
-                router.push('/dashboard');
+                router.push('/');
                 router.refresh();
             }
         } catch (err: unknown) {

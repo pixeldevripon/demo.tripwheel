@@ -255,7 +255,7 @@ export function TripsTable({
                   </DropdownMenu>
                   {can('CREATE_TRIP') && (
                       <Button asChild size='sm'>
-                          <Link href='/dashboard/trips/new'>
+                          <Link href='/trips/new'>
                               <PlusIcon />
                               New Trip
                           </Link>

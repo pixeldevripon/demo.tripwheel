@@ -160,7 +160,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           onSuccess: (created) => {
             toast.success('Category created successfully.');
             onSuccess?.(created);
-            router.push(`/dashboard/categories/${created.id}/edit`);
+            router.push(`/categories/${created.id}/edit`);
           },
           onError: (err) => {
             toast.error(
@@ -362,7 +362,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
           category={category}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          onSuccess={() => router.push('/dashboard/categories')}
+          onSuccess={() => router.push('/categories')}
         />
       )}
     </div>

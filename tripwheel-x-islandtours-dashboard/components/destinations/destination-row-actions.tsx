@@ -82,11 +82,11 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`/destinations/${destination.id}`)}>
             <EyeIcon />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit`)}>
+          <DropdownMenuItem onClick={() => router.push(`/destinations/${destination.id}/edit`)}>
             <PencilIcon />
             Edit
           </DropdownMenuItem>
@@ -97,7 +97,7 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/dashboard/destinations/${destination.id}/edit?tab=translations`)
+              router.push(`/destinations/${destination.id}/edit?tab=translations`)
             }
           >
             <LanguagesIcon />
@@ -105,20 +105,20 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/dashboard/destinations/${destination.id}/edit?tab=page-content`)
+              router.push(`/destinations/${destination.id}/edit?tab=page-content`)
             }
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit?tab=seo`)}
+            onClick={() => router.push(`/destinations/${destination.id}/edit?tab=seo`)}
           >
             <SearchIcon />
             SEO
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/destinations/${destination.id}/edit?tab=faqs`)}
+            onClick={() => router.push(`/destinations/${destination.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs

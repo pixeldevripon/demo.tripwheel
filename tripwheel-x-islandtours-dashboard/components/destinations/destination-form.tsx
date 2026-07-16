@@ -201,7 +201,7 @@ export function DestinationForm({
                         toast.success('Destination created successfully.');
                         onSuccess?.(created);
                         router.push(
-                            `/dashboard/destinations/${created.id}/edit`
+                            `/destinations/${created.id}/edit`
                         );
                     },
                     onError: err => {
@@ -512,7 +512,7 @@ export function DestinationForm({
                     destination={destination}
                     open={deleteOpen}
                     onOpenChange={setDeleteOpen}
-                    onSuccess={() => router.push('/dashboard/destinations')}
+                    onSuccess={() => router.push('/destinations')}
                 />
             )}
         </div>

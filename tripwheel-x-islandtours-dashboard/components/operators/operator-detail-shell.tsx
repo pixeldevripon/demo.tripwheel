@@ -23,15 +23,15 @@ export function OperatorDetailShell({
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Tour Operators', href: '/dashboard/tour-operators' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Tour Operators', href: '/tour-operators' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (
               name ?? 'Operator'
             ),
-            href: `/dashboard/tour-operators/${id}/edit`,
+            href: `/tour-operators/${id}/edit`,
           },
           { label: subtitle },
         ]}

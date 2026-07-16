@@ -86,7 +86,7 @@ export function OnboardingForm() {
                 if (result.success) {
                     toast.success('Onboarding completed successfully!');
                     router.refresh();
-                    router.push('/dashboard');
+                    router.push('/');
                 } else {
                     toast.error(result.error || 'Something went wrong');
                 }

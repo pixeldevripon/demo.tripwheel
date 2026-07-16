@@ -114,7 +114,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
         {
           onSuccess: () => {
             toast.success('Attribute updated.');
-            router.push('/dashboard/attributes');
+            router.push('/attributes');
           },
           onError: err => toast.error(err instanceof Error ? err.message : 'Update failed.'),
         },
@@ -125,7 +125,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
         {
           onSuccess: () => {
             toast.success('Attribute created.');
-            router.push('/dashboard/attributes');
+            router.push('/attributes');
           },
           onError: err => toast.error(err instanceof Error ? err.message : 'Create failed.'),
         },

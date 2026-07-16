@@ -22,13 +22,13 @@ export function CollectionDetailShell({
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Collections', href: '/dashboard/collections' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Collections', href: '/collections' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (name ?? 'Collection'),
-            href: `/dashboard/collections/${id}/edit`,
+            href: `/collections/${id}/edit`,
           },
           { label: subtitle },
         ]}

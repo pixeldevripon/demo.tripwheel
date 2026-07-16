@@ -68,11 +68,11 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/hubs/${hub.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}`)}>
             <EyeIcon />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit`)}>
+          <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}/edit`)}>
             <PencilIcon />
             Edit
           </DropdownMenuItem>
@@ -82,31 +82,31 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=translations`)}
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=translations`)}
           >
             <LanguagesIcon />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=page-content`)}
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=page-content`)}
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=seo`)}
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=seo`)}
           >
             <SearchIcon />
             SEO
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=faqs`)}
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/hubs/${hub.id}/edit?tab=allowed-categories`)}
+            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=allowed-categories`)}
           >
             <TagsIcon />
             Allowed Categories

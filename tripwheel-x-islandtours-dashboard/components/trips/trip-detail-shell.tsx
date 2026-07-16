@@ -22,13 +22,13 @@ export function TripDetailShell({
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'My Trips', href: '/dashboard/trips' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'My Trips', href: '/trips' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (name ?? 'Trip'),
-            href: `/dashboard/trips/${id}/edit`,
+            href: `/trips/${id}/edit`,
           },
           { label: subtitle },
         ]}

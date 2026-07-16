@@ -11,8 +11,9 @@ import { NextResponse } from 'next/server';
  * that belongs here: this repo has no public site and no locales - the admin UI
  * is English-only, and the 7 locales are a CONTENT workflow, not a UI one.
  *
- * What is left is the guard, carried over unchanged, plus the legacy auth
- * redirects that keep old bookmarks working.
+ * What is left is the guard, carried over unchanged, plus the redirects that keep
+ * old bookmarks working - including the `/dashboard/*` -> `/*` 308, since the
+ * dashboard served under that prefix for its whole life in the monorepo.
  */
 
 /**
@@ -95,17 +96,43 @@ function clearSessionCookies(request: NextRequest, response: NextResponse) {
     }
 }
 
+/**
+ * Paths that must NOT hit the session guard.
+ *
+ * These are the auth doors themselves plus onboarding - guarding them would be a
+ * redirect loop (/portal -> no session -> redirect to /portal -> ...). Onboarding
+ * was never guarded in the monorepo either; it is reached from a set-password
+ * email link, before the operator has a dashboard session worth checking.
+ *
+ * Everything NOT listed here is the app, and the app is guarded. That is the
+ * inverse of the monorepo, where the dashboard lived behind a `/dashboard`
+ * prefix and everything else was the public site.
+ */
+const UNGUARDED_PREFIXES = ['/portal', '/staff', '/onboarding', '/api'];
+
+function isUnguarded(pathname: string): boolean {
+    return UNGUARDED_PREFIXES.some(
+        prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Dashboard auth guard.
+    // 1. Legacy `/dashboard/*` -> `/*` (308, method- and body-preserving).
     //
-    // Still scoped to `/dashboard/*` because the routes still live there. Phase 6
-    // moves the app to the root, at which point this inverts: guard EVERYTHING
-    // except the auth doors (/portal, /staff), /onboarding and /api, and add a
-    // 308 from the legacy /dashboard/* paths.
+    // The dashboard served under a `/dashboard` prefix for its whole life in the
+    // monorepo, so every operator bookmark, every emailed deep link, and the old
+    // origin's traffic still points there. 308 rather than 302 so the redirect is
+    // permanent and cacheable, and the query string is carried across.
+    //
+    // FIRST, before the guard: an unauthenticated hit on a legacy URL should land
+    // on the new URL and be bounced to /portal from there, not bounced to /portal
+    // and lose the destination.
     if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
-        return guardDashboard(request);
+        const url = request.nextUrl.clone();
+        url.pathname = pathname.replace(/^\/dashboard/, '') || '/';
+        return NextResponse.redirect(url, 308);
     }
 
     // 2. Legacy auth redirects.
@@ -121,8 +148,13 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // 3. Everything else (/portal, /staff, /onboarding, /api) passes through.
-    return NextResponse.next();
+    // 3. The auth doors and onboarding pass through unguarded.
+    if (isUnguarded(pathname)) {
+        return NextResponse.next();
+    }
+
+    // 4. Everything else IS the dashboard. Guard it.
+    return guardDashboard(request);
 }
 
 export const config = {

@@ -13,8 +13,8 @@ export function AttributeEditView({ attributeKey }: { attributeKey: string }) {
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Attributes', href: '/dashboard/attributes' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Attributes', href: '/attributes' },
           { label: attribute?.displayName ?? 'Edit' },
         ]}
       />

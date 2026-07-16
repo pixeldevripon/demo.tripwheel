@@ -61,7 +61,7 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
             </div>
             <div className="min-w-0">
               <Link
-                href={`/dashboard/tour-operators/${op.id}`}
+                href={`/tour-operators/${op.id}`}
                 className="font-medium hover:underline underline-offset-4 truncate max-w-50 block"
               >
                 {getOperatorDisplayName(op)}

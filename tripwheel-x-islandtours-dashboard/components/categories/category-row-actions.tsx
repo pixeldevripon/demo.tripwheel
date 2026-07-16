@@ -82,11 +82,11 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/categories/${category.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`/categories/${category.id}`)}>
             <EyeIcon />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/dashboard/categories/${category.id}/edit`)}>
+          <DropdownMenuItem onClick={() => router.push(`/categories/${category.id}/edit`)}>
             <PencilIcon />
             Edit
           </DropdownMenuItem>
@@ -97,7 +97,7 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/dashboard/categories/${category.id}/edit?tab=translations`)
+              router.push(`/categories/${category.id}/edit?tab=translations`)
             }
           >
             <LanguagesIcon />
@@ -105,20 +105,20 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/dashboard/categories/${category.id}/edit?tab=page-content`)
+              router.push(`/categories/${category.id}/edit?tab=page-content`)
             }
           >
             <FileTextIcon />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/categories/${category.id}/edit?tab=faqs`)}
+            onClick={() => router.push(`/categories/${category.id}/edit?tab=faqs`)}
           >
             <HelpCircleIcon />
             Manage FAQs
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/categories/${category.id}/edit?tab=seo`)}
+            onClick={() => router.push(`/categories/${category.id}/edit?tab=seo`)}
           >
             <SearchIcon />
             SEO

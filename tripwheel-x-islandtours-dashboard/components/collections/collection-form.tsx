@@ -277,7 +277,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
           // Land on the new collection's editor so the admin can continue (tours,
           // translations, publish) instead of bouncing back to the list.
           onSuccess: created =>
-            router.push(`/dashboard/collections/${created.id}/edit`),
+            router.push(`/collections/${created.id}/edit`),
           onError: err => toast.error(err instanceof Error ? err.message : 'Create failed.'),
         },
       );

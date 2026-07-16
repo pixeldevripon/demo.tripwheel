@@ -100,27 +100,27 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
           {/* Navigation - hidden for archived trips */}
           {!isArchived && (
             <>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=details`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=details`)}>
                 <PencilIcon />
                 Edit Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=images`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=images`)}>
                 <ImageIcon />
                 Images
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=inclusions`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=inclusions`)}>
                 <FileTextIcon />
                 Content
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=pricing`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=pricing`)}>
                 <TagIcon />
                 Pricing
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=schedules`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=schedules`)}>
                 <CalendarIcon />
                 Schedules
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/dashboard/trips/${trip.id}/edit?tab=translations`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=translations`)}>
                 <LanguagesIcon />
                 Translations
               </DropdownMenuItem>

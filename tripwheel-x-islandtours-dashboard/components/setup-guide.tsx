@@ -22,7 +22,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Build your first tour package with itinerary, dates, pricing, and other details.',
             buttonText: 'Create a Tour',
-            linkTo: `/dashboard/trips/new`,
+            linkTo: `/trips/new`,
         },
         {
             number: 2,
@@ -30,7 +30,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Tailor your site to match your brand and attract more customers.',
             buttonText: 'Website Settings',
-            linkTo: `/dashboard/settings`,
+            linkTo: `/settings`,
         },
         {
             number: 3,
@@ -38,7 +38,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Enable secure payments to start accepting bookings online.',
             buttonText: 'Set Up Payment',
-            linkTo: `/dashboard/payments`,
+            linkTo: `/payments`,
         },
         {
             number: 4,
@@ -46,7 +46,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Configure your SMTP in Island Tours to ensure emails are sent from your own domain.',
             buttonText: 'Email Configuration',
-            linkTo: `/dashboard/settings/email`,
+            linkTo: `/settings/email`,
         },
     ];
 

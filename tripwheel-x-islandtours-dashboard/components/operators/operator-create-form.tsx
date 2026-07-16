@@ -39,7 +39,7 @@ export function OperatorCreateForm() {
       {
         onSuccess: (created) => {
           toast.success('Operator created - an invite email has been sent.');
-          router.push(`/dashboard/tour-operators/${created.id}/edit`);
+          router.push(`/tour-operators/${created.id}/edit`);
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : 'Failed to create operator.');

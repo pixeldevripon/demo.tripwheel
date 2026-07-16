@@ -23,13 +23,13 @@ export function CategoryDetailShell({
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Categories', href: '/dashboard/categories' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Categories', href: '/categories' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (name ?? 'Category'),
-            href: `/dashboard/categories/${id}/edit`,
+            href: `/categories/${id}/edit`,
           },
           { label: subtitle },
         ]}

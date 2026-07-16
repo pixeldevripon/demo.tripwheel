@@ -35,7 +35,7 @@ export function OperatorRowActions({ operator }: OperatorRowActionsProps) {
   const { mutate: updateOperator, isPending } = useUpdateOperator();
   const { can } = useRole();
 
-  const base = `/dashboard/tour-operators/${operator.id}`;
+  const base = `/tour-operators/${operator.id}`;
 
   function handleToggleActive() {
     updateOperator(

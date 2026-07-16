@@ -244,7 +244,7 @@ export function HubsTable({
           </DropdownMenu>
           {can('MANAGE_HUBS') && (
             <Button asChild size="sm">
-              <Link href="/dashboard/hubs/new">
+              <Link href="/hubs/new">
                 <PlusIcon />
                 Add Hub
               </Link>

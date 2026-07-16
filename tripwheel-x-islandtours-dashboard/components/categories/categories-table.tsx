@@ -215,7 +215,7 @@ export function CategoriesTable({
           </DropdownMenu>
           {can('CREATE_CATEGORY') && (
             <Button asChild size="sm">
-              <Link href="/dashboard/categories/new">
+              <Link href="/categories/new">
                 <PlusIcon />
                 Add Category
               </Link>

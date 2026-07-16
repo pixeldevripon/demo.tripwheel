@@ -25,12 +25,12 @@ async function OnboardingContent() {
     const userRole = (user as any).role;
 
     if (userRole !== 'TOUR_OPERATOR') {
-        redirect('/dashboard');
+        redirect('/');
     }
 
     const { needsOnboarding } = await checkOnboardingStatus();
     if (!needsOnboarding) {
-        redirect('/dashboard');
+        redirect('/');
     }
 
     return <OnboardingForm />;

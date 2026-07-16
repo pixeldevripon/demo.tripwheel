@@ -56,7 +56,7 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
             )}
           </div>
           <Link
-            href={`/dashboard/destinations/${destination.id}`}
+            href={`/destinations/${destination.id}`}
             className="font-medium hover:underline underline-offset-4 truncate max-w-50"
           >
             {destination.name}

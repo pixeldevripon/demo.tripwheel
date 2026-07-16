@@ -50,7 +50,7 @@ export function AttributesListView() {
         actionSlot={
           canManage && (
             <Button asChild size="sm">
-              <Link href="/dashboard/attributes/new">
+              <Link href="/attributes/new">
                 <PlusIcon /> Add Attribute
               </Link>
             </Button>

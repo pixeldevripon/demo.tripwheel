@@ -25,17 +25,25 @@ interface NavMainProps {
   items: NavItem[];
 }
 
+/**
+ * Nav `url`s are relative and root-less ('trips', 'trips/new', '' for Overview),
+ * so the href is built here rather than stored. The dashboard serves at the root,
+ * hence a leading slash and nothing else - concatenating a '/' root would yield
+ * '//trips', which a browser reads as protocol-relative (host "trips").
+ *
+ * `url` is optional on NavItem (parents that only group children have none), so
+ * an absent url falls back to the root rather than the '/undefined' the previous
+ * template-literal version would have produced.
+ */
+const toHref = (url?: string) => (!url ? '/' : `/${url.replace(/^\/+/, '')}`);
+
 export function NavMain({ items }: NavMainProps) {
   const pathname = usePathname();
-  const DASH_ROOT = '/dashboard';
 
   const isPathActive = (url?: string, exact = true) => {
     if (!url || url === '#') return false;
-    const target =
-      url === ''
-        ? DASH_ROOT
-        : `${DASH_ROOT}/${url.replace(/^\//g, '')}`;
-    
+    const target = toHref(url);
+
     const normPath = pathname.replace(/\/+$/, '') || '/';
     const normTarget = target.replace(/\/+$/, '') || '/';
 
@@ -139,7 +147,7 @@ export function NavMain({ items }: NavMainProps) {
                                 )}
                               >
                                 <Link
-                                  href={subItem.url === '' ? DASH_ROOT : `${DASH_ROOT}/${subItem.url}`}
+                                  href={toHref(subItem.url)}
                                 >
                                   {subItem.icon && (
                                     <subItem.icon
@@ -177,7 +185,7 @@ export function NavMain({ items }: NavMainProps) {
                 >
                   <Link
                     className='flex items-center gap-2 h-[46px]'
-                    href={item.url === '' ? DASH_ROOT : `${DASH_ROOT}/${item.url}`}
+                    href={toHref(item.url)}
                   >
                     {item.icon && <item.icon className='size-[22px]' />}
                     <span className='font-medium text-[14px]'>

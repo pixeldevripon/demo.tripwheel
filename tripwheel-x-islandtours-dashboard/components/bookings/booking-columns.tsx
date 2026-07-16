@@ -117,7 +117,7 @@ export function makeBookingColumns({
         return (
           <div className="min-w-0">
             <Link
-              href={`/dashboard/trips/${b.tourId}/edit`}
+              href={`/trips/${b.tourId}/edit`}
               className={`text-sm font-medium truncate max-w-48 block ${entityLink}`}
             >
               {b.tourName}

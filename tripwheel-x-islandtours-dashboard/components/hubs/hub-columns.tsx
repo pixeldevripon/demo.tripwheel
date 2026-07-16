@@ -62,7 +62,7 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
               <NavigationIcon className="size-4 text-muted-foreground" />
             </div>
             <Link
-              href={`/dashboard/hubs/${hub.id}`}
+              href={`/hubs/${hub.id}`}
               className="font-medium hover:underline underline-offset-4 truncate max-w-50"
             >
               {hub.name}

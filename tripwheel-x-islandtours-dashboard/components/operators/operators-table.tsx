@@ -144,7 +144,7 @@ export function OperatorsTable({
         </div>
         {can('MANAGE_OPERATORS') && (
           <Button asChild size="sm">
-            <Link href="/dashboard/tour-operators/new">
+            <Link href="/tour-operators/new">
               <PlusIcon />
               Add Tour Operator
             </Link>

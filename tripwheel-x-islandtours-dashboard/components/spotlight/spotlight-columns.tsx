@@ -176,7 +176,7 @@ export function makeSpotlightColumns({
         return (
           <div className="flex flex-col gap-1">
             <Link
-              href={`/dashboard/trips/${req.tourId}/edit`}
+              href={`/trips/${req.tourId}/edit`}
               className="flex items-center gap-3 w-fit group"
             >
               {info?.image ? (
@@ -221,7 +221,7 @@ export function makeSpotlightColumns({
         if (!name) return <span className="text-sm text-muted-foreground">—</span>;
         return (
           <Link
-            href={`/dashboard/tour-operators/${req.operatorId}`}
+            href={`/tour-operators/${req.operatorId}`}
             className="text-sm text-muted-foreground hover:underline underline-offset-4"
           >
             {name}
@@ -240,7 +240,7 @@ export function makeSpotlightColumns({
         if (!name) return <span className="text-sm text-muted-foreground">—</span>;
         return (
           <Link
-            href={`/dashboard/destinations/${req.destinationId}`}
+            href={`/destinations/${req.destinationId}`}
             className="text-sm text-muted-foreground hover:underline underline-offset-4"
           >
             {name}

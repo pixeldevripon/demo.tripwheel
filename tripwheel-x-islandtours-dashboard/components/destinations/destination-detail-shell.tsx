@@ -24,13 +24,13 @@ export function DestinationDetailShell({
     <div>
       <Breadcrumb
         items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Destinations', href: '/dashboard/destinations' },
+          { label: 'Dashboard', href: '/' },
+          { label: 'Destinations', href: '/destinations' },
           {
             label: isLoading ? (
               <Skeleton className="h-3 w-20 inline-block" />
             ) : (name ?? 'Destination'),
-            href: `/dashboard/destinations/${id}/edit`,
+            href: `/destinations/${id}/edit`,
           },
           { label: subtitle },
         ]}

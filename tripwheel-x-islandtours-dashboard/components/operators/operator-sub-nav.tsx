@@ -9,7 +9,7 @@ interface OperatorSubNavProps {
 export function OperatorSubNav({ operatorId }: OperatorSubNavProps) {
   return (
     <DashboardTabNav
-      tabs={[{ label: 'Details', href: `/dashboard/tour-operators/${operatorId}/edit` }]}
+      tabs={[{ label: 'Details', href: `/tour-operators/${operatorId}/edit` }]}
     />
   );
 }
