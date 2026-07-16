@@ -303,6 +303,66 @@
 
 **Rollback** Revert both. Public site falls back to TTL.
 
+> **EXECUTED 2026-07-17.** All of `02B` §10 passes: §10.1 mapping 1-9 (+11 extra edge cases),
+> §10.2 endpoint 10-18 (+9 extra), §10.3 transport/throttle 25-33. Both apps build green.
+>
+> **CORRECTION 1 - "Use no profile argument" is wrong on Next 16.2.4, and does not compile.**
+> The line above, and `02B` §4.2 / decision #4, both say `revalidateTag(tag)` bare. In the installed
+> 16.2.4 the `profile` parameter is **required** in the type signature
+> (`revalidateTag(tag: string, profile: string | CacheLifeConfig)`), so the bare call is a type
+> error; at runtime it also emits a deprecation `console.warn` **per tag, per write**, into the very
+> log drain R6 makes the alerting channel.
+> **Shipped `revalidateTag(tag, { expire: 0 })`** (user-confirmed). Reading
+> `next/dist/server/web/spec-extension/revalidate.js:208`, `if (!profile || cacheLife?.expire === 0)`
+> puts `{ expire: 0 }` in the *same* branch as no-profile - and `updateTag` itself calls
+> `revalidate([tag], ..., undefined)` into that branch too. So all three are identical in effect:
+> the parity decision #4 wanted, minus the deprecated path. Verified: 0 deprecation warnings emitted.
+> **`'max'` remains deferred** per §4.2/§6A.4 - it is still a real behavior change.
+>
+> **CORRECTION 2 - `export const runtime = 'nodejs'` breaks the build under `cacheComponents`.**
+> The endpoint needs Node for `crypto.timingSafeEqual`, so pinning the runtime is the obvious move.
+> It is rejected outright: *"Route segment config \"runtime\" is not compatible with
+> nextConfig.cacheComponents. Please remove it."* **`tsc --noEmit` passes it** - this only surfaces
+> on `next build`/`next dev`, i.e. it would have failed the Vercel deploy. Node is the default
+> anyway, so the fix is to omit the export and keep the constraint as a comment.
+>
+> **CORRECTION 3 - `user-profile` is a phantom tag, in BOTH repos.** §5.1 lists it in the coarse
+> union, and `cache-revalidation.ts` maps `/users/me` + all `/settings/*` writes to it - but
+> **nothing anywhere calls `cacheTag('user-profile')`**. `getUserProfile` is React `cache()`
+> (request memoization), deliberately moved off `'use cache'` because caching a transient auth
+> failure bounces a logged-in user to /login. So `updateTag('user-profile')` has been a no-op since
+> long before the split. **Kept in the union** (user-confirmed): parity, zero risk, and the cost is
+> only a few no-op POSTs. Recorded as debt - remove from both repos together or not at all.
+>
+> **CORRECTION 4 - §6A.3's "21 POSTs -> 2" is 21 -> 3 in practice.** Measured. The claim assumes the
+> burst fits inside one 1s window; a real 21-write schedule save spans ~1.05s, so it takes a leading
+> edge plus two trailing flushes. Still an 86% reduction, and the shape of the fix is right. A 40-write
+> burst over 1s also lands at 3. **Check 30 holds exactly**: a single isolated save fires at 0ms.
+>
+> **CORRECTION 5 - R5's "timeout at ~3s" bounds each attempt, not the operation.** Worst case for a
+> hung public site is **~11s** (3 attempts x 3s + `[300, 800]` backoff + jitter), not 3s. Accepted, not
+> changed: it is fire-and-forget so R1 still holds (measured - the write never blocks and never
+> throws), the dashboard is self-hosted (`output: 'standalone'`) so there is no serverless
+> `maxDuration` to trip, and shortening it would fight R3's required retries. Worth revisiting only
+> if it shows up in practice.
+>
+> **Verified beyond the spec's checklist:**
+> - **The cross-repo tag contract, mechanically.** Enumerated every tag the mapping can emit across
+>   208 write shapes (17 distinct) and POSTed each to the live endpoint: all 200. Producer ⊆ consumer.
+>   This is the check that would have caught B3 drift, and it is worth re-running whenever either
+>   side's tag names move.
+> - **Check 18 at the compiled-output level**, not by grepping source: the emitted chunk contains
+>   `(0,_.revalidateTag)(e,{expire:0})` and **zero** `updateTag` call sites (its 9 textual
+>   occurrences are all `next/cache`'s own export table / error string / implementation).
+> - The public proxy already passes `/api` through unlocalized, so the i18n scheme cannot redirect
+>   the endpoint.
+> - Rotation works: a comma-separated `REVALIDATE_SECRET` accepts both old and new values.
+>
+> **Not done here, by design:** the repo has no unit-test runner (Playwright only), so the §10.1/§10.2
+> checks were run as scratchpad harnesses against the real files rather than committed tests. Adding
+> a runner is a separate decision, not Phase 7 scope. **This means the tag contract is guarded at
+> runtime by the 400 only** - there is no CI check keeping the two repos' unions aligned.
+
 ---
 
 ## Phase 8 · Env, Docker, staging
