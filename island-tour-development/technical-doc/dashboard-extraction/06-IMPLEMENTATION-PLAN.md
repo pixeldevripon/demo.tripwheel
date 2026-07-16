@@ -160,6 +160,51 @@
 
 **Files** Everything in `02` §3.4 (copies) and §3.5 (rewrites: `layout.tsx`, `globals.css`, `proxy.ts`, `next.config.ts`, `dashbaord-wraper.tsx`).
 
+> **EXECUTED 2026-07-17** -> `github.com/devripon-tr/tripwheel-x-islandtours-dashboard` (`2977a77`).
+> Build green, tsc clean, lint 0 errors, 526 files, deps 39 -> 29. Monorepo untouched.
+>
+> **DO NOT TRUST §3.4's copy list.** It was wrong three times. The copy was driven by walking
+> the transitive import graph from the dashboard entry points instead - do that again if this
+> is ever re-run. (Walker caveat: strip comments first. A commented-out `import` in
+> `operator-login.tsx:7` pulled the dormant 2FA chain into the closure.)
+>
+> **1. "F-3 is resolved by the split itself, for free" (§3.5) is WRONG - this was the big one.**
+> The portal/staff login surfaces are built on the PUBLIC site's `--it-*` tokens: **81 usages
+> across 20 tokens** (`bg-it-primary`, `text-it-heading`, `font-it-display`, `shadow-it-md`...),
+> and `app/(login)/layout.tsx` wraps them in `.frontend-root`. Dropping the
+> `@import './(frontend)/frontend-tokens.css'` line renders `/portal` and `/staff` **unstyled**.
+> Same class of error as the Phase 2 `TourBadgeChip`, 10x larger.
+> **Enabling fact:** ZERO files in `components/dashboard`, `components/ui`, `components/onboarding`
+> or `app/(dashboard)` use `--it-*` - the dependency is *exclusively* the login screens.
+> **Resolution (user, 2026-07-17): fork the tokens, and the login screens KEEP THE BRAND LOOK
+> PERMANENTLY.** So `app/login-tokens.css` (130 lines, reduced from 524, only what login
+> references, scoped by `.frontend-root`) is **intentional architecture, not debt - Phase 11
+> must leave the login surfaces alone.** F-3 survives but is scoped to `/portal` + `/staff`.
+> Verified in the BUILT CSS, not just the build: 14/14 utilities generate (a green build proves
+> nothing here - Tailwind silently skips unknown utilities).
+>
+> **2. `hooks/tours/use-availability-sync.ts` is NOT a "dashboard consumer"** (§3.4 says it is).
+> Its only importer is the PUBLIC `tour-booking-card`. Left behind, along with
+> `lib/api/availability.ts` and `lib/tours/pricing-label.ts` (all public-only).
+> Conversely §3.4's "leave behind" list is wrong about `hooks/use-drag-scroll.ts` - `ui/tabs.tsx`
+> imports it, so it forks with `ui/`.
+>
+> **3. `ui/input-otp` is not "public site only"** (`03` §inventory says DROP). It backs the
+> operator **2FA** flow (`login/code-input` -> `ui/input-otp`), parked behind a commented import
+> in `operator-login.tsx:7` ("uncomment when enabled"). A built feature awaiting a switch, not
+> dead code. **Kept**, with the `input-otp` dep.
+>
+> **Also:** `ui/drawer.tsx` deleted (0 importers; sole reason `vaul` existed) and **`@dnd-kit`'s 4
+> packages dropped** - their only consumer was the dead `data-table.tsx` removed in Phase 4.
+> **They are now orphaned in the monorepo too - drop them there** (`05`'s DataTable system may
+> re-add dnd-kit in Stage D; add it back when a consumer exists). `shadcn` must stay a runtime
+> dep: `globals.css:3` imports `shadcn/tailwind.css`.
+>
+> **One intentional visual delta, dark mode only:** the shell gutter was a hardcoded `#f1f4fa`
+> with **no** dark variant, so dark mode framed the pane in light lavender (D-4). Now
+> `--shell-gutter`/`--shell-content` tokens. **Light mode is pixel-identical.** Carry this to
+> Phase 9 as a known delta alongside the collections-RBAC one.
+
 **Rationale** `02` §2. Repo root = the app. Isolation test: clone, `pnpm dev`.
 
 **Dependencies** Phases 1-4
@@ -179,6 +224,45 @@
 **Objective** Dashboard serves at root.
 
 **Files** Route moves; `navigations/navigations.ts`; every `router.push`/`redirect`/`<Link>`; `proxy.ts` (add a `/dashboard/*` -> `/*` 308); `e2e/`.
+
+> **EXECUTED 2026-07-17.** `app/(dashboard)/dashboard/**` -> `app/(app)/**`; 61 files rewritten;
+> build green; all 18 nav urls resolve to a real route. **Behaviour verified against the running
+> build, not by grep** - see the table below.
+>
+> **`navigations.ts` needed NO change.** Its urls are already relative and root-less (`'trips'`,
+> `''` for Overview); `nav-main.tsx` builds the href. The whole nav change was one constant.
+>
+> **The `DASH_ROOT` trap.** `nav-main.tsx:30` had `const DASH_ROOT = '/dashboard'`, and hrefs were
+> `` `${DASH_ROOT}/${url}` ``. A blanket `'/dashboard'` -> `'/'` rewrite turns that into
+> `` `//trips` `` - **a protocol-relative URL, which the browser resolves to host "trips"**. Every
+> sidebar link would have broken, and the build stays green. Replaced with a `toHref()` helper
+> (which also fixes the latent `/undefined` href for url-less parent items).
+>
+> **`e2e/` was never copied in Phase 5** (a gap - `02` §3.4 lists it). Copied here. **§3.4's
+> "audit for public-site specs and leave those behind" has nothing to act on: all 11 specs are
+> dashboard tests** - every single `page.goto` targets `/dashboard/*`. (A grep for `locale`/
+> `curacao` looks like public coverage but is false-positive: they are the translation workflow
+> and a destination dropdown option.) The stored auth state `e2e/.auth/user.json` is deliberately
+> NOT carried - it is a credential.
+>
+> **`proxy.ts` sits at the repo root**, outside the rewritten dirs, so it escaped the blanket
+> rewrite - which is what saved it: `pathname.startsWith('/dashboard/')` -> `startsWith('/')`
+> would have guarded `/portal` and produced an **infinite redirect loop**. Rewritten deliberately:
+> the guard now inverts (guard everything EXCEPT `UNGUARDED_PREFIXES` = `/portal`, `/staff`,
+> `/onboarding`, `/api`), and the legacy 308 runs FIRST so an unauthenticated hit on a legacy URL
+> keeps its destination instead of being bounced to `/portal` and losing it.
+>
+> **Verified on `next start`:**
+>
+> | Request | Result |
+> |---|---|
+> | `/dashboard`, `/dashboard/trips`, `/dashboard/trips/abc/edit` | **308** -> `/`, `/trips`, `/trips/abc/edit` |
+> | `/dashboard/settings?tab=seo` | **308** -> `/settings?tab=seo` (query preserved) |
+> | `/`, `/trips`, `/settings` (no session) | **307** -> `/portal` |
+> | `/portal`, `/portal/forgot`, `/staff`, `/onboarding` | **200** (no loop) |
+> | `/login`, `/forgot-password` | **307** -> `/portal`, `/portal/forgot` |
+>
+> **Go/no-go on trips->tours: DEFERRED**, per the recommendation below.
 
 **Rationale** `02` §8. `dashboard.tripwheel.io/dashboard/tours` is redundant. Cheap now, expensive later.
 
