@@ -17,7 +17,8 @@
  * slug-registry lookups) trigger no revalidation. Settings is a partial
  * exception: only `/settings/site` backs a public read (see that case).
  */
-import { revalidateCacheTags, type CacheTag } from '@/app/_actions/revalidate';
+import type { CacheTag } from '@/app/_actions/revalidate';
+import { enqueueRevalidation } from './revalidation-throttle';
 
 const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 
@@ -166,6 +167,11 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
  * Bust the cache tags affected by a just-completed mutation. No-op for GETs and
  * for endpoints that back no cached public page. Fire-and-forget: a revalidation
  * hiccup must never fail or slow down the write the user just made.
+ *
+ * Handing off to the throttle rather than calling the Server Action directly:
+ * the tags go out on the leading edge (so a single save is as immediate as it
+ * ever was) and a burst of identical saves collapses into roughly one call per
+ * second instead of one per write. See `revalidation-throttle.ts`.
  */
 export function revalidatePublicForPath(path: string, method?: string): void {
   const verb = (method ?? 'GET').toUpperCase();
@@ -174,8 +180,5 @@ export function revalidatePublicForPath(path: string, method?: string): void {
   const tags = tagsForMutation(path, verb);
   if (!tags.length) return;
 
-  void revalidateCacheTags(tags).catch(() => {
-    // Swallow: the mutation already succeeded; stale cache self-heals on the
-    // next cacheLife window even if this RPC fails.
-  });
+  enqueueRevalidation(tags);
 }
