@@ -448,47 +448,7 @@ function PaymentInner({
                         </AnimatePresence>
                     </div>
 
-                    {/* Implied-consent line. */}
-                    <div className='flex items-center gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        <Image
-                            src='/icons/checkout/consent.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-6 shrink-0'
-                        />
-                        <span>
-                            {dict.consent
-                                .split(/(\{terms\}|\{privacy\})/)
-                                .map((part, i) => {
-                                    if (part === '{terms}')
-                                        return (
-                                            <Link
-                                                key={i}
-                                                href={localizeHref(
-                                                    locale,
-                                                    '/terms'
-                                                )}
-                                                className='text-it-heading underline underline-offset-2'>
-                                                {dict.consentTerms}
-                                            </Link>
-                                        );
-                                    if (part === '{privacy}')
-                                        return (
-                                            <Link
-                                                key={i}
-                                                href={localizeHref(
-                                                    locale,
-                                                    '/privacy'
-                                                )}
-                                                className='text-it-heading underline underline-offset-2'>
-                                                {dict.consentPrivacy}
-                                            </Link>
-                                        );
-                                    return <span key={i}>{part}</span>;
-                                })}
-                        </span>
-                    </div>
+                    {/* Consent line moved below the CTA (implied consent). */}
                 </div>
 
                 {/* Form-level error (charge failure / unavailable). */}
@@ -542,6 +502,35 @@ function PaymentInner({
                         )}
                     </AnimatePresence>
                 </DarkButton>
+
+                {/* Implied consent (no checkbox), directly below the CTA. Muted
+                    gray #6B7280 at 13px with underlined policy links - kept at the
+                    legal/accessibility legibility floor (never lighter/smaller). */}
+                <p className='-mt-8 text-center text-[13px] leading-[1.5] text-[#6B7280]'>
+                    {dict.consent
+                        .split(/(\{terms\}|\{privacy\})/)
+                        .map((part, i) => {
+                            if (part === '{terms}')
+                                return (
+                                    <Link
+                                        key={i}
+                                        href={localizeHref(locale, '/terms')}
+                                        className='text-[#6B7280] underline underline-offset-2'>
+                                        {dict.consentTerms}
+                                    </Link>
+                                );
+                            if (part === '{privacy}')
+                                return (
+                                    <Link
+                                        key={i}
+                                        href={localizeHref(locale, '/privacy')}
+                                        className='text-[#6B7280] underline underline-offset-2'>
+                                        {dict.consentPrivacy}
+                                    </Link>
+                                );
+                            return <span key={i}>{part}</span>;
+                        })}
+                </p>
             </div>
         </motion.div>
     );

@@ -909,8 +909,28 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
       include: {
-        unitItems: { select: { id: true } },
-        tour: { select: { name: true } },
+        unitItems: { select: { id: true, ageBandId: true } },
+        tour: {
+          select: {
+            name: true,
+            durationMinutesFrom: true,
+            cancellationHours: true,
+            ageBands: { select: { id: true, label: true } },
+          },
+        },
+        operator: {
+          select: {
+            contactEmail: true,
+            contactPhone: true,
+            companyInfo: {
+              select: {
+                companyName: true,
+                companyEmail: true,
+                companyPhone: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
@@ -934,7 +954,73 @@ export class BookingsService {
       );
     }
 
+    // Group the per-traveler unit items into party lines ("2 x Adult"). UNIT-priced
+    // tours carry no age bands (ageBandId null) and collapse into one "Guests" line.
+    const bandLabels = new Map(
+      (booking.tour?.ageBands ?? []).map((b) => [b.id, b.label]),
+    );
+    const counts = new Map<string, number>();
+    for (const item of booking.unitItems) {
+      const key = item.ageBandId ?? '';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const party = [...counts].map(([key, quantity]) => ({
+      ageBandId: key || null,
+      label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guests',
+      quantity,
+    }));
+
+    // Free-cancellation deadline = tour start - cancellationHours. Computed, never
+    // stored (guide §14). tourStartDateTime is LOCAL wall-clock, so subtract in local
+    // space, then resolve the real instant against the snapshotted zone.
+    const cancellationHours = booking.tour?.cancellationHours ?? 48;
+    const deadlineLocal = booking.tourStartDateTime
+      ? new Date(
+          booking.tourStartDateTime.getTime() - cancellationHours * 3_600_000,
+        )
+      : null;
+
     return {
+      guestFirstName: booking.contactFirstName,
+      guestLastName: booking.contactLastName,
+      guestFullName:
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          null),
+      contactPhone: booking.contactPhone,
+      pickupRequested: booking.pickupRequested,
+      party,
+      depositAmount: booking.depositAmount.toString(),
+      balanceAmount: booking.balanceAmount.toString(),
+      paymentModel: booking.paymentModel,
+      paymentMethodBrand: booking.paymentMethodBrand,
+      paymentMethodLast4: booking.paymentMethodLast4,
+      durationMinutes: booking.tour?.durationMinutesFrom ?? null,
+      cancellationHours,
+      freeCancellationDeadlineLocal: deadlineLocal
+        ? deadlineLocal.toISOString().slice(0, 19)
+        : null,
+      freeCancellationDeadlineUtc:
+        deadlineLocal && booking.tourTimeZone
+          ? localWallClockToUtc(
+              deadlineLocal,
+              booking.tourTimeZone,
+            ).toISOString()
+          : null,
+      // OCTO supplier contact wins; the company profile is the fallback.
+      operator: {
+        name: booking.operator?.companyInfo?.companyName ?? null,
+        email:
+          booking.operator?.contactEmail ??
+          booking.operator?.companyInfo?.companyEmail ??
+          null,
+        phone:
+          booking.operator?.contactPhone ??
+          booking.operator?.companyInfo?.companyPhone ??
+          null,
+      },
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
       status: booking.status,

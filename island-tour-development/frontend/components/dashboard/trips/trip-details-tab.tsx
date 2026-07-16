@@ -625,7 +625,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
                       <SelectItem value="OPERATOR_LINK">Operator link (deposit)</SelectItem>
                       <SelectItem value="ON_ARRIVAL">Pay on arrival</SelectItem>
                       <SelectItem value="PAID_IN_FULL">Paid in full</SelectItem>
-                      <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem>
+                   {/*    <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem> */}
                     </SelectContent>
                   </Select>
                 )}

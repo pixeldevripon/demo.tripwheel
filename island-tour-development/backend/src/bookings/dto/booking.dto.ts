@@ -62,6 +62,26 @@ export class BookingConversionDto {
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
 }
 
+/** Operator contact shown on the TYP (named deliberately post-booking - guide §13). */
+export class ThankYouOperatorDto {
+  @ApiPropertyOptional({ nullable: true, example: 'Miss Ann Boat Trips' })
+  name!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'reservation@missannboattrips.com',
+  })
+  email!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '+599 9 123 4567' })
+  phone!: string | null;
+}
+
+/** One grouped party line ("2 x Adult"); `ageBandId` is null for UNIT-priced tours. */
+export class ThankYouPartyLineDto {
+  @ApiPropertyOptional({ nullable: true }) ageBandId!: string | null;
+  @ApiProperty({ example: 'Adult' }) label!: string;
+  @ApiProperty({ example: 2 }) quantity!: number;
+}
+
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
@@ -107,12 +127,80 @@ export class ThankYouResponseDto {
     example: 'Marriott Beach Resort — main lobby',
   })
   pickupAddress!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'True when the traveler asked for pickup at reserve.',
+  })
+  pickupRequested!: boolean;
   @ApiProperty({ example: 2 }) partySize!: number;
-  @ApiProperty({ example: 'EUR' }) currency!: string;
-  @ApiProperty({ example: '209.97' }) totalRetail!: string;
+  @ApiProperty({
+    type: [ThankYouPartyLineDto],
+    description: 'Party grouped by age band (renders "2 adults, 1 child").',
+  })
+  party!: ThankYouPartyLineDto[];
+
+  // ── Guest (contact snapshot taken at checkout) ──────────────────────────────
+  @ApiPropertyOptional({ nullable: true, example: 'Denley' })
+  guestFirstName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Smith' })
+  guestLastName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Denley Smith' })
+  guestFullName!: string | null;
   @ApiPropertyOptional({ nullable: true, example: 'ada@x.io' }) contactEmail!:
     | string
     | null;
+  @ApiPropertyOptional({ nullable: true, example: '+5999123456' })
+  contactPhone!: string | null;
+
+  // ── Money (charged currency; never the shopper cookie - guide §20.10) ───────
+  @ApiProperty({ example: 'EUR' }) currency!: string;
+  @ApiProperty({ example: '209.97' }) totalRetail!: string;
+  @ApiProperty({
+    example: '41.99',
+    description: 'Collected by Island Tours up front; "0.00" = nothing online.',
+  })
+  depositAmount!: string;
+  @ApiProperty({
+    example: '167.98',
+    description: 'Operator-collected remainder; "0.00" = paid in full.',
+  })
+  balanceAmount!: string;
+  @ApiProperty({
+    enum: ['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL'],
+    description:
+      'Snapshotted at reserve (rule #21); drives the TYP money copy.',
+  })
+  paymentModel!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'mastercard' })
+  paymentMethodBrand!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '4242' })
+  paymentMethodLast4!: string | null;
+
+  // ── Tour facts + cancellation window ───────────────────────────────────────
+  @ApiPropertyOptional({ nullable: true, example: 540 })
+  durationMinutes!: number | null;
+  @ApiProperty({
+    example: 48,
+    description: 'Free-cancellation window in hours (enum-bound; rule #20).',
+  })
+  cancellationHours!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '2026-07-01T09:00:00',
+    description:
+      'Local wall-clock deadline = tour start - cancellationHours. Computed, never stored (guide §14). Render against timeZone.',
+  })
+  freeCancellationDeadlineLocal!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '2026-07-01T13:00:00.000Z',
+    description: 'Real UTC instant of the deadline (reminders/integrations).',
+  })
+  freeCancellationDeadlineUtc!: string | null;
+
+  @ApiProperty({ type: ThankYouOperatorDto })
+  operator!: ThankYouOperatorDto;
+
   @ApiPropertyOptional({
     type: BookingConversionDto,
     nullable: true,
