@@ -358,10 +358,28 @@
 >   the endpoint.
 > - Rotation works: a comma-separated `REVALIDATE_SECRET` accepts both old and new values.
 >
-> **Not done here, by design:** the repo has no unit-test runner (Playwright only), so the §10.1/§10.2
-> checks were run as scratchpad harnesses against the real files rather than committed tests. Adding
-> a runner is a separate decision, not Phase 7 scope. **This means the tag contract is guarded at
-> runtime by the 400 only** - there is no CI check keeping the two repos' unions aligned.
+> **ADDENDUM - the tag vocabulary now lives in `lib/cache-tags.ts` (§5.4), byte-identical at the
+> same path in both repos.** As first built, Phase 7 left the contract defined *twice per repo in
+> different shapes*: a hand-written type union in the dashboard's `'use server'` file, a runtime
+> `Set` in the public route handler - so nothing stopped the two halves disagreeing even inside one
+> repo. Now: one file, types **derived** from the arrays (`(typeof COARSE_CACHE_TAGS)[number]`), and
+> `isKnownCacheTag` shared. The public route dropped 238 -> 168 lines; `app/_actions/revalidate.ts`
+> exports only its action, which is what a `'use server'` file should do. **No shared npm package** -
+> that would re-couple the two services the split exists to separate (same reasoning as §2 option 5).
+> Verified after the refactor: all 46 harness checks + 30 exhaustive `isKnownCacheTag` cases still
+> pass, both build green, and the compiled chunk still emits `(0,R.revalidateTag)(e,{expire:0})` with
+> zero `updateTag` call sites.
+>
+> **Not done here, by design:** neither repo has a unit-test runner (Playwright only), so the
+> §10.1/§10.2 checks were run as harnesses against the real files rather than committed tests. Adding
+> a runner is a separate decision, not Phase 7 scope. **So the tag contract is guarded at runtime by
+> the 400 only.** A CI check was investigated and is **not cheaply possible**: the monorepo has
+> `.github/workflows/ci.yml` but **the dashboard repo has no CI at all**, and a cross-repo diff needs
+> both repos checked out (a token-clone is fragile and re-introduces the coupling; a committed hash
+> of the sibling's file goes stale on the next ship). What the shared file buys is that drift is now
+> **one command** - `diff <dashboard>/lib/cache-tags.ts <public>/lib/cache-tags.ts` - rather than a
+> reading exercise across two shapes. **Detection is the 400; prevention is manual.** The re-run
+> procedure is in `02B` §5.4.
 
 ---
 

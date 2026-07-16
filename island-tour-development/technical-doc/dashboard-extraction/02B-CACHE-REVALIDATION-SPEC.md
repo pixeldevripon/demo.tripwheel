@@ -248,6 +248,53 @@ The existing mapping has two non-obvious rules that a rewrite would lose. Both a
 | `/availability/check` short-circuits (`:76`) | It is a **read shaped as a POST**. Revalidating on it would loop. |
 | `seg1 === 'slug'` excluded from the granular `tour:<id>` tag (`:64-66`) | `/tours/slug/:slug` is a lookup, not an entity id. |
 
+### 5.4 Where the contract lives: `lib/cache-tags.ts` (both repos)
+
+> **Added at implementation, 2026-07-17.** The spec above describes the contract but never said
+> where it lives. Built as written, it lived nowhere in particular: the dashboard held a hand-written
+> **type union** inside a `'use server'` file, the public site held a **runtime `Set`** inside the
+> route handler. Two repos x two shapes x zero shared definition, and **nothing stopped the two
+> halves disagreeing even within a single repo.**
+
+**The vocabulary is now one file, at the same path in both repos:**
+
+```
+<dashboard-repo>/lib/cache-tags.ts     ← byte-identical
+<public-repo>/lib/cache-tags.ts        ← byte-identical
+```
+
+| Property | Why |
+|---|---|
+| **Byte-identical, same path** | Makes drift **one command**: `diff <dashA>/lib/cache-tags.ts <dashB>/lib/cache-tags.ts`. Empty output = the contract holds. |
+| **Types DERIVED from the arrays** (`type CoarseCacheTag = (typeof COARSE_CACHE_TAGS)[number]`) | One list per concept. Previously the type and the Set were separate hand-maintained lists that could silently disagree. |
+| **Both repos carry the whole file**, though each mainly uses one half | The dashboard needs the types to *build* tags; the public site needs the arrays to *validate* them. The moment the files differ "harmlessly", `diff` stops being a check. |
+| **No shared npm package** | A shared dependency would re-couple the two services the split exists to separate (same reasoning that rejects option 5 in §2). |
+
+**Changing a tag:** edit the file in **both repos, in the same change**, and **ship the public site
+first** - it must accept the new name before the dashboard sends it. Reverse that order and every
+write 400s until the second deploy lands.
+
+**What does NOT enforce this - stated plainly:**
+
+- **There is no CI guard, and there is no cheap way to add one.** A cross-repo check needs both repos
+  checked out; the monorepo has `.github/workflows/ci.yml`, and **the dashboard repo has no CI at
+  all**. Options are a shared package (rejected above), a workflow that clones the sibling repo with
+  a token (fragile, and it re-introduces the coupling), or a committed hash of the sibling's file
+  (stale the moment either side ships). None are worth their weight against a guard that already
+  fires on the first write.
+- **The 400 is a runtime feedback loop, not a compile-time one.** It is fast - the first write after
+  a bad deploy - but it is *detection*, not *prevention*. `diff` is the prevention, and it is manual.
+- **Neither repo has a unit-test runner** (Playwright only). The §10.1/§10.2 checks were run as
+  harnesses against the real files, not committed tests. **Adding a runner is a separate decision.**
+
+**The check to re-run whenever either side's tag names move** (this is what caught nothing today
+because nothing had drifted yet - run it when something has):
+
+1. `diff` the two `lib/cache-tags.ts`. Any output at all is drift.
+2. Enumerate every tag the dashboard's mapping can emit (17 distinct across 208 write shapes) and
+   POST each to the live endpoint. All must 200. That is `producer ⊆ consumer`, proven rather than
+   assumed.
+
 ---
 
 ## 6. Reliability: stop swallowing failures
@@ -602,6 +649,6 @@ Stated plainly so nobody mistakes this for the finished design:
 1. **The dashboard knows `island.tours` exists** and knows its cache-tag vocabulary. A frontend-to-frontend coupling between two nominally independent services.
 2. **Backend-originated writes never bust the cache** (BullMQ jobs, Stripe webhooks, materialization). Pre-existing, unchanged, invisible until §8.
 3. **Lost revalidations are not replayed.** No queue. Mitigated by TTL + alerting, not solved.
-4. **The tag contract is duplicated** across two repos and enforced only by the 400 guard at runtime - a fast feedback loop, but not a compile-time one.
+4. **The tag contract is duplicated** across two repos and enforced only by the 400 guard at runtime - a fast feedback loop, but not a compile-time one. It lives in **`lib/cache-tags.ts`, byte-identical at the same path in both repos** (§5.4), so `diff` is a complete check - but **the diff is manual: there is no CI guard, and no cheap way to add one** (the dashboard repo has no CI at all, and a shared package would re-couple the two services). Detection is the 400; prevention is a human remembering to change both.
 
 All four are resolved by §8. None of them blocks the split.

@@ -1,3 +1,4 @@
+import { isKnownCacheTag, MAX_TAGS_PER_BATCH } from '@/lib/cache-tags';
 import { timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
 import type { NextRequest } from 'next/server';
@@ -35,80 +36,9 @@ import { NextResponse } from 'next/server';
 // from `node:crypto` and does not exist on the edge runtime. So this route must
 // never be moved to edge - it just has to stay on the default rather than say so.
 
-// ─── The tag contract ────────────────────────────────────────────────────────
-
-/**
- * Every tag this app's `'use cache'` layer is allowed to be busted with.
- *
- * THIS IS A CONTRACT WITH THE DASHBOARD REPO, and nothing mechanically enforces
- * it - the producer (`lib/api/cache-revalidation.ts`, over there) and the
- * consumer (`lib/api/public/*` `cacheTag(...)` calls, over here) are compiled
- * separately.
- *
- * That is exactly why unknown tags are REJECTED rather than ignored. If this app
- * renamed `site-info` to `site` and accepted anything, the dashboard would keep
- * POSTing `site-info`, we would keep returning 200, and the footer would serve a
- * stale logo until the `cacheLife` expired - forever green, permanently wrong.
- * The 400 turns that silent staleness into a loud failure on the FIRST write
- * after the drift. It costs one Set lookup.
- *
- * So: if you rename or remove a tag in `lib/api/public/*`, change it here AND in
- * the dashboard repo, or the next deploy starts 400ing.
- */
-const COARSE_TAGS = new Set([
-    'tours',
-    'search',
-    'hubs',
-    'categories',
-    'collections',
-    'destinations',
-    'reviews',
-    'slug-registry',
-    'site-info',
-    // Vestigial, and knowingly kept. Nothing in this app is tagged
-    // `user-profile`: it belonged to the dashboard's `getUserProfile`, which was
-    // deliberately moved off `'use cache'` onto React `cache()` (caching a
-    // transient auth failure would bounce a logged-in user to /login). The
-    // dashboard still maps `/users/me` and `/settings/*` writes to it, so it
-    // still arrives here - and busting it has been a no-op since long before the
-    // split. Listed so the drift guard does not 400 a harmless legacy tag.
-    // Remove from BOTH repos together, or not at all.
-    'user-profile',
-]);
-
-/**
- * Prefixes of per-entity tags (`tour:<uuid>`), so one edit regenerates only that
- * entity's page instead of every page of its type.
- *
- * `slug:<destinationSlug>:<slug>` (lib/api/slug-registry.ts) is deliberately
- * ABSENT: it has three segments, and the dashboard never sends it - a slug
- * change arrives as the coarse `slug-registry`. Adding it here would mean
- * loosening the two-segment rule below for a tag no caller produces.
- */
-const GRANULAR_PREFIXES = new Set([
-    'tour',
-    'destination',
-    'hub',
-    'category',
-    'collection',
-    'operator',
-]);
-
-/** A batch large enough to be a bug, not a workload (the widest mapping emits 4). */
-const MAX_TAGS = 32;
-
-function isKnownTag(tag: string): boolean {
-    if (COARSE_TAGS.has(tag)) return true;
-
-    // Exactly `<prefix>:<id>`, both halves non-empty. `split` with no limit means
-    // `tour:a:b` yields 3 parts and is correctly rejected.
-    const parts = tag.split(':');
-    return (
-        parts.length === 2 &&
-        GRANULAR_PREFIXES.has(parts[0]) &&
-        parts[1].length > 0
-    );
-}
+// THE TAG VOCABULARY LIVES IN `lib/cache-tags.ts`, which is byte-identical to the
+// dashboard repo's copy at the same path - that file is the contract, and `diff`
+// between the two repos is the check. Do not re-declare tag names here.
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -184,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (
         !Array.isArray(tags) ||
         tags.length === 0 ||
-        tags.length > MAX_TAGS ||
+        tags.length > MAX_TAGS_PER_BATCH ||
         !tags.every(t => typeof t === 'string')
     ) {
         return NextResponse.json(
@@ -196,7 +126,7 @@ export async function POST(request: NextRequest) {
     // Reject the batch WHOLLY on any unknown tag, revalidating nothing. A partial
     // success would hand the caller a 200 it would read as "all done", and the
     // tags that silently did not apply are precisely the ones drifting.
-    const unknown = (tags as string[]).filter(t => !isKnownTag(t));
+    const unknown = (tags as string[]).filter(t => !isKnownCacheTag(t));
     if (unknown.length > 0) {
         console.error(
             '[revalidate] rejected batch: unknown tags (the dashboard and this app have drifted)',
