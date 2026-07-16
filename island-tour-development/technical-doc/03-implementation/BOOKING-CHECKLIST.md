@@ -134,7 +134,7 @@ These are ranked. Each is expanded in its section below.
 - [x] **`ON_HOLD` cancellation = no refund** (nothing paid). `Ref:` [Guide §17 cancellation](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` `bookings.service.ts:computeRefund`
 - [x] **Operator-forced cancellation -> full refund / free reschedule (`force`).** `Ref:` [Guide §14](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · `Code:` `bookings.service.ts:cancel`
 - [ ] **Actual Stripe REFUND execution + `REFUND` Payment row** on cancellation (compute + issue refund, not just categorize). `Ref:` [Guide §14](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · not implemented (refund is a category only)
-- [ ] **Tokenized cancel confirmation page (no raw-click cancel) + account fallback.** `Ref:` [Guide §14 flow](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · frontend, not verified
+- [~] **Tokenized cancel confirmation page (no raw-click cancel) + account fallback.** PAGE BUILT 2026-07-16 per master 6.4: locale-less `/cancel/{publicRef}` (proxy rewrite, noindex), "Cancel {tour}, {date}?" + refund chip only when paid > 0 (C23) + after-window locked copy; `POST /bookings/typ/:publicRef/cancellation-request` stamps `utcCancellationRequestedAt` on FIRST request and emails admin + traveller ack + operator notice. REMAINING: the email+display_ref booking-lookup login (B.34 account fallback). `Ref:` [Guide §14 flow](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · `Code:` `bookings.service.ts:requestCancellation`, `frontend app/(frontend)/[locale]/cancel/`
 
 ---
 
@@ -157,7 +157,10 @@ These are ranked. Each is expanded in its section below.
 
 ## 11. Confirmation email & notifications
 
-- [x] **One dynamic confirmation email, payment-model-aware, zero-amount rows hidden.** `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · `Code:` `mail.service.ts`, `templates/booking-confirmation.template.ts`, `bookings.service.ts:sendConfirmationEmail`
+- [x] **One dynamic confirmation email, payment-model-aware, zero-amount rows hidden.** Now the LOCKED wireframe template (2026-07-16): byte-for-byte port with style-parity CI guard, Cloudinary PNG icons, fluid-hybrid mobile + founder spacing refinement, 24h times/locale money-dates, `[EACH]` bullet lists, operator-note card, subject <24h variant, real text/plain part. Old `booking-confirmation.template.ts` DELETED. `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · `Code:` `templates/booking-confirmation-email.template.html`, `bookings/booking-email.context.ts`, `bookings.service.ts:sendConfirmationEmail`
+- [x] **Operator "Booking Received" notification (C7)** on every confirmed booking to `companyInfo.companyEmail ?? contactEmail`; same shell (zero-new-styles spec); per-model action copy. (2026-07-16) `Code:` `templates/operator-booking-received.template.html`, `bookings.service.ts:sendOperatorNotification`
+- [x] **Cancellation-request emails x3** (admin work-item [throws], traveller ack, operator heads-up via shared `booking-notice.template.html`). Final post-admin confirmations (locked 3-to-5-business-days copy, C23-aware) = CP6 scope. (2026-07-16)
+- [x] **TYP resend endpoint** (`POST /bookings/typ/:publicRef/resend`, hard-throttled, recipient never caller-supplied) + **ICS calendar endpoint** (`GET .../calendar.ics`, RFC 5545, real UTC). (2026-07-16)
 - [ ] **Operator-balance email on `operator_link`** (names operator, secure balance link). `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · no such template
 - [ ] **Invoice attachment (from Stripe/Mollie) on confirmation.** `Ref:` [Guide §4 step 22](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow) · not implemented
 - [ ] **Pre-tour reminder (24h before; "today/tomorrow" variant; no payment links).** `Ref:` [Guide §13 sequence](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · not built
@@ -201,6 +204,22 @@ These are ranked. Each is expanded in its section below.
 - [x] **`POST /bookings/quote`** (`@Public()`, static route before `:id`). `Ref:` [Guide §16 / §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · `Code:` `bookings.controller.ts:quote()` (stateless single-currency; see §6)
 - [x] **Access rules:** booking create + TYP public; list/detail auth-scoped; webhooks bypass auth+throttle with signature verify. `Ref:` [Guide §16](./BOOKING-FLOW-DESIGN-GUIDE.md#16-api-surface) · `Code:` `bookings.controller.ts`, `payments.controller.ts`
 - [x] **No raw Prisma rows returned; status/commission/tier not client-settable.** `Ref:` [Guide §17 security](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` DTO `select` shapes
+
+### 14b. Dashboard operations pages (added 2026-07-16, founder request)
+
+Three new dashboard menus, each reusing the tours TanStack table pattern (same UI, pagination,
+comprehensive filters, search, date-range) and permission-gated per master RBAC + `lib/config/rbac.ts`
+(operators scoped to their own tours' rows; admin sees all).
+
+- [ ] **Bookings list page** (`/dashboard/bookings`): ref, tour, traveller, date, party, payment
+  model, amounts, status; backend list endpoint w/ query DTO (status/model/date-range/search) +
+  operator scoping. `Task:` DASH1
+- [ ] **Payments list page** (`/dashboard/payments`): booking ref, tour, charged/deposit/balance,
+  currency, intent status, model, timestamps; backend endpoint + scoping. `Task:` DASH2
+- [ ] **Cancellation Requests page** (`/dashboard/cancellation-requests`): bookings with
+  `utcCancellationRequestedAt` set - requested-at, tour date, in/out of free-window judgement,
+  refund amount, status. This is where the admin executes master 6.4 (mark cancelled -> final
+  emails + CP6 refund). `Task:` DASH3
 
 ---
 

@@ -263,8 +263,10 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
     const displayCurrency = detail.money?.currency ?? detail.defaultCurrency;
     const fxRate = detail.money ? Number(detail.money.fxRate) || 1 : 1;
     const symbol = currencySymbol(displayCurrency);
+    // Cents precision, never whole units: the widget must show the exact entered
+    // price ($63.75 stays $63.75, not "$64") - founder rule 2026-07-16.
     const conv = (v: string | number | null | undefined) =>
-        Math.round(toNumber(v) * fxRate);
+        Math.round(toNumber(v) * fxRate * 100) / 100;
 
     const pricingModel = detail.pricingModel;
     const isUnit = pricingModel === 'UNIT';

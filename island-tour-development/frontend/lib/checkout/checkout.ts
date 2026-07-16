@@ -198,7 +198,7 @@ export function computeCheckoutTotals(
             ? [{ band: guestsBand, count: guests, lineTotal: total }]
             : [];
         const payToday = data.requiresDeposit
-            ? Math.round((total * data.depositPct) / 100)
+            ? Math.round(total * data.depositPct) / 100
             : total;
         return {
             lineItems,
@@ -218,7 +218,7 @@ export function computeCheckoutTotals(
     const partySize = lineItems.reduce((sum, row) => sum + row.count, 0);
     const total = lineItems.reduce((sum, row) => sum + row.lineTotal, 0);
     const payToday = data.requiresDeposit
-        ? Math.round((total * data.depositPct) / 100)
+        ? Math.round(total * data.depositPct) / 100
         : total;
 
     return {
@@ -243,11 +243,18 @@ export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
         .join(', ');
 }
 
-/** `${symbol}${amount}` with locale grouping - matches the booking widget. */
+/**
+ * `${symbol}${amount}` with locale grouping - matches the booking widget.
+ * Exact prices: whole amounts stay bare ("$75"), fractional amounts always
+ * carry both cents ("$63.75", never "$63.7" or a rounded "$64").
+ */
 export function formatCheckoutMoney(
     amount: number,
     symbol: string,
     locale: string
 ): string {
-    return `${symbol}${amount.toLocaleString(locale)}`;
+    return `${symbol}${amount.toLocaleString(locale, {
+        minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+        maximumFractionDigits: 2,
+    })}`;
 }

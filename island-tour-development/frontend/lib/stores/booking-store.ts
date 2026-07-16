@@ -222,7 +222,13 @@ export function deriveBooking(s: BookingStore) {
     const editingParty = isLive ? true : !s.availabilityChecked;
 
     const cur = s.data.currencySymbol;
-    const money = (n: number) => `${cur}${n.toLocaleString(s.locale)}`;
+    // Exact prices: whole amounts stay bare ("$75"), fractional amounts always
+    // carry both cents ("$63.75", never "$63.7" or a rounded "$64").
+    const money = (n: number) =>
+        `${cur}${n.toLocaleString(s.locale, {
+            minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+            maximumFractionDigits: 2,
+        })}`;
 
     // Price breakdown rows + grand total, per pricing model.
     const isUnit = s.data.pricingModel === 'UNIT';
@@ -283,8 +289,10 @@ export function deriveBooking(s: BookingStore) {
 
     const usesDeposit =
         isDepositModel && s.data.depositPct > 0 && s.data.depositPct < 100;
+    // Deposit estimate rounds to cents, not whole units (the quote's 2dp amounts
+    // replace it below; the optimistic value must not visibly jump).
     let payToday = usesDeposit
-        ? Math.round((total * s.data.depositPct) / 100)
+        ? Math.round(total * s.data.depositPct) / 100
         : isOperatorFull
           ? 0
           : total;

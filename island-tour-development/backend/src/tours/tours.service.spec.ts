@@ -1089,15 +1089,15 @@ describe('ToursService', () => {
       expect(pf).toBe(99);
     });
 
-    it('anchors priceFrom to the cheapest age band when bands exist', async () => {
+    it('anchors priceFrom to the anchor (default) age band when bands exist', async () => {
       prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
-      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 49 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 75 });
       prisma.tour.update.mockResolvedValue({});
       const pf = await service.recomputePriceFrom('tour-1');
-      expect(pf).toBe(49);
+      expect(pf).toBe(75);
       expect(prisma.tour.update).toHaveBeenCalledWith({
         where: { id: 'tour-1' },
-        data: { priceFrom: 49 },
+        data: { priceFrom: 75 },
       });
     });
 
@@ -1118,21 +1118,25 @@ describe('ToursService', () => {
       });
     });
 
-    it('PER_PERSON tours anchor priceFrom on the cheapest PARTICIPANT age band', async () => {
+    // Founder rule: the "From $X per person" anchor is the DEFAULT band (the
+    // adult reference price), never a cheaper child/senior band. The query
+    // orders isDefault DESC first, so cheapest-price is only the fallback when
+    // no band is flagged default.
+    it('PER_PERSON tours anchor priceFrom on the DEFAULT participant age band', async () => {
       prisma.tour.findUnique.mockResolvedValue({
         basePrice: 200,
         pricingModel: PricingModel.PER_PERSON,
       });
-      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 55 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 69 });
       prisma.tour.update.mockResolvedValue({});
       const pf = await service.recomputePriceFrom('tour-1');
-      expect(pf).toBe(55);
+      expect(pf).toBe(69);
       expect(prisma.tourAgeBand.findFirst).toHaveBeenCalledWith({
         where: {
           tourId: 'tour-1',
           participation: BandParticipation.PARTICIPANT,
         },
-        orderBy: { price: 'asc' },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
         select: { price: true },
       });
     });

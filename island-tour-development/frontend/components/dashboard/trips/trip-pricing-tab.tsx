@@ -838,7 +838,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
         <CardHeader className="border-b pb-4">
           <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Per-traveler price tiers. The tour&apos;s &ldquo;from&rdquo; price is the cheapest band.
+            Per-traveler price tiers. The tour&apos;s &ldquo;from&rdquo; price is the default band (usually Adult).
           </p>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">

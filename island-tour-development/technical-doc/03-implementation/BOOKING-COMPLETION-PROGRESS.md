@@ -696,3 +696,47 @@ end-to-end and reports correctly"** milestone - steps 1-3 below.
   rather than before the year. Matching Figma exactly needs a hand-rolled formatter, which would
   break the other 6 locales, so it was NOT silently hand-rolled. Decide: keep locale-correct Intl,
   or hand-compose for `en` only.
+
+---
+
+## Round 6 (2026-07-16, post-compaction) - price anchor + dashboard ops pages
+
+Founder queued two items ahead of the tracking push (#42/#39):
+
+- [x] **PRICE1 - per-person "From" anchor = DEFAULT age band, not cheapest.** Widget + cards showed
+  "From EUR41" (child band) while the dashboard default band is Adult EUR69. Founder rule: the
+  anchor is the default (adult) band; cheapest participant band only when no default is flagged;
+  basePrice when no bands. Changed `recomputePriceFrom` (orderBy `isDefault DESC, price ASC`),
+  demo-seed mirror (`prisma/demo/tours.ts`), dashboard Pricing-tab copy, spec (70 tours tests
+  green); existing rows backfilled via migration `20260716165001_reanchor_price_from_on_default_band`
+  (verified: priceFrom = default-band price, cheapest ignored). Frontend reads `priceFrom` as-is -
+  zero client changes. NOTE: master field-table line "'from' price on cards is the lowest
+  applicable" is SUPERSEDED by this founder decision; master wording needs an update.
+- [ ] **DASH1 - `/dashboard/bookings` list page** (TanStack table like tours: pagination, filters,
+  search, date-range; backend list endpoint + operator scoping; RBAC-gated).
+- [ ] **DASH2 - `/dashboard/payments` list page** (same table pattern + endpoint + gating).
+- [ ] **DASH3 - `/dashboard/cancellation-requests` page** (bookings with
+  `utcCancellationRequestedAt`; admin executes master 6.4 from here; same pattern).
+
+- [x] **PRICE2 - widget shows exact decimal prices.** The card rounded every amount to whole units
+  (Senior $63.75 rendered "$64" in the From header + band labels while the quote total said
+  $63.75). Fixed: `conv` in `lib/tours/booking.ts` now keeps cents (`*100/100`); the
+  `money()` formatter in `booking-store.ts` and `formatCheckoutMoney` show 2 fraction digits when
+  fractional (whole prices stay "$75"); the optimistic deposit estimate in `booking-store.ts` +
+  `lib/checkout/checkout.ts` rounds to cents, not whole units. Founder then extended the rule to
+  the TOUR CARDS too ("why you showing rounded value in tour card and booking widget"): the central
+  `formatPriceFrom` + `resolveDisplayPrice` (`lib/currency/current.ts`) now render the exact
+  backend price (cents when fractional, bare when whole) - every card surface (listing, wishlist,
+  search typeahead, collection, hub picks/compare, dashboard trip columns) flows through them.
+  NOTE: this supersedes the Figma whole-number "From $120" card anchor; whole prices still render
+  whole, so the design only changes for genuinely fractional prices.
+
+- [x] **PRICE3 - widget re-prices live on footer currency switch.** The footer selector sets the
+  currency cookie + `router.refresh()`; server components re-rendered in the new currency but the
+  widget's per-card zustand store (created once in `BookingStoreProvider`) kept the old price model
+  until a hard reload. Fixed in `contexts/booking-context.tsx`: an effect syncs
+  `data`/`currency`/band config into the live store when the shopper currency changes - the
+  traveler's date/time/party selection survives (band ids are stable) and the stale quote is
+  dropped, so `useBookingQuote` re-quotes in the new currency automatically.
+
+Order per founder: PRICE1 first, then the listing pages, then resume #42/#39 tracking.

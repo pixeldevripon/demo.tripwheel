@@ -390,7 +390,8 @@ export class ToursService {
 
   /**
    * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a tour:
-   * the cheapest age-band price, or `basePrice` when there are no age bands.
+   * the DEFAULT age-band price (the adult reference price - never a cheaper
+   * child/senior band), or `basePrice` when there are no age bands.
    * Call after any change to basePrice or age bands. Returns the new value.
    *
    * Pass `tx` to run inside the caller's transaction - required when called right
@@ -409,18 +410,20 @@ export class ToursService {
     if (!tour) return null;
 
     // UNIT (whole-unit / charter): priceFrom is always the whole-unit base price
-    // (age bands do not apply). PER_PERSON: anchor off the cheapest participant
-    // TourAgeBand once bands are entered, falling back to basePrice when none exist.
+    // (age bands do not apply). PER_PERSON: anchor off the DEFAULT participant
+    // TourAgeBand (founder rule: the anchor is the adult/default price, not the
+    // cheapest child band), falling back to the cheapest participant band when
+    // no band is flagged default, then basePrice when no bands exist.
     let priceFrom: Prisma.Decimal | null;
     if (tour.pricingModel === PricingModel.UNIT) {
       priceFrom = tour.basePrice ?? null;
     } else {
-      const cheapestBand = await client.tourAgeBand.findFirst({
+      const anchorBand = await client.tourAgeBand.findFirst({
         where: { tourId, participation: BandParticipation.PARTICIPANT },
-        orderBy: { price: 'asc' },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
         select: { price: true },
       });
-      priceFrom = cheapestBand?.price ?? tour.basePrice ?? null;
+      priceFrom = anchorBand?.price ?? tour.basePrice ?? null;
     }
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
@@ -713,7 +716,7 @@ export class ToursService {
     if (isLocalsFavourite !== undefined)
       where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
-    // Price filter runs against `priceFrom` (the displayed "From" anchor: cheapest
+    // Price filter runs against `priceFrom` (the displayed "From" anchor: default
     // participant band for PER_PERSON, basePrice for UNIT), so it agrees with the
     // price shown on the card - not the raw `basePrice`.
     if (minPrice !== undefined || maxPrice !== undefined) {

@@ -2412,18 +2412,19 @@ export async function seedTours(): Promise<void> {
         })),
       });
 
-      // priceFrom = cheapest participant band (mirror tours.service)
-      const cheapest = await tx.tourAgeBand.findFirst({
+      // priceFrom = default participant band, cheapest as fallback (mirror
+      // tours.service - the anchor is the adult/default price, never a child band)
+      const anchorBand = await tx.tourAgeBand.findFirst({
         where: {
           tourId: tour.id,
           participation: BandParticipation.PARTICIPANT,
         },
-        orderBy: { price: 'asc' },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
         select: { price: true },
       });
       await tx.tour.update({
         where: { id: tour.id },
-        data: { priceFrom: cheapest?.price ?? money(bp.basePrice) },
+        data: { priceFrom: anchorBand?.price ?? money(bp.basePrice) },
       });
 
       // Mandatory TOUR slug_registry row (critical rule #8)

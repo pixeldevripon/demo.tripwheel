@@ -55,21 +55,23 @@ export function formatMoney(
 }
 
 /**
- * Format a listing "From" price: currency symbol, no fraction digits (matches the
- * card design's whole-number "From $120"). `formatPriceFrom(120, 'USD', 'en')` ->
- * "$120".
+ * Format a listing "From" price EXACTLY as priced (founder rule 2026-07-16: never
+ * round money for display). Whole amounts stay bare ("$120"); fractional amounts
+ * carry both cents ("$63.75"). `formatPriceFrom(120, 'USD', 'en')` -> "$120".
  */
 export function formatPriceFrom(
     amount: string | number,
     currency: Currency,
     locale: Locale,
 ): string {
-    const n = Number(amount);
+    const raw = Number(amount);
+    const n = Number.isFinite(raw) ? Math.round(raw * 100) / 100 : 0;
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
-        maximumFractionDigits: 0,
-    }).format(Number.isFinite(n) ? Math.round(n) : 0);
+        minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+        maximumFractionDigits: 2,
+    }).format(n);
 }
 
 /** A card/detail shape that may carry the backend's converted `money` object. */
@@ -103,7 +105,9 @@ export function resolveDisplayPrice(
     const value = Number(
         tour.money?.priceFrom ?? tour.priceFrom ?? tour.basePrice ?? 0,
     );
-    const price = Math.round(Number.isFinite(value) ? value : 0);
+    // Cents precision - the card must show the exact backend price, never a
+    // whole-unit rounding of it.
+    const price = Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
     const fxRate = Number(tour.money?.fxRate ?? 1) || 1;
     return {
         price,

@@ -43,8 +43,8 @@
 - [x] **Fed live tour data.** `tour-detail-content.tsx` now passes `data={buildTourBookingData(detail)}`; `checkout/page.tsx` builds the same from the live tour and threads it into `CheckoutBody`. `DUMMY_BOOKING_DATA` remains only as the store's design-time fallback. (Real availability - remaining/sold-out - still lands in §4.)
 - [x] **Payment model branched** (Step 2). `deriveBooking` now switches on `paymentModel` for money rows, CTA label, and trust lines; `operator_full` is blocked in v1. `requiresDeposit` on `TourBookingData` is retained only for the checkout path (§6), not the widget.
 - [x] **Trust lines conditional** (`booking-cta.tsx`): free-cancellation always; the payment line is model-specific (`paymentTrust`: deposit-link / "Pay in full now" / none for operator_full).
-- [~] **Pricing is client-side and duplicated** (`deriveBooking` + `lib/checkout/checkout.ts:computeCheckoutTotals`). No server quote.
-- [~] **Submission is mock.** Widget CTA only pushes to `/checkout?date&time&party`; `checkout-form.tsx:319 handleReserve()` is a 1.6s `setTimeout` then `router.push` to TYP with a hardcoded `DEMO_PUBLIC_REF`. No booking POST, no Stripe.
+- [x] **Server quote consumed** (2026-07-15): debounced `POST /bookings/quote` hook feeds the card + checkout totals; `deriveBooking`/`computeCheckoutTotals` remain only as the optimistic estimate while the quote is in flight.
+- [x] **Submission is REAL** (2026-07-15/16): `checkout-form.tsx` `handleReserve` calls `reserveBooking` (real `POST /bookings`, idempotency key) then `createPaymentIntent` + styled Stripe Card Elements; redirects via `checkout/processing` to the real TYP `public_ref`. The `setTimeout` demo is gone.
 - [~] **Departure times capped at 3** (`departure-times.tsx:21 slice(0,3)`); slots forced `status:'available'`, `remaining:null` (`booking.ts:218`) - no real availability.
 - **Not consumed at all:** `pricingModel`, `wholeUnitType`, `bookingType`, `instantConfirmation`, `bookingCutoffMinutes`, `pickupModel`, `pickupRequired`, `pickupLocations`, `addOns`, `unitIncludedGuests`, `extraPersonPrice`.
   and no countdown the hold time for a slot to booking.
@@ -80,12 +80,28 @@
 
 ### 3.2 By `pricingModel`
 
+- [x] **"From $X per person" anchor = DEFAULT age band (2026-07-16 founder rule).** The widget/card
+  headline anchors on the tour's default participant band (Adult reference price), never the cheapest
+  child/senior band (was "From EUR41" child while Adult=EUR69). Backend-owned: `recomputePriceFrom`
+  prefers `isDefault DESC, price ASC`; existing rows backfilled
+  (`20260716165001_reanchor_price_from_on_default_band`); demo seed + dashboard Pricing-tab copy
+  updated. Frontend reads `priceFrom` as-is - no client change needed.
+- [x] **Exact decimal prices EVERYWHERE (2026-07-16 founder rule).** No whole-unit rounding on any
+  money display: widget `conv` keeps cents, `money()`/`formatCheckoutMoney` render both cents when
+  fractional ("$63.75", whole stays "$75"), deposit estimates round to cents, and the central
+  `formatPriceFrom`/`resolveDisplayPrice` make every tour-card surface exact (listing, wishlist,
+  typeahead, collection, hub, dashboard columns). Supersedes the Figma whole-number card anchor
+  for fractional prices.
+- [x] **Live currency switch (2026-07-16).** Footer currency change re-prices the mounted widget
+  without a hard reload: `BookingStoreProvider` syncs re-converted `data`/`currency` into the live
+  store on `router.refresh()` (selection preserved; quote dropped -> auto re-quote in new currency).
+
 - [x] **`PER_PERSON`**: age-band steppers (participants + spectators), driven from live `ageBands`. `Ref:` [Guide §9 PER_PERSON](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic)
 - [x] **`UNIT`** (whole-unit/charter) - client-side pricing wired. `buildTourBookingData` now carries `pricingModel`/`basePrice`/`unitIncludedGuests`/`extraPersonPrice`/`wholeUnitType`, ignores age bands, and exposes a single "guests" stepper (`bands=[{id:'unit-guests', price:0}]`, Pattern A). `deriveBooking` computes `total = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice` and a UNIT `priceRows` breakdown ("Charter (up to N guests)" + "Extra guests x k x {price}"). `price-header.tsx` shows "From {basePrice} per group" + sub-line "Up to N guests · +{price} per extra guest"; `party-selector.tsx` header reads "{count} Guests". `computeCheckoutTotals` mirrors the same UNIT math so the card and checkout agree. New dict keys (7 locales): `guests`, `perGroup`, `unitIncludes`, `unitExtra`, `unitCharterLine`, `unitExtraGuests`. **Still pending:** the persisted/authoritative UNIT total must come from the server quote (§5) once backend UNIT pricing lands ([BOOKING-CHECKLIST flaw 3](./BOOKING-CHECKLIST.md)); the FE figure is a correct client estimate. Minor: checkout party label uses the English band label "Guests" (localize when §6 lands). `Ref:` [Guide §9 UNIT](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic)
 
 ### 3.3 By pickup
 
-- [ ] **`pickupModel` / `pickupRequired`**: when pickup is offered, surface pickup selection from `pickupLocations` (in widget or carried to checkout); if `pickupRequired`, make it mandatory before Continue. Today pickup only appears on the checkout form. `Ref:` [Guide §4 step 6](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow)
+- [~] **`pickupModel` / `pickupRequired`**: pickup selection lives on the checkout form (real `pickupLocationId` into reserve; selection now mirrors live into the summary card, 2026-07-16, and timing is snapshotted onto the booking). Widget-side surfacing + `pickupRequired` enforcement before Continue still pending. `Ref:` [Guide §4 step 6](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow)
 
 ### 3.4 By booking model / timing
 
@@ -117,16 +133,16 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 ## 6. Real submission + payment
 
-- [ ] **`POST /api/v1/bookings`** from checkout `handleReserve` (replace the `setTimeout` demo); carry date/time/party/add-ons/pickup/contact + attribution; receive real `public_ref` (replace `DEMO_PUBLIC_REF` in `checkout/page.tsx:189`). `Ref:` [Guide §4](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow)
-- [ ] **`POST /payments/bookings/:id/intent`** then mount a real Stripe (Mollie) payment element; never post raw card fields (current inputs are cosmetic; no SDK in `package.json`). `Ref:` [Guide §10](./BOOKING-FLOW-DESIGN-GUIDE.md#10-payment-flow)
-- [ ] **Checkout stays payment-model-aware on real data** (the `payToday>0` gate already suppresses the payment phase for zero-pay models; drive it from the real quote, not `DUMMY_BOOKING_DATA`). `Ref:` master §5.8
+- [x] **`POST /api/v1/bookings`** from checkout `handleReserve` - DONE (real reserve with date/time/party/pickup/contact; real `public_ref` flows to the TYP; add-ons + attribution capture still pending, see BOOKING-CHECKLIST flaw 9). `Ref:` [Guide §4](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow)
+- [x] **`POST /payments/bookings/:id/intent`** + custom-styled Stripe Card Elements - DONE (no raw card fields; card/paypal/ideal launch set). Mollie deferred. `Ref:` [Guide §10](./BOOKING-FLOW-DESIGN-GUIDE.md#10-payment-flow)
+- [x] **Checkout payment-model-aware on real data** - the `payToday>0` gate runs off the live tour/quote; `DUMMY_BOOKING_DATA` survives only as the store's design-time fallback. `Ref:` master §5.8
 
 ---
 
-## 7. Intermediate `/payment/processing` page (master §5.8, §5.9) - MISSING, to design
+## 7. Intermediate `/payment/processing` page (master §5.8, §5.9) - BUILT (as `checkout/processing`)
 
-- [ ] **Build the lean `/payment/processing` route** (locale-less, noindex, ZERO tracking tags) that holds after payment submit and waits for the webhook to confirm the booking, then 302s to `/{destination}/thank-you/{public_ref}`. `Ref:` [Tracking §2 flow](../02-architecture/TRACKING-AND-ANALYTICS.md#2-flow-82)
-- [ ] Poll `GET /bookings/typ/:publicRef` (or a status endpoint) until `CONFIRMED`, with a timeout/failure state. [ ] Show a minimal "confirming your booking" UI. [ ] Never fire conversion here.
+- [x] **Lean processing route BUILT** at `[destination]/[slug]/checkout/processing` (noindex, no tracking): holds after payment submit until the webhook confirms, then forwards to `/{destination}/thank-you/{public_ref}`. `Ref:` [Tracking §2 flow](../02-architecture/TRACKING-AND-ANALYTICS.md#2-flow-82)
+- [x] Polls the TYP endpoint until `CONFIRMED` with timeout/failure states. [x] Minimal "confirming your booking" UI. [x] No conversion fired here.
 - [ ] `operator_full` (v2) skips this hop (created confirmed at commit -> straight to TYP). In v1, all live models go through it. `Ref:` [Tracking §2 operator_full bypass](../02-architecture/TRACKING-AND-ANALYTICS.md#2-flow-82)
 
 ---
@@ -145,7 +161,7 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 - [ ] Motion per repo standard (MountReveal/Reveal, phase cross-fade, whileTap-down, NO whileHover); stagger any lists.
 - [ ] Tailwind `--it-*` tokens + `it-section`/`it-container`; image containers get `bg-it-border`.
 - [ ] `'use client'` only on the smallest leaf; server-render declarative-motion parts.
-- [ ] Multi-currency (shopper currency) is a **separate later phase** (Guide §21) - do not block the dynamic card on it; render in `Tour.defaultCurrency` for now, and fix `CURRENCY_SYMBOLS` (only USD/EUR mapped, `booking.ts:154`).
+- [x] Multi-currency DONE (M5 + §21.5, committed `ab60871`): shopper-currency display sitewide + live server quote in the widget/checkout.
 
 ---
 
@@ -153,7 +169,7 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 The card can be made conditional now on data already exposed, but these backend gaps must close for real money/flow:
 
-- [ ] `ON_ARRIVAL` deposit split + charge (flaw 1) · [ ] discount applied (flaw 2) · [x] UNIT pricing (flaw 3) · [x] `POST /bookings/quote` (§6, stateless single-currency) · [ ] reject `operator_full` v1 (flaw 6) · [ ] `/payment/processing` depends on webhook->CONFIRMED (built) + Mollie confirm (flaw 7). `Ref:` [BOOKING-CHECKLIST §0](./BOOKING-CHECKLIST.md)
+- [x] `ON_ARRIVAL` deposit split + charge (flaw 1, now a deposit model) · [ ] discount applied (flaw 2, coupon engine pending) · [x] UNIT pricing (flaw 3) · [x] `POST /bookings/quote` (§6; now FX-aware) · [x] reject `operator_full` v1 (flaw 6, `loadContext` throws) · [~] `/payment/processing` built on webhook->CONFIRMED; Mollie confirm still block-commented (flaw 7). `Ref:` [BOOKING-CHECKLIST §0](./BOOKING-CHECKLIST.md)
 
 ---
 

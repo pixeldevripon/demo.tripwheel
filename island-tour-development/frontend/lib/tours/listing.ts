@@ -57,7 +57,7 @@ export function tourPerfSummary(t: {
     parts.push('No reviews yet');
   }
   parts.push(`${(t.bookingCount ?? 0).toLocaleString()} booked`);
-  const price = Math.round(Number(t.priceFrom ?? t.basePrice ?? 0));
+  const price = Number(t.priceFrom ?? t.basePrice ?? 0);
   if (Number.isFinite(price) && price > 0) {
     const currency = isCurrency(t.defaultCurrency) ? t.defaultCurrency : 'EUR';
     parts.push(`From ${formatPriceFrom(price, currency, 'en')}`);

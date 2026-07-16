@@ -47,7 +47,14 @@
 
 ### 1.2 Pricing display source
 
-- [x] **`recomputePriceFrom` UNIT branch** (`tours.service.ts:373`): `UNIT -> priceFrom = basePrice`; `PER_PERSON -> cheapest participant band ?? basePrice`. Also recomputed on update when `pricingModel` changes.
+- [x] **`recomputePriceFrom` UNIT branch** (`tours.service.ts:373`): `UNIT -> priceFrom = basePrice`; `PER_PERSON -> DEFAULT participant band ?? cheapest participant band ?? basePrice`. Also recomputed on update when `pricingModel` changes.
+  > 2026-07-16 founder rule: the "From $X per person" anchor is the DEFAULT band (adult reference
+  > price), NOT the cheapest child/senior band (was showing "From EUR41" child price while Adult=EUR69).
+  > Changed in `recomputePriceFrom` (orderBy `isDefault DESC, price ASC`), demo seed mirror, dashboard
+  > Pricing-tab copy, spec; existing rows backfilled by migration
+  > `20260716165001_reanchor_price_from_on_default_band`. Master line "from price on cards is the
+  > lowest applicable" (field table, `price_adult` row) is SUPERSEDED by this founder decision -
+  > master doc needs a wording update.
 - [x] **Price min/max FILTER uses `priceFrom`** not `basePrice` (`tours.service.ts` findAll ~685).
 
 ### 1.3 Booking engine (guide §9 gap - the big one) - DONE (2026-07-16)

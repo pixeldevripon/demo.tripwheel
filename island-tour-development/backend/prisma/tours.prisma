@@ -30,7 +30,7 @@ model Tour {
   wholeUnitType      WholeUnitType? // when pricingModel = UNIT (boat/vehicle…)
   defaultCurrency    Currency       @default(USD)
   basePrice          Decimal?       @db.Decimal(10, 2)
-  priceFrom          Decimal?       @db.Decimal(10, 2) // cached min for listing
+  priceFrom          Decimal?       @db.Decimal(10, 2) // cached "From $X" anchor: default band (PER_PERSON) / basePrice (UNIT)
   // UNIT (whole-asset / charter) pricing: base covers `unitIncludedGuests`
   // travelers; each additional traveler up to maxPartySize costs `extraPersonPrice`.
   // Both null for PER_PERSON tours (priced via TourAgeBand).
