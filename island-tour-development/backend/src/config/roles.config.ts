@@ -211,6 +211,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.UPLOAD_MEDIA,
     Permission.VIEW_MEDIA,
     Permission.VIEW_ORDERS,
+    // Master roles doc: operators "view own bookings" - the bookings/payments
+    // list services scope them to their own tours' rows (never platform-wide).
+    Permission.VIEW_BOOKINGS,
     Permission.VIEW_PAYMENTS,
     Permission.VIEW_PROFILE,
     Permission.EDIT_PROFILE,

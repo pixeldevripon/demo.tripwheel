@@ -7,7 +7,22 @@ import {
 } from '@nestjs/swagger';
 import { NotFoundErrorDto } from '@/common/dto/error-responses.dto';
 import { ApiNotFoundResponse } from '@nestjs/swagger';
-import { PaymentIntentResponseDto, WebhookAckDto } from './dto/payment.dto';
+import {
+  ListPaymentsResponseDto,
+  PaymentIntentResponseDto,
+  WebhookAckDto,
+} from './dto/payment.dto';
+
+export const ApiListPaymentsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'List payments (admin: all · operator: their tours)',
+      description:
+        'Paginated dashboard payments ledger with booking context. Requires ' +
+        'VIEW_PAYMENTS; operators are scoped to bookings of their own tours.',
+    }),
+    ApiOkResponse({ type: ListPaymentsResponseDto }),
+  );
 
 export const ApiCreateIntentDocs = () =>
   applyDecorators(

@@ -712,11 +712,34 @@ Founder queued two items ahead of the tracking push (#42/#39):
   (verified: priceFrom = default-band price, cheapest ignored). Frontend reads `priceFrom` as-is -
   zero client changes. NOTE: master field-table line "'from' price on cards is the lowest
   applicable" is SUPERSEDED by this founder decision; master wording needs an update.
-- [ ] **DASH1 - `/dashboard/bookings` list page** (TanStack table like tours: pagination, filters,
-  search, date-range; backend list endpoint + operator scoping; RBAC-gated).
-- [ ] **DASH2 - `/dashboard/payments` list page** (same table pattern + endpoint + gating).
-- [ ] **DASH3 - `/dashboard/cancellation-requests` page** (bookings with
-  `utcCancellationRequestedAt`; admin executes master 6.4 from here; same pattern).
+- [x] **DASH1 - `/dashboard/bookings` list page.** Backend `GET /bookings` extended (`search` on
+  refs/guest/tour, `paymentModel`, `cancellationRequested`; `BookingListItemDto` adds tourName,
+  contact, partySize, createdAt, freeCancelDeadline + `requestedInFreeWindow` judged at the
+  REQUEST instant per C23). Frontend TanStack table mirroring the trips table (debounced search,
+  status/model selects, travel-date range inputs, columns toggle, server pagination); commission
+  columns ADMIN-only (rule #22 snapshot); row actions = details dialog, copy ref, admin
+  "Mark cancelled" (ConfirmDialog -> `POST /bookings/:id/cancel`, EDIT_BOOKING-gated, refund
+  verdict shown in the confirm copy). `Code:` `components/dashboard/bookings/*`,
+  `lib/api/bookings-dashboard.ts`, `hooks/bookings/use-bookings.ts`, `types/booking.ts`.
+- [x] **DASH2 - `/dashboard/payments` list page.** NEW backend `GET /payments`
+  (`@RequirePermissions(VIEW_PAYMENTS)`, operator scoping via `booking.operatorId`, filters
+  status/kind/provider/search/created-date-range) + same table pattern (amount+kind, provider/
+  method + intent id, booking context columns). `Code:` `payments.service.ts:list`,
+  `components/dashboard/payments/*`, `hooks/payments/use-payments.ts`.
+- [x] **DASH3 - `/dashboard/cancellation-requests` queue.** Bookings table in queue mode
+  (`cancellationRequested=true`, OLDEST request first) with Requested / Free-window / Refund-due
+  columns. This is master 6.4's "admin marks cancelled" done properly (master v1 literally says
+  "admin marks cancelled in Supabase"; the queue replaces raw DB edits - C23 copy + 3-party
+  notification flow unchanged; REAL refund money movement stays CP6). New nav item + page gated
+  `VIEW_BOOKINGS`; TOUR_OPERATOR granted `VIEW_BOOKINGS` in BOTH role configs (master roles doc:
+  operators "view own bookings"; scoping is server-side).
+- **Master answers recorded (founder asked mid-build):** admin visibility = the
+  `VIEW_BOOKINGS`/`MANAGE_BOOKINGS` + `VIEW_PAYMENTS` permission tier (roles doc table); the
+  master has NO separate "commission listing" page - commission is the per-booking snapshot
+  (rule #22) surfaced as admin-only columns on Bookings, and the true commission/settlement
+  REPORT arrives with the CP4 settlements ledger.
+- Verified: backend 1063 tests / 50 suites green (new `list (dashboard)` specs in both services);
+  frontend `pnpm build` green.
 
 - [x] **PRICE2 - widget shows exact decimal prices.** The card rounded every amount to whole units
   (Senior $63.75 rendered "$64" in the From header + band labels while the quote total said
@@ -740,3 +763,66 @@ Founder queued two items ahead of the tracking push (#42/#39):
   dropped, so `useBookingQuote` re-quotes in the new currency automatically.
 
 Order per founder: PRICE1 first, then the listing pages, then resume #42/#39 tracking.
+
+- [x] **DASH polish (same day):** native date inputs in the Bookings/Payments/Cancellation-Requests
+  toolbars replaced with the shared shadcn `DatePickerField` (Calendar-in-Popover, clearable);
+  toolbar control widths aligned to the tours page exactly (search `flex-1 min-w-36`, selects
+  `w-32`/`w-44`, date pickers `w-36`).
+
+---
+
+## NEXT - serial execution order (2026-07-16, after PRICE1-3 + DASH1-3; follow top to bottom)
+
+Dependency-ordered plan to clear every remaining `[ ]`/`[~]` across BOOKING-CHECKLIST,
+BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; skip and continue.
+
+**Phase A - Tracking & conversion (resume point; tasks #42/#39, #43-#45)**
+1. A1 = #42+#39: `booking_complete` dataLayer push on the TYP, fired ONCE per booking - server-side
+   `conversion_pushed_at` guard (fire-point reconciliation), value = EUR `commission_amount`
+   (rule #22, CONFIRMED + non-null commission only; corrupt -> render error, no push).
+2. A2: click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at reserve (columns exist, flaw 9) +
+   decide the `gclid` vs generic `clickId` column question.
+3. A3 = #43: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
+   Matching payloads.
+4. A4 = #44: Meta CAPI server-side send (dedup by event id; inline first, queued in B6).
+5. A5 = #45: GTM fan-out (4 tags) + Consent Mode v2 - BLOCKED on founder: GTM container id,
+   Pixel id, CMP choice (Cookiebot/Iubenda).
+
+**Phase B - Money correctness (CP2-CP7; tasks #41/#46-#51)**
+6. B1 = CP2: operator-balance email on `operator_link` (C1, names operator + secure balance link)
+   + C5 verify never-name-operator-pre-payment in template copy; Resend provider switch (C4) is
+   BLOCKED on founder confirm.
+7. B2 = CP3: hold-expiry sweeper (BullMQ repeatable -> `expireStaleHolds`) + the
+   payment-succeeds-after-expiry reconciliation branch in `confirmFromPayment`.
+8. B3 = CP4: `Settlement` model + one row per booking at confirmation + `net_position` sign
+   convention (deposit models net ~0).
+9. B4 = CP5: scheduled `paid_in_full` payout after the cancel window (delayed job, clawback-safe,
+   RECORDED -> PAID_OUT).
+10. B5 = CP6: REAL Stripe refund execution + `REFUND` Payment row + payment-model-aware
+    `computeRefund` + the locked "3 to 5 business days" C23-aware FINAL cancellation-confirmation
+    emails (traveller + operator) - wire onto the new `/dashboard/cancellation-requests` Mark
+    cancelled action.
+11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
+    (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
+
+**Phase C - Product gaps (widget §3 + master 6.4/6.6; tasks #52, #59, #60)**
+12. C1: widget add-ons (PER_PERSON x party / FLAT once, maxQuantity) into totals + reserve payload.
+13. C2: `bookingCutoffMinutes` consumed in the widget (server already computes it);
+    `pickupRequired` enforcement + pickup surfacing widget-side; `instantConfirmation` +
+    `bookingType` affordances.
+14. C3: B.34 booking-lookup login (email + `display_ref`, rate-limited) - the account fallback
+    half of master 6.4.
+15. C4 = WA2/WA3: WhatsApp placements per master 6.6 (footer, tour description, error states) +
+    email footer CTA/anti-fraud line, `?text={greeting}` x7 locales.
+
+**Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
+16. D1: real FX provider implementation behind the ready seam (Stripe FX Quotes) + currency-change
+    guard on `defaultCurrency`.
+17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
+    completion, quote-currency 5C (#28).
+18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator
+    non-payment forfeit flow (guide §15), Mollie webhook confirm (Mollie stays block-commented).
+
+Blocked-on-founder ledger: GTM/Pixel/CMP creds (A5), Resend confirm (B1), two Cloudinary
+accounts, `start:prod` path bug, Segoe-UI Gmail fallback (wireframe edit), master wording update
+for the superseded "lowest applicable" from-price line.

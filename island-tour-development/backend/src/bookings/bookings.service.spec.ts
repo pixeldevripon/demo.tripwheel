@@ -985,6 +985,81 @@ describe('BookingsService', () => {
     });
   });
 
+  // Dashboard list (DASH1/DASH3): filters, scoping, and the list-row mapping.
+  describe('list (dashboard)', () => {
+    const listRow = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        createdAt: new Date('2030-06-01T10:00:00.000Z'),
+        tourStartDateTime: new Date('2030-06-05T09:00:00.000Z'),
+        utcCancellationRequestedAt: null,
+        contactFullName: 'Jane Doe',
+        contactEmail: 'jane@example.test',
+        tour: { name: 'Klein Curacao Day Trip', cancellationHours: 48 },
+        ...over,
+      });
+
+    it('maps the list row (tourName, partySize, deadline, window verdict)', async () => {
+      prisma.booking.count.mockResolvedValue(1);
+      prisma.booking.findMany.mockResolvedValue([
+        // Requested 2030-06-02, deadline = start - 48h = 2030-06-03T09:00Z -> in window.
+        listRow({
+          utcCancellationRequestedAt: new Date('2030-06-02T12:00:00.000Z'),
+        }),
+      ]);
+      const res = await svc.list({}, { id: 'admin-1', role: Role.ADMIN });
+      expect(res.total).toBe(1);
+      const row = res.data[0];
+      expect(row.tourName).toBe('Klein Curacao Day Trip');
+      expect(row.partySize).toBe(2);
+      expect(row.contactFullName).toBe('Jane Doe');
+      expect(row.freeCancelDeadline).toBe('2030-06-03T09:00:00.000Z');
+      expect(row.requestedInFreeWindow).toBe(true);
+    });
+
+    it('judges an out-of-window request at the REQUEST instant (C23)', async () => {
+      prisma.booking.count.mockResolvedValue(1);
+      prisma.booking.findMany.mockResolvedValue([
+        listRow({
+          utcCancellationRequestedAt: new Date('2030-06-04T12:00:00.000Z'),
+        }),
+      ]);
+      const res = await svc.list({}, { id: 'admin-1', role: Role.ADMIN });
+      expect(res.data[0].requestedInFreeWindow).toBe(false);
+    });
+
+    it('applies search/paymentModel/cancellationRequested filters (queue = oldest first)', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list(
+        {
+          search: 'jane',
+          paymentModel: PaymentModel.ON_ARRIVAL,
+          cancellationRequested: true,
+        },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const args = prisma.booking.findMany.mock.calls.at(-1)[0];
+      expect(args.where.paymentModel).toBe(PaymentModel.ON_ARRIVAL);
+      expect(args.where.utcCancellationRequestedAt).toEqual({ not: null });
+      expect(args.where.OR).toEqual(
+        expect.arrayContaining([
+          { displayRef: { contains: 'jane', mode: 'insensitive' } },
+          { tour: { name: { contains: 'jane', mode: 'insensitive' } } },
+        ]),
+      );
+      expect(args.orderBy).toEqual({ utcCancellationRequestedAt: 'asc' });
+    });
+
+    it('scopes TOUR_OPERATOR rows to their own operatorId', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-9' });
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list({}, { id: 'user-9', role: Role.TOUR_OPERATOR });
+      const args = prisma.booking.findMany.mock.calls.at(-1)[0];
+      expect(args.where.operatorId).toBe('op-9');
+    });
+  });
+
   // TYP "Don't see it? Check spam, or Resend email".
   describe('resendConfirmation', () => {
     const confirmed = (over: Record<string, unknown> = {}) =>

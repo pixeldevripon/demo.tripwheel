@@ -2,7 +2,7 @@ import { CategoriesListView } from '@/components/dashboard/categories/categories
 
 export default function CategoriesPage() {
   return (
-    <div>
+    <div className=''>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-heading text-2xl font-semibold uppercase tracking-wider">

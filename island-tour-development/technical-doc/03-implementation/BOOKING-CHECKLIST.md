@@ -112,7 +112,7 @@ These are ranked. Each is expanded in its section below.
 - [~] **Provider-backed FX (pair conversion USD<->EUR, refresh, freshness rules, fail-closed for checkout).** `Ref:` [Guide §20.1](./BOOKING-FLOW-DESIGN-GUIDE.md#201-build-provider-backed-fx-rates) · `Code:` `src/fx/` (`FxRate` table, `FxModule`, `FxRatesService` getRate/getDisplayRate/convert/refreshRates, `StaticFxProvider`, fail-closed 503, lazy refresh, stale-display window). **BUILT with a dev/static provider + DB cache; still to do:** a real provider impl (Stripe FX Quotes per guide) behind the same interface (~1 class + 1 `FxModule` line - the seam is ready).
 - [x] **FX refresh scheduler + startup warm-up (M4).** `Ref:` [Guide §20.1](./BOOKING-FLOW-DESIGN-GUIDE.md#201-build-provider-backed-fx-rates) · `Code:` `src/fx/fx-refresh.service.ts` (`FxRefreshService`): startup `refreshRates()` + dynamic `SchedulerRegistry` interval every `FX_RATE_REFRESH_MINUTES` (default 30, validated in `env.validate.ts`); non-fatal (logged + swallowed, boot never blocks); in-process `@nestjs/schedule` (no BullMQ, matches `NightlyJobsService`); interval cleared on destroy. 5 tests (`fx-refresh.service.spec.ts`).
 - [x] **Public tour/search/detail APIs return converted `money` object + accept `currency`.** `Ref:` [Guide §20.9](./BOOKING-FLOW-DESIGN-GUIDE.md#209-update-public-tour-apis) · `Code:` `MoneyDto` (`src/fx/dto/money.dto.ts`) + `FxRatesService.buildMoney` + `ToursService.attachMoney`/`HubService.attachHubMoney`. `?currency` on tours list/detail/by-id, `/search`, collection render, hub render + our-picks/comparison; each card/detail carries `money{currency,sourceCurrency,fxRate,priceFrom,basePrice}` (falls back to source currency when no rate, never blocks). **Deferred:** collection `getBySlug`/`getActive` + hub hero/collection fastStats aggregates stay source-currency (frontend can derive display from card `money`).
-- [~] **TYP/email render booking charged currency, not shopper cookie.** `Ref:` [Guide §20.10](./BOOKING-FLOW-DESIGN-GUIDE.md#2010-update-typ-and-email) · `Code:` TYP (`getThankYou`) + email already render `Booking.currency`/`totalRetail`/deposit/balance (never tour currency). Re-verify when the frontend currency selector lands (M5).
+- [x] **TYP/email render booking charged currency, not shopper cookie.** `Ref:` [Guide §20.10](./BOOKING-FLOW-DESIGN-GUIDE.md#2010-update-typ-and-email) · `Code:` TYP (`getThankYou`) + email render `Booking.currency`/`totalRetail`/deposit/balance (never tour currency). Re-verified 2026-07-16 with M5 + the currency selector live: email money formats via `formatMoney(narrowSymbol)` on the charged currency (spec-covered in `booking-email.context.spec.ts`).
 - Full sub-checklist: [Guide §23 Multi-Currency Checklist](./BOOKING-FLOW-DESIGN-GUIDE.md#23-multi-currency-checklist).
 
 ---
@@ -211,15 +211,24 @@ Three new dashboard menus, each reusing the tours TanStack table pattern (same U
 comprehensive filters, search, date-range) and permission-gated per master RBAC + `lib/config/rbac.ts`
 (operators scoped to their own tours' rows; admin sees all).
 
-- [ ] **Bookings list page** (`/dashboard/bookings`): ref, tour, traveller, date, party, payment
-  model, amounts, status; backend list endpoint w/ query DTO (status/model/date-range/search) +
-  operator scoping. `Task:` DASH1
-- [ ] **Payments list page** (`/dashboard/payments`): booking ref, tour, charged/deposit/balance,
-  currency, intent status, model, timestamps; backend endpoint + scoping. `Task:` DASH2
-- [ ] **Cancellation Requests page** (`/dashboard/cancellation-requests`): bookings with
-  `utcCancellationRequestedAt` set - requested-at, tour date, in/out of free-window judgement,
-  refund amount, status. This is where the admin executes master 6.4 (mark cancelled -> final
-  emails + CP6 refund). `Task:` DASH3
+- [x] **Bookings list page** (`/dashboard/bookings`) - BUILT 2026-07-16. Backend: `GET /bookings`
+  query DTO extended (`search` on refs/guest/tour, `paymentModel`, `cancellationRequested`) +
+  `BookingListItemDto` (tourName, contact, partySize, createdAt, freeCancelDeadline,
+  requestedInFreeWindow judged at request instant per C23). Frontend: reusable TanStack table
+  (search, status/model selects, travel-date range, columns toggle, pagination), commission
+  columns ADMIN-only (rule #22), row actions (details dialog, copy ref, admin Mark cancelled via
+  `POST /bookings/:id/cancel`). `Code:` `components/dashboard/bookings/*`,
+  `lib/api/bookings-dashboard.ts`, `hooks/bookings/use-bookings.ts`
+- [x] **Payments list page** (`/dashboard/payments`) - BUILT 2026-07-16. Backend: NEW
+  `GET /payments` (`@RequirePermissions(VIEW_PAYMENTS)`, operator scoped via `booking.operatorId`,
+  filters status/kind/provider/search/created-range). Frontend: same table pattern.
+  `Code:` `payments.service.ts:list`, `components/dashboard/payments/*`
+- [x] **Cancellation Requests page** (`/dashboard/cancellation-requests`) - BUILT 2026-07-16.
+  Same bookings table in queue mode (`cancellationRequested=true`, OLDEST request first) with
+  Requested / Free-window / Refund-due columns; admin executes master 6.4 "marks cancelled" from
+  the row action (refund STILL manual until CP6 wires real Stripe refunds). Operator role granted
+  `VIEW_BOOKINGS` in BOTH role configs (master roles doc: operators "view own bookings"; scoping
+  server-side). Nav: new "Cancellation Requests" item gated on `VIEW_BOOKINGS`.
 
 ---
 

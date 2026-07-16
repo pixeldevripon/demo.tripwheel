@@ -4,9 +4,11 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
+import { pageEnter } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface DashboardWrapperProps {
     children: React.ReactNode;
@@ -16,17 +18,12 @@ interface DashboardWrapperProps {
     userImage?: string | null;
 }
 
-// Enter-only slide-up. We deliberately avoid AnimatePresence + mode="wait" here:
-// in the App Router the layout swaps `children` to the next page in lockstep with
-// `pathname`, so an exit-animating wrapper would briefly hold the previous keyed
+// Enter-only page transition. We deliberately avoid AnimatePresence + mode="wait"
+// here: in the App Router the layout swaps `children` to the next page in lockstep
+// with `pathname`, so an exit-animating wrapper would briefly hold the previous keyed
 // subtree while it already contains the new page's tree - a hook-count mismatch
 // that throws "Rendered more hooks than during the previous render". A keyed
 // motion.div remounts on navigation and replays the entrance with no stale subtree.
-const slideUp = {
-    initial: { y: '0.5%', opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-};
-
 export default function DashboardWrapper({
     children,
     userName,
@@ -35,6 +32,12 @@ export default function DashboardWrapper({
     userImage,
 }: DashboardWrapperProps) {
     const pathname = usePathname();
+    const reduceMotion = useReducedMotion();
+
+    // False during SSR + first client render so the initial load paints plain
+    // visible HTML; true from then on, so only route changes animate.
+    const [ready, setReady] = useState(false);
+    useEffect(() => setReady(true), []);
 
     return (
         <RoleProvider role={userRole}>
@@ -64,12 +67,13 @@ export default function DashboardWrapper({
                         <div suppressHydrationWarning className={cn()}>
                             <motion.div
                                 key={pathname}
-                                initial={slideUp.initial}
-                                animate={slideUp.animate}
-                                transition={{
-                                    stiffness: 300,
-                                    duration: 0.2,
-                                }}
+                                initial={
+                                    ready && !reduceMotion
+                                        ? { opacity: 0, y: 16 }
+                                        : false
+                                }
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={pageEnter}
                                 className='lg:p-8 will-change-transform relative'>
                                 {children}
                             </motion.div>

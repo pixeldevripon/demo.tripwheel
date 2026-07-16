@@ -12,11 +12,18 @@ import {
   PaymentModel,
   PaymentStatus,
   Prisma,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BookingsService } from '@/bookings/bookings.service';
+import { resolveOperatorId } from '@/common/utils/operator.util';
+import { assertDateRangeOrder } from '@/common/utils/date-range.util';
+import { dateKey } from '@/common/utils/timezone.util';
 import { StripeService, toMinorUnits } from './stripe.service';
-import type { PaymentIntentResponseDto } from './dto/payment.dto';
+import type {
+  ListPaymentsQueryDto,
+  PaymentIntentResponseDto,
+} from './dto/payment.dto';
 
 /**
  * Payments - Stripe charges per booking + idempotent webhook settlement.
@@ -40,6 +47,105 @@ export class PaymentsService {
     private readonly stripe: StripeService,
     private readonly bookings: BookingsService,
   ) {}
+
+  // ── Dashboard payments list ──────────────────────────────────────────────────
+
+  /**
+   * Paginated payments for the dashboard Payments table. ADMIN sees every
+   * payment; TOUR_OPERATOR only payments on bookings of their own tours (scoped
+   * via `booking.operatorId`, mirroring `BookingsService.list`). The route is
+   * permission-gated (`VIEW_PAYMENTS`), so plain USERs never reach this.
+   */
+  async list(query: ListPaymentsQueryDto, actor: { id: string; role: Role }) {
+    assertDateRangeOrder(query.from, query.to);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const where: Prisma.PaymentWhereInput = {};
+    if (actor.role !== Role.ADMIN) {
+      where.booking = {
+        operatorId: await resolveOperatorId(this.prisma, actor.id, actor.role),
+      };
+    }
+    if (query.status) where.status = query.status;
+    if (query.kind) where.kind = query.kind;
+    if (query.provider) where.provider = query.provider;
+    if (query.search?.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { intentId: { contains: q, mode: 'insensitive' } },
+        { booking: { displayRef: { contains: q, mode: 'insensitive' } } },
+        { booking: { publicRef: { contains: q, mode: 'insensitive' } } },
+        { booking: { contactFullName: { contains: q, mode: 'insensitive' } } },
+        { booking: { contactEmail: { contains: q, mode: 'insensitive' } } },
+        { booking: { tour: { name: { contains: q, mode: 'insensitive' } } } },
+      ];
+    }
+    if (query.from || query.to) {
+      where.createdAt = {};
+      if (query.from)
+        where.createdAt.gte = new Date(`${query.from}T00:00:00.000Z`);
+      if (query.to) where.createdAt.lte = new Date(`${query.to}T23:59:59.999Z`);
+    }
+
+    const [total, rows] = await Promise.all([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          bookingId: true,
+          provider: true,
+          kind: true,
+          status: true,
+          amount: true,
+          currency: true,
+          intentId: true,
+          methodType: true,
+          createdAt: true,
+          updatedAt: true,
+          booking: {
+            select: {
+              displayRef: true,
+              publicRef: true,
+              contactFullName: true,
+              localDate: true,
+              paymentModel: true,
+              tour: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((p) => ({
+        id: p.id,
+        bookingId: p.bookingId,
+        provider: p.provider,
+        kind: p.kind,
+        status: p.status,
+        amount: p.amount.toString(),
+        currency: p.currency,
+        intentId: p.intentId,
+        methodType: p.methodType,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        bookingDisplayRef: p.booking.displayRef,
+        bookingPublicRef: p.booking.publicRef,
+        tourName: p.booking.tour.name,
+        contactFullName: p.booking.contactFullName,
+        bookingLocalDate: dateKey(p.booking.localDate),
+        paymentModel: p.booking.paymentModel,
+      })),
+    };
+  }
 
   // ── Create / fetch the up-front PaymentIntent ────────────────────────────────
 

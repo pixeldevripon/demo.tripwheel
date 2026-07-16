@@ -330,6 +330,9 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'UPLOAD_MEDIA',
     'VIEW_MEDIA',
     'VIEW_ORDERS',
+    // Mirrors backend roles.config: operators view OWN bookings/payments only
+    // (the list endpoints scope by operatorId).
+    'VIEW_BOOKINGS',
     'VIEW_PAYMENTS',
     'VIEW_PROFILE',
     'EDIT_PROFILE',

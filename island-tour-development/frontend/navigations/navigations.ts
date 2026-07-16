@@ -1,5 +1,6 @@
 import {
     Calendar,
+    CalendarX,
     CircleUser,
     CreditCard,
     Globe,
@@ -120,6 +121,14 @@ const dashboardNav: NavItem[] = [
         title: 'Bookings',
         url: 'bookings',
         icon: Calendar,
+        permissions: [Permission.VIEW_BOOKINGS],
+    },
+
+    // ─── Cancellation requests (master 6.4 admin queue) ───────────────────────
+    {
+        title: 'Cancellation Requests',
+        url: 'cancellation-requests',
+        icon: CalendarX,
         permissions: [Permission.VIEW_BOOKINGS],
     },
 

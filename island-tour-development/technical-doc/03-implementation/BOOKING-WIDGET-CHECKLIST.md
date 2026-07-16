@@ -127,7 +127,7 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 ## 5. Server-authoritative pricing (quote)
 
-- [~] **`POST /bookings/quote`** and consume it in the widget + checkout instead of client math; remove the duplicated `deriveBooking`/`computeCheckoutTotals` totals for anything persisted. `Ref:` [Guide §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · **Backend BUILT** (stateless single-currency quote, `bookings.service.ts:quote()`, [BOOKING-CHECKLIST §6](./BOOKING-CHECKLIST.md)). **Frontend consume PENDING** (task = widget money phase): fetch the quote for the card/checkout totals, keep the client `deriveBooking`/`computeCheckoutTotals` only as an optimistic estimate.
+- [x] **`POST /bookings/quote`** consumed in the widget + checkout. `Ref:` [Guide §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · Backend stateless quote (`bookings.service.ts:quote()`) + frontend `useBookingQuote` (debounced, aborts superseded, re-quotes on currency switch); when a fresh quote is loaded it - not client math - drives the money summary/breakdown, and `deriveBooking`/`computeCheckoutTotals` remain only as the optimistic pre-quote estimate (target state reached).
 
 ---
 
