@@ -111,6 +111,35 @@
 > has no consumer. After these four go, **`components/` root is empty of loose files** - which is
 > Phase 3's stated validation, reachable only once Phase 4 lands.
 
+> **EXECUTED 2026-07-17. Two corrections:**
+>
+> **1. `locals-favourites-list-view.tsx` is NOT dead - it was kept.** The "verify first" flag
+> earned its place. The chain is live end to end:
+> `app/(dashboard)/dashboard/locals-favourites/page.tsx` -> `LocalsFavouritesView`
+> (`locals-favourites-view.tsx:8,101`) -> `LocalsFavouritesListView`. That is the curation surface
+> CLAUDE.md rule 23 mandates for `is_locals_favourite`. **Deleting it would have removed a live
+> admin page.** This is the second time a file in this plan was wrongly called dead (after
+> `lib/api/cache-revalidation.ts`); both came from the same early scan. Treat any remaining
+> "dead" claim sourced from it as unverified.
+>
+> **2. Leads/Enquiries needed more than the two `page.tsx` files.** Both were also **commented-out
+> `navigations.ts` entries** (`:179-193`) carrying `Mail`/`MessageSquare` icon imports. Deleting
+> only the pages would have left nav blocks that 404 the moment anyone uncommented them. Removed:
+> both pages, both nav blocks, both now-orphaned icon imports. **`VIEW_ENQUIRIES`/`VIEW_LEADS`
+> stay in `lib/config/rbac.ts`** - it mirrors `backend/src/config/roles.config.ts`, and the
+> backend is out of scope (constraint: no backend changes). Flag them in Appendix A if the
+> backend ever drops them.
+>
+> **Actual: 2,725 LOC deleted** (vs the >1,574 estimated), across 20 files. `components/` root is
+> now empty of loose files. Typecheck clean, build green, `leads`/`enquiries` absent from the
+> route table.
+>
+> **Deleting `data-table.tsx` orphaned four `ui/` primitives** - now at 0 importers:
+> `drawer` (its only consumer was `data-table`), `toggle-group`, `breadcrumb`, `progress`.
+> **Not deleted here** - `03` §inventory already rules on all four (`drawer`/`toggle-group` DROP,
+> `progress` **KEEP** for the translation console, `breadcrumb` RESOLVE against the live
+> `dashboard/breadcrumb.tsx`). They belong to the design-system phase, not this one.
+
 **Rationale** F-2. `data-table.tsx` is the emblem: a generic table abstraction that all 10 tables ignored, keeping 813 lines and `ui/drawer.tsx` alive.
 
 **Dependencies** none
