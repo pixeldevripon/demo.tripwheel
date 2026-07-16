@@ -261,3 +261,97 @@ Recommended sequence
 
 One caveat worth flagging: for anything persisted (the actual booking total), the client math in deriveBooking/computeCheckoutTotals must not be authoritative - the server quote wins. During phase 1 that's fine as a display estimate; just don't let it become the source of truth for a real booking. That's exactly the phase-2 boundary above.
 
+---
+
+## Deferred follow-ups (discovered during the Stripe payment-flow build, 2026-07-16)
+
+- [ ] **Pickup pricing / "Pickup location (From $X p.p.)" label.** The master checkout
+  Contact spec calls for `"Pickup location (From $X p.p.)"` with "operator zones with
+  prices" and an "Other location, we'll confirm via WhatsApp" fallback. The fallback +
+  zone selection are built, but **no pickup price exists in the data model**:
+  `PickupLocation` has no `price` column (only `pickupModel` = INCLUDED/PAID_ADDON/NONE),
+  so `PublicPickupLocation` exposes none and the label falls back to plain "Pickup
+  location". To implement faithfully: add `price Decimal` to `PickupLocation` (+ migration),
+  FX-convert + expose it on `PublicPickupLocation` (like tour prices under `?currency`),
+  then compute the min across zones for the `(From {price} p.p.)` suffix (master: no
+  `$0.00` decimals -> hide when the min is 0 / `INCLUDED`) and show each zone's price in
+  its option label. Frontend already threads `pickupFromLabel` (currently null).
+
+- [ ] **Real-data TYP payload expansion.** The frontend TYP page renders a rich shape
+  (guest name, operator name/email/phone, accurate deposit/balance split + pct, card
+  brand/last4, duration, free-cancel deadline, related tours). The backend
+  `ThankYouResponseDto` (`GET /bookings/typ/:publicRef`) is lean (tour/date/party/total/
+  email/conversion). Expand it with the fields that already live on the `Booking` row +
+  a lightweight operator join, then map on the frontend (replaces the interim demo/
+  fallback mapping). Server fetch helper `getTypByRef` (`lib/api/public/bookings.ts`) is
+  already in place.
+
+### Fixed during this build
+
+- [x] **Reserve 500 - overbooking-guard raw SQL used snake_case columns.** The atomic
+  seat-claim `$executeRaw` (and `releaseSeats`) referenced `tour_id`/`booked_count`/
+  `sold_out_at`/`updated_at`, but this schema has no `@map` so the real columns are
+  camelCase (`"tourId"`/`"bookedCount"`/`"soldOutAt"`/`"updatedAt"`). Postgres `42703`
+  -> 500 on every reserve. Unit tests mock `$executeRaw`, so it never surfaced.
+  **Refactored** the 4 raw blocks (2 reserve claim + 2 `releaseSeats`) to type-safe
+  Prisma `updateMany`/`update` + `recomputeStoredStatus` (atomic guard via a pre-computed
+  `capacity - seats` threshold from an in-txn capacity read; `GREATEST(0,...)` clamp via
+  read-modify-write). `bookings.service.spec.ts` still needs its `$executeRaw` mocks/asserts
+  swapped to `departure.updateMany`/`update` before the suite is green.
+
+- [x] **PaymentIntent currency/method 500 (Klarna-on-EUR).** Forcing the configured method
+  list on the intent hit "currency invalid for payment method type klarna" (USD-only).
+  Switched `createIntentForBooking` to Stripe `automatic_payment_methods` (account-activated +
+  currency-compatible only) and return `payment_method_types` so the checkout gates methods.
+
+---
+
+## Tracking, analytics & transactional email (master §6/§8) - ACTUAL STATUS (2026-07-16)
+
+The booking->payment->processing->TYP **money flow** is aligned with §8.2 (processing hop
+= webhook-wait/zero-tags; idempotent webhook via `stripe_webhook_events`; redirect to
+`/{destination}/thank-you/{public_ref}` with `public_ref` a UUID; TYP noindex/locale-less).
+The **analytics half of §8.2/§8.3 is NOT built**, and there is one correctness risk to
+reconcile before it is:
+
+- [ ] **1. `booking_complete` browser push on the TYP.** Master §8.2/§8.3: the TYP server
+  component hashes PII + sets `conversion_fired_at` before render (mark-first), the client
+  pushes `booking_complete` **once** (prod only, staging guard), GTM fans out to Conversion
+  Linker / Google Ads / GA4 purchase / Meta Pixel, and CAPI posts server-side with the shared
+  event id. **None of this exists** (tracking module is "to build"; TYP still renders demo data).
+
+- [ ] **2. FIRE-POINT RECONCILIATION (do this first - double-fire risk).** We set
+  `conversion_fired_at` and fire the conversion at **webhook-confirm** (server,
+  `finalizeConfirmation`), *before any TYP visit*. Master fires at **TYP render** (mark-first)
+  via the **browser** push. These are incompatible as-is: a browser push gated on
+  `conversion_fired_at` would **never fire** (already set at confirm), and `getThankYou`
+  currently returns the `conversion` payload on **every** visit with no once-guard -> the
+  client pixel would **double-fire** (violates §8.1 item 5). Fix when wiring tracking: keep
+  the server CAPI at confirm, and add a **separate** "browser-push delivered" guard
+  (e.g. `conversion_pushed_at`) so the TYP push fires exactly once, independent of the
+  server-side `conversion_fired_at`.
+
+- [ ] **3. Operator balance email (`operator_link`).** Master §6: on `operator_link` a
+  **second** operator-balance email follows the Island Tours confirmation. The IT confirmation
+  email is wired (`sendConfirmationEmail`); the **operator balance email is not**.
+
+- [ ] **4. Real-data TYP** (also tracked above): expand the backend `ThankYouResponseDto`
+  (guest name, operator contact, deposit/balance split + pct, card brand/last4, duration,
+  free-cancel deadline) + map on the frontend, replacing the demo payload. Needed before the
+  `booking_complete` push has real values.
+
+- [ ] **5. PII hashing** (server-side SHA-256 of email/phone[libphonenumber-normalized]/name/
+  address) for Enhanced Conversions + Advanced Matching (§8.1 item 3).
+
+- [ ] **6. Meta CAPI** (server, parallel to the Pixel, dedup by shared event id) - needs the
+  Meta Pixel id + CAPI access token (external creds).
+
+- [ ] **7. GTM container + tag fan-out** - the frontend pushes to `dataLayer`; the container +
+  4 tags are configured in the GTM web UI (needs a GTM container id).
+
+- [ ] **8. Consent Mode v2 + CMP** (EEA denied by default, US/CA granted) - needs a CMP choice
+  (Cookiebot or Iubenda) before the GTM build (§8.1 item 7).
+
+> Cross-refs: `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`, master §8. Booking
+> rule #22 (conversion = EUR `commission_amount`, never GMV) already enforced server-side.
+

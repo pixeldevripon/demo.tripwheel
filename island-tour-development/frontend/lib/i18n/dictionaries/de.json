@@ -678,7 +678,20 @@
     "backToTour": "Zurück zur Tour",
     "fullName": "Vollständiger Name",
     "backToContact": "Zurück zu Kontakt",
-    "processing": "Wird verarbeitet..."
+    "processing": "Wird verarbeitet...",
+    "paymentError": "Deine Zahlung konnte nicht abgeschlossen werden. Bitte überprüfe deine Kartendaten und versuche es erneut.",
+    "reserveError": "Wir konnten deinen Platz nicht reservieren. Möglicherweise ist er gerade ausverkauft - bitte geh zurück und versuche es erneut.",
+    "cardIncomplete": "Bitte vervollständige deine Kartendaten.",
+    "paymentUnavailable": "Online-Zahlung ist vorübergehend nicht verfügbar. Bitte versuche es in Kürze erneut.",
+    "processingTitle": "Deine Buchung wird bestätigt",
+    "processingSubtitle": "Wir sichern deinen Platz beim Anbieter - das dauert nur einen Moment.",
+    "processingStillWorking": "Fast geschafft. Wir senden dir deine Bestätigung per E-Mail, sobald sie fertig ist.",
+    "processingViewBooking": "Meine Buchung ansehen",
+    "processingFailed": "Wir konnten deine Zahlung nicht bestätigen. Bitte kontaktiere den Support mit deiner Referenz {ref}.",
+    "methodUnavailable": "Nicht verfügbar für {currency}",
+    "redirectNote": "Du wirst sicher weitergeleitet, um deine Zahlung abzuschließen, und danach direkt zurückgebracht.",
+    "countryPopular": "Beliebt",
+    "countryAll": "Alle Länder"
   },
   "thankYou": {
     "title": "Du bist gebucht, {name}! 🌴",

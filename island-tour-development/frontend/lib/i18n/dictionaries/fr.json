@@ -678,7 +678,20 @@
     "backToTour": "Retour à l'excursion",
     "fullName": "Nom complet",
     "backToContact": "Retour au contact",
-    "processing": "Traitement..."
+    "processing": "Traitement...",
+    "paymentError": "Votre paiement n'a pas pu être finalisé. Veuillez vérifier les informations de votre carte et réessayer.",
+    "reserveError": "Nous n'avons pas pu réserver votre place. Elle vient peut-être d'être complète - revenez en arrière et réessayez.",
+    "cardIncomplete": "Veuillez compléter les informations de votre carte.",
+    "paymentUnavailable": "Le paiement en ligne est temporairement indisponible. Veuillez réessayer sous peu.",
+    "processingTitle": "Confirmation de votre réservation",
+    "processingSubtitle": "Nous réservons votre place auprès de l'opérateur - cela ne prend qu'un instant.",
+    "processingStillWorking": "Presque terminé. Nous vous enverrons votre confirmation par e-mail dès qu'elle sera prête.",
+    "processingViewBooking": "Voir ma réservation",
+    "processingFailed": "Nous n'avons pas pu confirmer votre paiement. Veuillez contacter le support avec votre référence {ref}.",
+    "methodUnavailable": "Non disponible pour {currency}",
+    "redirectNote": "Vous serez redirigé en toute sécurité pour finaliser votre paiement, puis ramené ici.",
+    "countryPopular": "Populaire",
+    "countryAll": "Tous les pays"
   },
   "thankYou": {
     "title": "C'est réservé, {name} ! 🌴",

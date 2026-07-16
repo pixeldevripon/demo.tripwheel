@@ -231,42 +231,54 @@ export class BookingsService {
     const operatorFull = ctx.tour.paymentModel === PaymentModel.OPERATOR_FULL;
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Atomic guarded seat claim - the overbooking backstop (master §5).
-      const claimed = exclusive
-        ? // Exclusive charter (D5): claim the ENTIRE departure. Only an OPEN, still-empty
-          // departure can be taken; it flips to SOLD_OUT at full capacity. This makes the
-          // departure un-bookable by anyone else - "one booking takes the whole departure".
-          await tx.$executeRaw`
-            UPDATE departures
-               SET booked_count = capacity,
-                   status = 'sold_out'::departure_status,
-                   sold_out_at = COALESCE(sold_out_at, now()),
-                   updated_at = now()
-             WHERE id = ${dto.departureId}
-               AND tour_id = ${dto.tourId}
-               AND status = 'open'::departure_status
-               AND booked_count = 0`
-        : // Shared / per-person: guarded count-up. Claims only an OPEN departure with room,
-          // and flips it to SOLD_OUT (stamping soldOutAt) when full.
-          await tx.$executeRaw`
-            UPDATE departures
-               SET booked_count = booked_count + ${seats},
-                   status = CASE WHEN booked_count + ${seats} >= capacity
-                                 THEN 'sold_out'::departure_status ELSE status END,
-                   sold_out_at = CASE WHEN booked_count + ${seats} >= capacity AND sold_out_at IS NULL
-                                      THEN now() ELSE sold_out_at END,
-                   updated_at = now()
-             WHERE id = ${dto.departureId}
-               AND tour_id = ${dto.tourId}
-               AND status = 'open'::departure_status
-               AND booked_count + ${seats} <= capacity`;
-      if (claimed === 0) {
+      // Fresh capacity read inside the txn - the guard threshold below is a literal,
+      // so re-reading here keeps it correct against a concurrent capacity edit.
+      const dep = await tx.departure.findUnique({
+        where: { id: dto.departureId },
+        select: { capacity: true },
+      });
+      if (!dep) {
+        throw new UnprocessableEntityException('Departure not found');
+      }
+      const capacity = dep.capacity;
+
+      // Atomic guarded seat claim - the overbooking backstop (master §5). A single
+      // conditional updateMany (type-safe columns): its WHERE re-evaluates against the
+      // current bookedCount under concurrency, so two bookings can't both claim the
+      // last seats (the loser matches 0 rows). The OPEN->SOLD_OUT flip + soldOutAt
+      // stamp follow via recomputeStoredStatus, which derives status from the new fill.
+      const claim = exclusive
+        ? // Exclusive charter (D5): only an OPEN, still-empty departure can be taken;
+          // claim the WHOLE unit so no one else can book it.
+          await tx.departure.updateMany({
+            where: {
+              id: dto.departureId,
+              tourId: dto.tourId,
+              status: DepartureStatus.OPEN,
+              bookedCount: 0,
+            },
+            data: { bookedCount: capacity },
+          })
+        : // Shared / per-person: guarded count-up; claims only if seats remain.
+          await tx.departure.updateMany({
+            where: {
+              id: dto.departureId,
+              tourId: dto.tourId,
+              status: DepartureStatus.OPEN,
+              bookedCount: { lte: capacity - seats },
+            },
+            data: { bookedCount: { increment: seats } },
+          });
+      if (claim.count === 0) {
         throw new UnprocessableEntityException(
           exclusive
             ? 'This departure is no longer available for a private charter'
             : 'Not enough availability for this departure',
         );
       }
+      // Re-derive OPEN/SOLD_OUT + stamp soldOutAt from the new fill (sticky
+      // CLOSED/CANCELLED states are left untouched).
+      await this.recomputeStoredStatus(tx, dto.departureId);
 
       const status = operatorFull
         ? BookingStatus.CONFIRMED
@@ -1257,15 +1269,22 @@ export class BookingsService {
     exclusive = false,
   ): Promise<void> {
     if (exclusive) {
-      await tx.$executeRaw`
-        UPDATE departures
-           SET booked_count = 0, updated_at = now()
-         WHERE id = ${departureId}`;
+      // Exclusive charter release: the whole unit was claimed, so reset to empty.
+      await tx.departure.update({
+        where: { id: departureId },
+        data: { bookedCount: 0 },
+      });
     } else {
-      await tx.$executeRaw`
-        UPDATE departures
-           SET booked_count = GREATEST(0, booked_count - ${seats}), updated_at = now()
-         WHERE id = ${departureId}`;
+      // GREATEST(0, bookedCount - seats): read-modify-write inside the txn so a
+      // release can never drive bookedCount negative.
+      const dep = await tx.departure.findUnique({
+        where: { id: departureId },
+        select: { bookedCount: true },
+      });
+      await tx.departure.update({
+        where: { id: departureId },
+        data: { bookedCount: Math.max(0, (dep?.bookedCount ?? 0) - seats) },
+      });
     }
     await this.recomputeStoredStatus(tx, departureId);
   }

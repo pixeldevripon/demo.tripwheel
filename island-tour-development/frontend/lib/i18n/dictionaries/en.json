@@ -633,6 +633,8 @@
     "email": "Email address",
     "emailHelper": "We'll send your booking confirmation here.",
     "country": "Country",
+    "countryPopular": "Popular",
+    "countryAll": "All countries",
     "phone": "Phone number",
     "phonePlaceholder": "Phone number",
     "phoneHelper": "We'll only use this for tour-day coordination.",
@@ -678,7 +680,18 @@
     "backToTour": "Back to tour",
     "fullName": "Full name",
     "backToContact": "Back to contact",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "paymentError": "Your payment couldn't be completed. Please check your card details and try again.",
+    "reserveError": "We couldn't hold your spot. It may have just sold out - please go back and try again.",
+    "cardIncomplete": "Please complete your card details.",
+    "paymentUnavailable": "Online payment is temporarily unavailable. Please try again shortly.",
+    "processingTitle": "Confirming your booking",
+    "processingSubtitle": "Securing your spot with the operator - this only takes a moment.",
+    "processingStillWorking": "Almost there. We'll email your confirmation the moment it's ready.",
+    "processingViewBooking": "View my booking",
+    "processingFailed": "We couldn't confirm your payment. Please contact support with your reference {ref}.",
+    "methodUnavailable": "Not available for {currency}",
+    "redirectNote": "You'll be securely redirected to complete your payment, then brought right back."
   },
   "thankYou": {
     "title": "You're booked, {name}! 🌴",

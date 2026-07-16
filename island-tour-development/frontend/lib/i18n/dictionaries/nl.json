@@ -678,7 +678,20 @@
     "backToTour": "Terug naar tour",
     "fullName": "Volledige naam",
     "backToContact": "Terug naar contact",
-    "processing": "Verwerken..."
+    "processing": "Verwerken...",
+    "paymentError": "Je betaling kon niet worden voltooid. Controleer je kaartgegevens en probeer het opnieuw.",
+    "reserveError": "We konden je plek niet reserveren. Mogelijk is deze net uitverkocht - ga terug en probeer het opnieuw.",
+    "cardIncomplete": "Vul je kaartgegevens volledig in.",
+    "paymentUnavailable": "Online betalen is tijdelijk niet beschikbaar. Probeer het zo dadelijk opnieuw.",
+    "processingTitle": "Je boeking bevestigen",
+    "processingSubtitle": "We reserveren je plek bij de aanbieder - dit duurt maar even.",
+    "processingStillWorking": "Bijna klaar. We e-mailen je bevestiging zodra deze klaar is.",
+    "processingViewBooking": "Mijn boeking bekijken",
+    "processingFailed": "We konden je betaling niet bevestigen. Neem contact op met support met je referentie {ref}.",
+    "methodUnavailable": "Niet beschikbaar voor {currency}",
+    "redirectNote": "Je wordt veilig doorgestuurd om je betaling te voltooien en daarna weer teruggebracht.",
+    "countryPopular": "Populair",
+    "countryAll": "Alle landen"
   },
   "thankYou": {
     "title": "Je bent geboekt, {name}! 🌴",

@@ -1,6 +1,7 @@
 'use client';
 
-import type { Locale } from '@/lib/constants/locales';
+import type { BookingSelectionPayload } from '@/lib/checkout/checkout';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -20,10 +21,17 @@ interface CheckoutClientProps {
     pickupFromLabel: string | null;
     payToday: number;
     currencySymbol: string;
-    /** TYP redirect target (`/{destination}/thank-you/{public_ref}`). */
-    thankYouHref: string;
     /** Server-rendered booking summary (right rail). */
     summary: ReactNode;
+
+    // ── Live booking inputs (widget selection, carried in the URL) ──
+    tourId: string;
+    departureId: string | null;
+    currency: Currency;
+    quoteId: string | null;
+    reserveSelection: BookingSelectionPayload | null;
+    destination: string;
+    slug: string;
 }
 
 const backBarLabel =
@@ -54,8 +62,14 @@ export function CheckoutClient({
     pickupFromLabel,
     payToday,
     currencySymbol,
-    thankYouHref,
     summary,
+    tourId,
+    departureId,
+    currency,
+    quoteId,
+    reserveSelection,
+    destination,
+    slug,
 }: CheckoutClientProps) {
     const [phase, setPhase] = useState<CheckoutPhase>('contact');
     const hasPayment = payToday > 0;
@@ -125,7 +139,13 @@ export function CheckoutClient({
                             pickupFromLabel={pickupFromLabel}
                             payToday={payToday}
                             currencySymbol={currencySymbol}
-                            thankYouHref={thankYouHref}
+                            tourId={tourId}
+                            departureId={departureId}
+                            currency={currency}
+                            quoteId={quoteId}
+                            reserveSelection={reserveSelection}
+                            destination={destination}
+                            slug={slug}
                         />
                     </div>
                 </div>

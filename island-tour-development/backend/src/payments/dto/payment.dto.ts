@@ -42,6 +42,14 @@ export class PaymentIntentResponseDto {
     example: PaymentStatus.REQUIRES_PAYMENT,
   })
   status?: PaymentStatus;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['card', 'paypal', 'ideal'],
+    description:
+      'Eligible payment methods for this booking (account-activated + currency-compatible). The checkout offers only these; card is inline, PayPal/iDEAL redirect.',
+  })
+  paymentMethodTypes?: string[];
 }
 
 export class WebhookAckDto {

@@ -678,7 +678,20 @@
     "backToTour": "Voltar ao passeio",
     "fullName": "Nome completo",
     "backToContact": "Voltar ao contato",
-    "processing": "Processando..."
+    "processing": "Processando...",
+    "paymentError": "Não foi possível concluir o teu pagamento. Verifica os dados do teu cartão e tenta novamente.",
+    "reserveError": "Não conseguimos reservar o teu lugar. Pode ter esgotado agora - volta atrás e tenta novamente.",
+    "cardIncomplete": "Preenche os dados do teu cartão.",
+    "paymentUnavailable": "O pagamento online está temporariamente indisponível. Tenta novamente em breve.",
+    "processingTitle": "A confirmar a tua reserva",
+    "processingSubtitle": "Estamos a garantir o teu lugar com o operador - demora só um momento.",
+    "processingStillWorking": "Quase pronto. Enviaremos a tua confirmação por e-mail assim que estiver pronta.",
+    "processingViewBooking": "Ver a minha reserva",
+    "processingFailed": "Não conseguimos confirmar o teu pagamento. Contacta o suporte com a tua referência {ref}.",
+    "methodUnavailable": "Não disponível para {currency}",
+    "redirectNote": "Serás redirecionado em segurança para concluir o pagamento e depois trazido de volta.",
+    "countryPopular": "Popular",
+    "countryAll": "Todos os países"
   },
   "thankYou": {
     "title": "Reserva confirmada, {name}! 🌴",

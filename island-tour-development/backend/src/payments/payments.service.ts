@@ -85,6 +85,13 @@ export class PaymentsService {
 
     // Idempotent: the same (booking, kind) always maps to one PaymentIntent.
     const idempotencyKey = `pi_${booking.id}_${charge.kind}`;
+    // Automatic payment methods: Stripe enables only methods that are BOTH activated
+    // on the account AND compatible with this currency - so it can't hit the
+    // currency/method conflicts an explicit list does (e.g. Klarna is USD-only and
+    // would reject an EUR intent). Card is collected inline via Card Elements +
+    // confirmCardPayment (no Stripe UI); PayPal/iDEAL confirm client-side and
+    // redirect. We return `paymentMethodTypes` so the checkout only offers eligible
+    // methods (the rest are hidden/disabled with a hint).
     const intent = await this.stripe.createPaymentIntent({
       amount: toMinorUnits(charge.amount),
       currency: booking.currency,
@@ -94,7 +101,6 @@ export class PaymentsService {
         displayRef: booking.displayRef,
         kind: charge.kind,
       },
-      methods: await this.stripe.paymentMethods(),
     });
 
     await this.prisma.payment.upsert({
@@ -123,6 +129,9 @@ export class PaymentsService {
       currency: booking.currency,
       kind: charge.kind,
       status: mapIntentStatus(intent.status),
+      // Eligible methods for this booking (account-activated + currency-compatible).
+      // The checkout offers only these; card is confirmed inline, PayPal/iDEAL redirect.
+      paymentMethodTypes: intent.payment_method_types ?? [],
     };
   }
 

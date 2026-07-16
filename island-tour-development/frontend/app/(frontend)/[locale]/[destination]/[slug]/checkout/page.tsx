@@ -5,6 +5,7 @@ import { CheckoutPageSkeleton } from '@/components/skelitons/checkout-page-skele
 import { getActiveDestinations } from '@/lib/api/public';
 import { getDestinationTours, getTourBySlug } from '@/lib/api/public/tours';
 import {
+    buildBookingSelection,
     buildPartyLabel,
     computeCheckoutTotals,
     fromDateParam,
@@ -18,7 +19,6 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { DEMO_PUBLIC_REF } from '@/lib/thank-you/thank-you';
 import { buildTourBookingData } from '@/lib/tours/booking';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -89,7 +89,6 @@ async function CheckoutBody({
     destination,
     slug,
     tourHref,
-    thankYouHref,
     searchParams,
     dict,
 }: {
@@ -97,7 +96,6 @@ async function CheckoutBody({
     destination: string;
     slug: string;
     tourHref: string;
-    thankYouHref: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
 }) {
@@ -131,6 +129,9 @@ async function CheckoutBody({
     // Currency-aware pricing - mirrors the booking widget (same converted money).
     const data = buildTourBookingData(detail);
     const totals = computeCheckoutTotals(data, selection.counts);
+    // Party payload for the reserve call (items/guests), or null if the URL
+    // selection can't be reserved (synthetic-only bands / empty).
+    const reserveSelection = buildBookingSelection(data, selection.counts);
 
     const selectedDate = fromDateParam(selection.date);
     const dateLabel = selectedDate
@@ -154,7 +155,13 @@ async function CheckoutBody({
             pickupFromLabel={null}
             payToday={totals.payToday}
             currencySymbol={data.currencySymbol}
-            thankYouHref={thankYouHref}
+            tourId={detail.id}
+            departureId={selection.departureId}
+            currency={currency}
+            quoteId={selection.quoteId}
+            reserveSelection={reserveSelection}
+            destination={destination}
+            slug={slug}
             summary={
                 <CheckoutSummary
                     dict={dict}
@@ -206,9 +213,6 @@ export default async function CheckoutPage({
 
     const dict = await getDictionary(locale);
     const tourHref = localizeHref(locale, `/${destination}/${slug}`);
-    // TYP is the one locale-less route (master API conventions); the demo ref
-    // stands in until POST /api/v1/bookings returns a real public_ref.
-    const thankYouHref = `/${destination}/thank-you/${DEMO_PUBLIC_REF}`;
 
     return (
         <section className='it-section !pt-0 bg-white'>
@@ -218,7 +222,6 @@ export default async function CheckoutPage({
                     destination={destination}
                     slug={slug}
                     tourHref={tourHref}
-                    thankYouHref={thankYouHref}
                     searchParams={searchParams}
                     dict={dict.checkout}
                 />

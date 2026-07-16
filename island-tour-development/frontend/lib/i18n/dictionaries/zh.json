@@ -678,7 +678,20 @@
     "backToTour": "返回行程",
     "fullName": "全名",
     "backToContact": "返回联系信息",
-    "processing": "处理中..."
+    "processing": "处理中...",
+    "paymentError": "无法完成付款。请检查您的银行卡信息后重试。",
+    "reserveError": "我们无法为您保留名额，可能刚刚已售罄，请返回重试。",
+    "cardIncomplete": "请填写完整的银行卡信息。",
+    "paymentUnavailable": "在线支付暂时不可用，请稍后重试。",
+    "processingTitle": "正在确认您的预订",
+    "processingSubtitle": "正在向运营商为您锁定名额，只需片刻。",
+    "processingStillWorking": "马上就好。确认完成后我们会立即通过电子邮件通知您。",
+    "processingViewBooking": "查看我的预订",
+    "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
+    "methodUnavailable": "不支持 {currency}",
+    "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
+    "countryPopular": "热门",
+    "countryAll": "所有国家/地区"
   },
   "thankYou": {
     "title": "预订成功，{name}！🌴",

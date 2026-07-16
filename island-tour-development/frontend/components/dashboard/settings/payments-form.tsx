@@ -6,14 +6,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
-import { MultiSelect } from '@/components/ui/multi-select';
-import {
-  useMollieConfig,
-  useStripeConfig,
-  useUpdateMollieConfig,
-  useUpdateStripeConfig,
-} from '@/hooks/settings/use-settings';
-import { MOLLIE_PAYMENT_METHODS, STRIPE_PAYMENT_METHODS } from './payment-methods';
+import { useStripeConfig, useUpdateStripeConfig } from '@/hooks/settings/use-settings';
+import { StripeMethodsField } from './stripe-methods-field';
 import { SecretField, SettingsCard, SettingsCardSkeleton, TextField } from './settings-fields';
 
 // ── Stripe ─────────────────────────────────────────────────────────────────
@@ -97,11 +91,10 @@ function StripeCard() {
       />
       <Field>
         <Label className="text-xs font-semibold uppercase">Payment Methods</Label>
-        <MultiSelect
-          options={STRIPE_PAYMENT_METHODS}
+        {/* Enabling a method opens a setup guide; disabling asks to confirm. */}
+        <StripeMethodsField
           value={selected}
           onChange={(next) => setValue('paymentMethods', next, { shouldDirty: true })}
-          placeholder="Select payment methods"
         />
         <FieldDescription>Methods offered to travelers at checkout.</FieldDescription>
       </Field>
@@ -110,7 +103,14 @@ function StripeCard() {
 }
 
 // ── Mollie ─────────────────────────────────────────────────────────────────
-
+// HIDDEN for v1: the checkout collects card via Stripe and redirects to
+// PayPal/iDEAL via Stripe, so Mollie is not wired yet. The card below is kept
+// (commented, not deleted) - to restore it, uncomment this block AND its
+// <MollieCard /> render, and re-add the imports:
+//   import { MultiSelect } from '@/components/ui/multi-select';
+//   import { useMollieConfig, useUpdateMollieConfig } from '@/hooks/settings/use-settings';
+//   import { MOLLIE_PAYMENT_METHODS } from './payment-methods';
+/*
 const mollieSchema = z.object({
   paymentLabel: z.string().optional(),
   apiKey: z.string().optional(),
@@ -186,12 +186,13 @@ function MollieCard() {
     </SettingsCard>
   );
 }
+*/
 
 export function PaymentsForm() {
   return (
     <div className="space-y-6">
       <StripeCard />
-      <MollieCard />
+      {/* <MollieCard /> - hidden for v1 (see the commented Mollie block above) */}
     </div>
   );
 }

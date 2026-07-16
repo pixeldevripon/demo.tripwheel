@@ -678,7 +678,20 @@
     "backToTour": "Volver al tour",
     "fullName": "Nombre completo",
     "backToContact": "Volver a contacto",
-    "processing": "Procesando..."
+    "processing": "Procesando...",
+    "paymentError": "No se pudo completar tu pago. Revisa los datos de tu tarjeta e inténtalo de nuevo.",
+    "reserveError": "No pudimos reservar tu lugar. Puede que se haya agotado - vuelve atrás e inténtalo de nuevo.",
+    "cardIncomplete": "Completa los datos de tu tarjeta.",
+    "paymentUnavailable": "El pago en línea no está disponible temporalmente. Inténtalo de nuevo en breve.",
+    "processingTitle": "Confirmando tu reserva",
+    "processingSubtitle": "Estamos asegurando tu lugar con el operador - solo tomará un momento.",
+    "processingStillWorking": "Casi listo. Te enviaremos tu confirmación por correo en cuanto esté lista.",
+    "processingViewBooking": "Ver mi reserva",
+    "processingFailed": "No pudimos confirmar tu pago. Contacta con soporte con tu referencia {ref}.",
+    "methodUnavailable": "No disponible para {currency}",
+    "redirectNote": "Te redirigiremos de forma segura para completar tu pago y luego volverás aquí.",
+    "countryPopular": "Popular",
+    "countryAll": "Todos los países"
   },
   "thankYou": {
     "title": "¡Reserva confirmada, {name}! 🌴",

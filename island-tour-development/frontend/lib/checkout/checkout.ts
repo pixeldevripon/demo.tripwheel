@@ -13,7 +13,44 @@
  * availability + a server-authoritative quote land with the booking module
  * (BOOKING-FLOW-DESIGN-GUIDE.md §9); until then this is client-derived.
  */
+import type { ReserveItem } from '@/lib/api/bookings';
 import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
+
+/**
+ * Ids the widget synthesises when a tour has no real age bands (`default-adult`)
+ * or is unit-priced (`unit-guests`). They are NOT real `ageBandId`s, so a
+ * PER_PERSON quote/reserve can't be built from them.
+ */
+export const SYNTHETIC_BAND_IDS = new Set(['default-adult', 'unit-guests']);
+
+/** The party selection in the shape the quote + reserve endpoints accept. */
+export type BookingSelectionPayload =
+    | { guests: number; items?: never }
+    | { items: ReserveItem[]; guests?: never };
+
+/**
+ * Map the widget data + chosen counts to the party payload both `POST
+ * /bookings/quote` and `POST /bookings` accept, or `null` when the selection
+ * can't be sent server-side (empty, or synthetic-only bands with no real
+ * `ageBandId`). UNIT tours send a single `guests` headcount; PER_PERSON sends one
+ * `items` line per counted age band (spectators are age bands too). Shared so the
+ * live quote and the checkout reserve always build the identical selection.
+ */
+export function buildBookingSelection(
+    data: TourBookingData,
+    counts: Record<string, number>
+): BookingSelectionPayload | null {
+    if (data.pricingModel === 'UNIT') {
+        const guests = Object.values(counts).reduce((sum, n) => sum + n, 0);
+        return guests > 0 ? { guests } : null;
+    }
+    const items = Object.entries(counts)
+        .filter(([, quantity]) => quantity > 0)
+        .map(([ageBandId, quantity]) => ({ ageBandId, quantity }));
+    if (items.length === 0) return null;
+    if (items.some((i) => SYNTHETIC_BAND_IDS.has(i.ageBandId))) return null;
+    return { items };
+}
 
 /** The widget selection carried in the checkout URL. */
 export interface CheckoutSelection {
