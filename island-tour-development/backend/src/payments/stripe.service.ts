@@ -95,6 +95,16 @@ export class StripeService {
     );
   }
 
+  /**
+   * A charge by id. Webhook payloads never expand nested objects - a succeeded
+   * `payment_intent` carries `latest_charge` as a plain string - so the card /
+   * billing snapshot has to fetch the charge itself.
+   */
+  async retrieveCharge(chargeId: string): Promise<Stripe.Charge> {
+    const client = await this.requireClient();
+    return client.charges.retrieve(chargeId);
+  }
+
   /** Verify the Stripe-Signature header against the raw request body. */
   async constructEvent(
     rawBody: Buffer,

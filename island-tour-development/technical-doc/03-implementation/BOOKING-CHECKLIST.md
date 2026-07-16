@@ -277,14 +277,17 @@ One caveat worth flagging: for anything persisted (the actual booking total), th
   `$0.00` decimals -> hide when the min is 0 / `INCLUDED`) and show each zone's price in
   its option label. Frontend already threads `pickupFromLabel` (currently null).
 
-- [ ] **Real-data TYP payload expansion.** The frontend TYP page renders a rich shape
-  (guest name, operator name/email/phone, accurate deposit/balance split + pct, card
-  brand/last4, duration, free-cancel deadline, related tours). The backend
-  `ThankYouResponseDto` (`GET /bookings/typ/:publicRef`) is lean (tour/date/party/total/
-  email/conversion). Expand it with the fields that already live on the `Booking` row +
-  a lightweight operator join, then map on the frontend (replaces the interim demo/
-  fallback mapping). Server fetch helper `getTypByRef` (`lib/api/public/bookings.ts`) is
-  already in place.
+- [x] **Real-data TYP payload expansion** (DONE 2026-07-16). `ThankYouResponseDto` +
+  `getThankYou` now return guest name/phone, party grouped by age band, deposit/balance +
+  `paymentModel`, card brand/last4, `durationMinutes`, `cancellationHours`, the computed
+  free-cancel deadline (local + UTC), and operator contact (via the `companyInfo` join;
+  OCTO supplier contact wins, company profile is the fallback). **No migration** - every
+  field already existed on `Booking`. The frontend `getThankYouBooking` calls `getTypByRef`
+  and composes all labels locale-side (`en` dates remapped to `en-GB` day-then-month order
+  per Figma; times stay 12-hour); the demo payload is deleted and cross-sell now fetches
+  **real** destination tours (`getThankYouRelatedTours`, booked tour excluded, section
+  self-hides on empty). Verified live on `4ce3c7c1-…`. `Code:` `bookings.service.ts:getThankYou`,
+  `dto/booking.dto.ts`, `lib/thank-you/thank-you.ts`, `lib/api/public/bookings.ts`, TYP `page.tsx`
 
 ### Fixed during this build
 
@@ -335,10 +338,12 @@ reconcile before it is:
   **second** operator-balance email follows the Island Tours confirmation. The IT confirmation
   email is wired (`sendConfirmationEmail`); the **operator balance email is not**.
 
-- [ ] **4. Real-data TYP** (also tracked above): expand the backend `ThankYouResponseDto`
-  (guest name, operator contact, deposit/balance split + pct, card brand/last4, duration,
-  free-cancel deadline) + map on the frontend, replacing the demo payload. Needed before the
-  `booking_complete` push has real values.
+- [x] **4. Real-data TYP - DONE 2026-07-16** (detail in "Deferred follow-ups" above). Backend
+  payload expanded + frontend mapped to real data; demo payload deleted; cross-sell fetches real
+  tours. Verified live. The `booking_complete` push (item 1) now has real values to send.
+  **Finding raised:** `paymentMethodBrand`/`paymentMethodLast4` came back **null** on a paid
+  OPERATOR_LINK booking, so the TYP card line is empty - §5 marks the billing/card snapshot `[x]`,
+  so confirm whether the Stripe webhook path actually writes it.
 
 - [ ] **5. PII hashing** (server-side SHA-256 of email/phone[libphonenumber-normalized]/name/
   address) for Enhanced Conversions + Advanced Matching (§8.1 item 3).

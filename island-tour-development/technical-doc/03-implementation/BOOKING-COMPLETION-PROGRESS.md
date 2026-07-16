@@ -99,7 +99,16 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 ### E. Tracking / analytics (0/8)
 - [ ] E1 `booking_complete` browser push on TYP (once; prod-only guard)
 - [ ] E2 Fire-point reconciliation: add `conversion_pushed_at` guard (separate from `conversion_fired_at`)
-- [ ] E3 Real-TYP payload: expand `ThankYouResponseDto` + frontend mapping (replaces demo)
+- [x] **E3 Real-TYP payload** (2026-07-16). Backend `getThankYou` + `ThankYouResponseDto` expanded
+  (guest name/phone, party grouped by age band, deposit/balance + paymentModel, card brand/last4,
+  durationMinutes, cancellationHours, computed free-cancel deadline local+UTC, operator contact via
+  `companyInfo` join) - **no migration**. Frontend `getThankYouBooking` now calls `getTypByRef` and
+  composes every label locale-side; demo payload deleted; cross-sell fetches **real** destination
+  tours (`getThankYouRelatedTours`, booked tour excluded). Verified live on
+  `4ce3c7c1-…`: real guest/operator/ref/party/money render, demo strings gone, deadline math
+  correct (start `2026-07-24T13:30` - 48h = `2026-07-22T13:30`).
+  `Code:` `bookings.service.ts:getThankYou`, `dto/booking.dto.ts`, `lib/thank-you/thank-you.ts`,
+  `lib/api/public/bookings.ts`, TYP `page.tsx`
 - [ ] E4 Attribution captured at reserve (utm/gclid/gbraid/wbraid/fbclid + affiliate)
 - [ ] E5 Server-side PII hashing (SHA-256 email/phone/name/address) for EC/AM
 - [ ] E6 Meta CAPI (server, parallel to Pixel, dedup by shared event id) - needs external creds
@@ -120,7 +129,11 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 - [ ] G3 Discount/coupon engine (deferred - re-add validated when Coupon engine ships)
 - [ ] G4 Currency-change guard (block/relabel `defaultCurrency` once prices exist)
 - [ ] G5 Real FX provider impl (Stripe FX Quotes) behind existing seam
-- [ ] G6 Backend spec `bookings.service.spec.ts` green (swap `$executeRaw` mocks -> `updateMany`/`update`)
+- [x] **G6 Backend suite green** (2026-07-16). `bookings.service.spec.ts` mocks swapped from
+  `$executeRaw` to `departure.updateMany`/`update` (`$executeRaw` is gone from service code entirely);
+  `rawSqlTexts` SQL-substring matching replaced with `claimCalls`/`releaseCalls` asserting real Prisma
+  args (stronger: exclusive claim now asserts `where.bookedCount===0 && data.bookedCount===capacity`);
+  added the missing in-txn capacity read to `setupUnitReserveContext`. **905 tests / 43 suites pass.**
 
 ---
 
@@ -220,3 +233,30 @@ end-to-end and reports correctly"** milestone - steps 1-3 below.
 - 2026-07-16 - Doc created. Baseline captured at ROOT `21efe49`. Nothing ticked yet.
 - 2026-07-16 - **TYP URL token decision locked = `publicRef` UUID** (verified live; no fix needed -
   the perceived "id in URL" is the correct unguessable token). Added execution plan + scope check.
+- 2026-07-16 - **E3 (real-TYP data) DONE + verified live.** Step 1 is now E1+E2 only. Two findings
+  raised while verifying (see "Open findings" below).
+
+---
+
+## Open findings (raised 2026-07-16 while verifying E3)
+
+- [x] **Card brand/last4 null on every paid booking - ROOT-CAUSED + FIXED 2026-07-16.** Not a data
+  quirk: `expandedCharge(intent)` only read an *already-expanded* charge, but **Stripe webhooks never
+  expand nested objects** - a succeeded `payment_intent` carries `latest_charge` as a plain **string
+  id**, and the legacy `intent.charges.data[0]` list no longer exists on current API versions. So it
+  returned `undefined` -> `billing` was `undefined` -> `confirmFromPayment` wrote null brand/last4 on
+  **every** booking, and the TYP card line was always blank. Fixed by adding
+  `StripeService.retrieveCharge()` + `PaymentsService.resolveCharge()`, which fetches the charge when
+  `latest_charge` is a string (best-effort: a failed lookup logs and still confirms - the snapshot must
+  never block a confirmation). The old spec had **baked the bug in** (`confirmFromPayment('b1', undefined)`
+  was the asserted expectation); replaced with 3 real regression tests (string id -> fetch + snapshot;
+  pre-expanded -> no fetch; lookup fails -> still confirms). `Code:` `payments.service.ts:resolveCharge`,
+  `stripe.service.ts:retrieveCharge`
+  > Note: existing bookings (incl. `4ce3c7c1-…`) keep their null snapshot - the fix only applies to new
+  > webhook deliveries. Make a fresh test booking to see the card line populate.
+- [ ] **English date punctuation vs Figma (cosmetic, needs a call).** Figma demo strings were
+  `Tue 28 May, 2026` / `Sunday, 26 May`. Intl `en-GB` produces `Fri, 24 Jul 2026` /
+  `Wednesday 22 July` - correct day-then-month **order**, but the comma sits after the weekday
+  rather than before the year. Matching Figma exactly needs a hand-rolled formatter, which would
+  break the other 6 locales, so it was NOT silently hand-rolled. Decide: keep locale-correct Intl,
+  or hand-compose for `en` only.

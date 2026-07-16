@@ -133,8 +133,8 @@ Wired via `frontend/hooks/tours/use-availability-sync.ts` (mounted in `tour-book
 
 ## 8. TYP + conversion (finish the real wiring)
 
-- [~] TYP page/route built and correct (`/{destination}/thank-you/{publicRef}`, no locale prefix, noindex); currently a `DEMO_BOOKING` payload. `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking)
-- [ ] Swap `getThankYouBooking` (`frontend/lib/thank-you/thank-you.ts:174`) to real `GET /bookings/typ/:publicRef`.
+- [x] TYP page/route built and correct (`/{destination}/thank-you/{publicRef}`, no locale prefix, noindex). **URL token decision locked 2026-07-16 = `publicRef` UUID** (unguessable, master rules #7/#16); `displayRef` (`IT-2026-XXXXXXXX`) is shown in page content + email, never in the URL. `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking)
+- [x] **Swapped `getThankYouBooking` to the real `GET /bookings/typ/:publicRef`** (2026-07-16). `DEMO_BOOKING` deleted (`DEMO_PUBLIC_REF` survives only as the `generateStaticParams` shell token); all labels composed locale-side; related tours now fetched **real** via `getThankYouRelatedTours` (booked tour excluded; section self-hides when empty). Verified live on `4ce3c7c1-…`. See [BOOKING-COMPLETION-PROGRESS.md](./BOOKING-COMPLETION-PROGRESS.md) E3.
 - [ ] Fire exactly one `booking_complete` (EUR `commission_amount`, never GMV) only when `status===CONFIRMED` and commission non-null; guard is server `conversion_fired_at`, not localStorage. `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking), [Tracking §3](../02-architecture/TRACKING-AND-ANALYTICS.md#3-data-contract-the-booking_complete-push-83)
 
 ---

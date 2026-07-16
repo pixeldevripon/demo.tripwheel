@@ -46,14 +46,15 @@ function mockPrisma() {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      // The atomic seat claim is a guarded `updateMany` (master §5); default = 1 row
+      // matched (claim succeeds). Release runs through `update` (read-modify-write).
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     tourAgeBand: { findMany: jest.fn() },
     tourAddOn: { findMany: jest.fn() },
     bookingUnitItem: { updateMany: jest.fn() },
     pickupLocation: { findUnique: jest.fn() },
     operator: { findUnique: jest.fn() },
-    // Atomic seat claim/release run through raw SQL (master §5); default = 1 row affected.
-    $executeRaw: jest.fn().mockResolvedValue(1),
   };
   p.$transaction = jest.fn((arg: unknown) =>
     typeof arg === 'function'
@@ -147,7 +148,7 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
       priceNet: D('63.99'),
     },
   ]);
-  m.$executeRaw.mockResolvedValue(1); // claim succeeds (1 row)
+  m.departure.updateMany.mockResolvedValue({ count: 1 }); // claim succeeds (1 row)
   m.departure.findUnique.mockResolvedValue({
     capacity: 10,
     bookedCount: 2,
@@ -208,7 +209,14 @@ function setupUnitReserveContext(
     capacity: 12,
     bookedCount: 0,
   });
-  m.$executeRaw.mockResolvedValue(1);
+  // Reserve re-reads capacity inside the txn to build the claim threshold.
+  m.departure.findUnique.mockResolvedValue({
+    capacity: 12,
+    bookedCount: 0,
+    status: 'OPEN',
+    soldOutAt: null,
+  });
+  m.departure.updateMany.mockResolvedValue({ count: 1 });
   m.booking.create.mockImplementation(
     ({ data }: { data: Record<string, unknown> }) =>
       fakeBooking({ status: data.status, utcExpiresAt: data.utcExpiresAt }),
@@ -218,11 +226,14 @@ function setupUnitReserveContext(
   );
 }
 
-/** Joined text of every raw SQL call (for asserting which claim/release ran). */
-function rawSqlTexts(m: any): string[] {
-  return m.$executeRaw.mock.calls.map((c: any[]) =>
-    Array.isArray(c[0]) ? c[0].join('?') : String(c[0]),
-  );
+/** Args of every guarded seat claim (`departure.updateMany`) that ran. */
+function claimCalls(m: any): { where: any; data: any }[] {
+  return m.departure.updateMany.mock.calls.map((c: any[]) => c[0]);
+}
+
+/** Args of every seat release / status write (`departure.update`) that ran. */
+function releaseCalls(m: any): { where: any; data: any }[] {
+  return m.departure.update.mock.calls.map((c: any[]) => c[0]);
 }
 
 const unitReserveDto = {
@@ -276,8 +287,8 @@ describe('BookingsService', () => {
       setupReserveContext(prisma);
       const res = await svc.reserve(reserveDto);
 
-      // The guarded count-up runs through raw SQL (master §5).
-      expect(m.$executeRaw).toHaveBeenCalled();
+      // The guarded count-up runs as one conditional updateMany (master §5).
+      expect(m.departure.updateMany).toHaveBeenCalled();
       expect(m.booking.create).toHaveBeenCalled();
       expect(res.status).toBe(BookingStatus.ON_HOLD);
     });
@@ -292,7 +303,7 @@ describe('BookingsService', () => {
 
     it('rejects when the atomic claim wins 0 rows (sold out)', async () => {
       setupReserveContext(prisma);
-      m.$executeRaw.mockResolvedValue(0);
+      m.departure.updateMany.mockResolvedValue({ count: 0 });
       await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
@@ -421,9 +432,12 @@ describe('BookingsService', () => {
       await svc.reserve(unitReserveDto);
       const data = m.booking.create.mock.calls[0][0].data;
       expect(data.exclusiveDeparture).toBe(true);
-      // The exclusive claim sets booked_count to capacity (not the guest count).
+      // The exclusive claim takes the WHOLE unit: it only matches a still-empty OPEN
+      // departure and sets bookedCount to capacity (12), not the guest count.
       expect(
-        rawSqlTexts(m).some((t) => t.includes('booked_count = capacity')),
+        claimCalls(m).some(
+          (c) => c.where.bookedCount === 0 && c.data.bookedCount === 12,
+        ),
       ).toBe(true);
     });
 
@@ -432,9 +446,10 @@ describe('BookingsService', () => {
       await svc.reserve(unitReserveDto);
       const data = m.booking.create.mock.calls[0][0].data;
       expect(data.exclusiveDeparture).toBe(false);
-      expect(rawSqlTexts(m).some((t) => t.includes('booked_count + '))).toBe(
-        true,
-      );
+      // Shared: guarded count-up by the guest headcount, never a whole-unit claim.
+      expect(
+        claimCalls(m).some((c) => c.data.bookedCount?.increment !== undefined),
+      ).toBe(true);
     });
 
     it('rejects age-band items on a unit tour', async () => {
@@ -489,7 +504,7 @@ describe('BookingsService', () => {
       expect(res.quoteId).toEqual(expect.any(String));
       expect(res.expiresAt).toEqual(expect.any(String));
       // A quote is a preview: it never claims seats or writes a booking.
-      expect(m.$executeRaw).not.toHaveBeenCalled();
+      expect(m.departure.updateMany).not.toHaveBeenCalled();
       expect(m.booking.create).not.toHaveBeenCalled();
     });
 
@@ -648,9 +663,7 @@ describe('BookingsService', () => {
       );
       await svc.cancel('b1', {});
       // Release resets the fill to zero rather than counting down the headcount.
-      expect(rawSqlTexts(m).some((t) => t.includes('booked_count = 0'))).toBe(
-        true,
-      );
+      expect(releaseCalls(m).some((c) => c.data.bookedCount === 0)).toBe(true);
     });
   });
 
@@ -724,8 +737,8 @@ describe('BookingsService', () => {
       );
 
       const res = await svc.cancel('b1', {});
-      // Seats are released via the clamped raw count-down (master §3).
-      expect(m.$executeRaw).toHaveBeenCalled();
+      // Seats are released via the clamped count-down (master §3).
+      expect(m.departure.update).toHaveBeenCalled();
       expect(res.cancellationRefund).toBe('FULL');
     });
 
@@ -843,8 +856,8 @@ describe('BookingsService', () => {
       });
       const count = await svc.expireStaleHolds();
       expect(count).toBe(1);
-      // Seats released via raw count-down; SOLD_OUT departure reopens to OPEN.
-      expect(m.$executeRaw).toHaveBeenCalled();
+      // Seats released via the clamped count-down; SOLD_OUT departure reopens to OPEN.
+      expect(m.departure.update).toHaveBeenCalled();
       expect(m.booking.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: BookingStatus.EXPIRED } }),
       );

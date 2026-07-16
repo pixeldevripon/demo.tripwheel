@@ -244,7 +244,7 @@ export class PaymentsService {
 
   private async onIntentSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
     const bookingId = intent.metadata?.bookingId;
-    const charge = expandedCharge(intent);
+    const charge = await this.resolveCharge(intent);
 
     // Which method the customer used (card / paypal / apple_pay / google_pay) — Figma.
     const methodType =
@@ -283,6 +283,34 @@ export class PaymentsService {
       : undefined;
 
     await this.bookings.confirmFromPayment(bookingId, billing);
+  }
+
+  /**
+   * The charge behind a succeeded intent. Webhook payloads are never expanded, so
+   * `latest_charge` arrives as a string id and the legacy `charges.data[0]` list is
+   * gone on current API versions - without fetching, the card/billing snapshot would
+   * silently stay null on every booking. Never throws: a failed lookup only costs the
+   * snapshot, and must not block the confirmation.
+   */
+  private async resolveCharge(
+    intent: Stripe.PaymentIntent,
+  ): Promise<Stripe.Charge | undefined> {
+    const expanded = expandedCharge(intent);
+    if (expanded) return expanded;
+
+    const chargeId =
+      typeof intent.latest_charge === 'string' ? intent.latest_charge : null;
+    if (!chargeId) return undefined;
+
+    try {
+      return await this.stripe.retrieveCharge(chargeId);
+    } catch (err) {
+      this.logger.error(
+        `Could not retrieve charge ${chargeId} for intent ${intent.id} - card/billing snapshot skipped`,
+        err as Error,
+      );
+      return undefined;
+    }
   }
 
   private async onIntentFailed(intent: Stripe.PaymentIntent): Promise<void> {

@@ -54,6 +54,18 @@ describe('PaymentsService', () => {
       paymentMethods: jest.fn().mockResolvedValue([]),
       publishableKey: jest.fn().mockResolvedValue('pk_test_123'),
       constructEvent: jest.fn(),
+      // Webhooks never expand nested objects, so the card/billing snapshot has to
+      // fetch the charge behind `latest_charge`.
+      retrieveCharge: jest.fn().mockResolvedValue({
+        id: 'ch_1',
+        billing_details: {
+          address: { country: 'CW', postal_code: '0000', city: 'Willemstad' },
+        },
+        payment_method_details: {
+          type: 'card',
+          card: { last4: '4242', brand: 'visa' },
+        },
+      }),
     };
     bookings = { confirmFromPayment: jest.fn().mockResolvedValue(undefined) };
     svc = new PaymentsService(prisma, stripe, bookings);
@@ -158,10 +170,70 @@ describe('PaymentsService', () => {
           data: expect.objectContaining({ status: PaymentStatus.SUCCEEDED }),
         }),
       );
-      expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', undefined);
+      // The webhook sends `latest_charge` as a plain string, so the charge must be
+      // fetched - otherwise the card/billing snapshot silently stays null.
+      expect(stripe.retrieveCharge).toHaveBeenCalledWith('ch_1');
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', {
+        country: 'CW',
+        postalCode: '0000',
+        city: 'Willemstad',
+        last4: '4242',
+        brand: 'visa',
+      });
       expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'evt_1' } }),
       );
+    });
+
+    it('uses the charge already expanded on the intent without re-fetching', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_1',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: {
+              id: 'ch_1',
+              billing_details: { address: { country: 'NL' } },
+              payment_method_details: {
+                type: 'card',
+                card: { last4: '1111', brand: 'mastercard' },
+              },
+            },
+          },
+        },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(stripe.retrieveCharge).not.toHaveBeenCalled();
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.objectContaining({ last4: '1111', brand: 'mastercard' }),
+      );
+    });
+
+    it('still confirms when the charge lookup fails (snapshot is best-effort)', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_1',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: 'ch_1',
+          },
+        },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      stripe.retrieveCharge.mockRejectedValue(new Error('stripe down'));
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      // A missing snapshot must never block the booking confirmation.
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', undefined);
     });
 
     it('is idempotent - a redelivered event is skipped', async () => {
