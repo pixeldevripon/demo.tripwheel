@@ -86,9 +86,12 @@ export function ThankYouHero({
                             {dict.emailSentTo.replace('{email}', booking.guestEmail)}
                         </p>
                         <ResendEmailLine
+                            publicRef={booking.publicRef}
                             helpPrefix={dict.emailHelpPrefix}
                             resendLabel={dict.resendEmail}
                             resentLabel={dict.emailResent}
+                            sendingLabel={dict.emailResending}
+                            failedLabel={dict.emailResendFailed}
                         />
                     </div>
                 </MountReveal>

@@ -165,19 +165,42 @@ Conditions: `hasPickup`, `duration`, `endPoint`, `tourLanguage`, `specialRequest
   (additive/safe): `OnArrivalPayment` enum; `Tour.onArrivalPayment` (NOT NULL default `CARD_OR_CASH`);
   `Booking.onArrivalPayment` + `pickupMinutesPrior` + `pickupWindowStart` + `pickupWindowEnd`
   (all nullable snapshots). **925 tests / 44 suites green.**
-- [ ] **NOT DONE - the template still deviates from the wireframe (verified 2026-07-16).** Founder
-  rule: the email must match the wireframe **exactly**; rebuild from the wireframe where it drifts
-  ([[feedback_email_wireframe_source_of_truth]]).
+- [x] **Icons ported - glyphs gone, LD20 satisfied (2026-07-16).**
   - **Structure + copy: MATCH.** Every wireframe block is present (`How to pay the rest`,
     `A note from {operatorName}`, `Cancel for a full refund up to`, `Browse all …`, `Ends at:`,
     `Duration:`, `Guests:`), and the money-row logic now matches (fixed above).
-  - **ICONS: DO NOT MATCH - the one real remaining gap.** The wireframe ships **14 `<svg>` line
-    icons** (`stroke="#6B7280"` neutral gray, plus `#16A34A` green check / `#3B6AA0`; sizes 16/17px
-    on 20/24 viewBoxes). The template ships **0 `<svg>`** and instead uses **9 unicode glyphs**
-    (`✓ ⌖ ⌛ ↦ ☷ ◷ ◎ ▱ ⓘ`). This directly violates the wireframe's own build note:
-    *"SVG line icons in neutral gray #6B7280 per LD20 (**no emoji in the body**)"*. Glyphs also
-    render inconsistently across mail clients, which is why LD20 bans them.
-  - **TODO:** port the 14 SVGs from the wireframe into the template, replacing every glyph site.
+  - The wireframe draws **14 `<svg>` sites = 10 unique icons** (the shield-check repeats across the
+    5 payment-model variants, which collapse to one tokenized site). All 10 are now extracted
+    verbatim into `mail/templates/icons/*.svg` (**repo = source of truth**), and the template's
+    **10 glyph sites are gone** (9 known + `◇`, the anti-fraud shield, missed by the first sweep).
+  - **DELIBERATE DEVIATION - SVG is NOT deliverable in email (founder-approved 2026-07-16).** Gmail
+    strips `<svg>` outright; Outlook's Word engine never supported it. Shipping the wireframe's
+    inline SVG verbatim would send blank gutters to most travellers. Icons are therefore rasterized
+    by **Cloudinary (`f_png`)** and referenced as `<img>`. Visually identical, renders everywhere.
+    The wireframe is a *browser* mockup, so this was never visible in it.
+  - Delivery: one `{emailIconBase}` token =
+    `https://res.cloudinary.com/<cloud>/image/upload/f_png,w_34/islandtours/email/icons`; every icon
+    delivered at 34px and displayed at its wireframe size (16/17px). Source SVGs are authored at 4x
+    so Cloudinary always **downscales** (an upscaled raster would be soft). `alt=""` + fixed 26px
+    gutter cells so Outlook's default image-blocking never collapses the layout.
+  - Republish with `pnpm email:icons:upload` (idempotent: `overwrite` + `invalidate`, so the
+    template URLs never change). Preview with `pnpm email:preview [paymentModel]`.
+  - Verified: PNGs return `200 image/png 34x34` and rasterize correctly (pin, globe, hourglass,
+    users, green check inspected).
+- [x] **Two orphan-icon bugs fixed** (found by the new template spec). The icon cells sat OUTSIDE
+  their `[IF]`, so a booking with no end point / duration / language / note would have emailed an
+  icon beside blank space; the `[IF operatorNote]` wrapped only the heading, so a booking with no
+  note rendered an **empty blue card**. Both now wrap the whole `<tr>`, per the wireframe build note
+  *"pickup vs meeting point, duration, special requests, what-to-bring all render or hide per booking"*.
+- [x] **Brand bar is now the real logo, sourced from settings** (founder-approved 2026-07-16). The
+  wireframe's brand bar is a **text wordmark, not an image** (the wireframe has **zero `<img>`**), so
+  using the real logo is itself a deliberate deviation. Renders
+  `[IF siteLogoUrl]<img alt="Island Tours">[ELSE]<wireframe wordmark>[/IF]` - admin-swappable via
+  Settings > General with no deploy, and it degrades to the wordmark when Outlook blocks images.
+- [x] **Template spec added** - `booking-confirmation-email.template.spec.ts` (13 tests) renders the
+  **real shipped template** and asserts: every token resolves for **all 5 payment models**; no
+  leftover `[IF]`/`{token}`; **zero `<svg>` and zero glyphs**; all 10 icons render as Cloudinary PNG
+  `<img alt="">`; each optional row hides **together with its icon**; logo/wordmark both branches.
 - [ ] Other wireframe build-note rules to honour when wiring (from the wireframe's own notes):
   **times 24-hour across all locales** (note: the TYP renders 12-hour - the email rule differs);
   currency/date locale-formatted (USD for EN/ZH, EUR for NL/DE/FR/ES/PT); `How to pay the rest` +
@@ -186,6 +209,98 @@ Conditions: `hasPickup`, `duration`, `endPoint`, `tourLanguage`, `specialRequest
   one-click cancel (ties to B3); hero image `alt` = tour name; max 600px single column.
 - [ ] THEN: dashboard field for `Tour.onArrivalPayment`; snapshot the 4 fields at reserve; build the
   token context; wire `mail.service.ts` off `booking-confirmation.template.ts` onto the html template.
+  The **full token contract** (37 tokens) is now enumerated in
+  `booking-confirmation-email.template.spec.ts` - build the context against that list, and
+  `findUnresolvedTokens()` will fail the spec if the wiring misses one. `emailIconBase` and
+  `siteLogoUrl` are part of it (`siteLogoUrl` = `SiteInfo.logo`; `whatsappUrl` = `buildWhatsappUrl()`).
+
+#### TYP correctness fixes (2026-07-16, founder-spotted)
+
+- [x] **"4 guestss"** - `getThankYou` returned the PLURAL label `'Guests'` for age-band-less
+  (UNIT-priced) parties while every other label is singular (`'Adult'`, `'Traveler'`). The client
+  pluralises against the quantity, so it double-pluralised. **Contract: the backend sends the
+  SINGULAR unit; the client pluralises.** Fixed to `'Guest'`.
+  - `getThankYou` had **ZERO test coverage** - that is why it shipped. Added 3 party-line specs
+    (singular Guest fallback / age-band grouping / unknown-band `'Traveler'` fallback).
+  - Also hardened `fmtParty`: age-band labels are **operator-authored free text**, so an operator
+    naming a band "Adults" would have produced "2 adultss" from a source the backend cannot fix.
+    `pluralise()` now skips a label already ending in 's' (never worse than the old `${base}s`).
+- [x] **"Card payment only" removed from operator_link** (founder-approved 2026-07-16). It was
+  hardcoded in `thank-you-summary.tsx`, driven by **no data**, and present in **no spec** - not the
+  master, not the email wireframe, and not the TYP Figma element list in
+  `BOOKING-AND-PAYMENT-DATA.md` §8.2. It asserted how a **third party** collects a balance that runs
+  on the operator's own rails, which **master B.85** forbids on *any* surface: *"the balance runs on
+  the operator's own rails and the platform cannot verify it, so the reminder (and any surface) uses
+  a neutral balance line for operator_link."* The card/cash statement is only legitimate on
+  `on_arrival`, where `Tour.onArrivalPayment` actually tells us. Dead `cardOnly` key dropped from all
+  7 locales.
+
+#### TYP "Resend email" (2026-07-16)
+
+- [x] **`POST /bookings/typ/:publicRef/resend`** - the TYP link was a demo stub
+  (*"the transactional resend endpoint lands with the booking module"*). Now live end to end:
+  service `resendConfirmation()` + client `resendConfirmationEmail()` + real pending/sent/failed
+  states on `ResendEmailLine` (copy added to **all 7 locales**: `emailResending`,
+  `emailResendFailed`). 8 service tests; **958 tests / 46 suites green**.
+- **Security shape (important):** `@Public` and keyed on the unguessable `publicRef` (master rule
+  #7), and the **recipient is never accepted from the caller** - it sends only to the
+  `contactEmail` stored on the booking. That is what stops a public route being an open relay;
+  worst case is a traveler's own inbox. CONFIRMED-only, so a CANCELLED booking can never re-emit
+  "You're booked". Throttled to **1/10s, 3/min, 10/hr per IP** (the global tiers - 60/s, 300/min,
+  3000/hr - are sized for dashboard page loads and are far too loose for a route that sends mail).
+  Verified live: unknown ref 404s, a second call inside 10s 429s, the window recovers.
+- **MUST stay a browser call.** `skipIf: isTrustedInternalOrigin` in AuthModule exempts the internal
+  API secret from throttling, so routing this through SSR/`publicFetch` would silently strip every
+  limit above. Documented at both call sites.
+- Confirm-time sends still **swallow** email failures (the money is already captured - a dead SMTP
+  host must never fail a paid booking); the resend path **rethrows**, because the traveler asked and
+  a silent success would be a lie. One `rethrow` flag, both behaviours tested.
+- [ ] **KNOWN + EXPECTED: resend still sends the OLD template.** It reuses
+  `mail.service.sendBookingConfirmationEmail` -> `booking-confirmation.template.ts`. Swapping onto
+  the new wireframe HTML template is **task #54 (C6 wiring)**, which is the next job. Resend will
+  pick up the new template automatically the moment #54 lands - no change needed here.
+
+#### Media + WhatsApp (2026-07-16)
+
+- [x] **Cloudinary is now namespaced under `islandtours/`.** `CLOUDINARY_ROOT_FOLDER` in
+  `media-gallery/cloudinary.service.ts`; uploads land in `islandtours/users/<userId>`, email icons in
+  `islandtours/email/icons`. Both the server upload and the **signed direct-upload params** derive the
+  folder from one private `userFolder()` helper - the signature covers `folder`, so any drift between
+  the two would fail verification. Existing assets keep resolving by their stored `public_id`; this
+  only governs NEW uploads.
+- [x] **`GET /settings/public/site`** (`@Public`) - the public site had **no way to read settings**
+  (`GET /settings/site` needs VIEW_SETTINGS), which is why `faq-section.tsx` shipped a dead
+  `href='#'` WhatsApp button. Returns a hand-picked 8-field projection via explicit `select:`; the
+  same controller also serves SMTP/Stripe/Mollie, so this must never be widened to the row.
+  `whatsappNumber` is nulled when `enableWhatsappChat` is false. Read-only (`findFirst`, not the
+  dashboard's `upsert`) - an anonymous GET must never write.
+- [x] **`site-info` cache tag** + `settings/site` mutation mapping, so a Settings > General save busts
+  the public `'use cache'` layer instead of waiting out `cacheLife('days')`. Settings previously had
+  **no** tag mapping (correct while it was dashboard-only).
+- [x] **`buildWhatsappUrl()` on both sides** (`common/utils/whatsapp.util.ts` + `lib/whatsapp.ts`,
+  mirrored like rbac.ts) - master 6.6's single `https://wa.me/{number}?text={greeting}` pattern.
+  Normalizes to bare digits (wa.me rejects `+`/spaces: `+8801913509868` -> `8801913509868`), returns
+  **null** when disabled/unusable so callers hide the surface rather than render a dead button.
+  12 tests.
+- [x] **NeedHelp (`faq-section.tsx`) wired** - the dead `href='#'` is now a live deep link, hidden
+  entirely when the chat is off. Fetches settings itself (it renders from home / destination /
+  category / collection / hub - threading one value through five callers for one button is noise);
+  all five confirmed server components.
+- [ ] **Remaining 6.6 placements:** global footer, tour-description inline links, error states.
+  6.6 **excludes**: the widget trust strip, the trust modals, and the commit moment generally.
+- [ ] **AUDIT (report, do not unilaterally strip):** `category-trust-strip.tsx` and
+  `login/traveler-login.tsx` + `operator-apply.tsx` carry hardcoded WhatsApp. `traveler-login` is
+  checkout takeover chrome = arguably the **commit moment** 6.6 excludes; `category-trust-strip` is a
+  *category page* strip, **not** the widget trust strip, so it likely stays but needs wiring off
+  settings.
+- [ ] **OPEN:** the `?text={greeting}` half of the 6.6 pattern needs real copy in **7 locales**.
+  Currently linking bare `wa.me/{number}` (valid; the helper takes an optional greeting) rather than
+  machine-translating founder-facing copy.
+- [ ] **FLAG - two Cloudinary accounts are live.** `SiteInfo.logo` currently points at cloud
+  **`djqinkh2c`** (`users/16iqHft1…`, uploaded under an older env), but `backend/.env`
+  `CLOUDINARY_CLOUD_NAME` is now **`dsfms7jb4`** - where the new email icons and the founder's
+  `logo_oizw6t.png` live. Old absolute URLs keep working, so nothing is broken, but new uploads and
+  old assets are now split across two accounts. Decide whether to migrate or leave.
 
 #### C6 - defects found in the locked template (FIXED 2026-07-16)
 

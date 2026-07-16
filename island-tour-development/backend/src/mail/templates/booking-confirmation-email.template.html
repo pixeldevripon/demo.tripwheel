@@ -32,7 +32,7 @@
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="it-email-shell" style="width:600px;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate;">
           <tr>
             <td class="it-email-pad" style="padding:18px 28px;border-bottom:1px solid #E8EAED;">
-              <span style="font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937;">ISLAND <span style="color:#E8611A;">TOURS</span></span>
+              [IF siteLogoUrl]<img src="{siteLogoUrl}" height="28" alt="Island Tours" style="display:block;border:0;height:28px;width:auto;">[ELSE]<span style="font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937;">ISLAND <span style="color:#E8611A;">TOURS</span></span>[/IF]
             </td>
           </tr>
 
@@ -41,7 +41,9 @@
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                 <tr>
                   <td style="vertical-align:middle;padding-right:10px;">
-                    <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px;color:#16A34A;font-size:18px;font-weight:800;">✓</span>
+                    <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px;">
+                      <img src="{emailIconBase}/icon-check-green.png" width="16" height="16" alt="" style="vertical-align:middle;border:0;">
+                    </span>
                   </td>
                   <td style="vertical-align:middle;">
                     <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937;line-height:1.2;">
@@ -73,33 +75,47 @@
 
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14.5px;color:#374151;line-height:1.45;">
                 <tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;color:#6B7280;">⌖</td>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-pin.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
                   <td style="padding:5px 0;">[IF hasPickup]Pickup: {pickupLocation}, {pickupTime}.[ELSE]Meeting point: {meetingPoint}.[/IF] <a href="{mapUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline;">Open in Maps</a></td>
                 </tr>
                 <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">⌛</td>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-hourglass.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
                   <td style="padding:5px 0;">[IF hasPickup]Please be ready {arrivalBufferMin} minutes before pickup.[ELSE]Please arrive {arrivalBufferMin} minutes early.[/IF]</td>
                 </tr>
+                [IF endPoint]<tr>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-route-end.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
+                  <td style="padding:5px 0;">Ends at: {endPoint}</td>
+                </tr>[/IF]
                 <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">↦</td>
-                  <td style="padding:5px 0;">[IF endPoint]Ends at: {endPoint}[/IF]</td>
-                </tr>
-                <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">☷</td>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-users.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
                   <td style="padding:5px 0;">Guests: {partyBreakdown}</td>
                 </tr>
-                <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">◷</td>
-                  <td style="padding:5px 0;">[IF duration]Duration: {duration}[/IF]</td>
-                </tr>
-                <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">◎</td>
-                  <td style="padding:5px 0;">[IF tourLanguage]Language: {tourLanguage}[/IF]</td>
-                </tr>
-                <tr>
-                  <td style="padding:5px 0;vertical-align:top;color:#6B7280;">▱</td>
-                  <td style="padding:5px 0;">[IF specialRequests]Your note to the operator: {specialRequests}[/IF]</td>
-                </tr>
+                [IF duration]<tr>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-clock.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
+                  <td style="padding:5px 0;">Duration: {duration}</td>
+                </tr>[/IF]
+                [IF tourLanguage]<tr>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-globe.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
+                  <td style="padding:5px 0;">Language: {tourLanguage}</td>
+                </tr>[/IF]
+                [IF specialRequests]<tr>
+                  <td style="padding:5px 0;width:26px;vertical-align:top;">
+                    <img src="{emailIconBase}/icon-message.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
+                  </td>
+                  <td style="padding:5px 0;">Your note to the operator: {specialRequests}</td>
+                </tr>[/IF]
               </table>
 
               <a href="{tourUrl}" class="it-inline-link" style="display:inline-block;margin-top:12px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline;">View tour details</a>
@@ -108,21 +124,23 @@
             </td>
           </tr>
 
-          <tr>
+          [IF operatorNote]<tr>
             <td class="it-email-pad" style="padding:14px 28px 0;">
               <div style="background:#EEF4FB;border-radius:10px;padding:14px 16px;">
                 <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                   <tr>
-                    <td style="vertical-align:top;padding-right:9px;padding-top:1px;color:#3B6AA0;">ⓘ</td>
+                    <td style="vertical-align:top;padding-right:9px;padding-top:1px;">
+                      <img src="{emailIconBase}/icon-info.png" width="16" height="16" alt="" style="display:block;border:0;margin-top:1px;">
+                    </td>
                     <td>
-                      <div style="font-size:13.5px;font-weight:700;color:#27496F;margin-bottom:3px;">[IF operatorNote]A note from {operatorName}[/IF]</div>
+                      <div style="font-size:13.5px;font-weight:700;color:#27496F;margin-bottom:3px;">A note from {operatorName}</div>
                       <div style="font-size:13.5px;color:#3A516B;line-height:1.5;">{operatorNote}</div>
                     </td>
                   </tr>
                 </table>
               </div>
             </td>
-          </tr>
+          </tr>[/IF]
 
           <tr>
             <td class="it-email-pad" style="padding:18px 28px 4px;">
@@ -171,7 +189,9 @@
               </div>
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;">
                 <tr>
-                  <td style="vertical-align:top;padding-right:9px;padding-top:1px;color:#6B7280;">◇</td>
+                  <td style="vertical-align:top;padding-right:9px;padding-top:1px;">
+                    <img src="{emailIconBase}/icon-shield-check.png" width="16" height="16" alt="" style="display:block;border:0;">
+                  </td>
                   <td style="font-size:12.5px;color:#6B7280;line-height:1.5;">
                     [IF paymentModel = operator_link OR operator_full]We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on <a href="{whatsappUrl}" style="color:#6B7280;text-decoration:underline;">WhatsApp</a> first.[/IF]
                     [IF paymentModel = on_arrival]You only pay the rest on arrival. We'll never send a link to pay the balance.[/IF]

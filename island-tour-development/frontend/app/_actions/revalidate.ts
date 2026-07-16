@@ -20,6 +20,10 @@ export type CoarseCacheTag =
   | 'destinations'
   | 'reviews'
   | 'slug-registry'
+  // Public SiteInfo (logo, WhatsApp number + flag, Instagram). Read by the
+  // footer and every NeedHelp surface, so a Settings > General save has to bust
+  // it or the site keeps serving the old number until the cacheLife expires.
+  | 'site-info'
   | 'user-profile';
 
 /**

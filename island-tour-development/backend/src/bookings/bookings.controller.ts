@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import type { TypedAuthUser } from '@/auth/auth.types';
@@ -29,6 +30,7 @@ import {
   ApiListBookingsDocs,
   ApiQuoteDocs,
   ApiReserveDocs,
+  ApiResendConfirmationDocs,
   ApiThankYouDocs,
   ApiUpdateBookingDocs,
 } from './bookings.swagger';
@@ -106,6 +108,36 @@ export class BookingsController {
   @ApiThankYouDocs()
   thankYou(@Param('publicRef') publicRef: string) {
     return this.bookings.getThankYou(publicRef);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/resend
+   *
+   * Re-sends the confirmation email from the thank-you page ("Don't see it?
+   * Check spam, or Resend email").
+   *
+   * Security: @Public and keyed on the unguessable `publicRef`, matching the TYP
+   * read above. The recipient is NOT accepted from the caller - the service
+   * sends only to the address stored on the booking, so this can never be used
+   * to mail an arbitrary inbox.
+   *
+   * The global tiers (60/s, 300/min, 3000/hr) are sized for dashboard page loads
+   * and are far too loose for a route that sends mail, so this one is throttled
+   * to a human's pace: 1 per 10s (double-click), 3/min, 10/hr. Must be called
+   * from the BROWSER, never SSR - `skipIf: isTrustedInternalOrigin` in
+   * AuthModule exempts the internal API secret, which would bypass every limit
+   * below.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/resend')
+  @Public()
+  @ApiResendConfirmationDocs()
+  resendConfirmation(@Param('publicRef') publicRef: string) {
+    return this.bookings.resendConfirmation(publicRef);
   }
 
   @Get()

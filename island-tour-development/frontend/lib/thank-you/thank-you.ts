@@ -183,22 +183,30 @@ const IRREGULAR_PLURALS: Record<string, string> = {
 };
 
 /**
- * "2 adults, 1 child" from the grouped party lines. Age-band labels are operator
- * text, so only a single bare word is pluralised - anything else (e.g.
- * "Child (4-12)") is left verbatim rather than mangled.
+ * "2 adults, 1 child" from the grouped party lines.
+ *
+ * The backend sends the SINGULAR unit ('Adult', 'Guest') and this pluralises it.
+ * Labels are operator-authored free text though, so it stays conservative:
+ * - a label already ending in 's' is left alone (an operator band named "Adults"
+ *   would otherwise render "2 adultss")
+ * - anything that is not a single bare word ("Child (4-12)") is left verbatim
+ *   rather than mangled
  */
 function fmtParty(party: TypResponse['party']): string {
     return party
         .map(line => {
             const base = line.label.toLowerCase();
             const plural =
-                line.quantity > 1
-                    ? (IRREGULAR_PLURALS[base] ??
-                      (/^[a-z]+$/.test(base) ? `${base}s` : base))
-                    : base;
+                line.quantity > 1 ? (IRREGULAR_PLURALS[base] ?? pluralise(base)) : base;
             return `${line.quantity} ${plural}`;
         })
         .join(', ');
+}
+
+/** Append 's' only when it is safe to: a single bare word not already plural. */
+function pluralise(base: string): string {
+    if (!/^[a-z]+$/.test(base) || base.endsWith('s')) return base;
+    return `${base}s`;
 }
 
 /** "Mastercard *****4242"; empty when nothing was charged online. */

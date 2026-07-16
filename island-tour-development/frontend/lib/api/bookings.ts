@@ -230,3 +230,24 @@ export async function getThankYouStatus(
         `/bookings/typ/${encodeURIComponent(publicRef)}`
     );
 }
+
+/**
+ * Resend the confirmation email for a booking (TYP "Resend email").
+ *
+ * The recipient is not a parameter by design: the backend sends only to the
+ * address stored on the booking. Throws on failure (404 unknown ref, 409 not
+ * confirmed, 429 throttled, 5xx send failure) so the UI can tell the truth
+ * instead of showing a false "sent".
+ *
+ * MUST stay a browser call. The server-only `publicFetch` sends the internal API
+ * secret, which the backend throttler treats as a trusted origin and exempts -
+ * routing this through SSR would strip its rate limit.
+ */
+export async function resendConfirmationEmail(
+    publicRef: string
+): Promise<{ sent: boolean }> {
+    return apiFetch<{ sent: boolean }>(
+        `/bookings/typ/${encodeURIComponent(publicRef)}/resend`,
+        { method: 'POST' }
+    );
+}

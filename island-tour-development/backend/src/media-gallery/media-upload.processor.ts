@@ -19,7 +19,7 @@ export interface MediaUploadJobPayload {
  * Each job:
  *  1. Decodes the base64 buffer back to a Buffer
  *  2. Builds a minimal Express.Multer.File-like object
- *  3. Uploads to Cloudinary under users/<userId>
+ *  3. Uploads to Cloudinary under islandtours/users/<userId>
  *  4. Persists the record in media_gallery
  *  5. On DB failure → rolls back the Cloudinary upload (best-effort)
  */

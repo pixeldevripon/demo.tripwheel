@@ -16,6 +16,7 @@ import {
 import {
   BookingQuoteResponseDto,
   BookingResponseDto,
+  ResendConfirmationResponseDto,
   ThankYouResponseDto,
 } from './dto/booking.dto';
 
@@ -96,6 +97,27 @@ export const ApiThankYouDocs = () =>
     }),
     ApiOkResponse({ type: ThankYouResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
+  );
+
+export const ApiResendConfirmationDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Resend the confirmation email (public TYP token)',
+      description:
+        'Backs the TYP "Don\'t see it? Check spam, or Resend email" link. Sends only to the ' +
+        'contact email stored on the booking - the recipient is never accepted from the caller. ' +
+        'Confirmed bookings only. Throttled to 1 per 10s / 3 per min / 10 per hour per IP.',
+    }),
+    ApiOkResponse({ type: ResendConfirmationResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description:
+        'Booking is not CONFIRMED, so there is no confirmation to resend',
+    }),
+    ApiUnprocessableEntityResponse({
+      description: 'Booking has no contact email on file.',
+    }),
   );
 
 export const ApiGetBookingDocs = () =>

@@ -1,14 +1,15 @@
 'use client';
 
+import { resendConfirmationEmail } from '@/lib/api/bookings';
 import { springPop, swapFade } from '@/lib/motion';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * The TYP hero's interactive client leaves (STRONG RULE: the hero shell stays
  * a server component). Both are self-contained: the ref chip owns the
- * copy-to-clipboard state, the resend line owns its demo confirmation swap.
+ * copy-to-clipboard state, the resend line owns its request + result state.
  */
 
 /** Booking-ref chip - tap copies the ref; the icon springs to a green check. */
@@ -71,29 +72,53 @@ export function BookingRefChip({
     );
 }
 
-/** "Don't see it? ... Resend email" line with the animated demo confirmation. */
+type ResendState = 'idle' | 'sending' | 'sent' | 'failed';
+
+/** "Don't see it? ... Resend email" line, wired to the transactional resend. */
 export function ResendEmailLine({
+    publicRef,
     helpPrefix,
     resendLabel,
     resentLabel,
+    sendingLabel,
+    failedLabel,
 }: {
+    publicRef: string;
     helpPrefix: string;
     resendLabel: string;
     resentLabel: string;
+    sendingLabel: string;
+    failedLabel: string;
 }) {
-    const [resent, setResent] = useState(false);
+    const [state, setState] = useState<ResendState>('idle');
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    function handleResend() {
-        // Demo: the transactional resend endpoint lands with the booking module.
-        setResent(true);
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => setResent(false), 2400);
+    // The confirmation is transient; the failure is not. A "couldn't send" that
+    // disappears on its own would leave the traveler assuming it worked.
+    useEffect(() => {
+        if (state !== 'sent') return;
+        timer.current = setTimeout(() => setState('idle'), 2400);
+        return () => {
+            if (timer.current) clearTimeout(timer.current);
+        };
+    }, [state]);
+
+    async function handleResend() {
+        if (state === 'sending') return; // guard the double-click into the 1-per-10s throttle
+        setState('sending');
+        try {
+            await resendConfirmationEmail(publicRef);
+            setState('sent');
+        } catch {
+            // Includes a 429 from the backend throttle. "Try again" is the right
+            // instruction either way, so the copy does not branch on the cause.
+            setState('failed');
+        }
     }
 
     return (
         <AnimatePresence mode='wait' initial={false}>
-            {resent ? (
+            {state === 'sent' ? (
                 <motion.p
                     key='resent'
                     initial={{ opacity: 0, y: 6 }}
@@ -111,12 +136,14 @@ export function ResendEmailLine({
                     exit={{ opacity: 0, y: -6 }}
                     transition={swapFade}
                     className='m-0'>
-                    {helpPrefix}{' '}
+                    {state === 'failed' ? failedLabel : helpPrefix}{' '}
                     <button
                         type='button'
                         onClick={handleResend}
-                        className='cursor-pointer underline underline-offset-2'>
-                        {resendLabel}
+                        disabled={state === 'sending'}
+                        aria-live='polite'
+                        className='cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60'>
+                        {state === 'sending' ? sendingLabel : resendLabel}
                     </button>
                 </motion.p>
             )}

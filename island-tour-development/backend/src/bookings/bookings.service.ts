@@ -652,9 +652,16 @@ export class BookingsService {
     return updated;
   }
 
+  /**
+   * @param rethrow  Confirm-time sends swallow failures on purpose: the money is
+   *   already captured, so a dead SMTP host must never fail the booking (the
+   *   traveler can resend from the TYP). A traveler-initiated resend passes true
+   *   - they asked, so tell them the truth instead of showing a false success.
+   */
   private async sendConfirmationEmail(
     booking: BookingWithItems,
     tourTitle: string,
+    { rethrow = false }: { rethrow?: boolean } = {},
   ): Promise<void> {
     if (!booking.contactEmail) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
     const manageUrl =
@@ -685,7 +692,51 @@ export class BookingsService {
         `Confirmation email failed for ${booking.displayRef}`,
         err as Error,
       );
+      if (rethrow) throw err;
     }
+  }
+
+  /**
+   * Resend the confirmation email for a booking, from the thank-you page.
+   *
+   * Keyed on `publicRef` (the unguessable UUID already in the TYP URL, master
+   * rule #7) and NOT on a caller-supplied address: the mail always goes to the
+   * `contactEmail` stored on the booking. That is the important property - this
+   * route is @Public, so if it accepted a recipient it would be an open relay
+   * for spamming arbitrary inboxes. Worst case here is a traveler's own inbox,
+   * and the route is throttled hard on top (see the controller).
+   *
+   * Only CONFIRMED bookings: an ON_HOLD booking has no confirmation to resend,
+   * and a CANCELLED one must never re-emit "You're booked".
+   */
+  async resendConfirmation(publicRef: string): Promise<{ sent: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      include: { unitItems: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking has a confirmation email to resend',
+      );
+    }
+    if (!booking.contactEmail) {
+      throw new UnprocessableEntityException(
+        'This booking has no contact email on file',
+      );
+    }
+
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: booking.tourId },
+      select: { name: true },
+    });
+
+    this.logger.log(`Resending confirmation for ${booking.displayRef}`);
+    await this.sendConfirmationEmail(booking, tour?.name ?? 'Your tour', {
+      rethrow: true,
+    });
+    return { sent: true };
   }
 
   private async fireConversion(
@@ -955,7 +1006,7 @@ export class BookingsService {
     }
 
     // Group the per-traveler unit items into party lines ("2 x Adult"). UNIT-priced
-    // tours carry no age bands (ageBandId null) and collapse into one "Guests" line.
+    // tours carry no age bands (ageBandId null) and collapse into one "Guest" line.
     const bandLabels = new Map(
       (booking.tour?.ageBands ?? []).map((b) => [b.id, b.label]),
     );
@@ -964,9 +1015,12 @@ export class BookingsService {
       const key = item.ageBandId ?? '';
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
+    // Labels are the SINGULAR unit ('Adult', 'Child', 'Guest') - the client
+    // pluralises them against the quantity ("4 guests"). A plural label here
+    // renders as "4 guestss".
     const party = [...counts].map(([key, quantity]) => ({
       ageBandId: key || null,
-      label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guests',
+      label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guest',
       quantity,
     }));
 

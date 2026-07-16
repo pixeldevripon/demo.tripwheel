@@ -900,4 +900,157 @@ describe('BookingsService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
+
+  describe('getThankYou party lines', () => {
+    const typBooking = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        contactFirstName: 'Ripon',
+        contactLastName: 'Mia',
+        contactFullName: null,
+        contactPhone: null,
+        pickupRequested: false,
+        tourStartDateTime: null,
+        tourTimeZone: null,
+        paymentMethodBrand: null,
+        paymentMethodLast4: null,
+        operator: null,
+        ...over,
+      });
+
+    const item = (ageBandId: string | null) => ({
+      id: `ui-${Math.abs(String(ageBandId).length)}-${ageBandId ?? 'null'}`,
+      ageBandId,
+    });
+
+    it('labels an age-band-less (UNIT-priced) party with the SINGULAR "Guest"', async () => {
+      // Regression: 'Guests' here rendered as "4 guestss" on the TYP - the client
+      // pluralises the label, so the contract is singular.
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({
+          unitItems: [item(null), item(null), item(null), item(null)],
+          tour: { name: 'Charter', ageBands: [], cancellationHours: 48 },
+        }),
+      );
+
+      const res = await svc.getThankYou('p1');
+      expect(res.party).toEqual([
+        { ageBandId: null, label: 'Guest', quantity: 4 },
+      ]);
+    });
+
+    it('groups age bands by their operator label', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({
+          unitItems: [item('ab1'), item('ab1'), item('ab2')],
+          tour: {
+            name: 'Day Trip',
+            ageBands: [
+              { id: 'ab1', label: 'Adult' },
+              { id: 'ab2', label: 'Child' },
+            ],
+            cancellationHours: 48,
+          },
+        }),
+      );
+
+      const res = await svc.getThankYou('p1');
+      expect(res.party).toEqual([
+        { ageBandId: 'ab1', label: 'Adult', quantity: 2 },
+        { ageBandId: 'ab2', label: 'Child', quantity: 1 },
+      ]);
+    });
+
+    it('falls back to the singular "Traveler" for an unknown band id', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({
+          unitItems: [item('gone')],
+          tour: { name: 'T', ageBands: [], cancellationHours: 48 },
+        }),
+      );
+
+      const res = await svc.getThankYou('p1');
+      expect(res.party).toEqual([
+        { ageBandId: 'gone', label: 'Traveler', quantity: 1 },
+      ]);
+    });
+  });
+
+  // TYP "Don't see it? Check spam, or Resend email".
+  describe('resendConfirmation', () => {
+    const confirmed = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        contactFirstName: 'Shahadat',
+        island: 'curacao',
+        ...over,
+      });
+
+    it('resends to the address stored on the booking', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      m.tour.findUnique.mockResolvedValue({ name: 'Klein Curacao Day Trip' });
+
+      await expect(svc.resendConfirmation('p1')).resolves.toEqual({
+        sent: true,
+      });
+
+      expect(mail.sendBookingConfirmationEmail).toHaveBeenCalledTimes(1);
+      const [to, props] = mail.sendBookingConfirmationEmail.mock.calls[0];
+      // The recipient must come from the record, never from the caller - this is
+      // what stops a @Public endpoint being an open relay.
+      expect(to).toBe('guest@example.test');
+      expect(props.displayRef).toBe('IT-2030-AAAA');
+      expect(props.tourTitle).toBe('Klein Curacao Day Trip');
+    });
+
+    it('looks the booking up by publicRef, not id', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      m.tour.findUnique.mockResolvedValue({ name: 'T' });
+      await svc.resendConfirmation('p1');
+      expect(m.booking.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { publicRef: 'p1' } }),
+      );
+    });
+
+    it('404s an unknown publicRef', async () => {
+      m.booking.findUnique.mockResolvedValue(null);
+      await expect(svc.resendConfirmation('nope')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['ON_HOLD', BookingStatus.ON_HOLD],
+      ['CANCELLED', BookingStatus.CANCELLED],
+      ['EXPIRED', BookingStatus.EXPIRED],
+    ])('409s a %s booking and sends nothing', async (_label, status) => {
+      m.booking.findUnique.mockResolvedValue(confirmed({ status }));
+      await expect(svc.resendConfirmation('p1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      // A cancelled booking must never re-emit "You're booked".
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+
+    it('422s when the booking has no contact email', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed({ contactEmail: null }));
+      await expect(svc.resendConfirmation('p1')).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+
+    it('propagates a send failure (unlike confirm, which swallows it)', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      m.tour.findUnique.mockResolvedValue({ name: 'T' });
+      mail.sendBookingConfirmationEmail.mockRejectedValueOnce(
+        new Error('smtp down'),
+      );
+      // The traveler asked - a silent success would be a lie.
+      await expect(svc.resendConfirmation('p1')).rejects.toThrow('smtp down');
+    });
+  });
 });

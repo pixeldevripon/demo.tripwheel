@@ -202,7 +202,7 @@ export function OperatorPaymentsForm({ operatorId }: { operatorId: string }) {
   return (
     <div className="space-y-6">
       <StripeCard operatorId={operatorId} />
-      <MollieCard operatorId={operatorId} />
+      {/* <MollieCard operatorId={operatorId} /> */}
     </div>
   );
 }

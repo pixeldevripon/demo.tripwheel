@@ -63,6 +63,52 @@ export class SiteInfoResponseDto {
   faqs!: any;
 }
 
+/**
+ * Public-safe projection of SiteInfo for the unauthenticated marketing site.
+ *
+ * Deliberately a separate class rather than a Pick<> of SiteInfoResponseDto:
+ * this shape is served to anyone on the internet, so every field is an explicit
+ * decision. Never widen it to spread the SiteInfo row - the settings table also
+ * backs SMTP, Stripe, and Mollie config.
+ */
+export class PublicSiteInfoResponseDto {
+  @ApiProperty({ example: 'Island Tours', nullable: true })
+  siteName!: string | null;
+
+  @ApiProperty({ example: 'Your Journey Begins here', nullable: true })
+  siteTagline!: string | null;
+
+  @ApiProperty({
+    example: 'https://res.cloudinary.com/demo/image/upload/v1/logo.png',
+    nullable: true,
+  })
+  logo!: string | null;
+
+  @ApiProperty({ example: 'https://example.com/favicon.ico', nullable: true })
+  favicon!: string | null;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Master 6.6 - gates every WhatsApp surface on the public site.',
+  })
+  enableWhatsappChat!: boolean;
+
+  @ApiProperty({
+    example: '+8801913509868',
+    nullable: true,
+    description:
+      'Null whenever enableWhatsappChat is false, so a disabled number is never exposed.',
+  })
+  whatsappNumber!: string | null;
+
+  @ApiProperty({ example: false })
+  enableInstagram!: boolean;
+
+  @ApiProperty({ example: 'widget_id', nullable: true })
+  instagramWidgetId!: string | null;
+}
+
 export class SiteSEOResponseDto {
   @ApiProperty({ example: 'default' })
   id!: string;

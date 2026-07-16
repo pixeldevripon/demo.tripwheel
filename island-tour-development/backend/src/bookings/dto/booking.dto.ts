@@ -82,6 +82,17 @@ export class ThankYouPartyLineDto {
   @ApiProperty({ example: 2 }) quantity!: number;
 }
 
+/**
+ * Result of the TYP "Resend email" action.
+ *
+ * Deliberately carries no recipient: the TYP already shows the address, and
+ * echoing it back would turn a @Public endpoint into an address oracle for
+ * anyone holding a publicRef.
+ */
+export class ResendConfirmationResponseDto {
+  @ApiProperty({ example: true }) sent!: boolean;
+}
+
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
