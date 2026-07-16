@@ -1,0 +1,299 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Island Tours brand tokens - LOGIN SURFACES ONLY (/portal, /staff).
+ * Scoped by `.frontend-root` on app/(login)/layout.tsx; the admin tree never
+ * carries that class. This is a deliberate fork of the public site's token file,
+ * NOT a leftover import - the login screens are intentionally brand-styled.
+ * See the header of login-tokens.css. */
+@import './login-tokens.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-border);
+    }
+    button {
+        cursor: pointer;
+    }
+    body {
+        @apply antialiased font-sans bg-background text-foreground;
+        letter-spacing: var(--tracking-normal);
+    }
+    html {
+        @apply font-sans;
+    }
+}
+
+@layer base {
+    ::-webkit-scrollbar {
+        width: 7px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in oklch, var(--primary), transparent 20%);
+    }
+
+    .hide-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+        height: 6px;
+        width: 4px;
+        cursor: pointer;
+    }
+
+    @keyframes collapsible-down {
+        from {
+            height: 0;
+            opacity: 0;
+        }
+        to {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+        }
+    }
+
+    @keyframes collapsible-up {
+        from {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+        }
+        to {
+            height: 0;
+            opacity: 0;
+        }
+    }
+}
+
+@layer utilities {
+    .animate-collapsible-down {
+        animation: collapsible-down 300ms ease-out;
+    }
+
+    .animate-collapsible-up {
+        animation: collapsible-up 300ms ease-out;
+    }
+}
+
+/* Enhanced sidebar menu styling */
+.sidebar-menu-item {
+    @apply relative;
+}
+
+[data-slot='sidebar'] {
+    background-color: var(--sidebar) !important;
+    color: var(--sidebar-foreground);
+}
+
+/* Smooth sidebar collapse animation */
+[data-slot='sidebar-inset'] {
+    transition: margin-left 0.2s ease;
+}
+
+/* ─── Light mode ──────────────────────────────── */
+:root {
+    --background: oklch(0.99 0.004 80);
+    --foreground: oklch(19.382% 0.11977 267.676);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.3015 0.0572 282.4176);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.3015 0.0572 282.4176);
+
+    /* Primary — purple */
+    --primary: oklch(0.5417 0.179 288.0332);
+    --primary-foreground: oklch(1 0 0);
+
+    --secondary: oklch(0.94 0.008 80);
+    --secondary-foreground: oklch(0.3015 0.0572 282.4176);
+    --muted: oklch(0.965 0.004 80);
+    --muted-foreground: oklch(0.5426 0.0465 284.7435);
+    --accent: oklch(0.94 0.008 80);
+    --accent-foreground: oklch(0.3015 0.0572 282.4176);
+    --destructive: oklch(0.6861 0.2061 14.9941);
+    --border: oklch(0.91 0.006 80);
+    --input: oklch(0.91 0.006 80);
+    --ring: oklch(0.5417 0.179 288.0332);
+    --radius: 0.3rem;
+
+    /* Sidebar */
+    --sidebar: oklch(0.965 0.004 80);
+    --sidebar-foreground: oklch(0.3015 0.0572 282.4176);
+    --sidebar-primary: oklch(0.5417 0.179 288.0332);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.94 0.008 80);
+    --sidebar-accent-foreground: oklch(0.3015 0.0572 282.4176);
+    --sidebar-border: oklch(0.91 0.006 80);
+    --sidebar-ring: oklch(0.5417 0.179 288.0332);
+
+    /* Charts — purple family */
+    --chart-1: oklch(0.5417 0.179 288.0332);
+    --chart-2: oklch(0.7042 0.1602 288.988);
+    --chart-3: oklch(0.5679 0.2113 276.7065);
+    --chart-4: oklch(0.6356 0.1922 281.8054);
+    --chart-5: oklch(0.4509 0.1758 279.3838);
+
+    /* Semantic */
+    --success: oklch(0.627 0.194 149.214);
+    --success-foreground: oklch(0.99 0.01 149);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.99 0.01 70);
+    --info: oklch(0.659 0.162 248.812);
+    --info-foreground: oklch(0.99 0.01 248);
+
+    /* Shell surfaces (defect D-4). These two were hardcoded hexes in the old
+     * dashbaord-wraper.tsx. The light values are carried over EXACTLY, so light
+     * mode is pixel-identical. `--shell-gutter` is the frame around the inset
+     * pane; `--shell-content` is the pane's own backdrop. */
+    --shell-gutter: #f1f4fa;
+    --shell-content: #f4f7fb;
+}
+
+/* ─── Dark mode ───────────────────────────────── */
+.dark {
+    --background: oklch(14% 0.02 260);
+    --foreground: oklch(0.98 0 0);
+    --card: oklch(21% 0.018 260);
+    --card-foreground: oklch(0.98 0 0);
+    --popover: oklch(24% 0.018 260);
+    --popover-foreground: oklch(0.98 0 0);
+
+    /* Primary — same purple as light mode */
+    --primary: oklch(0.5417 0.179 288.0332);
+    --primary-foreground: oklch(0.98 0 0);
+
+    --secondary: oklch(0.25 0.015 260);
+    --secondary-foreground: oklch(0.98 0 0);
+    --muted: oklch(0.22 0.015 260);
+    --muted-foreground: oklch(0.65 0 0);
+    --accent: oklch(0.25 0.018 260);
+    --accent-foreground: oklch(0.98 0 0);
+    --destructive: oklch(0.55 0.2 25);
+    --border: oklch(0.28 0.015 260);
+    --input: oklch(0.28 0.015 260);
+    --ring: oklch(0.5417 0.179 288.0332);
+    --radius: 0.2rem;
+
+    /* Sidebar */
+    --sidebar: oklch(18% 0.02 260);
+    --sidebar-foreground: oklch(0.98 0 0);
+    --sidebar-primary: oklch(0.5417 0.179 288.0332);
+    --sidebar-primary-foreground: oklch(0.98 0 0);
+    --sidebar-accent: oklch(0.26 0.02 260);
+    --sidebar-accent-foreground: oklch(0.98 0 0);
+    --sidebar-border: oklch(0.24 0.015 260);
+    --sidebar-ring: oklch(0.5417 0.179 288.0332);
+
+    /* Charts — same purple family as light mode */
+    --chart-1: oklch(0.5417 0.179 288.0332);
+    --chart-2: oklch(0.7042 0.1602 288.988);
+    --chart-3: oklch(0.5679 0.2113 276.7065);
+    --chart-4: oklch(0.6356 0.1922 281.8054);
+    --chart-5: oklch(0.4509 0.1758 279.3838);
+
+    /* Semantic */
+    --success: oklch(0.627 0.194 149.214);
+    --success-foreground: oklch(0.2 0.05 149);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.2 0.05 70);
+    --info: oklch(0.659 0.162 248.812);
+    --info-foreground: oklch(0.2 0.05 248);
+
+    /* Shell surfaces (defect D-4). The old wrapper hardcoded the gutter with NO
+     * dark variant, so dark mode painted a light lavender frame around the pane.
+     * This is the one deliberate visual delta in the port, and it is dark-mode
+     * only - light mode is unchanged. `--shell-content` matches what the old
+     * `dark:bg-background` already did. */
+    --shell-gutter: var(--sidebar);
+    --shell-content: var(--background);
+}
+
+@theme inline {
+    --font-heading: var(--font-heading);
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-jetbrains-mono);
+
+    --radius: var(--radius);
+    --radius-sm: calc(var(--radius) - 1px);
+    --radius-md: var(--radius);
+    --radius-lg: calc(var(--radius) + 1px);
+    --radius-xl: calc(var(--radius) + 2px);
+    --radius-2xl: calc(var(--radius) + 4px);
+
+    /* NOTE (defect B-5, deliberately carried unchanged): the two lines below are
+     * self-referential - `var(--shadow-2xl)` resolves to nothing because nothing
+     * defines it, and the same for `--tracking-normal` (used by `body` above).
+     * `--destructive-foreground` is likewise mapped below but never defined.
+     * This is a PORT, not the redesign: 03 owns the token system and Phase 11
+     * fixes these structurally. Fixing them here would make the Phase 9 parity
+     * diff unreviewable. Do not "tidy" them in isolation. */
+    --shadow-2xl: var(--shadow-2xl);
+    --tracking-normal: var(--tracking-normal);
+
+    /* Color mappings */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+
+    --color-shell-gutter: var(--shell-gutter);
+    --color-shell-content: var(--shell-content);
+}
