@@ -23,6 +23,7 @@ export function BookingStoreProvider({
     tourId,
     destinationSlug,
     tourSlug,
+    currency,
     children,
 }: BookingInit & { children: ReactNode }) {
     // Create the store exactly once for this card (stable across re-renders); a
@@ -35,6 +36,7 @@ export function BookingStoreProvider({
             tourId,
             destinationSlug,
             tourSlug,
+            currency,
         })
     );
     return (

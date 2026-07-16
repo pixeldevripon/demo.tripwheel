@@ -128,6 +128,9 @@ export interface BookingBand {
 
 /** A selectable departure time with its (future) availability state. */
 export interface BookingSlot {
+    /** Real departure id (live mode) - required to quote/reserve this slot. Null
+     *  in design/demo mode, where slots come from the tour's static start times. */
+    departureId?: string | null;
     /** Wall-clock start time ("HH:MM"). */
     time: string;
     /** `sold_out` slots render disabled; everything else is selectable. */
@@ -228,12 +231,15 @@ function toNumber(value: string | number | null | undefined): number {
     return Number.isFinite(n) ? n : 0;
 }
 
-function mapBand(band: PublicTourAgeBand): BookingBand {
+function mapBand(
+    band: PublicTourAgeBand,
+    conv: (v: string | number | null | undefined) => number
+): BookingBand {
     return {
         id: band.id,
         kind: band.participation === 'SPECTATOR' ? 'spectator' : 'participant',
         label: band.label,
-        price: toNumber(band.price),
+        price: conv(band.price),
         isDefault: band.isDefault,
     };
 }
@@ -249,21 +255,27 @@ function mapBand(band: PublicTourAgeBand): BookingBand {
  * synthetic guests band is priced 0 (Pattern A - inline stepper).
  */
 export function buildTourBookingData(detail: PublicTourDetail): TourBookingData {
-    const symbol = currencySymbol(detail.defaultCurrency);
+    // Currency-aware display (guide §21.5): when the detail was fetched with a
+    // shopper currency the backend attaches a converted `money` object; the widget
+    // then shows that currency and converts every amount by the same rate. This is
+    // the OPTIMISTIC pre-quote estimate only - the authoritative total comes from
+    // POST /bookings/quote (§21.5 booking-widget rule 4).
+    const displayCurrency = detail.money?.currency ?? detail.defaultCurrency;
+    const fxRate = detail.money ? Number(detail.money.fxRate) || 1 : 1;
+    const symbol = currencySymbol(displayCurrency);
+    const conv = (v: string | number | null | undefined) =>
+        Math.round(toNumber(v) * fxRate);
+
     const pricingModel = detail.pricingModel;
     const isUnit = pricingModel === 'UNIT';
     // The included-guests + extra-person surcharge applies ONLY to GROUP unit
     // pricing; boat/vehicle/aircraft/package charters are a flat whole-unit price.
     // Guarding here keeps the card correct even against stale data.
     const isGroupUnit = isUnit && detail.wholeUnitType === 'GROUP';
-    const basePrice = Math.round(toNumber(detail.basePrice ?? detail.priceFrom));
-    const extraPersonPrice = isGroupUnit
-        ? Math.round(toNumber(detail.extraPersonPrice))
-        : 0;
+    const basePrice = conv(detail.basePrice ?? detail.priceFrom);
+    const extraPersonPrice = isGroupUnit ? conv(detail.extraPersonPrice) : 0;
     // Headline: group base for UNIT, per-person "from" for PER_PERSON.
-    const priceFrom = isUnit
-        ? basePrice
-        : Math.round(toNumber(detail.priceFrom ?? detail.basePrice));
+    const priceFrom = isUnit ? basePrice : conv(detail.priceFrom ?? detail.basePrice);
 
     const ordered = [...detail.ageBands].sort(
         (a, b) => a.displayOrder - b.displayOrder
@@ -294,10 +306,10 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
                 price: priceFrom,
                 isDefault: true,
             },
-            ...spectators.map(mapBand),
+            ...spectators.map(b => mapBand(b, conv)),
         ];
     } else {
-        bands = [...participants, ...spectators].map(mapBand);
+        bands = [...participants, ...spectators].map(b => mapBand(b, conv));
     }
 
     const depositPct = Math.round(toNumber(detail.depositPct));

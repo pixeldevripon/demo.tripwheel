@@ -23,6 +23,12 @@ export interface CheckoutSelection {
     time: string | null;
     /** Chosen count per band id (participants + spectators), zero rows omitted. */
     counts: Record<string, number>;
+    /** Real departure id for the picked slot (live mode); reserve keys off it. */
+    departureId: string | null;
+    /** Server quote id snapshotted in the widget - submitted with the reserve. */
+    quoteId: string | null;
+    /** Shopper (booking) currency the widget quoted in; checkout re-prices in it. */
+    currency: string | null;
 }
 
 /** A priced row in the checkout totals (band + chosen count). */
@@ -70,6 +76,9 @@ export function buildCheckoutQuery(selection: {
     date: string | null;
     time: string | null;
     counts: Record<string, number>;
+    departureId?: string | null;
+    quoteId?: string | null;
+    currency?: string | null;
 }): string {
     const params = new URLSearchParams();
     if (selection.date) params.set('date', selection.date);
@@ -79,6 +88,9 @@ export function buildCheckoutQuery(selection: {
         .map(([id, count]) => `${id}:${count}`)
         .join(',');
     if (party) params.set('party', party);
+    if (selection.departureId) params.set('departure', selection.departureId);
+    if (selection.quoteId) params.set('quote', selection.quoteId);
+    if (selection.currency) params.set('currency', selection.currency);
     return params.toString();
 }
 
@@ -104,7 +116,14 @@ export function parseCheckoutSelection(
         }
     }
 
-    return { date: first('date'), time: first('time'), counts };
+    return {
+        date: first('date'),
+        time: first('time'),
+        counts,
+        departureId: first('departure'),
+        quoteId: first('quote'),
+        currency: first('currency'),
+    };
 }
 
 /**

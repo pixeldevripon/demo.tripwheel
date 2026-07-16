@@ -79,6 +79,7 @@ export function useAvailabilitySync(): void {
         checkTourDepartures(tourId, dateParam, dateParam, controller.signal)
             .then(deps => {
                 const slots: BookingSlot[] = deps.map(d => ({
+                    departureId: d.id,
                     time: d.startTime,
                     status: 'available',
                     // Disclosed hint for the badge (withheld above the threshold)...

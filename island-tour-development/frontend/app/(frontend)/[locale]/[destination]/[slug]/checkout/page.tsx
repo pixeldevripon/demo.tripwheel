@@ -10,10 +10,16 @@ import {
     fromDateParam,
     parseCheckoutSelection,
 } from '@/lib/checkout/checkout';
-import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
+import { getServerCurrency } from '@/lib/currency/server';
+import {
+    isCurrency,
+    isLocale,
+    localizeHref,
+    type Locale,
+} from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { DEMO_PUBLIC_REF } from '@/lib/thank-you/thank-you';
-import { buildTourBookingData, type TourBookingData } from '@/lib/tours/booking';
+import { buildTourBookingData } from '@/lib/tours/booking';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
@@ -71,35 +77,59 @@ function formatClock(hhmm: string, locale: string): string {
 }
 
 /**
- * Streamed checkout body. `searchParams` (the widget's date / time / party
- * selection) is request-time data, so it is awaited only here - inside the
- * page's `<Suspense>` boundary - keeping the route free of the blocking-route
- * error while the cached tour/dictionary loads stay in the shell pass.
+ * Streamed checkout body. `searchParams` (the widget's selection, incl. the
+ * quoted `currency`) is request-time data, so it is awaited only here - inside the
+ * page's `<Suspense>` boundary. Because this component is already dynamic, it also
+ * resolves the shopper currency and fetches the tour WITH it (so the summary is
+ * priced in the shopper currency), which the cached shell pass could not do
+ * without tripping the blocking-route error.
  */
 async function CheckoutBody({
     locale,
+    destination,
+    slug,
     tourHref,
     thankYouHref,
     searchParams,
     dict,
-    title,
-    heroImage,
-    pickupOptions,
-    data,
 }: {
     locale: Locale;
+    destination: string;
+    slug: string;
     tourHref: string;
     thankYouHref: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
-    title: string;
-    heroImage: string | null;
-    pickupOptions: CheckoutPickupOption[];
-    data: TourBookingData;
 }) {
     const sp = await searchParams;
-
     const selection = parseCheckoutSelection(sp);
+
+    // Price in the currency the widget quoted (URL), else the shopper cookie - both
+    // safe here since this body is already dynamic. The reserve will submit
+    // selection.quoteId / selection.departureId once the booking POST is wired.
+    const currency = isCurrency(selection.currency)
+        ? selection.currency
+        : await getServerCurrency(locale);
+    const detail = await getTourBySlug({
+        slug,
+        destinationSlug: destination,
+        locale,
+        currency,
+    });
+    if (!detail) notFound();
+
+    const title = detail.translation?.title ?? detail.name;
+    const heroImage =
+        detail.images.find(img => img.isHero)?.url ??
+        detail.images[0]?.url ??
+        null;
+    const pickupOptions: CheckoutPickupOption[] = detail.pickupLocations
+        .slice()
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map(p => ({ id: p.id, label: p.title || p.name }));
+
+    // Currency-aware pricing - mirrors the booking widget (same converted money).
+    const data = buildTourBookingData(detail);
     const totals = computeCheckoutTotals(data, selection.counts);
 
     const selectedDate = fromDateParam(selection.date);
@@ -153,15 +183,16 @@ async function CheckoutBody({
  * here.
  *
  * Rendering follows the review policy (RENDERING-REVALIDATION-REVIEW.md): the
- * page awaits only cached loaders (`getTourBySlug`, `getDictionary`) at top
- * level; `searchParams` is forwarded as an un-awaited Promise into the
- * Suspense-wrapped `CheckoutBody`, whose `CheckoutPageSkeleton` fallback
- * mirrors the layout 1:1 (and doubles as the route `loading.tsx`).
+ * page awaits only the cached dictionary at top level; `searchParams` is
+ * forwarded as an un-awaited Promise into the Suspense-wrapped `CheckoutBody`,
+ * whose `CheckoutPageSkeleton` fallback mirrors the layout 1:1 (and doubles as
+ * the route `loading.tsx`). The currency-aware tour fetch lives inside that body
+ * (it depends on the shopper currency, resolved from the URL/cookie).
  *
- * Pricing mirrors the booking widget (live `buildTourBookingData(detail)`), so
- * the numbers carry through from the card unchanged; the live tour supplies the
- * title, image, and pickup options. A server-authoritative quote + live booking
- * submission land with the booking/payments module (BOOKING-FLOW-DESIGN-GUIDE).
+ * Pricing mirrors the booking widget (currency-aware `buildTourBookingData`), so
+ * the numbers carry through from the card unchanged. The widget's `quoteId` /
+ * `departureId` ride in the URL for the live booking submission that lands with
+ * the payments module (BOOKING-FLOW-DESIGN-GUIDE §21.6).
  */
 export default async function CheckoutPage({
     params,
@@ -173,44 +204,23 @@ export default async function CheckoutPage({
     const { locale, destination, slug } = await params;
     if (!isLocale(locale)) notFound();
 
-    const [detail, dict] = await Promise.all([
-        getTourBySlug({ slug, destinationSlug: destination, locale }),
-        getDictionary(locale),
-    ]);
-    if (!detail) notFound();
-
-    const title = detail.translation?.title ?? detail.name;
-    const heroImage =
-        detail.images.find(img => img.isHero)?.url ??
-        detail.images[0]?.url ??
-        null;
+    const dict = await getDictionary(locale);
     const tourHref = localizeHref(locale, `/${destination}/${slug}`);
     // TYP is the one locale-less route (master API conventions); the demo ref
     // stands in until POST /api/v1/bookings returns a real public_ref.
     const thankYouHref = `/${destination}/thank-you/${DEMO_PUBLIC_REF}`;
-
-    const pickupOptions: CheckoutPickupOption[] = detail.pickupLocations
-        .slice()
-        .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map(p => ({ id: p.id, label: p.title || p.name }));
-
-    // Live tour pricing / bands / deposit - mirrors the booking widget so the
-    // numbers carry through from the card unchanged (server quote lands later).
-    const data = buildTourBookingData(detail);
 
     return (
         <section className='it-section !pt-0 bg-white'>
             <Suspense fallback={<CheckoutPageSkeleton />}>
                 <CheckoutBody
                     locale={locale}
+                    destination={destination}
+                    slug={slug}
                     tourHref={tourHref}
                     thankYouHref={thankYouHref}
                     searchParams={searchParams}
                     dict={dict.checkout}
-                    title={title}
-                    heroImage={heroImage}
-                    pickupOptions={pickupOptions}
-                    data={data}
                 />
             </Suspense>
         </section>

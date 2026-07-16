@@ -13,6 +13,8 @@
  * the `useBooking()` hook, so there is exactly one place that math lives.
  */
 
+import type { BookingQuote } from '@/lib/api/bookings';
+import type { Currency } from '@/lib/constants/locales';
 import {
     DUMMY_BOOKING_DATA,
     type BookingBand,
@@ -66,6 +68,9 @@ export interface BookingConfig {
      *  card still works in isolation, e.g. design/demo, when they're absent). */
     destinationSlug?: string;
     tourSlug?: string;
+    /** Shopper (booking) currency - sent to `POST /bookings/quote` and carried to
+     *  checkout so the authoritative total is priced in it (guide §21.5). */
+    currency?: Currency;
     participantBands: BookingBand[];
     spectatorBands: BookingBand[];
     hasSpectators: boolean;
@@ -96,6 +101,14 @@ export interface BookingState {
      *  date (live mode only). */
     daySlots: BookingSlot[] | null;
     slotsLoading: boolean;
+    /** Server-authoritative quote for the current selection (live mode); null until
+     *  a complete selection resolves one. When present it drives the money summary,
+     *  never the client math (guide §21.5). */
+    quote: BookingQuote | null;
+    quoteLoading: boolean;
+    /** True when the last quote attempt failed - the card falls back to the
+     *  optimistic client estimate rather than blocking. */
+    quoteError: boolean;
 }
 
 /** Everything the sections can trigger. */
@@ -118,6 +131,10 @@ export interface BookingActions {
     /** Set by the availability sync once slots for the picked date resolve. */
     setDaySlots: (slots: BookingSlot[]) => void;
     setSlotsLoading: (loading: boolean) => void;
+    /** Set by the quote sync as the server quote resolves / fails / clears. */
+    setQuote: (quote: BookingQuote | null) => void;
+    setQuoteLoading: (loading: boolean) => void;
+    setQuoteError: (error: boolean) => void;
 }
 
 export type BookingStore = BookingConfig & BookingState & BookingActions;
@@ -130,6 +147,7 @@ export interface BookingInit {
     tourId?: string;
     destinationSlug?: string;
     tourSlug?: string;
+    currency?: Currency;
 }
 
 /* ─── Pure derivations (from a full store snapshot) ───────────────────────── */
@@ -265,12 +283,32 @@ export function deriveBooking(s: BookingStore) {
 
     const usesDeposit =
         isDepositModel && s.data.depositPct > 0 && s.data.depositPct < 100;
-    const payToday = usesDeposit
+    let payToday = usesDeposit
         ? Math.round((total * s.data.depositPct) / 100)
         : isOperatorFull
           ? 0
           : total;
-    const balanceLater = total - payToday;
+    let balanceLater = total - payToday;
+
+    // ── Server-authoritative quote (guide §21.5) ─────────────────────────────
+    // When a fresh quote is loaded it - not the client math - drives the money
+    // summary + breakdown (its amounts are already in the shopper currency, rounded
+    // 2dp). During a refetch (`quoteLoading`) or on error the card keeps the
+    // optimistic client estimate above, so it stays responsive and never blocks.
+    const useQuote =
+        s.quote != null && !s.quoteLoading && !s.quoteError;
+    if (useQuote && s.quote) {
+        const q = s.quote;
+        total = Number(q.totalRetail);
+        payToday = Number(q.depositAmount);
+        balanceLater = Number(q.balanceAmount);
+        // Rebuild the breakdown from the quote lines so it reconciles to the total.
+        priceRows = q.lines.map((l, i) => ({
+            id: `${l.kind}-${l.ageBandId ?? i}`,
+            text: `${l.label} x ${l.quantity} x ${money(Number(l.unitPrice))}`,
+            amount: Number(l.lineTotal),
+        }));
+    }
 
     // Money rows: hide zero-amount rows (master §6.1).
     const showPayToday = payToday > 0;
@@ -350,9 +388,18 @@ export function deriveBooking(s: BookingStore) {
         showPartyBody,
         isLive,
         slots,
+        // Real departure id for the current time selection (live mode); the quote
+        // and reserve calls key off this. Null in design/demo mode.
+        selectedDepartureId: selectedSlot?.departureId ?? null,
         slotsLoading: s.slotsLoading,
         calendarDays: s.calendarDays,
         calendarLoading: s.calendarLoading,
+        // Server-authoritative quote for the current selection + its load state
+        // (the summary can show a subtle refresh; the CTA carries `quote.quoteId`
+        // to checkout). `usingQuote` is true when the summary reflects the quote.
+        quote: s.quote,
+        quoteLoading: s.quoteLoading,
+        usingQuote: useQuote,
     };
 }
 
@@ -376,6 +423,7 @@ export function createBookingStore(init: BookingInit) {
         tourId: init.tourId,
         destinationSlug: init.destinationSlug,
         tourSlug: init.tourSlug,
+        currency: init.currency,
         participantBands,
         spectatorBands,
         hasSpectators,
@@ -409,6 +457,9 @@ export function createBookingStore(init: BookingInit) {
         calendarLoading: false,
         daySlots: null,
         slotsLoading: false,
+        quote: null,
+        quoteLoading: false,
+        quoteError: false,
     };
 
     return createStore<BookingStore>()((set, get) => ({
@@ -496,6 +547,11 @@ export function createBookingStore(init: BookingInit) {
         setCalendarLoading: loading => set({ calendarLoading: loading }),
         setDaySlots: slots => set({ daySlots: slots, slotsLoading: false }),
         setSlotsLoading: loading => set({ slotsLoading: loading }),
+        setQuote: quote =>
+            set({ quote, quoteLoading: false, quoteError: false }),
+        setQuoteLoading: loading => set({ quoteLoading: loading }),
+        setQuoteError: error =>
+            set({ quoteError: error, quoteLoading: false }),
     }));
 }
 

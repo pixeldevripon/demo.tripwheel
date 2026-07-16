@@ -4,6 +4,7 @@ import {
 } from '@/components/skelitons/tour-page-skeleton';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getTourBySlug } from '@/lib/api/public/tours';
+import { getServerCurrency } from '@/lib/currency/server';
 import { type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { buildTourBookingData } from '@/lib/tours/booking';
@@ -100,7 +101,16 @@ export async function TourDetailContent({
     dict,
 }: TourDetailContentProps) {
     await connection();
-    const detail = await getTourBySlug({ slug, destinationSlug, locale });
+    // Shopper display currency (cookie) drives the converted `money` on the detail;
+    // the widget renders it and converts its amounts (guide §21.5). Dependent, so
+    // it precedes the currency-aware detail fetch.
+    const currency = await getServerCurrency(locale);
+    const detail = await getTourBySlug({
+        slug,
+        destinationSlug,
+        locale,
+        currency,
+    });
     if (!detail) notFound();
 
     const tourDict = dict.destination.tour;
@@ -385,6 +395,7 @@ export async function TourDetailContent({
                                     tourId={detail.id}
                                     destinationSlug={destinationSlug}
                                     tourSlug={slug}
+                                    currency={currency}
                                 />
                             </MountReveal>
                         </div>

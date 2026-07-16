@@ -34,12 +34,16 @@ export async function TourRelatedTours({
     dict,
 }: TourRelatedToursProps) {
     await connection();
-    // `detail` (for destination + category ids) and the shopper currency are
-    // independent, so resolve them together.
-    const [detail, currency] = await Promise.all([
-        getTourBySlug({ slug, destinationSlug, locale }),
-        getServerCurrency(locale),
-    ]);
+    // Resolve the shopper currency first, then fetch the detail WITH it so this
+    // `getTourBySlug` shares a cache key with the main content's currency-aware
+    // fetch (dedup); the related listings below reuse the same currency.
+    const currency = await getServerCurrency(locale);
+    const detail = await getTourBySlug({
+        slug,
+        destinationSlug,
+        locale,
+        currency,
+    });
     if (!detail) return null;
 
     // Localized primary-category name for the same-category grid's heading.

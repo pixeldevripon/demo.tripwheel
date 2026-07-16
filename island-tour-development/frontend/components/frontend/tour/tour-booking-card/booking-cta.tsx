@@ -35,6 +35,9 @@ export function BookingCta() {
         selectedDate,
         selectedTime,
         counts,
+        selectedDepartureId,
+        quote,
+        currency,
     } = useBooking();
     const router = useRouter();
 
@@ -57,6 +60,9 @@ export function BookingCta() {
                 date: selectedDate ? toDateParam(selectedDate) : null,
                 time: selectedTime,
                 counts,
+                departureId: selectedDepartureId,
+                quoteId: quote?.quoteId ?? null,
+                currency: currency ?? null,
             });
             const base = localizeHref(
                 locale as Locale,

@@ -3,6 +3,8 @@
 import { BookingStoreProvider } from '@/contexts/booking-context';
 import { useAvailabilitySync } from '@/hooks/tours/use-availability-sync';
 import { useBooking } from '@/hooks/tours/use-booking';
+import { useBookingQuote } from '@/hooks/tours/use-booking-quote';
+import type { Currency } from '@/lib/constants/locales';
 import type { TourBookingData, TourBookingDict } from '@/lib/tours/booking';
 import { BookingCalendar } from './booking-calendar';
 import { BookingCta } from './booking-cta';
@@ -24,6 +26,8 @@ function TourBookingCardLayout() {
     const { dict, policyModal, setPolicyModal, fillPolicy } = useBooking();
     // Loads the month calendar + per-date slots from the backend (no-op in demo).
     useAvailabilitySync();
+    // Fetches the server-authoritative quote for the live selection (no-op in demo).
+    useBookingQuote();
 
     return (
         <div className='flex flex-col gap-4'>
@@ -103,6 +107,7 @@ export function TourBookingCard({
     tourId,
     destinationSlug,
     tourSlug,
+    currency,
 }: {
     dict: TourBookingDict;
     /** Live tour data; falls back to `DUMMY_BOOKING_DATA` for design/testing. */
@@ -114,6 +119,8 @@ export function TourBookingCard({
     /** Destination + tour slug so "Continue" can route to the checkout page. */
     destinationSlug?: string;
     tourSlug?: string;
+    /** Shopper display/booking currency; sent to the quote + carried to checkout. */
+    currency?: Currency;
 }) {
     return (
         <BookingStoreProvider
@@ -122,7 +129,8 @@ export function TourBookingCard({
             locale={locale}
             tourId={tourId}
             destinationSlug={destinationSlug}
-            tourSlug={tourSlug}>
+            tourSlug={tourSlug}
+            currency={currency}>
             <TourBookingCardLayout />
         </BookingStoreProvider>
     );
