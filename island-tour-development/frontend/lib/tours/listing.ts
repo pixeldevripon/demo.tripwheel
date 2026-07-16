@@ -3,67 +3,11 @@
  * `TourCard`. No server/client-only imports — safe in both bundles.
  */
 import type { TourListing } from '@/components/frontend/tour-card';
-import type { TourBadge } from '@/components/frontend/tour-badge';
-import { isCurrency, localizeHref, type Locale } from '@/lib/constants/locales';
-import { formatPriceFrom, resolveDisplayPrice } from '@/lib/currency/current';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { resolveDisplayPrice } from '@/lib/currency/current';
 import type { CollectionRenderTour } from '@/types/collection';
 import type { SearchHit } from '@/types/search';
 import { priceUnitKey } from '@/lib/tours/pricing-label';
-
-/**
- * Client-side mirror of the backend `deriveTourBadge` (master §3.6 priority:
- * sponsored > likelyToSellOut > mostPopular > new). Admin tour rows don't carry a
- * server-derived badge, so the dashboard derives it from the raw signals to show
- * the same chip the public site would. First match wins.
- */
-export function deriveTourBadge(t: {
-  isSponsored?: boolean;
-  likelyToSellOut?: boolean;
-  likelyToSellOutOverride?: boolean | null;
-  aggregateRating?: number | null;
-  aggregateReviewCount?: number;
-  publishedAt?: string | null;
-}): TourBadge {
-  if (t.isSponsored) return 'sponsored';
-  if (t.likelyToSellOutOverride ?? t.likelyToSellOut ?? false) return 'likelyToSellOut';
-  const reviews = t.aggregateReviewCount ?? 0;
-  if (reviews >= 10 && (t.aggregateRating ?? 0) >= 4.5) return 'mostPopular';
-  if (reviews === 0 && t.publishedAt) {
-    const published = new Date(t.publishedAt).getTime();
-    if (Number.isFinite(published) && Date.now() - published < 30 * 864e5) return 'new';
-  }
-  return null;
-}
-
-/**
- * "★ 4.8 (1,738) · 42 booked · From $120" - the performance signals an admin picks
- * on. Shared by the Collection, Our Picks and Comparison tour selectors so every
- * dashboard picker surfaces the same aggregated numbers, not just the tour name.
- */
-export function tourPerfSummary(t: {
-  aggregateRating?: number | null;
-  aggregateReviewCount?: number;
-  bookingCount?: number;
-  priceFrom?: number | string | null;
-  basePrice?: number | string | null;
-  /** The tour's own currency; admin views always show it (never the shopper cookie). */
-  defaultCurrency?: string | null;
-}): string {
-  const parts: string[] = [];
-  const reviews = t.aggregateReviewCount ?? 0;
-  if (reviews > 0) {
-    parts.push(`★ ${t.aggregateRating ?? '-'} (${reviews.toLocaleString()})`);
-  } else {
-    parts.push('No reviews yet');
-  }
-  parts.push(`${(t.bookingCount ?? 0).toLocaleString()} booked`);
-  const price = Number(t.priceFrom ?? t.basePrice ?? 0);
-  if (Number.isFinite(price) && price > 0) {
-    const currency = isCurrency(t.defaultCurrency) ? t.defaultCurrency : 'EUR';
-    parts.push(`From ${formatPriceFrom(price, currency, 'en')}`);
-  }
-  return parts.join(' · ');
-}
 
 /** Duration label strings (from the `search` dictionary section). */
 export type DurationDict = {

@@ -7,8 +7,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import { TourBadgeChip } from '@/components/frontend/tour-badge';
-import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
+import { TourBadgeChip } from '@/components/dashboard/common/tour-badge';
+import { deriveTourBadge } from '@/lib/tours/derive-badge';
+import { tourPerfSummary } from '@/lib/tours/signals';
 
 interface CollectionTourSelectProps {
   destinationId: string;

@@ -14,9 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TourBadgeChip } from '@/components/frontend/tour-badge';
+import { TourBadgeChip } from '@/components/dashboard/common/tour-badge';
 import { RationaleTranslationTabs } from '@/components/dashboard/rationale-translation-tabs';
-import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
+import { deriveTourBadge } from '@/lib/tours/derive-badge';
+import { tourPerfSummary } from '@/lib/tours/signals';
 import {
   useCollection,
   useCollectionResolvedTours,
