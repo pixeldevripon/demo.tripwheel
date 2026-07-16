@@ -27,23 +27,35 @@ function TourBookingCardLayout() {
 
     return (
         <div className='flex flex-col gap-4'>
-            {/* Main booking card */}
-            <div className='rounded-[16px] bg-it-surface'>
-                <PriceHeader />
+            {/* Main booking card — a viewport-capped flex column (mirrors the
+                tours filter modal): the price header and CTA stay pinned while the
+                middle selector stack scrolls with the thin hover scrollbar, so the
+                sticky rail never pushes the CTA below the fold on short screens.
+                The cap applies only where the card is sticky (lg+); on mobile it
+                flows naturally with no inner scroll. */}
+            <div className='flex flex-col rounded-[16px] bg-it-surface lg:max-h-[calc(100vh-7rem)]'>
+                {/* Price header — never scrolls */}
+                <div className='shrink-0'>
+                    <PriceHeader />
+                </div>
 
-                {/* Content: selectors + CTA */}
-                <div className='flex flex-col gap-6 p-4'>
-                    <div className='flex flex-col gap-2'>
-                        <BookingCalendar />
-                        <DepartureTimes />
-                        <PartySelector />
-                        <SpectatorsPanel />
-                    </div>
+                {/* Selectors — the only scroll region (thin hover scrollbar);
+                    min-h-0 + flex-1 lets overflow trigger inside the flex column.
+                    The calendar popover opens at the top, so it clears the fold. */}
+                <div className='it-modal-scroll flex min-h-0 flex-1 flex-col gap-2 px-4 pt-4'>
+                    <BookingCalendar />
+                    <DepartureTimes />
+                    <PartySelector />
+                    <SpectatorsPanel />
+                </div>
+
+                {/* CTA + trust lines — pinned footer, always reachable */}
+                <div className='shrink-0 px-4 pb-4 pt-6'>
                     <BookingCta />
                 </div>
             </div>
 
-            {/* "Likely to sell out" notice */}
+            {/* "Likely to sell out" notice — flows below the capped card */}
             <SellOutNotice />
 
             {/* Policy detail modals (opened from the trust lines) */}
