@@ -11,6 +11,12 @@ import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.valida
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
 import { isDepartureLiveBookable } from '@/availability/availability-status.util';
+import {
+  DERIVED_ATTRIBUTE_KEYS,
+  deriveTourAttributes,
+  derivedAttributeTourSelect,
+  buildDerivedAttributeWhere,
+} from '@/attributes/derived-attributes';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import {
   BadRequestException,
@@ -20,15 +26,19 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
 import {
   BandParticipation,
+  Currency,
   DepartureStatus,
   PickupModel,
+  Prisma,
+  PricingModel,
   Role,
   SlugEntityType,
   TourStatus,
+  WholeUnitType,
 } from '@prisma/client';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import {
   AdminToursQueryDto,
   CreateTourDto,
@@ -46,7 +56,30 @@ export class ToursService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Attach the converted-price `money` object (guide §20.9) to a page of flattened tour
+   * cards, in place. Resolves each DISTINCT source currency's display rate once (≤2 DB
+   * reads per page), then converts each card synchronously. When no `target` is given (or
+   * a rate is unavailable) the card shows its own source currency at rate 1 - a display
+   * fallback that never blocks the page. Uses the raw Decimal `priceFrom`/`basePrice`.
+   */
+  /** Attach the display `money` object to each card (guide §20.9). Delegates to the
+   *  single reusable implementation in {@link FxRatesService.attachMoney}; the tour
+   *  shape holds its source currency in `defaultCurrency`. */
+  private async attachMoney(
+    items: Array<{
+      defaultCurrency: Currency;
+      priceFrom?: Prisma.Decimal | null;
+      basePrice?: Prisma.Decimal | null;
+      money?: unknown;
+    }>,
+    target?: Currency,
+  ): Promise<void> {
+    await this.fx.attachMoney(items, target, 'defaultCurrency');
+  }
 
   private readonly tourSelect = {
     id: true,
@@ -83,6 +116,7 @@ export class ToursService {
     instantConfirmation: true,
     // Booking / payment (master E.3)
     paymentModel: true,
+    onArrivalPayment: true,
     depositPct: true,
     bookingType: true,
     // Meeting point / departure (master E.3)
@@ -169,7 +203,7 @@ export class ToursService {
     >();
     if (tourIds.length === 0) return result;
 
-    const [rows, defs] = await Promise.all([
+    const [rows, defs, toursForDerive] = await Promise.all([
       this.prisma.tourAttribute.findMany({
         where: { tourId: { in: tourIds } },
         select: { tourId: true, attributeKey: true, attributeValue: true },
@@ -178,15 +212,33 @@ export class ToursService {
         where: { isActive: true },
         select: { key: true, dataType: true },
       }),
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, ...derivedAttributeTourSelect },
+      }),
     ]);
     const dataTypeByKey = new Map(defs.map((d) => [d.key, d.dataType]));
 
+    // Stored chips, minus derived keys (those are computed from the tour's fields
+    // below - the Details are the single source of truth).
     for (const r of rows) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(r.attributeKey)) continue;
       const dataType = dataTypeByKey.get(r.attributeKey);
       if (!dataType) continue; // definition inactive/removed - skip
       const list = result.get(r.tourId) ?? [];
       list.push({ key: r.attributeKey, value: r.attributeValue, dataType });
       result.set(r.tourId, list);
+    }
+
+    // Derived chips computed from first-class fields.
+    for (const t of toursForDerive) {
+      const list = result.get(t.id) ?? [];
+      for (const d of deriveTourAttributes(t)) {
+        const dataType = dataTypeByKey.get(d.key);
+        if (!dataType) continue; // definition inactive/removed - skip
+        list.push({ key: d.key, value: d.value, dataType });
+      }
+      if (list.length) result.set(t.id, list);
     }
     return result;
   }
@@ -338,7 +390,8 @@ export class ToursService {
 
   /**
    * Recomputes and persists `priceFrom` (the "From $X" display anchor) for a tour:
-   * the cheapest age-band price, or `basePrice` when there are no age bands.
+   * the DEFAULT age-band price (the adult reference price - never a cheaper
+   * child/senior band), or `basePrice` when there are no age bands.
    * Call after any change to basePrice or age bands. Returns the new value.
    *
    * Pass `tx` to run inside the caller's transaction - required when called right
@@ -352,19 +405,26 @@ export class ToursService {
     const client = tx ?? this.prisma;
     const tour = await client.tour.findUnique({
       where: { id: tourId },
-      select: { basePrice: true },
+      select: { basePrice: true, pricingModel: true },
     });
     if (!tour) return null;
 
-    // priceFrom anchors off the cheapest TourAgeBand once bands are entered, and
-    // falls back to basePrice when none exist yet.
-    const cheapestBand = await client.tourAgeBand.findFirst({
-      where: { tourId, participation: BandParticipation.PARTICIPANT },
-      orderBy: { price: 'asc' },
-      select: { price: true },
-    });
-    const priceFrom: Prisma.Decimal | null =
-      cheapestBand?.price ?? tour.basePrice ?? null;
+    // UNIT (whole-unit / charter): priceFrom is always the whole-unit base price
+    // (age bands do not apply). PER_PERSON: anchor off the DEFAULT participant
+    // TourAgeBand (founder rule: the anchor is the adult/default price, not the
+    // cheapest child band), falling back to the cheapest participant band when
+    // no band is flagged default, then basePrice when no bands exist.
+    let priceFrom: Prisma.Decimal | null;
+    if (tour.pricingModel === PricingModel.UNIT) {
+      priceFrom = tour.basePrice ?? null;
+    } else {
+      const anchorBand = await client.tourAgeBand.findFirst({
+        where: { tourId, participation: BandParticipation.PARTICIPANT },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
+        select: { price: true },
+      });
+      priceFrom = anchorBand?.price ?? tour.basePrice ?? null;
+    }
 
     await client.tour.update({ where: { id: tourId }, data: { priceFrom } });
     return priceFrom;
@@ -374,7 +434,7 @@ export class ToursService {
    * Resolves an ordered list of tour ids to flattened LIVE tours, preserving the input
    * order and dropping any that are missing/not live. Used by manual Collections.
    */
-  async findPublicByIds(ids: string[]) {
+  async findPublicByIds(ids: string[], target?: Currency) {
     if (!ids.length) return [];
     const tours = await this.prisma.tour.findMany({
       where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
@@ -384,9 +444,11 @@ export class ToursService {
       },
     });
     const byId = new Map(tours.map((t) => [t.id, this.flattenTour(t)]));
-    return ids
+    const result = ids
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
+    await this.attachMoney(result, target);
+    return result;
   }
 
   /**
@@ -400,6 +462,7 @@ export class ToursService {
     destinationSlug?: string;
     date?: string;
     locale?: Locale;
+    currency?: Currency;
     page?: number;
     limit?: number;
   }) {
@@ -471,15 +534,17 @@ export class ToursService {
         take: limit,
       }),
     ]);
+    const hits = data.map((t) => ({
+      ...this.flattenSearchHit(t),
+      badge: this.deriveTourBadge(t),
+    }));
+    await this.attachMoney(hits, params.currency);
     return {
       total,
       page,
       limit,
       query: term,
-      data: data.map((t) => ({
-        ...this.flattenSearchHit(t),
-        badge: this.deriveTourBadge(t),
-      })),
+      data: hits,
     };
   }
 
@@ -651,10 +716,13 @@ export class ToursService {
     if (isLocalsFavourite !== undefined)
       where.isLocalsFavourite = isLocalsFavourite;
     if (pricingModel) where.pricingModel = pricingModel;
+    // Price filter runs against `priceFrom` (the displayed "From" anchor: default
+    // participant band for PER_PERSON, basePrice for UNIT), so it agrees with the
+    // price shown on the card - not the raw `basePrice`.
     if (minPrice !== undefined || maxPrice !== undefined) {
-      where.basePrice = {};
-      if (minPrice !== undefined) where.basePrice.gte = minPrice;
-      if (maxPrice !== undefined) where.basePrice.lte = maxPrice;
+      where.priceFrom = {};
+      if (minPrice !== undefined) where.priceFrom.gte = minPrice;
+      if (maxPrice !== undefined) where.priceFrom.lte = maxPrice;
     }
     if (durationMin !== undefined || durationMax !== undefined) {
       where.durationMinutesFrom = {};
@@ -739,6 +807,7 @@ export class ToursService {
     const ordered =
       sort === TourSort.recommended ? this.applyDiversityPass(mapped) : mapped;
 
+    await this.attachMoney(ordered, query.currency);
     return { total, page, limit, sort, data: ordered };
   }
 
@@ -891,28 +960,50 @@ export class ToursService {
     );
     if (candidates.length === 0) return [];
 
-    const defs = await this.prisma.attributeDefinition.findMany({
-      where: { key: { in: candidates }, isFilterable: true, isActive: true },
-      select: { key: true },
-    });
-    const validKeys = new Set(defs.map((d) => d.key));
-
-    const filters: Prisma.TourWhereInput[] = [];
-    for (const key of candidates) {
-      if (!validKeys.has(key)) continue;
-      const values = String(rawQuery[key])
+    const valuesOf = (key: string) =>
+      String(rawQuery[key])
         .split(',')
         .map((v) => v.trim())
         .filter(Boolean);
-      if (values.length === 0) continue;
-      // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
-      const valueOr = values.flatMap((v) => [
-        { attributeValue: v },
-        { attributeValue: { contains: JSON.stringify(v) } },
-      ]);
-      filters.push({
-        attributes: { some: { attributeKey: key, OR: valueOr } },
+
+    const filters: Prisma.TourWhereInput[] = [];
+
+    // Derived keys are filtered against the first-class Tour columns (single
+    // source of truth), never the tour_attributes join. Genuine attributes go
+    // through the dictionary + the attributes.some join below.
+    const genuineCandidates: string[] = [];
+    for (const key of candidates) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(key)) {
+        const where = buildDerivedAttributeWhere(key, valuesOf(key));
+        if (where) filters.push(where);
+      } else {
+        genuineCandidates.push(key);
+      }
+    }
+
+    if (genuineCandidates.length > 0) {
+      const defs = await this.prisma.attributeDefinition.findMany({
+        where: {
+          key: { in: genuineCandidates },
+          isFilterable: true,
+          isActive: true,
+        },
+        select: { key: true },
       });
+      const validKeys = new Set(defs.map((d) => d.key));
+      for (const key of genuineCandidates) {
+        if (!validKeys.has(key)) continue;
+        const values = valuesOf(key);
+        if (values.length === 0) continue;
+        // Match scalar equality OR JSON-array membership (ENUM_MULTI is stored as a JSON array string).
+        const valueOr = values.flatMap((v) => [
+          { attributeValue: v },
+          { attributeValue: { contains: JSON.stringify(v) } },
+        ]);
+        filters.push({
+          attributes: { some: { attributeKey: key, OR: valueOr } },
+        });
+      }
     }
     return filters;
   }
@@ -1071,6 +1162,7 @@ export class ToursService {
     id: string,
     requesterId: string | null,
     requesterRole: Role | null,
+    target?: Currency,
   ) {
     const tour = await this.prisma.tour.findUnique({
       where: { id },
@@ -1116,7 +1208,9 @@ export class ToursService {
       }
     }
 
-    return this.flattenCounts(tour);
+    const result = this.flattenCounts(tour);
+    await this.attachMoney([result], target);
+    return result;
   }
 
   // ── Public slug-based lookup (tour detail page) ───────────────────────────────
@@ -1416,7 +1510,7 @@ export class ToursService {
         )?.text ?? '',
     }));
 
-    return {
+    const detail = {
       ...this.flattenTour(rest),
       operatorName:
         operator?.companyInfo?.companyName ?? operator?.user?.name ?? null,
@@ -1430,6 +1524,8 @@ export class ToursService {
       features: resolvedFeatures,
       languages: languages.map((l) => l.language),
     };
+    await this.attachMoney([detail], query.currency);
+    return detail;
   }
 
   // ── Slug uniqueness resolution ────────────────────────────────────────────────
@@ -1597,14 +1693,29 @@ export class ToursService {
             destinationId: dto.destinationId,
             timeZone: tourTimeZone,
             pricingModel: dto.pricingModel,
-            wholeUnitType: dto.wholeUnitType ?? null,
+            // Unit fields only apply to UNIT pricing; force them null for
+            // PER_PERSON so the two models never carry each other's data.
+            wholeUnitType:
+              dto.pricingModel === PricingModel.UNIT
+                ? (dto.wholeUnitType ?? null)
+                : null,
             ...(dto.defaultCurrency !== undefined && {
               defaultCurrency: dto.defaultCurrency,
             }),
             basePrice: dto.basePrice ?? null,
-            priceFrom: dto.basePrice ?? null, // from = base; recomputed when the unit catalog lands
-            unitIncludedGuests: dto.unitIncludedGuests ?? null,
-            extraPersonPrice: dto.extraPersonPrice ?? null,
+            priceFrom: dto.basePrice ?? null, // from = base; recomputed from bands (PER_PERSON) or kept as base (UNIT)
+            // Included-guests + extra-person surcharge applies ONLY to GROUP unit
+            // pricing. Boat/vehicle/aircraft/package charters are a flat unit price.
+            unitIncludedGuests:
+              dto.pricingModel === PricingModel.UNIT &&
+              dto.wholeUnitType === WholeUnitType.GROUP
+                ? (dto.unitIncludedGuests ?? null)
+                : null,
+            extraPersonPrice:
+              dto.pricingModel === PricingModel.UNIT &&
+              dto.wholeUnitType === WholeUnitType.GROUP
+                ? (dto.extraPersonPrice ?? null)
+                : null,
             durationMinutesFrom: dto.durationMinutesFrom ?? null,
             durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
@@ -1620,6 +1731,9 @@ export class ToursService {
             }),
             ...(dto.paymentModel !== undefined && {
               paymentModel: dto.paymentModel,
+            }),
+            ...(dto.onArrivalPayment !== undefined && {
+              onArrivalPayment: dto.onArrivalPayment,
             }),
             bookingType: dto.bookingType ?? null,
             meetingPointLat: dto.meetingPointLat ?? null,
@@ -1799,19 +1913,37 @@ export class ToursService {
           ...(dto.pricingModel !== undefined && {
             pricingModel: dto.pricingModel,
           }),
-          ...(dto.wholeUnitType !== undefined && {
-            wholeUnitType: dto.wholeUnitType,
-          }),
           ...(dto.defaultCurrency !== undefined && {
             defaultCurrency: dto.defaultCurrency,
           }),
           ...(dto.basePrice !== undefined && { basePrice: dto.basePrice }),
-          ...(dto.unitIncludedGuests !== undefined && {
-            unitIncludedGuests: dto.unitIncludedGuests,
-          }),
-          ...(dto.extraPersonPrice !== undefined && {
-            extraPersonPrice: dto.extraPersonPrice,
-          }),
+          // Unit fields: applied for UNIT, force-nulled for PER_PERSON (the two
+          // models never carry each other's data). Within UNIT, the included-guests
+          // + extra-person surcharge applies ONLY to the GROUP unit type; other
+          // charters (boat/vehicle/aircraft/package) are a flat unit price. Uses
+          // the effective model/unit-type (incoming dto value, else the tour's).
+          ...((dto.pricingModel ?? tour.pricingModel) === PricingModel.UNIT
+            ? {
+                ...(dto.wholeUnitType !== undefined && {
+                  wholeUnitType: dto.wholeUnitType,
+                }),
+                ...((dto.wholeUnitType ?? tour.wholeUnitType) ===
+                WholeUnitType.GROUP
+                  ? {
+                      ...(dto.unitIncludedGuests !== undefined && {
+                        unitIncludedGuests: dto.unitIncludedGuests,
+                      }),
+                      ...(dto.extraPersonPrice !== undefined && {
+                        extraPersonPrice: dto.extraPersonPrice,
+                      }),
+                    }
+                  : { unitIncludedGuests: null, extraPersonPrice: null }),
+              }
+            : {
+                wholeUnitType: null,
+                unitIncludedGuests: null,
+                extraPersonPrice: null,
+              }),
           ...(dto.durationMinutesFrom !== undefined && {
             durationMinutesFrom: dto.durationMinutesFrom,
           }),
@@ -1862,6 +1994,11 @@ export class ToursService {
           // operator-editable, so it is intentionally not updated here.
           ...(dto.paymentModel !== undefined && {
             paymentModel: dto.paymentModel,
+          }),
+          // Not retroactive (rule #21): each booking snapshots its own terms at
+          // reserve, so changing this only affects future bookings.
+          ...(dto.onArrivalPayment !== undefined && {
+            onArrivalPayment: dto.onArrivalPayment,
           }),
           ...(dto.instantConfirmation !== undefined && {
             instantConfirmation: dto.instantConfirmation,
@@ -1980,8 +2117,9 @@ export class ToursService {
       });
     });
 
-    // Keep the "From $X" anchor in sync if basePrice changed.
-    if (dto.basePrice !== undefined) {
+    // Keep the "From $X" anchor in sync when basePrice or the pricing model
+    // changed (UNIT anchors on basePrice, PER_PERSON on the cheapest band).
+    if (dto.basePrice !== undefined || dto.pricingModel !== undefined) {
       updated.priceFrom = await this.recomputePriceFrom(id);
     }
 
@@ -2036,8 +2174,19 @@ export class ToursService {
     if (tour.highlights.length < 3)
       errors.push('At least 3 highlights are required to publish');
 
-    // Price required: either a flat basePrice or at least one priced age band.
-    if (tour.basePrice == null && tour._count.ageBands === 0) {
+    // Price required, per pricing model:
+    // - UNIT (whole-unit / charter): a base price (the whole-unit price) + a unit type.
+    // - PER_PERSON: at least one priced age band, or a flat base-price fallback.
+    if (tour.pricingModel === PricingModel.UNIT) {
+      if (tour.basePrice == null)
+        errors.push(
+          'Unit-priced tours require a base price (the whole-unit price) to publish',
+        );
+      if (!tour.wholeUnitType)
+        errors.push(
+          'Unit-priced tours require a unit type (group / boat / vehicle / aircraft / package) to publish',
+        );
+    } else if (tour.basePrice == null && tour._count.ageBands === 0) {
       errors.push(
         'A price is required to publish (set a base price or add an age band)',
       );

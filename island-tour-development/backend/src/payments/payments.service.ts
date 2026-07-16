@@ -22,9 +22,10 @@ import type { PaymentIntentResponseDto } from './dto/payment.dto';
  * Payments - Stripe charges per booking + idempotent webhook settlement.
  *
  * The platform collects only its slice up front (master rule #21):
- * - OPERATOR_LINK → deposit (`depositAmount`); operator collects the balance.
+ * - OPERATOR_LINK / ON_ARRIVAL → deposit (`depositAmount`); operator collects the
+ *   balance (payment link vs on-site/cash on arrival). Both are deposit models.
  * - PAID_IN_FULL  → the whole `totalRetail`.
- * - ON_ARRIVAL / OPERATOR_FULL → no charge (paymentRequired = false).
+ * - OPERATOR_FULL → no charge (paymentRequired = false; dropped for v1 at reserve).
  *
  * A booking is truly CONFIRMED when its charge succeeds: the webhook calls
  * `BookingsService.confirmFromPayment`, which fires the EUR conversion (rule #22).
@@ -75,7 +76,7 @@ export class PaymentsService {
       booking.totalRetail,
     );
     if (!charge || charge.amount.lte(0)) {
-      return { paymentRequired: false }; // ON_ARRIVAL / OPERATOR_FULL / nothing due
+      return { paymentRequired: false }; // OPERATOR_FULL / nothing due
     }
 
     if (!(await this.stripe.isConfigured())) {
@@ -84,6 +85,13 @@ export class PaymentsService {
 
     // Idempotent: the same (booking, kind) always maps to one PaymentIntent.
     const idempotencyKey = `pi_${booking.id}_${charge.kind}`;
+    // Automatic payment methods: Stripe enables only methods that are BOTH activated
+    // on the account AND compatible with this currency - so it can't hit the
+    // currency/method conflicts an explicit list does (e.g. Klarna is USD-only and
+    // would reject an EUR intent). Card is collected inline via Card Elements +
+    // confirmCardPayment (no Stripe UI); PayPal/iDEAL confirm client-side and
+    // redirect. We return `paymentMethodTypes` so the checkout only offers eligible
+    // methods (the rest are hidden/disabled with a hint).
     const intent = await this.stripe.createPaymentIntent({
       amount: toMinorUnits(charge.amount),
       currency: booking.currency,
@@ -93,7 +101,6 @@ export class PaymentsService {
         displayRef: booking.displayRef,
         kind: charge.kind,
       },
-      methods: await this.stripe.paymentMethods(),
     });
 
     await this.prisma.payment.upsert({
@@ -122,6 +129,9 @@ export class PaymentsService {
       currency: booking.currency,
       kind: charge.kind,
       status: mapIntentStatus(intent.status),
+      // Eligible methods for this booking (account-activated + currency-compatible).
+      // The checkout offers only these; card is confirmed inline, PayPal/iDEAL redirect.
+      paymentMethodTypes: intent.payment_method_types ?? [],
     };
   }
 
@@ -234,7 +244,7 @@ export class PaymentsService {
 
   private async onIntentSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
     const bookingId = intent.metadata?.bookingId;
-    const charge = expandedCharge(intent);
+    const charge = await this.resolveCharge(intent);
 
     // Which method the customer used (card / paypal / apple_pay / google_pay) — Figma.
     const methodType =
@@ -275,6 +285,34 @@ export class PaymentsService {
     await this.bookings.confirmFromPayment(bookingId, billing);
   }
 
+  /**
+   * The charge behind a succeeded intent. Webhook payloads are never expanded, so
+   * `latest_charge` arrives as a string id and the legacy `charges.data[0]` list is
+   * gone on current API versions - without fetching, the card/billing snapshot would
+   * silently stay null on every booking. Never throws: a failed lookup only costs the
+   * snapshot, and must not block the confirmation.
+   */
+  private async resolveCharge(
+    intent: Stripe.PaymentIntent,
+  ): Promise<Stripe.Charge | undefined> {
+    const expanded = expandedCharge(intent);
+    if (expanded) return expanded;
+
+    const chargeId =
+      typeof intent.latest_charge === 'string' ? intent.latest_charge : null;
+    if (!chargeId) return undefined;
+
+    try {
+      return await this.stripe.retrieveCharge(chargeId);
+    } catch (err) {
+      this.logger.error(
+        `Could not retrieve charge ${chargeId} for intent ${intent.id} - card/billing snapshot skipped`,
+        err as Error,
+      );
+      return undefined;
+    }
+  }
+
   private async onIntentFailed(intent: Stripe.PaymentIntent): Promise<void> {
     await this.prisma.payment.updateMany({
       where: { intentId: intent.id },
@@ -295,10 +333,12 @@ function chargeFor(
 ): { amount: Prisma.Decimal; kind: PaymentKind } | null {
   switch (model) {
     case PaymentModel.OPERATOR_LINK:
+    case PaymentModel.ON_ARRIVAL:
+      // Deposit models: platform captures the deposit; operator collects the balance
+      // (payment link vs on-site). ON_ARRIVAL is a deposit model (guide §20.7).
       return { amount: deposit, kind: PaymentKind.DEPOSIT };
     case PaymentModel.PAID_IN_FULL:
       return { amount: total, kind: PaymentKind.FULL };
-    case PaymentModel.ON_ARRIVAL:
     case PaymentModel.OPERATOR_FULL:
       return null;
   }

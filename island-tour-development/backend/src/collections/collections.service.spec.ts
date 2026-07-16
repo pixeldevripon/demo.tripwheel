@@ -209,7 +209,10 @@ describe('CollectionsService', () => {
       tours.findPublicByIds.mockResolvedValue([{ id: 't2' }, { id: 't1' }]);
 
       const res = await service.getBySlug('curacao', 'top-10-tours');
-      expect(tours.findPublicByIds).toHaveBeenCalledWith(['t2', 't1']);
+      expect(tours.findPublicByIds).toHaveBeenCalledWith(
+        ['t2', 't1'],
+        undefined, // no ?currency on getBySlug -> source-currency cards
+      );
       expect(res.tours).toEqual([{ id: 't2' }, { id: 't1' }]);
     });
 

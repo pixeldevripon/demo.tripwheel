@@ -394,7 +394,11 @@ export class HubController {
   @Get(':id/our-picks')
   @Public()
   getOurPicks(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.hubService.getOurPicks(id, query.locale ?? Locale.en);
+    return this.hubService.getOurPicks(
+      id,
+      query.locale ?? Locale.en,
+      query.currency,
+    );
   }
 
   @Get(':id/our-picks/edit')
@@ -418,7 +422,11 @@ export class HubController {
   @Get(':id/comparison')
   @Public()
   getComparison(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.hubService.getComparison(id, query.locale ?? Locale.en);
+    return this.hubService.getComparison(
+      id,
+      query.locale ?? Locale.en,
+      query.currency,
+    );
   }
 
   @Get(':id/comparison/edit')

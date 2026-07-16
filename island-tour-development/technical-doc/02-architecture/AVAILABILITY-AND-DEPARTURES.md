@@ -3,7 +3,7 @@
 > **Canonical source:** master §E.9 (`island-tours-platform-master.html` v1.9; deep source `island-tours-availability-dev-spec.md`).
 > **Purpose:** Define the three-table availability model — `availability_schedules`, `availability_exceptions`, `departures` — that **replaces** the simple `TourSchedule` model. The platform is the single source of truth for what is bookable, always current regardless of operator API status.
 
-> **Status:** Target architecture. **Not yet built.** The current code has only a basic `TourSchedule` (see [§9](#9-current-code-state)). This document describes what supersedes it.
+> **Status:** **Built.** The three-table model (`availability_schedules`, `availability_exceptions`, `departures`), the materializer, and the nightly rolling job are implemented in `backend/src/availability/` + `backend/src/workers/nightly-jobs.service.ts`; the legacy `TourSchedule` is superseded. Horizon behavior (90-day create-time default, 364-day nightly rolling window, 30-day bookability gate) is documented in [§3.1](#31-materialization-horizons-as-built). The §10 table below is the original gap analysis, kept for history.
 >
 > **Siblings:** [`DATA-MODEL.md`](./DATA-MODEL.md) (E.9 field tables in the consolidated model) · [`TRACKING-AND-ANALYTICS.md`](./TRACKING-AND-ANALYTICS.md) (booking flow) · [`SLUG-REGISTRY.md`](./SLUG-REGISTRY.md).
 
@@ -112,6 +112,25 @@ This protects real-world state from being clobbered by a re-projection. A sync *
 
 **Edge rule:** lowering `capacity` below `booked_count` is **admin-only**, surfaces a warning, and **never auto-cancels** existing bookings. Restores (a cancellation freeing a seat, or a capacity raise) reopen the departure (`status → open`), but `sold_out_at` history is preserved for the demand signal.
 
+### 3.1 Materialization horizons (as built)
+
+`materializeTour(tourId, from?, to?)` (`backend/src/availability/availability-materializer.service.ts`) is driven by two callers with **different windows**. Three day-numbers are in play and must not be conflated:
+
+| Caller | Window | Effect |
+|---|---|---|
+| On schedule create/update (`availability.service.ts`, `to` omitted) | today .. today + **90** days (`DEFAULT_HORIZON_DAYS`) | Immediate availability for the next 90 days |
+| Nightly cron 3 AM (`nightly-jobs.service.ts` -> `materializeAllLive()`) | today .. today + **364** days | Rolling 12 months for every LIVE + active tour |
+
+- `MAX_HORIZON_DAYS = 365` is a hard cap - any window wider than this throws.
+- `BOOKABLE_HORIZON_DAYS = 30` is **unrelated** to materialization: it is the bookability/ranking gate ([§6](#6-bookability)), not a generation horizon. (30 = ranking gate, 90 = create-time default, 364 = nightly rolling horizon.)
+
+**Rolling model.** `from` defaults to today, so each nightly run slides the window forward one day; the new far edge (today + 364) gets a departure whenever a schedule matches that weekday. Past departures (date < today) fall outside the window and are **never touched or deleted** - they persist as history. An open-ended schedule (no `valid_until`) therefore produces departures **indefinitely**, always about 12 months ahead. Generation stops extending only when `valid_until` is passed, the schedule is paused, the tour is no longer LIVE/active, or the nightly job does not run.
+
+**Sharp edges to know:**
+
+1. **Create-time 90 vs nightly 364 mismatch.** A brand-new schedule shows only 90 days of availability until the next 3 AM run, then jumps to 12 months. To get 12 months immediately on create, pass `to = today + 364` instead of relying on the default.
+2. **The 12-month horizon depends on the nightly cron.** Nothing else extends past 90 days. If the nightly job is skipped or fails for a tour (per-tour errors are caught and logged, then it continues), that tour's far edge stops advancing and it drifts back toward the 90-day floor. This is a single point of dependence worth monitoring.
+
 ---
 
 ## 4. Read contract
@@ -205,7 +224,9 @@ API adapters are not required for launch; the platform runs fully on schedules +
 
 ## 10. Current code state
 
-The current schema has **only** a basic `TourSchedule` model (`backend/prisma/trips.prisma`), which this three-table model **supersedes**:
+> **Update (2026-07-15):** the three-table model + materializer + nightly rolling job described above are now **built** (`backend/prisma/availability.prisma`, `backend/src/availability/`, `backend/src/workers/nightly-jobs.service.ts`). The gap table below reflects the **original** analysis when only `TourSchedule` existed; treat the "Action: Build" rows as done except where noted elsewhere (e.g. quality-score/tier-eligibility TODOs in the nightly job, and API adapters which remain a later phase).
+
+The original schema had **only** a basic `TourSchedule` model (`backend/prisma/trips.prisma`), which this three-table model **supersedes**:
 
 ```prisma
 model TourSchedule {

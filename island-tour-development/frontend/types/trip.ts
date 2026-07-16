@@ -8,6 +8,8 @@ export type WholeUnitType = 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE
 export type PickupModel = 'INCLUDED' | 'PAID_ADDON' | 'NONE';
 export type AddOnUnit = 'PER_PERSON' | 'FLAT';
 export type PaymentModel = 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+/** On-site payment terms. Only meaningful when paymentModel = ON_ARRIVAL. */
+export type OnArrivalPayment = 'CARD_OR_CASH' | 'CASH_ONLY';
 export type TourBookingType = 'PRIVATE' | 'SHARED';
 export type FitnessLevel = 'EASY' | 'MODERATE' | 'CHALLENGING';
 export type ExclusionType = 'PAID_ADVANCE' | 'PAID_ONSITE' | 'UNAVAILABLE' | 'NOT_PERMITTED';
@@ -93,6 +95,7 @@ export interface TripListItem {
 
   // Booking / payment (master E.3)
   paymentModel: PaymentModel;
+  onArrivalPayment: OnArrivalPayment;
   depositPct: string;
   bookingType: TourBookingType | null;
 
@@ -351,6 +354,8 @@ export interface TripTranslation {
   categoryDisplay: string | null;
   localTipTitle: string | null;
   localTipBody: string | null;
+  /** "A note from {operator}" card in the confirmation email. */
+  operatorNote: string | null;
   meetingPointText: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
@@ -435,6 +440,7 @@ export interface CreateTripPayload {
   bookingCutoffMinutes?: number;
   cancellationHours?: number;
   paymentModel?: PaymentModel;
+  onArrivalPayment?: OnArrivalPayment;
   instantConfirmation?: boolean;
   bookingType?: TourBookingType;
   // OCTO product attributes (master E.3 §1.4)
@@ -485,6 +491,7 @@ export interface UpdateTripPayload {
   bookingCutoffMinutes?: number;
   cancellationHours?: number;
   paymentModel?: PaymentModel;
+  onArrivalPayment?: OnArrivalPayment;
   instantConfirmation?: boolean;
   bookingType?: TourBookingType;
   // OCTO product attributes (master E.3 §1.4)
@@ -650,6 +657,7 @@ export interface UpsertTripTranslationPayload {
   categoryDisplay?: string | null;
   localTipTitle?: string | null;
   localTipBody?: string | null;
+  operatorNote?: string | null;
   meetingPointText?: string | null;
   metaTitle?: string | null;
   metaDescription?: string | null;

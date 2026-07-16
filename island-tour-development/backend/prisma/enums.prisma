@@ -344,6 +344,16 @@ enum PaymentModel {
   OPERATOR_FULL
 }
 
+/// How an ON_ARRIVAL operator accepts the balance on site. Drives the two
+/// on_arrival variants of the confirmation email (wireframe Block 6 A/B):
+/// card_or_cash = "Card and cash are both accepted";
+/// cash_only    = "Card isn't possible and there's no ATM on site, so bring cash".
+/// Only meaningful when paymentModel = ON_ARRIVAL.
+enum OnArrivalPayment {
+  CARD_OR_CASH
+  CASH_ONLY
+}
+
 enum PaymentProvider {
   STRIPE
   MOLLIE

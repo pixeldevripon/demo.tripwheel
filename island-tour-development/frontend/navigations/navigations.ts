@@ -175,28 +175,28 @@ const dashboardNav: NavItem[] = [
     },
 
     // ─── Enquiries ─────────────────────────────────────────────────────────────
-    {
+/*     {
         title: 'Enquiries',
         url: 'enquiries',
         icon: Mail,
         permissions: [Permission.VIEW_ENQUIRIES],
-    },
+    }, */
 
     // ─── Leads ─────────────────────────────────────────────────────────────────
-    {
+/*     {
         title: 'Leads',
         url: 'leads',
         icon: MessageSquare,
         permissions: [Permission.VIEW_LEADS],
-    },
+    }, */
 
     // ─── Reviews ───────────────────────────────────────────────────────────────
-    {
+/*     {
         title: 'Reviews',
         url: 'reviews',
         icon: Star,
         permissions: [Permission.VIEW_REVIEWS],
-    },
+    }, */
 
     // ─── Settings ──────────────────────────────────────────────────────────────
     // Visible to admins (system settings) and operators (own company + payments).

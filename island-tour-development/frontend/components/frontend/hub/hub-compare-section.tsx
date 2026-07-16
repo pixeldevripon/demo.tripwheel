@@ -33,8 +33,10 @@ export type CompareCell = {
 export type CompareBoat = {
     /** Boat/trip name shown in the column header. */
     name: string;
-    /** "from" price (whole number, rendered with a `$` prefix). */
-    price: number;
+    /** Localized "from" price incl. currency symbol, e.g. "$140" / "2.200 €". */
+    priceDisplay: string;
+    /** Localized price-unit suffix (e.g. "/per boat" or "/per"); appended after the price. */
+    priceUnit?: string;
     /** Show a leading green check before the price (e.g. lowest price). */
     priceCheck?: boolean;
     /** Flat tour detail URL (locale-prefixed); the Book CTA links to it. */
@@ -285,8 +287,9 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
             <span className='text-it-text-muted'>
                 {from}{' '}
                 <span className='font-bold text-it-heading'>
-                    ${boat.price.toLocaleString()}
+                    {boat.priceDisplay}
                 </span>
+                {boat.priceUnit ? ` ${boat.priceUnit}` : ''}
             </span>
         </span>
     );

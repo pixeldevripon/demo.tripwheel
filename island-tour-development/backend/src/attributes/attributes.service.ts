@@ -14,6 +14,12 @@ import {
   SetTourAttributesDto,
   UpdateAttributeDefinitionDto,
 } from './dto/attribute.dto';
+import {
+  DERIVED_ATTRIBUTE_KEYS,
+  deriveTourAttributes,
+  derivedAttributeTourSelect,
+  type DerivedAttributeTour,
+} from './derived-attributes';
 
 @Injectable()
 export class AttributesService {
@@ -215,7 +221,9 @@ export class AttributesService {
         isActive: true,
         ...(category && { categories: { some: { categoryId: category.id } } }),
       },
-      select: { id: true, basePrice: true, durationMinutesFrom: true },
+      // `basePrice` for the price range; the derived-attribute columns power the
+      // facet counts for derived keys (computed, never read from tour_attributes).
+      select: { id: true, basePrice: true, ...derivedAttributeTourSelect },
     });
     const tourIds = tours.map((t) => t.id);
 
@@ -233,37 +241,55 @@ export class AttributesService {
       ? { min: Math.min(...durations), max: Math.max(...durations) }
       : null;
 
-    // Value counts from tour_attributes (ENUM_MULTI rows are JSON arrays → count members).
     const defByKey = new Map(defs.map((d) => [d.key, d]));
     const counts = new Map<string, Map<string, number>>();
+    const addMembers = (key: string, members: string[]) => {
+      const byValue = counts.get(key) ?? new Map<string, number>();
+      for (const m of members) byValue.set(m, (byValue.get(m) ?? 0) + 1);
+      counts.set(key, byValue);
+    };
+    const membersOf = (
+      dataType: AttributeDataType,
+      value: string,
+    ): string[] => {
+      if (dataType !== AttributeDataType.ENUM_MULTI) return [value];
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.map(String) : [value];
+      } catch {
+        return [value];
+      }
+    };
+
+    // Value counts for STORED (non-derived) attributes from tour_attributes.
+    // Derived keys are excluded here and counted from Tour columns below.
     if (tourIds.length) {
-      const rows = await this.prisma.tourAttribute.findMany({
-        where: {
-          tourId: { in: tourIds },
-          attributeKey: { in: defs.map((d) => d.key) },
-        },
-        select: { attributeKey: true, attributeValue: true },
-      });
-      for (const row of rows) {
-        const def = defByKey.get(row.attributeKey);
-        if (!def) continue;
-        let members: string[];
-        if (def.dataType === AttributeDataType.ENUM_MULTI) {
-          try {
-            const parsed = JSON.parse(row.attributeValue);
-            members = Array.isArray(parsed)
-              ? parsed.map(String)
-              : [row.attributeValue];
-          } catch {
-            members = [row.attributeValue];
-          }
-        } else {
-          members = [row.attributeValue];
+      const storedKeys = defs
+        .map((d) => d.key)
+        .filter((k) => !DERIVED_ATTRIBUTE_KEYS.has(k));
+      if (storedKeys.length) {
+        const rows = await this.prisma.tourAttribute.findMany({
+          where: { tourId: { in: tourIds }, attributeKey: { in: storedKeys } },
+          select: { attributeKey: true, attributeValue: true },
+        });
+        for (const row of rows) {
+          const def = defByKey.get(row.attributeKey);
+          if (!def) continue;
+          addMembers(
+            row.attributeKey,
+            membersOf(def.dataType, row.attributeValue),
+          );
         }
-        const byValue =
-          counts.get(row.attributeKey) ?? new Map<string, number>();
-        for (const m of members) byValue.set(m, (byValue.get(m) ?? 0) + 1);
-        counts.set(row.attributeKey, byValue);
+      }
+    }
+
+    // Value counts for DERIVED attributes, computed from each tour's first-class
+    // fields (single source of truth) rather than tour_attributes.
+    for (const tour of tours) {
+      for (const d of deriveTourAttributes(tour)) {
+        const def = defByKey.get(d.key);
+        if (!def) continue; // only surface derived keys that are in the (filterable) dictionary
+        addMembers(d.key, membersOf(def.dataType, d.value));
       }
     }
 
@@ -301,7 +327,11 @@ export class AttributesService {
 
   async getTourAttributes(tourId: string) {
     await this.toursService.findTourOrThrow(tourId);
-    const [rows, defs] = await Promise.all([
+    const [tour, rows, defs] = await Promise.all([
+      this.prisma.tour.findUniqueOrThrow({
+        where: { id: tourId },
+        select: derivedAttributeTourSelect,
+      }),
       this.prisma.tourAttribute.findMany({
         where: { tourId: tourId },
         select: { attributeKey: true, attributeValue: true },
@@ -311,12 +341,29 @@ export class AttributesService {
       }),
     ]);
     const defByKey = new Map(defs.map((d) => [d.key, d]));
-    return rows.map((r) => ({
-      key: r.attributeKey,
-      value: r.attributeValue,
-      displayName: defByKey.get(r.attributeKey)?.displayName ?? null,
-      dataType: defByKey.get(r.attributeKey)?.dataType ?? null,
+
+    // Stored rows, minus any derived key (those are computed below - single source
+    // of truth is the tour's Details, so ignore stale stored copies).
+    const stored = rows
+      .filter((r) => !DERIVED_ATTRIBUTE_KEYS.has(r.attributeKey))
+      .map((r) => ({
+        key: r.attributeKey,
+        value: r.attributeValue,
+        displayName: defByKey.get(r.attributeKey)?.displayName ?? null,
+        dataType: defByKey.get(r.attributeKey)?.dataType ?? null,
+        derived: false,
+      }));
+
+    // Derived (read-only) attributes computed from first-class Tour fields.
+    const derived = deriveTourAttributes(tour).map((d) => ({
+      key: d.key,
+      value: d.value,
+      displayName: defByKey.get(d.key)?.displayName ?? null,
+      dataType: defByKey.get(d.key)?.dataType ?? null,
+      derived: true,
     }));
+
+    return [...stored, ...derived];
   }
 
   /**
@@ -336,6 +383,16 @@ export class AttributesService {
     const keys = dto.attributes.map((a) => a.key);
     if (new Set(keys).size !== keys.length) {
       throw new BadRequestException('Duplicate attribute keys in payload');
+    }
+
+    // Derived attributes are the single source of truth of the tour's Details and
+    // cannot be set here (they are computed on read from first-class fields).
+    const derivedInPayload = keys.filter((k) => DERIVED_ATTRIBUTE_KEYS.has(k));
+    if (derivedInPayload.length) {
+      throw new BadRequestException(
+        `These attributes are derived from the tour's details and cannot be set here: ` +
+          `${derivedInPayload.join(', ')}. Update them in the tour's Details tab.`,
+      );
     }
 
     const defs = await this.prisma.attributeDefinition.findMany({

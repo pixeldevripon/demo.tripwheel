@@ -361,13 +361,14 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 </TabsContent>
 
                 <TabsContent value='pricing'>
-                    <TripPricingTab tripId={id} />
+                    <TripPricingTab trip={trip} />
                 </TabsContent>
 
                 <TabsContent value='schedules'>
                     <TripSchedulesTab
                         tripId={id}
                         maxPartySize={trip.maxPartySize}
+                        declaredStartTimes={trip.startTimes ?? []}
                     />
                 </TabsContent>
 

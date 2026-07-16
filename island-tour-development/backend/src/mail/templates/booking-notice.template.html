@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>{noticeTitle}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Founder-approved mobile refinement: tighten the outer gutter and cell
+       padding on phones so the card gets breathing space. Clients that ignore
+       style blocks keep the wireframe spacing. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+  <!-- Shared "notice" shell (cancellation ack, operator notices): same styles as
+       the traveller confirmation, VERBATIM - its spec asserts zero new style
+       attributes, so the family of emails cannot drift apart. -->
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {noticeTitle}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="40" alt="Island Tours" style="display:block;border:0;height:40px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- Headline -->
+        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:middle;padding-right:10px">
+              <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px">
+                <img src="{emailIconBase}/icon-check-green.png" width="16" height="16" alt="" style="vertical-align:middle;border:0">
+              </span>
+            </td>
+            <td style="vertical-align:middle"><div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">{noticeTitle}</div></td>
+          </tr></table>
+          <div style="font-size:13px;color:#6B7280;margin-top:10px">Booking reference: <b style="color:#1F2937">{bookingRef}</b></div>
+        </td></tr>
+
+        <!-- Tour line -->
+        <tr><td class="it-cell" style="padding:20px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">{tourName}</div>
+          <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">{dateLong} · {startTime}</div>
+
+          <div style="height:1px;background:#E8EAED;margin:16px 0 14px"></div>
+
+          [EACH noticeParagraphs]<div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">{item}</div>[/EACH]
+
+          [IF ctaUrl]<a href="{ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px">{ctaLabel}</a>[/IF]
+        </td></tr>
+
+        <!-- Sign-off -->
+        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+          </div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

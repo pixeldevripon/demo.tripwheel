@@ -70,7 +70,7 @@ export function ApiUploadMediaDocs() {
         'Upload up to 10 files through the NestJS server. ' +
         'Allowed MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `video/mp4`, `video/quicktime`. ' +
         'Max size: **10 MB per file**. ' +
-        'Files are uploaded to Cloudinary under `users/<userId>` and saved to the database sequentially. ' +
+        'Files are uploaded to Cloudinary under `islandtours/users/<userId>` and saved to the database sequentially. ' +
         'If a DB write fails, the corresponding Cloudinary asset is rolled back.',
     }),
     ApiConsumes('multipart/form-data'),

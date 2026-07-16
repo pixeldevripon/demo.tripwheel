@@ -13,8 +13,9 @@
  * `lib/api/public/*` are tagged `type:<id>` to match; aggregate/embedding reads
  * keep the coarse tag. The entity id is read straight from the mutation path.
  *
- * Path segments with no mapping (media library, platform/operator settings,
- * per-user wishlist, read-only slug-registry lookups) trigger no revalidation.
+ * Path segments with no mapping (media library, per-user wishlist, read-only
+ * slug-registry lookups) trigger no revalidation. Settings is a partial
+ * exception: only `/settings/site` backs a public read (see that case).
  */
 import { revalidateCacheTags, type CacheTag } from '@/app/_actions/revalidate';
 
@@ -140,6 +141,14 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // other platform settings are harmless to fold in (cheap per-user regen).
     case 'settings':
       tags.push('user-profile');
+      break;
+
+    // Only `PATCH /settings/site` backs a public read (the `public/site`
+    // projection: logo, WhatsApp, Instagram). The rest of this controller is
+    // SEO/SMTP/Stripe/Mollie/company config that no cached public page reads,
+    // so scope this to `site` rather than busting on every settings save.
+    case 'settings':
+      if (seg1 === 'site') tags.push('site-info');
       break;
 
     default:

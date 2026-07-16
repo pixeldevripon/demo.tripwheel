@@ -1,3 +1,9 @@
+/** Reusable validator: a positive integer (minutes/hours tuning knobs). */
+const positiveIntEnv = (v: string): string | null => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? null : 'must be a positive integer';
+};
+
 const REQUIRED: Record<string, (v: string) => string | null> = {
   DATABASE_URL: () => null,
   BETTER_AUTH_SECRET: (v) => {
@@ -50,6 +56,12 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
     if (v.length < 12) return 'must be at least 12 characters';
     return null;
   },
+  // Public origin for API links opened OUTSIDE the app (the confirmation email's
+  // "Add to calendar" .ics link, clicked in a mail client with no session).
+  // Defaults to BETTER_AUTH_URL, which is this API's own public origin; set only
+  // when the API is fronted by a different hostname.
+  PUBLIC_API_URL: (v) =>
+    /^https?:\/\//.test(v) ? null : 'must be an absolute http(s) URL',
   SMTP_HOST: () => null,
   SMTP_PORT: (v) =>
     isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null,
@@ -63,6 +75,11 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
       ? null
       : 'must be a positive number (e.g. 0.92)';
   },
+  // FX cache tuning (all optional - code defaults apply when unset). See
+  // technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md.
+  FX_RATE_TTL_MINUTES: positiveIntEnv, // rate freshness for booking quotes (default 120)
+  FX_RATE_STALE_DISPLAY_HOURS: positiveIntEnv, // display fallback window (default 24)
+  FX_RATE_REFRESH_MINUTES: positiveIntEnv, // scheduler cadence (default 30)
   META_PIXEL_ID: () => null,
   META_CAPI_TOKEN: () => null,
   META_CAPI_TEST_CODE: () => null,

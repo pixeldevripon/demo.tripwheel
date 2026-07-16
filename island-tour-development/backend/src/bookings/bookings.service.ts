@@ -5,16 +5,23 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   BookingStatus,
   CancellationRefund,
   CancelledBy,
+  Currency,
   DepartureStatus,
+  Locale,
   PaymentModel,
+  PricingModel,
   Prisma,
   Role,
+  TourBookingType,
+  TourStatus,
+  WholeUnitType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
@@ -35,23 +42,87 @@ import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { cutoffReached } from '@/availability/availability-status.util';
 import { storedStatusForFill } from '@/availability/availability-status.util';
 import { TiersService } from '@/tiers/tiers.service';
+import { FxRatesService } from '@/fx/fx-rates.service';
+import type { FxQuote } from '@/fx/fx-provider.interface';
 import {
   computeBookingPricing,
   type AddOnLineInput,
+  type BookingPricing,
   type PriceLineInput,
+  type UnitPricingInput,
 } from './booking-pricing.util';
+import type { EmailTemplateContext } from '@/mail/templates/email-template.renderer';
+import {
+  buildConfirmationEmailContext,
+  buildConfirmationEmailSubject,
+  buildConfirmationEmailText,
+  buildNoticeText,
+  buildOperatorNotificationContext,
+  buildOperatorNotificationSubject,
+  buildOperatorNotificationText,
+  buildPartyLines,
+  depositPctOf,
+  durationLabel,
+  emailIconBase,
+  formatDateLong,
+  preferLocale,
+  toLocale,
+  type RelatedTourInput,
+} from './booking-email.context';
+import { buildBookingIcs } from './booking-ics.util';
 import type {
+  BookingQuoteResponseDto,
   CancelBookingDto,
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  QuoteBookingDto,
+  QuoteLineDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
 
 const DEFAULT_HOLD_MINUTES = 30;
+/** Quote validity window (guide §20.4: 10-15 min is enough). */
+const QUOTE_TTL_MINUTES = 15;
+
+/**
+ * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
+ * Shared by the authoritative `reserve` write and the read-only `quote` preview.
+ */
+type PricingInput = Pick<
+  ReserveBookingDto,
+  | 'tourId'
+  | 'departureId'
+  | 'items'
+  | 'guests'
+  | 'travelerAges'
+  | 'addOns'
+  | 'pickupLocationId'
+>;
 
 type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
+
+/**
+ * The selected pickup point, frozen at reserve time. Snapshotted rather than joined
+ * live because the confirmation email renders the pickup TIME: a later operator edit
+ * to the PickupLocation must never rewrite what a confirmed traveler was told
+ * (guide §17, same immutability rule as `payment_model`).
+ */
+type PickupSnapshot = {
+  address: string | null;
+  minutesPrior: number | null;
+  windowStart: string | null;
+  windowEnd: string | null;
+};
+
+/** No pickup selected: meet-on-site, so every pickup column stays null. */
+const EMPTY_PICKUP: PickupSnapshot = {
+  address: null,
+  minutesPrior: null,
+  windowStart: null,
+  windowEnd: null,
+};
 
 @Injectable()
 export class BookingsService {
@@ -63,7 +134,55 @@ export class BookingsService {
     private readonly tracking: TrackingService,
     private readonly notifications: NotificationsService,
     private readonly tiers: TiersService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Resolve the FX-aware pricing for a booking context: source (tour) currency, the
+   * charged/booking currency (shopper choice, default = source), and the two rates it
+   * needs - source→booking and booking→EUR. Both rates come from {@link FxRatesService}
+   * (fails closed with 503 if a cross-currency rate is unavailable) and are snapshotted
+   * onto the booking so the conversion is auditable and never redone (guide §20.5/§20.8).
+   */
+  private async resolvePricing(
+    ctx: Awaited<ReturnType<BookingsService['loadContext']>>,
+    bookingCurrency: Currency,
+    now: Date,
+  ): Promise<{
+    sourceCurrency: Currency;
+    bookingCurrency: Currency;
+    sourceRate: FxQuote;
+    eurRate: FxQuote;
+    pricing: BookingPricing;
+  }> {
+    const sourceCurrency = ctx.tour.defaultCurrency;
+    const sourceRate = await this.fx.getRate(sourceCurrency, bookingCurrency);
+    const eurRate = await this.fx.getRate(bookingCurrency, Currency.EUR);
+
+    // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
+    const effectiveRate = await this.tiers.effectiveCommissionRate(
+      ctx.tourId,
+      now,
+    );
+    const effectiveTier = new Prisma.Decimal(effectiveRate)
+      .mul(100)
+      .toDecimalPlaces(2);
+
+    const pricing = computeBookingPricing({
+      lines: ctx.lines,
+      unit: ctx.unit,
+      addOns: ctx.addOnLines,
+      sourceCurrency,
+      bookingCurrency,
+      sourceFxRateToBooking: sourceRate.rate,
+      fxRateToEur: eurRate.rate,
+      paymentModel: ctx.tour.paymentModel,
+      depositPct: ctx.tour.depositPct,
+      commissionTier: effectiveTier,
+    });
+
+    return { sourceCurrency, bookingCurrency, sourceRate, eurRate, pricing };
+  }
 
   /** Fire the inventory + booking-status webhooks for a booking (fire-and-forget). */
   private emitBookingEvents(
@@ -106,7 +225,7 @@ export class BookingsService {
     if (prior) return mapBooking(prior);
 
     const ctx = await this.loadContext(dto);
-    this.validateRestrictions(ctx, dto);
+    this.validateRestrictions(ctx);
 
     const now = localNow(ctx.tour.timeZone);
     // Cutoff is computed live (master §4): now >= start - bookingCutoffMinutes → closed.
@@ -127,35 +246,24 @@ export class BookingsService {
       );
     }
 
-    // Effective commission: an ACTIVE Destination Spotlight overlays 35% over the tour's
-    // tier rate (SPOTLIGHT-DATA.md §3). effectiveCommissionRate returns a fraction; the
-    // pricing util expects a percentage. Snapshotted onto the booking, never retroactive.
-    const effectiveRate = await this.tiers.effectiveCommissionRate(
-      dto.tourId,
-      now,
-    );
-    const effectiveTier = new Prisma.Decimal(effectiveRate)
-      .mul(100)
-      .toDecimalPlaces(2);
-
-    const pricing = computeBookingPricing({
-      lines: ctx.lines,
-      addOns: ctx.addOnLines,
-      currency: ctx.tour.defaultCurrency,
-      paymentModel: ctx.tour.paymentModel,
-      depositPct: ctx.tour.depositPct,
-      commissionTier: effectiveTier,
-    });
+    // FX-aware pricing: charge in the shopper currency (default = tour currency),
+    // snapshotting the source-currency quote + both rates. Commission stays EUR
+    // (rule #22). The effective commission (tier + any ACTIVE Spotlight) is resolved
+    // inside resolvePricing and snapshotted, never retroactive.
+    const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
+    const { sourceCurrency, sourceRate, eurRate, pricing } =
+      await this.resolvePricing(ctx, bookingCurrency, now);
+    // Guest headcount (manifest + add-on multiplier). For a private unit charter the
+    // inventory claim below takes the WHOLE departure regardless of this count (D5).
     const seats = pricing.pax;
 
-    // Per-seat traveler ages, expanded in the same order as pricing.unitItems
-    // (one entry per seat, grouped by dto.items order). master child ages.
-    const seatAges: (number | null)[] = [];
-    for (const item of dto.items) {
-      for (let i = 0; i < item.quantity; i++) {
-        seatAges.push(item.travelerAge ?? null);
-      }
-    }
+    // Per-seat traveler ages, expanded in the same order as pricing.unitItems.
+    const seatAges = ctx.seatAges;
+
+    // UNIT + PRIVATE = exclusive charter: one booking takes the whole departure
+    // (master E.3). SHARED unit + all per-person bookings consume the guest headcount.
+    const exclusive =
+      ctx.isUnit && ctx.tour.bookingType === TourBookingType.PRIVATE;
 
     // Full local end instant = local start + tour duration (master E.8 TYP time range).
     const tourEndDateTime =
@@ -166,25 +274,54 @@ export class BookingsService {
     const operatorFull = ctx.tour.paymentModel === PaymentModel.OPERATOR_FULL;
 
     const created = await this.prisma.$transaction(async (tx) => {
-      // Atomic guarded count-up - the overbooking backstop (master §5). Claims only an
-      // OPEN departure with room, and flips it to SOLD_OUT (stamping soldOutAt) when full.
-      const claimed = await tx.$executeRaw`
-        UPDATE departures
-           SET booked_count = booked_count + ${seats},
-               status = CASE WHEN booked_count + ${seats} >= capacity
-                             THEN 'sold_out'::departure_status ELSE status END,
-               sold_out_at = CASE WHEN booked_count + ${seats} >= capacity AND sold_out_at IS NULL
-                                  THEN now() ELSE sold_out_at END,
-               updated_at = now()
-         WHERE id = ${dto.departureId}
-           AND tour_id = ${dto.tourId}
-           AND status = 'open'::departure_status
-           AND booked_count + ${seats} <= capacity`;
-      if (claimed === 0) {
+      // Fresh capacity read inside the txn - the guard threshold below is a literal,
+      // so re-reading here keeps it correct against a concurrent capacity edit.
+      const dep = await tx.departure.findUnique({
+        where: { id: dto.departureId },
+        select: { capacity: true },
+      });
+      if (!dep) {
+        throw new UnprocessableEntityException('Departure not found');
+      }
+      const capacity = dep.capacity;
+
+      // Atomic guarded seat claim - the overbooking backstop (master §5). A single
+      // conditional updateMany (type-safe columns): its WHERE re-evaluates against the
+      // current bookedCount under concurrency, so two bookings can't both claim the
+      // last seats (the loser matches 0 rows). The OPEN->SOLD_OUT flip + soldOutAt
+      // stamp follow via recomputeStoredStatus, which derives status from the new fill.
+      const claim = exclusive
+        ? // Exclusive charter (D5): only an OPEN, still-empty departure can be taken;
+          // claim the WHOLE unit so no one else can book it.
+          await tx.departure.updateMany({
+            where: {
+              id: dto.departureId,
+              tourId: dto.tourId,
+              status: DepartureStatus.OPEN,
+              bookedCount: 0,
+            },
+            data: { bookedCount: capacity },
+          })
+        : // Shared / per-person: guarded count-up; claims only if seats remain.
+          await tx.departure.updateMany({
+            where: {
+              id: dto.departureId,
+              tourId: dto.tourId,
+              status: DepartureStatus.OPEN,
+              bookedCount: { lte: capacity - seats },
+            },
+            data: { bookedCount: { increment: seats } },
+          });
+      if (claim.count === 0) {
         throw new UnprocessableEntityException(
-          'Not enough availability for this departure',
+          exclusive
+            ? 'This departure is no longer available for a private charter'
+            : 'Not enough availability for this departure',
         );
       }
+      // Re-derive OPEN/SOLD_OUT + stamp soldOutAt from the new fill (sticky
+      // CLOSED/CANCELLED states are left untouched).
+      await this.recomputeStoredStatus(tx, dto.departureId);
 
       const status = operatorFull
         ? BookingStatus.CONFIRMED
@@ -199,7 +336,7 @@ export class BookingsService {
           displayRef: makeDisplayRef(id, localStart),
           status,
           paymentModel: ctx.tour.paymentModel,
-          currency: ctx.tour.defaultCurrency,
+          currency: bookingCurrency,
           localDate: ctx.departure.date,
           startTime: timeOfDay(ctx.departure.startTime),
           tourStartDateTime: localStart,
@@ -213,16 +350,24 @@ export class BookingsService {
                   (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
               ),
           utcConfirmedAt: operatorFull ? new Date() : null,
+          exclusiveDeparture: exclusive,
           pickupRequested: dto.pickupRequested ?? false,
           pickupLocationId: dto.pickupLocationId ?? null,
-          pickupAddress: ctx.pickupAddress,
+          pickupAddress: ctx.pickupSnapshot.address,
+          pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
+          pickupWindowStart: ctx.pickupSnapshot.windowStart,
+          pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+          // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
+          // (and misleading in the email) on any other model.
+          onArrivalPayment:
+            ctx.tour.paymentModel === PaymentModel.ON_ARRIVAL
+              ? ctx.tour.onArrivalPayment
+              : null,
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
-          couponCode: dto.couponCode ?? null,
-          discountAmount:
-            dto.discountAmount != null
-              ? new Prisma.Decimal(dto.discountAmount)
-              : null,
+          // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
+          // engine, a client-supplied discount is untrusted, so we never write one -
+          // the full price stays authoritative. Wire this when the coupon engine exists.
           totalRetail: pricing.totalRetail,
           totalNet: pricing.totalNet,
           depositAmount: pricing.depositAmount,
@@ -231,6 +376,17 @@ export class BookingsService {
           commissionAmount: pricing.commissionAmount,
           totalEur: pricing.totalEur,
           fxRateToEur: pricing.fxRateToEur,
+          // Multi-currency source snapshot + FX audit (guide §20.2/§20.8). Rates are
+          // frozen here and never refetched at payment/TYP/email/tracking time.
+          sourceCurrency,
+          sourceTotalRetail: pricing.sourceTotalRetail,
+          sourceDepositAmount: pricing.sourceDepositAmount,
+          sourceBalanceAmount: pricing.sourceBalanceAmount,
+          sourceFxRateToBooking: pricing.sourceFxRateToBooking,
+          sourceFxProvider: sourceRate.provider,
+          sourceFxProviderAsOf: sourceRate.providerAsOf,
+          eurFxProvider: eurRate.provider,
+          eurFxProviderAsOf: eurRate.providerAsOf,
           unitItems: {
             create: pricing.unitItems.map((u, idx) => ({
               ageBandId: u.ageBandId,
@@ -268,6 +424,111 @@ export class BookingsService {
       return mapBooking(finalized);
     }
     return mapBooking(created);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Quote - server-authoritative price preview (no side effects, master §5)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Compute the server-authoritative price for a prospective booking WITHOUT
+   * claiming seats or persisting anything (guide §20.4). It reuses the exact
+   * pricing pipeline `reserve` uses (`loadContext` + `computeBookingPricing`), so
+   * the preview and the eventual write agree; `reserve` still recomputes and is
+   * the source of truth (a quote is never trusted for a persisted booking).
+   *
+   * Priced in the shopper currency (`dto.currency`, default = tour currency): the totals
+   * and per-line breakdown are BOOKING currency, with the original tour-currency quote in
+   * `source*` and both FX rates snapshotted (fails closed 503 if a cross rate is missing).
+   * Discounts/coupons are deferred (flaw #2) until a coupon-validation engine exists.
+   */
+  async quote(dto: QuoteBookingDto): Promise<BookingQuoteResponseDto> {
+    const ctx = await this.loadContext(dto);
+    this.validateRestrictions(ctx);
+
+    const now = localNow(ctx.tour.timeZone);
+    const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
+    const { sourceCurrency, sourceRate, pricing } = await this.resolvePricing(
+      ctx,
+      bookingCurrency,
+      now,
+    );
+
+    // Convert a source-currency amount into booking currency for the breakdown, using
+    // the same per-line rounding as the money math so the lines reconcile to the total.
+    const toBooking = (v: Prisma.Decimal) =>
+      v.times(sourceRate.rate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+    // ── Human-readable breakdown in BOOKING currency (participants, then add-ons) ──
+    const addOnsTotal = pricing.addOns.reduce(
+      (sum, a) => sum.plus(a.totalPrice),
+      new Prisma.Decimal(0),
+    );
+    const lines: QuoteLineDto[] = [];
+    if (ctx.isUnit) {
+      // The charter subtotal is the whole-unit retail (total minus add-ons).
+      const charterSubtotal = pricing.totalRetail.minus(addOnsTotal);
+      lines.push({
+        kind: 'participant',
+        ageBandId: null,
+        label: unitCharterLabel(ctx.tour.wholeUnitType),
+        quantity: ctx.guests,
+        unitPrice: (ctx.tour.basePrice != null
+          ? toBooking(ctx.tour.basePrice)
+          : charterSubtotal
+        ).toString(),
+        lineTotal: charterSubtotal.toString(),
+      });
+    } else {
+      for (const l of ctx.lines) {
+        const unitPrice = toBooking(l.priceRetail);
+        lines.push({
+          kind: 'participant',
+          ageBandId: l.ageBandId,
+          label: l.label ?? 'Participant',
+          quantity: l.quantity,
+          unitPrice: unitPrice.toString(),
+          lineTotal: unitPrice
+            .times(l.quantity)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+            .toString(),
+        });
+      }
+    }
+    for (const a of pricing.addOns) {
+      lines.push({
+        kind: 'addon',
+        ageBandId: null,
+        label: a.name,
+        quantity: a.quantity,
+        unitPrice: a.unitPrice.toString(),
+        lineTotal: a.totalPrice.toString(),
+      });
+    }
+
+    return {
+      quoteId: randomUUID(),
+      expiresAt: new Date(
+        Date.now() + QUOTE_TTL_MINUTES * 60_000,
+      ).toISOString(),
+      tourCurrency: sourceCurrency,
+      currency: bookingCurrency,
+      sourceFxRateToBooking: pricing.sourceFxRateToBooking.toString(),
+      fxRateToEur: pricing.fxRateToEur ? pricing.fxRateToEur.toString() : null,
+      sourceTotalRetail: pricing.sourceTotalRetail.toString(),
+      totalRetail: pricing.totalRetail.toString(),
+      sourceDepositAmount: pricing.sourceDepositAmount.toString(),
+      depositAmount: pricing.depositAmount.toString(),
+      sourceBalanceAmount: pricing.sourceBalanceAmount.toString(),
+      balanceAmount: pricing.balanceAmount.toString(),
+      commissionRate: pricing.commissionRate.toString(),
+      commissionAmount: pricing.commissionAmount
+        ? pricing.commissionAmount.toString()
+        : null,
+      paymentModel: ctx.tour.paymentModel,
+      pax: pricing.pax,
+      lines,
+    };
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -436,46 +697,641 @@ export class BookingsService {
       select: { name: true, destination: { select: { slug: true } } },
     });
 
-    await this.sendConfirmationEmail(updated, tour?.name ?? 'Your tour');
+    await this.sendConfirmationEmail(updated);
+    await this.sendOperatorNotification(updated);
     if (commissionAmount != null) {
       await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
     }
     return updated;
   }
 
+  /**
+   * @param rethrow  Confirm-time sends swallow failures on purpose: the money is
+   *   already captured, so a dead SMTP host must never fail the booking (the
+   *   traveler can resend from the TYP). A traveler-initiated resend passes true
+   *   - they asked, so tell them the truth instead of showing a false success.
+   */
   private async sendConfirmationEmail(
     booking: BookingWithItems,
-    tourTitle: string,
+    { rethrow = false }: { rethrow?: boolean } = {},
   ): Promise<void> {
     if (!booking.contactEmail) return; // no recipient yet (e.g. OPERATOR_FULL before contact)
-    const manageUrl =
-      process.env.FRONTEND_URL && booking.island
-        ? `${process.env.FRONTEND_URL}/${booking.island}/thank-you/${booking.publicRef}`
-        : null;
     try {
-      await this.mail.sendBookingConfirmationEmail(booking.contactEmail, {
-        customerName: booking.contactFirstName,
-        displayRef: booking.displayRef,
-        tourTitle,
-        localDate: dateKey(booking.localDate),
-        startTime: booking.startTime,
-        partySize: booking.unitItems.length,
-        currency: booking.currency,
-        totalRetail: booking.totalRetail.toString(),
-        depositPaid:
-          booking.paymentModel === PaymentModel.ON_ARRIVAL ||
-          booking.paymentModel === PaymentModel.OPERATOR_FULL
-            ? null
-            : booking.depositAmount.toString(),
-        balanceDue: booking.balanceAmount.toString(),
-        manageUrl,
+      const context = await this.assembleConfirmationContext(booking);
+      const subject = buildConfirmationEmailSubject({
+        tourName: String(context.tourName ?? 'Your tour'),
+        dateShort: String(context.dateShort ?? ''),
+        start: booking.tourStartDateTime,
+        localNow: localNow(booking.tourTimeZone ?? 'UTC'),
       });
+      await this.mail.sendBookingConfirmationEmail(
+        booking.contactEmail,
+        subject,
+        context,
+        buildConfirmationEmailText(context),
+      );
     } catch (err) {
       this.logger.error(
         `Confirmation email failed for ${booking.displayRef}`,
         err as Error,
       );
+      if (rethrow) throw err;
     }
+  }
+
+  /**
+   * "Booking Received" notification to the tour operator (C7). Fires once per
+   * confirmed booking, right after the traveller confirmation.
+   *
+   * Recipient is the operator's COMPANY email first (founder decision), falling
+   * back to the OCTO supplier contact. Failures are swallowed for the same reason
+   * confirm-time traveller sends are: the money is captured, so a dead mailbox
+   * must never fail the booking - it only logs.
+   */
+  private async sendOperatorNotification(
+    booking: BookingWithItems,
+  ): Promise<void> {
+    try {
+      const operator = await this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true } },
+        },
+      });
+      const to =
+        operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+      if (!to) {
+        this.logger.warn(
+          `No operator email on file for booking ${booking.displayRef} - operator not notified`,
+        );
+        return;
+      }
+
+      // Operators work in English regardless of the traveller's locale.
+      const travellerCtx = await this.assembleConfirmationContext(
+        booking,
+        Locale.en,
+      );
+      const context = buildOperatorNotificationContext(travellerCtx, {
+        guestName:
+          booking.contactFullName ??
+          ([booking.contactFirstName, booking.contactLastName]
+            .filter(Boolean)
+            .join(' ') ||
+            null),
+        guestEmail: booking.contactEmail,
+        guestPhone: booking.contactPhone,
+        dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+      });
+      await this.mail.sendOperatorBookingReceivedEmail(
+        to,
+        buildOperatorNotificationSubject(context),
+        context,
+        buildOperatorNotificationText(context),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Operator notification failed for ${booking.displayRef}`,
+        err as Error,
+      );
+    }
+  }
+
+  /**
+   * Load everything the locked confirmation template needs and fold it into the
+   * token context. The assembly itself is a pure function
+   * ({@link buildConfirmationEmailContext}) so the wireframe's formatting rules are
+   * testable without a database; this method is only the I/O around it.
+   */
+  private async assembleConfirmationContext(
+    booking: BookingWithItems,
+    localeOverride?: Locale,
+  ): Promise<EmailTemplateContext> {
+    // The operator notification reuses this context but formats in English (the
+    // dashboard language), regardless of what locale the traveller booked in.
+    const locale = localeOverride ?? toLocale(booking.customerLocale);
+
+    const [tour, operator, site] = await Promise.all([
+      this.prisma.tour.findUnique({
+        where: { id: booking.tourId },
+        select: {
+          name: true,
+          slug: true,
+          durationMinutesFrom: true,
+          cancellationHours: true,
+          checkInMinutesBefore: true,
+          meetingPointLat: true,
+          meetingPointLng: true,
+          destinationId: true,
+          destination: { select: { name: true, slug: true } },
+          ageBands: { select: { id: true, label: true } },
+          images: {
+            where: { isHero: true },
+            select: { url: true },
+            take: 1,
+          },
+          languages: { select: { language: true } },
+          // English is the canonical fallback when a locale has no translation row
+          // (master: every content endpoint falls back to en).
+          translations: {
+            where: { locale: { in: [locale, Locale.en] } },
+            select: {
+              locale: true,
+              whatToBring: true,
+              knowBeforeYouGo: true,
+              meetingPointText: true,
+              operatorNote: true,
+            },
+          },
+          locations: {
+            select: {
+              types: true,
+              streetAddress: true,
+              translations: {
+                where: { locale: { in: [locale, Locale.en] } },
+                select: { locale: true, title: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          contactPhone: true,
+          companyInfo: {
+            select: {
+              companyName: true,
+              companyEmail: true,
+              companyPhone: true,
+            },
+          },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({
+        select: {
+          logo: true,
+          whatsappNumber: true,
+          enableWhatsappChat: true,
+        },
+      }),
+    ]);
+    if (!tour) throw new NotFoundException('Tour not found');
+
+    const related = await this.loadRelatedTours(
+      tour.destinationId,
+      booking.tourId,
+    );
+
+    const pickLocation = (type: string): string | null => {
+      const loc = tour.locations.find((l) => l.types.includes(type));
+      if (!loc) return null;
+      const title = preferLocale(loc.translations, locale)?.title ?? null;
+      return title ?? loc.streetAddress ?? null;
+    };
+
+    const translation = preferLocale(tour.translations, locale);
+    const meetingPoint =
+      pickLocation('START') ?? translation?.meetingPointText ?? null;
+
+    // Free-cancellation deadline = start - cancellationHours, in LOCAL wall-clock
+    // space (same rule as the TYP; computed, never stored - guide §14).
+    const cancelDeadline = booking.tourStartDateTime
+      ? new Date(
+          booking.tourStartDateTime.getTime() -
+            tour.cancellationHours * 3_600_000,
+        )
+      : null;
+
+    return buildConfirmationEmailContext({
+      booking: {
+        displayRef: booking.displayRef,
+        publicRef: booking.publicRef,
+        island: booking.island,
+        currency: booking.currency,
+        customerLocale: locale,
+        contactFirstName: booking.contactFirstName,
+        paymentModel: booking.paymentModel,
+        onArrivalPayment: booking.onArrivalPayment,
+        depositPct: depositPctOf(
+          booking.depositAmount.toString(),
+          booking.totalRetail.toString(),
+        ),
+        depositAmount: booking.depositAmount.toString(),
+        balanceAmount: booking.balanceAmount.toString(),
+        totalAmount: booking.totalRetail.toString(),
+        tourStartDateTime: booking.tourStartDateTime,
+        localDate: booking.localDate,
+        startTime: booking.startTime,
+        pickupRequested: booking.pickupRequested,
+        pickupAddress: booking.pickupAddress,
+        pickupMinutesPrior: booking.pickupMinutesPrior,
+        pickupWindowStart: booking.pickupWindowStart,
+        pickupWindowEnd: booking.pickupWindowEnd,
+        notes: booking.notes,
+        cancelDeadline,
+        partyLines: buildPartyLines(
+          booking.unitItems,
+          new Map(tour.ageBands.map((b) => [b.id, b.label])),
+        ),
+      },
+      tour: {
+        name: tour.name,
+        slug: tour.slug,
+        heroImageUrl: tour.images[0]?.url ?? null,
+        durationLabel: durationLabel(tour.durationMinutesFrom),
+        languageCodes: tour.languages.map((l) => l.language),
+        checkInMinutesBefore: tour.checkInMinutesBefore,
+        meetingPoint,
+        meetingPointLat: tour.meetingPointLat,
+        meetingPointLng: tour.meetingPointLng,
+        endPoint: pickLocation('END'),
+        whatToBring: translation?.whatToBring ?? [],
+        knowBeforeYouGo: translation?.knowBeforeYouGo ?? [],
+        operatorNote: translation?.operatorNote ?? null,
+      },
+      operator: {
+        name: operator?.companyInfo?.companyName ?? null,
+        email:
+          operator?.contactEmail ?? operator?.companyInfo?.companyEmail ?? null,
+        phone:
+          operator?.contactPhone ?? operator?.companyInfo?.companyPhone ?? null,
+      },
+      site: {
+        logoUrl: site?.logo ?? null,
+        whatsappNumber: site?.whatsappNumber ?? null,
+        whatsappEnabled: site?.enableWhatsappChat ?? false,
+      },
+      destination: {
+        name: tour.destination.name,
+        slug: tour.destination.slug,
+      },
+      relatedTours: related,
+      config: {
+        frontendUrl: process.env.FRONTEND_URL ?? 'https://island.tours',
+        // BETTER_AUTH_URL is this API's own public origin (it is what Better Auth
+        // builds callback URLs from) and is a REQUIRED env, so it is the one value
+        // guaranteed to be right here. PUBLIC_API_URL overrides it if the API is
+        // ever fronted by a different host.
+        apiUrl:
+          process.env.PUBLIC_API_URL ??
+          process.env.BETTER_AUTH_URL ??
+          'https://api.island.tours',
+        emailIconBase: emailIconBase(),
+      },
+    });
+  }
+
+  /**
+   * The two "More {island} experiences" cards: same destination, live, bookable,
+   * excluding the booked tour, in the master §7.2 canonical order
+   * (`tier_rank ASC, quality_score DESC, id ASC`) - the same order the listing uses,
+   * so the email never contradicts the site.
+   *
+   * Scoped by DESTINATION, deliberately not by category (founder, 2026-07-16): the
+   * block is "More {island} experiences", so it cross-sells the island rather than
+   * more of what the traveller just booked.
+   */
+  private async loadRelatedTours(
+    destinationId: string,
+    excludeTourId: string,
+  ): Promise<RelatedTourInput[]> {
+    const rows = await this.prisma.tour.findMany({
+      where: {
+        destinationId,
+        id: { not: excludeTourId },
+        status: TourStatus.LIVE,
+        isBookable: true,
+      },
+      orderBy: [{ tierRank: 'asc' }, { qualityScore: 'desc' }, { id: 'asc' }],
+      take: 2,
+      select: {
+        name: true,
+        slug: true,
+        priceFrom: true,
+        defaultCurrency: true,
+        aggregateRating: true,
+        images: { where: { isHero: true }, select: { url: true }, take: 1 },
+      },
+    });
+
+    return rows.map((t) => ({
+      name: t.name,
+      slug: t.slug,
+      imageUrl: t.images[0]?.url ?? null,
+      aggregateRating: t.aggregateRating,
+      priceFrom: t.priceFrom?.toString() ?? null,
+      currency: t.defaultCurrency,
+    }));
+  }
+
+  /**
+   * Resend the confirmation email for a booking, from the thank-you page.
+   *
+   * Keyed on `publicRef` (the unguessable UUID already in the TYP URL, master
+   * rule #7) and NOT on a caller-supplied address: the mail always goes to the
+   * `contactEmail` stored on the booking. That is the important property - this
+   * route is @Public, so if it accepted a recipient it would be an open relay
+   * for spamming arbitrary inboxes. Worst case here is a traveler's own inbox,
+   * and the route is throttled hard on top (see the controller).
+   *
+   * Only CONFIRMED bookings: an ON_HOLD booking has no confirmation to resend,
+   * and a CANCELLED one must never re-emit "You're booked".
+   */
+  async resendConfirmation(publicRef: string): Promise<{ sent: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      include: { unitItems: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking has a confirmation email to resend',
+      );
+    }
+    if (!booking.contactEmail) {
+      throw new UnprocessableEntityException(
+        'This booking has no contact email on file',
+      );
+    }
+
+    this.logger.log(`Resending confirmation for ${booking.displayRef}`);
+    await this.sendConfirmationEmail(booking, { rethrow: true });
+    return { sent: true };
+  }
+
+  /**
+   * Traveller-initiated cancellation REQUEST from the tokenized /cancel page
+   * (master 6.4/C1 + the wireframe's modal): it never cancels anything itself -
+   * it emails the Island Tours admin, who processes the refund and confirms by
+   * email. Keyed on `publicRef` and @Public for the same reason as the TYP.
+   *
+   * `utcCancellationRequestedAt` is stamped on the FIRST request and never
+   * overwritten: refund eligibility is judged at the moment the traveller asked,
+   * not when the admin gets to it (gap #16). A repeat submit re-notifies the
+   * admin (throttled at the route) but keeps the original instant.
+   *
+   * Mail failure THROWS (like the TYP resend): the traveller is on a page waiting
+   * for "request sent" - a swallowed failure here would silently lose a refund
+   * request, which is the worst possible outcome for trust.
+   */
+  async requestCancellation(
+    publicRef: string,
+    reason?: string,
+  ): Promise<{ requested: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        id: true,
+        displayRef: true,
+        publicRef: true,
+        status: true,
+        utcCancellationRequestedAt: true,
+        contactFullName: true,
+        contactFirstName: true,
+        contactLastName: true,
+        contactEmail: true,
+        customerLocale: true,
+        localDate: true,
+        startTime: true,
+        tourStartDateTime: true,
+        totalRetail: true,
+        currency: true,
+        paymentModel: true,
+        operatorId: true,
+        island: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking can request cancellation',
+      );
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      this.logger.error(
+        'ADMIN_EMAIL is not configured - cancellation requests cannot reach anyone',
+      );
+      throw new ServiceUnavailableException(
+        'Cancellation requests are temporarily unavailable - contact us on WhatsApp',
+      );
+    }
+
+    if (!booking.utcCancellationRequestedAt) {
+      await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: { utcCancellationRequestedAt: new Date() },
+      });
+    }
+
+    await this.mail.sendCancellationRequestEmail(adminEmail, {
+      displayRef: booking.displayRef,
+      tourName: booking.tour?.name ?? 'Unknown tour',
+      dateLabel: `${dateKey(booking.localDate)}${booking.startTime ? ` ${booking.startTime}` : ''}`,
+      guestName:
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          'Unknown'),
+      guestEmail: booking.contactEmail ?? 'no email on file',
+      totalAmount: `${booking.currency} ${booking.totalRetail.toString()}`,
+      paymentModel: booking.paymentModel,
+      reason: reason?.trim() || null,
+      dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+    });
+
+    // Master 6.4 v1 flow: request -> admin email -> admin marks cancelled ->
+    // notifications to BOTH traveller and operator. The founder additionally
+    // wants an immediate ack pair at request time: traveller ("we're processing
+    // it") + operator heads-up. These are best-effort - the request itself has
+    // already reached the admin, so a dead mailbox here must not fail it.
+    await this.sendCancellationRequestNotices(booking, reason?.trim() || null);
+
+    this.logger.log(`Cancellation requested for ${booking.displayRef}`);
+    return { requested: true };
+  }
+
+  /** Traveller ack + operator heads-up for a just-submitted cancellation request. */
+  private async sendCancellationRequestNotices(
+    booking: {
+      displayRef: string;
+      publicRef: string;
+      operatorId: string;
+      island: string;
+      contactEmail: string | null;
+      contactFullName: string | null;
+      contactFirstName: string | null;
+      contactLastName: string | null;
+      customerLocale: string | null;
+      localDate: Date;
+      tourStartDateTime: Date | null;
+      startTime: string | null;
+      tour: { name: string } | null;
+    },
+    reason: string | null,
+  ): Promise<void> {
+    const [operator, site] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true, companyName: true } },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+    ]);
+
+    const base = (process.env.FRONTEND_URL ?? 'https://island.tours').replace(
+      /\/$/,
+      '',
+    );
+    const tourName = booking.tour?.name ?? 'Your tour';
+    const guestName =
+      booking.contactFullName ??
+      ([booking.contactFirstName, booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        'The traveller');
+    const shared = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: site?.logo ?? '',
+      bookingRef: booking.displayRef,
+      tourName,
+      startTime: booking.startTime ?? '',
+    };
+
+    // Traveller ack, in their locale's date format ("request is under processing").
+    if (booking.contactEmail) {
+      const locale = toLocale(booking.customerLocale);
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          locale,
+        ),
+        noticeTitle: 'We got your cancellation request.',
+        noticeParagraphs: [
+          'Your request is timestamped from the moment you submitted it, so your free-cancellation terms are judged from then - not from when we process it.',
+          "We're processing it now. The amount you paid is refunded to your original payment method. We'll email you to confirm once it's done.",
+          'Changed your mind? Just reply to this email before we confirm the cancellation.',
+        ],
+        ctaUrl: `${base}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaLabel: 'View your booking',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          booking.contactEmail,
+          `We got your cancellation request - ${booking.displayRef}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation ack to traveller failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+
+    // Operator heads-up (company inbox first, founder decision).
+    const operatorEmail =
+      operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+    if (operatorEmail) {
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          Locale.en,
+        ),
+        noticeTitle: 'Cancellation requested.',
+        noticeParagraphs: [
+          `${guestName} asked to cancel booking ${booking.displayRef} for ${tourName}.`,
+          ...(reason ? [`Their note: ${reason}`] : []),
+          "Island Tours processes the refund and confirms the cancellation. You'll be notified when it is final - no action needed from you yet.",
+        ],
+        ctaUrl: `${base}/dashboard/bookings`,
+        ctaLabel: 'View booking in your dashboard',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          operatorEmail,
+          `Cancellation requested - ${booking.displayRef}: ${tourName}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation notice to operator failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+  }
+
+  /**
+   * The confirmation email's "Add to calendar" target: a one-event .ics for this
+   * booking.
+   *
+   * Keyed on `publicRef` and `@Public` for the same reason as the TYP - the link is
+   * clicked from an email client with no session. It exposes only what the email
+   * already told the traveler, and the ref is unguessable (master rule #7).
+   *
+   * Emitted in real UTC (`localWallClockToUtc`): a calendar entry is an absolute
+   * moment, and the stored start is local wall clock.
+   */
+  async getCalendar(publicRef: string): Promise<string> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        publicRef: true,
+        displayRef: true,
+        status: true,
+        tourStartDateTime: true,
+        tourEndDateTime: true,
+        tourTimeZone: true,
+        pickupAddress: true,
+        tour: { select: { name: true } },
+        operator: {
+          select: { companyInfo: { select: { companyName: true } } },
+        },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    // A cancelled booking must not keep handing out a calendar entry.
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking has a calendar entry',
+      );
+    }
+
+    const toUtc = (local: Date | null): Date | null =>
+      local && booking.tourTimeZone
+        ? localWallClockToUtc(local, booking.tourTimeZone)
+        : null;
+
+    const ics = buildBookingIcs({
+      publicRef: booking.publicRef,
+      displayRef: booking.displayRef,
+      tourName: booking.tour?.name ?? 'Your tour',
+      operatorName: booking.operator?.companyInfo?.companyName ?? null,
+      startUtc: toUtc(booking.tourStartDateTime),
+      endUtc: toUtc(booking.tourEndDateTime),
+      location: booking.pickupAddress,
+      description: `Booking reference: ${booking.displayRef}`,
+    });
+    if (!ics) {
+      throw new UnprocessableEntityException(
+        'This booking has no scheduled start time',
+      );
+    }
+    return ics;
   }
 
   private async fireConversion(
@@ -535,7 +1391,12 @@ export class BookingsService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (booking.departureId) {
-        await this.releaseSeats(tx, booking.departureId, seats);
+        await this.releaseSeats(
+          tx,
+          booking.departureId,
+          seats,
+          booking.exclusiveDeparture,
+        );
       }
       await tx.bookingUnitItem.updateMany({
         where: { bookingId: booking.id },
@@ -637,6 +1498,7 @@ export class BookingsService {
         localDate: true,
         operatorId: true,
         publicRef: true,
+        exclusiveDeparture: true,
         _count: { select: { unitItems: true } },
       },
     });
@@ -646,7 +1508,12 @@ export class BookingsService {
       try {
         await this.prisma.$transaction(async (tx) => {
           if (b.departureId) {
-            await this.releaseSeats(tx, b.departureId, b._count.unitItems);
+            await this.releaseSeats(
+              tx,
+              b.departureId,
+              b._count.unitItems,
+              b.exclusiveDeparture,
+            );
           }
           await tx.bookingUnitItem.updateMany({
             where: { bookingId: b.id },
@@ -688,8 +1555,28 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
       include: {
-        unitItems: { select: { id: true } },
-        tour: { select: { name: true } },
+        unitItems: { select: { id: true, ageBandId: true } },
+        tour: {
+          select: {
+            name: true,
+            durationMinutesFrom: true,
+            cancellationHours: true,
+            ageBands: { select: { id: true, label: true } },
+          },
+        },
+        operator: {
+          select: {
+            contactEmail: true,
+            contactPhone: true,
+            companyInfo: {
+              select: {
+                companyName: true,
+                companyEmail: true,
+                companyPhone: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
@@ -713,7 +1600,76 @@ export class BookingsService {
       );
     }
 
+    // Group the per-traveler unit items into party lines ("2 x Adult"). UNIT-priced
+    // tours carry no age bands (ageBandId null) and collapse into one "Guest" line.
+    const bandLabels = new Map(
+      (booking.tour?.ageBands ?? []).map((b) => [b.id, b.label]),
+    );
+    const counts = new Map<string, number>();
+    for (const item of booking.unitItems) {
+      const key = item.ageBandId ?? '';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    // Labels are the SINGULAR unit ('Adult', 'Child', 'Guest') - the client
+    // pluralises them against the quantity ("4 guests"). A plural label here
+    // renders as "4 guestss".
+    const party = [...counts].map(([key, quantity]) => ({
+      ageBandId: key || null,
+      label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guest',
+      quantity,
+    }));
+
+    // Free-cancellation deadline = tour start - cancellationHours. Computed, never
+    // stored (guide §14). tourStartDateTime is LOCAL wall-clock, so subtract in local
+    // space, then resolve the real instant against the snapshotted zone.
+    const cancellationHours = booking.tour?.cancellationHours ?? 48;
+    const deadlineLocal = booking.tourStartDateTime
+      ? new Date(
+          booking.tourStartDateTime.getTime() - cancellationHours * 3_600_000,
+        )
+      : null;
+
     return {
+      guestFirstName: booking.contactFirstName,
+      guestLastName: booking.contactLastName,
+      guestFullName:
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          null),
+      contactPhone: booking.contactPhone,
+      pickupRequested: booking.pickupRequested,
+      party,
+      depositAmount: booking.depositAmount.toString(),
+      balanceAmount: booking.balanceAmount.toString(),
+      paymentModel: booking.paymentModel,
+      paymentMethodBrand: booking.paymentMethodBrand,
+      paymentMethodLast4: booking.paymentMethodLast4,
+      durationMinutes: booking.tour?.durationMinutesFrom ?? null,
+      cancellationHours,
+      freeCancellationDeadlineLocal: deadlineLocal
+        ? deadlineLocal.toISOString().slice(0, 19)
+        : null,
+      freeCancellationDeadlineUtc:
+        deadlineLocal && booking.tourTimeZone
+          ? localWallClockToUtc(
+              deadlineLocal,
+              booking.tourTimeZone,
+            ).toISOString()
+          : null,
+      // OCTO supplier contact wins; the company profile is the fallback.
+      operator: {
+        name: booking.operator?.companyInfo?.companyName ?? null,
+        email:
+          booking.operator?.contactEmail ??
+          booking.operator?.companyInfo?.companyEmail ??
+          null,
+        phone:
+          booking.operator?.contactPhone ??
+          booking.operator?.companyInfo?.companyPhone ??
+          null,
+      },
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
       status: booking.status,
@@ -819,7 +1775,7 @@ export class BookingsService {
     throw new ForbiddenException('You do not have access to this booking');
   }
 
-  private async loadContext(dto: ReserveBookingDto) {
+  private async loadContext(dto: PricingInput) {
     const tour = await this.prisma.tour.findUnique({
       where: { id: dto.tourId },
       select: {
@@ -828,38 +1784,127 @@ export class BookingsService {
         bookingCutoffMinutes: true,
         defaultCurrency: true,
         paymentModel: true,
+        onArrivalPayment: true,
         depositPct: true,
         commissionTier: true,
         minPartySize: true,
         maxPartySize: true,
         durationMinutesFrom: true,
         minAgeYears: true,
+        // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
+        pricingModel: true,
+        wholeUnitType: true,
+        basePrice: true,
+        unitIncludedGuests: true,
+        extraPersonPrice: true,
+        bookingType: true,
         destination: { select: { slug: true } },
       },
     });
     if (!tour) throw new NotFoundException('Tour not found');
 
+    // OPERATOR_FULL was dropped for v1 (founder, 2026-07-15): it takes no payment and
+    // would create a confirmed, unpaid booking - an operator could bypass payment
+    // entirely. Reject it here so neither reserve nor quote can proceed (flaw #6).
+    if (tour.paymentModel === PaymentModel.OPERATOR_FULL) {
+      throw new UnprocessableEntityException(
+        'This tour is not bookable online (unsupported payment model)',
+      );
+    }
+
     const departure = await this.prisma.departure.findFirst({
       where: { id: dto.departureId, tourId: dto.tourId },
-      select: { id: true, date: true, startTime: true },
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        capacity: true,
+        bookedCount: true,
+      },
     });
     if (!departure)
       throw new UnprocessableEntityException('Invalid departureId');
 
-    // Snapshot the selected pickup point address (booking immutability — the
-    // PickupLocation row can change after booking). master E.8 `pickup_address`.
-    let pickupAddress: string | null = null;
+    // Snapshot the selected pickup point (booking immutability — the PickupLocation
+    // row can change after booking). master E.8 `pickup_address`; the TIMING fields
+    // are snapshotted for the same reason (guide §17): the confirmation email renders
+    // them, so joining live would retroactively rewrite the pickup time a confirmed
+    // traveler was already told.
+    let pickupSnapshot: PickupSnapshot = EMPTY_PICKUP;
     if (dto.pickupLocationId) {
       const pickup = await this.prisma.pickupLocation.findUnique({
         where: { id: dto.pickupLocationId },
-        select: { tourId: true, name: true, address: true },
+        select: {
+          tourId: true,
+          name: true,
+          address: true,
+          minutesPrior: true,
+          windowStart: true,
+          windowEnd: true,
+        },
       });
       if (!pickup || pickup.tourId !== dto.tourId) {
         throw new UnprocessableEntityException('Invalid pickupLocationId');
       }
-      pickupAddress = pickup.address ?? pickup.name;
+      pickupSnapshot = {
+        address: pickup.address ?? pickup.name,
+        minutesPrior: pickup.minutesPrior,
+        windowStart: pickup.windowStart,
+        windowEnd: pickup.windowEnd,
+      };
     }
 
+    const addOnLines = await this.loadAddOns(dto);
+    const isUnit = tour.pricingModel === PricingModel.UNIT;
+
+    // ── UNIT (whole-unit / charter): a single guests count, no age bands (D4). ──
+    if (isUnit) {
+      if (dto.items?.length) {
+        throw new UnprocessableEntityException(
+          'Unit-priced tours take a single guests count, not age-band items',
+        );
+      }
+      const guests = dto.guests;
+      if (guests == null) {
+        throw new UnprocessableEntityException(
+          'guests is required for a unit-priced tour',
+        );
+      }
+      if (tour.basePrice == null) {
+        throw new UnprocessableEntityException(
+          'Tour is not bookable: unit price is not configured',
+        );
+      }
+      // Surcharge only applies to GROUP charters (D1a); flat unit types leave the
+      // included/extra fields null so the total reduces to a flat basePrice.
+      const unit: UnitPricingInput = {
+        guests,
+        basePrice: tour.basePrice,
+        unitIncludedGuests: tour.unitIncludedGuests,
+        extraPersonPrice: tour.extraPersonPrice,
+        priceNet: null,
+      };
+      const seatAges = (dto.travelerAges ?? []).slice(0, guests);
+      return {
+        tourId: dto.tourId,
+        tour,
+        departure,
+        isUnit: true as const,
+        guests,
+        lines: [] as PriceLineInput[],
+        unit,
+        seatAges,
+        addOnLines,
+        pickupSnapshot,
+      };
+    }
+
+    // ── PER_PERSON: age-band lines. ──
+    if (!dto.items?.length) {
+      throw new UnprocessableEntityException(
+        'items (age-band lines) are required for a per-person tour',
+      );
+    }
     const ageBands = await this.prisma.tourAgeBand.findMany({
       where: { tourId: dto.tourId },
       select: { id: true, label: true, price: true, priceNet: true },
@@ -878,15 +1923,34 @@ export class BookingsService {
         quantity: item.quantity,
         priceRetail: band.price,
         priceNet: band.priceNet,
+        label: band.label,
       };
     });
 
-    const addOnLines = await this.loadAddOns(dto);
+    // Per-seat traveler ages, expanded in dto.items order (one entry per seat).
+    const seatAges: (number | null)[] = [];
+    for (const item of dto.items) {
+      for (let i = 0; i < item.quantity; i++) {
+        seatAges.push(item.travelerAge ?? null);
+      }
+    }
+    const guests = lines.reduce((s, l) => s + l.quantity, 0);
 
-    return { tour, departure, ageBandsById, lines, addOnLines, pickupAddress };
+    return {
+      tourId: dto.tourId,
+      tour,
+      departure,
+      isUnit: false as const,
+      guests,
+      lines,
+      unit: undefined,
+      seatAges,
+      addOnLines,
+      pickupSnapshot,
+    };
   }
 
-  private async loadAddOns(dto: ReserveBookingDto): Promise<AddOnLineInput[]> {
+  private async loadAddOns(dto: PricingInput): Promise<AddOnLineInput[]> {
     if (!dto.addOns?.length) return [];
     const ids = dto.addOns.map((a) => a.addOnId);
     const rows = await this.prisma.tourAddOn.findMany({
@@ -910,9 +1974,11 @@ export class BookingsService {
 
   private validateRestrictions(
     ctx: Awaited<ReturnType<BookingsService['loadContext']>>,
-    dto: ReserveBookingDto,
   ): void {
-    const seats = dto.items.reduce((s, i) => s + i.quantity, 0);
+    // Party-size limits apply to the guest headcount in both models (all bands count
+    // toward capacity - master E.9). For UNIT that's `guests`; for PER_PERSON it's the
+    // summed line quantities. Both are resolved in loadContext as ctx.guests.
+    const seats = ctx.guests;
     const minUnits = ctx.tour.minPartySize;
     const maxUnits = ctx.tour.maxPartySize;
     if (seats < minUnits) {
@@ -927,11 +1993,11 @@ export class BookingsService {
     }
 
     // Min-age enforcement (master child ages): reject any supplied traveler age below
-    // the tour minimum. Ages are optional, so only enforced when both sides are present.
+    // the tour minimum. Ages are optional, so only enforced when supplied.
     const minAge = ctx.tour.minAgeYears;
     if (minAge != null) {
-      for (const item of dto.items) {
-        if (item.travelerAge != null && item.travelerAge < minAge) {
+      for (const age of ctx.seatAges) {
+        if (age != null && age < minAge) {
           throw new UnprocessableEntityException(
             `Travelers must be at least ${minAge} years old for this tour`,
           );
@@ -941,19 +2007,36 @@ export class BookingsService {
   }
 
   /**
-   * Release `seats` back to a departure (cancel / expiry) and re-derive its stored
-   * status. The count-down is clamped at zero; a SOLD_OUT departure with room reopens to
-   * OPEN, while CLOSED/CANCELLED stay sticky and `soldOutAt` history is preserved (§3).
+   * Release seats back to a departure (cancel / expiry) and re-derive its stored status.
+   * A SOLD_OUT departure with room reopens to OPEN, while CLOSED/CANCELLED stay sticky and
+   * `soldOutAt` history is preserved (§3). An `exclusive` (private-unit) booking claimed the
+   * WHOLE departure, so releasing it resets the fill to zero (D5); otherwise the guest
+   * headcount is counted down, clamped at zero.
    */
   private async releaseSeats(
     tx: Prisma.TransactionClient,
     departureId: string,
     seats: number,
+    exclusive = false,
   ): Promise<void> {
-    await tx.$executeRaw`
-      UPDATE departures
-         SET booked_count = GREATEST(0, booked_count - ${seats}), updated_at = now()
-       WHERE id = ${departureId}`;
+    if (exclusive) {
+      // Exclusive charter release: the whole unit was claimed, so reset to empty.
+      await tx.departure.update({
+        where: { id: departureId },
+        data: { bookedCount: 0 },
+      });
+    } else {
+      // GREATEST(0, bookedCount - seats): read-modify-write inside the txn so a
+      // release can never drive bookedCount negative.
+      const dep = await tx.departure.findUnique({
+        where: { id: departureId },
+        select: { bookedCount: true },
+      });
+      await tx.departure.update({
+        where: { id: departureId },
+        data: { bookedCount: Math.max(0, (dep?.bookedCount ?? 0) - seats) },
+      });
+    }
     await this.recomputeStoredStatus(tx, departureId);
   }
 
@@ -1036,6 +2119,24 @@ function actorToCancelledBy(role?: Role): CancelledBy {
   if (role === Role.ADMIN) return CancelledBy.ADMIN;
   if (role === Role.TOUR_OPERATOR) return CancelledBy.OPERATOR;
   return CancelledBy.CUSTOMER;
+}
+
+/** Fallback English label for a whole-unit charter line in a quote breakdown. */
+function unitCharterLabel(type: WholeUnitType | null): string {
+  switch (type) {
+    case WholeUnitType.GROUP:
+      return 'Group charter';
+    case WholeUnitType.BOAT:
+      return 'Boat charter';
+    case WholeUnitType.VEHICLE:
+      return 'Vehicle charter';
+    case WholeUnitType.AIRCRAFT:
+      return 'Aircraft charter';
+    case WholeUnitType.PACKAGE:
+      return 'Package';
+    default:
+      return 'Charter';
+  }
 }
 
 function mapBooking(b: BookingWithItems) {

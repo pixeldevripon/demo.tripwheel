@@ -33,8 +33,14 @@ These decisions are locked for booking-module design:
 - Deposit forfeiture is never automatic. Operator reports non-payment, admin confirms, then deposit/spot outcome is applied.
 - Webhooks must be `@Public()` + `@SkipThrottle()`, signature-verified, and idempotent.
 - `operator_full` takes no payment rail and is created `CONFIRMED` at commit.
+- The checkout charge always lands in the **Island Tours** Stripe/Mollie account. Island Tours is the merchant of record for every on-platform charge; there is no per-operator connected account in v1.
+- Two counter-party settlement rails are **OPEN in the master** (conflict log C23) and must not be invented in code: operator payout on `paid_in_full` (platform holds 100%) and Island Tours commission collection on `operator_full` (platform holds nothing). **Stripe Connect** routing is the named phase-2 candidate (conflict log B.85) and would make both machine-readable.
 
 ## 2. Payment Models
+
+A tour declares one payment model; it is snapshotted onto the booking as `payment_model` at creation and never changes retroactively (master §1.4, confirmed June 10, 2026).
+
+### 2.1 Operational shape
 
 | Model | Charged at checkout | Balance handling | Payment rail | Created status |
 |---|---:|---|---|---|
@@ -44,6 +50,55 @@ These decisions are locked for booking-module design:
 | `OPERATOR_FULL` | 0 | Operator collects full amount directly | none | `CONFIRMED` at commit |
 
 Important implementation note: if code treats `ON_ARRIVAL` as no upfront charge, that conflicts with the master. `ON_ARRIVAL` is a deposit model.
+
+### 2.2 Who receives the money (per leg)
+
+Every booking splits into at most two money legs: the **checkout leg** (charged through Island Tours' Stripe/Mollie account at booking) and the **remainder leg** (collected later by the operator, off-platform). `deposit` below means `depositPct`% of the booking total; `total` means the full booking amount.
+
+| `payment_model` | Checkout leg (on-platform) | Recipient | Remainder leg (off-platform) | Recipient |
+|---|---|---|---|---|
+| `OPERATOR_LINK` | `deposit` via Stripe/Mollie | **Island Tours** | `total - deposit` balance | **Operator** - its own secure payment link, paid online before the deadline |
+| `ON_ARRIVAL` | `deposit` via Stripe/Mollie | **Island Tours** | `total - deposit` balance | **Operator** - in person on arrival (card or cash, per tour) |
+| `PAID_IN_FULL` | `total` via Stripe/Mollie | **Island Tours** | none | none |
+| `OPERATOR_FULL` | none (no charge, no webhook) | none | `total` | **Operator** - collected directly |
+
+Canonical basis: master §1.4 ("the traveler pays `depositPct`% to Island Tours via Stripe at booking and the remaining balance is the operator's transaction"), §5.8 / conflict log C22 (`operator_full` bypasses Stripe), and BOOKING-AND-PAYMENTS.md §1.
+
+### 2.3 How the other party gets its cut (settlement)
+
+Island Tours is a reseller: it is entitled to `commissionAmount` (`commissionRate * total`, snapshotted in EUR), the operator to the rest. Because the checkout leg does not always match each party's entitlement, a settlement step reconciles the difference. **Two of these rails are unresolved in the master and must not be hardcoded before Arnav signs off (conflict log C23).**
+
+| `payment_model` | Island Tours ends with | Operator ends with | Settlement rail | Status |
+|---|---|---|---|---|
+| `OPERATOR_LINK` | Retains the `deposit` it collected | Collects the balance directly | No cross-transfer: each party keeps its own leg | **Resolved** (master §1.4) |
+| `ON_ARRIVAL` | Retains the `deposit` it collected | Collects the balance directly | No cross-transfer: each party keeps its own leg | **Resolved** (master §1.4) |
+| `PAID_IN_FULL` | Holds 100%; keeps its commission | Owed `total - commission` from Island Tours | **Island Tours must pay the operator out** | **OPEN** - operator payout rail unresolved; Stripe Connect split is the phase-2 candidate (B.85, C23) |
+| `OPERATOR_FULL` | Holds nothing; still owed `commission` | Holds 100% | **Island Tours must collect commission from the operator** | **OPEN** - commission settlement rail unresolved (C23) |
+
+> **Deposit-vs-commission note.** `depositPct` (20 to 30, in 2.5 steps) and `commissionTier` (20 to 35) are both tier-driven but are **separate fields**. On the deposit models the deposit Island Tours retains is therefore only an approximation of the commission it is owed; the master does not define an automated true-up for the residual in v1, so any difference is a manual/off-platform reconciliation between Island Tours and the operator. Do not assume `deposit == commission` in code.
+
+> **Do not invent the OPEN rails.** For `PAID_IN_FULL` and `OPERATOR_FULL`, v1 has no automated payout/collection. Model the entitlement in data (see §2.4) but leave the actual transfer to a manual admin process until the Stripe Connect phase-2 decision lands. Never auto-transfer funds to or from an operator without an explicit, signed-off rail.
+
+### 2.4 Per-transaction tracking and analytics
+
+Every booking must be fully traceable. The rules below come from TRACKING-AND-ANALYTICS.md and master §8.
+
+**Conversion (once per booking, regardless of model):**
+- Exactly **one** `booking_complete` fires, with `booking_value = commissionAmount` in **EUR** - never GMV, `totalRetail`, or `totalEur`.
+- Fired on the TYP after `conversionFiredAt` is stamped server-side (mark-first idempotency). `OPERATOR_FULL` fires at commit (no webhook) but uses the identical data contract.
+- Every booking snapshots `commissionRate`, `commissionAmount` (EUR), and `fxRateToEur` so the conversion value and reporting never drift. A confirmed booking with null `commissionAmount` is data corruption: render an error, fire no conversion.
+
+**On-platform legs are fully tracked:**
+- Each checkout charge writes a `Payment` ledger row (`DEPOSIT` or `FULL`), a provider PaymentIntent/charge, and an idempotent row in `stripe_webhook_events`. Refunds write `REFUND` rows.
+- Provider webhooks are `@Public()` + `@SkipThrottle()`, signature-verified, and idempotent by event id.
+
+**Off-platform legs are NOT machine-readable in v1:**
+- The operator-collected balance (`OPERATOR_LINK`, `ON_ARRIVAL`) and the full `OPERATOR_FULL` amount run on the operator's own rails; the platform cannot verify them (conflict log B.85). **Do not create a `BALANCE` payment row in v1** even though the enum has one.
+- No automatic "balance overdue" or forfeit state exists. Operator non-payment is **operator-reported, then admin-confirmed** (master §15); only that confirmation forfeits a deposit and releases the spot.
+- Consequence: the v1 platform ledger reconciles only the on-platform legs. The two OPEN settlement rails (§2.3) will each need their own ledger entries once the rail is chosen; Stripe Connect (phase 2) would make the operator balance and payouts machine-readable.
+
+**Affiliate attribution:**
+- Affiliate commission is **8% of GMV, funded out of Island Tours' commission** (not added on top). It goes **on hold at booking** and **approves after the cancellation window closes** (clawback-safe). Attribution rides the platform's own `booking_complete` event; promo codes double as attribution identifiers (master §7.3).
 
 ## 3. Core Entities
 

@@ -35,6 +35,7 @@ const tripTranslationSchema = z.object({
   categoryDisplay: z.string().max(120).optional().or(z.literal('')),
   localTipTitle: z.string().max(120).optional().or(z.literal('')),
   localTipBody: z.string().max(2000).optional().or(z.literal('')),
+  operatorNote: z.string().max(600).optional().or(z.literal('')),
   meetingPointText: z.string().max(2000).optional().or(z.literal('')),
 });
 
@@ -52,6 +53,7 @@ const EMPTY_FORM: TripTranslationFormValues = {
   categoryDisplay: '',
   localTipTitle: '',
   localTipBody: '',
+  operatorNote: '',
   meetingPointText: '',
 };
 
@@ -104,6 +106,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       categoryDisplay: translation?.categoryDisplay ?? '',
       localTipTitle: translation?.localTipTitle ?? '',
       localTipBody: translation?.localTipBody ?? '',
+      operatorNote: translation?.operatorNote ?? '',
       meetingPointText: translation?.meetingPointText ?? '',
     });
   }, [translation, reset, isEnglish, tripName]);
@@ -125,6 +128,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           categoryDisplay: values.categoryDisplay || null,
           localTipTitle: values.localTipTitle || null,
           localTipBody: values.localTipBody || null,
+          operatorNote: values.operatorNote || null,
           meetingPointText: values.meetingPointText || null,
         },
       },
@@ -155,6 +159,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
             categoryDisplay: null,
             localTipTitle: null,
             localTipBody: null,
+            operatorNote: null,
             meetingPointText: null,
           },
         },
@@ -296,6 +301,19 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
         <Label className="text-xs font-semibold uppercase">Local Tip - Description</Label>
         <Textarea {...register('localTipBody')} rows={2} placeholder="e.g. Afternoon wind picks up and the water gets choppier." />
         <FieldDescription>Supporting line shown under the tip title.</FieldDescription>
+      </Field>
+
+      <Field>
+        <Label className="text-xs font-semibold uppercase">Note to Travellers</Label>
+        <Textarea
+          {...register('operatorNote')}
+          rows={3}
+          placeholder="e.g. Seas can be rough on the way out, mainly in some parts of the year. Bring something if you are sensitive to motion."
+        />
+        <FieldDescription>
+          Shown as &quot;A note from {'{operator}'}&quot; in the booking confirmation email. Leave
+          empty to hide the card.
+        </FieldDescription>
       </Field>
 
       <Field>

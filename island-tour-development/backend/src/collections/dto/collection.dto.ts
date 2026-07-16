@@ -4,6 +4,7 @@ import {
   CollectionDisplayStyle,
   CollectionStatus,
   CollectionType,
+  Currency,
   PricingModel,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -591,4 +592,13 @@ export class CollectionRenderQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; collection tour cards carry a converted `money` object (guide §20.9).',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }

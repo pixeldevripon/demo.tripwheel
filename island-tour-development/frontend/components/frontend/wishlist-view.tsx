@@ -8,6 +8,7 @@ import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { WishlistSkeleton } from '@/components/skelitons/wishlist-skeleton';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { currencyFromCookie } from '@/lib/currency/current';
 import { searchHitToListing, type DurationDict } from '@/lib/tours/listing';
 
 export type WishlistViewDict = {
@@ -43,8 +44,10 @@ export function WishlistView({
         }
         let ignore = false;
         setLoading(true);
+        // Convert card prices to the shopper's chosen currency (cookie-resolved).
+        const currency = currencyFromCookie(document.cookie, locale);
         wishlistApi
-            .list(locale)
+            .list(locale, currency)
             .then((rows) => {
                 if (!ignore) setTours(rows);
             })

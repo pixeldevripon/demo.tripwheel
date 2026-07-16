@@ -6,9 +6,19 @@ import { ThankYouRelatedTours } from '@/components/frontend/thank-you/thank-you-
 import { ThankYouSummary } from '@/components/frontend/thank-you/thank-you-summary';
 import { ThankYouPageSkeleton } from '@/components/skelitons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
-import { DEFAULT_LOCALE, isLocale, localizeHref } from '@/lib/constants/locales';
+import {
+    DEFAULT_LOCALE,
+    isLocale,
+    localizeHref,
+    type Locale,
+} from '@/lib/constants/locales';
 import { getDictionary, type Dictionary } from '@/lib/i18n/dictionaries';
-import { DEMO_PUBLIC_REF, getThankYouBooking } from '@/lib/thank-you/thank-you';
+import {
+    DEMO_PUBLIC_REF,
+    getThankYouBooking,
+    getThankYouRelatedTours,
+} from '@/lib/thank-you/thank-you';
+import { searchHitToListing } from '@/lib/tours/listing';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
@@ -68,21 +78,31 @@ async function ThankYouBody({
     destination,
     publicRef,
     toursHref,
+    locale,
     dict,
 }: {
     destination: string;
     publicRef: string;
     toursHref: string;
+    locale: Locale;
     dict: Dictionary;
 }) {
     await connection();
-    const booking = await getThankYouBooking(publicRef);
+    const booking = await getThankYouBooking(publicRef, locale);
     if (!booking || booking.destinationSlug !== destination) notFound();
 
     // Critical rule 22 (for the pending tracking module): conversion value is
     // `commission_amount` in EUR, never GMV, and only when status is CONFIRMED
     // with a non-null `commissionAmountEur` - a confirmed booking with null
     // commission is data corruption and must fire NO conversion.
+
+    // Cross-sell is cached/tagged content, unrelated to the booking - fetched
+    // after it so an empty/failed result just hides the section.
+    const relatedHits = await getThankYouRelatedTours({
+        destinationSlug: booking.destinationSlug,
+        excludeTourId: booking.tourId,
+        locale,
+    });
 
     const { title, seeAll, seeAllCount, ...cardDict } = dict.destination.listings;
 
@@ -92,7 +112,9 @@ async function ThankYouBody({
             <ThankYouSummary booking={booking} dict={dict.thankYou} />
             <ThankYouNextSteps booking={booking} dict={dict.thankYou} />
             <ThankYouRelatedTours
-                tours={booking.relatedTours}
+                tours={relatedHits.map(hit =>
+                    searchHitToListing(hit, locale, dict.search),
+                )}
                 dict={dict.thankYou}
                 cardDict={cardDict}
                 toursHref={toursHref}
@@ -134,6 +156,7 @@ export default async function ThankYouPage({
                 destination={destination}
                 publicRef={publicRef}
                 toursHref={toursHref}
+                locale={locale}
                 dict={dict}
             />
         </Suspense>

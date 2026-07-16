@@ -103,6 +103,7 @@ export class CollectionsController {
       slug,
       query.destinationId,
       query.locale,
+      query.currency,
     );
   }
 

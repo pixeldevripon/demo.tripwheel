@@ -10,7 +10,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 
 import type { SearchHit } from '@/types/search';
 import type { PublicTourDetail } from '@/types/tour-detail';
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
 
@@ -31,6 +31,8 @@ export interface TourListResult {
 export async function getDestinationTours(params: {
   destinationId: string;
   locale?: Locale;
+  /** Shopper display currency; adds converted `money` to each card (guide §20.9). */
+  currency?: Currency;
   localsFavourite?: boolean;
   categoryId?: string;
   /** Multi-select category filter (CSV of ids); a tour in ANY matches. */
@@ -72,6 +74,7 @@ export async function getDestinationTours(params: {
   const {
     destinationId,
     locale = DEFAULT_LOCALE,
+    currency,
     localsFavourite,
     categoryId,
     categoryIds,
@@ -100,6 +103,7 @@ export async function getDestinationTours(params: {
     `/tours${buildQuery({
       destinationId,
       locale,
+      currency,
       isLocalsFavourite: localsFavourite,
       categoryId,
       categoryIds,
@@ -140,13 +144,15 @@ export async function getTourBySlug(params: {
   slug: string;
   destinationSlug: string;
   locale?: Locale;
+  /** Shopper display currency; adds converted `money` to the detail (guide §20.9). */
+  currency?: Currency;
 }): Promise<PublicTourDetail | null> {
   'use cache';
   cacheLife('hours');
 
-  const { slug, destinationSlug, locale = DEFAULT_LOCALE } = params;
+  const { slug, destinationSlug, locale = DEFAULT_LOCALE, currency } = params;
   const data = await publicGet<PublicTourDetail>(
-    `/tours/slug/${slug}${buildQuery({ destinationSlug, locale })}`,
+    `/tours/slug/${slug}${buildQuery({ destinationSlug, locale, currency })}`,
   );
   // `tour:<id>` for the tour's own edits; `operator:<id>` because the operator's
   // company name/logo is rendered here (and only here, not on cards), so an

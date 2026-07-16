@@ -2,12 +2,14 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
 import type { TypedAuthUser } from '@/auth/auth.types';
@@ -17,16 +19,22 @@ import {
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  QuoteBookingDto,
+  RequestCancellationDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
 import {
+  ApiCalendarDocs,
   ApiCancelDocs,
   ApiConfirmDocs,
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
+  ApiQuoteDocs,
+  ApiRequestCancellationDocs,
   ApiReserveDocs,
+  ApiResendConfirmationDocs,
   ApiThankYouDocs,
   ApiUpdateBookingDocs,
 } from './bookings.swagger';
@@ -47,6 +55,14 @@ import {
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService) {}
+
+  // Static routes BEFORE dynamic (:id) routes - NestJS matches top-to-bottom.
+  @Post('quote')
+  @Public()
+  @ApiQuoteDocs()
+  quote(@Body() dto: QuoteBookingDto) {
+    return this.bookings.quote(dto);
+  }
 
   @Post()
   @Public()
@@ -96,6 +112,82 @@ export class BookingsController {
   @ApiThankYouDocs()
   thankYou(@Param('publicRef') publicRef: string) {
     return this.bookings.getThankYou(publicRef);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/resend
+   *
+   * Re-sends the confirmation email from the thank-you page ("Don't see it?
+   * Check spam, or Resend email").
+   *
+   * Security: @Public and keyed on the unguessable `publicRef`, matching the TYP
+   * read above. The recipient is NOT accepted from the caller - the service
+   * sends only to the address stored on the booking, so this can never be used
+   * to mail an arbitrary inbox.
+   *
+   * The global tiers (60/s, 300/min, 3000/hr) are sized for dashboard page loads
+   * and are far too loose for a route that sends mail, so this one is throttled
+   * to a human's pace: 1 per 10s (double-click), 3/min, 10/hr. Must be called
+   * from the BROWSER, never SSR - `skipIf: isTrustedInternalOrigin` in
+   * AuthModule exempts the internal API secret, which would bypass every limit
+   * below.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/resend')
+  @Public()
+  @ApiResendConfirmationDocs()
+  resendConfirmation(@Param('publicRef') publicRef: string) {
+    return this.bookings.resendConfirmation(publicRef);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/cancellation-request
+   *
+   * The tokenized cancel form (master 6.4/C1). Never cancels on click - it
+   * emails the admin, who processes the refund and confirms by email. Same
+   * security shape as resend: @Public, keyed on the unguessable publicRef,
+   * throttled to a human pace, and MUST be called from the browser (the
+   * internal-key SSR bypass would skip every limit).
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/cancellation-request')
+  @Public()
+  @ApiRequestCancellationDocs()
+  requestCancellation(
+    @Param('publicRef') publicRef: string,
+    @Body() dto: RequestCancellationDto,
+  ) {
+    return this.bookings.requestCancellation(publicRef, dto.reason);
+  }
+
+  /**
+   * GET /bookings/typ/:publicRef/calendar.ics
+   *
+   * The confirmation email's "Add to calendar" link. `@Public` and keyed on the
+   * unguessable `publicRef` because it is opened straight from an email client,
+   * which carries no session.
+   *
+   * Returns `text/calendar` as an attachment so mail clients and browsers hand it
+   * to the OS calendar rather than rendering it as text.
+   */
+  @Get('typ/:publicRef/calendar.ics')
+  @Public()
+  @Header('Content-Type', 'text/calendar; charset=utf-8')
+  @Header(
+    'Content-Disposition',
+    'attachment; filename="island-tours-booking.ics"',
+  )
+  @ApiCalendarDocs()
+  calendar(@Param('publicRef') publicRef: string) {
+    return this.bookings.getCalendar(publicRef);
   }
 
   @Get()

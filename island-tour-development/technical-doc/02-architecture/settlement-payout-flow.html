@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Island Tours - Payment Settlement & Payout Flow (v1 / v2)</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --ink: #16202e;
+    --muted: #5b6675;
+    --line: #e3e7ec;
+    --green: #16a34a;
+    --green-bg: #e9f7ef;
+    --blue: #2563eb;
+    --blue-bg: #e8f0fe;
+    --grey: #9ca3af;
+    --grey-bg: #f0f1f3;
+    --purple: #7c3aed;
+    --purple-bg: #f1eafe;
+    --amber: #b45309;
+    --amber-bg: #fdf3e3;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1420; --card: #161d2b; --ink: #e7ecf3; --muted: #9aa6b6;
+      --line: #263141; --green-bg: #12271b; --blue-bg: #10203f; --grey-bg: #1c2432;
+      --purple-bg: #211436; --amber-bg: #2e2110;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; padding: 32px 16px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header.doc { margin-bottom: 28px; }
+  header.doc h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header.doc p { color: var(--muted); margin: 4px 0; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .pill.v1 { background: var(--green-bg); color: var(--green); }
+  .pill.v2 { background: var(--purple-bg); color: var(--purple); }
+  .pill.drop { background: var(--grey-bg); color: var(--muted); }
+  section.card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px; margin: 20px 0;
+  }
+  h2 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 22px 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 10px 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em;
+    background: var(--grey-bg); padding: 1px 6px; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 700; background: var(--grey-bg); }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+  .diagram { overflow-x: auto; margin: 8px 0 4px; }
+  .diagram svg { display: block; min-width: 720px; width: 100%; height: auto; }
+  .caption { color: var(--muted); font-size: 13px; margin: 4px 2px 0; }
+  .callout { border-left: 4px solid var(--amber); background: var(--amber-bg); padding: 12px 16px; border-radius: 8px; margin: 14px 0; }
+  .callout.info { border-left-color: var(--blue); background: var(--blue-bg); }
+  .callout.ok { border-left-color: var(--green); background: var(--green-bg); }
+  ul { margin: 10px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  a { color: var(--blue); }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 820px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+  footer { color: var(--muted); font-size: 13px; margin-top: 26px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <h1>Payment Settlement &amp; Payout Flow</h1>
+    <p>Island Tours - visual companion to <code>SETTLEMENT-AND-PAYOUTS.md</code>. How money moves between the traveler, Island Tours, and the operator, and how each side is settled.</p>
+    <p>Canonical source: master v1.9 (§1.4, §5.8, §7.1, conflict log C22/C23/B.85). Founder decision locked 2026-07-15.</p>
+  </header>
+
+  <!-- ============ REFRAME ============ -->
+  <section class="card">
+    <h2>The reframe: one target, three deviations</h2>
+    <p class="sub">The platform's goal on every booking is to end up holding exactly its <code>commission</code>. Each model just collects a different amount at checkout relative to that target.</p>
+    <table>
+      <thead><tr><th>Model</th><th>Collected at checkout</th><th>vs. commission target</th><th>Settlement needed</th></tr></thead>
+      <tbody>
+        <tr><td>Deposit models (<code>operator_link</code>, <code>on_arrival</code>)</td><td><code>deposit</code> (= commission by design)</td><td>equal</td><td>none (self-settling)</td></tr>
+        <tr><td><code>paid_in_full</code></td><td>100%</td><td><strong>over-collects</strong></td><td>pay the operator back the net</td></tr>
+        <tr><td><code>operator_full</code></td><td>0%</td><td><strong>under-collects</strong></td><td>collect commission from the operator</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Two classic marketplace problems:</strong> <code>paid_in_full</code> is the <em>payout problem</em> (platform holds money, owes the supplier net). <code>operator_full</code> is the <em>commission-collection problem</em> (supplier holds money, owes the platform its cut).</p>
+  </section>
+
+  <!-- ============ V1 ============ -->
+  <section class="card">
+    <h2><span class="pill v1">V1</span> &nbsp;Money flow now</h2>
+    <p class="sub">Three live models. <code>operator_full</code> is dropped from v1. Deposit models self-settle; <code>paid_in_full</code> pays the operator out on a schedule after the cancellation window closes (clawback-safe).</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--green)"></i> Money to Island Tours (commission)</span>
+      <span><i class="swatch" style="background:var(--blue)"></i> Money to operator</span>
+      <span><i class="swatch" style="background:var(--grey)"></i> Not used in v1</span>
+    </div>
+
+    <h3>1 + 2. Deposit models - <code>operator_link</code> and <code>on_arrival</code></h3>
+    <div class="diagram">
+      <svg viewBox="0 0 900 240" role="img" aria-label="Deposit model money flow">
+        <defs>
+          <marker id="ahGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--green)"/></marker>
+          <marker id="ahBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--blue)"/></marker>
+        </defs>
+        <!-- actors -->
+        <g>
+          <rect x="30" y="90" width="180" height="70" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+          <text x="120" y="120" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Traveler</text>
+          <text x="120" y="140" text-anchor="middle" font-size="12" fill="var(--muted)">pays at checkout</text>
+        </g>
+        <g>
+          <rect x="360" y="90" width="200" height="70" rx="10" fill="var(--green-bg)" stroke="var(--line)"/>
+          <text x="460" y="118" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Island Tours</text>
+          <text x="460" y="137" text-anchor="middle" font-size="12" fill="var(--muted)">Stripe / Mollie</text>
+        </g>
+        <g>
+          <rect x="710" y="90" width="170" height="70" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+          <text x="795" y="120" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Operator</text>
+          <text x="795" y="140" text-anchor="middle" font-size="12" fill="var(--muted)">collects balance</text>
+        </g>
+        <!-- deposit leg: traveler -> IT -->
+        <line x1="212" y1="112" x2="356" y2="112" stroke="var(--green)" stroke-width="3" marker-end="url(#ahGreen)"/>
+        <rect x="222" y="80" width="126" height="20" rx="5" fill="var(--card)" stroke="var(--green)"/>
+        <text x="285" y="94" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--green)">deposit = commission</text>
+        <!-- balance leg: traveler -> operator (bottom curve) -->
+        <path d="M120,162 L120,205 L795,205 L795,162" fill="none" stroke="var(--blue)" stroke-width="3" marker-end="url(#ahBlue)"/>
+        <rect x="380" y="195" width="160" height="20" rx="5" fill="var(--card)" stroke="var(--blue)"/>
+        <text x="460" y="209" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--blue)">balance (link / in person)</text>
+        <!-- retained badge -->
+        <text x="460" y="176" text-anchor="middle" font-size="11.5" fill="var(--green)">keeps deposit as commission</text>
+      </svg>
+    </div>
+    <p class="caption"><strong>Self-settling.</strong> <code>commission == deposit_pct</code>, so no transfer occurs. The operator receives the rest of the payment directly. Ledger row is record-only: <code>net_position ~ 0</code>.</p>
+
+    <h3>3. <code>paid_in_full</code> - scheduled payout after the cancellation window</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 900 210" role="img" aria-label="Paid in full money flow">
+        <defs>
+          <marker id="ahGreen2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--green)"/></marker>
+          <marker id="ahBlue2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--blue)"/></marker>
+        </defs>
+        <rect x="30" y="80" width="180" height="70" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+        <text x="120" y="110" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Traveler</text>
+        <text x="120" y="130" text-anchor="middle" font-size="12" fill="var(--muted)">pays 100%</text>
+
+        <rect x="360" y="80" width="200" height="70" rx="10" fill="var(--green-bg)" stroke="var(--line)"/>
+        <text x="460" y="108" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Island Tours</text>
+        <text x="460" y="127" text-anchor="middle" font-size="12" fill="var(--muted)">Stripe / Mollie</text>
+
+        <rect x="710" y="80" width="170" height="70" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+        <text x="795" y="110" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Operator</text>
+        <text x="795" y="130" text-anchor="middle" font-size="12" fill="var(--muted)">receives net</text>
+
+        <!-- 100% traveler -> IT -->
+        <line x1="212" y1="105" x2="356" y2="105" stroke="var(--green)" stroke-width="3" marker-end="url(#ahGreen2)"/>
+        <rect x="238" y="73" width="94" height="20" rx="5" fill="var(--card)" stroke="var(--green)"/>
+        <text x="285" y="87" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--green)">100% total</text>
+
+        <!-- net IT -> operator -->
+        <line x1="562" y1="105" x2="706" y2="105" stroke="var(--blue)" stroke-width="3" marker-end="url(#ahBlue2)"/>
+        <rect x="566" y="73" width="140" height="20" rx="5" fill="var(--card)" stroke="var(--blue)"/>
+        <text x="636" y="87" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">net = total - commission</text>
+        <text x="636" y="128" text-anchor="middle" font-size="10.5" fill="var(--blue)">scheduled: released after cancellation window</text>
+
+        <text x="460" y="176" text-anchor="middle" font-size="11.5" fill="var(--green)">retains commission; operator net paid out on a schedule after the cancellation window closes (clawback-safe)</text>
+      </svg>
+    </div>
+    <p class="caption"><strong>Scheduled payout (clawback-safe).</strong> Island Tours takes 100%, retains its <code>commission</code>, and pays the remainder to the operator on a schedule <strong>after the cancellation window closes</strong> - so a refunded cancellation never lands after the operator was already paid. Ledger: <code>net_position = + (total - commission)</code>, <code>status = RECORDED</code> until the window closes, then <code>PAID_OUT</code>.</p>
+
+    <h3><span class="pill drop">Dropped in V1</span> &nbsp;<code>operator_full</code></h3>
+    <div class="diagram">
+      <svg viewBox="0 0 900 180" role="img" aria-label="Operator full dropped in v1">
+        <defs>
+          <marker id="ahGrey" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--grey)"/></marker>
+        </defs>
+        <rect x="30" y="60" width="180" height="70" rx="10" fill="var(--grey-bg)" stroke="var(--line)"/>
+        <text x="120" y="95" text-anchor="middle" font-size="15" font-weight="700" fill="var(--muted)">Traveler</text>
+        <rect x="360" y="60" width="200" height="70" rx="10" fill="var(--grey-bg)" stroke="var(--line)" stroke-dasharray="5 4"/>
+        <text x="460" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="var(--muted)">Island Tours</text>
+        <text x="460" y="108" text-anchor="middle" font-size="11.5" fill="var(--muted)">no payment, no webhook</text>
+        <rect x="710" y="60" width="170" height="70" rx="10" fill="var(--grey-bg)" stroke="var(--line)"/>
+        <text x="795" y="90" text-anchor="middle" font-size="15" font-weight="700" fill="var(--muted)">Operator</text>
+        <text x="795" y="108" text-anchor="middle" font-size="11.5" fill="var(--muted)">collects 100%</text>
+        <path d="M120,130 L120,158 L795,158 L795,130" fill="none" stroke="var(--grey)" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#ahGrey)"/>
+        <text x="460" y="152" text-anchor="middle" font-size="11.5" fill="var(--muted)">100% direct (off-platform)</text>
+      </svg>
+    </div>
+    <div class="callout"><strong>Removed in v1.</strong> Returns in v2 via Stripe Connect or direct bank transfer, when the commission-collection rail is specified.</div>
+  </section>
+
+  <!-- ============ V2 ============ -->
+  <section class="card">
+    <h2><span class="pill v2">V2</span> &nbsp;Merchant of record via Stripe Connect</h2>
+    <p class="sub">Route every chargeable leg through the platform. The commission is skimmed as the Connect application fee; the operator is paid out automatically on a schedule. Every leg becomes machine-readable.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 900 340" role="img" aria-label="V2 Stripe Connect money flow">
+        <defs>
+          <marker id="ahP" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--purple)"/></marker>
+          <marker id="ahG3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--green)"/></marker>
+          <marker id="ahB3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--blue)"/></marker>
+        </defs>
+        <!-- Traveler -->
+        <rect x="24" y="140" width="160" height="70" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+        <text x="104" y="170" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Traveler</text>
+        <text x="104" y="190" text-anchor="middle" font-size="12" fill="var(--muted)">pays total / deposit</text>
+        <!-- Stripe Connect -->
+        <rect x="300" y="132" width="220" height="86" rx="10" fill="var(--purple-bg)" stroke="var(--purple)"/>
+        <text x="410" y="164" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Stripe Connect</text>
+        <text x="410" y="183" text-anchor="middle" font-size="12" fill="var(--muted)">platform destination</text>
+        <text x="410" y="199" text-anchor="middle" font-size="12" fill="var(--muted)">charge</text>
+        <!-- IT (application fee) -->
+        <rect x="640" y="44" width="236" height="70" rx="10" fill="var(--green-bg)" stroke="var(--line)"/>
+        <text x="758" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">Island Tours</text>
+        <text x="758" y="93" text-anchor="middle" font-size="12" fill="var(--muted)">application_fee = commission</text>
+        <!-- Operator connected acct -->
+        <rect x="640" y="234" width="236" height="76" rx="10" fill="var(--blue-bg)" stroke="var(--line)"/>
+        <text x="758" y="263" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">Operator connected account</text>
+        <text x="758" y="282" text-anchor="middle" font-size="12" fill="var(--muted)">net transferred, then</text>
+        <text x="758" y="298" text-anchor="middle" font-size="12" fill="var(--muted)">Stripe payout on schedule</text>
+        <!-- arrows -->
+        <line x1="186" y1="175" x2="296" y2="175" stroke="var(--purple)" stroke-width="3" marker-end="url(#ahP)"/>
+        <rect x="196" y="146" width="94" height="20" rx="5" fill="var(--card)" stroke="var(--purple)"/>
+        <text x="243" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">one charge</text>
+        <!-- connect -> IT -->
+        <path d="M520,158 L590,100 L636,90" fill="none" stroke="var(--green)" stroke-width="3" marker-end="url(#ahG3)"/>
+        <rect x="470" y="108" width="150" height="20" rx="5" fill="var(--card)" stroke="var(--green)"/>
+        <text x="545" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="var(--green)">application fee</text>
+        <!-- connect -> operator -->
+        <path d="M520,192 L590,250 L636,262" fill="none" stroke="var(--blue)" stroke-width="3" marker-end="url(#ahB3)"/>
+        <rect x="470" y="228" width="150" height="20" rx="5" fill="var(--card)" stroke="var(--blue)"/>
+        <text x="545" y="242" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">net transfer</text>
+      </svg>
+    </div>
+    <p class="caption"><code>paid_in_full</code> and both deposit models map to a single destination charge with <code>application_fee_amount = commission</code>. The settlements ledger is then populated from Stripe events instead of manual entry.</p>
+    <div class="callout"><strong><code>operator_full</code> in v2 - two options.</strong>
+      <ul>
+        <li><strong>Route via Connect</strong> (traveler pays through the platform). Makes it trackable and auto-collects commission, but it effectively becomes <code>paid_in_full</code>.</li>
+        <li><strong>Direct bank transfer + commission invoice</strong> (operator collects, Island Tours invoices for commission via SEPA / card-on-file mandate, listing suspension on non-payment). Preserves the off-platform model but keeps collection risk and stays non-machine-readable.</li>
+      </ul>
+      <strong><code>paid_in_full</code> payout - decided:</strong> it is a <strong>scheduled payout released after the cancellation window closes</strong> (clawback-safe), not an immediate in-flow payout. V1 runs this as a manual/batch payout against the ledger; v2 automates it via a Connect destination charge with the transfer released on the same post-window schedule.
+    </div>
+  </section>
+
+  <!-- ============ LEDGER ============ -->
+  <section class="card">
+    <h2>The settlements ledger (build in v1, extend later)</h2>
+    <p class="sub">Every booking writes exactly one settlement row at confirmation, regardless of model. <code>net_position</code> sign is fixed: <strong>positive = Island Tours owes the operator; negative = operator owes Island Tours.</strong></p>
+    <table>
+      <thead><tr><th>Model</th><th><code>amount_collected</code></th><th><code>commission_owed</code></th><th><code>net_position</code></th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><code>operator_link</code></td><td><code>deposit</code></td><td><code>commission</code> (= deposit)</td><td>~ 0</td><td>record only</td></tr>
+        <tr><td><code>on_arrival</code></td><td><code>deposit</code></td><td><code>commission</code> (= deposit)</td><td>~ 0</td><td>record only</td></tr>
+        <tr><td><code>paid_in_full</code></td><td><code>total</code></td><td><code>commission</code></td><td><code>+ (total - commission)</code></td><td>scheduled payout after cancellation window; <code>RECORDED</code> then <code>PAID_OUT</code> (set <code>operator_payout</code>)</td></tr>
+        <tr style="opacity:.6"><td><code>operator_full</code> (v2)</td><td>0</td><td><code>commission</code></td><td><code>- commission</code></td><td>invoice / collect; <code>status = INVOICED</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout info">The ledger is the extension point. Building it in v1 means phase 2 changes only the <em>executor</em> (Stripe Connect transfers, scheduled payouts, <code>operator_full</code> invoicing), never the data model. Settlement is separate from tracking: exactly one <code>booking_complete</code> still fires with <code>booking_value = commission_amount</code> in EUR, never GMV.</div>
+  </section>
+
+  <!-- ============ BENCHMARK ============ -->
+  <section class="card">
+    <h2>How the global leaders settle</h2>
+    <table>
+      <thead><tr><th>Platform</th><th>Model</th><th>How the money settles</th></tr></thead>
+      <tbody>
+        <tr><td>Viator (Merchant API), GetYourGuide, Klook</td><td>Merchant of record (= <code>paid_in_full</code>)</td><td>Traveler pays the OTA in full; OTA keeps commission and remits net to the operator on a schedule. Viator: monthly, ~21 business days after the travel month (weekly PayPal option). GYG: monthly default, bi-weekly for +2% commission.</td></tr>
+        <tr><td>Airbnb</td><td>Merchant of record + fast payout</td><td>Guest pays Airbnb in full; host is paid out ~24h after check-in, net of fees, via Payoneer / bank / PayPal.</td></tr>
+        <tr><td>Booking.com (legacy)</td><td>Pay-at-property (= <code>operator_full</code>)</td><td>Guest pays the property directly; Booking.com invoices monthly for commission and collects by direct debit / bank transfer / virtual card. The model everyone is migrating away from because of collection leakage.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout ok"><strong>Direction of travel:</strong> every mature marketplace converges on merchant-of-record. It kills commission leakage and makes every transaction trackable - which is exactly why v2 targets Stripe Connect.</div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section class="card">
+    <h2>References</h2>
+    <ul>
+      <li><a href="https://docs.stripe.com/connect/destination-charges">Stripe: Create destination charges</a></li>
+      <li><a href="https://docs.stripe.com/connect/marketplace/tasks/app-fees">Stripe: Collect application fees</a></li>
+      <li><a href="https://docs.stripe.com/connect/charges">Stripe: Understand how charges work in a Connect integration</a></li>
+      <li><a href="https://docs.stripe.com/connect/marketplace/tasks/accept-payment/destination-charges">Stripe: Accept a payment using destination charges</a></li>
+      <li><a href="https://automate.travel/blog/viator-vs-getyourguide-for-operators/">Viator vs GetYourGuide 2026: Commission, Payouts</a></li>
+      <li><a href="https://www.sambahq.com/ota-supplier-guide/ota-commission-rates">Tour OTA Commission Rates 2026 (Viator, GYG, Klook)</a></li>
+      <li><a href="https://otaplaybook.com/ota-commission-models/">OTA Commission Models for Tour Operators</a></li>
+      <li><a href="https://partnerresources.viator.com/travel-commerce/merchant/">Viator Merchant API (merchant of record)</a></li>
+    </ul>
+    <p class="sub">Internal: <code>SETTLEMENT-AND-PAYOUTS.md</code> · <code>BOOKING-AND-PAYMENTS.md</code> · <code>COMMERCIAL-MODEL.md</code> · <code>../03-implementation/BOOKING-FLOW-DESIGN-GUIDE.md</code> · <code>../MASTER-CHECKLIST.md</code></p>
+  </section>
+
+  <footer>Island Tours - Payment Settlement &amp; Payout Flow · v1 / v2 · generated 2026-07-15</footer>
+</div>
+</body>
+</html>

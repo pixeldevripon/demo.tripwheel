@@ -20,6 +20,7 @@ import { CollectionsModule } from '@/collections/collections.module';
 import { SearchModule } from '@/search/search.module';
 import { OctoModule } from '@/octo/octo.module';
 import { AvailabilityModule } from '@/availability/availability.module';
+import { FxModule } from '@/fx/fx.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsModule } from '@/bookings/bookings.module';
 import { PaymentsModule } from '@/payments/payments.module';
@@ -53,6 +54,7 @@ import { WorkersModule } from '@/workers/workers.module';
     SearchModule,
     OctoModule,
     AvailabilityModule,
+    FxModule,
     TiersModule,
     BookingsModule,
     PaymentsModule,

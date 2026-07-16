@@ -1,6 +1,3 @@
-import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
-import { Suspense } from 'react';
 import { HubTripsPanelSkeleton } from '@/components/skelitons/hub-trips-panel-skeleton';
 import {
     getDestinationBySlug,
@@ -8,8 +5,23 @@ import {
     getDestinationTours,
     getHubRender,
 } from '@/lib/api/public';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import {
+    isCurrency,
+    localizeHref,
+    type Currency,
+    type Locale,
+} from '@/lib/constants/locales';
+import {
+    deriveDisplayRate,
+    formatPriceFrom,
+    resolveDisplayPrice,
+} from '@/lib/currency/current';
+import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import {
+    priceUnitLabel,
+    type PriceUnitLabels,
+} from '@/lib/tours/pricing-label';
 import type {
     HubRender,
     HubRenderComparisonGroup,
@@ -17,24 +29,30 @@ import type {
     HubRenderSection,
 } from '@/types/hub';
 import type { SearchHit } from '@/types/search';
+import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
+import { Suspense } from 'react';
+import { FaqSection } from '../faq-section';
+import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
 import {
     HubAlsoWorthSection,
     type HubAlsoWorthItem,
 } from './hub-also-worth-section';
 import { HubCompareSection, type CompareTable } from './hub-compare-section';
-import { FaqSection } from '../faq-section';
-import { HubDiscoverSection, type HubDiscoverItem } from './hub-discover-section';
+import { HubDateProvider } from './hub-date-context';
+import {
+    HubDiscoverSection,
+    type HubDiscoverItem,
+} from './hub-discover-section';
 import {
     HubFirstTimersSection,
     type HubFirstTimersTip,
 } from './hub-first-timers-section';
-import { HubDateProvider } from './hub-date-context';
 import { HubHero, type HubHeroMeta } from './hub-hero';
 import { type HubPick, type HubPickLabel } from './hub-pick-card';
 import { type HubTour, type HubTourBadge } from './hub-tour-card';
 import { HubTripsSection } from './hub-trips-section';
 import { HubWhySection } from './hub-why-section';
-import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
 
 /**
  * Activity Hub page - the HUB branch of the polymorphic `[slug]` route
@@ -52,14 +70,7 @@ import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
  * pattern as the category page).
  */
 
-// Fallback card image (used when a category has no heroImage yet).
-const RELATED_FALLBACK_IMAGE = '/images/home-page/islands/curacao.jpg';
-
 // ── Mappers: render/listing payload -> presentational card shapes ──────────────
-
-function num(v: number | string | null | undefined): number {
-    return Number(v ?? 0) || 0;
-}
 
 /** Localized labels for the tour-card chip row + charter price line. */
 type CardLabels = {
@@ -72,8 +83,12 @@ type CardLabels = {
     amenities: Record<AmenityLabelKey, string>;
     /** Per-person price unit, e.g. "/per". */
     perPerson: string;
-    /** UNIT included-guests template, e.g. "/{count} people". */
-    peopleIncluded: string;
+    /** Per-unit_type price nouns (e.g. "/per boat"). */
+    perGroup: string;
+    perBoat: string;
+    perVehicle: string;
+    perAircraft: string;
+    perPackage: string;
     /** UNIT surcharge template, e.g. "+ {price} per extra person". */
     perExtra: string;
 };
@@ -104,7 +119,7 @@ const MAX_AMENITY_CHIPS = 2;
 
 /** Reverse lookup (attribute key -> amenity label key) for the hero pill. */
 const AMENITY_LABEL_KEY_BY_ATTR = new Map<string, AmenityLabelKey>(
-    AMENITY_CHIPS.map(([attr, label]) => [attr, label]),
+    AMENITY_CHIPS.map(([attr, label]) => [attr, label])
 );
 
 /**
@@ -114,7 +129,7 @@ const AMENITY_LABEL_KEY_BY_ATTR = new Map<string, AmenityLabelKey>(
  */
 function formatDuration(
     from: number | null | undefined,
-    labels: Pick<CardLabels, 'day' | 'days'>,
+    labels: Pick<CardLabels, 'day' | 'days'>
 ): string {
     if (from == null) return '';
     if (from >= 1440) {
@@ -146,7 +161,7 @@ function buildCardChips(hit: SearchHit, labels: CardLabels): string[] {
         chips.push(labels.upTo.replace('{count}', String(hit.maxPartySize)));
     }
 
-    const attrs = new Map((hit.attributes ?? []).map((a) => [a.key, a]));
+    const attrs = new Map((hit.attributes ?? []).map(a => [a.key, a]));
     const boat = attrs.get('boat_type');
     if (boat?.value) chips.push(titleCaseValue(boat.value));
 
@@ -171,24 +186,37 @@ function buildCardChips(hit: SearchHit, labels: CardLabels): string[] {
 function cardPrice(
     hit: SearchHit,
     labels: CardLabels,
-): { price: number; priceUnit: string; priceNote?: string } {
-    const price = num(hit.priceFrom ?? hit.basePrice);
+    locale: Locale
+): { priceDisplay: string; priceUnit: string; priceNote?: string } {
+    // Same money-resolution rule as every other card surface (guide §20.9).
+    const { currency, priceDisplay, fxRate } = resolveDisplayPrice(hit, locale);
     if (hit.pricingModel !== 'UNIT') {
-        return { price, priceUnit: labels.perPerson };
+        return { priceDisplay, priceUnit: labels.perPerson };
     }
-    const priceUnit =
-        hit.unitIncludedGuests != null
-            ? labels.peopleIncluded.replace(
-                  '{count}',
-                  String(hit.unitIncludedGuests),
-              )
-            : '';
+    // Unit-type-aware noun ("/per boat" etc.). The per-extra-guest note only
+    // shows for GROUP pricing (non-GROUP charters carry no extraPersonPrice).
+    const priceUnit = priceUnitLabel(
+        { pricingModel: hit.pricingModel, wholeUnitType: hit.wholeUnitType },
+        {
+            per: labels.perPerson,
+            perGroup: labels.perGroup,
+            perBoat: labels.perBoat,
+            perVehicle: labels.perVehicle,
+            perAircraft: labels.perAircraft,
+            perPackage: labels.perPackage,
+        }
+    );
+    // `extraPersonPrice` is a source-currency amount (not in `money`), so convert
+    // it with the same rate before formatting.
     const extra = Number(hit.extraPersonPrice ?? 0);
     const priceNote =
         extra > 0
-            ? labels.perExtra.replace('{price}', `$${extra.toLocaleString()}`)
+            ? labels.perExtra.replace(
+                  '{price}',
+                  formatPriceFrom(extra * fxRate, currency, locale)
+              )
             : undefined;
-    return { price, priceUnit, priceNote };
+    return { priceDisplay, priceUnit, priceNote };
 }
 
 /** A whole-unit charter is "overnight" when it spans a full day or more (multi-day). */
@@ -213,10 +241,7 @@ function minutesShort(m: number): string {
 }
 
 /** Duration range for the hero pill: "8-9h" (same unit) / "8h" (single). */
-function heroDurationLabel(
-    from: number | null,
-    to: number | null,
-): string {
+function heroDurationLabel(from: number | null, to: number | null): string {
     if (from == null) return '';
     if (to == null || to === from) return minutesShort(from);
     // Both whole hours -> compact "8-9h"; otherwise show both fully.
@@ -252,12 +277,10 @@ const MEAL_KEYWORDS = [
  * its body, and strip a trailing "included" so "BBQ lunch included" -> "BBQ
  * lunch". Returns '' when the hub has no meal fact (pill is then dropped).
  */
-function pickMealLabel(
-    fastFacts: { heading: string; body: string }[],
-): string {
-    const hit = fastFacts.find((f) => {
+function pickMealLabel(fastFacts: { heading: string; body: string }[]): string {
+    const hit = fastFacts.find(f => {
         const text = `${f.heading} ${f.body}`.toLowerCase();
-        return MEAL_KEYWORDS.some((k) => text.includes(k));
+        return MEAL_KEYWORDS.some(k => text.includes(k));
     });
     if (!hit) return '';
     const raw = (hit.body || hit.heading || '').trim();
@@ -289,19 +312,19 @@ function hitToHubTour(
     hit: SearchHit,
     locale: Locale,
     destinationSlug: string,
-    labels: CardLabels,
+    labels: CardLabels
 ): HubTour {
-    const { price, priceUnit, priceNote } = cardPrice(hit, labels);
+    const { priceDisplay, priceUnit, priceNote } = cardPrice(hit, labels, locale);
     return {
         id: hit.id,
         href: localizeHref(locale, `/${destinationSlug}/${hit.slug}`),
-        images: (hit.images ?? []).map((img) => img.url).filter(Boolean),
+        images: (hit.images ?? []).map(img => img.url).filter(Boolean),
         badge: toHubBadge(hit.badge),
         rating: hit.aggregateRating ?? 0,
         reviewCount: hit.aggregateReviewCount,
         title: hit.title,
         attributes: buildCardChips(hit, labels),
-        price,
+        priceDisplay,
         priceUnit,
         priceNote,
         freeCancellation: hit.cancellationHours != null,
@@ -312,7 +335,10 @@ function pickToHubPick(
     pick: HubRenderOurPick,
     labelText: Record<HubPickLabel, string>,
     durationLabels: Pick<CardLabels, 'day' | 'days'>,
+    priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
+    locale: Locale,
+    currency: Currency
 ): HubPick {
     const label = PICK_LABEL_BY_TYPE[pick.pickType] ?? 'best';
     return {
@@ -330,37 +356,53 @@ function pickToHubPick(
             : humanizeUnit(pick.tour.unitType),
         description: pick.description,
         duration: formatDuration(pick.tour.durationMinutesFrom, durationLabels),
-        price: num(pick.tour.priceFrom ?? pick.tour.basePrice),
-        images: (pick.tour.images ?? [])
-            .map((img) => img.url)
-            .filter(Boolean),
+        priceDisplay: resolveDisplayPrice(pick.tour, locale, currency).priceDisplay,
+        priceUnit: priceUnitLabel(
+            {
+                pricingModel: pick.tour.pricingModel,
+                wholeUnitType: pick.tour.unitType,
+            },
+            priceUnitLabels
+        ),
+        images: (pick.tour.images ?? []).map(img => img.url).filter(Boolean),
     };
 }
 
 function groupToCompareTable(
     group: HubRenderComparisonGroup,
     whatStandsOutLabel: string,
+    priceUnitLabels: PriceUnitLabels,
     tourHref: (slug: string) => string,
+    locale: Locale,
+    currency: Currency
 ): CompareTable {
     // Editorial lead row: each column's standout note, split on commas into
     // bullet-joined fragments (e.g. "Dive school, massage with a view").
     const standoutRow = {
         label: whatStandsOutLabel,
-        cells: group.tours.map((ct) => ({
+        cells: group.tours.map(ct => ({
             parts: (ct.standoutNote ?? '')
                 .split(',')
-                .map((s) => s.trim())
+                .map(s => s.trim())
                 .filter(Boolean),
             check: undefined,
         })),
     };
-    const hasStandout = standoutRow.cells.some((c) => c.parts.length > 0);
+    const hasStandout = standoutRow.cells.some(c => c.parts.length > 0);
 
     return {
         title: group.groupName,
-        boats: group.tours.map((ct) => ({
+        boats: group.tours.map(ct => ({
             name: ct.tour.title,
-            price: num(ct.tour.priceFrom ?? ct.tour.basePrice),
+            priceDisplay: resolveDisplayPrice(ct.tour, locale, currency)
+                .priceDisplay,
+            priceUnit: priceUnitLabel(
+                {
+                    pricingModel: ct.tour.pricingModel,
+                    wholeUnitType: ct.tour.unitType,
+                },
+                priceUnitLabels
+            ),
             href: tourHref(ct.tour.slug),
         })),
         // "What stands out" (editorial, from standoutNote) sits above the curated
@@ -368,9 +410,9 @@ function groupToCompareTable(
         // everything else renders its parts.
         rows: [
             ...(hasStandout ? [standoutRow] : []),
-            ...group.rows.map((r) => ({
+            ...group.rows.map(r => ({
                 label: r.label,
-                cells: r.cells.map((c) => ({
+                cells: r.cells.map(c => ({
                     parts: c.parts,
                     check: c.check === true ? true : undefined,
                 })),
@@ -407,12 +449,21 @@ export async function HubPage({
     locale,
     dict,
 }: HubPageProps) {
-    // Resolve the destination UUID (render is scoped by it), then fetch the
-    // published-only render aggregate. Both are `use cache` (prerenderable).
-    const destination = await getDestinationBySlug(destinationSlug, locale);
+    // Resolve the shopper currency + destination UUID in parallel (independent),
+    // then fetch the published-only render aggregate for that currency so every
+    // hub price (trips, our-picks, comparison, hero) is converted (guide §20.9).
+    const [currency, destination] = await Promise.all([
+        getServerCurrency(locale),
+        getDestinationBySlug(destinationSlug, locale),
+    ]);
     if (!destination) notFound();
 
-    const render = await getHubRender(hubSlug, destination.id, locale);
+    const render = await getHubRender(
+        hubSlug,
+        destination.id,
+        locale,
+        currency
+    );
     if (!render) notFound();
 
     // "Also worth your time on {destination}" links to the destination's own
@@ -433,10 +484,21 @@ export async function HubPage({
     const stats = render.hero.stats;
     const heroMeta: HubHeroMeta[] = [];
 
+    // `hero.stats.priceFrom` is a source-currency aggregate the backend does not
+    // convert (guide §20.9 defers hub aggregates). Derive the shopper-currency
+    // rate from the render's converted cards (shared helper) and convert it.
+    const { currency: heroCurrency, rate: heroRate } = deriveDisplayRate(
+        [
+            ...render.ourPicks.map(p => p.tour),
+            ...render.comparisonGroups.flatMap(g => g.tours.map(t => t.tour)),
+        ],
+        currency
+    );
+
     // 1. Duration - qualitative day-part + computed range: "Full day (8-9h)".
     const durationRange = heroDurationLabel(
         stats.durationMinutesFrom,
-        stats.durationMinutesTo,
+        stats.durationMinutesTo
     );
     if (durationRange) {
         const from = stats.durationMinutesFrom ?? 0;
@@ -452,11 +514,15 @@ export async function HubPage({
         });
     }
 
-    // 2. Price - capitalized "From $120" ("$" matches the hub cards' convention).
+    // 2. Price - capitalized "From <price>" in the shopper's currency.
     if (stats.priceFrom != null)
         heroMeta.push({
             icon: HERO_ICON.price,
-            label: `${capitalizeFirst(listingsDict.from)} $${stats.priceFrom.toLocaleString()}`,
+            label: `${capitalizeFirst(listingsDict.from)} ${formatPriceFrom(
+                stats.priceFrom * heroRate,
+                heroCurrency,
+                locale
+            )}`,
         });
 
     // 3. Inclusion - the hub's headline amenity ("BBQ lunch"), picked by the
@@ -482,7 +548,7 @@ export async function HubPage({
                     ? hubDict.frequencyDaily
                     : hubDict.frequencyWeekly.replace(
                           '{count}',
-                          String(stats.frequencyDays),
+                          String(stats.frequencyDays)
                       ),
         });
 
@@ -492,7 +558,7 @@ export async function HubPage({
     const whyParagraphs = render.editorialLead?.trim()
         ? render.editorialLead
               .split(/\n{2,}/)
-              .map((p) => p.trim())
+              .map(p => p.trim())
               .filter(Boolean)
         : [];
 
@@ -500,7 +566,7 @@ export async function HubPage({
     // hub has authored FAQs.
     const faqItems =
         render.faqs.length > 0
-            ? render.faqs.map((f) => ({ q: f.question, a: f.answer }))
+            ? render.faqs.map(f => ({ q: f.question, a: f.answer }))
             : hubDict.faq.items;
     const faqDict = {
         ...dict.home.faq,
@@ -514,21 +580,17 @@ export async function HubPage({
     // grid only surfaces something new; top 3 of the remainder.
     const hubCategorySlugs = new Set(render.allowedCategorySlugs);
     const alsoWorthItems: HubAlsoWorthItem[] = categories
-        .filter((c) => !hubCategorySlugs.has(c.slug))
+        .filter(c => !hubCategorySlugs.has(c.slug))
         .slice(0, 3)
-        .map((c) => ({
-            name: c.name,
-            slug: c.slug,
-            image: c.heroImage ?? RELATED_FALLBACK_IMAGE,
-        }));
+        .map(c => ({ name: c.name, slug: c.slug, image: c.heroImage ?? undefined }));
     const alsoWorthTitle = hubDict.alsoWorthTitle.replace(
         '{destination}',
-        destinationName,
+        destinationName
     );
 
     const firstTimersTitle = hubDict.firstTimersTitle.replace(
         '{hub}',
-        render.name,
+        render.name
     );
 
     return (
@@ -618,10 +680,12 @@ async function HubTripsData({
     // hub render, so shell-first streaming is the right call here (mirrors the
     // tour-detail page). The loader itself stays cached, so the stream is fast.
     await connection();
+    const currency = await getServerCurrency(locale);
     const toursRes = await getDestinationTours({
         destinationId,
         hubId: render.id,
         locale,
+        currency,
         limit: 60,
     });
 
@@ -638,8 +702,22 @@ async function HubTripsData({
         familyFriendly: hubDict.cardChips.familyFriendly,
         amenities: hubDict.cardChips.amenities,
         perPerson: hubDict.cardChips.perUnit,
-        peopleIncluded: hubDict.cardChips.peopleIncluded,
+        perGroup: hubDict.cardChips.perGroup,
+        perBoat: hubDict.cardChips.perBoat,
+        perVehicle: hubDict.cardChips.perVehicle,
+        perAircraft: hubDict.cardChips.perAircraft,
+        perPackage: hubDict.cardChips.perPackage,
         perExtra: hubDict.cardChips.perExtraPerson,
+    };
+
+    // Price-unit labels for the pick + comparison cards (unit-type-aware).
+    const priceUnitLabels: PriceUnitLabels = {
+        per: cardLabels.perPerson,
+        perGroup: cardLabels.perGroup,
+        perBoat: cardLabels.perBoat,
+        perVehicle: cardLabels.perVehicle,
+        perAircraft: cardLabels.perAircraft,
+        perPackage: cardLabels.perPackage,
     };
 
     const linkTour = (hit: SearchHit): HubTour =>
@@ -649,12 +727,16 @@ async function HubTripsData({
 
     // Partition: whole-unit tours are the private charters; the rest are trips.
     const trips = toursRes.data
-        .filter((t) => t.pricingModel !== 'UNIT')
+        .filter(t => t.pricingModel !== 'UNIT')
         .map(linkTour);
-    const charterHits = toursRes.data.filter((t) => t.pricingModel === 'UNIT');
+    const charterHits = toursRes.data.filter(t => t.pricingModel === 'UNIT');
     // Charters split into Day vs Overnight groups (Figma node 48024:11456).
-    const dayCharterTours = charterHits.filter((h) => !isOvernightHit(h)).map(linkTour);
-    const overnightCharterTours = charterHits.filter(isOvernightHit).map(linkTour);
+    const dayCharterTours = charterHits
+        .filter(h => !isOvernightHit(h))
+        .map(linkTour);
+    const overnightCharterTours = charterHits
+        .filter(isOvernightHit)
+        .map(linkTour);
 
     // Our Picks (editorial) -> the picks block appended to the charters panel.
     const pickLabelText = {
@@ -662,17 +744,32 @@ async function HubTripsData({
         popular: picksDict.popular,
         families: picksDict.families,
     };
-    const picks: HubPick[] = render.ourPicks.map((p) =>
-        pickToHubPick(p, pickLabelText, cardLabels, tourHref),
+    const picks: HubPick[] = render.ourPicks.map(p =>
+        pickToHubPick(
+            p,
+            pickLabelText,
+            cardLabels,
+            priceUnitLabels,
+            tourHref,
+            locale,
+            currency
+        )
     );
 
-    const compareTables = render.comparisonGroups.map((g) =>
-        groupToCompareTable(g, hubDict.comparison.whatStandsOut, tourHref),
+    const compareTables = render.comparisonGroups.map(g =>
+        groupToCompareTable(
+            g,
+            hubDict.comparison.whatStandsOut,
+            priceUnitLabels,
+            tourHref,
+            locale,
+            currency
+        )
     );
     const discoverItems = render.discover.map(sectionToDiscoverItem);
     const discoverTitle = discoverDict.titlePattern.replace(
         '{hub}',
-        render.name,
+        render.name
     );
 
     const tripsTitle = hubDict.tripsHeading
@@ -685,8 +782,11 @@ async function HubTripsData({
         { title: chartersDict.dayCharters, tours: dayCharterTours },
         { title: chartersDict.overnightCharters, tours: overnightCharterTours },
     ]
-        .filter((g) => g.tours.length > 0)
-        .map((g) => ({ title: `${g.title} (${g.tours.length})`, tours: g.tours }));
+        .filter(g => g.tours.length > 0)
+        .map(g => ({
+            title: `${g.title} (${g.tours.length})`,
+            tours: g.tours,
+        }));
 
     const tripsTabs = [
         { key: 'trips', label: hubDict.tabs.trips },
@@ -704,7 +804,7 @@ async function HubTripsData({
         {
             title: chartersDict.heading.replace(
                 '{count}',
-                String(charterHits.length),
+                String(charterHits.length)
             ),
             subtitle: chartersDict.subtitle,
             groups: charterGroups,
@@ -723,33 +823,29 @@ async function HubTripsData({
                 },
             },
         },
-        (
-            <HubCompareSection
-                key='compare'
-                tables={compareTables}
-                dict={{
-                    title: hubDict.comparison.title,
-                    subtitle: hubDict.comparison.subtitle,
-                    from: listingsDict.from,
-                    book: hubDict.comparison.book,
-                }}
-            />
-        ),
-        (
-            <HubDiscoverSection
-                key='discover'
-                items={discoverItems}
-                bookTripTargetId='hub-section-trips'
-                dict={{
-                    title: discoverTitle,
-                    // Per-hub editorial intro (dashboard) with the static string as fallback.
-                    subtitle: render.discoverIntro ?? discoverDict.subtitle,
-                    bookTrip: discoverDict.bookTrip,
-                    learnMore: dict.destination.about.learnMore,
-                    readLess: dict.destination.about.readLess,
-                }}
-            />
-        ),
+        <HubCompareSection
+            key='compare'
+            tables={compareTables}
+            dict={{
+                title: hubDict.comparison.title,
+                subtitle: hubDict.comparison.subtitle,
+                from: listingsDict.from,
+                book: hubDict.comparison.book,
+            }}
+        />,
+        <HubDiscoverSection
+            key='discover'
+            items={discoverItems}
+            bookTripTargetId='hub-section-trips'
+            dict={{
+                title: discoverTitle,
+                // Per-hub editorial intro (dashboard) with the static string as fallback.
+                subtitle: render.discoverIntro ?? discoverDict.subtitle,
+                bookTrip: discoverDict.bookTrip,
+                learnMore: dict.destination.about.learnMore,
+                readLess: dict.destination.about.readLess,
+            }}
+        />,
     ];
 
     return (

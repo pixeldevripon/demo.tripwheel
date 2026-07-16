@@ -10,13 +10,21 @@ export interface CloudinaryUploadResult {
 }
 
 /**
+ * Root folder for every Cloudinary asset this platform owns, so the account
+ * stays partitioned if it is ever shared with another property.
+ * Assets uploaded before this prefix existed still resolve by their stored
+ * public_id - this only governs where NEW uploads land.
+ */
+export const CLOUDINARY_ROOT_FOLDER = 'islandtours';
+
+/**
  * CloudinaryService - thin wrapper around the Cloudinary v2 SDK.
  *
  * Configured by CloudinaryProvider (cloudinary.provider.ts) which calls
  * cloudinary.config() at bootstrap time - no constructor config needed here.
  *
  * Responsibilities:
- *  - uploadFile(file, userId)          → server-side upload to users/<userId>
+ *  - uploadFile(file, userId)          → server-side upload to islandtours/users/<userId>
  *  - deleteFile(publicId)              → destroy by public_id (all resource types)
  *  - generateSignedUploadParams(userId) → signed params for direct client uploads
  */
@@ -25,14 +33,23 @@ export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
 
   /**
-   * Upload a single Multer file to Cloudinary under the users/<userId> folder.
+   * Folder a given user's uploads land in. Both the server-side upload and the
+   * signed direct-upload params must derive the folder here: the signature
+   * covers `folder`, so any drift between the two would fail verification.
+   */
+  private userFolder(userId: string): string {
+    return `${CLOUDINARY_ROOT_FOLDER}/users/${userId}`;
+  }
+
+  /**
+   * Upload a single Multer file to Cloudinary under islandtours/users/<userId>.
    * resource_type is 'auto' - Cloudinary infers image / video / raw.
    */
   async uploadFile(
     file: Express.Multer.File,
     userId: string,
   ): Promise<CloudinaryUploadResult> {
-    const folder = `users/${userId}`;
+    const folder = this.userFolder(userId);
 
     // Convert buffer to base64 data URI - eliminates stream overhead
     const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
@@ -103,7 +120,7 @@ export class CloudinaryService {
     cloudName: string;
     folder: string;
   } {
-    const folder = `users/${userId}`;
+    const folder = this.userFolder(userId);
     const timestamp = Math.round(Date.now() / 1000);
 
     const signature = cloudinary.utils.api_sign_request(

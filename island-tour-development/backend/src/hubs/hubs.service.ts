@@ -15,6 +15,12 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  DERIVED_ATTRIBUTE_KEYS,
+  deriveTourAttributeMap,
+  derivedAttributeTourSelect,
+  type DerivedAttributeTour,
+} from '@/attributes/derived-attributes';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -26,11 +32,14 @@ import {
 import {
   AttributeDataType,
   AvailabilityScheduleStatus,
+  Currency,
   HubSectionType,
   HubStatus,
+  Prisma,
   SlugEntityType,
   TourStatus,
 } from '@prisma/client';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -56,7 +65,29 @@ export class HubService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
+    private readonly fx: FxRatesService,
   ) {}
+
+  /**
+   * Attach a converted-price `money` object to a page of hub tour cards, in place
+   * (guide §20.9). Mirrors ToursService.attachMoney: resolves each distinct source
+   * currency's display rate once, converts each card, falls back to source currency
+   * (rate 1) when no rate is available. The card's `currency` field is the source.
+   */
+  /** Attach the display `money` object to each hub card (guide §20.9). Delegates to
+   *  the single reusable implementation in {@link FxRatesService.attachMoney}; hub
+   *  cards hold their source currency in `currency`. */
+  private async attachHubMoney(
+    cards: Array<{
+      currency: string;
+      basePrice?: unknown;
+      priceFrom?: unknown;
+      money?: unknown;
+    }>,
+    target?: Currency,
+  ): Promise<void> {
+    await this.fx.attachMoney(cards, target, 'currency');
+  }
 
   // Hub translation select including `heroTagline` (absent from the shared translationSelect util).
   private readonly hubTranslationSelect = {
@@ -223,18 +254,39 @@ export class HubService {
     const attrsByTour = new Map<string, Map<string, string>>();
     if (tourIds.length === 0) return attrsByTour;
 
-    const rows = await this.prisma.tourAttribute.findMany({
-      where: { tourId: { in: tourIds } },
-      select: { tourId: true, attributeKey: true, attributeValue: true },
-    });
+    const [rows, tours] = await Promise.all([
+      this.prisma.tourAttribute.findMany({
+        where: { tourId: { in: tourIds } },
+        select: { tourId: true, attributeKey: true, attributeValue: true },
+      }),
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, ...derivedAttributeTourSelect },
+      }),
+    ]);
 
+    // Stored values, minus derived keys (computed from the tour's fields below).
     for (const r of rows) {
+      if (DERIVED_ATTRIBUTE_KEYS.has(r.attributeKey)) continue;
       let m = attrsByTour.get(r.tourId);
       if (!m) {
         m = new Map();
         attrsByTour.set(r.tourId, m);
       }
       m.set(r.attributeKey, r.attributeValue);
+    }
+
+    // Derived values (e.g. cancellation_window_hours, maximum_travelers) from the
+    // tour's first-class fields - the single source of truth for the comparison rows.
+    for (const t of tours) {
+      let m = attrsByTour.get(t.id);
+      if (!m) {
+        m = new Map();
+        attrsByTour.set(t.id, m);
+      }
+      for (const [key, value] of deriveTourAttributeMap(t)) {
+        m.set(key, value);
+      }
     }
     return attrsByTour;
   }
@@ -1155,7 +1207,7 @@ export class HubService {
     return this.getOurPicks(id, Locale.en);
   }
 
-  async getOurPicks(id: string, locale: Locale = Locale.en) {
+  async getOurPicks(id: string, locale: Locale = Locale.en, target?: Currency) {
     await this.findHubOrThrow(id);
 
     const rows = await this.prisma.hubOurPick.findMany({
@@ -1193,6 +1245,10 @@ export class HubService {
       },
     }));
 
+    await this.attachHubMoney(
+      ourPicks.map((p) => p.tour),
+      target,
+    );
     return { count: ourPicks.length, ourPicks };
   }
 
@@ -1310,7 +1366,11 @@ export class HubService {
     return this.getComparison(id, Locale.en);
   }
 
-  async getComparison(id: string, locale: Locale = Locale.en) {
+  async getComparison(
+    id: string,
+    locale: Locale = Locale.en,
+    target?: Currency,
+  ) {
     await this.findHubOrThrow(id);
 
     const groups = await this.prisma.hubComparisonGroup.findMany({
@@ -1365,6 +1425,10 @@ export class HubService {
       };
     });
 
+    await this.attachHubMoney(
+      mapped.flatMap((g) => g.tours.map((t) => t.tour)),
+      target,
+    );
     return { count: mapped.length, groups: mapped };
   }
 
@@ -1588,8 +1652,8 @@ export class HubService {
           select: this.contentSectionSelect,
           orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
         }),
-        this.getOurPicks(hub.id, locale),
-        this.getComparison(hub.id, locale),
+        this.getOurPicks(hub.id, locale, query.currency),
+        this.getComparison(hub.id, locale, query.currency),
         this.prisma.faq.findMany({
           where: {
             pageType: FAQ_PAGE_TYPE.HUB,

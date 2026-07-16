@@ -51,8 +51,6 @@ const DELIVERY_METHOD_OPTIONS: { value: DeliveryMethod; label: string }[] = [
   { value: 'TICKET', label: 'Ticket' },
 ];
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 const COMMON_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'nl', label: 'Dutch' },
@@ -216,26 +214,15 @@ const detailsSchema = z.object({
   categoryIds: z.array(z.string()).min(1, 'Select at least one category'),
   primaryCategoryId: z.string().optional(),
   hubIds: z.array(z.string()).optional(),
-  pricingModel: z.enum(['PER_PERSON', 'UNIT']),
-  wholeUnitType: z.enum(['GROUP', 'BOAT', 'VEHICLE', 'AIRCRAFT', 'PACKAGE']).optional().or(z.literal('')),
-  defaultCurrency: z.enum(['USD', 'EUR']),
-  basePrice: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
-    .optional()
-    .or(z.literal('')),
-  unitIncludedGuests: z.coerce.number().int().min(1).optional().or(z.literal('')),
-  extraPersonPrice: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid price')
-    .optional()
-    .or(z.literal('')),
+  // Pricing fields (pricingModel, currency, basePrice, unit fields) live on the
+  // Pricing tab - the single home for how a tour is priced.
   durationMinutesFrom: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   durationMinutesTo: z.coerce.number().int().min(1).max(10080).optional().or(z.literal('')),
   pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
   pickupRequired: z.boolean(),
   bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
   paymentModel: z.enum(['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL']),
+  onArrivalPayment: z.enum(['CARD_OR_CASH', 'CASH_ONLY']),
   instantConfirmation: z.boolean(),
   minPartySize: z.coerce.number().int().min(1),
   maxPartySize: z.coerce.number().int().min(1).optional().or(z.literal('')),
@@ -262,7 +249,7 @@ const detailsSchema = z.object({
   deliveryFormats: z.array(z.enum(['PDF_URL', 'QRCODE', 'CODE128', 'PKPASS_URL'])),
   deliveryMethods: z.array(z.enum(['VOUCHER', 'TICKET'])),
   // timeZone is derived from the destination and not operator-editable (shown read-only below).
-  startTimes: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
+  // startTimes are managed on the Schedules tab (declared alongside the recurring schedules that use them).
   isActive: z.boolean().optional(),
 });
 
@@ -272,18 +259,13 @@ type DetailsFormValues = {
   categoryIds: string[];
   primaryCategoryId: string;
   hubIds: string[];
-  pricingModel: 'PER_PERSON' | 'UNIT';
-  wholeUnitType: '' | 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
-  defaultCurrency: 'USD' | 'EUR';
-  basePrice: string;
-  unitIncludedGuests: string;
-  extraPersonPrice: string;
   durationMinutesFrom: string;
   durationMinutesTo: string;
   pickupModel: 'NONE' | 'INCLUDED' | 'PAID_ADDON';
   pickupRequired: boolean;
   bookingType: '' | 'PRIVATE' | 'SHARED';
   paymentModel: 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+  onArrivalPayment: 'CARD_OR_CASH' | 'CASH_ONLY';
   instantConfirmation: boolean;
   minPartySize: string;
   maxPartySize: string;
@@ -309,7 +291,6 @@ type DetailsFormValues = {
   allowFreesale: boolean;
   deliveryFormats: DeliveryFormat[];
   deliveryMethods: DeliveryMethod[];
-  startTimes: string[];
   isActive: boolean;
 };
 
@@ -327,18 +308,13 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     categoryIds: trip.categoryIds,
     primaryCategoryId: trip.primaryCategoryId ?? trip.categoryIds[0] ?? '',
     hubIds: trip.hubIds,
-    pricingModel: trip.pricingModel,
-    wholeUnitType: trip.wholeUnitType ?? '',
-    defaultCurrency: trip.defaultCurrency,
-    basePrice: trip.basePrice ?? '',
-    unitIncludedGuests: trip.unitIncludedGuests != null ? String(trip.unitIncludedGuests) : '',
-    extraPersonPrice: trip.extraPersonPrice ?? '',
     durationMinutesFrom: trip.durationMinutesFrom != null ? String(trip.durationMinutesFrom) : '',
     durationMinutesTo: trip.durationMinutesTo != null ? String(trip.durationMinutesTo) : '',
     pickupModel: trip.pickupModel,
     pickupRequired: trip.pickupRequired,
     bookingType: trip.bookingType ?? '',
     paymentModel: trip.paymentModel,
+    onArrivalPayment: trip.onArrivalPayment ?? 'CARD_OR_CASH',
     instantConfirmation: trip.instantConfirmation,
     minPartySize: String(trip.minPartySize),
     maxPartySize: trip.maxPartySize != null ? String(trip.maxPartySize) : '',
@@ -364,7 +340,6 @@ function tripToDefaults(trip: TripListItem): DetailsFormValues {
     allowFreesale: trip.allowFreesale,
     deliveryFormats: trip.deliveryFormats ?? [],
     deliveryMethods: trip.deliveryMethods ?? [],
-    startTimes: trip.startTimes ?? [],
     isActive: trip.isActive,
   };
 }
@@ -413,9 +388,9 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const isActiveValue = watch('isActive');
   const categoryIds = watch('categoryIds');
   const primaryCategoryId = watch('primaryCategoryId');
-  const pricingModel = watch('pricingModel');
   const durationFromWatch = watch('durationMinutesFrom');
   const pickupRequired = watch('pickupRequired');
+  const watchedPaymentModel = watch('paymentModel');
   const instantConfirmation = watch('instantConfirmation');
   const weatherDependent = watch('weatherDependent');
   const wheelchairAccessible = watch('wheelchairAccessible');
@@ -424,7 +399,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const instantDelivery = watch('instantDelivery');
   const availabilityRequired = watch('availabilityRequired');
   const allowFreesale = watch('allowFreesale');
-  const [startTimeDraft, setStartTimeDraft] = useState('');
 
   // Keep primary valid within the selected set.
   useEffect(() => {
@@ -445,24 +419,13 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           categoryIds: values.categoryIds,
           primaryCategoryId: values.primaryCategoryId || values.categoryIds[0],
           hubIds: values.hubIds,
-          pricingModel: values.pricingModel,
-          wholeUnitType: values.pricingModel === 'UNIT' && values.wholeUnitType ? values.wholeUnitType : undefined,
-          defaultCurrency: values.defaultCurrency,
-          basePrice: values.basePrice || undefined,
-          unitIncludedGuests:
-            values.pricingModel === 'UNIT' && values.unitIncludedGuests
-              ? Number(values.unitIncludedGuests)
-              : undefined,
-          extraPersonPrice:
-            values.pricingModel === 'UNIT' && values.extraPersonPrice
-              ? values.extraPersonPrice
-              : undefined,
           durationMinutesFrom: values.durationMinutesFrom ? Number(values.durationMinutesFrom) : undefined,
           durationMinutesTo: values.durationMinutesTo ? Number(values.durationMinutesTo) : undefined,
           pickupModel: values.pickupModel,
           pickupRequired: values.pickupRequired,
           bookingType: values.bookingType || undefined,
           paymentModel: values.paymentModel,
+          onArrivalPayment: values.onArrivalPayment,
           instantConfirmation: values.instantConfirmation,
           minPartySize: Number(values.minPartySize),
           maxPartySize: values.maxPartySize ? Number(values.maxPartySize) : undefined,
@@ -488,7 +451,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
           allowFreesale: values.allowFreesale,
           deliveryFormats: values.deliveryFormats,
           deliveryMethods: values.deliveryMethods,
-          startTimes: values.startTimes,
           isActive: values.isActive,
         },
       },
@@ -598,131 +560,6 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
-              <Controller
-                name="pricingModel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PER_PERSON">Per Person</SelectItem>
-                      <SelectItem value="UNIT">Per Unit (whole asset)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-
-            {pricingModel === 'UNIT' ? (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
-                <Controller
-                  name="wholeUnitType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GROUP">Group</SelectItem>
-                        <SelectItem value="BOAT">Boat</SelectItem>
-                        <SelectItem value="VEHICLE">Vehicle</SelectItem>
-                        <SelectItem value="AIRCRAFT">Aircraft</SelectItem>
-                        <SelectItem value="PACKAGE">Package</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            ) : (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
-                <Controller
-                  name="defaultCurrency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Base Price</Label>
-              <Input
-                {...register('basePrice')}
-                placeholder="e.g. 49.99"
-                aria-invalid={!!errors.basePrice}
-              />
-              <FieldError>{errors.basePrice?.message}</FieldError>
-            </Field>
-            {pricingModel === 'UNIT' && (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
-                <Controller
-                  name="defaultCurrency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            )}
-          </div>
-
-          {/* UNIT (charter) pricing: base covers N guests; extra guests cost a
-              per-person surcharge. Card reads "from $X /N people + $Y per extra person". */}
-          {pricingModel === 'UNIT' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Guests Included in Base Price</Label>
-                <Input
-                  {...register('unitIncludedGuests')}
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 10"
-                  aria-invalid={!!errors.unitIncludedGuests}
-                />
-                <FieldDescription>Travelers covered by the base price. Shown on the card as &ldquo;/N people&rdquo;.</FieldDescription>
-                <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
-              </Field>
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Extra Person Price</Label>
-                <Input
-                  {...register('extraPersonPrice')}
-                  placeholder="e.g. 175.00"
-                  aria-invalid={!!errors.extraPersonPrice}
-                />
-                <FieldDescription>Charged per traveler beyond the included count, up to max party size.</FieldDescription>
-                <FieldError>{errors.extraPersonPrice?.message}</FieldError>
-              </Field>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
               <Label className="text-xs font-semibold uppercase">Duration From (minutes)</Label>
               <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
               {durationHint(Number(durationFromWatch)) && (
@@ -793,7 +630,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
                       <SelectItem value="OPERATOR_LINK">Operator link (deposit)</SelectItem>
                       <SelectItem value="ON_ARRIVAL">Pay on arrival</SelectItem>
                       <SelectItem value="PAID_IN_FULL">Paid in full</SelectItem>
-                      <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem>
+                   {/*    <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem> */}
                     </SelectContent>
                   </Select>
                 )}
@@ -820,6 +657,39 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
               />
             </Field>
           </div>
+
+          {/* Only ON_ARRIVAL tours collect on site, so this is meaningless on any
+              other model. It picks between the two on_arrival confirmation-email
+              variants, and each booking snapshots it at reserve - editing it never
+              rewrites what an existing traveler was already told. */}
+          {watchedPaymentModel === 'ON_ARRIVAL' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <Label className="text-xs font-semibold uppercase">
+                  On-arrival Payment
+                </Label>
+                <Controller
+                  name="onArrivalPayment"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CARD_OR_CASH">Card or cash</SelectItem>
+                        <SelectItem value="CASH_ONLY">Cash only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cash only tells travellers to bring the balance in cash, since there
+                  is no card machine or ATM on site.
+                </p>
+              </Field>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -1170,60 +1040,10 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
             <Field>
               <Label className="text-xs font-semibold uppercase">Start Times</Label>
-              <Controller
-                name="startTimes"
-                control={control}
-                render={({ field }) => {
-                  function addTime() {
-                    const value = startTimeDraft.trim();
-                    if (!TIME_PATTERN.test(value)) {
-                      toast.error('Enter a valid time in HH:MM (24-hour).');
-                      return;
-                    }
-                    if (field.value.includes(value)) {
-                      toast.error('That start time is already added.');
-                      return;
-                    }
-                    field.onChange([...field.value, value].sort());
-                    setStartTimeDraft('');
-                  }
-                  return (
-                    <div className="space-y-3">
-                      {field.value.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {field.value.map((time) => (
-                            <Badge key={time} variant="secondary" className="gap-1.5 pr-1">
-                              <span>{time}</span>
-                              <button
-                                type="button"
-                                onClick={() => field.onChange(field.value.filter((t) => t !== time))}
-                                className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
-                                aria-label={`Remove ${time}`}
-                              >
-                                <XIcon className="size-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-end gap-2">
-                        <Input
-                          value={startTimeDraft}
-                          onChange={(e) => setStartTimeDraft(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTime())}
-                          placeholder="HH:MM (e.g. 09:30)"
-                          className="max-w-45"
-                        />
-                        <Button type="button" size="sm" onClick={addTime}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                }}
-              />
               <FieldDescription>
-                The tour&apos;s start times. Availability schedules switch these on per weekday.
+                Managed on the <span className="font-medium">Schedules</span> tab,
+                where they are declared alongside the recurring schedules that use
+                them.
               </FieldDescription>
             </Field>
           </CardContent>

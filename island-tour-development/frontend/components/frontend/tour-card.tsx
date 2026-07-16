@@ -16,6 +16,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { springPop } from '@/lib/motion';
+import type { Currency } from '@/lib/constants/locales';
+import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
 import { TourCardCarousel } from './tour-card-carousel';
 
@@ -31,6 +33,10 @@ export type TourCardDict = {
     from: string;
     per: string;
     perGroup: string;
+    perBoat: string;
+    perVehicle: string;
+    perAircraft: string;
+    perPackage: string;
 };
 
 // ── Data types ──────────────────────────────────────────────────────────────
@@ -60,8 +66,12 @@ export type TourListing = {
     duration: string;
     pickupAvailable: boolean;
     price: number;
-    /** 'per' → "/per person"  |  'perGroup' → "/per group" */
-    priceUnit: 'per' | 'perGroup';
+    /** Display currency of `price`/`priceDisplay` (from the backend `money` object). */
+    currency: Currency;
+    /** Localized formatted "From" price incl. currency symbol, e.g. "$120" / "120 €". */
+    priceDisplay: string;
+    /** Price-unit i18n key: 'per' (per person) or a per-unit_type key ('perBoat' …). */
+    priceUnit: PriceUnitKey;
     priceVaries?: boolean;
     freeCancellation?: boolean;
     /**
@@ -130,7 +140,7 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
     const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
 
-    const priceLabel = tour.priceUnit === 'per' ? dict.per : dict.perGroup;
+    const priceLabel = dict[tour.priceUnit];
 
     const card = (
         <motion.article
@@ -286,7 +296,7 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                         {dict.from}
                     </span>
                     <span className='font-medium text-[12px] @[220px]:text-[16px] leading-[1.25] tracking-[-0.012em] text-it-ink'>
-                        ${tour.price}
+                        {tour.priceDisplay}
                     </span>
                     <span className='text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50'>
                         {priceLabel}
@@ -435,7 +445,7 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                                 {dict.from}
                             </span>
                             <span className='font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[16px]'>
-                                ${tour.price.toLocaleString()}
+                                {tour.priceDisplay}
                             </span>
                         </span>
                     </div>

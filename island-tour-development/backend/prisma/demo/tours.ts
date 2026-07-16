@@ -69,15 +69,6 @@ const DEST_META: Record<
   },
 };
 
-const ISO_TO_GUIDE_LANG: Record<string, string> = {
-  en: 'english',
-  es: 'spanish',
-  nl: 'dutch',
-  fr: 'french',
-  de: 'german',
-  pt: 'portuguese',
-};
-
 type AttrValue = string | number | boolean | string[];
 function attrVal(v: AttrValue): string {
   if (Array.isArray(v)) return JSON.stringify(v);
@@ -1925,19 +1916,11 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
 
 // ── Builders ───────────────────────────────────────────────────────────────────
 function buildAgeBands(bp: Blueprint): Prisma.TourAgeBandCreateManyTourInput[] {
+  // UNIT (whole-unit / charter) tours have NO age bands (D4): the booking engine prices
+  // them from basePrice + per-guest surcharge against a single guests count. priceFrom
+  // falls back to basePrice below.
+  if (bp.pricingModel === PricingModel.UNIT) return [];
   const adult = money(bp.basePrice);
-  if (bp.pricingModel === PricingModel.UNIT) {
-    return [
-      {
-        bandType: AgeBandType.ADULT,
-        participation: BandParticipation.PARTICIPANT,
-        label: `Private charter (up to ${bp.maxPartySize ?? 12})`,
-        price: adult,
-        isDefault: true,
-        displayOrder: 0,
-      },
-    ];
-  }
   const child = money(Number(bp.basePrice) * 0.6);
   const bands: Prisma.TourAgeBandCreateManyTourInput[] = [
     {
@@ -1981,25 +1964,16 @@ function buildAgeBands(bp: Blueprint): Prisma.TourAgeBandCreateManyTourInput[] {
 
 export function buildAttributes(bp: Blueprint): Record<string, string> {
   const c = CATEGORY_CONTENT[bp.primaryCategory];
-  const langValues = (bp.languages ?? L_DEFAULT)
-    .map((iso) => ISO_TO_GUIDE_LANG[iso])
-    .filter(Boolean);
+  // NOTE: derived attributes (booking_type, duration_minutes, pickup_available,
+  // instant_confirmation, free_cancellation, guide_languages, the accessibility
+  // flags, cancellation_window_hours, maximum_travelers, minimum_age) are NOT
+  // stored - they are computed on read from the tour's first-class fields
+  // (src/attributes/derived-attributes.ts). Only genuine operator attributes
+  // (category attrs + per-tour overrides) are persisted here.
   const raw: Record<string, AttrValue> = {
-    booking_type: bp.bookingType.toLowerCase(),
-    duration_minutes: bp.durationFrom,
-    pickup_available: !!bp.pickup,
-    instant_confirmation: true,
-    free_cancellation: true,
-    guide_languages: langValues,
-    wheelchair_accessible: bp.flags?.wheelchairAccessible ?? false,
-    family_friendly: bp.flags?.familyFriendly ?? false,
-    suitable_for_beginners: bp.flags?.suitableForBeginners ?? false,
-    cancellation_window_hours: bp.cancellationHours ?? 48,
-    maximum_travelers: bp.maxPartySize ?? 20,
     ...c.attrs,
     ...(bp.attrOverrides ?? {}),
   };
-  if (bp.minAgeYears && bp.minAgeYears > 0) raw.minimum_age = bp.minAgeYears;
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) out[k] = attrVal(v);
   return out;
@@ -2124,9 +2098,17 @@ export async function seedTours(): Promise<void> {
           isBookable: true,
           reference: DEMO_TOUR_REF,
           timeZone: meta.tz,
-          // pricing
+          // pricing. The included-guests + extra-person surcharge applies ONLY to
+          // GROUP pricing; a blueprint that declares those fields is a group-priced
+          // charter, so it is forced to unit_type GROUP. Other unit types
+          // (boat/vehicle/aircraft/package) are a flat whole-unit price.
           pricingModel: bp.pricingModel ?? PricingModel.PER_PERSON,
-          wholeUnitType: bp.wholeUnitType ?? null,
+          wholeUnitType:
+            bp.pricingModel === PricingModel.UNIT
+              ? bp.unitIncludedGuests != null || bp.extraPersonPrice != null
+                ? WholeUnitType.GROUP
+                : (bp.wholeUnitType ?? null)
+              : null,
           defaultCurrency: currency,
           basePrice: money(bp.basePrice),
           unitIncludedGuests: bp.unitIncludedGuests ?? null,
@@ -2430,18 +2412,19 @@ export async function seedTours(): Promise<void> {
         })),
       });
 
-      // priceFrom = cheapest participant band (mirror tours.service)
-      const cheapest = await tx.tourAgeBand.findFirst({
+      // priceFrom = default participant band, cheapest as fallback (mirror
+      // tours.service - the anchor is the adult/default price, never a child band)
+      const anchorBand = await tx.tourAgeBand.findFirst({
         where: {
           tourId: tour.id,
           participation: BandParticipation.PARTICIPANT,
         },
-        orderBy: { price: 'asc' },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
         select: { price: true },
       });
       await tx.tour.update({
         where: { id: tour.id },
-        data: { priceFrom: cheapest?.price ?? money(bp.basePrice) },
+        data: { priceFrom: anchorBand?.price ?? money(bp.basePrice) },
       });
 
       // Mandatory TOUR slug_registry row (critical rule #8)

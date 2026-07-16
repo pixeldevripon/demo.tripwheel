@@ -21,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import {
   useSchedules,
@@ -30,6 +36,7 @@ import {
   useExceptions,
   useCreateException,
   useRemoveException,
+  useUpdateTrip,
 } from '@/hooks/trips/use-trips';
 import type { TourSchedule, TourException, TourExceptionType } from '@/types/trip';
 
@@ -181,6 +188,157 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   );
 }
 
+// ── Start times (the tour's declared departure-time slot set) ─────────────────
+
+interface StartTimesSectionProps {
+  tripId: string;
+  declaredStartTimes: string[];
+  // Existing schedules, to block removing a time that a schedule still uses.
+  schedules: TourSchedule[];
+}
+
+// The tour's declared start times. Recurring schedules and date exceptions can
+// only target times in this set (backend rule, master §2.1), so they are managed
+// here alongside the schedules that consume them. Each add/remove persists to the
+// tour immediately (PATCH), matching the schedule/exception rows.
+function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimesSectionProps) {
+  const { mutate: updateTrip, isPending } = useUpdateTrip();
+  const [draft, setDraft] = useState('09:00');
+  // Inline error shown under the time input (client validation + server error).
+  const [error, setError] = useState<string | null>(null);
+
+  const times = [...new Set(declaredStartTimes)].sort();
+  // How many recurring schedules use a given start time. Removing a time still in
+  // use would orphan those schedules, so the UI locks its remove control.
+  const scheduleCountFor = (t: string) =>
+    schedules.filter((s) => s.startTime === t).length;
+
+  function addTime() {
+    const t = draft.trim();
+    if (!HHMM.test(t)) {
+      setError('Time must be HH:MM (00:00-23:59).');
+      return;
+    }
+    if (times.includes(t)) {
+      setError('That start time is already declared.');
+      return;
+    }
+    setError(null);
+    updateTrip(
+      { id: tripId, payload: { startTimes: [...times, t].sort() } },
+      {
+        onSuccess: () => {
+          setDraft('');
+          toast.success(`Added start time ${t}.`);
+        },
+        onError: (err) =>
+          setError(err instanceof Error ? err.message : 'Failed to add start time.'),
+      }
+    );
+  }
+
+  function removeTime(t: string) {
+    // Defensive: the UI disables removal for in-use times, but guard anyway so a
+    // declared time a schedule still uses can never be orphaned.
+    if (scheduleCountFor(t) > 0) return;
+    updateTrip(
+      { id: tripId, payload: { startTimes: times.filter((x) => x !== t) } },
+      {
+        onSuccess: () => toast.success(`Removed start time ${t}.`),
+        onError: (err) =>
+          setError(err instanceof Error ? err.message : 'Failed to remove start time.'),
+      }
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          Start Times
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          The tour&apos;s declared departure times. Recurring schedules and date
+          exceptions can only use times declared here.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-4">
+        {times.length > 0 ? (
+          <TooltipProvider>
+            <div className="flex flex-wrap gap-2">
+              {times.map((t) => {
+                const usedBy = scheduleCountFor(t);
+                return (
+                  <Badge key={t} variant="secondary" className="gap-1.5 pr-1 tabular-nums">
+                    <span>{t}</span>
+                    {usedBy > 0 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="rounded-sm p-0.5 text-muted-foreground/40 cursor-not-allowed"
+                            aria-label={`${t} is used by ${usedBy} schedule${usedBy > 1 ? 's' : ''}`}
+                          >
+                            <XIcon className="size-3" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          In use by {usedBy} schedule{usedBy > 1 ? 's' : ''}. Remove{' '}
+                          {usedBy > 1 ? 'them' : 'it'} first to delete this time.
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => removeTime(t)}
+                        disabled={isPending}
+                        className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors disabled:opacity-50"
+                        aria-label={`Remove ${t}`}
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    )}
+                  </Badge>
+                );
+              })}
+            </div>
+          </TooltipProvider>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No start times declared yet. Add at least one before creating schedules.
+          </p>
+        )}
+        <div>
+          <div className="flex items-end gap-2">
+            <Input
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="HH:MM (e.g. 09:00)"
+              inputMode="numeric"
+              aria-invalid={!!error}
+              className="h-9 w-40"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addTime}
+              disabled={isPending}
+              className="h-9"
+            >
+              <PlusIcon className="size-3.5" />
+              Add time
+            </Button>
+          </div>
+          {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
 interface TripSchedulesTabProps {
@@ -188,9 +346,16 @@ interface TripSchedulesTabProps {
   // The tour's default departure capacity. When null, a schedule MUST carry its
   // own capacity override or it won't materialise any bookable departures.
   maxPartySize: number | null;
+  // The tour's declared start times (Details tab). A schedule slot must be one of
+  // these (backend rule, master §2.1), so the form offers only these when set.
+  declaredStartTimes: string[];
 }
 
-export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps) {
+export function TripSchedulesTab({
+  tripId,
+  maxPartySize,
+  declaredStartTimes,
+}: TripSchedulesTabProps) {
   const { data: schedules, isLoading } = useSchedules(tripId);
   const { mutateAsync: createSchedule, isPending: isCreating } = useCreateSchedule();
 
@@ -200,6 +365,13 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
   const [capacity, setCapacity] = useState('');
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  // Inline field + form errors (client validation and server error).
+  const [errors, setErrors] = useState<{
+    weekdays?: string;
+    startTimes?: string;
+    capacity?: string;
+    form?: string;
+  }>({});
 
   // One backend row per weekday × start time. Group by weekday so the list is
   // scannable one day at a time (tabbed), each day's times sorted.
@@ -225,14 +397,32 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
     ? (schedules ?? []).filter((s) => s.capacityOverride == null).length
     : 0;
 
+  // The tour's declared start times, de-duped and sorted. When present, the form
+  // constrains the picker to these so a slot can never be rejected on save.
+  const declaredTimes = [...new Set(declaredStartTimes)].sort();
+  const hasDeclaredTimes = declaredTimes.length > 0;
+
+  const clearError = (key: keyof typeof errors) =>
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+
   function toggleWeekday(day: number) {
+    clearError('weekdays');
     setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  }
+
+  // Toggle one of the declared start times in/out of this schedule's selection.
+  function toggleTime(t: string) {
+    clearError('startTimes');
+    setStartTimes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t].sort()
+    );
   }
 
   function addTime() {
     const t = timeInput.trim();
-    if (!HHMM.test(t)) { toast.error('Time must be HH:MM (00:00-23:59).'); return; }
-    if (startTimes.includes(t)) { toast.error('Time already added.'); return; }
+    if (!HHMM.test(t)) { setErrors((p) => ({ ...p, startTimes: 'Time must be HH:MM (00:00-23:59).' })); return; }
+    if (startTimes.includes(t)) { setErrors((p) => ({ ...p, startTimes: 'Time already added.' })); return; }
+    clearError('startTimes');
     setStartTimes((prev) => [...prev, t].sort());
   }
 
@@ -247,24 +437,28 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
     setCapacity('');
     setValidFrom('');
     setValidUntil('');
+    setErrors({});
   }
 
   // The backend stores one schedule per (weekday, startTime), so a grouped
   // selection fans out into weekdays × startTimes create calls.
   async function handleCreate() {
-    if (weekdays.length === 0) { toast.error('Select at least one weekday.'); return; }
-    if (startTimes.length === 0) { toast.error('Add at least one start time.'); return; }
+    const next: typeof errors = {};
+    if (weekdays.length === 0) next.weekdays = 'Select at least one weekday.';
+    if (startTimes.length === 0) next.startTimes = 'Add at least one start time.';
     const cap = capacity.trim() ? Number(capacity) : undefined;
     if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
-      toast.error('Capacity override must be a whole number of at least 1.');
-      return;
+      next.capacity = 'Capacity override must be a whole number of at least 1.';
     }
     if (cap === undefined && capacityRequired) {
-      toast.error(
-        "This tour has no Max Party Size, so a capacity override is required here. Enter a capacity below, or set a Max Party Size on the Details tab first.",
-      );
+      next.capacity =
+        'Required - this tour has no Max Party Size. Enter a capacity, or set a Max Party Size on the Details tab first.';
+    }
+    if (Object.keys(next).length > 0) {
+      setErrors(next);
       return;
     }
+    setErrors({});
 
     try {
       for (const weekday of weekdays) {
@@ -284,12 +478,20 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
       toast.success(`Added ${weekdays.length * startTimes.length} schedule(s).`);
       resetForm();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add schedule.');
+      setErrors({
+        form: err instanceof Error ? err.message : 'Failed to add schedule.',
+      });
     }
   }
 
   return (
     <div className="space-y-6">
+      <StartTimesSection
+        tripId={tripId}
+        declaredStartTimes={declaredStartTimes}
+        schedules={schedules ?? []}
+      />
+
       <Card>
         <CardHeader className="border-b pb-4">
           <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
@@ -371,44 +573,84 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
                   </button>
                 ))}
               </div>
+              {errors.weekdays && (
+                <p className="text-xs text-destructive mt-1.5">{errors.weekdays}</p>
+              )}
             </Field>
 
             <Field>
               <Label className="text-xs font-semibold uppercase">
                 Start Times <span className="text-destructive">*</span>
               </Label>
-              <p className="text-xs text-muted-foreground -mt-1 mb-1">
-                Each time must be one of the tour&apos;s declared start times.
-              </p>
-              {startTimes.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {startTimes.map((t) => (
-                    <Badge key={t} variant="secondary" className="gap-1.5 pr-1">
-                      <span>{t}</span>
+              {hasDeclaredTimes ? (
+                <>
+                  <p className="text-xs text-muted-foreground -mt-1 mb-1">
+                    Pick from the tour&apos;s declared start times (edit the set on
+                    the Details tab).
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {declaredTimes.map((t) => (
                       <button
+                        key={t}
                         type="button"
-                        onClick={() => removeTime(t)}
-                        className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
-                        aria-label={`Remove ${t}`}
+                        onClick={() => toggleTime(t)}
+                        className={cn(
+                          'h-9 min-w-16 px-3 text-xs font-semibold uppercase border transition-colors tabular-nums',
+                          startTimes.includes(t)
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-input hover:bg-muted',
+                        )}
                       >
-                        <XIcon className="size-3" />
+                        {t}
                       </button>
-                    </Badge>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2.5 bg-amber-50 border border-amber-200 px-3 py-2.5 mb-2">
+                    <AlertTriangleIcon className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                    <p className="text-sm text-amber-700">
+                      This tour has no declared start times yet. Add them on the
+                      Details tab so schedules stay consistent; any time entered
+                      here that is not declared will be rejected on save.
+                    </p>
+                  </div>
+                  {startTimes.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {startTimes.map((t) => (
+                        <Badge key={t} variant="secondary" className="gap-1.5 pr-1">
+                          <span>{t}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeTime(t)}
+                            className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
+                            aria-label={`Remove ${t}`}
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <Input
+                      value={timeInput}
+                      onChange={(e) => setTimeInput(e.target.value)}
+                      placeholder="HH:MM (e.g. 09:00)"
+                      inputMode="numeric"
+                      className="h-9 w-40"
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={addTime} className="h-9">
+                      <PlusIcon className="size-3.5" />
+                      Add time
+                    </Button>
+                  </div>
+                </>
               )}
-              <div className="flex items-end gap-2">
-                <Input
-                  type="time"
-                  value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
-                  className="h-9 w-40"
-                />
-                <Button type="button" size="sm" variant="outline" onClick={addTime} className="h-9">
-                  <PlusIcon className="size-3.5" />
-                  Add time
-                </Button>
-              </div>
+              {errors.startTimes && (
+                <p className="text-xs text-destructive mt-1.5">{errors.startTimes}</p>
+              )}
             </Field>
 
             <Field>
@@ -424,14 +666,21 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
                 type="number"
                 min={1}
                 value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
+                onChange={(e) => {
+                  setCapacity(e.target.value);
+                  clearError('capacity');
+                }}
                 placeholder={
                   capacityRequired
                     ? 'Required - this tour has no Max Party Size default'
                     : "Leave blank to use the tour's max party size"
                 }
+                aria-invalid={!!errors.capacity}
                 className="max-w-xs"
               />
+              {errors.capacity && (
+                <p className="text-xs text-destructive mt-1.5">{errors.capacity}</p>
+              )}
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
@@ -445,6 +694,9 @@ export function TripSchedulesTab({ tripId, maxPartySize }: TripSchedulesTabProps
               </Field>
             </div>
 
+            {errors.form && (
+              <p className="text-sm text-destructive">{errors.form}</p>
+            )}
             <div className="flex justify-end">
               <Button type="button" size="sm" onClick={handleCreate} disabled={isCreating}>
                 {isCreating ? 'Adding...' : 'Add Schedule'}
@@ -616,6 +868,15 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
   const [startTime, setStartTime] = useState('');
   const [capacity, setCapacity] = useState('');
   const [note, setNote] = useState('');
+  // Inline field + form errors (client validation and server error).
+  const [errors, setErrors] = useState<{
+    date?: string;
+    startTime?: string;
+    capacity?: string;
+    form?: string;
+  }>({});
+  const clearError = (key: keyof typeof errors) =>
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
 
   const config = EXCEPTION_TYPES.find((t) => t.value === type)!;
   // ADD_SLOT needs a resolvable capacity: its own value or the tour default.
@@ -638,10 +899,13 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
   function changeType(next: TourExceptionType) {
     setType(next);
     setStartTime('');
+    setErrors({});
   }
   function changeDate(next: string) {
     setDate(next);
     setStartTime('');
+    clearError('date');
+    clearError('startTime');
   }
 
   function resetForm() {
@@ -649,37 +913,36 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
     setStartTime('');
     setCapacity('');
     setNote('');
+    setErrors({});
   }
 
   async function handleCreate() {
-    if (!date) {
-      toast.error('Pick a date.');
-      return;
-    }
     // '__all__' is the SET_CAPACITY "whole day" sentinel (Radix Select forbids an
     // empty-string item value); treat it as no time.
     const time = startTime === '__all__' ? '' : startTime.trim();
+    const next: typeof errors = {};
+    if (!date) next.date = 'Pick a date.';
     if (config.timeMode === 'slot' && !time) {
-      toast.error('Pick a scheduled time slot to close.');
-      return;
+      next.startTime = 'Pick a scheduled time slot to close.';
     }
     if (config.timeMode === 'free' && !HHMM.test(time)) {
-      toast.error('Start time must be HH:MM (00:00-23:59).');
-      return;
+      next.startTime = 'Start time must be HH:MM (00:00-23:59).';
     }
     const cap = capacity.trim() ? Number(capacity) : undefined;
     if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
-      toast.error('Capacity must be a whole number of at least 1.');
-      return;
+      next.capacity = 'Capacity must be a whole number of at least 1.';
     }
     if (cap === undefined && capacityRequired) {
-      toast.error(
+      next.capacity =
         type === 'ADD_SLOT'
-          ? 'This tour has no Max Party Size, so a capacity is required for the extra departure.'
-          : 'Enter the new capacity.'
-      );
+          ? 'Required - this tour has no Max Party Size, so a capacity is needed for the extra departure.'
+          : 'Enter the new capacity.';
+    }
+    if (Object.keys(next).length > 0) {
+      setErrors(next);
       return;
     }
+    setErrors({});
 
     // Only send startTime when the type uses one and it is set ('' = whole day for
     // slot-or-all, which the backend reads as a date-wide override).
@@ -699,7 +962,9 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
       toast.success('Exception added.');
       resetForm();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add exception.');
+      setErrors({
+        form: err instanceof Error ? err.message : 'Failed to add exception.',
+      });
     }
   }
 
@@ -759,6 +1024,9 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
                 Date <span className="text-destructive">*</span>
               </Label>
               <DatePickerField value={date} onChange={changeDate} placeholder="Pick a date" />
+              {errors.date && (
+                <p className="text-xs text-destructive mt-1.5">{errors.date}</p>
+              )}
             </Field>
 
             {/* Free time entry - ADD_SLOT introduces a brand-new departure time. */}
@@ -768,12 +1036,24 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
                   Start Time <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    clearError('startTime');
+                  }}
+                  placeholder="HH:MM (e.g. 14:30)"
+                  inputMode="numeric"
+                  aria-invalid={!!errors.startTime}
                   className="h-9 w-40"
                 />
-                <p className="text-xs text-muted-foreground">A new time not in the weekly pattern.</p>
+                {errors.startTime ? (
+                  <p className="text-xs text-destructive mt-1.5">{errors.startTime}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    A new departure time not already in the weekly pattern. Use
+                    24-hour HH:MM, e.g. 14:30 for 2:30 PM.
+                  </p>
+                )}
               </Field>
             )}
 
@@ -790,7 +1070,10 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
                 </Label>
                 <Select
                   value={startTime}
-                  onValueChange={setStartTime}
+                  onValueChange={(v) => {
+                    setStartTime(v);
+                    clearError('startTime');
+                  }}
                   disabled={!date || slotOptions.length === 0}
                 >
                   <SelectTrigger className="max-w-xs">
@@ -817,6 +1100,9 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.startTime && (
+                  <p className="text-xs text-destructive mt-1.5">{errors.startTime}</p>
+                )}
                 {date && slotOptions.length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     No recurring slots run on this weekday. Add a schedule first, or use{' '}
@@ -836,14 +1122,21 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
                 type="number"
                 min={1}
                 value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
+                onChange={(e) => {
+                  setCapacity(e.target.value);
+                  clearError('capacity');
+                }}
                 placeholder={
                   capacityRequired
                     ? 'Required'
                     : "Leave blank to use the tour's max party size"
                 }
+                aria-invalid={!!errors.capacity}
                 className="max-w-xs"
               />
+              {errors.capacity && (
+                <p className="text-xs text-destructive mt-1.5">{errors.capacity}</p>
+              )}
             </Field>
           )}
 
@@ -857,6 +1150,9 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             />
           </Field>
 
+          {errors.form && (
+            <p className="text-sm text-destructive">{errors.form}</p>
+          )}
           <div className="flex justify-end">
             <Button type="button" size="sm" onClick={handleCreate} disabled={isCreating}>
               {isCreating ? 'Adding...' : 'Add Exception'}

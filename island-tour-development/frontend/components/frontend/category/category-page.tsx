@@ -6,9 +6,8 @@ import {
     getDestinationBySlug,
     getDestinationCategories,
 } from '@/lib/api/public';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { toSlug } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { CategoryAbout } from './category-about';
@@ -18,11 +17,8 @@ import {
     RelatedCategory,
 } from '../category-you-might-like';
 import { FaqSection } from '../faq-section';
-import type { TourListing } from '../tour-card';
 import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
-import { type FilterCategory } from '../tours/tours-filter-bar';
 import { ToursHeader } from '../tours/tours-header';
-import { ToursListing } from '../tours/tours-listing';
 import { ToursListingSection } from '../tours/tours-listing-section';
 
 /**
@@ -42,142 +38,6 @@ import { ToursListingSection } from '../tours/tours-listing-section';
  *   - Slugs are English at every locale - the URL never changes per locale.
  */
 
-// Tour grid mock - placeholder until the category-filtered trips API is wired
-// (matches the convention used by the destination + all-tours pages). The
-// backend gating guarantees ≥1 published tour, so the grid is never empty.
-const MOCK_TOURS: TourListing[] = [
-    {
-        id: 'c-1',
-        images: [
-            '/images/tours/tour-1-1.jpg',
-            '/images/tours/tour-1-2.jpg',
-            '/images/tours/tour-1-3.jpg',
-        ],
-        badge: 'new',
-        title: 'Klein Curaçao Catamaran Day Trip with Open bar & BBQ included',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: false,
-    },
-    {
-        id: 'c-2',
-        images: ['/images/tours/tour-2-1.jpg', '/images/tours/tour-2-3.jpg'],
-        badge: 'likelyToSellOut',
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Sunset Sailing Cruise along Spanish Water with Unlimited drinks & appetizers',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'c-3',
-        images: [
-            '/images/tours/tour-3-1.jpg',
-            '/images/tours/tour-3-2.jpg',
-            '/images/tours/tour-3-3.jpg',
-        ],
-        badge: 'mostPopular',
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Private Yacht Charter for up to 12 guests with Custom itinerary & snorkel gear',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 270,
-        priceUnit: 'perGroup',
-        freeCancellation: false,
-    },
-    {
-        id: 'c-4',
-        images: [
-            '/images/tours/tour-4-1.jpg',
-            '/images/tours/tour-4-2.jpg',
-            '/images/tours/tour-4-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Snorkeling at Tugboat Beach with Small group (max 8)',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 270,
-        priceUnit: 'perGroup',
-        priceVaries: true,
-        freeCancellation: true,
-    },
-    {
-        id: 'c-5',
-        images: [
-            '/images/tours/tour-5-1.jpg',
-            '/images/tours/tour-3-2.jpg',
-            '/images/tours/tour-3-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Sunset Sailing Cruise along Spanish Water with Unlimited drinks & appetizers',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-    {
-        id: 'c-6',
-        images: [
-            '/images/tours/tour-6-1.jpg',
-            '/images/tours/tour-1-2.jpg',
-            '/images/tours/tour-6-3.jpg',
-        ],
-        badge: null,
-        rating: 4.8,
-        reviewCount: 1738,
-        title: 'Off-Road Buggy Adventure across the rugged north coast',
-        duration: '4 to 5 hours',
-        pickupAvailable: true,
-        price: 36,
-        priceUnit: 'per',
-        freeCancellation: true,
-    },
-];
-
-// "You might also like" card imagery. Used directly for the placeholder set
-// (when the backend returns no siblings) and as a per-card fallback when a real
-// sibling category has no `heroImage` yet - so every card always shows an image.
-const RELATED_IMAGES = [
-    '/images/home-page/categories/catamaran-trips.jpg',
-    '/images/home-page/categories/snorkel-trips.jpg',
-    '/images/home-page/islands/curacao.jpg',
-];
-const FALLBACK_RELATED: RelatedCategory[] = [
-    {
-        name: 'Sunset Cruises',
-        slug: 'sunset-cruises',
-        image: RELATED_IMAGES[0],
-    },
-    { name: 'Snorkelling', slug: 'snorkeling', image: RELATED_IMAGES[1] },
-    {
-        name: 'Dolphin Experience',
-        slug: 'dolphin-experience',
-        image: RELATED_IMAGES[2],
-    },
-];
-
-// Quick-filter pills for the secondary "active tours" listing block (Figma
-// 47171:1499) - distinct from the top listing's FILTER_CATEGORIES. Placeholder
-// until the per-attribute filter API is wired.
-const SECONDARY_FILTER_CATEGORIES: FilterCategory[] = [
-    { label: 'Catamaran', slug: 'catamaran' },
-    { label: 'Speedboat', slug: 'speedboat' },
-    { label: 'Sailing boat', slug: 'sailing-boat' },
-    { label: 'Sunset Cruises', slug: 'sunset-cruises' },
-    { label: 'Buggy Tours', slug: 'buggy-tours' },
-    { label: 'Under €100 (21)', slug: 'under-100' },
-];
 
 interface CategoryPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */
@@ -221,13 +81,10 @@ export async function CategoryPage({
         ]);
 
     if (!category) notFound();
-
-    // Link each card to its flat tour URL (slug derived from the title until the
-    // category tour list API returns real slugs).
-    const tours = MOCK_TOURS.map(tour => ({
-        ...tour,
-        href: localizeHref(locale, `/${destinationSlug}/${toSlug(tour.title)}`),
-    }));
+    // The category belongs to a destination; a null here means the destination
+    // lookup failed (backend down / stale slug). We cannot scope the tour listing
+    // without its id, so 404 - same guard the collection page uses.
+    if (!destination) notFound();
 
     const t = dict.destination.allTours;
     const total = category.publishedTourCount;
@@ -242,18 +99,16 @@ export async function CategoryPage({
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
 
     // "You might also like" - sibling categories at this destination (current one
-    // excluded), up to 3. Falls back to the placeholder set until the backend
-    // returns siblings.
-    const relatedFromApi: RelatedCategory[] = activeCategories
+    // excluded), up to 3. Real data only: a category with no `heroImage` renders
+    // without an image (no placeholder), and an empty set hides the whole section.
+    const relatedCategories: RelatedCategory[] = activeCategories
         .filter(c => c.slug !== category.slug)
         .slice(0, 3)
-        .map((c, i) => ({
+        .map(c => ({
             name: c.name,
             slug: c.slug,
-            image: c.heroImage ?? RELATED_IMAGES[i % RELATED_IMAGES.length],
+            image: c.heroImage ?? undefined,
         }));
-    const relatedCategories =
-        relatedFromApi.length > 0 ? relatedFromApi : FALLBACK_RELATED;
 
     // "About {category} in {destination}" editorial heading (Figma 47171:5647).
     const aboutTitle = dict.destination.categoryAboutTitle
@@ -310,29 +165,24 @@ export async function CategoryPage({
                         {/* ── Toolbar + grid ──────────────────────────────────
                             Streamed, URL-driven listing locked to this category
                             (reuses the All Tours section; toolbar hides category
-                            selection since the route fixes it). */}
-                        {destination ? (
-                            <Suspense fallback={<ToursListingSkeleton />}>
-                                <ToursListingSection
-                                    destinationId={destination.id}
-                                    destination={destinationSlug}
-                                    locale={locale}
-                                    dict={dict}
-                                    searchParams={searchParams}
-                                    lockedCategory={{
-                                        id: categoryId,
-                                        slug: category.slug,
-                                        subCategories: category.subCategories,
-                                    }}
-                                />
-                            </Suspense>
-                        ) : (
-                            <ToursListing
-                                tours={tours}
-                                dict={dict.destination.listings}
-                                pageCount={6}
+                            selection since the route fixes it). The section fetches
+                            real category-scoped tours and renders the shared empty
+                            state (ToursEmptyState) when a filter combination or the
+                            category itself yields no results. */}
+                        <Suspense fallback={<ToursListingSkeleton />}>
+                            <ToursListingSection
+                                destinationId={destination.id}
+                                destination={destinationSlug}
+                                locale={locale}
+                                dict={dict}
+                                searchParams={searchParams}
+                                lockedCategory={{
+                                    id: categoryId,
+                                    slug: category.slug,
+                                    subCategories: category.subCategories,
+                                }}
                             />
-                        )}
+                        </Suspense>
                     </div>
                 </div>
             </section>
@@ -344,41 +194,6 @@ export async function CategoryPage({
                 locale={locale}
                 destinationSlug={destinationSlug}
             />
-
-            {/* ── Big section (Figma 47171:1499): trust strip + a second
-                "active tours" header/filter/listing block. ── */}
-            {/*      <section className='it-section max-md:pt-8! pb-8! md:pb-14! bg-it-white'>
-                <div className='it-container'>
-                   
-                    <div className='flex flex-col gap-14'>
-                        
-                        <div className='flex flex-col max-md:-mb-4 gap-10'>
-                            <CategoryTrustStrip
-                                dict={dict.destination.categoryTrust}
-                            />
-
-                         
-                            <Reveal className='flex flex-col gap-6 md:gap-10'>
-                                <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                    Boat tours active
-                                </h2>
-                                <CategoryFilterBar
-                                    dict={dict.destination.categoryFilter}
-                                    filterDict={t.filterModal}
-                                    categories={SECONDARY_FILTER_CATEGORIES}
-                                />
-                            </Reveal>
-                        </div>
-
-                       
-                        <ToursListing
-                            tours={tours}
-                            dict={dict.destination.listings}
-                            pageCount={1}
-                        />
-                    </div>
-                </div>
-            </section> */}
 
             {/* Editorial "about" section (Figma 47171:5647). */}
             <CategoryAbout

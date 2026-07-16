@@ -867,6 +867,48 @@ describe('TourChildrenService', () => {
       ).rejects.toThrow(BadRequestException);
       expect(prisma.tourAgeBand.create).not.toHaveBeenCalled();
     });
+
+    // Age bands are a PER_PERSON pricing construct - UNIT (whole-unit/charter)
+    // tours use a single guests count + extra-person surcharge instead.
+    it('rejects adding an age band to a UNIT-priced tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        pricingModel: PricingModel.UNIT,
+      });
+
+      await expect(
+        service.addAgeBand(
+          'tour-1',
+          { bandType: AgeBandType.ADULT, label: 'Adult', price: '79.00' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          message: expect.stringMatching(
+            /Unit-priced tours use a single guests count/i,
+          ),
+        },
+      });
+      expect(prisma.tourAgeBand.create).not.toHaveBeenCalled();
+    });
+
+    it('allows adding an age band to a PER_PERSON-priced tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        pricingModel: PricingModel.PER_PERSON,
+      });
+      const band = makeAgeBand({ isDefault: false });
+      prisma.tourAgeBand.create.mockResolvedValue(band);
+
+      const result = await service.addAgeBand(
+        'tour-1',
+        { bandType: AgeBandType.ADULT, label: 'Adult', price: '79.00' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(result).toEqual(band);
+      expect(prisma.tourAgeBand.create).toHaveBeenCalled();
+    });
   });
 
   describe('updateAgeBand', () => {
@@ -1692,6 +1734,7 @@ describe('TourChildrenService', () => {
         categoryDisplay: null,
         localTipTitle: null,
         localTipBody: null,
+        operatorNote: null,
         meetingPointText: null,
         metaTitle: null,
         metaDescription: null,

@@ -11,6 +11,7 @@ import {
   FeatureType,
   FitnessLevel,
   OctoAvailabilityType,
+  OnArrivalPayment,
   PaymentModel,
   PickupModel,
   PricingModel,
@@ -20,6 +21,7 @@ import {
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
+import { MoneyDto } from '@/fx/dto/money.dto';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -96,6 +98,12 @@ export class TourResponseDto {
   @ApiPropertyOptional({ example: '75.00' }) basePrice!: string | null;
   @ApiPropertyOptional({ example: '75.00' }) priceFrom!: string | null;
   @ApiPropertyOptional({
+    type: MoneyDto,
+    description:
+      'Converted-price display object (guide §20.9). Canonical for display: shows prices in the requested `?currency` (falls back to the tour currency). Prefer this over the raw `priceFrom`/`basePrice`/`defaultCurrency` above.',
+  })
+  money?: MoneyDto;
+  @ApiPropertyOptional({
     example: 10,
     nullable: true,
     description:
@@ -133,6 +141,13 @@ export class TourResponseDto {
 
   // ── Booking / payment (master E.3) ──
   @ApiProperty({ enum: PaymentModel }) paymentModel!: PaymentModel;
+  @ApiProperty({
+    enum: OnArrivalPayment,
+    description:
+      'On-site payment terms. Only meaningful when paymentModel = ON_ARRIVAL; ' +
+      'selects between the two on_arrival confirmation-email variants.',
+  })
+  onArrivalPayment!: OnArrivalPayment;
   @ApiProperty({
     example: '20.0',
     description: 'Deposit %, tier-driven (system-managed)',
@@ -681,6 +696,15 @@ export class TourQueryDto {
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
 
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency. Prices are returned converted in each card `money` object (guide §20.9); omit to show tour currency.',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -708,6 +732,15 @@ export class TourBySlugQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency. The detail `money` object returns converted prices (guide §20.9); omit to show tour currency.',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 export class MyToursQueryDto {
@@ -979,6 +1012,17 @@ export class CreateTourDto {
   @IsOptional()
   @IsEnum(PaymentModel)
   paymentModel?: PaymentModel;
+
+  @ApiPropertyOptional({
+    enum: OnArrivalPayment,
+    default: OnArrivalPayment.CARD_OR_CASH,
+    description:
+      'Whether the operator takes card on site or cash only. Ignored unless ' +
+      'paymentModel = ON_ARRIVAL. Snapshotted onto each booking at reserve.',
+  })
+  @IsOptional()
+  @IsEnum(OnArrivalPayment)
+  onArrivalPayment?: OnArrivalPayment;
 
   @ApiPropertyOptional({
     type: [String],
@@ -1262,6 +1306,16 @@ export class UpdateTourDto {
   @IsOptional()
   @IsEnum(PaymentModel)
   paymentModel?: PaymentModel;
+
+  @ApiPropertyOptional({
+    enum: OnArrivalPayment,
+    description:
+      'Whether the operator takes card on site or cash only. Ignored unless ' +
+      'paymentModel = ON_ARRIVAL. Existing bookings keep their snapshot.',
+  })
+  @IsOptional()
+  @IsEnum(OnArrivalPayment)
+  onArrivalPayment?: OnArrivalPayment;
 
   @ApiPropertyOptional({
     type: [String],

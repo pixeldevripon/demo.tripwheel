@@ -9,7 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale, Prisma, Role, TourStatus } from '@prisma/client';
+import { Locale, PricingModel, Prisma, Role, TourStatus } from '@prisma/client';
 import {
   AddTourImageDto,
   AddTourLanguageDto,
@@ -364,6 +364,24 @@ export class TourChildrenService {
     }
   }
 
+  /**
+   * Age bands are a PER_PERSON pricing construct. Unit-priced (whole-unit /
+   * charter) tours use a single guests count and are priced by the unit formula,
+   * so they must not carry age bands.
+   */
+  private async assertNotUnitPriced(tourId: string) {
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: { pricingModel: true },
+    });
+    if (tour?.pricingModel === PricingModel.UNIT) {
+      throw new BadRequestException(
+        'Unit-priced tours use a single guests count and do not have age bands. ' +
+          'Set the base price, included guests, and extra-person price in the Pricing tab.',
+      );
+    }
+  }
+
   async getAgeBands(tourId: string, requesterId: string, requesterRole: Role) {
     await this.assertTourAccess(tourId, requesterId, requesterRole);
     return this.prisma.tourAgeBand.findMany({
@@ -380,6 +398,7 @@ export class TourChildrenService {
     requesterRole: Role,
   ) {
     await this.assertTourAccess(tourId, requesterId, requesterRole);
+    await this.assertNotUnitPriced(tourId);
     this.assertValidAgeRange(dto.minAge, dto.maxAge);
 
     const band = await this.prisma.$transaction(async (tx) => {
@@ -1830,6 +1849,7 @@ export class TourChildrenService {
     categoryDisplay: true,
     localTipTitle: true,
     localTipBody: true,
+    operatorNote: true,
     meetingPointText: true,
     metaTitle: true,
     metaDescription: true,
@@ -1877,6 +1897,7 @@ export class TourChildrenService {
         categoryDisplay: null,
         localTipTitle: null,
         localTipBody: null,
+        operatorNote: null,
         meetingPointText: null,
         metaTitle: null,
         metaDescription: null,
@@ -1911,6 +1932,7 @@ export class TourChildrenService {
         categoryDisplay: dto.categoryDisplay ?? null,
         localTipTitle: dto.localTipTitle ?? null,
         localTipBody: dto.localTipBody ?? null,
+        operatorNote: dto.operatorNote ?? null,
         meetingPointText: dto.meetingPointText ?? null,
         metaTitle: dto.metaTitle ?? null,
         metaDescription: dto.metaDescription ?? null,
@@ -1941,6 +1963,9 @@ export class TourChildrenService {
         }),
         ...(dto.localTipBody !== undefined && {
           localTipBody: dto.localTipBody,
+        }),
+        ...(dto.operatorNote !== undefined && {
+          operatorNote: dto.operatorNote,
         }),
         ...(dto.meetingPointText !== undefined && {
           meetingPointText: dto.meetingPointText,

@@ -10,11 +10,21 @@
 > Booking & payments: `technical-doc/02-architecture/BOOKING-AND-PAYMENTS.md` · Availability:
 > `technical-doc/02-architecture/AVAILABILITY-AND-DEPARTURES.md` · Tracking:
 > `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`
+> FX & multi-currency (how conversion works, providers, env, snapshots, spotlight commission):
+> `technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md`
+> Settlement & payouts (v1/v2 money flow, settlements ledger):
+> `technical-doc/02-architecture/SETTLEMENT-AND-PAYOUTS.md` (visual:
+> `technical-doc/02-architecture/settlement-payout-flow.html`) · Event-driven & queues (BullMQ,
+> outbox, no-queue-for-capacity): `technical-doc/02-architecture/EVENT-DRIVEN-AND-QUEUES.md`
 > Data model: `technical-doc/02-architecture/DATA-MODEL.md` · Routing:
 > `technical-doc/02-architecture/ROUTING-AND-RESOLUTION.md` · Slug registry:
 > `technical-doc/02-architecture/SLUG-REGISTRY.md`
 > Implementation: `technical-doc/03-implementation/IMPLEMENTATION-GUIDE.md` · Trip module:
 > `technical-doc/03-implementation/TRIP-MODULE.md`
+> Booking flow: `technical-doc/03-implementation/BOOKING-FLOW-DESIGN-GUIDE.md` · **Booking checklist
+> (every booking/settlement/queue task + build status + flaws, cross-checked vs code):
+> `technical-doc/03-implementation/BOOKING-CHECKLIST.md`** · Booking widget (dynamic/conditional card
+> + payment/processing page checklist): `technical-doc/03-implementation/BOOKING-WIDGET-CHECKLIST.md`
 > Multilingual: `technical-doc/04-multilingual/MULTILINGUAL-CONTENT.md` · Access:
 > `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
 > Frontend/widget reference: `CLAUDE-reference.md`

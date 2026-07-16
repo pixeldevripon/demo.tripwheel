@@ -2,6 +2,7 @@ import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
+import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { SettingsService } from './settings.service';
 import {
@@ -15,6 +16,7 @@ import {
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
 import {
+  ApiGetPublicSiteInfoDocs,
   ApiGetSiteInfoDocs,
   ApiUpdateSiteInfoDocs,
   ApiGetSiteSEODocs,
@@ -62,6 +64,26 @@ export class SettingsController {
   @ApiGetSiteInfoDocs()
   getSiteInfo() {
     return this.settingsService.getSiteInfo();
+  }
+
+  /**
+   * GET /settings/public/site
+   *
+   * Public-safe SiteInfo for the unauthenticated marketing site: logo, favicon,
+   * tagline, and the WhatsApp/Instagram flags. The public site has no session,
+   * so it cannot use GET /settings/site (VIEW_SETTINGS) - without this route the
+   * footer/NeedHelp WhatsApp links have no number to point at (master 6.6).
+   *
+   * Security: @Public, so the service hand-picks the response fields. This
+   * controller also serves SMTP/Stripe/Mollie config - never widen this to the
+   * full row. Registered above `site/:x`-style routes is not a concern here, but
+   * it must stay a sibling of the guarded routes so the contrast is obvious.
+   */
+  @Get('public/site')
+  @Public()
+  @ApiGetPublicSiteInfoDocs()
+  getPublicSiteInfo() {
+    return this.settingsService.getPublicSiteInfo();
   }
 
   /**

@@ -157,7 +157,7 @@ export class AvailabilityMaterializerService {
       });
     }
 
-    // 2. add_slot — introduce a departure the weekly pattern does not produce.
+    // 2. add_slot - introduce a departure the weekly pattern does not produce.
     for (const ex of dayExceptions) {
       if (ex.type !== AvailabilityExceptionType.ADD_SLOT) continue;
       if (!ex.startTime) {
@@ -183,7 +183,7 @@ export class AvailabilityMaterializerService {
       });
     }
 
-    // 3. set_capacity — override capacity for one slot (startTime set) or all (null).
+    // 3. set_capacity - override capacity for one slot (startTime set) or all (null).
     for (const ex of dayExceptions) {
       if (
         ex.type !== AvailabilityExceptionType.SET_CAPACITY ||
@@ -200,7 +200,7 @@ export class AvailabilityMaterializerService {
       }
     }
 
-    // 4. close_date / close_slot — stop-sell: keep the departure but mark it CLOSED.
+    // 4. close_date / close_slot - stop-sell: keep the departure but mark it CLOSED.
     for (const ex of dayExceptions) {
       if (ex.type === AvailabilityExceptionType.CLOSE_DATE && !ex.startTime) {
         for (const [k, row] of desired) {
@@ -232,6 +232,7 @@ export class AvailabilityMaterializerService {
         startTime: true,
         capacity: true,
         bookedCount: true,
+        status: true,
         manuallyEdited: true,
         source: true,
       },
@@ -242,7 +243,10 @@ export class AvailabilityMaterializerService {
       existing.map((e) => [keyOf(e.date, e.startTime), e]),
     );
 
-    /** A departure is protected from re-materialization (master §3). */
+    /**
+     * Protected from DELETION and capacity re-projection (master §3): a booked,
+     * operator-edited, or API-sourced departure is never removed or resized.
+     */
     const isProtected = (row: {
       bookedCount: number;
       manuallyEdited: boolean;
@@ -251,6 +255,15 @@ export class AvailabilityMaterializerService {
       row.bookedCount > 0 ||
       row.manuallyEdited ||
       row.source === DepartureSource.API;
+
+    /**
+     * Fully hands-off: operator-hand-edited or externally sourced. Even an
+     * explicit stop-sell does not override these - the operator/API owns them.
+     */
+    const isFullyManaged = (row: {
+      manuallyEdited: boolean;
+      source: DepartureSource;
+    }) => row.manuallyEdited || row.source === DepartureSource.API;
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     const creates: Prisma.DepartureCreateManyInput[] = [];
@@ -271,11 +284,35 @@ export class AvailabilityMaterializerService {
         });
         continue;
       }
-      if (isProtected(row)) {
+      if (isFullyManaged(row)) {
         skipped++;
         continue;
       }
-      // Re-project capacity/status, preserving the (zero here) bookedCount.
+      // A booked departure keeps its capacity / bookedCount / source (never resize
+      // or resurrect a booking), but its STATUS still follows the projection - so
+      // an explicit stop-sell (CLOSE_DATE / CLOSE_SLOT) closes it and removing the
+      // exception reopens it. CLOSED only stops NEW sales; existing bookings stay
+      // valid. Without this a partially-booked slot would keep selling through a
+      // closed date.
+      if (row.bookedCount > 0) {
+        const status =
+          want.status === DepartureStatus.CLOSED
+            ? DepartureStatus.CLOSED
+            : storedStatusForFill(row.capacity, row.bookedCount);
+        if (status !== row.status) {
+          ops.push(
+            this.prisma.departure.update({
+              where: { id: row.id },
+              data: { status },
+            }),
+          );
+          updated++;
+        } else {
+          skipped++;
+        }
+        continue;
+      }
+      // Unbooked, unmanaged: full re-projection of capacity + status + source.
       const status =
         want.status === DepartureStatus.CLOSED
           ? DepartureStatus.CLOSED

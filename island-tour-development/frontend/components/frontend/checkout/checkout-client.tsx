@@ -1,12 +1,14 @@
 'use client';
 
-import type { Locale } from '@/lib/constants/locales';
+import type { BookingSelectionPayload } from '@/lib/checkout/checkout';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { CheckoutForm, type CheckoutPickupOption } from './checkout-form';
+import { PickupLabelProvider } from './checkout-pickup-label';
 import { CheckoutSteps, type CheckoutPhase } from './checkout-steps';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -20,10 +22,17 @@ interface CheckoutClientProps {
     pickupFromLabel: string | null;
     payToday: number;
     currencySymbol: string;
-    /** TYP redirect target (`/{destination}/thank-you/{public_ref}`). */
-    thankYouHref: string;
     /** Server-rendered booking summary (right rail). */
     summary: ReactNode;
+
+    // ── Live booking inputs (widget selection, carried in the URL) ──
+    tourId: string;
+    departureId: string | null;
+    currency: Currency;
+    quoteId: string | null;
+    reserveSelection: BookingSelectionPayload | null;
+    destination: string;
+    slug: string;
 }
 
 const backBarLabel =
@@ -54,10 +63,19 @@ export function CheckoutClient({
     pickupFromLabel,
     payToday,
     currencySymbol,
-    thankYouHref,
     summary,
+    tourId,
+    departureId,
+    currency,
+    quoteId,
+    reserveSelection,
+    destination,
+    slug,
 }: CheckoutClientProps) {
     const [phase, setPhase] = useState<CheckoutPhase>('contact');
+    // Selected pickup label, published by the form and consumed by the summary's
+    // pickup row (the summary itself is a server-rendered node).
+    const [pickupLabel, setPickupLabel] = useState<string | null>(null);
     const hasPayment = payToday > 0;
 
     return (
@@ -111,6 +129,7 @@ export function CheckoutClient({
 
             {/* Form (left) + summary (right) - aligned by the same grid. */}
             <div className='it-container'>
+                <PickupLabelProvider value={pickupLabel}>
                 <div className='flex flex-col gap-8 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-6'>
                     <div className='lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24'>
                         {summary}
@@ -121,14 +140,22 @@ export function CheckoutClient({
                             locale={locale}
                             phase={phase}
                             onPhaseChange={setPhase}
+                            onPickupLabelChange={setPickupLabel}
                             pickupOptions={pickupOptions}
                             pickupFromLabel={pickupFromLabel}
                             payToday={payToday}
                             currencySymbol={currencySymbol}
-                            thankYouHref={thankYouHref}
+                            tourId={tourId}
+                            departureId={departureId}
+                            currency={currency}
+                            quoteId={quoteId}
+                            reserveSelection={reserveSelection}
+                            destination={destination}
+                            slug={slug}
                         />
                     </div>
                 </div>
+                </PickupLabelProvider>
             </div>
         </div>
     );

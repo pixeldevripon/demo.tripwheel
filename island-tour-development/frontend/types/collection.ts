@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/constants/locales';
+import type { Money } from '@/types/money';
 import type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 export type { Locale } from '@/lib/constants/locales';
 export type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
@@ -63,6 +64,8 @@ export interface CollectionRenderTour {
   name: string;
   priceFrom: number | string | null;
   basePrice?: number | string | null;
+  /** Converted display prices when `?currency` was requested (guide §20.9). */
+  money?: Money;
   aggregateRating: number | null;
   aggregateReviewCount: number;
   bookingCount?: number;

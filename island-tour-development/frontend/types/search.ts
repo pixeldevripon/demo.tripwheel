@@ -3,6 +3,7 @@
  * (`lib/api/public/search.ts`) and the client typeahead (`lib/api/search.ts`).
  * Neutral (no runtime imports) so it is safe in both server and client bundles.
  */
+import type { Money } from './money';
 
 /** A single search hit — enough to render a card and link to the flat tour URL. */
 export interface SearchHit {
@@ -17,6 +18,8 @@ export interface SearchHit {
   priceFrom: string | null;
   basePrice: string | null;
   defaultCurrency: string;
+  /** Converted display prices when `?currency` was requested (guide §20.9). */
+  money?: Money;
   pricingModel: string;
   /** Whole-unit type when pricingModel = UNIT (boat/vehicle/…); else null. */
   wholeUnitType?: string | null;

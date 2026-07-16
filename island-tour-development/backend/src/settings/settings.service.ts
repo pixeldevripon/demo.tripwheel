@@ -2,6 +2,7 @@ import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import {
+  PublicSiteInfoResponseDto,
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
   UpdateMollieConfigurationDto,
@@ -30,6 +31,46 @@ export class SettingsService {
       update: {},
       create: { id: 'default' },
     });
+  }
+
+  /**
+   * Public-safe SiteInfo for the unauthenticated site (logo, WhatsApp, socials).
+   *
+   * Explicitly selected rather than reusing getSiteInfo(): that one returns the
+   * whole row, and this response is world-readable. findFirst (not upsert) keeps
+   * the endpoint read-only - an anonymous GET must never write.
+   *
+   * whatsappNumber is nulled when the chat is disabled so a number an admin has
+   * switched off is not still sitting in a public JSON response (master 6.6
+   * gates every WhatsApp surface on enableWhatsappChat).
+   */
+  async getPublicSiteInfo(): Promise<PublicSiteInfoResponseDto> {
+    const info = await this.prisma.siteInfo.findFirst({
+      where: { id: 'default' },
+      select: {
+        siteName: true,
+        siteTagline: true,
+        logo: true,
+        favicon: true,
+        enableWhatsappChat: true,
+        whatsappNumber: true,
+        enableInstagram: true,
+        instagramWidgetId: true,
+      },
+    });
+
+    const enableWhatsappChat = info?.enableWhatsappChat ?? false;
+
+    return {
+      siteName: info?.siteName ?? null,
+      siteTagline: info?.siteTagline ?? null,
+      logo: info?.logo || null,
+      favicon: info?.favicon || null,
+      enableWhatsappChat,
+      whatsappNumber: enableWhatsappChat ? info?.whatsappNumber || null : null,
+      enableInstagram: info?.enableInstagram ?? false,
+      instagramWidgetId: info?.instagramWidgetId || null,
+    };
   }
 
   async updateSiteInfo(dto: UpdateSiteInfoDto) {

@@ -28,7 +28,7 @@ function createMockPrisma() {
     },
     destination: { findUnique: jest.fn() },
     category: { findUnique: jest.fn() },
-    tour: { findMany: jest.fn() },
+    tour: { findMany: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),
   };
   // service uses the array form: $transaction([...upserts])
@@ -60,6 +60,21 @@ describe('AttributesService', () => {
       operatorId: 'op-1',
     });
     tours.assertOwnership.mockResolvedValue(undefined);
+    // Derived-attribute source columns (getTourAttributes reads these).
+    prisma.tour.findUniqueOrThrow.mockResolvedValue({
+      cancellationHours: 48,
+      durationMinutesFrom: 180,
+      pickupModel: 'NONE',
+      instantConfirmation: true,
+      bookingType: null,
+      minAgeYears: null,
+      maxPartySize: null,
+      departureCity: null,
+      wheelchairAccessible: true,
+      familyFriendly: false,
+      suitableForBeginners: false,
+      languages: [],
+    });
   });
 
   // ── Dictionary ────────────────────────────────────────────────────────────────
@@ -177,7 +192,7 @@ describe('AttributesService', () => {
     it('rejects a bad BOOLEAN value', async () => {
       mockDefs([
         {
-          key: 'free_cancellation',
+          key: 'food_included',
           dataType: AttributeDataType.BOOLEAN,
           allowedValues: null,
         },
@@ -185,7 +200,7 @@ describe('AttributesService', () => {
       await expect(
         service.setTourAttributes(
           'tour-1',
-          { attributes: [{ key: 'free_cancellation', value: 'maybe' }] },
+          { attributes: [{ key: 'food_included', value: 'maybe' }] },
           'u',
           Role.ADMIN,
         ),
@@ -263,7 +278,7 @@ describe('AttributesService', () => {
     it('rejects an INTEGER that is not an integer', async () => {
       mockDefs([
         {
-          key: 'minimum_age',
+          key: 'snorkeling_stop_count',
           dataType: AttributeDataType.INTEGER,
           allowedValues: null,
         },
@@ -271,11 +286,22 @@ describe('AttributesService', () => {
       await expect(
         service.setTourAttributes(
           'tour-1',
-          { attributes: [{ key: 'minimum_age', value: '12.5' }] },
+          { attributes: [{ key: 'snorkeling_stop_count', value: '12.5' }] },
           'u',
           Role.ADMIN,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a derived attribute key (managed in the Details tab)', async () => {
+      await expect(
+        service.setTourAttributes(
+          'tour-1',
+          { attributes: [{ key: 'free_cancellation', value: 'true' }] },
+          'u',
+          Role.ADMIN,
+        ),
+      ).rejects.toThrow(/derived from the tour's details/);
     });
 
     it('rejects duplicate keys in the payload', async () => {
@@ -297,14 +323,14 @@ describe('AttributesService', () => {
     it('enforces ownership before writing', async () => {
       mockDefs([
         {
-          key: 'free_cancellation',
+          key: 'food_included',
           dataType: AttributeDataType.BOOLEAN,
           allowedValues: null,
         },
       ]);
       await service.setTourAttributes(
         'tour-1',
-        { attributes: [{ key: 'free_cancellation', value: 'true' }] },
+        { attributes: [{ key: 'food_included', value: 'true' }] },
         'u',
         Role.TOUR_OPERATOR,
       );
@@ -314,6 +340,85 @@ describe('AttributesService', () => {
         'u',
         Role.TOUR_OPERATOR,
       );
+    });
+  });
+
+  describe('getTourAttributes (derived on read)', () => {
+    it('drops stored derived rows and merges computed derived values (read-only)', async () => {
+      prisma.tour.findUniqueOrThrow.mockResolvedValue({
+        cancellationHours: 72,
+        durationMinutesFrom: 480,
+        pickupModel: 'INCLUDED',
+        instantConfirmation: true,
+        bookingType: 'PRIVATE',
+        minAgeYears: null,
+        maxPartySize: 12,
+        departureCity: 'Willemstad',
+        wheelchairAccessible: true,
+        familyFriendly: true,
+        suitableForBeginners: false,
+        languages: [{ language: 'en' }, { language: 'es' }],
+      });
+      prisma.tourAttribute.findMany.mockResolvedValue([
+        { attributeKey: 'boat_type', attributeValue: 'yacht' },
+        // A stale stored copy of a derived key - must be ignored in favour of the computed value.
+        { attributeKey: 'free_cancellation', attributeValue: 'false' },
+      ]);
+      prisma.attributeDefinition.findMany.mockResolvedValue([
+        {
+          key: 'boat_type',
+          displayName: 'Boat Type',
+          dataType: AttributeDataType.ENUM,
+        },
+        {
+          key: 'free_cancellation',
+          displayName: 'Free Cancellation',
+          dataType: AttributeDataType.BOOLEAN,
+        },
+        {
+          key: 'pickup_available',
+          displayName: 'Hotel Pickup',
+          dataType: AttributeDataType.BOOLEAN,
+        },
+        {
+          key: 'booking_type',
+          displayName: 'Booking Type',
+          dataType: AttributeDataType.ENUM,
+        },
+        {
+          key: 'guide_languages',
+          displayName: 'Guide Languages',
+          dataType: AttributeDataType.ENUM_MULTI,
+        },
+      ]);
+
+      const res = await service.getTourAttributes('tour-1');
+      const byKey = new Map(res.map((r) => [r.key, r]));
+
+      // Genuine stored attribute stays editable.
+      expect(byKey.get('boat_type')).toMatchObject({
+        value: 'yacht',
+        derived: false,
+      });
+      // Derived value is computed (true), NOT the stale stored 'false'; flagged read-only.
+      expect(byKey.get('free_cancellation')).toMatchObject({
+        value: 'true',
+        derived: true,
+      });
+      // Exactly one free_cancellation entry (stored copy dropped).
+      expect(res.filter((r) => r.key === 'free_cancellation')).toHaveLength(1);
+      expect(byKey.get('pickup_available')).toMatchObject({
+        value: 'true',
+        derived: true,
+      });
+      expect(byKey.get('booking_type')).toMatchObject({
+        value: 'private',
+        derived: true,
+      });
+      expect(byKey.get('guide_languages')).toMatchObject({
+        value: '["english","spanish"]',
+        derived: true,
+      });
     });
   });
 

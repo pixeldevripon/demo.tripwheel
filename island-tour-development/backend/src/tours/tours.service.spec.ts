@@ -19,15 +19,18 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  BandParticipation,
   DepartureStatus,
   PickupModel,
   PricingModel,
   Role,
   SlugEntityType,
   TourStatus,
+  WholeUnitType,
 } from '@prisma/client';
 import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
 import { AvailabilityService } from '@/availability/availability.service';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
@@ -152,6 +155,14 @@ describe('ToursService', () => {
         ToursService,
         { provide: PrismaService, useValue: prisma },
         { provide: AvailabilityService, useValue: availability },
+        {
+          provide: FxRatesService,
+          // No conversion in unit tests (no ?currency) -> money falls back to source.
+          useValue: {
+            getDisplayRate: jest.fn().mockResolvedValue(null),
+            attachMoney: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
     service = module.get(ToursService);
@@ -472,6 +483,102 @@ describe('ToursService', () => {
     });
   });
 
+  // ── create - pricing model (UNIT vs PER_PERSON unit-field isolation) ─────────
+
+  describe('create - pricing model', () => {
+    beforeEach(() => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.destination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        slug: 'curacao',
+        isActive: true,
+        timezone: 'America/Curacao',
+      });
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+      prisma.tour.create.mockResolvedValue(makeTour());
+      prisma.slugRegistry.create.mockResolvedValue({});
+    });
+
+    it('nulls out wholeUnitType/unitIncludedGuests/extraPersonPrice for a PER_PERSON tour, even when supplied', async () => {
+      await service.create(
+        {
+          ...baseCreateDto,
+          pricingModel: PricingModel.PER_PERSON,
+          wholeUnitType: WholeUnitType.BOAT,
+          unitIncludedGuests: 4,
+          extraPersonPrice: '10.00',
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tour.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pricingModel: PricingModel.PER_PERSON,
+            wholeUnitType: null,
+            unitIncludedGuests: null,
+            extraPersonPrice: null,
+          }),
+        }),
+      );
+    });
+
+    it('passes the surcharge fields through for a GROUP unit tour', async () => {
+      await service.create(
+        {
+          ...baseCreateDto,
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.GROUP,
+          unitIncludedGuests: 4,
+          extraPersonPrice: '10.00',
+          basePrice: '500.00',
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tour.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pricingModel: PricingModel.UNIT,
+            wholeUnitType: WholeUnitType.GROUP,
+            unitIncludedGuests: 4,
+            extraPersonPrice: '10.00',
+          }),
+        }),
+      );
+    });
+
+    it('nulls the surcharge fields for a non-GROUP unit tour (flat whole-unit price)', async () => {
+      await service.create(
+        {
+          ...baseCreateDto,
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.BOAT,
+          unitIncludedGuests: 4,
+          extraPersonPrice: '10.00',
+          basePrice: '500.00',
+        },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tour.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pricingModel: PricingModel.UNIT,
+            wholeUnitType: WholeUnitType.BOAT,
+            unitIncludedGuests: null,
+            extraPersonPrice: null,
+          }),
+        }),
+      );
+    });
+  });
+
   // ── findAll - join filters ─────────────────────────────────────────────────────
 
   describe('findAll', () => {
@@ -522,6 +629,24 @@ describe('ToursService', () => {
         { priceFrom: { sort: 'asc', nulls: 'last' } },
         { basePrice: 'asc' },
       ]);
+    });
+
+    it('filters on priceFrom (the "From $X" display anchor), not basePrice, when minPrice/maxPrice are given', async () => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+      await service.findAll({
+        minPrice: 50,
+        maxPrice: 200,
+        page: 1,
+        limit: 20,
+      });
+
+      const findManyCall = prisma.tour.findMany.mock.calls[0][0];
+      expect(findManyCall.where.priceFrom).toEqual({ gte: 50, lte: 200 });
+      expect(findManyCall.where.basePrice).toBeUndefined();
+
+      const countCall = prisma.tour.count.mock.calls[0][0];
+      expect(countCall.where.priceFrom).toEqual({ gte: 50, lte: 200 });
     });
 
     it('defaults to the Recommended sort (tierRank → rating → reviews → recency)', async () => {
@@ -884,6 +1009,62 @@ describe('ToursService', () => {
         service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR),
       ).resolves.toBeDefined();
     });
+
+    // UNIT (whole-unit/charter) tours require a base price AND a unit type -
+    // age bands never satisfy the price requirement for this pricing model.
+    it('blocks publish for a UNIT tour with no base price', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue({
+        ...ready(),
+        pricingModel: PricingModel.UNIT,
+        basePrice: null,
+        wholeUnitType: WholeUnitType.BOAT,
+      });
+      await expect(
+        service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toMatchObject({
+        response: {
+          message: expect.arrayContaining([
+            expect.stringMatching(/unit-priced tours require a base price/i),
+          ]),
+        },
+      });
+    });
+
+    it('blocks publish for a UNIT tour with no unit type', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue({
+        ...ready(),
+        pricingModel: PricingModel.UNIT,
+        basePrice: 500,
+        wholeUnitType: null,
+      });
+      await expect(
+        service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toMatchObject({
+        response: {
+          message: expect.arrayContaining([
+            expect.stringMatching(/unit-priced tours require a unit type/i),
+          ]),
+        },
+      });
+    });
+
+    it('publishes a ready UNIT tour that has both a base price and a unit type', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue({
+        ...ready(),
+        pricingModel: PricingModel.UNIT,
+        basePrice: 500,
+        wholeUnitType: WholeUnitType.BOAT,
+      });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      await expect(
+        service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).resolves.toBeDefined();
+    });
   });
 
   describe('recomputePriceFrom', () => {
@@ -908,16 +1089,67 @@ describe('ToursService', () => {
       expect(pf).toBe(99);
     });
 
-    it('anchors priceFrom to the cheapest age band when bands exist', async () => {
+    it('anchors priceFrom to the anchor (default) age band when bands exist', async () => {
       prisma.tour.findUnique.mockResolvedValue({ basePrice: 200 });
-      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 49 });
+      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 75 });
       prisma.tour.update.mockResolvedValue({});
       const pf = await service.recomputePriceFrom('tour-1');
-      expect(pf).toBe(49);
+      expect(pf).toBe(75);
       expect(prisma.tour.update).toHaveBeenCalledWith({
         where: { id: 'tour-1' },
-        data: { priceFrom: 49 },
+        data: { priceFrom: 75 },
       });
+    });
+
+    // UNIT (whole-unit/charter) tours anchor on basePrice directly - age bands
+    // are a PER_PERSON construct and must never be queried for a UNIT tour.
+    it('UNIT tours anchor priceFrom on basePrice and never query age bands', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        basePrice: 400,
+        pricingModel: PricingModel.UNIT,
+      });
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
+      expect(pf).toBe(400);
+      expect(prisma.tourAgeBand.findFirst).not.toHaveBeenCalled();
+      expect(prisma.tour.update).toHaveBeenCalledWith({
+        where: { id: 'tour-1' },
+        data: { priceFrom: 400 },
+      });
+    });
+
+    // Founder rule: the "From $X per person" anchor is the DEFAULT band (the
+    // adult reference price), never a cheaper child/senior band. The query
+    // orders isDefault DESC first, so cheapest-price is only the fallback when
+    // no band is flagged default.
+    it('PER_PERSON tours anchor priceFrom on the DEFAULT participant age band', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        basePrice: 200,
+        pricingModel: PricingModel.PER_PERSON,
+      });
+      prisma.tourAgeBand.findFirst.mockResolvedValue({ price: 69 });
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
+      expect(pf).toBe(69);
+      expect(prisma.tourAgeBand.findFirst).toHaveBeenCalledWith({
+        where: {
+          tourId: 'tour-1',
+          participation: BandParticipation.PARTICIPANT,
+        },
+        orderBy: [{ isDefault: 'desc' }, { price: 'asc' }],
+        select: { price: true },
+      });
+    });
+
+    it('PER_PERSON tours fall back to basePrice when no age bands exist', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        basePrice: 90,
+        pricingModel: PricingModel.PER_PERSON,
+      });
+      prisma.tourAgeBand.findFirst.mockResolvedValue(null);
+      prisma.tour.update.mockResolvedValue({});
+      const pf = await service.recomputePriceFrom('tour-1');
+      expect(pf).toBe(90);
     });
   });
 
@@ -1092,6 +1324,131 @@ describe('ToursService', () => {
       await expect(
         service.update('tour-1', { name: 'x' }, 'admin', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    // ── Pricing model switch → unit fields are force-nulled/applied together ──
+
+    it('switching pricingModel to PER_PERSON force-nulls the unit fields', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.DRAFT,
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.BOAT,
+          unitIncludedGuests: 4,
+          extraPersonPrice: '10.00',
+          basePrice: '500.00',
+        }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        { pricingModel: PricingModel.PER_PERSON },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pricingModel: PricingModel.PER_PERSON,
+            wholeUnitType: null,
+            unitIncludedGuests: null,
+            extraPersonPrice: null,
+          }),
+        }),
+      );
+    });
+
+    it('switching pricingModel to UNIT applies the supplied unit fields', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.DRAFT,
+          pricingModel: PricingModel.PER_PERSON,
+        }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        {
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.GROUP,
+          unitIncludedGuests: 6,
+          extraPersonPrice: '15.00',
+        },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pricingModel: PricingModel.UNIT,
+            wholeUnitType: WholeUnitType.GROUP,
+            unitIncludedGuests: 6,
+            extraPersonPrice: '15.00',
+          }),
+        }),
+      );
+    });
+
+    it('switching a UNIT tour to a non-GROUP unit type nulls the surcharge fields', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.DRAFT,
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.GROUP,
+        }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        { wholeUnitType: WholeUnitType.BOAT },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            wholeUnitType: WholeUnitType.BOAT,
+            unitIncludedGuests: null,
+            extraPersonPrice: null,
+          }),
+        }),
+      );
+    });
+
+    it('keeping a GROUP unit tour still applies updated surcharge fields', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          status: TourStatus.DRAFT,
+          pricingModel: PricingModel.UNIT,
+          wholeUnitType: WholeUnitType.GROUP,
+        }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await service.update(
+        'tour-1',
+        { unitIncludedGuests: 2 },
+        'admin',
+        Role.ADMIN,
+      );
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            unitIncludedGuests: 2,
+          }),
+        }),
+      );
     });
 
     // ── Slug rename → auto 301 + cooldown (master slug-registry rules) ──

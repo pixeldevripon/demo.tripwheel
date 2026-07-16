@@ -6,6 +6,7 @@ import { Reveal } from '@/components/frontend/reveal';
 import { TourCard } from '@/components/frontend/tour-card';
 import { getActiveDestinations, searchTours } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { searchHitToListing } from '@/lib/tours/listing';
 
@@ -58,11 +59,13 @@ export async function SearchResultsSection({
             destinations.find(d => d.slug === destination)?.name ?? null;
     }
 
+    const currency = await getServerCurrency(locale);
     const results =
         query.length >= 2
             ? await searchTours({
                   q: query,
                   locale,
+                  currency,
                   destinationSlug: destination,
                   date,
                   page,

@@ -13,7 +13,44 @@
  * availability + a server-authoritative quote land with the booking module
  * (BOOKING-FLOW-DESIGN-GUIDE.md §9); until then this is client-derived.
  */
+import type { ReserveItem } from '@/lib/api/bookings';
 import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
+
+/**
+ * Ids the widget synthesises when a tour has no real age bands (`default-adult`)
+ * or is unit-priced (`unit-guests`). They are NOT real `ageBandId`s, so a
+ * PER_PERSON quote/reserve can't be built from them.
+ */
+export const SYNTHETIC_BAND_IDS = new Set(['default-adult', 'unit-guests']);
+
+/** The party selection in the shape the quote + reserve endpoints accept. */
+export type BookingSelectionPayload =
+    | { guests: number; items?: never }
+    | { items: ReserveItem[]; guests?: never };
+
+/**
+ * Map the widget data + chosen counts to the party payload both `POST
+ * /bookings/quote` and `POST /bookings` accept, or `null` when the selection
+ * can't be sent server-side (empty, or synthetic-only bands with no real
+ * `ageBandId`). UNIT tours send a single `guests` headcount; PER_PERSON sends one
+ * `items` line per counted age band (spectators are age bands too). Shared so the
+ * live quote and the checkout reserve always build the identical selection.
+ */
+export function buildBookingSelection(
+    data: TourBookingData,
+    counts: Record<string, number>
+): BookingSelectionPayload | null {
+    if (data.pricingModel === 'UNIT') {
+        const guests = Object.values(counts).reduce((sum, n) => sum + n, 0);
+        return guests > 0 ? { guests } : null;
+    }
+    const items = Object.entries(counts)
+        .filter(([, quantity]) => quantity > 0)
+        .map(([ageBandId, quantity]) => ({ ageBandId, quantity }));
+    if (items.length === 0) return null;
+    if (items.some((i) => SYNTHETIC_BAND_IDS.has(i.ageBandId))) return null;
+    return { items };
+}
 
 /** The widget selection carried in the checkout URL. */
 export interface CheckoutSelection {
@@ -23,6 +60,12 @@ export interface CheckoutSelection {
     time: string | null;
     /** Chosen count per band id (participants + spectators), zero rows omitted. */
     counts: Record<string, number>;
+    /** Real departure id for the picked slot (live mode); reserve keys off it. */
+    departureId: string | null;
+    /** Server quote id snapshotted in the widget - submitted with the reserve. */
+    quoteId: string | null;
+    /** Shopper (booking) currency the widget quoted in; checkout re-prices in it. */
+    currency: string | null;
 }
 
 /** A priced row in the checkout totals (band + chosen count). */
@@ -70,6 +113,9 @@ export function buildCheckoutQuery(selection: {
     date: string | null;
     time: string | null;
     counts: Record<string, number>;
+    departureId?: string | null;
+    quoteId?: string | null;
+    currency?: string | null;
 }): string {
     const params = new URLSearchParams();
     if (selection.date) params.set('date', selection.date);
@@ -79,6 +125,9 @@ export function buildCheckoutQuery(selection: {
         .map(([id, count]) => `${id}:${count}`)
         .join(',');
     if (party) params.set('party', party);
+    if (selection.departureId) params.set('departure', selection.departureId);
+    if (selection.quoteId) params.set('quote', selection.quoteId);
+    if (selection.currency) params.set('currency', selection.currency);
     return params.toString();
 }
 
@@ -104,7 +153,14 @@ export function parseCheckoutSelection(
         }
     }
 
-    return { date: first('date'), time: first('time'), counts };
+    return {
+        date: first('date'),
+        time: first('time'),
+        counts,
+        departureId: first('departure'),
+        quoteId: first('quote'),
+        currency: first('currency'),
+    };
 }
 
 /**
@@ -127,6 +183,33 @@ export function computeCheckoutTotals(
         }
     }
 
+    // UNIT (whole-unit / charter): one guests count; total is basePrice plus a
+    // per-guest surcharge beyond `unitIncludedGuests` (master §3.2), NOT a sum of
+    // per-person bands. Mirrors the widget's `deriveBooking`.
+    if (data.pricingModel === 'UNIT') {
+        const guests =
+            Object.values(effective).reduce((sum, n) => sum + n, 0) ||
+            Math.max(1, data.minPartySize);
+        const included = data.unitIncludedGuests ?? guests;
+        const extra = Math.max(0, guests - included);
+        const total = data.basePrice + extra * data.extraPersonPrice;
+        const guestsBand = data.bands[0];
+        const lineItems: CheckoutLineItem[] = guestsBand
+            ? [{ band: guestsBand, count: guests, lineTotal: total }]
+            : [];
+        const payToday = data.requiresDeposit
+            ? Math.round(total * data.depositPct) / 100
+            : total;
+        return {
+            lineItems,
+            partySize: guests,
+            total,
+            payToday,
+            balanceLater: total - payToday,
+            requiresDeposit: data.requiresDeposit,
+        };
+    }
+
     const lineItems: CheckoutLineItem[] = data.bands
         .map(band => ({ band, count: effective[band.id] ?? 0 }))
         .filter(row => row.count > 0)
@@ -135,7 +218,7 @@ export function computeCheckoutTotals(
     const partySize = lineItems.reduce((sum, row) => sum + row.count, 0);
     const total = lineItems.reduce((sum, row) => sum + row.lineTotal, 0);
     const payToday = data.requiresDeposit
-        ? Math.round((total * data.depositPct) / 100)
+        ? Math.round(total * data.depositPct) / 100
         : total;
 
     return {
@@ -160,11 +243,18 @@ export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
         .join(', ');
 }
 
-/** `${symbol}${amount}` with locale grouping - matches the booking widget. */
+/**
+ * `${symbol}${amount}` with locale grouping - matches the booking widget.
+ * Exact prices: whole amounts stay bare ("$75"), fractional amounts always
+ * carry both cents ("$63.75", never "$63.7" or a rounded "$64").
+ */
 export function formatCheckoutMoney(
     amount: number,
     symbol: string,
     locale: string
 ): string {
-    return `${symbol}${amount.toLocaleString(locale)}`;
+    return `${symbol}${amount.toLocaleString(locale, {
+        minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+        maximumFractionDigits: 2,
+    })}`;
 }

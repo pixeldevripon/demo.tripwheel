@@ -184,15 +184,17 @@ export function ThankYouSummary({
                                                 </span>
                                             </span>
                                         </div>
+                                        {/* Master B.85: an operator_link balance runs on the
+                                            operator's own rails, so every surface stays NEUTRAL
+                                            about it - we cannot verify how they collect. A
+                                            "Card payment only" line used to sit here; it was
+                                            hardcoded, in no spec, and simply a guess. The
+                                            card/cash statement is only legitimate on on_arrival,
+                                            where Tour.onArrivalPayment actually tells us. */}
                                         <div className='flex justify-between gap-4'>
                                             <span className={rowLabel}>{dict.payBefore}</span>
-                                            <span className='flex flex-col items-end gap-[5px]'>
-                                                <span className='text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
-                                                    {payment.payBeforeLabel}
-                                                </span>
-                                                <span className={rowValue}>
-                                                    {dict.cardOnly}
-                                                </span>
+                                            <span className='text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                                                {payment.payBeforeLabel}
                                             </span>
                                         </div>
                                     </>

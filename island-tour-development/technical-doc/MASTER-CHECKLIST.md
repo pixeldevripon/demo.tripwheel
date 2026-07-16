@@ -196,6 +196,11 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [ ] Forfeit never automatic (operator reports → admin confirms)
 - [ ] Operator-forced cancellation → full refund or free reschedule
 
+> **⚠️ DECISION NEEDED (open in master, conflict log C23) - counter-party settlement rails.** The checkout charge always lands in the Island Tours Stripe/Mollie account, but two rails are unresolved and must not be hardcoded before sign-off (owner: Arnav). Deposit models (`operator_link`, `on_arrival`) are resolved - no cross-transfer, each party keeps its own leg. Open:
+>   - [ ] **`paid_in_full` operator payout** - Island Tours holds 100%; how is the operator paid its `total - commission`? (options: Stripe Connect split/transfer [phase-2 candidate, B.85] vs. manual admin payout/invoicing in v1)
+>   - [ ] **`operator_full` commission collection** - Island Tours holds nothing; how is its `commission` collected from the operator? (options: Stripe Connect vs. manual invoicing in v1)
+>   - Cross-refs: `03-implementation/BOOKING-FLOW-DESIGN-GUIDE.md` §2.3, `02-architecture/BOOKING-AND-PAYMENTS.md` §1. Off-platform legs are not machine-readable in v1 (B.85); Stripe Connect (phase 2) would make both machine-readable.
+
 ### 6.3 Trust strip & modals
 
 - [ ] Two clickable lines (cancellation + deposit), payment-model-aware, locked modal copy (LD5) — frontend
@@ -347,6 +352,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] cancellation_hours enum [24,48,72,168] default 48 — DTO `@IsIn`, service default 48 (master rule #20)
 - [x] free_cancellation derivable (cancellation_hours NOT NULL — no standalone field)
 - [x] payment_model, instant_confirmation, booking_type, duration_minutes_max(durationMinutesTo) — trip create/update DTO + service; deposit_pct surfaced read-only (tier-driven)
+- [x] UNIT (whole-unit/charter) pricing engine — `basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice` (surcharge GROUP-only, D1a); UNIT+PRIVATE claims the whole departure (exclusive sell-out). `booking-pricing.util.ts` + `bookings.service.ts`; see `03-implementation/PRICING-MODEL-AND-UNIT-CHECKLIST.md`
 - [x] start_times[] — `Tour.startTimes` column; availability schedules validate slots against it
 - [x] check_in_minutes_before — Tour column (default 30); pickup window (windowStart/windowEnd) — `PickupLocation`
 - [x] meeting_point_lat / meeting_point_lng (+ departure_city; localized meeting_point_text on `TourTranslation`)

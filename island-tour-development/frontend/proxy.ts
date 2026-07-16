@@ -184,6 +184,16 @@ export async function proxy(request: NextRequest) {
         return NextResponse.rewrite(url);
     }
 
+    // 5b. Cancellation-request page - same contract as the TYP (master 6.4/C1):
+    //     the confirmation email links /cancel/{public_ref} with no locale
+    //     prefix, served from the default-locale branch via a URL-preserving
+    //     rewrite. Tokenized and noindex; it only ever REQUESTS a cancellation.
+    if (/^\/cancel\/[^/]+$/.test(pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${DEFAULT_LOCALE}${pathname}`;
+        return NextResponse.rewrite(url);
+    }
+
     // 6. Public path without a locale → redirect to the locale-prefixed URL.
     const locale = resolveLocale(request);
     const url = request.nextUrl.clone();

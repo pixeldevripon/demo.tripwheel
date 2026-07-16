@@ -1,5 +1,7 @@
 import { getCollectionRender, getDestinationBySlug } from '@/lib/api/public';
 import { type Locale } from '@/lib/constants/locales';
+import { deriveDisplayRate, formatPriceFrom } from '@/lib/currency/current';
+import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { collectionTourToListing } from '@/lib/tours/listing';
 import { notFound } from 'next/navigation';
@@ -37,11 +39,20 @@ export async function CollectionPage({
     locale,
     dict,
 }: CollectionPageProps) {
-    // The render endpoint keys on the destination UUID, so resolve the destination
-    // first, then fetch the full collection payload for this locale.
-    const destination = await getDestinationBySlug(destinationSlug, locale);
+    // The render endpoint keys on the destination UUID, so resolve the shopper
+    // currency + destination in parallel first, then fetch the full collection
+    // payload for this locale + currency (it depends on the destination id).
+    const [currency, destination] = await Promise.all([
+        getServerCurrency(locale),
+        getDestinationBySlug(destinationSlug, locale),
+    ]);
     const collection = destination
-        ? await getCollectionRender(collectionSlug, destination.id, locale)
+        ? await getCollectionRender(
+              collectionSlug,
+              destination.id,
+              locale,
+              currency,
+          )
         : null;
 
     if (!collection) notFound();
@@ -58,6 +69,22 @@ export async function CollectionPage({
     const tours = collection.tours.map((tour, index) =>
         collectionTourToListing(tour, destinationSlug, locale, dict.search, index + 1)
     );
+
+    // `fastStats.fromPrice` is a source-currency aggregate the backend does not
+    // convert (guide §20.9); derive the shopper rate from the converted cards
+    // (shared helper) and format the hero "from" price with it.
+    const { currency: heroCurrency, rate: heroRate } = deriveDisplayRate(
+        collection.tours,
+        currency,
+    );
+    const startingPriceDisplay =
+        collection.fastStats.fromPrice != null
+            ? formatPriceFrom(
+                  collection.fastStats.fromPrice * heroRate,
+                  heroCurrency,
+                  locale,
+              )
+            : null;
 
     // FAQs come from the render (per locale); fall back to the localized collection
     // FAQ chrome when none are authored yet.
@@ -96,7 +123,7 @@ export async function CollectionPage({
                 subtitle={collection.curationNote}
                 heroImage={collection.heroImage}
                 tourCount={collection.fastStats.tourCount}
-                startingPrice={collection.fastStats.fromPrice}
+                startingPrice={startingPriceDisplay}
                 dict={{
                     tours: collectionDict?.tours ?? 'tours',
                     from: listings?.from ?? 'From',
@@ -119,6 +146,10 @@ export async function CollectionPage({
                     from: listings.from,
                     per: listings.per,
                     perGroup: listings.perGroup,
+                    perBoat: listings.perBoat,
+                    perVehicle: listings.perVehicle,
+                    perAircraft: listings.perAircraft,
+                    perPackage: listings.perPackage,
                 }}
             />
 

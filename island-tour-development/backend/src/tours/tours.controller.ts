@@ -15,7 +15,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Permission, Role } from '@prisma/client';
+import { Currency, Permission, Role } from '@prisma/client';
 import {
   AdminToursQueryDto,
   CreateTourDto,
@@ -147,10 +147,14 @@ export class ToursController {
   @Get(':id')
   @Public()
   @ApiGetTourByIdDocs()
-  findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  findOne(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+    @Query('currency') currency?: Currency,
+  ) {
     const requesterId = req.user?.id ?? null;
     const requesterRole = req.user?.role ?? null;
-    return this.toursService.findOne(id, requesterId, requesterRole);
+    return this.toursService.findOne(id, requesterId, requesterRole, currency);
   }
 
   // ── Update ────────────────────────────────────────────────────────────────────

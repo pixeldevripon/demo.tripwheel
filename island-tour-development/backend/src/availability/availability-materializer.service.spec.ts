@@ -52,6 +52,7 @@ function existingDeparture(over: Record<string, unknown> = {}) {
     startTime: time('09:00'),
     capacity: 10,
     bookedCount: 0,
+    status: 'OPEN',
     manuallyEdited: false,
     source: 'SCHEDULE',
     ...over,
@@ -201,6 +202,57 @@ describe('AvailabilityMaterializerService', () => {
     ]);
     const res = await svc.materializeTour('t1', DAY, DAY);
     expect(res).toMatchObject({ updated: 0, skipped: 1, created: 0 });
+    expect(prisma.departure.update).not.toHaveBeenCalled();
+  });
+
+  it('does not resize a booked departure (capacity protected, no status change)', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([
+      schedule({ capacityOverride: 20 }),
+    ]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 2, status: 'OPEN', capacity: 10 }),
+    ]);
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    // Status stays OPEN, so nothing is written; capacity is never resized to 20.
+    expect(res).toMatchObject({ updated: 0, skipped: 1, created: 0 });
+    expect(prisma.departure.update).not.toHaveBeenCalled();
+  });
+
+  it('closes a booked departure on a close_date stop-sell (status only)', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    prisma.availabilityException.findMany.mockResolvedValue([exception()]); // whole-day CLOSE_DATE
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 2, status: 'OPEN' }),
+    ]);
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    expect(res).toMatchObject({ updated: 1, created: 0, removed: 0 });
+    expect(prisma.departure.update).toHaveBeenCalledWith({
+      where: { id: 'd1' },
+      data: { status: 'CLOSED' },
+    });
+  });
+
+  it('reopens a booked departure when the close_date is removed', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    // No exceptions -> desired OPEN again.
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ bookedCount: 2, status: 'CLOSED' }),
+    ]);
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    expect(res).toMatchObject({ updated: 1 });
+    expect(prisma.departure.update).toHaveBeenCalledWith({
+      where: { id: 'd1' },
+      data: { status: 'OPEN' },
+    });
+  });
+
+  it('does not reopen a manuallyEdited closed departure', async () => {
+    prisma.availabilitySchedule.findMany.mockResolvedValue([schedule()]);
+    prisma.departure.findMany.mockResolvedValue([
+      existingDeparture({ manuallyEdited: true, status: 'CLOSED' }),
+    ]);
+    const res = await svc.materializeTour('t1', DAY, DAY);
+    expect(res).toMatchObject({ updated: 0, skipped: 1 });
     expect(prisma.departure.update).not.toHaveBeenCalled();
   });
 

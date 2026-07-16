@@ -10,6 +10,7 @@ import {
   CompanyInformationsResponseDto,
   MailchimpResponseDto,
   MollieConfigurationResponseDto,
+  PublicSiteInfoResponseDto,
   SiteInfoResponseDto,
   SiteSEOResponseDto,
   SMTPResponseDto,
@@ -55,6 +56,29 @@ export function ApiGetSiteInfoDocs() {
       type: SiteInfoResponseDto,
     }),
     ...commonErrors,
+  );
+}
+
+export function ApiGetPublicSiteInfoDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get public site information (no auth)',
+      description:
+        'Public-safe subset of SiteInfo for the marketing site: logo, favicon, ' +
+        'tagline, and the WhatsApp/Instagram feature flags. `whatsappNumber` is ' +
+        'null whenever `enableWhatsappChat` is false. Never returns SMTP, ' +
+        'Stripe, Mollie, or Mailchimp configuration.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Public site information retrieved successfully',
+      type: PublicSiteInfoResponseDto,
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal server error',
+      type: InternalServerErrorDto,
+    }),
   );
 }
 

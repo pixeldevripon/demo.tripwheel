@@ -1,5 +1,7 @@
 import Image from 'next/image';
+import { getPublicSiteInfo } from '@/lib/api/public/settings';
 import { springPop } from '@/lib/motion';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 import { FaqAccordion } from './faq-accordion';
 import { MotionA } from './motion-primitives';
 import { Reveal } from './reveal';
@@ -23,13 +25,25 @@ const payments = [
     { src: '/icons/payments/pay-8.svg', alt: 'American Express' },
 ];
 
-export function FaqSection({
+/**
+ * Reads the WhatsApp number itself rather than taking it as a prop: this section
+ * renders from the home, destination, category, collection, and hub pages, and
+ * threading one settings value through all five only to reach one button is
+ * noise. `getPublicSiteInfo` is cached and tagged, so the extra call is free.
+ */
+export async function FaqSection({
     dict,
     minimal = false,
 }: {
     dict: FaqDict;
     minimal?: boolean;
 }) {
+    const site = await getPublicSiteInfo();
+    const whatsappUrl = buildWhatsappUrl(
+        site.whatsappNumber,
+        site.enableWhatsappChat,
+    );
+
     return (
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
@@ -76,22 +90,30 @@ export function FaqSection({
                                                 className='size-full object-cover'
                                             />
                                         </div>
-                                        <MotionA
-                                            href='#'
-                                            className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px] hover:bg-it-green/90 transition-colors'
-                                            whileTap={{ scale: 0.98 }}
-                                            transition={springPop}>
-                                            <Image
-                                                src='/icons/whatsapp.svg'
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-6'
-                                            />
-                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                                {dict.whatsapp}
-                                            </span>
-                                        </MotionA>
+                                        {/* Master 6.6: NeedHelp is a required WhatsApp
+                                            surface. Hidden entirely when Settings >
+                                            General disables the chat or holds no usable
+                                            number - a dead button is worse than none. */}
+                                        {whatsappUrl && (
+                                            <MotionA
+                                                href={whatsappUrl}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px] hover:bg-it-green/90 transition-colors'
+                                                whileTap={{ scale: 0.98 }}
+                                                transition={springPop}>
+                                                <Image
+                                                    src='/icons/whatsapp.svg'
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-6'
+                                                />
+                                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                    {dict.whatsapp}
+                                                </span>
+                                            </MotionA>
+                                        )}
                                     </div>
 
                                     <ul className='m-0 flex list-none flex-col gap-2 p-0'>

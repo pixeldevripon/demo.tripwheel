@@ -1,12 +1,16 @@
+import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Locale } from '@prisma/client';
+import { Currency, Locale } from '@prisma/client';
 
 @Injectable()
 export class WishlistService {
   private readonly logger = new Logger(WishlistService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fx: FxRatesService,
+  ) {}
 
   /** Tour fields needed to render a wishlist card (mirrors the search-hit shape). */
   private readonly tourSelect = {
@@ -32,8 +36,9 @@ export class WishlistService {
     },
   } as const;
 
-  /** The current user's saved tours, newest first, shaped for card rendering. */
-  async list(userId: string, locale: Locale = Locale.en) {
+  /** The current user's saved tours, newest first, shaped for card rendering. When
+   *  `currency` is passed, each card gets the converted display `money` (guide §20.9). */
+  async list(userId: string, locale: Locale = Locale.en, currency?: Currency) {
     const rows = await this.prisma.wishlist.findMany({
       where: { userId },
       orderBy: { savedAt: 'desc' },
@@ -48,7 +53,7 @@ export class WishlistService {
       },
     });
 
-    return rows
+    const cards = rows
       .filter((row) => row.tour)
       .map(({ savedAt, tour }) => {
         const { destination, translations, ...rest } = tour;
@@ -59,6 +64,10 @@ export class WishlistService {
           savedAt,
         };
       });
+
+    // Same reusable converter as the public tour/hub cards.
+    await this.fx.attachMoney(cards, currency, 'defaultCurrency');
+    return cards;
   }
 
   /** Just the saved tour ids — used to hydrate heart states across the site. */

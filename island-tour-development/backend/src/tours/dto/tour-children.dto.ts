@@ -1079,6 +1079,7 @@ export class TourTranslationResponseDto {
   @ApiPropertyOptional() categoryDisplay!: string | null;
   @ApiPropertyOptional() localTipTitle!: string | null;
   @ApiPropertyOptional() localTipBody!: string | null;
+  @ApiPropertyOptional() operatorNote!: string | null;
   @ApiPropertyOptional() meetingPointText!: string | null;
   @ApiPropertyOptional() metaTitle!: string | null;
   @ApiPropertyOptional() metaDescription!: string | null;
@@ -1184,6 +1185,18 @@ export class UpsertTourTranslationDto {
   @IsString()
   @MaxLength(2000)
   localTipBody?: string;
+
+  @ApiPropertyOptional({
+    example:
+      'Seas can be rough on the way out to Klein Curacao, mainly in some parts of the year. Bring something if you are sensitive to motion.',
+    description:
+      'The operator\'s own message to the traveller, rendered as the "A note from ' +
+      '{operatorName}" card in the booking confirmation email. Empty hides the card.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  operatorNote?: string;
 
   @ApiPropertyOptional({
     example: 'Meet at the main dock, Pier 3, 15 minutes before departure.',

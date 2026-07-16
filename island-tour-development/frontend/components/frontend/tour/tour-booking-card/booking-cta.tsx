@@ -9,18 +9,24 @@ import { buildCheckoutQuery, toDateParam } from '@/lib/checkout/checkout';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 /**
- * The primary action block: an optional over-capacity note, the CTA (label flips
- * from "Check Availability" to "Continue" once ready), and the two trust lines.
- * Each trust line carries a `{link}` marker where its clickable/underlined phrase
- * belongs; only that phrase opens the matching policy modal.
+ * The primary action block: an optional over-capacity note, the CTA ("Continue"
+ * once a selection is ready - the actual reserve + pay happens on the checkout
+ * page this navigates to), and the trust lines. The free-cancellation line
+ * always shows; the payment line is model-specific (deposit link / "Pay in full
+ * now" / none). A tour whose payment model is not bookable in v1 (operator_full)
+ * shows a disabled state instead.
  */
 export function BookingCta() {
     const {
         dict,
         ready,
-        overCapacity,
+        editingParty,
+        atCapacity,
+        capacityReason,
         effectiveMax,
         fillPolicy,
+        bookingBlocked,
+        paymentTrust,
         handleCtaClick,
         setPolicyModal,
         locale,
@@ -29,19 +35,34 @@ export function BookingCta() {
         selectedDate,
         selectedTime,
         counts,
+        selectedDepartureId,
+        quote,
+        currency,
     } = useBooking();
     const router = useRouter();
 
-    // Once the availability check passes, the CTA becomes "Continue" and carries
-    // the selection (date / time / party) into the checkout page via the query
-    // string. Without a destination/tour slug (design/demo usage) it falls back
-    // to the in-card availability flow.
+    // A payment-free reserve (operator_full) is not offered in v1: the card
+    // shows a disabled notice in place of the CTA and trust lines.
+    if (bookingBlocked) {
+        return (
+            <div className='flex w-full items-center justify-center rounded-it-full bg-it-border px-10 py-[19px] text-center font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
+                {dict.bookingUnavailable}
+            </div>
+        );
+    }
+
+    // Once ready, the CTA carries the selection (date / time / party) into the
+    // checkout page via the query string. Without a destination/tour slug
+    // (design/demo usage) it falls back to the in-card availability flow.
     function onCta() {
         if (ready && destinationSlug && tourSlug) {
             const query = buildCheckoutQuery({
                 date: selectedDate ? toDateParam(selectedDate) : null,
                 time: selectedTime,
                 counts,
+                departureId: selectedDepartureId,
+                quoteId: quote?.quoteId ?? null,
+                currency: currency ?? null,
             });
             const base = localizeHref(
                 locale as Locale,
@@ -53,24 +74,22 @@ export function BookingCta() {
         handleCtaClick();
     }
 
-    const trustLines = [
-        {
-            modal: 'cancellation' as const,
-            template: fillPolicy(dict.freeCancellation),
-            link: fillPolicy(dict.freeCancellationLink),
-        },
-        {
-            modal: 'deposit' as const,
-            template: fillPolicy(dict.payLater),
-            link: fillPolicy(dict.payLaterLink),
-        },
-    ];
+    // Free cancellation is offered on every model; its clickable phrase opens the
+    // cancellation modal.
+    const cancelTemplate = fillPolicy(dict.freeCancellation);
+    const [cancelBefore, cancelAfter] = cancelTemplate.split('{link}');
+    const cancelLink = fillPolicy(dict.freeCancellationLink);
 
     return (
         <div className='flex flex-col gap-5'>
-            {overCapacity && (
+            {/* While choosing the party, if the plus button is capped, say why
+                (master §3.3.1): genuine slot scarcity vs the per-booking max. */}
+            {editingParty && atCapacity && (
                 <span className='text-center text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
-                    {dict.capacityNote.replace('{count}', String(effectiveMax))}
+                    {(capacityReason === 'slot'
+                        ? dict.capacityNote
+                        : dict.maxPerBooking
+                    ).replace('{count}', String(effectiveMax))}
                 </span>
             )}
             <motion.button
@@ -91,35 +110,65 @@ export function BookingCta() {
                 </AnimatePresence>
             </motion.button>
             <div className='flex flex-col gap-2'>
-                {trustLines.map(line => {
-                    const [before, after] = line.template.split('{link}');
-                    return (
-                        <span
-                            key={line.modal}
-                            className='flex items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                            <Image
-                                src='/icons/booking-check.svg'
-                                alt=''
-                                width={20}
-                                height={20}
-                                className='size-5 shrink-0'
-                            />
-                            <span>
-                                {before}
-                                <motion.button
-                                    type='button'
-                                    onClick={() => setPolicyModal(line.modal)}
-                                    whileTap={{ scale: 0.98 }}
-                                    transition={springPop}
-                                    className='cursor-pointer border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors duration-300 hover:text-it-primary'>
-                                    {line.link}
-                                </motion.button>
-                                {after}
-                            </span>
-                        </span>
-                    );
-                })}
+                {/* Free cancellation (always). */}
+                <TrustRow>
+                    {cancelBefore}
+                    <TrustLink onClick={() => setPolicyModal('cancellation')}>
+                        {cancelLink}
+                    </TrustLink>
+                    {cancelAfter}
+                </TrustRow>
+
+                {/* Payment line (model-specific). */}
+                {paymentTrust?.kind === 'modal' && (
+                    <TrustRow>
+                        {paymentTrust.before}
+                        <TrustLink onClick={() => setPolicyModal('deposit')}>
+                            {paymentTrust.link}
+                        </TrustLink>
+                        {paymentTrust.after}
+                    </TrustRow>
+                )}
+                {paymentTrust?.kind === 'plain' && (
+                    <TrustRow>{paymentTrust.text}</TrustRow>
+                )}
             </div>
         </div>
+    );
+}
+
+/** A trust line: the check icon + its (partly clickable) copy. */
+function TrustRow({ children }: { children: React.ReactNode }) {
+    return (
+        <span className='flex items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <Image
+                src='/icons/booking-check.svg'
+                alt=''
+                width={20}
+                height={20}
+                className='size-5 shrink-0'
+            />
+            <span>{children}</span>
+        </span>
+    );
+}
+
+/** The underlined, clickable phrase inside a trust line (opens a policy modal). */
+function TrustLink({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <motion.button
+            type='button'
+            onClick={onClick}
+            whileTap={{ scale: 0.98 }}
+            transition={springPop}
+            className='cursor-pointer border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors duration-300 hover:text-it-primary'>
+            {children}
+        </motion.button>
     );
 }

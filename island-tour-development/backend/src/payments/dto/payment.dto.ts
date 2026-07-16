@@ -8,7 +8,7 @@ export class PaymentIntentResponseDto {
   @ApiProperty({
     example: true,
     description:
-      'Whether an up-front platform charge is required. False for ON_ARRIVAL / OPERATOR_FULL (nothing to pay now).',
+      'Whether an up-front platform charge is required. False only for OPERATOR_FULL (nothing to pay now); ON_ARRIVAL captures a deposit.',
   })
   paymentRequired!: boolean;
 
@@ -42,6 +42,14 @@ export class PaymentIntentResponseDto {
     example: PaymentStatus.REQUIRES_PAYMENT,
   })
   status?: PaymentStatus;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['card', 'paypal', 'ideal'],
+    description:
+      'Eligible payment methods for this booking (account-activated + currency-compatible). The checkout offers only these; card is inline, PayPal/iDEAL redirect.',
+  })
+  paymentMethodTypes?: string[];
 }
 
 export class WebhookAckDto {
