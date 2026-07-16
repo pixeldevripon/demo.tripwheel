@@ -60,8 +60,11 @@ export function toLocale(value: string | null | undefined): Locale {
   return LOCALES.has(base) ? (base as Locale) : Locale.en;
 }
 
-/** "Friday, 22 May 2026" - the summary block's date line. */
-function formatDateLong(date: Date, locale: Locale | null): string {
+/**
+ * "Friday, 22 May 2026" - exported for the notice emails (cancellation ack,
+ * operator notices), which share the shell and must format dates identically.
+ */
+export function formatDateLong(date: Date, locale: Locale | null): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {
     weekday: 'long',
     day: 'numeric',
@@ -82,23 +85,69 @@ function formatDateShort(date: Date, locale: Locale | null): string {
 }
 
 /**
- * "Wednesday 20 May 2026, 08:00" - the cancellation/balance deadline.
+ * "Wed, 20 May 2026, 08:00" - the cancellation/balance deadline, exactly as the
+ * wireframe locks it: SHORT weekday, and a comma before the time.
  *
- * `hourCycle: 'h23'` is not decoration: the wireframe locks times to 24-hour
- * ACROSS ALL LOCALES, and en-GB/zh-CN would otherwise render "8:00 am"/"上午8:00".
- * (The thank-you page renders 12-hour on purpose - the email rule differs.)
+ * Date and time are formatted separately and joined, because `Intl` with both
+ * renders a connector ("Wed, 20 May 2026 at 08:00" in en-GB, and a locale-specific
+ * one elsewhere) that the design does not use.
+ *
+ * The time part is 24-hour ACROSS ALL LOCALES per the wireframe build note, hence
+ * the explicit `hourCycle: 'h23'` - en-GB and zh-CN both default to 12-hour
+ * ("8:00 am" / "上午8:00"). The thank-you page renders 12-hour on purpose; the
+ * email rule genuinely differs.
  */
 function formatDeadline(date: Date, locale: Locale | null): string {
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    weekday: 'long',
+  const day = new Intl.DateTimeFormat(intlLocale(locale), {
+    weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
+    timeZone: WALL_CLOCK_ZONE,
+  }).format(date);
+  const time = new Intl.DateTimeFormat(intlLocale(locale), {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
     timeZone: WALL_CLOCK_ZONE,
   }).format(date);
+  return `${day}, ${time}`;
+}
+
+/**
+ * ISO 639-1 codes ("en", "es", "nl") rendered as names in the reader's language
+ * ("English, Spanish, Dutch"). `TourLanguage.language` stores codes; emailing them
+ * raw is a bug the design caught ("Language: en, es, nl").
+ */
+function formatLanguages(
+  codes: readonly string[],
+  locale: Locale | null,
+): string {
+  if (!codes.length) return '';
+  const names = new Intl.DisplayNames([intlLocale(locale)], {
+    type: 'language',
+    fallback: 'code',
+  });
+  const list = codes.map((code) => {
+    const name = names.of(code) ?? code;
+    // Intl leaves an unknown code lowercase; a bare code looks like a bug either
+    // way, so at least present it consistently.
+    return name === code ? code.toUpperCase() : capitalize(name);
+  });
+  return list.join(', ');
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * "island.tours/bookings" - the human label the design shows for a link whose href
+ * is the full URL. Emailing "http://localhost:3000/bookings" (or any raw scheme)
+ * is what the design review caught.
+ */
+function urlLabel(url: string): string {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
 /**
@@ -128,17 +177,13 @@ function formatMoney(
 }
 
 /**
- * Bullet arrays ("what to bring", "good to know") as one plain-text line.
- *
- * The renderer HTML-escapes every value, so a `<ul>` here would email literal
- * `&lt;ul&gt;`. The template renders these into a single line by design; a middot
- * is the wireframe's own separator elsewhere.
+ * Trim + drop blanks. Returned as a LIST, not a joined line: the wireframe renders
+ * each bullet as its own row with an orange marker, which the template does with
+ * `[EACH]`. (An earlier version joined these with a middot into one line - visibly
+ * wrong against the design.)
  */
-function joinBullets(items: readonly string[]): string {
-  return items
-    .map((i) => i.trim())
-    .filter(Boolean)
-    .join(' · ');
+function bullets(items: readonly string[]): string[] {
+  return items.map((i) => i.trim()).filter(Boolean);
 }
 
 /** "2 adults, 1 child" - already-pluralised party lines from the caller. */
@@ -215,7 +260,8 @@ export type ConfirmationEmailInput = {
     slug: string;
     heroImageUrl: string | null;
     durationLabel: string | null;
-    languageLabel: string | null;
+    /** ISO 639-1 codes; rendered as names in the reader's language. */
+    languageCodes: readonly string[];
     checkInMinutesBefore: number | null;
     meetingPoint: string | null;
     meetingPointLat: number | null;
@@ -310,7 +356,7 @@ export function buildConfirmationEmailContext(
     // Trip facts (each hides with its icon when empty)
     partyBreakdown: joinParty(booking.partyLines),
     duration: tour.durationLabel ?? '',
-    tourLanguage: tour.languageLabel ?? '',
+    tourLanguage: formatLanguages(tour.languageCodes, locale),
     specialRequests: booking.notes ?? '',
     operatorNote: tour.operatorNote ?? '',
 
@@ -331,9 +377,10 @@ export function buildConfirmationEmailContext(
     whatsappUrl:
       buildWhatsappUrl(site.whatsappNumber, site.whatsappEnabled) ?? '',
 
-    // Content
-    whatToBring: joinBullets(tour.whatToBring),
-    knowBeforeYouGo: joinBullets(tour.knowBeforeYouGo),
+    // Content - lists, so the template can render the wireframe's orange bullet
+    // rows via [EACH] and hide the heading via [IF] when empty.
+    whatToBring: bullets(tour.whatToBring),
+    knowBeforeYouGo: bullets(tour.knowBeforeYouGo),
 
     // Links
     tourUrl: `${base}/${urlLocale}/${destination.slug}/${tour.slug}/`,
@@ -341,6 +388,8 @@ export function buildConfirmationEmailContext(
     // Master 6.4/C1: a TOKENIZED confirmation page, never a cancel-on-raw-click.
     cancelUrl: `${base}/cancel/${booking.publicRef}`,
     accountUrl: `${base}/bookings`,
+    // The design shows the link's LABEL ("island.tours/bookings"), not the raw href.
+    accountUrlLabel: urlLabel(`${base}/bookings`),
     allToursUrl: `${base}/${urlLocale}/${destination.slug}/tours/`,
 
     // "More {island} experiences"
@@ -398,13 +447,127 @@ function ratingLabel(tour: RelatedTourInput | undefined): string {
   return tour.aggregateRating.toFixed(1);
 }
 
-/** "from $45" - master's price-from label; empty for an unpriced tour. */
+/**
+ * "$89" - the upsell card's price line, exactly as the wireframe shows it
+ * ("4.9 · $89"): no "from" prefix, and whole amounts drop their zero cents.
+ * Empty for an unpriced tour.
+ */
 function priceLabel(
   tour: RelatedTourInput | undefined,
   locale: Locale | null,
 ): string {
   if (!tour?.priceFrom) return '';
-  return `from ${formatMoney(tour.priceFrom, tour.currency, locale)}`;
+  // Strip ".00"/",00" only when the cents are zero; a real fraction stays.
+  return formatMoney(tour.priceFrom, tour.currency, locale).replace(
+    /([.,])00(?=\D|$)/,
+    '',
+  );
+}
+
+// ── Branded notice (shared shell) ────────────────────────────────────────────
+
+/** Plain-text part of a `booking-notice.template.html` send. */
+export function buildNoticeText(ctx: EmailTemplateContext): string {
+  const get = (key: string): string => String(ctx[key] ?? '').trim();
+  const paragraphs = Array.isArray(ctx.noticeParagraphs)
+    ? ctx.noticeParagraphs
+    : [];
+  const lines: Array<string | null> = [
+    get('noticeTitle'),
+    `Booking reference: ${get('bookingRef')}`,
+    '',
+    get('tourName'),
+    `${get('dateLong')}${get('startTime') ? ` at ${get('startTime')}` : ''}`,
+    '',
+    ...paragraphs,
+    '',
+    optional(get('ctaUrl'), (v) => `${get('ctaLabel')}: ${v}`),
+    'Island Tours. Built by Islanders.',
+  ];
+  return lines.filter((line): line is string => line !== null).join('\n');
+}
+
+// ── Operator "Booking Received" notification (C7) ───────────────────────────
+
+/**
+ * Token context for `operator-booking-received.template.html`.
+ *
+ * Built ON TOP of the traveller context - the shared tokens (tour, dates, money,
+ * pickup, payment model) must read identically in both emails, so deriving them
+ * twice would be a divergence bug waiting to happen. The caller builds the
+ * traveller context with `Locale.en` first: operators work in English (the
+ * dashboard language), so their dates/amounts are English-formatted even when
+ * the traveller booked in German.
+ */
+export function buildOperatorNotificationContext(
+  travellerCtx: EmailTemplateContext,
+  extras: {
+    guestName: string | null;
+    guestEmail: string | null;
+    guestPhone: string | null;
+    dashboardUrl: string;
+  },
+): EmailTemplateContext {
+  return {
+    ...travellerCtx,
+    guestName: extras.guestName ?? 'A traveller',
+    guestEmail: extras.guestEmail ?? '',
+    guestPhone: extras.guestPhone ?? '',
+    dashboardUrl: extras.dashboardUrl,
+  };
+}
+
+/** "New booking IT-2026-04821: Klein Curacao Day Trip on 22 May 2026" */
+export function buildOperatorNotificationSubject(
+  ctx: EmailTemplateContext,
+): string {
+  return `New booking ${String(ctx.bookingRef)}: ${String(ctx.tourName)} on ${String(ctx.dateShort)}`;
+}
+
+/** Plain-text part of the operator notification (same rationale as the traveller one). */
+export function buildOperatorNotificationText(
+  ctx: EmailTemplateContext,
+): string {
+  const get = (key: string): string => String(ctx[key] ?? '').trim();
+  const model = get('paymentModel');
+
+  const action =
+    model === 'operator_link'
+      ? `Email ${get('guestName')} your secure payment link for the remaining ${get('balanceAmount')} before ${get('cancelDeadlineDateTime')} (Curacao time). An unpaid balance cancels the booking.`
+      : model === 'on_arrival'
+        ? `Collect the remaining ${get('balanceAmount')}${get('onArrivalPayment') === 'cash_only' ? ' in cash' : ''} when the traveller arrives.`
+        : 'The tour is fully paid to Island Tours. Send the traveller your own confirmation and arrival details.';
+
+  const where = ctx.hasPickup
+    ? `Pickup requested: ${get('pickupLocation')}, ${get('pickupTime')}`
+    : `No pickup - the traveller meets you at ${get('meetingPoint')}`;
+
+  const lines: Array<string | null> = [
+    'You have a new booking.',
+    `Booking reference: ${get('bookingRef')}`,
+    '',
+    get('tourName'),
+    `${get('dateLong')} at ${get('startTime')}`,
+    `Guests: ${get('partyBreakdown')}`,
+    where,
+    `Lead traveller: ${get('guestName')} · ${get('guestEmail')}${get('guestPhone') ? ` · ${get('guestPhone')}` : ''}`,
+    optional(get('specialRequests'), (v) => `Traveller's note: ${v}`),
+    '',
+    'PAYMENT',
+    optional(
+      get('depositAmount'),
+      (v) => `Deposit paid to Island Tours (${get('depositPct')}%): ${v}`,
+    ),
+    optional(get('balanceAmount'), (v) => `Balance you collect: ${v}`),
+    `Total: ${get('totalAmount')}`,
+    action,
+    '',
+    `View the booking: ${get('dashboardUrl')}`,
+    '',
+    'Island Tours. Built by Islanders.',
+    'This is a transactional booking notification.',
+  ];
+  return lines.filter((line): line is string => line !== null).join('\n');
 }
 
 // ── Subject ──────────────────────────────────────────────────────────────────

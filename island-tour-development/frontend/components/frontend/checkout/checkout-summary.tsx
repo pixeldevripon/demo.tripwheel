@@ -6,6 +6,7 @@ import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import Image from 'next/image';
 import Link from 'next/link';
+import { CheckoutSummaryPickupRow } from './checkout-pickup-label';
 
 type CheckoutDict = Dictionary['checkout'];
 
@@ -158,10 +159,10 @@ export function CheckoutSummary({
                         label={partyLabel}
                         value={money(totals.total)}
                     />
-                    <SummaryRow
-                        icon='/icons/checkout/location.svg'
-                        label={pickupLabel}
-                    />
+                    {/* Live: reflects the pickup chosen in the checkout form via
+                        PickupLabelProvider; this server prop is only the initial
+                        fallback ("No pickup"). */}
+                    <CheckoutSummaryPickupRow fallback={pickupLabel} />
 
                     <div className='h-px w-full bg-it-heading/10' />
 

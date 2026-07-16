@@ -693,6 +693,22 @@
     "countryPopular": "Populair",
     "countryAll": "Alle landen"
   },
+  "cancelBooking": {
+    "title": "{tour} annuleren, {date}?",
+    "refundNote": "Volledige terugbetaling, zonder vragen. We bevestigen per e-mail.",
+    "refund": "Terugbetaling {amount}",
+    "refundMethod": "Het betaalde bedrag wordt teruggestort op je oorspronkelijke betaalmethode.",
+    "afterWindow": "Als je minder dan {hours} uur voor de start van je tour annuleert, kunnen we de boeking niet terugbetalen of wijzigen. Maar als de operator moet annuleren, ben je gedekt: een volledige terugbetaling of gratis omboeken.",
+    "reference": "Boekingsreferentie:",
+    "reasonPlaceholder": "Optioneel. Is er iets dat we moeten weten?",
+    "confirm": "Ja, annuleer mijn boeking",
+    "keep": "Boeking behouden",
+    "sending": "Versturen...",
+    "sentTitle": "Annuleringsverzoek verzonden.",
+    "sentBody": "We gaan ermee aan de slag. Je ontvangt een e-mail ter bevestiging van je annulering en terugbetaling.",
+    "notActive": "Deze boeking is niet meer actief, dus er valt niets te annuleren.",
+    "error": "Dat is niet gelukt. Probeer het opnieuw of stuur ons een bericht via WhatsApp."
+  },
   "thankYou": {
     "title": "Je bent geboekt, {name}! 🌴",
     "subtitle": "Je {tour} is gereserveerd voor {date} om {time}.",

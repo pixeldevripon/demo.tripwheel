@@ -251,3 +251,25 @@ export async function resendConfirmationEmail(
         { method: 'POST' }
     );
 }
+
+/**
+ * Submit a cancellation REQUEST from the tokenized /cancel/{publicRef} page
+ * (master 6.4/C1). It never cancels anything - the admin processes the refund
+ * and confirms by email.
+ *
+ * MUST stay a browser call for the same reason as `resendConfirmationEmail`:
+ * the route is hard-throttled per IP, and the server-only `publicFetch` would
+ * bypass that limit via the internal API secret.
+ */
+export async function requestBookingCancellation(
+    publicRef: string,
+    reason?: string
+): Promise<{ requested: boolean }> {
+    return apiFetch<{ requested: boolean }>(
+        `/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request`,
+        {
+            method: 'POST',
+            body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}),
+        }
+    );
+}

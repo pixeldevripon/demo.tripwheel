@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { CheckoutForm, type CheckoutPickupOption } from './checkout-form';
+import { PickupLabelProvider } from './checkout-pickup-label';
 import { CheckoutSteps, type CheckoutPhase } from './checkout-steps';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -72,6 +73,9 @@ export function CheckoutClient({
     slug,
 }: CheckoutClientProps) {
     const [phase, setPhase] = useState<CheckoutPhase>('contact');
+    // Selected pickup label, published by the form and consumed by the summary's
+    // pickup row (the summary itself is a server-rendered node).
+    const [pickupLabel, setPickupLabel] = useState<string | null>(null);
     const hasPayment = payToday > 0;
 
     return (
@@ -125,6 +129,7 @@ export function CheckoutClient({
 
             {/* Form (left) + summary (right) - aligned by the same grid. */}
             <div className='it-container'>
+                <PickupLabelProvider value={pickupLabel}>
                 <div className='flex flex-col gap-8 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-6'>
                     <div className='lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24'>
                         {summary}
@@ -135,6 +140,7 @@ export function CheckoutClient({
                             locale={locale}
                             phase={phase}
                             onPhaseChange={setPhase}
+                            onPickupLabelChange={setPickupLabel}
                             pickupOptions={pickupOptions}
                             pickupFromLabel={pickupFromLabel}
                             payToday={payToday}
@@ -149,6 +155,7 @@ export function CheckoutClient({
                         />
                     </div>
                 </div>
+                </PickupLabelProvider>
             </div>
         </div>
     );

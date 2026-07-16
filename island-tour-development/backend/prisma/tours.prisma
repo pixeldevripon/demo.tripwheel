@@ -480,6 +480,10 @@ model TourTranslation {
   categoryDisplay     String? // plural noun phrase for "More {x} in {destination}" (LD33); CMS validates plural
   localTipTitle       String? // "local tip" callout headline, e.g. "Book the morning departure" (LD22, Figma)
   localTipBody        String? // "local tip" callout description, e.g. "Afternoon wind picks up…" (LD22, Figma)
+  // Operator's own message to the traveller, rendered as the "A note from
+  // {operatorName}" card in the confirmation email (wireframe Block 4b). Localized
+  // because the email is sent in the traveller's locale. Empty hides the card.
+  operatorNote        String?
   meetingPointText    String? // localized meeting-point description (geo on Tour)
   metaTitle           String? // SEO (master E.3 SEO block, localized)
   metaDescription     String? // SEO (master E.3 SEO block, localized)

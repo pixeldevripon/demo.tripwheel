@@ -1734,6 +1734,7 @@ describe('TourChildrenService', () => {
         categoryDisplay: null,
         localTipTitle: null,
         localTipBody: null,
+        operatorNote: null,
         meetingPointText: null,
         metaTitle: null,
         metaDescription: null,

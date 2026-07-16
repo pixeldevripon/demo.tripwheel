@@ -93,6 +93,27 @@ export class ResendConfirmationResponseDto {
   @ApiProperty({ example: true }) sent!: boolean;
 }
 
+/**
+ * Body of the tokenized cancellation-request form (master 6.4/C1). The form
+ * never cancels anything - it emails the admin, so the only input is the
+ * traveller's optional note.
+ */
+export class RequestCancellationDto {
+  @ApiPropertyOptional({
+    example: 'Our cruise itinerary changed.',
+    description: "Optional 'Anything you'd like us to know?' note",
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+export class RequestCancellationResponseDto {
+  @ApiProperty({ example: true }) requested!: boolean;
+}
+
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;

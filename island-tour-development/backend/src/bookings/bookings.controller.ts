@@ -20,6 +20,7 @@ import {
   ExtendBookingDto,
   ListBookingsQueryDto,
   QuoteBookingDto,
+  RequestCancellationDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
@@ -31,6 +32,7 @@ import {
   ApiGetBookingDocs,
   ApiListBookingsDocs,
   ApiQuoteDocs,
+  ApiRequestCancellationDocs,
   ApiReserveDocs,
   ApiResendConfirmationDocs,
   ApiThankYouDocs,
@@ -140,6 +142,30 @@ export class BookingsController {
   @ApiResendConfirmationDocs()
   resendConfirmation(@Param('publicRef') publicRef: string) {
     return this.bookings.resendConfirmation(publicRef);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/cancellation-request
+   *
+   * The tokenized cancel form (master 6.4/C1). Never cancels on click - it
+   * emails the admin, who processes the refund and confirms by email. Same
+   * security shape as resend: @Public, keyed on the unguessable publicRef,
+   * throttled to a human pace, and MUST be called from the browser (the
+   * internal-key SSR bypass would skip every limit).
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/cancellation-request')
+  @Public()
+  @ApiRequestCancellationDocs()
+  requestCancellation(
+    @Param('publicRef') publicRef: string,
+    @Body() dto: RequestCancellationDto,
+  ) {
+    return this.bookings.requestCancellation(publicRef, dto.reason);
   }
 
   /**

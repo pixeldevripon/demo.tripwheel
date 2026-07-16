@@ -693,6 +693,22 @@
     "countryPopular": "热门",
     "countryAll": "所有国家/地区"
   },
+  "cancelBooking": {
+    "title": "取消 {tour}（{date}）？",
+    "refundNote": "全额退款，无需任何理由。我们会发邮件确认。",
+    "refund": "退款 {amount}",
+    "refundMethod": "已付金额将退回您原来的付款方式。",
+    "afterWindow": "如果您在行程开始前不到 {hours} 小时取消，我们无法退款或修改预订。但如果运营商不得不取消，您将获得全额退款或免费改期。",
+    "reference": "预订参考号：",
+    "reasonPlaceholder": "选填。有什么想告诉我们的吗？",
+    "confirm": "是的，取消预订",
+    "keep": "保留我的预订",
+    "sending": "发送中...",
+    "sentTitle": "取消申请已发送。",
+    "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
+    "notActive": "此预订已不再有效，无需取消。",
+    "error": "提交失败。请重试，或通过 WhatsApp 联系我们。"
+  },
   "thankYou": {
     "title": "预订成功，{name}！🌴",
     "subtitle": "您的{tour}已预订，时间为{date} {time}。",

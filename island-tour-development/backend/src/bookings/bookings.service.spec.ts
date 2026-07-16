@@ -6,6 +6,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
@@ -261,6 +262,9 @@ describe('BookingsService', () => {
     m = prisma;
     mail = {
       sendBookingConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+      sendOperatorBookingReceivedEmail: jest.fn().mockResolvedValue(undefined),
+      sendCancellationRequestEmail: jest.fn().mockResolvedValue(undefined),
+      sendBookingNoticeEmail: jest.fn().mockResolvedValue(undefined),
     };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -1076,6 +1080,141 @@ describe('BookingsService', () => {
       );
       // The traveler asked - a silent success would be a lie.
       await expect(svc.resendConfirmation('p1')).rejects.toThrow('smtp down');
+    });
+  });
+
+  // The tokenized /cancel/{publicRef} form (master 6.4/C1). It never cancels
+  // anything itself: it emails the admin, who processes the refund.
+  describe('requestCancellation', () => {
+    const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+
+    const confirmed = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        contactFirstName: 'Shahadat',
+        utcCancellationRequestedAt: null,
+        tour: { name: 'Klein Curacao Day Trip' },
+        ...over,
+      });
+
+    beforeEach(() => {
+      process.env.ADMIN_EMAIL = 'admin@islandtours.test';
+      m.booking.update.mockResolvedValue({});
+    });
+
+    afterAll(() => {
+      process.env.ADMIN_EMAIL = ORIGINAL_ADMIN_EMAIL;
+    });
+
+    it('emails the admin with the booking facts and the traveller note', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+
+      await expect(
+        svc.requestCancellation('p1', 'Cruise itinerary changed'),
+      ).resolves.toEqual({ requested: true });
+
+      expect(mail.sendCancellationRequestEmail).toHaveBeenCalledTimes(1);
+      const [to, details] = mail.sendCancellationRequestEmail.mock.calls[0];
+      expect(to).toBe('admin@islandtours.test');
+      expect(details.displayRef).toBe('IT-2030-AAAA');
+      expect(details.reason).toBe('Cruise itinerary changed');
+      expect(details.guestEmail).toBe('guest@example.test');
+    });
+
+    it('stamps utcCancellationRequestedAt on the FIRST request only', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await svc.requestCancellation('p1');
+      // Refund eligibility is judged at the instant the traveller asked (gap #16).
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcCancellationRequestedAt: expect.any(Date) },
+        }),
+      );
+
+      m.booking.update.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({ utcCancellationRequestedAt: new Date('2026-07-01') }),
+      );
+      await svc.requestCancellation('p1');
+      // A repeat submit re-notifies the admin but never moves the instant.
+      expect(m.booking.update).not.toHaveBeenCalled();
+      expect(mail.sendCancellationRequestEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('404s an unknown publicRef', async () => {
+      m.booking.findUnique.mockResolvedValue(null);
+      await expect(svc.requestCancellation('nope')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+    });
+
+    it('409s a non-confirmed booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({ status: BookingStatus.CANCELLED }),
+      );
+      await expect(svc.requestCancellation('p1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+    });
+
+    it('acks the traveller and notifies the operator (best-effort, after the admin email)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          publicRef: 'p1',
+          island: 'curacao',
+          operatorId: 'op1',
+          customerLocale: 'en',
+        }),
+      );
+      m.operator.findUnique.mockResolvedValue({
+        contactEmail: 'supplier@op.test',
+        companyInfo: {
+          companyEmail: 'office@op.test',
+          companyName: 'Miss Ann',
+        },
+      });
+
+      await svc.requestCancellation('p1', 'Cruise changed');
+
+      expect(mail.sendBookingNoticeEmail).toHaveBeenCalledTimes(2);
+      const [travellerCall, operatorCall] =
+        mail.sendBookingNoticeEmail.mock.calls;
+      // Traveller ack goes to the booking's contact, and says it is in motion.
+      expect(travellerCall[0]).toBe('guest@example.test');
+      expect(travellerCall[2].noticeTitle).toContain(
+        'We got your cancellation request',
+      );
+      // Operator heads-up goes to the COMPANY inbox first (founder decision).
+      expect(operatorCall[0]).toBe('office@op.test');
+      expect(operatorCall[2].noticeTitle).toContain('Cancellation requested');
+    });
+
+    it('still succeeds when the ack/notice sends fail - the admin already has it', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      mail.sendBookingNoticeEmail.mockRejectedValue(new Error('smtp down'));
+      await expect(svc.requestCancellation('p1')).resolves.toEqual({
+        requested: true,
+      });
+    });
+
+    it('propagates a mail failure - a lost refund request must never look sent', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      mail.sendCancellationRequestEmail.mockRejectedValueOnce(
+        new Error('smtp down'),
+      );
+      await expect(svc.requestCancellation('p1')).rejects.toThrow('smtp down');
+    });
+
+    it('503s when no admin inbox is configured instead of dropping the request', async () => {
+      delete process.env.ADMIN_EMAIL;
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await expect(svc.requestCancellation('p1')).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
     });
   });
 });

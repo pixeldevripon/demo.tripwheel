@@ -71,7 +71,7 @@ function input(
       slug: 'klein-curacao-day-trip',
       heroImageUrl: 'https://cdn.test/hero.jpg',
       durationLabel: '9 hours',
-      languageLabel: 'English',
+      languageCodes: ['en'],
       checkInMinutesBefore: 30,
       meetingPoint: 'Sint Annabaai Pier',
       meetingPointLat: 12.1,
@@ -160,9 +160,11 @@ describe('buildConfirmationEmailContext', () => {
           tour: {
             ...input().tour,
             durationLabel: null,
-            languageLabel: null,
+            languageCodes: [],
             endPoint: null,
             operatorNote: null,
+            whatToBring: [],
+            knowBeforeYouGo: [],
           },
           relatedTours: [],
         }),
@@ -199,6 +201,110 @@ describe('buildConfirmationEmailContext', () => {
     });
   });
 
+  // Design review 2026-07-16: these all shipped wrong and the founder caught them.
+  describe('design fidelity', () => {
+    it('renders what-to-bring as one wireframe bullet row per item', () => {
+      const html = renderEmailTemplate(
+        TEMPLATE,
+        buildConfirmationEmailContext(input()),
+      );
+      // Was joined into a single "Sunscreen · Towel" line; the design has rows.
+      expect(html).not.toContain('Sunscreen · Towel');
+      const rows = html.match(/&bull;<\/td><td style="padding:2px 0">/g) ?? [];
+      expect(rows).toHaveLength(3); // 2 what-to-bring + 1 good-to-know
+      expect(html).toContain('>Sunscreen</td>');
+      expect(html).toContain('>Bring ID</td>');
+      expect(html).toContain('color:#E8611A'); // orange bullet marker
+    });
+
+    it('hides a bullet heading when its list is empty', () => {
+      const html = renderEmailTemplate(
+        TEMPLATE,
+        buildConfirmationEmailContext(
+          input({ tour: { ...input().tour, knowBeforeYouGo: [] } }),
+        ),
+      );
+      expect(html).toContain('What to bring');
+      expect(html).not.toContain('Good to know');
+    });
+
+    it('renders the operator note card when the operator wrote one', () => {
+      const html = renderEmailTemplate(
+        TEMPLATE,
+        buildConfirmationEmailContext(
+          input({
+            tour: { ...input().tour, operatorNote: 'Seas can be rough.' },
+          }),
+        ),
+      );
+      expect(html).toContain('A note from Miss Ann Boat Trips');
+      expect(html).toContain('Seas can be rough.');
+    });
+
+    it('formats the deadline as the design locks it (short weekday, comma, 24h)', () => {
+      // Was "Wednesday, 20 May 2026 at 08:00".
+      expect(
+        String(buildConfirmationEmailContext(input()).cancelDeadlineDateTime),
+      ).toBe('Wed, 20 May 2026, 08:00');
+    });
+
+    it('renders language NAMES, not raw ISO codes', () => {
+      // Shipped as "Language: en, es, nl".
+      const ctx = buildConfirmationEmailContext(
+        input({ tour: { ...input().tour, languageCodes: ['en', 'es', 'nl'] } }),
+      );
+      expect(ctx.tourLanguage).toBe('English, Spanish, Dutch');
+    });
+
+    it('localizes language names for the reader', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({
+          tour: { ...input().tour, languageCodes: ['en'] },
+          booking: { ...input().booking, customerLocale: Locale.nl },
+        }),
+      );
+      expect(ctx.tourLanguage).toBe('Engels');
+    });
+
+    it('shows the account link as a label, not a raw url', () => {
+      // Shipped as "http://localhost:3000/bookings".
+      const ctx = buildConfirmationEmailContext(input());
+      expect(ctx.accountUrlLabel).toBe('island.tours/bookings');
+      expect(ctx.accountUrl).toBe('https://island.tours/bookings');
+    });
+  });
+
+  describe('email-client survival', () => {
+    it('is fluid exactly the way the wireframe is', () => {
+      // Gmail Android ignores <style> media queries, so a fixed-width shell renders
+      // zoomed out and unreadable. The wireframe's own shell is the classic fluid
+      // hybrid - width="600" ATTRIBUTE (what Outlook reads) + width:100%;max-width
+      // STYLE (what everything else reads) - and it has no media queries at all:
+      // mobile is simply the same email rendered narrower.
+      expect(TEMPLATE).not.toContain('style="width:600px');
+      expect(TEMPLATE).toContain(
+        'width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px',
+      );
+      // The wireframe has no media queries; the ONE block here is the
+      // founder-approved mobile spacing refinement (2026-07-16) and nothing else,
+      // and the only classes are its two hooks.
+      const media = TEMPLATE.match(/@media[^{]*\{/g) ?? [];
+      expect(media).toHaveLength(1);
+      expect(TEMPLATE).toContain('@media only screen and (max-width: 480px)');
+      const classes = [...TEMPLATE.matchAll(/class="([^"]*)"/g)].map(
+        (m) => m[1],
+      );
+      expect([...new Set(classes)].sort()).toEqual(['it-cell', 'it-shell-pad']);
+    });
+
+    it('actually loads the wireframe font instead of only naming it', () => {
+      expect(TEMPLATE).toContain(
+        'fonts.googleapis.com/css2?family=Plus+Jakarta+Sans',
+      );
+      expect(TEMPLATE).toContain("font-family:'Plus Jakarta Sans'");
+    });
+  });
+
   describe('money', () => {
     it('formats in the CHARGED currency, not the locale default', () => {
       // A EUR booking read in English must not be relabelled as dollars.
@@ -232,7 +338,8 @@ describe('buildConfirmationEmailContext', () => {
         );
         expect(String(ctx.totalAmount)).toBe('$220.00');
         expect(String(ctx.totalAmount)).not.toContain('US$');
-        expect(String(ctx.relatedTourOnePrice)).toBe('from $45.00');
+        // The wireframe's upsell meta line is "4.9 · $89": no "from", no zero cents.
+        expect(String(ctx.relatedTourOnePrice)).toBe('$45');
       },
     );
   });

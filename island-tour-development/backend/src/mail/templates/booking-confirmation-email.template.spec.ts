@@ -21,6 +21,27 @@ const TEMPLATE = fs.readFileSync(
   'utf8',
 );
 
+/** The design source: the `<template id="email-tpl">` block inside the wireframe. */
+const WIREFRAME_EMAIL = (() => {
+  const wireframe = fs.readFileSync(
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      'technical-doc',
+      'island-tours-booking-confirmation-email-wireframe.html',
+    ),
+    'utf8',
+  );
+  const match = wireframe.match(
+    /<template id="email-tpl">([\s\S]*?)<\/template>/,
+  );
+  if (!match) throw new Error('email-tpl template not found in the wireframe');
+  return match[1];
+})();
+
 const ICON_BASE =
   'https://res.cloudinary.com/test/image/upload/f_png,w_34/islandtours/email/icons';
 
@@ -76,8 +97,8 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
     tourUrl: 'https://island.tours/t/x',
     calendarUrl: 'https://island.tours/ics/x',
     cancelUrl: 'https://island.tours/cancel/x',
-    whatToBring: 'Sunscreen, towel',
-    knowBeforeYouGo: 'Bring ID',
+    whatToBring: ['Sunscreen', 'Towel'],
+    knowBeforeYouGo: ['Bring ID'],
     freeCancellationDeadline: 'Wednesday 20 May, 08:00',
     paymentMethodLine: 'Visa ending 4242',
     bookingsUrl: 'https://island.tours/bookings',
@@ -88,6 +109,7 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
     operatorPhone: '+5999 123 4567',
     operatorEmail: 'hello@missann.test',
     accountUrl: 'https://island.tours/bookings',
+    accountUrlLabel: 'island.tours/bookings',
     islandName: 'Curacao',
     relatedTourOneImageUrl: 'https://cdn.test/r1.jpg',
     relatedTourOneName: 'Blue Room Snorkel',
@@ -103,6 +125,75 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
 }
 
 describe('booking-confirmation-email.template.html', () => {
+  describe('100% style parity with the wireframe (founder requirement)', () => {
+    // Every style="" attribute the wireframe's email template carries must appear
+    // VERBATIM in the shipped template - font sizes, weights, families, colors,
+    // spacing, everything. This is what "nothing skipped" means mechanically.
+    it('carries every wireframe style attribute byte-for-byte', () => {
+      const styles = [...WIREFRAME_EMAIL.matchAll(/style="([^"]*)"/g)]
+        .map((m) => m[1])
+        // Demo-only placeholder art: the gradient "featured img" boxes and their
+        // badges are stand-ins that production replaces with real <img> tags of
+        // identical dimensions/radius.
+        .filter(
+          (s) =>
+            !s.includes('linear-gradient') && !s.includes('position:absolute'),
+        )
+        // The inline check-svg's own alignment; our PNG carries the same value
+        // (asserted below) plus img-specific resets.
+        .filter((s) => s !== 'vertical-align:middle')
+        // The demo mounts the email in a canvas that provides the 26px vertical
+        // padding; a real email folds it into this cell (26px 16px).
+        .filter((s) => s !== 'padding:0 16px');
+
+      expect(styles.length).toBeGreaterThan(80);
+      const missing = [...new Set(styles)].filter((s) => !TEMPLATE.includes(s));
+      expect(missing).toEqual([]);
+    });
+
+    it('keeps the canvas padding and check-icon alignment through the substitutions', () => {
+      expect(TEMPLATE).toContain('padding:26px 16px');
+      expect(TEMPLATE).toMatch(/icon-check-green[^>]*vertical-align:middle/);
+    });
+
+    it('declares the wireframe font stack on every block cell, not just the body', () => {
+      // Email clients do not inherit font-family from <body> into tables - this
+      // is exactly why the first shipped version rendered in Arial.
+      const wireframeCells = (
+        WIREFRAME_EMAIL.match(
+          /font-family:'Plus Jakarta Sans',Arial,sans-serif/g,
+        ) ?? []
+      ).length;
+      const templateCells = (
+        TEMPLATE.match(/font-family:'Plus Jakarta Sans',Arial,sans-serif/g) ??
+        []
+      ).length;
+      expect(templateCells).toBeGreaterThanOrEqual(wireframeCells);
+    });
+
+    it('is fluid exactly the way the wireframe is: width attr + max-width style, no media queries', () => {
+      expect(TEMPLATE).toContain(
+        'width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px',
+      );
+      // The wireframe has no media queries; the ONE block here is the
+      // founder-approved mobile spacing refinement (2026-07-16) and nothing else,
+      // and the only classes are its two hooks.
+      const media = TEMPLATE.match(/@media[^{]*\{/g) ?? [];
+      expect(media).toHaveLength(1);
+      expect(TEMPLATE).toContain('@media only screen and (max-width: 480px)');
+      const classes = [...TEMPLATE.matchAll(/class="([^"]*)"/g)].map(
+        (m) => m[1],
+      );
+      expect([...new Set(classes)].sort()).toEqual(['it-cell', 'it-shell-pad']);
+    });
+
+    it('keeps the payment divider row the first version dropped', () => {
+      expect(TEMPLATE).toContain(
+        '<tr><td colspan="2" style="border-top:1px solid #E8EAED;padding-top:8px;margin-top:4px"></td></tr>',
+      );
+    });
+  });
+
   it('resolves every token for a full operator_link booking', () => {
     expect(findUnresolvedTokens(TEMPLATE, ctx())).toEqual([]);
   });

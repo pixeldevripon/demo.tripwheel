@@ -693,6 +693,22 @@
     "countryPopular": "Popular",
     "countryAll": "Todos los países"
   },
+  "cancelBooking": {
+    "title": "¿Cancelar {tour}, {date}?",
+    "refundNote": "Reembolso completo, sin preguntas. Te lo confirmaremos por correo.",
+    "refund": "Reembolso {amount}",
+    "refundMethod": "El importe pagado se devuelve a tu método de pago original.",
+    "afterWindow": "Si cancelas menos de {hours} horas antes del inicio del tour, no podemos reembolsar ni cambiar la reserva. Pero si el operador tiene que cancelar, estás cubierto: reembolso completo o cambio de fecha gratuito.",
+    "reference": "Referencia de reserva:",
+    "reasonPlaceholder": "Opcional. ¿Algo que debamos saber?",
+    "confirm": "Sí, cancelar la reserva",
+    "keep": "Mantener mi reserva",
+    "sending": "Enviando...",
+    "sentTitle": "Solicitud de cancelación enviada.",
+    "sentBody": "Nos encargamos. Recibirás un correo confirmando tu cancelación y tu reembolso.",
+    "notActive": "Esta reserva ya no está activa, así que no hay nada que cancelar.",
+    "error": "No se pudo enviar. Inténtalo de nuevo o escríbenos por WhatsApp."
+  },
   "thankYou": {
     "title": "¡Reserva confirmada, {name}! 🌴",
     "subtitle": "Tu {tour} está reservado para el {date} a las {time}.",

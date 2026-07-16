@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
@@ -55,10 +56,15 @@ import {
   buildConfirmationEmailContext,
   buildConfirmationEmailSubject,
   buildConfirmationEmailText,
+  buildNoticeText,
+  buildOperatorNotificationContext,
+  buildOperatorNotificationSubject,
+  buildOperatorNotificationText,
   buildPartyLines,
   depositPctOf,
   durationLabel,
   emailIconBase,
+  formatDateLong,
   preferLocale,
   toLocale,
   type RelatedTourInput,
@@ -692,6 +698,7 @@ export class BookingsService {
     });
 
     await this.sendConfirmationEmail(updated);
+    await this.sendOperatorNotification(updated);
     if (commissionAmount != null) {
       await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
     }
@@ -733,6 +740,65 @@ export class BookingsService {
   }
 
   /**
+   * "Booking Received" notification to the tour operator (C7). Fires once per
+   * confirmed booking, right after the traveller confirmation.
+   *
+   * Recipient is the operator's COMPANY email first (founder decision), falling
+   * back to the OCTO supplier contact. Failures are swallowed for the same reason
+   * confirm-time traveller sends are: the money is captured, so a dead mailbox
+   * must never fail the booking - it only logs.
+   */
+  private async sendOperatorNotification(
+    booking: BookingWithItems,
+  ): Promise<void> {
+    try {
+      const operator = await this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true } },
+        },
+      });
+      const to =
+        operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+      if (!to) {
+        this.logger.warn(
+          `No operator email on file for booking ${booking.displayRef} - operator not notified`,
+        );
+        return;
+      }
+
+      // Operators work in English regardless of the traveller's locale.
+      const travellerCtx = await this.assembleConfirmationContext(
+        booking,
+        Locale.en,
+      );
+      const context = buildOperatorNotificationContext(travellerCtx, {
+        guestName:
+          booking.contactFullName ??
+          ([booking.contactFirstName, booking.contactLastName]
+            .filter(Boolean)
+            .join(' ') ||
+            null),
+        guestEmail: booking.contactEmail,
+        guestPhone: booking.contactPhone,
+        dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+      });
+      await this.mail.sendOperatorBookingReceivedEmail(
+        to,
+        buildOperatorNotificationSubject(context),
+        context,
+        buildOperatorNotificationText(context),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Operator notification failed for ${booking.displayRef}`,
+        err as Error,
+      );
+    }
+  }
+
+  /**
    * Load everything the locked confirmation template needs and fold it into the
    * token context. The assembly itself is a pure function
    * ({@link buildConfirmationEmailContext}) so the wireframe's formatting rules are
@@ -740,8 +806,11 @@ export class BookingsService {
    */
   private async assembleConfirmationContext(
     booking: BookingWithItems,
+    localeOverride?: Locale,
   ): Promise<EmailTemplateContext> {
-    const locale = toLocale(booking.customerLocale);
+    // The operator notification reuses this context but formats in English (the
+    // dashboard language), regardless of what locale the traveller booked in.
+    const locale = localeOverride ?? toLocale(booking.customerLocale);
 
     const [tour, operator, site] = await Promise.all([
       this.prisma.tour.findUnique({
@@ -772,6 +841,7 @@ export class BookingsService {
               whatToBring: true,
               knowBeforeYouGo: true,
               meetingPointText: true,
+              operatorNote: true,
             },
           },
           locations: {
@@ -872,7 +942,7 @@ export class BookingsService {
         slug: tour.slug,
         heroImageUrl: tour.images[0]?.url ?? null,
         durationLabel: durationLabel(tour.durationMinutesFrom),
-        languageLabel: tour.languages.map((l) => l.language).join(', ') || null,
+        languageCodes: tour.languages.map((l) => l.language),
         checkInMinutesBefore: tour.checkInMinutesBefore,
         meetingPoint,
         meetingPointLat: tour.meetingPointLat,
@@ -880,9 +950,7 @@ export class BookingsService {
         endPoint: pickLocation('END'),
         whatToBring: translation?.whatToBring ?? [],
         knowBeforeYouGo: translation?.knowBeforeYouGo ?? [],
-        // No per-tour/per-booking operator note is modelled yet, so the blue card
-        // stays hidden rather than inventing copy the operator never wrote.
-        operatorNote: null,
+        operatorNote: translation?.operatorNote ?? null,
       },
       operator: {
         name: operator?.companyInfo?.companyName ?? null,
@@ -921,6 +989,10 @@ export class BookingsService {
    * excluding the booked tour, in the master §7.2 canonical order
    * (`tier_rank ASC, quality_score DESC, id ASC`) - the same order the listing uses,
    * so the email never contradicts the site.
+   *
+   * Scoped by DESTINATION, deliberately not by category (founder, 2026-07-16): the
+   * block is "More {island} experiences", so it cross-sells the island rather than
+   * more of what the traveller just booked.
    */
   private async loadRelatedTours(
     destinationId: string,
@@ -944,6 +1016,7 @@ export class BookingsService {
         images: { where: { isHero: true }, select: { url: true }, take: 1 },
       },
     });
+
     return rows.map((t) => ({
       name: t.name,
       slug: t.slug,
@@ -988,6 +1061,218 @@ export class BookingsService {
     this.logger.log(`Resending confirmation for ${booking.displayRef}`);
     await this.sendConfirmationEmail(booking, { rethrow: true });
     return { sent: true };
+  }
+
+  /**
+   * Traveller-initiated cancellation REQUEST from the tokenized /cancel page
+   * (master 6.4/C1 + the wireframe's modal): it never cancels anything itself -
+   * it emails the Island Tours admin, who processes the refund and confirms by
+   * email. Keyed on `publicRef` and @Public for the same reason as the TYP.
+   *
+   * `utcCancellationRequestedAt` is stamped on the FIRST request and never
+   * overwritten: refund eligibility is judged at the moment the traveller asked,
+   * not when the admin gets to it (gap #16). A repeat submit re-notifies the
+   * admin (throttled at the route) but keeps the original instant.
+   *
+   * Mail failure THROWS (like the TYP resend): the traveller is on a page waiting
+   * for "request sent" - a swallowed failure here would silently lose a refund
+   * request, which is the worst possible outcome for trust.
+   */
+  async requestCancellation(
+    publicRef: string,
+    reason?: string,
+  ): Promise<{ requested: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        id: true,
+        displayRef: true,
+        publicRef: true,
+        status: true,
+        utcCancellationRequestedAt: true,
+        contactFullName: true,
+        contactFirstName: true,
+        contactLastName: true,
+        contactEmail: true,
+        customerLocale: true,
+        localDate: true,
+        startTime: true,
+        tourStartDateTime: true,
+        totalRetail: true,
+        currency: true,
+        paymentModel: true,
+        operatorId: true,
+        island: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        'Only a confirmed booking can request cancellation',
+      );
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      this.logger.error(
+        'ADMIN_EMAIL is not configured - cancellation requests cannot reach anyone',
+      );
+      throw new ServiceUnavailableException(
+        'Cancellation requests are temporarily unavailable - contact us on WhatsApp',
+      );
+    }
+
+    if (!booking.utcCancellationRequestedAt) {
+      await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: { utcCancellationRequestedAt: new Date() },
+      });
+    }
+
+    await this.mail.sendCancellationRequestEmail(adminEmail, {
+      displayRef: booking.displayRef,
+      tourName: booking.tour?.name ?? 'Unknown tour',
+      dateLabel: `${dateKey(booking.localDate)}${booking.startTime ? ` ${booking.startTime}` : ''}`,
+      guestName:
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          'Unknown'),
+      guestEmail: booking.contactEmail ?? 'no email on file',
+      totalAmount: `${booking.currency} ${booking.totalRetail.toString()}`,
+      paymentModel: booking.paymentModel,
+      reason: reason?.trim() || null,
+      dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+    });
+
+    // Master 6.4 v1 flow: request -> admin email -> admin marks cancelled ->
+    // notifications to BOTH traveller and operator. The founder additionally
+    // wants an immediate ack pair at request time: traveller ("we're processing
+    // it") + operator heads-up. These are best-effort - the request itself has
+    // already reached the admin, so a dead mailbox here must not fail it.
+    await this.sendCancellationRequestNotices(booking, reason?.trim() || null);
+
+    this.logger.log(`Cancellation requested for ${booking.displayRef}`);
+    return { requested: true };
+  }
+
+  /** Traveller ack + operator heads-up for a just-submitted cancellation request. */
+  private async sendCancellationRequestNotices(
+    booking: {
+      displayRef: string;
+      publicRef: string;
+      operatorId: string;
+      island: string;
+      contactEmail: string | null;
+      contactFullName: string | null;
+      contactFirstName: string | null;
+      contactLastName: string | null;
+      customerLocale: string | null;
+      localDate: Date;
+      tourStartDateTime: Date | null;
+      startTime: string | null;
+      tour: { name: string } | null;
+    },
+    reason: string | null,
+  ): Promise<void> {
+    const [operator, site] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true, companyName: true } },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+    ]);
+
+    const base = (process.env.FRONTEND_URL ?? 'https://island.tours').replace(
+      /\/$/,
+      '',
+    );
+    const tourName = booking.tour?.name ?? 'Your tour';
+    const guestName =
+      booking.contactFullName ??
+      ([booking.contactFirstName, booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        'The traveller');
+    const shared = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: site?.logo ?? '',
+      bookingRef: booking.displayRef,
+      tourName,
+      startTime: booking.startTime ?? '',
+    };
+
+    // Traveller ack, in their locale's date format ("request is under processing").
+    if (booking.contactEmail) {
+      const locale = toLocale(booking.customerLocale);
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          locale,
+        ),
+        noticeTitle: 'We got your cancellation request.',
+        noticeParagraphs: [
+          'Your request is timestamped from the moment you submitted it, so your free-cancellation terms are judged from then - not from when we process it.',
+          "We're processing it now. The amount you paid is refunded to your original payment method. We'll email you to confirm once it's done.",
+          'Changed your mind? Just reply to this email before we confirm the cancellation.',
+        ],
+        ctaUrl: `${base}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaLabel: 'View your booking',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          booking.contactEmail,
+          `We got your cancellation request - ${booking.displayRef}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation ack to traveller failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+
+    // Operator heads-up (company inbox first, founder decision).
+    const operatorEmail =
+      operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+    if (operatorEmail) {
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          Locale.en,
+        ),
+        noticeTitle: 'Cancellation requested.',
+        noticeParagraphs: [
+          `${guestName} asked to cancel booking ${booking.displayRef} for ${tourName}.`,
+          ...(reason ? [`Their note: ${reason}`] : []),
+          "Island Tours processes the refund and confirms the cancellation. You'll be notified when it is final - no action needed from you yet.",
+        ],
+        ctaUrl: `${base}/dashboard/bookings`,
+        ctaLabel: 'View booking in your dashboard',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          operatorEmail,
+          `Cancellation requested - ${booking.displayRef}: ${tourName}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation notice to operator failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
   }
 
   /**

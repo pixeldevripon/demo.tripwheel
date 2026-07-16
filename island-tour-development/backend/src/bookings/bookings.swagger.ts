@@ -16,6 +16,7 @@ import {
 import {
   BookingQuoteResponseDto,
   BookingResponseDto,
+  RequestCancellationResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
 } from './dto/booking.dto';
@@ -117,6 +118,23 @@ export const ApiResendConfirmationDocs = () =>
     }),
     ApiUnprocessableEntityResponse({
       description: 'Booking has no contact email on file.',
+    }),
+  );
+
+export const ApiRequestCancellationDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Request cancellation of a booking (public TYP token)',
+      description:
+        'Backs the tokenized /cancel/{publicRef} form (master 6.4/C1). Never cancels on click: ' +
+        'it emails the Island Tours admin, who processes the refund and confirms by email. ' +
+        'Confirmed bookings only. Throttled to 1 per 10s / 3 per min / 10 per hour per IP.',
+    }),
+    ApiOkResponse({ type: RequestCancellationResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description: 'Booking is not CONFIRMED, so there is nothing to cancel',
     }),
   );
 

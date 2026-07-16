@@ -693,6 +693,22 @@
     "methodUnavailable": "Not available for {currency}",
     "redirectNote": "You'll be securely redirected to complete your payment, then brought right back."
   },
+  "cancelBooking": {
+    "title": "Cancel {tour}, {date}?",
+    "refundNote": "Full refund, no questions asked. We'll email you to confirm.",
+    "refund": "Refund {amount}",
+    "refundMethod": "The amount you paid is refunded to your original payment method.",
+    "afterWindow": "If you cancel less than {hours} hours before your tour starts, we can't refund or change the booking. But if the operator has to cancel, you're covered: a full refund or a free reschedule.",
+    "reference": "Booking reference:",
+    "reasonPlaceholder": "Optional. Anything you'd like us to know?",
+    "confirm": "Yes, cancel booking",
+    "keep": "Keep my booking",
+    "sending": "Sending...",
+    "sentTitle": "Cancellation request sent.",
+    "sentBody": "We're on it. You'll get an email from us confirming your cancellation and refund.",
+    "notActive": "This booking is no longer active, so there is nothing to cancel.",
+    "error": "That didn't go through. Please try again, or message us on WhatsApp."
+  },
   "thankYou": {
     "title": "You're booked, {name}! 🌴",
     "subtitle": "Your {tour} is reserved for {date} at {time}.",

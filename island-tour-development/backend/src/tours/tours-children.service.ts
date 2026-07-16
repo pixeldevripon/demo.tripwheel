@@ -1849,6 +1849,7 @@ export class TourChildrenService {
     categoryDisplay: true,
     localTipTitle: true,
     localTipBody: true,
+    operatorNote: true,
     meetingPointText: true,
     metaTitle: true,
     metaDescription: true,
@@ -1896,6 +1897,7 @@ export class TourChildrenService {
         categoryDisplay: null,
         localTipTitle: null,
         localTipBody: null,
+        operatorNote: null,
         meetingPointText: null,
         metaTitle: null,
         metaDescription: null,
@@ -1930,6 +1932,7 @@ export class TourChildrenService {
         categoryDisplay: dto.categoryDisplay ?? null,
         localTipTitle: dto.localTipTitle ?? null,
         localTipBody: dto.localTipBody ?? null,
+        operatorNote: dto.operatorNote ?? null,
         meetingPointText: dto.meetingPointText ?? null,
         metaTitle: dto.metaTitle ?? null,
         metaDescription: dto.metaDescription ?? null,
@@ -1960,6 +1963,9 @@ export class TourChildrenService {
         }),
         ...(dto.localTipBody !== undefined && {
           localTipBody: dto.localTipBody,
+        }),
+        ...(dto.operatorNote !== undefined && {
+          operatorNote: dto.operatorNote,
         }),
         ...(dto.meetingPointText !== undefined && {
           meetingPointText: dto.meetingPointText,

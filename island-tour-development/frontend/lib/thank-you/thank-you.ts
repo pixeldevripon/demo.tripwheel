@@ -71,6 +71,10 @@ export interface ThankYouBooking {
     durationLabel: string;
     pickupLabel: string;
     freeCancelBeforeLabel: string;
+    /** Real UTC deadline instant - the /cancel page's in-window check. */
+    freeCancelDeadlineUtc: string | null;
+    /** Tour's free-cancellation window; the after-window locked copy needs it. */
+    cancellationHours: number;
     partyLabel: string;
     operatorName: string;
     /** Casual short name used in payment copy ("Miss ann will email you..."). */
@@ -271,6 +275,8 @@ export async function getThankYouBooking(
         pickupLabel:
             typ.pickupAddress ?? (typ.pickupRequested ? 'To be confirmed' : ''),
         freeCancelBeforeLabel: deadline ? fmtDayMonth(deadline, locale) : '',
+        freeCancelDeadlineUtc: typ.freeCancellationDeadlineUtc,
+        cancellationHours: typ.cancellationHours,
         partyLabel: fmtParty(typ.party),
         operatorName,
         // Casual short form used in the payment copy ("Miss Ann will email you...").

@@ -8,6 +8,12 @@
  *   {token}                    -> substituted from the context, HTML-escaped
  *   [IF cond]…[/IF]            -> conditional block
  *   [IF cond]…[ELSE]…[/IF]     -> conditional with an alternative
+ *   [EACH list]…{item}…[/EACH] -> repeat the body once per array entry
+ *
+ * `[EACH]` exists so repeated markup (the what-to-bring bullets) stays in the
+ * design-owned template instead of being assembled in TypeScript. An empty or
+ * missing list renders nothing, so the surrounding heading can be gated with
+ * `[IF list]`.
  *
  * Blocks may nest (the booking confirmation nests two deep). Conditions support:
  *
@@ -19,15 +25,23 @@
  * `AND` binds loosest, so `a = x AND b = y OR z` reads as `(a = x) AND (b = y OR z)`.
  */
 
-/** Values a template may reference. `null`/`undefined` render as empty + falsy. */
+/**
+ * Values a template may reference. `null`/`undefined` render as empty + falsy.
+ * A `string[]` is a list for `[EACH]`; it is truthy for `[IF]` only when non-empty,
+ * so a heading above an empty list can be hidden with the same condition.
+ */
 export type EmailTemplateContext = Record<
   string,
-  string | number | boolean | null | undefined
+  string | number | boolean | string[] | null | undefined
 >;
 
 const IF_OPEN = '[IF ';
 const IF_CLOSE = '[/IF]';
 const ELSE_TAG = '[ELSE]';
+const EACH_OPEN = '[EACH ';
+const EACH_CLOSE = '[/EACH]';
+/** The current entry inside an `[EACH]` body. */
+const ITEM_TOKEN = /\{item\}/g;
 
 /** `{token}` - a leading letter, then letters/digits/underscore/dot. */
 const TOKEN_RE = /\{([a-zA-Z][a-zA-Z0-9_.]*)\}/g;
@@ -43,7 +57,9 @@ export function renderEmailTemplate(
   template: string,
   ctx: EmailTemplateContext,
 ): string {
-  return substitute(resolveConditionals(template, ctx), ctx);
+  // Loops expand BEFORE conditionals so an [EACH] body may contain [IF], and
+  // before substitution so {item} is resolved per entry rather than globally.
+  return substitute(resolveConditionals(resolveLoops(template, ctx), ctx), ctx);
 }
 
 /**
@@ -56,13 +72,53 @@ export function findUnresolvedTokens(
   ctx: EmailTemplateContext,
 ): string[] {
   const missing = new Set<string>();
-  for (const [, key] of template.matchAll(TOKEN_RE)) {
+  // Expand loops first: `{item}` only exists inside an [EACH] body and is supplied
+  // by the loop, not the context, so scanning the raw template would report it as
+  // missing on every render.
+  for (const [, key] of resolveLoops(template, ctx).matchAll(TOKEN_RE)) {
     if (!(key in ctx)) missing.add(key);
   }
   return [...missing];
 }
 
 // ── internals ───────────────────────────────────────────────────────────────
+
+/**
+ * Expand `[EACH list]body[/EACH]`, replacing `{item}` in the body per entry.
+ *
+ * Loops do not nest (nothing in the design needs it) - an inner `[EACH` would be
+ * matched by the first `[/EACH]`, so this throws instead of emitting silent
+ * nonsense. Values are escaped by the final `substitute` pass, not here.
+ */
+function resolveLoops(src: string, ctx: EmailTemplateContext): string {
+  let out = '';
+  let cursor = 0;
+
+  for (;;) {
+    const start = src.indexOf(EACH_OPEN, cursor);
+    if (start === -1) return out + src.slice(cursor);
+    out += src.slice(cursor, start);
+
+    const nameEnd = src.indexOf(']', start);
+    if (nameEnd === -1) throw new Error('Malformed [EACH: no closing "]"');
+    const name = src.slice(start + EACH_OPEN.length, nameEnd).trim();
+
+    const bodyStart = nameEnd + 1;
+    const closeAt = src.indexOf(EACH_CLOSE, bodyStart);
+    if (closeAt === -1) throw new Error(`Unclosed [EACH ${name}]`);
+    const body = src.slice(bodyStart, closeAt);
+    if (body.includes(EACH_OPEN)) {
+      throw new Error(`Nested [EACH] is not supported (in "${name}")`);
+    }
+
+    const value = ctx[name];
+    const items = Array.isArray(value) ? value : [];
+    for (const item of items) {
+      out += body.replace(ITEM_TOKEN, escapeHtml(String(item)));
+    }
+    cursor = closeAt + EACH_CLOSE.length;
+  }
+}
 
 function resolveConditionals(src: string, ctx: EmailTemplateContext): string {
   let out = '';
@@ -153,9 +209,11 @@ function evaluate(condition: string, ctx: EmailTemplateContext): boolean {
   return accepted.some((value) => String(actual ?? '') === value);
 }
 
-/** Empty string, null/undefined, false and 0 are all falsy for `[IF flag]`. */
+/** Empty string, null/undefined, false, 0 and an EMPTY LIST are falsy for `[IF flag]`. */
 function truthy(value: EmailTemplateContext[string]): boolean {
   if (value == null || value === false) return false;
+  // An empty list must be falsy so `[IF whatToBring]` hides its heading.
+  if (Array.isArray(value)) return value.length > 0;
   const text = String(value);
   return text !== '' && text !== '0';
 }
@@ -169,7 +227,11 @@ function substitute(src: string, ctx: EmailTemplateContext): string {
   return src.replace(TOKEN_RE, (literal, key: string) => {
     if (!(key in ctx)) return literal;
     const value = ctx[key];
-    return value == null ? '' : escapeHtml(String(value));
+    if (value == null) return '';
+    // A list referenced as a plain {token} rather than via [EACH]: join it
+    // readably instead of leaking JS's "a,b" Array.toString.
+    const text = Array.isArray(value) ? value.join(', ') : String(value);
+    return escapeHtml(text);
   });
 }
 

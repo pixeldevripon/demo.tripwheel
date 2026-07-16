@@ -76,7 +76,8 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 ### B. Cancellation & refunds (0/4)
 - [ ] B1 Execute real Stripe refund on cancellation + write `REFUND` Payment row
 - [ ] B2 Payment-model-aware refund amount (deposit-only vs full; partial)
-- [ ] B3 Tokenized cancel confirmation page (no raw-click) + account fallback
+- [x] B3 Tokenized cancel confirmation page (no raw-click) - BUILT 2026-07-16, see round 4 below.
+  (The "account fallback" booking-lookup half of B3 is still open.)
 - [ ] B4 Operator non-payment -> admin confirm -> forfeit deposit + release (no auto-forfeit)
 
 ### C. Email (0/7)
@@ -95,10 +96,10 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
   -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **WIRED 2026-07-16** -
   `mail.service.ts` now renders the locked template; the lean `booking-confirmation.template.ts` is
   retired. See "C6 - wiring complete" below.
-- [ ] **C7 "Booking Received" notification email to the tour operator** (NEW scope). Sent on every
-  booking, distinct from the traveller confirmation and from the `operator_link` payment link.
-  Operator contact resolution already exists (`operator.contactEmail ?? companyInfo.companyEmail`,
-  see `getThankYou`).
+- [x] **C7 "Booking Received" notification email to the tour operator** - BUILT 2026-07-16, see
+  round 4 below. Recipient = `companyInfo.companyEmail ?? contactEmail` (founder: company email
+  first). Fires in `finalizeConfirmation` right after the traveller email; failures swallow (money
+  already captured). English-formatted regardless of the traveller's locale.
 
 #### C6 - locked template contract (extracted 2026-07-16)
 
@@ -270,6 +271,134 @@ Decisions taken while wiring (grounded, not invented):
   contradicts the site. No rating is fabricated for an unreviewed tour (LD11 cold start).
 - **`depositPct` is derived from the booked amounts**, not read from `Tour.depositPct` (tier-driven
   and mutable) - the snapshot is what the traveler actually paid.
+
+#### C6 - design review round 2 (founder, 2026-07-16). 1033 tests / 48 suites green.
+
+The founder compared the sent email against the wireframe on desktop + Gmail Android. Every gap was
+real; most were compromises I made and should have surfaced instead of shipping.
+
+- [x] **Mobile was not responsive.** The shell was a fixed `width="600"` table relying on `<style>`
+  media queries - which **Gmail on Android ignores** (especially non-Gmail accounts), so it rendered
+  zoomed-out. Now **fluid-hybrid**: `width:100%;max-width:600px` + an mso ghost table for Outlook
+  (which ignores `max-width`). The wireframe itself uses `max-width:600px` and **no media queries** -
+  it was already telling us the answer.
+- [x] **Typography fell back to Arial everywhere.** The template NAMED 'Plus Jakarta Sans' but never
+  loaded it. Added the wireframe's own Google Fonts `<link>` (+ `@import`); Apple Mail/iOS now match
+  the design, Gmail/Outlook still fall back (they strip webfonts - unavoidable).
+- [x] **What-to-bring / good-to-know were one middot-joined line**; the wireframe renders each bullet
+  as its own row with an **orange marker**. Fixed properly by adding **`[EACH list]…{item}…[/EACH]`**
+  to the mini-language, so the markup lives in the design-owned template rather than in TypeScript.
+  An empty list is now falsy for `[IF]`, so the heading hides with it.
+- [x] **"A note from {operatorName}" never rendered** - no field existed. Added
+  `TourTranslation.operatorNote` (localized; migration `20260716144848_tour_translation_operator_note`,
+  additive) + the full children DTO/service wiring + a **"Note to Travellers" field on the trip
+  Translations tab**. Empty still hides the card.
+- [x] **Deadline format** was "Wednesday, 20 May 2026 at 08:00"; the design locks
+  **"Wed, 20 May 2026, 08:00"** (short weekday, comma - not `Intl`'s "at" connector). Date and time
+  are now formatted separately and joined.
+- [x] **Language rendered raw ISO codes** ("Language: en, es, nl") - now names via
+  `Intl.DisplayNames`, localized for the reader ("English" / "Engels").
+- [x] **Account line printed the raw URL** ("http://localhost:3000/bookings"); the design shows the
+  label **"island.tours/bookings"**. New `{accountUrlLabel}` token (href unchanged).
+- [x] **Logo enlarged** 28px -> 40px (founder).
+- [x] **Related tours: same DESTINATION, not category** (founder correction mid-review). The original
+  destination-scoped query was right; a category filter was tried and reverted. The block is "More
+  {island} experiences" - it cross-sells the island. Comment added so it is not "fixed" again.
+
+**Still open from this review: B3.** The cancel PAGE, the cancel MODAL, and the admin cancellation
+request do not exist. The email's button already links to `/cancel/{publicRef}` per master 6.4/C1.
+This is the next task.
+
+#### C6 - design review round 3: 100% style parity, mechanically enforced (2026-07-16)
+
+Founder: "every single style must match 100%, nothing skipped" + mobile must equal the wireframe's
+own mobile render. Done by **rebuilding the template as a byte-for-byte port of the wireframe's
+`<template id="email-tpl">`**, tokens/conditionals and the approved icon/img substitutions being the
+only differences. 1038 tests / 48 suites green.
+
+- **Root cause of the typography mismatch:** email clients do NOT inherit `font-family` from `<body>`
+  into tables. The wireframe carries `font-family:'Plus Jakarta Sans',Arial,sans-serif` **on every
+  block `<td>`** (15 sites); the first port only set it on body, so everything fell back to Arial.
+- **Root cause of the mobile mismatch:** the wireframe has **no media queries and no classes** - its
+  shell IS the fluid hybrid (`width="600"` attribute for Outlook + `style="width:100%;max-width:600px"`
+  for everyone else), and mobile is simply the same email rendered narrower. The first port's
+  media-query/class layer (and round 2's mso ghost table) were both deviations - removed; the shell
+  now matches the wireframe's own mechanism exactly.
+- **Style details recovered by the verbatim port:** the payment divider row above Total
+  (`colspan=2 border-top`), `paid_in_full` = single green 800-weight row, `operator_full` = plain
+  Total row + "Payable to {operator}. Island Tours took no payment." + **no Cancel button** (Block 9
+  changes per the spec), upsell price "4.9 · $89" (no "from", zero cents stripped), lowercase design
+  hex values (#9aa3b2 etc), first-icon-cell-only `width:26px`, headline without a line-height.
+- **The guard that makes "100%" stay true:** the template spec now extracts EVERY `style=""`
+  attribute from the wireframe's email template and asserts each appears **verbatim** in the shipped
+  template (only the demo placeholder art, the canvas padding fold, and the inline-svg alignment are
+  excluded, each with its reason). A designer edit to either file now fails CI on the first drifted
+  byte instead of a founder screenshot.
+- **Operator note management (founder question):** the note is per-tour, localized -
+  `TourTranslation.operatorNote`, edited in **Dashboard > Tours > edit > Translations tab > "Note to
+  Travellers"** (English tab = base copy, other locales translatable like every translation field).
+  The email picks the traveller's locale with English fallback; empty hides the blue card entirely.
+
+#### Round 4 (2026-07-16): stale-template root cause + C7 + pickup summary + B3 page. 1050 tests / 49 suites green; frontend prod build green.
+
+- [x] **The "still not matched" screenshots were a STALE TEMPLATE, not a design bug.** The running
+  dev server compiled before `watchAssets` landed in `nest-cli.json`, so its `dist` kept the OLD html
+  (comma-joined lists = the plain `{whatToBring}` fallback; full-width stacked buttons = the old
+  media-query layer). `dist` is rebuilt; **the dev backend must be restarted once** so asset-watching
+  applies from now on.
+- [x] **Gmail font: unfixable by anyone.** Gmail (web + apps) strips `<link>`, `@import`, and
+  `@font-face` for every sender - no custom webfont ever renders in Gmail; Apple Mail/iOS load
+  Plus Jakarta Sans from our template. The only lever is the fallback stack, and the wireframe locks
+  it to Arial. Improving the fallback would first require a wireframe edit (parity test enforces it).
+- [x] **C7 operator "Booking Received" email** - `operator-booking-received.template.html` reuses
+  the traveller shell VERBATIM (its spec asserts the operator template introduces **zero new style
+  attributes** vs the traveller one, so they can't drift apart). Per-model action copy (send link /
+  collect on arrival / fully paid), guest contact, dashboard CTA. Context piggybacks on the traveller
+  context builder (shared facts formatted once, in English for operators).
+- [x] **Checkout: selected pickup now shows in the summary card.** Root cause: the summary is a
+  SERVER-rendered node, the pickup select is client form state - they never met. Fixed with a
+  minimal client bridge (`PickupLabelProvider` + a pickup-row client leaf with the server label as
+  fallback), per the smallest-leaf client-boundary rule.
+- [x] **B3 cancel page + modal + admin request built.**
+  - Backend: `POST /bookings/typ/:publicRef/cancellation-request` (@Public, resend-grade throttle,
+    optional 500-char reason). Stamps `utcCancellationRequestedAt` on the FIRST request only (refund
+    eligibility is judged at the traveller's instant, gap #16); re-submits re-notify but never move
+    it. Emails **ADMIN_EMAIL** (503 if unconfigured - a silently dropped refund request is the worst
+    outcome); mail failure THROWS like resend. 6 new specs.
+  - Frontend: locale-less `/cancel/{publicRef}` via a proxy.ts rewrite (same mechanism as the TYP),
+    PPR shell + Suspense skeleton, noindex. The card mirrors the wireframe modal (title, tour · date
+    line, refund note, optional textarea, "Yes, cancel booking" + "Keep my booking" back to the TYP),
+    with a sent-state cross-fade and a non-CONFIRMED "nothing to cancel" state. `cancelBooking` dict
+    section added in all 7 locales (EN = wireframe copy verbatim).
+  - The confirmation email's Cancel button now lands on a REAL page end-to-end.
+
+#### Round 5 (2026-07-16): mobile spacing, master-6.4 cancel page, 3-recipient cancellation emails. 1056 tests / 50 suites green; frontend prod build green.
+
+- [x] **Mobile email breathing room** (founder request). One media query on all email templates:
+  outer gutter 26/16 -> 12/6, cell sides 28 -> 16 on <=480px (`.it-shell-pad` / `.it-cell`). This is
+  the ONLY media query and those are the ONLY classes - the parity guards now assert exactly that,
+  so it cannot grow silently. Clients that ignore style blocks keep the wireframe spacing.
+- [x] **Gmail font: closed as impossible-by-platform.** Gmail (web + apps) and Outlook-Windows strip
+  `<link>`/`@import`/`@font-face` for every sender on the internet; NO email renders a custom font
+  there. Apple Mail / iOS / Outlook-Mac load Plus Jakarta Sans from our template. Documented in the
+  template head; the fallback is the wireframe's own Arial stack. A closer-metric fallback (e.g.
+  Segoe UI) would need a WIREFRAME edit first - the parity test enforces the stack.
+- [x] **Cancel page now matches master 6.4 exactly**: title "Cancel {tour}, {date}?", booking ref
+  line, green "Refund {amount}" chip rendered ONLY when something was paid to Island Tours (C23),
+  refund-method line from the trust-modal locked copy; AFTER the window the page shows the locked
+  after-window copy and no request button. Copy in all 7 locales.
+- [x] **Cancellation request now emails all three parties** (founder extension of the master flow):
+  admin work-item (unchanged, throws on failure), traveller ack "we got your request - terms are
+  judged from this moment" (their locale's date format), operator heads-up "no action needed yet"
+  (company inbox first). The ack/notice pair is best-effort (the admin already has the request).
+  Both ride a new shared `booking-notice.template.html` whose spec asserts **zero new style
+  attributes** vs the traveller shell. The FINAL confirmation emails (after the admin marks
+  cancelled, with the locked "on its way back within 3 to 5 business days" copy, C23-aware) belong
+  to CP6/refund execution - not built yet.
+- [x] **Master B.34 RESOLVES the accountUrl conflict** (was open item 1 below): accounts ARE
+  auto-created with email + booking-reference login ("No account area" was superseded; Arnav
+  confirmed). The email's `island.tours/bookings` line is correct. The lookup LOGIN page itself is
+  still to build (B3 leftover).
 
 **Open conflicts for the founder (do not silently resolve):**
 

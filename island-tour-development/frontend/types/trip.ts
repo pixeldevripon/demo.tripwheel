@@ -354,6 +354,8 @@ export interface TripTranslation {
   categoryDisplay: string | null;
   localTipTitle: string | null;
   localTipBody: string | null;
+  /** "A note from {operator}" card in the confirmation email. */
+  operatorNote: string | null;
   meetingPointText: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
@@ -655,6 +657,7 @@ export interface UpsertTripTranslationPayload {
   categoryDisplay?: string | null;
   localTipTitle?: string | null;
   localTipBody?: string | null;
+  operatorNote?: string | null;
   meetingPointText?: string | null;
   metaTitle?: string | null;
   metaDescription?: string | null;

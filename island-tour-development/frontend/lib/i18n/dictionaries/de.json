@@ -693,6 +693,22 @@
     "countryPopular": "Beliebt",
     "countryAll": "Alle Länder"
   },
+  "cancelBooking": {
+    "title": "{tour} stornieren, {date}?",
+    "refundNote": "Volle Rückerstattung, ohne Fragen. Wir bestätigen per E-Mail.",
+    "refund": "Rückerstattung {amount}",
+    "refundMethod": "Der gezahlte Betrag wird auf deine ursprüngliche Zahlungsmethode zurückerstattet.",
+    "afterWindow": "Wenn du weniger als {hours} Stunden vor Tourbeginn stornierst, können wir die Buchung nicht erstatten oder ändern. Muss aber der Veranstalter absagen, bist du abgesichert: volle Rückerstattung oder kostenlose Umbuchung.",
+    "reference": "Buchungsreferenz:",
+    "reasonPlaceholder": "Optional. Gibt es etwas, das wir wissen sollten?",
+    "confirm": "Ja, Buchung stornieren",
+    "keep": "Buchung behalten",
+    "sending": "Wird gesendet...",
+    "sentTitle": "Stornierungsanfrage gesendet.",
+    "sentBody": "Wir kümmern uns darum. Du erhältst eine E-Mail zur Bestätigung deiner Stornierung und Rückerstattung.",
+    "notActive": "Diese Buchung ist nicht mehr aktiv, es gibt also nichts zu stornieren.",
+    "error": "Das hat nicht geklappt. Versuche es erneut oder schreib uns auf WhatsApp."
+  },
   "thankYou": {
     "title": "Du bist gebucht, {name}! 🌴",
     "subtitle": "Dein {tour} ist für {date} um {time} reserviert.",

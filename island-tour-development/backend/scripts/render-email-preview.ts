@@ -98,7 +98,7 @@ const ctx = buildConfirmationEmailContext({
     heroImageUrl:
       'https://res.cloudinary.com/demo/image/upload/w_192,h_192,c_fill/sample.jpg',
     durationLabel: '9 hours',
-    languageLabel: 'English',
+    languageCodes: ['en'],
     checkInMinutesBefore: 30,
     meetingPoint: 'Sint Annabaai Pier',
     meetingPointLat: 12.1091,

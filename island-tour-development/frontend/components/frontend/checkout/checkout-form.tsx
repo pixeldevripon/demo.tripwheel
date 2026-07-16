@@ -63,6 +63,9 @@ interface CheckoutFormProps {
      *  the grid); the form advances it via `onPhaseChange`. */
     phase: CheckoutPhase;
     onPhaseChange: (phase: CheckoutPhase) => void;
+    /** Publishes the chosen pickup's label so the summary card mirrors it live
+     *  (null = nothing chosen yet; the summary falls back to "No pickup"). */
+    onPickupLabelChange: (label: string | null) => void;
     /** Pickup options from the tour; empty hides the pickup field. */
     pickupOptions: CheckoutPickupOption[];
     /** Formatted "(From $X p.p.)" suffix for the pickup label, or null. */
@@ -105,6 +108,7 @@ export function CheckoutForm({
     locale,
     phase,
     onPhaseChange,
+    onPickupLabelChange,
     pickupOptions,
     pickupFromLabel,
     payToday,
@@ -358,7 +362,17 @@ export function CheckoutForm({
                                             : dict.pickup
                                     }
                                     value={contact.pickup}
-                                    onChange={(v) => set('pickup', v)}
+                                    onChange={(v) => {
+                                        set('pickup', v);
+                                        // Mirror the choice into the summary card.
+                                        onPickupLabelChange(
+                                            v === 'none'
+                                                ? null
+                                                : (pickupSelectOptions.find(
+                                                      (o) => o.value === v,
+                                                  )?.label ?? null),
+                                        );
+                                    }}
                                     options={pickupSelectOptions}
                                     placeholderValue='none'
                                 />

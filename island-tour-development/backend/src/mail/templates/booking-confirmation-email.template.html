@@ -6,281 +6,245 @@
   <meta name="x-apple-disable-message-reformatting">
   <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
   <title>You're booked: {tourName} on {dateShort}</title>
+  <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
+       it is a CLIENT capability, not something any sender can change:
+       - Apple Mail / iOS Mail / Outlook for Mac: load the webfont -> real Jakarta.
+       - Gmail (web AND apps) and Outlook for Windows: strip <link>, @import and
+         @font-face for EVERY sender on the internet, so no email ever renders a
+         custom font there - they fall back to the wireframe's own Arial stack,
+         declared per-cell below. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    @media only screen and (max-width: 620px) {
-      .it-email-shell { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
-      .it-email-pad { padding-left: 20px !important; padding-right: 20px !important; }
-      .it-summary-image { width: 96px !important; height: 96px !important; }
-      .it-summary-title { font-size: 20px !important; line-height: 1.18 !important; }
-      .it-two-col-card { display: block !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
-      .it-two-col-card + .it-two-col-card { padding-top: 18px !important; }
-      .it-card-image { height: 160px !important; }
-      .it-button { display: block !important; width: 100% !important; text-align: center !important; margin-right: 0 !important; margin-bottom: 10px !important; }
-      .it-link-separator { display: none !important; }
-      .it-inline-link { display: inline-block !important; margin-right: 14px !important; margin-bottom: 6px !important; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Founder-approved mobile refinement: tighten the outer gutter and cell
+       padding on phones so the card gets breathing space. Clients that ignore
+       style blocks keep the wireframe spacing. */
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
     }
   </style>
+  <!-- The shell is fluid exactly like the wireframe (percentage width capped at
+       600px), so mobile is the same email rendered narrower even in clients that
+       ignore style blocks. The single media query above is a founder-approved
+       spacing refinement on top, nothing more. -->
 </head>
-<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;color:#1F2937;">
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
     Your spot is reserved. Here are your details and what happens next.
   </div>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2;">
-    <tr>
-      <td align="center" style="padding:26px 16px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="it-email-shell" style="width:600px;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate;">
-          <tr>
-            <td class="it-email-pad" style="padding:18px 28px;border-bottom:1px solid #E8EAED;">
-              [IF siteLogoUrl]<img src="{siteLogoUrl}" height="28" alt="Island Tours" style="display:block;border:0;height:28px;width:auto;">[ELSE]<span style="font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937;">ISLAND <span style="color:#E8611A;">TOURS</span></span>[/IF]
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="40" alt="Island Tours" style="display:block;border:0;height:40px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+        </td></tr>
+
+        <!-- Block 1: confirmation -->
+        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:middle;padding-right:10px">
+              <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px">
+                <img src="{emailIconBase}/icon-check-green.png" width="16" height="16" alt="" style="vertical-align:middle;border:0">
+              </span>
             </td>
-          </tr>
+            <td style="vertical-align:middle"><div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">[IF paymentModel = operator_full]Reservation sent, {firstName}.[ELSE]You're booked, {firstName}.[/IF]</div></td>
+          </tr></table>
+          <div style="font-size:13px;color:#6B7280;margin-top:10px">Booking reference: <b style="color:#1F2937">{bookingRef}</b></div>
+        </td></tr>
 
-          <tr>
-            <td class="it-email-pad" style="padding:26px 28px 6px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                <tr>
-                  <td style="vertical-align:middle;padding-right:10px;">
-                    <span style="display:inline-block;width:30px;height:30px;border-radius:50%;background:#E7F6ED;text-align:center;line-height:30px;">
-                      <img src="{emailIconBase}/icon-check-green.png" width="16" height="16" alt="" style="vertical-align:middle;border:0;">
-                    </span>
-                  </td>
-                  <td style="vertical-align:middle;">
-                    <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937;line-height:1.2;">
-                      [IF paymentModel = operator_full]Reservation sent, {firstName}.[ELSE]You're booked, {firstName}.[/IF]
-                    </div>
-                  </td>
-                </tr>
-              </table>
-              <div style="font-size:13px;color:#6B7280;margin-top:10px;">Booking reference: <b style="color:#1F2937;">{bookingRef}</b></div>
+        <!-- Block 2 + 3: booking summary (featured image thumbnail beside title, same format as checkout) -->
+        <tr><td class="it-cell" style="padding:20px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+            <td width="96" style="vertical-align:top;padding-right:14px">
+              <img src="{featuredImageUrl}" width="96" height="96" alt="{tourName}" style="display:block;width:96px;height:96px;border-radius:10px;object-fit:cover;border:0;background:#1FB6C9">
             </td>
-          </tr>
-
-          <tr>
-            <td class="it-email-pad" style="padding:20px 28px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                <tr>
-                  <td width="96" style="vertical-align:top;padding-right:14px;">
-                    <img src="{featuredImageUrl}" width="96" height="96" alt="{tourName}" class="it-summary-image" style="display:block;width:96px;height:96px;border-radius:10px;object-fit:cover;border:0;background:#1FB6C9;">
-                  </td>
-                  <td style="vertical-align:top;">
-                    <div class="it-summary-title" style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em;">{tourName}</div>
-                    <div style="font-size:13.5px;color:#6B7280;margin-top:4px;">{operatorName}</div>
-                    <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px;">{dateLong} · {startTime}</div>
-                  </td>
-                </tr>
-              </table>
-
-              <div style="height:1px;background:#E8EAED;margin:16px 0 14px;"></div>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14.5px;color:#374151;line-height:1.45;">
-                <tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-pin.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">[IF hasPickup]Pickup: {pickupLocation}, {pickupTime}.[ELSE]Meeting point: {meetingPoint}.[/IF] <a href="{mapUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline;">Open in Maps</a></td>
-                </tr>
-                <tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-hourglass.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">[IF hasPickup]Please be ready {arrivalBufferMin} minutes before pickup.[ELSE]Please arrive {arrivalBufferMin} minutes early.[/IF]</td>
-                </tr>
-                [IF endPoint]<tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-route-end.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">Ends at: {endPoint}</td>
-                </tr>[/IF]
-                <tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-users.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">Guests: {partyBreakdown}</td>
-                </tr>
-                [IF duration]<tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-clock.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">Duration: {duration}</td>
-                </tr>[/IF]
-                [IF tourLanguage]<tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-globe.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">Language: {tourLanguage}</td>
-                </tr>[/IF]
-                [IF specialRequests]<tr>
-                  <td style="padding:5px 0;width:26px;vertical-align:top;">
-                    <img src="{emailIconBase}/icon-message.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px;">
-                  </td>
-                  <td style="padding:5px 0;">Your note to the operator: {specialRequests}</td>
-                </tr>[/IF]
-              </table>
-
-              <a href="{tourUrl}" class="it-inline-link" style="display:inline-block;margin-top:12px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline;">View tour details</a>
-              <span class="it-link-separator" style="color:#D1D5DB;margin:0 9px;">·</span>
-              <a href="{calendarUrl}" class="it-inline-link" style="font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline;">Add to calendar</a>
+            <td style="vertical-align:top">
+              <div style="font-size:17px;font-weight:800;color:#1F2937;line-height:1.25;letter-spacing:-.01em">{tourName}</div>
+              <div style="font-size:13.5px;color:#6B7280;margin-top:4px">{operatorName}</div>
+              <div style="font-size:14px;color:#374151;font-weight:600;margin-top:7px">{dateLong} · {startTime}</div>
             </td>
-          </tr>
+          </tr></table>
 
-          [IF operatorNote]<tr>
-            <td class="it-email-pad" style="padding:14px 28px 0;">
-              <div style="background:#EEF4FB;border-radius:10px;padding:14px 16px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  <tr>
-                    <td style="vertical-align:top;padding-right:9px;padding-top:1px;">
-                      <img src="{emailIconBase}/icon-info.png" width="16" height="16" alt="" style="display:block;border:0;margin-top:1px;">
-                    </td>
-                    <td>
-                      <div style="font-size:13.5px;font-weight:700;color:#27496F;margin-bottom:3px;">A note from {operatorName}</div>
-                      <div style="font-size:13.5px;color:#3A516B;line-height:1.5;">{operatorNote}</div>
-                    </td>
-                  </tr>
-                </table>
-              </div>
+          <div style="height:1px;background:#E8EAED;margin:16px 0 14px"></div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size:14.5px;color:#374151;line-height:1.45">
+            <tr><td style="padding:5px 0;width:26px;vertical-align:top">
+              <img src="{emailIconBase}/icon-pin.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">[IF hasPickup]Pickup: {pickupLocation}, {pickupTime}.[ELSE]Meeting point: {meetingPoint}.[/IF] <a href="{mapUrl}" style="color:#E8611A;font-weight:600;text-decoration:underline">Open in Maps</a></td></tr>
+
+            <tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-hourglass.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">[IF hasPickup]Please be ready {arrivalBufferMin} minutes before pickup.[ELSE]Please arrive {arrivalBufferMin} minutes early.[/IF]</td></tr>
+
+            [IF endPoint]<tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-route-end.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">Ends at: {endPoint}</td></tr>[/IF]
+
+            <tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-users.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">Guests: {partyBreakdown}</td></tr>
+
+            [IF duration]<tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-clock.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">Duration: {duration}</td></tr>[/IF]
+
+            [IF tourLanguage]<tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-globe.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">Language: {tourLanguage}</td></tr>[/IF]
+
+            [IF specialRequests]<tr><td style="padding:5px 0;vertical-align:top">
+              <img src="{emailIconBase}/icon-message.png" width="17" height="17" alt="" style="display:block;border:0;margin-top:2px">
+            </td><td style="padding:5px 0">Your note to the operator: {specialRequests}</td></tr>[/IF]
+          </table>
+          <a href="{tourUrl}" style="display:inline-block;margin-top:12px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">View tour details</a><span style="color:#D1D5DB;margin:0 9px">·</span><a href="{calendarUrl}" style="font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">Add to calendar</a>
+        </td></tr>
+
+        <!-- Block 4: operator note (conditional) -->
+        [IF operatorNote]<tr><td class="it-cell" style="padding:14px 28px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#EEF4FB;border-radius:10px;padding:14px 16px">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+                <img src="{emailIconBase}/icon-info.png" width="16" height="16" alt="" style="display:block;border:0;margin-top:1px">
+              </td>
+              <td>
+                <div style="font-size:13.5px;font-weight:700;color:#27496f;margin-bottom:3px">A note from {operatorName}</div>
+                <div style="font-size:13.5px;color:#3a516b;line-height:1.5">{operatorNote}</div>
+              </td>
+            </tr></table>
+          </div>
+        </td></tr>[/IF]
+
+        <!-- Block 5: payment -->
+        <tr><td class="it-cell" style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:12px">Payment</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14.5px;color:#374151">
+              [IF paymentModel = operator_link OR on_arrival]<tr><td style="padding:3px 0">Deposit paid today ({depositPct}%)</td><td align="right" style="padding:3px 0;font-weight:700;color:#16A34A">{depositAmount}</td></tr>
+              <tr><td style="padding:3px 0">[IF paymentModel = operator_link]Balance due[ELSE]Balance due on arrival[/IF]</td><td align="right" style="padding:3px 0;font-weight:600;color:#1F2937">{balanceAmount}</td></tr>
+              <tr><td colspan="2" style="border-top:1px solid #E8EAED;padding-top:8px;margin-top:4px"></td></tr>[/IF]
+              [IF paymentModel = paid_in_full]<tr><td style="padding:3px 0;font-weight:800;color:#1F2937">Paid in full</td><td align="right" style="padding:3px 0;font-weight:800;color:#16A34A">{totalAmount}</td></tr>[ELSE]<tr><td style="padding:3px 0;font-weight:700;color:#1F2937">Total</td><td align="right" style="padding:3px 0;font-weight:800;color:#1F2937">{totalAmount}</td></tr>[/IF]
+            </table>
+            <div style="font-size:13.5px;color:#4B5563;line-height:1.5;margin-top:12px;border-top:1px dashed #E0E3E8;padding-top:12px">
+              [IF paymentModel = operator_link]Pay your balance, or cancel for a full refund, up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that the deposit is non-refundable, and an unpaid balance cancels the booking.[/IF]
+              [IF paymentModel = on_arrival]Cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that the deposit is non-refundable.[/IF]
+              [IF paymentModel = paid_in_full]Cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that it is non-refundable.[/IF]
+              [IF paymentModel = operator_full]Payable to {operatorName}. Island Tours took no payment.[/IF]
+            </div>
+          </div>
+        </td></tr>
+
+        <!-- Block 6: C2 foreshadow (orange box) + anti-fraud note below it -->
+        <tr><td class="it-cell" style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px">
+            <div style="font-size:14px;font-weight:800;color:#9a4a16;margin-bottom:6px">
+              [IF paymentModel = operator_link]How to pay the rest[/IF]
+              [IF paymentModel = on_arrival]Pay the rest on arrival[/IF]
+              [IF paymentModel = paid_in_full]From {operatorName}[/IF]
+              [IF paymentModel = operator_full]Pay to confirm your spot[/IF]
+            </div>
+            <div style="font-size:14px;color:#5b3a22;line-height:1.55">
+              [IF paymentModel = operator_link]<b>{operatorName}</b> will email you a secure link to pay the remaining <b>{balanceAmount}</b>. This is the only payment left on your booking, so look out for that email and pay before the deadline above.[/IF]
+              [IF paymentModel = on_arrival AND onArrivalPayment = card_or_cash]You'll pay the remaining <b>{balanceAmount}</b> to <b>{operatorName}</b> when you arrive. Card and cash are both accepted.[/IF]
+              [IF paymentModel = on_arrival AND onArrivalPayment = cash_only]You'll pay the remaining <b>{balanceAmount}</b> to <b>{operatorName}</b> in cash when you arrive. Card isn't possible and there's no ATM on site, so bring the <b>{balanceAmount}</b> in cash with you.[/IF]
+              [IF paymentModel = paid_in_full]{operatorName} will also email you with their own confirmation and arrival details. Look out for it.[/IF]
+              [IF paymentModel = operator_full]{operatorName} will email you a secure link to pay the full <b>{totalAmount}</b>. Paying confirms your spot, so look out for that email.[/IF]
+            </div>
+          </div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px"><tr>
+            <td style="vertical-align:top;padding-right:9px;padding-top:1px">
+              <img src="{emailIconBase}/icon-shield-check.png" width="16" height="16" alt="" style="display:block;border:0">
             </td>
-          </tr>[/IF]
-
-          <tr>
-            <td class="it-email-pad" style="padding:18px 28px 4px;">
-              <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px;">
-                <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9AA3B2;margin-bottom:12px;">Payment</div>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14.5px;color:#374151;">
-                  [IF paymentModel = operator_link OR on_arrival]<tr>
-                    <td style="padding:3px 0;">Deposit paid today ({depositPct}%)</td>
-                    <td align="right" style="padding:3px 0;font-weight:700;color:#16A34A;">{depositAmount}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:3px 0;">[IF paymentModel = operator_link]Balance due[ELSE]Balance due on arrival[/IF]</td>
-                    <td align="right" style="padding:3px 0;font-weight:600;color:#1F2937;">{balanceAmount}</td>
-                  </tr>[/IF]
-                  <tr>
-                    <td style="padding:3px 0;font-weight:700;color:#1F2937;">[IF paymentModel = paid_in_full]Paid in full[ELSE]Total[/IF]</td>
-                    <td align="right" style="padding:3px 0;font-weight:800;color:#1F2937;">{totalAmount}</td>
-                  </tr>
-                </table>
-                <div style="font-size:13.5px;color:#4B5563;line-height:1.5;margin-top:12px;border-top:1px dashed #E0E3E8;padding-top:12px;">
-                  [IF paymentModel = operator_link]Pay your balance, or cancel for a full refund, up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that the deposit is non-refundable, and an unpaid balance cancels the booking.[/IF]
-                  [IF paymentModel = on_arrival]Cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that the deposit is non-refundable.[/IF]
-                  [IF paymentModel = paid_in_full]Cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time). After that it is non-refundable.[/IF]
-                  [IF paymentModel = operator_full]Total: <b>{totalAmount}</b>, payable to {operatorName}. Island Tours took no payment.[/IF]
-                </div>
-              </div>
+            <td style="font-size:12.5px;color:#6B7280;line-height:1.5">
+              [IF paymentModel = operator_link OR operator_full]We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on <a href="{whatsappUrl}" style="color:#6B7280;text-decoration:underline">WhatsApp</a> first.[/IF]
+              [IF paymentModel = on_arrival]You only pay the rest on arrival. We'll never send a link to pay the balance.[/IF]
+              [IF paymentModel = paid_in_full]Your tour is fully paid. No one should ask you for further payment.[/IF]
             </td>
-          </tr>
+          </tr></table>
+        </td></tr>
 
-          <tr>
-            <td class="it-email-pad" style="padding:16px 28px 4px;">
-              <div style="background:#FBF1EA;border-left:4px solid #E8611A;border-radius:10px;padding:15px 17px;">
-                <div style="font-size:14px;font-weight:800;color:#9A4A16;margin-bottom:6px;">
-                  [IF paymentModel = operator_link]How to pay the rest[/IF]
-                  [IF paymentModel = on_arrival]Pay the rest on arrival[/IF]
-                  [IF paymentModel = paid_in_full]From {operatorName}[/IF]
-                  [IF paymentModel = operator_full]Pay to confirm your spot[/IF]
-                </div>
-                <div style="font-size:14px;color:#5B3A22;line-height:1.55;">
-                  [IF paymentModel = operator_link]<b>{operatorName}</b> will email you a secure link to pay the remaining <b>{balanceAmount}</b>. This is the only payment left on your booking, so look out for that email and pay before the deadline above.[/IF]
-                  [IF paymentModel = on_arrival AND onArrivalPayment = card_or_cash]You'll pay the remaining <b>{balanceAmount}</b> to <b>{operatorName}</b> when you arrive. Card and cash are both accepted.[/IF]
-                  [IF paymentModel = on_arrival AND onArrivalPayment = cash_only]You'll pay the remaining <b>{balanceAmount}</b> to <b>{operatorName}</b> in cash when you arrive. Card isn't possible and there's no ATM on site, so bring the <b>{balanceAmount}</b> in cash with you.[/IF]
-                  [IF paymentModel = paid_in_full]{operatorName} will also email you with their own confirmation and arrival details. Look out for it.[/IF]
-                  [IF paymentModel = operator_full]{operatorName} will email you a secure link to pay the full <b>{totalAmount}</b>. Paying confirms your spot, so look out for that email.[/IF]
-                </div>
-              </div>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;">
-                <tr>
-                  <td style="vertical-align:top;padding-right:9px;padding-top:1px;">
-                    <img src="{emailIconBase}/icon-shield-check.png" width="16" height="16" alt="" style="display:block;border:0;">
-                  </td>
-                  <td style="font-size:12.5px;color:#6B7280;line-height:1.5;">
-                    [IF paymentModel = operator_link OR operator_full]We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on <a href="{whatsappUrl}" style="color:#6B7280;text-decoration:underline;">WhatsApp</a> first.[/IF]
-                    [IF paymentModel = on_arrival]You only pay the rest on arrival. We'll never send a link to pay the balance.[/IF]
-                    [IF paymentModel = paid_in_full]Your tour is fully paid. No one should ask you for further payment.[/IF]
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+        <!-- Block 7: prepare -->
+        <tr><td class="it-cell" style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            [IF whatToBring]<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:10px">What to bring</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;line-height:1.5">
+              [EACH whatToBring]<tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">{item}</td></tr>[/EACH]
+            </table>[/IF]
 
-          <tr>
-            <td class="it-email-pad" style="padding:18px 28px 4px;">
-              <div style="border-top:1px solid #E8EAED;padding-top:18px;">
-                <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9AA3B2;margin-bottom:10px;">What to bring</div>
-                <div style="font-size:14px;color:#374151;line-height:1.5;">{whatToBring}</div>
+            [IF knowBeforeYouGo]<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin:16px 0 10px">Good to know</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;line-height:1.5">
+              [EACH knowBeforeYouGo]<tr><td style="padding:2px 8px 2px 0;color:#E8611A">&bull;</td><td style="padding:2px 0">{item}</td></tr>[/EACH]
+            </table>[/IF]
+          </div>
+        </td></tr>
 
-                <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9AA3B2;margin:16px 0 10px;">Good to know</div>
-                <div style="font-size:14px;color:#374151;line-height:1.5;">{knowBeforeYouGo}</div>
-              </div>
-            </td>
-          </tr>
+        <!-- Block 8: questions -->
+        <tr><td class="it-cell" style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px">Questions about the day?</div>
+            <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">{operatorName} runs your tour and knows it best.</div>
+            <a href="tel:{operatorPhone}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#1F2937;background:#fff;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px;margin-right:8px">Call</a>
+            <a href="mailto:{operatorEmail}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#1F2937;background:#fff;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px">Email</a>
+            <div style="font-size:12px;color:#9aa3b2;margin-top:9px">{operatorPhone} · {operatorEmail}</div>
 
-          <tr>
-            <td class="it-email-pad" style="padding:18px 28px 4px;">
-              <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px;">
-                <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px;">Questions about the day?</div>
-                <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px;">{operatorName} runs your tour and knows it best.</div>
-                <a href="tel:{operatorPhone}" class="it-button" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;background:#FFFFFF;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px;margin-right:8px;">Call</a>
-                <a href="mailto:{operatorEmail}" class="it-button" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;background:#FFFFFF;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 18px;">Email</a>
-                <div style="font-size:12px;color:#9AA3B2;margin-top:9px;">{operatorPhone} · {operatorEmail}</div>
+            <div style="border-top:1px solid #E8EAED;margin:16px 0 14px"></div>
 
-                <div style="border-top:1px solid #E8EAED;margin:16px 0 14px;"></div>
+            <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px">Questions about your booking?</div>
+            <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">We'll sort it out.</div>
+            <a href="{whatsappUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px">Chat on WhatsApp</a>
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:11px">Mon to Sun, 8:00 to 20:00 Curaçao time</div>
+          </div>
+        </td></tr>
 
-                <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:4px;">Questions about your booking?</div>
-                <div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px;">We'll sort it out.</div>
-                <a href="{whatsappUrl}" class="it-button" style="display:inline-block;font-size:14px;font-weight:700;color:#FFFFFF;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px;">Chat on WhatsApp</a>
-                <div style="font-size:12.5px;color:#9AA3B2;margin-top:11px;">Mon to Sun, 8:00 to 20:00 Curaçao time</div>
-              </div>
-            </td>
-          </tr>
+        <!-- Block 9: cancel -->
+        <tr><td class="it-cell" style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3b2;margin-bottom:8px">Need to cancel?</div>
+            <div style="font-size:14px;color:#374151;line-height:1.5;margin-bottom:12px">
+              [IF paymentModel = operator_full]{operatorName} handles payment for this tour, so cancellation and refunds run through them under their terms. To cancel, contact {operatorName} directly. We're on <a href="{whatsappUrl}" style="color:#374151;text-decoration:underline">WhatsApp</a> if you have questions.[ELSE]You can cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time).[/IF]
+            </div>
+            [IF paymentModel = operator_link OR on_arrival OR paid_in_full]<a href="{cancelUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#1F2937;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 20px">Cancel booking</a>[/IF]
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px">Your booking details, history, and invoice are always in your Island Tours account at <a href="{accountUrl}" style="color:#E8611A;text-decoration:underline">{accountUrlLabel}</a>.</div>
+          </div>
+        </td></tr>
 
-          <tr>
-            <td class="it-email-pad" style="padding:18px 28px 4px;">
-              <div style="border-top:1px solid #E8EAED;padding-top:18px;">
-                <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9AA3B2;margin-bottom:8px;">Need to cancel?</div>
-                <div style="font-size:14px;color:#374151;line-height:1.5;margin-bottom:12px;">
-                  [IF paymentModel = operator_full]{operatorName} handles payment for this tour, so cancellation and refunds run through them under their terms. To cancel, contact {operatorName} directly. We're on <a href="{whatsappUrl}" style="color:#374151;text-decoration:underline;">WhatsApp</a> if you have questions.[ELSE]You can cancel for a full refund up to <b>{cancelDeadlineDateTime}</b> (Curaçao time).[/IF]
-                </div>
-                <a href="{cancelUrl}" class="it-button" style="display:inline-block;font-size:14px;font-weight:700;color:#1F2937;text-decoration:none;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 20px;">Cancel booking</a>
-                <div style="font-size:12.5px;color:#9AA3B2;margin-top:12px;">Your booking details, history, and invoice are always in your Island Tours account at <a href="{accountUrl}" style="color:#E8611A;text-decoration:underline;">{accountUrl}</a>.</div>
-              </div>
-            </td>
-          </tr>
+        <!-- Block 10: sign-off -->
+        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
+          </div>
+        </td></tr>
 
-          <tr>
-            <td class="it-email-pad" style="padding:24px 28px 24px;">
-              <div style="border-top:1px solid #E8EAED;padding-top:18px;">
-                <div style="font-size:13px;font-weight:800;color:#1F2937;">Island Tours. Built by Islanders.</div>
-                <div style="font-size:12.5px;color:#9AA3B2;margin-top:4px;">www.island.tours</div>
-                <div style="font-size:11.5px;color:#B6BCC7;margin-top:10px;line-height:1.6;">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional booking email.</div>
-              </div>
-            </td>
-          </tr>
+        <!-- Block 11: upsell (bottom-anchored, contained, no social row) -->
+        [IF relatedTourOneName]<tr><td class="it-cell" style="padding:4px 28px 28px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:14px">More {islandName} experiences</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td width="50%" style="vertical-align:top;padding-right:7px">
+                <img src="{relatedTourOneImageUrl}" width="250" height="150" alt="{relatedTourOneName}" style="display:block;width:100%;height:150px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0">
+                <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">{relatedTourOneName}</div>
+                <div style="font-size:12.5px;color:#6B7280;margin-top:3px">{relatedTourOneRating} · {relatedTourOnePrice}</div>
+              </td>
+              <td width="50%" style="vertical-align:top;padding-left:7px">
+                [IF relatedTourTwoName]<img src="{relatedTourTwoImageUrl}" width="250" height="150" alt="{relatedTourTwoName}" style="display:block;width:100%;height:150px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0">
+                <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">{relatedTourTwoName}</div>
+                <div style="font-size:12.5px;color:#6B7280;margin-top:3px">{relatedTourTwoRating} · {relatedTourTwoPrice}</div>[/IF]
+              </td>
+            </tr></table>
+            <a href="{allToursUrl}" style="display:inline-block;margin-top:14px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline">Browse all {islandName} tours</a>
+          </div>
+        </td></tr>[/IF]
 
-          <tr>
-            <td class="it-email-pad" style="padding:4px 28px 28px;">
-              <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px;">
-                <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:14px;">More {islandName} experiences</div>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  <tr>
-                    <td width="50%" class="it-two-col-card" style="vertical-align:top;padding-right:7px;">
-                      <img src="{relatedTourOneImageUrl}" width="250" height="150" alt="{relatedTourOneName}" class="it-card-image" style="display:block;width:100%;height:150px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0;">
-                      <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3;">{relatedTourOneName}</div>
-                      <div style="font-size:12.5px;color:#6B7280;margin-top:3px;">{relatedTourOneRating} · {relatedTourOnePrice}</div>
-                    </td>
-                    <td width="50%" class="it-two-col-card" style="vertical-align:top;padding-left:7px;">
-                      <img src="{relatedTourTwoImageUrl}" width="250" height="150" alt="{relatedTourTwoName}" class="it-card-image" style="display:block;width:100%;height:150px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0;">
-                      <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3;">{relatedTourTwoName}</div>
-                      <div style="font-size:12.5px;color:#6B7280;margin-top:3px;">{relatedTourTwoRating} · {relatedTourTwoPrice}</div>
-                    </td>
-                  </tr>
-                </table>
-                <a href="{allToursUrl}" style="display:inline-block;margin-top:14px;font-size:13.5px;color:#E8611A;font-weight:600;text-decoration:underline;">Browse all {islandName} tours</a>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
+      </table>
+    </td></tr>
   </table>
 </body>
 </html>
