@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { useUpdateDestination, useForceDeleteDestination } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import type { DestinationLocalized } from '@/types/destination';
-import { DestinationQuickEditDialog } from './destination-quick-edit-dialog';
+import { DestinationQuickEditSheet } from './destination-quick-edit-sheet';
 import { DestinationDeleteDialog } from './destination-delete-dialog';
 import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
 
@@ -148,7 +148,7 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DestinationQuickEditDialog
+      <DestinationQuickEditSheet
         destination={destination}
         open={quickEditOpen}
         onOpenChange={setQuickEditOpen}

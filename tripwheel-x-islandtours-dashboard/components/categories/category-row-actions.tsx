@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useUpdateCategory, useForceDeleteCategory } from '@/hooks/categories/use-categories';
 import { useRole } from '@/contexts/role-context';
 import type { CategoryLocalized } from '@/types/category';
-import { CategoryQuickEditDialog } from './category-quick-edit-dialog';
+import { CategoryQuickEditSheet } from './category-quick-edit-sheet';
 import { CategoryDeleteDialog } from './category-delete-dialog';
 import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
 
@@ -148,7 +148,7 @@ export function CategoryRowActions({ category }: CategoryRowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CategoryQuickEditDialog
+      <CategoryQuickEditSheet
         category={category}
         open={quickEditOpen}
         onOpenChange={setQuickEditOpen}

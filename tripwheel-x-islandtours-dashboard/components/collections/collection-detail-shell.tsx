@@ -1,47 +1,27 @@
 'use client';
 
-import { Skeleton } from '@/components/ui/skeleton';
-import { Breadcrumb } from '@/components/breadcrumb';
+import { EntityDetailShell } from '@/components/common/entity-detail-shell';
 
 interface CollectionDetailShellProps {
-  id: string;
-  name: string | undefined;
-  isLoading: boolean;
-  subtitle: string;
-  children: React.ReactNode;
+    id: string;
+    name: string | undefined;
+    isLoading: boolean;
+    subtitle: string;
+    children: React.ReactNode;
 }
 
-export function CollectionDetailShell({
-  id,
-  name,
-  isLoading,
-  subtitle,
-  children,
-}: CollectionDetailShellProps) {
-  return (
-    <div>
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'Collections', href: '/collections' },
-          {
-            label: isLoading ? (
-              <Skeleton className="h-3 w-20 inline-block" />
-            ) : (name ?? 'Collection'),
-            href: `/collections/${id}/edit`,
-          },
-          { label: subtitle },
-        ]}
-      />
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">
-          {isLoading ? <Skeleton className="h-7 w-48 inline-block" /> : (name ?? 'Collection')}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-      </div>
-
-      <div className="max-w-6xl">{children}</div>
-    </div>
-  );
+export function CollectionDetailShell({ id, name, isLoading, subtitle, children }: CollectionDetailShellProps) {
+    return (
+        <EntityDetailShell
+            listLabel='Collections'
+            listHref='/collections'
+            fallbackNoun='Collection'
+            id={id}
+            name={name}
+            isLoading={isLoading}
+            subtitle={subtitle}
+        >
+            {children}
+        </EntityDetailShell>
+    );
 }

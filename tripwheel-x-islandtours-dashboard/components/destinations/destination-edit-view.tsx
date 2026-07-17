@@ -2,17 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useDestination } from '@/hooks/destinations/use-destinations';
 import { DestinationDetailShell } from './destination-detail-shell';
 import { DestinationForm } from './destination-form';
 import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { DestinationPageContentForm } from './destination-page-content-form';
-import { DestinationSeoTab } from './destination-seo-tab';
+import { DestinationSeoTab } from '@/components/common/entity-seo-tab';
 import { FaqManager } from '@/components/faq/faq-manager';
-
-// Priority order: core details first, then localized content, then SEO polish, then FAQs.
-const VALID_TABS = ['details', 'translations', 'page-content', 'seo', 'faqs'] as const;
 
 interface DestinationEditViewProps {
   id: string;
@@ -20,9 +17,6 @@ interface DestinationEditViewProps {
 }
 
 export function DestinationEditView({ id, initialTab }: DestinationEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
   const { data: destination, isLoading } = useDestination(id, 'en');
 
   if (isLoading) {
@@ -52,42 +46,47 @@ export function DestinationEditView({ id, initialTab }: DestinationEditViewProps
       isLoading={false}
       subtitle="Edit destination"
     >
-      <Tabs defaultValue={resolvedTab}>
-        <div className="pb-2 mb-6">
-          <TabsList>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="page-content">Page Content</TabsTrigger>
-            <TabsTrigger value="seo">SEO</TabsTrigger>
-            <TabsTrigger value="faqs">FAQs</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="details">
-          <DestinationForm destination={destination} />
-        </TabsContent>
-
-        <TabsContent value="page-content" className="space-y-6">
-          <EnglishContentEditor type="destination" id={id} />
-          <DestinationPageContentForm destinationId={id} />
-        </TabsContent>
-
-        <TabsContent value="seo">
-          <DestinationSeoTab destination={destination} />
-        </TabsContent>
-
-        <TabsContent value="faqs">
-          <Card>
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-lg font-semibold">
-                FAQs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <FaqManager basePath="/destinations" entityId={id} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <EntityTabs
+        basePath={`/destinations/${id}/edit`}
+        initialTab={initialTab}
+        aliases={{ translations: 'page-content' }}
+        tabs={[
+          {
+            value: 'details',
+            label: 'Details',
+            content: <DestinationForm destination={destination} />,
+          },
+          {
+            value: 'page-content',
+            label: 'Page Content',
+            content: (
+              <div className="space-y-6">
+                <EnglishContentEditor type="destination" id={id} />
+                <DestinationPageContentForm destinationId={id} />
+              </div>
+            ),
+          },
+          {
+            value: 'seo',
+            label: 'SEO',
+            content: <DestinationSeoTab destination={destination} />,
+          },
+          {
+            value: 'faqs',
+            label: 'FAQs',
+            content: (
+              <Card>
+                <CardHeader className="border-b pb-4">
+                  <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <FaqManager basePath="/destinations" entityId={id} />
+                </CardContent>
+              </Card>
+            ),
+          },
+        ]}
+      />
     </DestinationDetailShell>
   );
 }

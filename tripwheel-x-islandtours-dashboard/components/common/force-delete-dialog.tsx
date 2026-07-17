@@ -41,8 +41,8 @@ export function ForceDeleteDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <HugeiconsIcon icon={Delete02Icon} className="size-5 text-destructive" />
+            <div className="flex size-10 items-center justify-center rounded-full bg-danger-subtle shrink-0">
+              <HugeiconsIcon icon={Delete02Icon} className="size-5 text-danger-fg" />
             </div>
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>
@@ -50,10 +50,10 @@ export function ForceDeleteDialog({
             <div className="space-y-2">
               <p>
                 Are you sure you want to permanently delete{' '}
-                <strong className="text-foreground">{entityName}</strong>?
+                <strong className="text-content">{entityName}</strong>?
               </p>
-              <p className="text-xs text-muted-foreground">{consequenceNote}</p>
-              <p className="text-xs font-medium text-destructive">
+              <p className="text-xs text-content-muted">{consequenceNote}</p>
+              <p className="text-xs font-medium text-danger-fg">
                 This action is irreversible and cannot be undone.
               </p>
             </div>

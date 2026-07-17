@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useRole } from '@/contexts/role-context';
 import type { HubLocalized } from '@/types/hub';
-import { HubQuickEditDialog } from './hub-quick-edit-dialog';
+import { HubQuickEditSheet } from './hub-quick-edit-sheet';
 import { HubDeleteDialog } from './hub-delete-dialog';
 
 interface HubRowActionsProps {
@@ -123,7 +123,7 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <HubQuickEditDialog hub={hub} open={quickEditOpen} onOpenChange={setQuickEditOpen} />
+      <HubQuickEditSheet hub={hub} open={quickEditOpen} onOpenChange={setQuickEditOpen} />
       <HubDeleteDialog hub={hub} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   );

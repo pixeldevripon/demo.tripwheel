@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useRole } from '@/contexts/role-context';
 import {
   useHub,
@@ -22,26 +22,11 @@ import { FaqManager } from '@/components/faq/faq-manager';
 import { HubDetailShell } from './hub-detail-shell';
 import { HubForm } from './hub-form';
 import { EnglishContentEditor } from '@/components/translations/english-content-editor';
-import { HubSeoTab } from './hub-seo-tab';
+import { HubSeoTab } from '@/components/common/entity-seo-tab';
 import { HubContentSectionsManager } from './hub-content-sections-manager';
 import { HubOurPicksManager } from './hub-our-picks-manager';
 import { HubComparisonManager } from './hub-comparison-manager';
 import { HubAllowedCategoriesManager } from './hub-allowed-categories-manager';
-
-// Priority order: setup that unlocks the rest first (identity + the category
-// gate tours attach through), then the publish-required localized content
-// (translations), then editorial curation (picks/comparison), then the page
-// content sections (Discover / Local Tips), FAQs and SEO polish last.
-const VALID_TABS = [
-  'details',
-  'allowed-categories',
-  'translations',
-  'our-picks',
-  'comparison',
-  'page-content',
-  'faqs',
-  'seo',
-] as const;
 
 interface HubEditViewProps {
   id: string;
@@ -68,9 +53,6 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
 }
 
 export function HubEditView({ id, initialTab }: HubEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
   const { data: hub, isLoading } = useHub(id, 'en');
   const { data: enTranslation } = useHubTranslationByLocale(id, 'en');
   const { data: contentSections } = useHubContentSections(id);
@@ -198,57 +180,67 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
           </Card>
         )}
 
-        <Tabs defaultValue={resolvedTab}>
-          <div className="pb-2 mb-6">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="allowed-categories">Allowed Categories</TabsTrigger>
-              <TabsTrigger value="our-picks">Our Picks</TabsTrigger>
-              <TabsTrigger value="comparison">Comparison</TabsTrigger>
-              <TabsTrigger value="page-content">Page Content</TabsTrigger>
-              <TabsTrigger value="faqs">FAQs</TabsTrigger>
-              <TabsTrigger value="seo">SEO</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="details">
-            <HubForm hub={hub} />
-          </TabsContent>
-
-          <TabsContent value="allowed-categories">
-            <HubAllowedCategoriesManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="our-picks">
-            <HubOurPicksManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="comparison">
-            <HubComparisonManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="page-content" className="space-y-6">
-            <EnglishContentEditor type="hub" id={id} />
-            <HubContentSectionsManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="faqs">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold">
-                  FAQs
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <FaqManager basePath="/hubs" entityId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="seo">
-            <HubSeoTab hub={hub} />
-          </TabsContent>
-        </Tabs>
+        <EntityTabs
+          basePath={`/hubs/${id}/edit`}
+          initialTab={initialTab}
+          aliases={{
+            translations: 'page-content',
+            'allowed-categories': 'curation',
+            'our-picks': 'curation',
+            comparison: 'curation',
+          }}
+          tabs={[
+            {
+              value: 'details',
+              label: 'Details',
+              content: <HubForm hub={hub} />,
+            },
+            {
+              value: 'curation',
+              label: 'Curation',
+              /* 04 §4.1: the hub's three editorial extras become ONE tab
+                 with stacked sections - 8 tabs → 5, and an admin who learns
+                 destinations has learned hubs. Each manager keeps its own
+                 card, hooks and saves untouched. */
+              content: (
+                <div className="space-y-6">
+                  <HubAllowedCategoriesManager hubId={id} />
+                  <HubOurPicksManager hubId={id} />
+                  <HubComparisonManager hubId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'page-content',
+              label: 'Page Content',
+              content: (
+                <div className="space-y-6">
+                  <EnglishContentEditor type="hub" id={id} />
+                  <HubContentSectionsManager hubId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'faqs',
+              label: 'FAQs',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <FaqManager basePath="/hubs" entityId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'seo',
+              label: 'SEO',
+              content: <HubSeoTab hub={hub} />,
+            },
+          ]}
+        />
       </div>
     </HubDetailShell>
   );

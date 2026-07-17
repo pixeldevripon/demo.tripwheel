@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs, type EntityTab } from '@/components/common/entity-tabs';
 import { FaqManager } from '@/components/faq/faq-manager';
 import { useCategory } from '@/hooks/categories/use-categories';
 import { CategoryDetailShell } from './category-detail-shell';
@@ -10,18 +10,7 @@ import { CategoryForm } from './category-form';
 import { CategorySubcategoriesManager } from './category-subcategories-manager';
 import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { CategoryPageContentForm } from './category-page-content-form';
-import { CategorySeoTab } from './category-seo-tab';
-
-// Priority order: identity first, then structure (sub-categories), then the
-// localized content travelers see, then supplementary content and SEO polish.
-const VALID_TABS = [
-  'details',
-  'sub-categories',
-  'translations',
-  'page-content',
-  'faqs',
-  'seo',
-] as const;
+import { CategorySeoTab } from '@/components/common/entity-seo-tab';
 
 interface CategoryEditViewProps {
   id: string;
@@ -29,9 +18,6 @@ interface CategoryEditViewProps {
 }
 
 export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
   const { data: category, isLoading } = useCategory(id, 'en');
 
   if (isLoading) {
@@ -59,51 +45,56 @@ export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
 
   return (
     <CategoryDetailShell id={id} name={category.name} isLoading={false} subtitle="Edit category">
-      <Tabs defaultValue={resolvedTab}>
-        <div className="pb-2 mb-6">
-          <TabsList>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            {isTopLevel && (
-              <TabsTrigger value="sub-categories">Sub-categories</TabsTrigger>
-            )}
-            <TabsTrigger value="page-content">Page Content</TabsTrigger>
-            <TabsTrigger value="faqs">FAQs</TabsTrigger>
-            <TabsTrigger value="seo">SEO</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="details">
-          <CategoryForm category={category} />
-        </TabsContent>
-
-        {isTopLevel && (
-          <TabsContent value="sub-categories">
-            <CategorySubcategoriesManager parent={category} />
-          </TabsContent>
-        )}
-
-        <TabsContent value="page-content" className="space-y-6">
-          <EnglishContentEditor type="category" id={id} />
-          <CategoryPageContentForm categoryId={id} />
-        </TabsContent>
-
-        <TabsContent value="faqs">
-          <Card>
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-lg font-semibold">
-                FAQs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <FaqManager basePath="/categories" entityId={id} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="seo">
-          <CategorySeoTab category={category} />
-        </TabsContent>
-      </Tabs>
+      <EntityTabs
+        basePath={`/categories/${id}/edit`}
+        initialTab={initialTab}
+        aliases={{ translations: 'page-content' }}
+        tabs={[
+          {
+            value: 'details',
+            label: 'Details',
+            content: <CategoryForm category={category} />,
+          },
+          ...(isTopLevel
+            ? ([
+                {
+                  value: 'sub-categories',
+                  label: 'Sub-categories',
+                  content: <CategorySubcategoriesManager parent={category} />,
+                },
+              ] satisfies EntityTab[])
+            : []),
+          {
+            value: 'page-content',
+            label: 'Page Content',
+            content: (
+              <div className="space-y-6">
+                <EnglishContentEditor type="category" id={id} />
+                <CategoryPageContentForm categoryId={id} />
+              </div>
+            ),
+          },
+          {
+            value: 'faqs',
+            label: 'FAQs',
+            content: (
+              <Card>
+                <CardHeader className="border-b pb-4">
+                  <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <FaqManager basePath="/categories" entityId={id} />
+                </CardContent>
+              </Card>
+            ),
+          },
+          {
+            value: 'seo',
+            label: 'SEO',
+            content: <CategorySeoTab category={category} />,
+          },
+        ]}
+      />
     </CategoryDetailShell>
   );
 }

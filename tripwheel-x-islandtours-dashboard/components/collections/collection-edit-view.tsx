@@ -1,15 +1,16 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Archive02Icon, Cancel01Icon, InformationCircleIcon, PlayIcon, RotateLeft01Icon, Tick02Icon, UndoIcon } from '@hugeicons/core-free-icons';
 
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useRole } from '@/contexts/role-context';
 import {
   useCollection,
@@ -24,19 +25,10 @@ import { CollectionToursManager } from './collection-tours-manager';
 import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { CollectionPageContentForm } from './collection-page-content-form';
 import { FaqManager } from '@/components/faq/faq-manager';
-import { CollectionSeoTab } from './collection-seo-tab';
+import { CollectionSeoTab } from '@/components/common/entity-seo-tab';
 
 // Priority order: identity first, then the ranked membership that IS the product,
 // then the localized content travelers see, supplementary content, and SEO polish.
-const VALID_TABS = [
-  'details',
-  'tours',
-  'translations',
-  'page-content',
-  'faqs',
-  'seo',
-] as const;
-
 const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   DRAFT: 'secondary',
   PUBLISHED: 'default',
@@ -62,10 +54,9 @@ interface CollectionEditViewProps {
 }
 
 export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
-  const [tab, setTab] = useState(resolvedTab);
+  const router = useRouter();
+  const goToTab = (tab: string) =>
+    router.replace(`/collections/${id}/edit?tab=${tab}`, { scroll: false });
   const { data: collection, isLoading, isError } = useCollection(id);
   const { data: enTranslation } = useCollectionTranslationByLocale(id, 'en');
   const { can } = useRole();
@@ -204,56 +195,66 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           </Card>
         )}
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <div className="pb-2 mb-6">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="tours">Tours</TabsTrigger>
-              <TabsTrigger value="page-content">Page Content</TabsTrigger>
-              <TabsTrigger value="faqs">FAQs</TabsTrigger>
-              <TabsTrigger value="seo">SEO</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="details">
-            <CollectionForm collection={collection} onManageTours={() => setTab('tours')} />
-          </TabsContent>
-
-          <TabsContent value="tours">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold">
-                  Tours
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <CollectionToursManager collectionId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="page-content" className="space-y-6">
-            <EnglishContentEditor type="collection" id={id} />
-            <CollectionPageContentForm collectionId={id} />
-          </TabsContent>
-
-          <TabsContent value="faqs">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold">
-                  FAQs
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <FaqManager basePath="/collections" entityId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="seo">
-            <CollectionSeoTab collection={collection} />
-          </TabsContent>
-        </Tabs>
+        <EntityTabs
+          basePath={`/collections/${id}/edit`}
+          initialTab={initialTab}
+          aliases={{ translations: 'page-content' }}
+          tabs={[
+            {
+              value: 'details',
+              label: 'Details',
+              content: (
+                <CollectionForm
+                  collection={collection}
+                  onManageTours={() => goToTab('tours')}
+                />
+              ),
+            },
+            {
+              value: 'tours',
+              label: 'Tours',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">Tours</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <CollectionToursManager collectionId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'page-content',
+              label: 'Page Content',
+              content: (
+                <div className="space-y-6">
+                  <EnglishContentEditor type="collection" id={id} />
+                  <CollectionPageContentForm collectionId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'faqs',
+              label: 'FAQs',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <FaqManager basePath="/collections" entityId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'seo',
+              label: 'SEO',
+              content: <CollectionSeoTab collection={collection} />,
+            },
+          ]}
+        />
       </div>
     </CollectionDetailShell>
   );
