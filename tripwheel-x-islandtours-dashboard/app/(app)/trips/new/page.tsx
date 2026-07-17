@@ -15,7 +15,7 @@ export default function NewTripPage() {
         <h1 className="text-2xl font-semibold">New Trip</h1>
         <p className="text-sm text-muted-foreground mt-1">Create a new tour listing</p>
       </div>
-      <div className="max-w-6xl">
+      <div className="max-w-3xl">
         <TripForm />
       </div>
     </div>
