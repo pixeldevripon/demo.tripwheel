@@ -1,41 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useTableState } from '@/components/data-table/use-table-state';
 import { CategoriesTable } from './categories-table';
 import { useCategories } from '@/hooks/categories/use-categories';
 
 export function CategoriesListView() {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [filters, setFilters] = useState<Record<string, string | undefined>>({ isActive: 'true' });
+    const { page, limit, filters, setPage, setLimit, setFilter } =
+        useTableState();
 
-  const { data, isLoading } = useCategories({
-    page,
-    limit,
-    locale: 'en',
-    ...(filters.isActive !== undefined ? { isActive: filters.isActive === 'true' } : {}),
-  });
+    // isActive default is ACTIVE; 'all' in the URL means no filter.
+    const isActiveParam =
+        filters.isActive === 'all'
+            ? {}
+            : { isActive: (filters.isActive ?? 'true') === 'true' };
 
-  function handleFilterChange(key: string, value: string | undefined) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
-  }
+    const { data, isLoading } = useCategories({
+        page,
+        limit,
+        locale: 'en',
+        ...isActiveParam,
+    });
 
-  function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1);
-  }
-
-  return (
-    <CategoriesTable
-      data={data?.data ?? []}
-      total={data?.total ?? 0}
-      page={page}
-      limit={limit}
-      isLoading={isLoading}
-      onPageChange={setPage}
-      onLimitChange={handleLimitChange}
-      onFilterChange={handleFilterChange}
-    />
-  );
+    return (
+        <CategoriesTable
+            data={data?.data ?? []}
+            total={data?.total ?? 0}
+            page={page}
+            limit={limit}
+            isLoading={isLoading}
+            filters={filters}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+            onFilterChange={setFilter}
+        />
+    );
 }

@@ -52,13 +52,14 @@ export function DestinationsTable({
   const { mutate: deleteDestination } = useDeleteDestination();
   const { can } = useRole();
 
-  // isActive arrives as 'true'/'false'; absent = all. Default view is active.
+  // Default view is ACTIVE (matches the old table). 'all' is explicit so the
+  // URL can express it; absence means the default.
   const statusValue =
-    filters.isActive === 'true'
-      ? 'active'
-      : filters.isActive === 'false'
-        ? 'inactive'
-        : 'all';
+    filters.isActive === 'false'
+      ? 'inactive'
+      : filters.isActive === 'all'
+        ? 'all'
+        : 'active';
 
   const addButton = can('CREATE_DESTINATION') && (
     <Button asChild size='sm'>
@@ -94,7 +95,7 @@ export function DestinationsTable({
             onValueChange={(v) =>
               onFilterChange(
                 'isActive',
-                v === 'all' ? undefined : v === 'active' ? 'true' : 'false',
+                v === 'all' ? 'all' : v === 'active' ? undefined : 'false',
               )
             }
           >

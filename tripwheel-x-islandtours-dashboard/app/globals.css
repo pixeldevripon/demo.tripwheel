@@ -8,6 +8,8 @@
  * NOT a leftover import - the login screens are intentionally brand-styled.
  * See the header of login-tokens.css. */
 @import './login-tokens.css';
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /* 03 §3. `:where` (not `:is`) so the variant adds ZERO specificity: a dark:
  * utility then beats its base utility on source order alone, which is how
@@ -150,7 +152,7 @@
     --line-subtle: var(--color-n-100);
     --line-control: var(--color-n-450); /* 3.09:1 - WCAG 1.4.11 */
 
-    --primary: var(--color-brand-600);
+    --primary: oklch(0.48 0.20 260.48);
     --primary-hover: var(--color-brand-700);
     --primary-content: var(--color-n-0);
     --primary-subtle: var(--color-brand-50);
@@ -178,11 +180,11 @@
     --info-fg: oklch(0.45 0.12 250);
     --info-solid: oklch(0.55 0.15 250);
 
-    --chart-1: oklch(0.55 0.12 220);
-    --chart-2: oklch(0.62 0.15 25);
-    --chart-3: oklch(0.58 0.13 150);
-    --chart-4: oklch(0.7 0.14 75);
-    --chart-5: oklch(0.55 0.14 300);
+    --chart-1: oklch(0.48 0.20 260.48);
+    --chart-2: oklch(0.56 0.24 260.95);
+    --chart-3: oklch(0.40 0.16 259.09);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
     --chart-6: oklch(0.6 0.11 190);
 
     /* Star-rating gold. NOT a status - ratings must never borrow the warning
@@ -198,43 +200,41 @@
     --elevation-lg: 0 12px 20px -4px oklch(0.21 0.01 250 / 0.12),
         0 4px 8px -4px oklch(0.21 0.01 250 / 0.08);
 
-    --sidebar: var(--color-n-50);
+    --sidebar: oklch(0.97 0.00 264.70);
     --sidebar-content: var(--color-n-700);
     --sidebar-active: var(--color-brand-50);
     --sidebar-active-content: var(--color-brand-700);
     --sidebar-line: var(--color-n-200);
 
     /* ── Compatibility aliases (see the block comment below) ── */
-    --background: var(--surface);
-    --foreground: var(--content);
-    --card: var(--surface-raised);
-    --card-foreground: var(--content);
-    --popover: var(--surface-overlay);
-    --popover-foreground: var(--content);
-    --primary-foreground: var(--primary-content);
-    --secondary: var(--surface-inset);
-    --secondary-foreground: var(--content);
-    --muted: var(--surface-sunken);
-    --muted-foreground: var(--content-muted);
-    --accent: var(--surface-inset);
-    --accent-foreground: var(--content);
-    --destructive: var(--danger-solid);
+    --card: oklch(0.9793 0.0083 271.33);
+    --card-foreground: oklch(0.21 0.03 264.67);
+    --popover: oklch(1.00 0 0);
+    --popover-foreground: oklch(0.21 0.03 264.67);
+    --primary-foreground: oklch(1.00 0 0);
+    --secondary: oklch(0.9142 0.0208 274.02);
+    --secondary-foreground: oklch(0.37 0.03 259.73);
+    --muted: oklch(0.9443 0.0165 274.82);
+    --muted-foreground: oklch(0.55 0.02 264.37);
+    --accent: oklch(0.95 0.02 261.78);
+    --accent-foreground: oklch(0.48 0.20 260.48);
+    --destructive: oklch(0.58 0.22 27.33);
     --destructive-foreground: var(--content-inverse); /* defect B-3 */
-    --border: var(--line);
+    --border: oklch(0.8893 0.0169 259.42);
     /* shadcn uses --input for the input BORDER, which is exactly WCAG 1.4.11's
      * "boundary is the only affordance" case - so it maps to --line-control,
      * not --line. This is the alias that makes the gate mean something. */
-    --input: var(--line-control);
-    --ring: var(--focus-ring);
-    --radius: var(--radius-md);
+    --input: oklch(0.9002 0.013 266.69);
+    --ring: oklch(0.48 0.20 260.48);
+    --radius: 0.625rem;
 
-    --sidebar-foreground: var(--sidebar-content);
-    --sidebar-primary: var(--primary);
-    --sidebar-primary-foreground: var(--primary-content);
-    --sidebar-accent: var(--sidebar-active);
-    --sidebar-accent-foreground: var(--sidebar-active-content);
-    --sidebar-border: var(--sidebar-line);
-    --sidebar-ring: var(--focus-ring);
+    --sidebar-foreground: oklch(0.21 0.03 264.67);
+    --sidebar-primary: oklch(0.48 0.20 260.48);
+    --sidebar-primary-foreground: oklch(1.00 0 0);
+    --sidebar-accent: oklch(0.95 0.02 261.78);
+    --sidebar-accent-foreground: oklch(0.48 0.20 260.48);
+    --sidebar-border: oklch(0.93 0.01 264.60);
+    --sidebar-ring: oklch(0.48 0.20 260.48);
 
     --success: var(--success-solid);
     --success-foreground: var(--color-n-0);
@@ -250,6 +250,16 @@
      * the pane's own backdrop. */
     --shell-gutter: var(--sidebar);
     --shell-content: var(--surface);
+    --background: oklch(0.9555 0.0125 271.28);
+    --foreground: oklch(0.21 0.03 264.67);
+    --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+    --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+    --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+    --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+    --shadow: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+    --shadow-md: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 2px 4px -1px oklch(0.00 0 0 / 0.10);
+    --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
+    --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
 }
 
 .dark {
@@ -271,7 +281,7 @@
      * reading as a border. 3.39:1 on --surface, 3.24:1 on --surface-raised. */
     --line-control: oklch(0.5 0.014 250);
 
-    --primary: var(--color-brand-400);
+    --primary: oklch(0.56 0.24 260.95);
     --primary-hover: var(--color-brand-300);
     --primary-content: var(--color-n-1000);
     --primary-subtle: var(--color-brand-900);
@@ -299,11 +309,11 @@
     --info-fg: oklch(0.82 0.12 250);
     --info-solid: oklch(0.62 0.15 250);
 
-    --chart-1: oklch(0.7 0.12 220);
-    --chart-2: oklch(0.72 0.15 25);
-    --chart-3: oklch(0.72 0.13 150);
-    --chart-4: oklch(0.8 0.14 75);
-    --chart-5: oklch(0.7 0.14 300);
+    --chart-1: oklch(0.56 0.24 260.95);
+    --chart-2: oklch(0.48 0.20 260.48);
+    --chart-3: oklch(0.69 0.17 256.00);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
     --chart-6: oklch(0.74 0.11 190);
 
     --rating: oklch(0.8 0.15 78);
@@ -316,7 +326,7 @@
     --elevation-lg: 0 12px 20px -4px oklch(0 0 0 / 0.55),
         0 4px 8px -4px oklch(0 0 0 / 0.4);
 
-    --sidebar: var(--color-n-950);
+    --sidebar: oklch(0.26 0.03 262.71);
     --sidebar-content: var(--color-n-400);
     --sidebar-active: var(--color-brand-900);
     --sidebar-active-content: var(--color-brand-200);
@@ -329,6 +339,30 @@
     --success-foreground: var(--color-n-1000);
     --warning-foreground: var(--color-n-1000);
     --info-foreground: var(--color-n-1000);
+    --background: oklch(0.26 0.03 262.71);
+    --foreground: oklch(0.93 0.01 264.60);
+    --card: oklch(0.3452 0.0243 255.69);
+    --card-foreground: oklch(0.93 0.01 264.60);
+    --popover: oklch(0.3452 0.0243 255.69);
+    --popover-foreground: oklch(0.93 0.01 264.60);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.35 0.04 262.16);
+    --secondary-foreground: oklch(0.93 0.01 264.60);
+    --muted: oklch(0.30 0.03 261.75);
+    --muted-foreground: oklch(0.71 0.02 261.33);
+    --accent: oklch(0.33 0.04 264.82);
+    --accent-foreground: oklch(0.93 0.01 264.60);
+    --destructive: oklch(0.64 0.21 25.33);
+    --border: oklch(0.35 0.04 262.16);
+    --input: oklch(0.35 0.04 262.16);
+    --ring: oklch(0.56 0.24 260.95);
+    --sidebar-foreground: oklch(0.93 0.01 264.60);
+    --sidebar-primary: oklch(0.56 0.24 260.95);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.33 0.04 264.82);
+    --sidebar-accent-foreground: oklch(0.93 0.01 264.60);
+    --sidebar-border: oklch(0.35 0.04 262.16);
+    --sidebar-ring: oklch(0.56 0.24 260.95);
 }
 
 /* ─── Compatibility aliases: DELETE AT PHASE 20 ───────────────────────────
@@ -463,6 +497,20 @@
 
     --color-shell-gutter: var(--shell-gutter);
     --color-shell-content: var(--shell-content);
+    --font-inter: var(--font-inter);
+    --font-source-serif-4: var(--font-source-serif-4);
+    --font-ibm-plex-mono: var(--font-ibm-plex-mono);
+    --shadow-xl: var(--shadow-xl);
+    --shadow: var(--shadow);
+    --shadow-2xl: var(--shadow-2xl);
+    --shadow-2xs: var(--shadow-2xs);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 @layer base {
@@ -477,7 +525,7 @@
         cursor: pointer;
     }
     body {
-        @apply bg-surface text-content font-sans antialiased;
+        @apply font-sans antialiased bg-background text-foreground;
         font-size: var(--text-sm); /* 14px default, not the browser's 16px */
         letter-spacing: var(--tracking-normal);
     }
@@ -487,6 +535,63 @@
     :focus-visible {
         outline: 2px solid var(--focus-ring);
         outline-offset: 2px;
+    }
+  * {
+    @apply border-border outline-ring/50;
+    }
+  :root {
+    --font-heading: var(--font-inter);
+    --font-body: var(--font-source-serif-4);
+    --font-mono: var(--font-ibm-plex-mono);
+    }
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 2.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    }
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 1.875rem;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    }
+  h3 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    }
+  h4 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    }
+  h5 {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    }
+  h6 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 600;
+    }
+  body, p {
+    font-family: var(--font-body);
+    line-height: 1.65;
+    }
+  code, pre {
+    font-family: var(--font-mono);
     }
 }
 
