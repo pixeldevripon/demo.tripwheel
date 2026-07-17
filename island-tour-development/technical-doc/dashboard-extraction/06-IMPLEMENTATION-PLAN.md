@@ -26,7 +26,8 @@
 | **12 · StatusBadge** | **C** | **DONE** - zero palette classes repo-wide; 5 conventions deleted (audit counted 4) | `9418b29` (dashboard, `ui-fix`) |
 | **13 · Fonts, icons, primitives** | **C** | **DONE** - Playfair dropped (user), hugeicons KEPT (user), B-4 fixed, buttons de-shouted | `aa91c02` (dashboard, `ui-fix`) |
 | **14 · Command palette + IA** | **C/D** | **DONE** + de-shout follow-up `a1a6e04` (uppercase dies outside micro-labels, user screenshot) | `64a4835` (dashboard, `ui-fix`) |
-| **15+** | **D** | **NEXT** - per-module redesigns | - |
+| **15 · DataTable** | **D** | **DONE** - 11/11 forks converted (spec counted 10); URL-synced state; 3,552 -> 2,524 LOC incl. the new system | `17a1fd5` + 5 commits (dashboard, `ui-fix`) |
+| **16 · Tours: create + readiness** | **D** | **NEXT** | - |
 
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
@@ -1147,7 +1148,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 ---
 
-## Phase 15 · DataTable
+## Phase 15 · DataTable - **DONE**
 
 **Objective** One table system; 10 forks deleted.
 
@@ -1162,6 +1163,49 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Validation** All 10 tables use it. One pagination strategy, one search, one skeleton, one empty state. `PAGE_SIZE_OPTIONS` declared once. Parity checks 12, 35, 41.
 
 **Rollback** Revert (large PR - consider one table per commit inside it).
+
+> ### EXECUTED 2026-07-17 - `a28083e`..`f9fbc0b` (dashboard, branch `ui-fix`)
+>
+> **The R7 test passed: 11/11 forks converted, zero `useReactTable` calls outside
+> `components/data-table/`, `PAGE_SIZE_OPTIONS` declared exactly once, one pagination/search/
+> skeleton/empty-state.** The audit counted 10 forks; locals-favourites made 11. Net: 3,552 fork
+> lines -> 2,524 including the entire new system. Every list-view moved to `use-table-state`
+> (URL-synced, R10) - reload, back-button and shared links restore the exact view; the twice-written
+> 500ms debounce machine is retired everywhere.
+>
+> **Spec correction:** `05 §7`'s "the three client-paginated tables move to server pagination" is
+> **infeasible without backend changes** (their endpoints return unpaged arrays), and the backend is
+> untouchable by hard constraint. DataTable supports both modes; the trio (collections, attributes,
+> spotlight) stay client-paginated behind the same UI.
+>
+> **The turn also carried a stream of user-driven design decisions, all live:**
+> - **Boxed inputs per `03 §5.2`** (user: "input fields you not designed") - underline fields died;
+>   input/textarea/select/input-group get `border-input` (= `--line-control`), radius-sm, 36px,
+>   16px font, focus ring; then Vega depth (`bg-surface-raised shadow-xs`).
+> - **Radius VALUES re-cut to shadcn "Vega"** (user decision): 8/10/12/16px on the same role
+>   mapping (sm=inputs, md=buttons, lg=cards, xl=dialogs). One token block changed; every primitive
+>   followed - the token system paying rent.
+> - **Command palette resized** (user request): `w-[92vw] max-w-2xl sm:max-w-2xl` (the `sm:` prefix
+>   is load-bearing - Dialog's base `sm:max-w-md` beats an unprefixed `max-w-2xl` in tailwind-merge),
+>   55vh list, 48px/16px input, wider header trigger.
+> - **The studio-theme saga:** the user applied a shadcn/studio dump THREE times (27 ui files,
+>   `lib/utils.ts` reduced to bare `cn` - deleting `formatDate`/`toSlug`/`formatFileSize` - fonts to
+>   Source Serif 4 + IBM Plex, colors to a blue hue-260 palette, a `--radius` calc CYCLE that
+>   collapses every radius, serif `body,p` rules). Reverted twice; on the third the user chose
+>   "studio blue done properly", the blue system was built and gate-checked GREEN - then the user
+>   saw it and made the final call: **teal stays**. Restored from HEAD (one command, because every
+>   prior state was committed). KEPT from studio: `components.json` registry style `radix-vega`.
+>   NOT kept: tabler icons (no third icon library), serif body, IBM Plex mono.
+> - **Form width standard** (user call): create forms are `max-w-6xl` with `sm:grid-cols-2`
+>   sections - the destination form is the reference; the trip form's earlier 3xl cap squeezed its
+>   grids and is reverted.
+> - Cards densified 32->24px padding; card gains its §5.6 border+shadow-xs.
+>
+> **Lesson, structural:** external theme dumps and this token system cannot coexist - the dump
+> writes literals over aliases, deletes repo utilities living in `lib/utils.ts`, and its derived
+> radius block (`--radius-sm: calc(var(--radius) * 0.6)` with `--radius: var(--radius-md)`) forms a
+> cycle that zeroes every radius. Taste changes route through the token block - the Vega re-cut was
+> ONE edit. Frequent checkpoint commits made each overwrite a one-command restore.
 
 ---
 
