@@ -383,13 +383,13 @@
 
 ---
 
-## Phase 8 · Env, Docker, staging
+## Phase 8 · Env, ~~Docker~~ Vercel, staging
 
 **Objective** Deployed to a staging subdomain.
 
-**Files** `Dockerfile`, `.dockerignore`, `.env.example`, `.env.production.example`, `next.config.ts` (`output: 'standalone'`)
+**Files** ~~`Dockerfile`, `.dockerignore`~~ (Vercel — see EXECUTED below), `.env.local.example`, `.env.production.example`, `next.config.ts` (~~`output: 'standalone'`~~ — removed), `package.json` + `playwright.config.ts` (port 3001)
 
-**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.tripwheel.io`, `CORS_ORIGINS` += `https://dashboard.tripwheel.io`.
+**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.islandtours.esenc.cloud` (interim topology — `.tripwheel.io` is the *target*, and was wrong here), `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` and `http://localhost:3001`.
 
 **Dependencies** Phases 5-7
 
@@ -398,6 +398,71 @@
 **Validation** Loads, authenticates, lists tours on staging.
 
 **Rollback** Staging only.
+
+> **EXECUTED 2026-07-17 — with one approved deviation and five corrections.**
+>
+> **DEVIATION (your call, asked before any code was written): Vercel, not Docker.**
+> The phase as written had the dashboard containerised while its sibling public app
+> deploys to Vercel — `docker-compose.yml` says so outright ("the frontend is NOT
+> here"). You chose Vercel for both. Consequences:
+> - **No `Dockerfile`, no `.dockerignore`.** They were never created.
+> - **`output: 'standalone'` REMOVED** from `next.config.ts`. Phase 5 added it *for*
+>   the Docker image. It is a self-hosting feature (emits `.next/standalone` + a
+>   minimal `server.js` to run instead of `next start`); Vercel builds through its
+>   own pipeline and ignores it. Verified against the Next docs, and the build no
+>   longer emits `.next/standalone`. The config now carries a comment saying why it
+>   is absent, so it is not "helpfully" restored later.
+> - The `NEXT_PUBLIC_*`-as-build-ARG hazard that made Docker risky here is moot —
+>   Vercel handles build-time inlining. It is still true that changing a
+>   `NEXT_PUBLIC_*` in Vercel needs a **redeploy**, not a restart.
+>
+> **1. `COOKIE_DOMAIN` is `.islandtours.esenc.cloud`, NOT `.tripwheel.io`.** This
+> line was stale: `02` §7 already had it right and calls it "unchanged, already the
+> default". `.tripwheel.io` is the *target* topology, not the interim one in force.
+> Same error in `02` §11 check 9 — **corrected there too.** Shipping the value as
+> written would have caused the exact login loop this phase lists as its own risk.
+>
+> **2. `CORS_ORIGINS` is `https://dashboard.islandtours.esenc.cloud`** for the same
+> reason. Documented in both backend env examples, with *why* it matters: it feeds
+> Better Auth `trustedOrigins` as well as CORS, so a miss rejects sign-in, not just
+> fetches.
+>
+> **3. PORT COLLISION — a real defect the split introduced, fixed here.** The repo
+> contradicted itself: `playwright.config.ts` ran `pnpm dev` and tested
+> `localhost:3000`, while `.env.local.example` pointed `REVALIDATE_TARGET_URL` at
+> `localhost:3000` as the **public site**. Both cannot own 3000. Worse,
+> `reuseExistingServer: true` meant Playwright would silently attach to a running
+> public site and run the dashboard suite against the wrong app. **The dashboard is
+> now pinned to 3001** (`pnpm dev`/`start`, Playwright, README, env example), and
+> the backend's dev `CORS_ORIGINS` lists `http://localhost:3001` — without which
+> every dashboard API call is CORS-blocked locally, since they run in the browser
+> with credentials.
+>
+> **4. `NEXT_PUBLIC_SITE_URL` (in `02` §7's table) is a ghost — no code reads it.**
+> The dashboard reads exactly seven vars: `NEXT_PUBLIC_BACKEND_URL`,
+> `INTERNAL_API_SECRET`, `COOKIE_DOMAIN`, `REVALIDATE_TARGET_URL`,
+> `REVALIDATE_SECRET`, `NEXT_PUBLIC_OPEN_WEATHER_API_KEY`,
+> `NEXT_PUBLIC_STAGING_APP_URL` (+ `NODE_ENV`). All seven are in both env examples;
+> `COOKIE_DOMAIN` was missing from `.env.local.example` and was added there as an
+> explicit "deliberately unset in dev" (`proxy.ts` only reads it when
+> `NODE_ENV === 'production'`). Env files and code now match one-for-one.
+>
+> **5. `serverActions.bodySizeLimit: '100mb'` is vestigial, and its comment was
+> false.** The comment claimed "media uploads post large payloads through Server
+> Actions... load-bearing rather than a leftover." They do not: `mediaApi.upload`
+> goes browser → backend directly via `apiFetch` and never traverses Next. **No
+> Server Action in the app takes a file** — the five that exist all carry small
+> JSON. On Vercel the setting is also unenforceable: the platform caps function
+> request bodies at **4.5 MB** and returns 413 `FUNCTION_PAYLOAD_TOO_LARGE` before
+> Next is reached. **The setting was left in place** (deleting app config is not a
+> deploy phase's job) but the comment now states the truth. **Candidate deletion in
+> a later phase.**
+>
+> **VALIDATION IS ONLY PARTLY MET.** `pnpm build` is green, routes serve at the
+> root, and no `.next/standalone` is emitted. The rest of the stated validation —
+> "loads, authenticates, lists tours **on staging**" — needs the Vercel project and
+> DNS, which are yours to create. **Phase 9 parity stays blocked until that is
+> done**, and so does Stage D.
 
 ---
 

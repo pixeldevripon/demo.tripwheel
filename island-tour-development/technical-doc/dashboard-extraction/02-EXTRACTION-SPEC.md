@@ -381,7 +381,9 @@ Browser -> dashboard.tripwheel.io
 
 ### 5.2 Cookie handling
 
-`clearSessionCookies()` matches by substring (`name.includes('session_token')`, `'session_data'`), which covers `__Secure-` prefixes. Keep. Set `COOKIE_DOMAIN=.tripwheel.io` in both the dashboard and the backend.
+`clearSessionCookies()` matches by substring (`name.includes('session_token')`, `'session_data'`), which covers `__Secure-` prefixes. Keep. Set `COOKIE_DOMAIN` to the **same** value in both the dashboard and the backend — a mismatch is a login loop.
+
+> **Corrected 2026-07-17 (Phase 8):** that value is **`.islandtours.esenc.cloud`**, the interim topology in force and already the backend's default (§7). This line previously said `.tripwheel.io`, which is the *deferred target* (`02C`) — setting it today would break login.
 
 ### 5.3 New `proxy.ts`
 
@@ -424,7 +426,7 @@ Per the project's 3-file rule for new env vars, adapted to the dashboard repo: *
 | `NEXT_PUBLIC_BACKEND_URL` | yes | Backend base | `https://api.islandtours.esenc.cloud` |
 | `INTERNAL_API_SECRET` | **no** | SSR throttle exemption; must match backend | 32+ chars |
 | `COOKIE_DOMAIN` | **no** | Session cookie scope; must match backend | `.islandtours.esenc.cloud` |
-| `NEXT_PUBLIC_SITE_URL` | yes | Public storefront, for "View on site" links | `https://islandtours.esenc.cloud` |
+| ~~`NEXT_PUBLIC_SITE_URL`~~ | — | **GHOST — does not exist. Do not add it.** Verified in Phase 8: no code reads it. `NEXT_PUBLIC_STAGING_APP_URL` (below) is the var that actually backs the "view site" link. | — |
 | `REVALIDATE_TARGET_URL` | **no** | Public revalidate endpoint (02B) | `https://islandtours.esenc.cloud/api/revalidate` |
 | `REVALIDATE_SECRET` | **no** | Shared secret for that endpoint (02B); must match public site | 32+ chars |
 | `NEXT_PUBLIC_OPEN_WEATHER_API_KEY` | yes | Header weather widget (§11) | |
@@ -435,7 +437,14 @@ Per the project's 3-file rule for new env vars, adapted to the dashboard repo: *
 | Var | New value |
 |---|---|
 | `COOKIE_DOMAIN` | `.islandtours.esenc.cloud` - **unchanged, already the default** |
-| `CORS_ORIGINS` | add `https://dashboard.islandtours.esenc.cloud`; keep the public origin. Feeds both CORS (`main.ts:43`) and Better Auth `trustedOrigins` (`auth.instance.ts:17`). |
+| `CORS_ORIGINS` | add `https://dashboard.islandtours.esenc.cloud`; keep the public origin. Feeds both CORS (`main.ts:43`) and Better Auth `trustedOrigins` (`auth.instance.ts:17`) — so a miss rejects **sign-in**, not just fetches. **In dev, also add `http://localhost:3001`** (below). |
+
+> **Added 2026-07-17 (Phase 8) — local port map.** The split turned one app into two,
+> and they cannot share a port: **5050** backend · **3000** public site · **3001**
+> dashboard (pinned in its `pnpm dev`). 3000 must stay the public site's — it is what
+> `REVALIDATE_TARGET_URL` points at. The dashboard's API calls run in the *browser*
+> with credentials, so `http://localhost:3001` in the backend's dev `CORS_ORIGINS` is
+> required or every local dashboard request is CORS-blocked.
 
 **Public-site-side changes required:** `REVALIDATE_SECRET` (matching), and the new `/api/revalidate` route handler (02B).
 
@@ -512,7 +521,7 @@ Run against production data on the staging subdomain, before DNS cutover. **Ever
 | 6 | Sidebar shows **exactly** the operator's permitted items (diff against production, item by item) | |
 | 7 | Sidebar shows exactly the admin's permitted items | |
 | 8 | Logout clears session, redirects, and back-button does not restore the dashboard | |
-| 9 | Session cookie is scoped `.tripwheel.io` and survives a reload | |
+| 9 | Session cookie is scoped **`.islandtours.esenc.cloud`** (the interim topology, and what §7 specifies — `.tripwheel.io` here was stale) and survives a reload | |
 | 10 | Dark mode toggles and persists | |
 | 11 | Legacy `/dashboard/tours` 308s to `/tours` | |
 
