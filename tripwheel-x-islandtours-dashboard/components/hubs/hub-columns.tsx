@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Location01Icon, Navigation03Icon, SquareLock02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, LockIcon, NavigationIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/status-badge';
@@ -61,7 +63,7 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
         return (
           <div className="flex items-center gap-3">
             <div className="size-8 shrink-0 overflow-hidden rounded-sm bg-muted flex items-center justify-center">
-              <NavigationIcon className="size-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Navigation03Icon} className="size-4 text-muted-foreground" />
             </div>
             <Link
               href={`/hubs/${hub.id}`}
@@ -81,7 +83,7 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
         const name = destinationsMap.get(row.original.destinationId);
         return name ? (
           <div className="flex items-center gap-1.5">
-            <MapPinIcon className="size-3 text-muted-foreground shrink-0" />
+            <HugeiconsIcon icon={Location01Icon} className="size-3 text-muted-foreground shrink-0" />
             <span className="text-sm">{name}</span>
           </div>
         ) : (
@@ -125,7 +127,7 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
         if (!row.original.isSeeded) return null;
         return (
           <div className="flex items-center gap-1.5">
-            <LockIcon className="size-3 text-muted-foreground" />
+            <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
             <Badge variant="secondary">Protected</Badge>
           </div>
         );

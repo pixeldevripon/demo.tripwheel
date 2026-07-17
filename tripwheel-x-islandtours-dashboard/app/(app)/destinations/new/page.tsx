@@ -1,4 +1,5 @@
-import { MapPinIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Location01Icon } from '@hugeicons/core-free-icons';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { DestinationForm } from '@/components/destinations/destination-form';
 
@@ -14,7 +15,7 @@ export default function NewDestinationPage() {
       />
 
       <div className="flex items-center gap-2 mb-6">
-        <MapPinIcon className="size-5 text-muted-foreground" />
+        <HugeiconsIcon icon={Location01Icon} className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold">
           Add Destination
         </h1>

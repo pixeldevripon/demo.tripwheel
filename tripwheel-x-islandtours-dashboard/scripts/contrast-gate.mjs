@@ -46,52 +46,54 @@ const parse = (s) => {
     return oklchToSrgb(+m[1], +m[2], +m[3]);
 };
 
-// ── Ramps (mode-independent) ────────────────────────────────────────────
+// ── VEGA RE-SKIN VALUES (2026-07-17) ────────────────────────────────────
+// Mirrors app/globals.css exactly and MUST stay in lockstep with it.
+// Colors: the gate-green Vega-tuned system (user decision after evaluating
+// the raw preset: "keep the color as previous").
 const N = {
     0: 'oklch(1 0 0)',
-    25: 'oklch(0.985 0.002 250)',
-    50: 'oklch(0.97 0.003 250)',
-    100: 'oklch(0.94 0.005 250)',
-    200: 'oklch(0.90 0.007 250)',
-    300: 'oklch(0.84 0.009 250)',
-    400: 'oklch(0.70 0.012 250)',
-    450: 'oklch(0.65 0.012 250)',
-    500: 'oklch(0.58 0.014 250)',
-    550: 'oklch(0.55 0.014 250)',
-    600: 'oklch(0.48 0.014 250)',
-    700: 'oklch(0.38 0.013 250)',
-    800: 'oklch(0.28 0.012 250)',
-    900: 'oklch(0.21 0.010 250)',
-    950: 'oklch(0.16 0.008 250)',
-    1000: 'oklch(0.12 0.006 250)',
+    25: 'oklch(0.9793 0.0083 271)',
+    50: 'oklch(0.9555 0.0125 271)',
+    100: 'oklch(0.9443 0.0165 275)',
+    200: 'oklch(0.9142 0.0208 274)',
+    300: 'oklch(0.8893 0.0169 262)',
+    400: 'oklch(0.70 0.014 265)',
+    450: 'oklch(0.62 0.014 265)',
+    500: 'oklch(0.53 0.015 265)',
+    600: 'oklch(0.47 0.015 265)',
+    700: 'oklch(0.38 0.014 265)',
+    800: 'oklch(0.28 0.012 268)',
+    900: 'oklch(0.21 0.012 268)',
+    950: 'oklch(0.15 0.009 272)',
+    1000: 'oklch(0.10 0.006 275)',
 };
 const B = {
-    50: 'oklch(0.97 0.015 220)',
-    100: 'oklch(0.93 0.032 220)',
-    200: 'oklch(0.87 0.055 220)',
-    300: 'oklch(0.78 0.082 220)',
-    400: 'oklch(0.68 0.104 220)',
-    500: 'oklch(0.60 0.118 220)',
-    600: 'oklch(0.52 0.122 220)',
-    700: 'oklch(0.44 0.104 220)',
-    800: 'oklch(0.36 0.082 220)',
-    900: 'oklch(0.28 0.060 220)',
+    50: 'oklch(0.97 0.018 214)',
+    100: 'oklch(0.94 0.035 214)',
+    200: 'oklch(0.88 0.06 214)',
+    300: 'oklch(0.79 0.085 214)',
+    400: 'oklch(0.70 0.10 214)',
+    500: 'oklch(0.60 0.11 214)',
+    600: 'oklch(0.52 0.11 214)',
+    700: 'oklch(0.45 0.10 214)',
+    800: 'oklch(0.37 0.08 214)',
+    900: 'oklch(0.29 0.055 214)',
 };
 
 const light = {
-    surface: N[25],
-    'surface-raised': N[0],
-    'surface-inset': N[100],
+    surface: N[50],
+    'surface-raised': N[25],
+    'surface-inset': N[200],
     content: N[900],
     'content-muted': N[600],
-    'content-subtle': N[550],
-    line: N[200],
+    'content-subtle': N[500],
+    line: N[300],
     'line-control': N[450],
     primary: B[600],
     'primary-content': N[0],
     'primary-subtle': B[50],
     'primary-subtle-content': B[700],
-    'focus-ring': B[500],
+    'focus-ring': 'oklch(0.48 0.20 260)',
     'success-subtle': 'oklch(0.95 0.02 150)',
     'success-fg': 'oklch(0.42 0.12 150)',
     'warning-subtle': 'oklch(0.96 0.02 75)',
@@ -100,32 +102,32 @@ const light = {
     'danger-fg': 'oklch(0.45 0.12 25)',
     'info-subtle': 'oklch(0.96 0.02 250)',
     'info-fg': 'oklch(0.45 0.12 250)',
-    'chart-1': 'oklch(0.55 0.12 220)',
-    'chart-2': 'oklch(0.62 0.15 25)',
-    'chart-3': 'oklch(0.58 0.13 150)',
-    'chart-4': 'oklch(0.70 0.14 75)',
-    'chart-5': 'oklch(0.55 0.14 300)',
+    'chart-1': 'oklch(0.68 0.14 159.65)',
+    'chart-2': 'oklch(0.37 0.18 325.25)',
+    'chart-3': 'oklch(0.40 0.16 259.09)',
+    'chart-4': 'oklch(0.43 0.16 259.85)',
+    'chart-5': 'oklch(0.29 0.07 260.37)',
     'chart-6': 'oklch(0.60 0.11 190)',
-    sidebar: N[50],
+    sidebar: 'oklch(0.972 0.006 268)',
     'sidebar-content': N[700],
     'sidebar-active': B[50],
     'sidebar-active-content': B[700],
 };
 
 const dark = {
-    surface: N[1000],
-    'surface-raised': N[950],
-    'surface-inset': N[900],
-    content: N[50],
-    'content-muted': N[400],
-    'content-subtle': N[500],
-    line: N[800],
-    'line-control': 'oklch(0.50 0.014 250)',
+    surface: 'oklch(0.09 0.005 280)',
+    'surface-raised': 'oklch(0.14 0.006 280)',
+    'surface-inset': 'oklch(0.21 0.009 278)',
+    content: 'oklch(0.93 0.01 265)',
+    'content-muted': 'oklch(0.71 0.02 261)',
+    'content-subtle': 'oklch(0.64 0.018 262)',
+    line: 'oklch(0.23 0.011 278)',
+    'line-control': 'oklch(0.58 0.015 268)',
     primary: B[400],
     'primary-content': N[1000],
     'primary-subtle': B[900],
     'primary-subtle-content': B[200],
-    'focus-ring': B[400],
+    'focus-ring': 'oklch(0.56 0.24 261)',
     'success-subtle': 'oklch(0.26 0.02 150)',
     'success-fg': 'oklch(0.80 0.12 150)',
     'warning-subtle': 'oklch(0.27 0.02 75)',
@@ -134,17 +136,22 @@ const dark = {
     'danger-fg': 'oklch(0.80 0.12 25)',
     'info-subtle': 'oklch(0.27 0.02 250)',
     'info-fg': 'oklch(0.82 0.12 250)',
-    'chart-1': 'oklch(0.70 0.12 220)',
-    'chart-2': 'oklch(0.72 0.15 25)',
-    'chart-3': 'oklch(0.72 0.13 150)',
-    'chart-4': 'oklch(0.80 0.14 75)',
-    'chart-5': 'oklch(0.70 0.14 300)',
+    'chart-1': 'oklch(0.69 0.16 156.32)',
+    'chart-2': 'oklch(0.44 0.13 252.86)',
+    'chart-3': 'oklch(0.69 0.17 256)',
+    'chart-4': 'oklch(0.43 0.16 259.85)',
+    'chart-5': 'oklch(0.29 0.07 260.37)',
     'chart-6': 'oklch(0.74 0.11 190)',
-    sidebar: N[950],
-    'sidebar-content': N[400],
+    sidebar: 'oklch(0.12 0.006 280)',
+    'sidebar-content': 'oklch(0.71 0.02 261)',
     'sidebar-active': B[900],
     'sidebar-active-content': B[200],
 };
+
+// Sub-threshold pairs a user decision has explicitly accepted, as
+// `MODE:checkId`. Reported as WAIVED; they do not fail the gate. Currently
+// empty - the Vega-tuned values pass everything.
+const ACCEPTED_EXCEPTIONS = new Set([]);
 
 const checks = [
     ['1', 'content', 'surface', 7.0],
@@ -176,9 +183,11 @@ for (const [mode, tokens] of [
     for (const [id, fg, bg, min] of checks) {
         const r = contrast(parse(tokens[fg]), parse(tokens[bg]));
         const pass = r >= min;
-        if (!pass) failed++;
+        const waived = !pass && ACCEPTED_EXCEPTIONS.has(`${mode}:${id}`);
+        if (!pass && !waived) failed++;
+        const tag = pass ? 'PASS' : waived ? 'WAIVE' : 'FAIL';
         console.log(
-            `  ${pass ? 'PASS' : 'FAIL'}  ${id.padEnd(3)} ${(fg + ' on ' + bg).padEnd(42)} ${r.toFixed(2).padStart(6)}:1  (need ${min})`,
+            `  ${tag.padEnd(5)} ${id.padEnd(3)} ${(fg + ' on ' + bg).padEnd(42)} ${r.toFixed(2).padStart(6)}:1  (need ${min})${waived ? '  [user-accepted]' : ''}`,
         );
     }
 }

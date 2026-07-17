@@ -1,21 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon, Calendar03Icon, Delete02Icon, File02Icon, Image02Icon, MoreHorizontalIcon, PauseIcon, PencilEdit02Icon, PlayIcon, RotateLeft01Icon, Tag01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  PencilIcon,
-  Trash2Icon,
-  MoreHorizontalIcon,
-  PlayIcon,
-  PauseIcon,
-  ArchiveIcon,
-  RotateCcwIcon,
-  LanguagesIcon,
-  ImageIcon,
-  CalendarIcon,
-  FileTextIcon,
-  TagIcon,
-} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -90,7 +79,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
@@ -101,27 +90,27 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
           {!isArchived && (
             <>
               <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=details`)}>
-                <PencilIcon />
+                <HugeiconsIcon icon={PencilEdit02Icon} />
                 Edit Details
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=images`)}>
-                <ImageIcon />
+                <HugeiconsIcon icon={Image02Icon} />
                 Images
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=inclusions`)}>
-                <FileTextIcon />
+                <HugeiconsIcon icon={File02Icon} />
                 Content
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=pricing`)}>
-                <TagIcon />
+                <HugeiconsIcon icon={Tag01Icon} />
                 Pricing
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=schedules`)}>
-                <CalendarIcon />
+                <HugeiconsIcon icon={Calendar03Icon} />
                 Schedules
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=translations`)}>
-                <LanguagesIcon />
+              <DropdownMenuItem onClick={() => router.push(`/translations/tour/${trip.id}/es`)}>
+                <HugeiconsIcon icon={TranslateIcon} />
                 Translations
               </DropdownMenuItem>
             </>
@@ -133,19 +122,19 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
               <DropdownMenuSeparator />
               {trip.status === 'DRAFT' && (
                 <DropdownMenuItem onClick={handlePublish} disabled={isLifecyclePending}>
-                  <PlayIcon />
+                  <HugeiconsIcon icon={PlayIcon} />
                   Publish
                 </DropdownMenuItem>
               )}
               {trip.status === 'LIVE' && (
                 <DropdownMenuItem onClick={handlePause} disabled={isLifecyclePending}>
-                  <PauseIcon />
+                  <HugeiconsIcon icon={PauseIcon} />
                   Pause
                 </DropdownMenuItem>
               )}
               {trip.status === 'PAUSED' && (
                 <DropdownMenuItem onClick={handleUnpause} disabled={isLifecyclePending}>
-                  <RotateCcwIcon />
+                  <HugeiconsIcon icon={RotateLeft01Icon} />
                   Unpause
                 </DropdownMenuItem>
               )}
@@ -155,14 +144,14 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                   onClick={() => setArchiveOpen(true)}
                   disabled={isLifecyclePending}
                 >
-                  <ArchiveIcon />
+                  <HugeiconsIcon icon={Archive02Icon} />
                   Archive
                 </DropdownMenuItem>
               )}
               {/* Restore - only for archived trips */}
               {isArchived && (
                 <DropdownMenuItem onClick={handleRestore} disabled={isLifecyclePending}>
-                  <RotateCcwIcon />
+                  <HugeiconsIcon icon={RotateLeft01Icon} />
                   Restore to Draft
                 </DropdownMenuItem>
               )}
@@ -177,7 +166,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2Icon />
+                <HugeiconsIcon icon={Delete02Icon} />
                 {isForceDelete ? 'Force Delete' : 'Permanently Delete'}
               </DropdownMenuItem>
             </>

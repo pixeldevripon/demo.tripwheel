@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon, RouteIcon } from '@hugeicons/core-free-icons';
+
 import { useMemo } from 'react';
-import { PlusIcon, WaypointsIcon } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
@@ -72,7 +74,7 @@ export function HubsTable({
   const addButton = can('MANAGE_HUBS') && (
     <Button asChild size='sm'>
       <Link href='/hubs/new'>
-        <PlusIcon />
+        <HugeiconsIcon icon={PlusSignIcon} />
         Add Hub
       </Link>
     </Button>
@@ -85,7 +87,7 @@ export function HubsTable({
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
-        icon: WaypointsIcon,
+        icon: RouteIcon,
         title: 'No hubs found.',
         description: 'Add your first hub to get started.',
         action: addButton,

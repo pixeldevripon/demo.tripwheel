@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon, StarIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
-import { Loader2Icon, StarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DataTable } from '@/components/data-table/data-table';
@@ -119,9 +121,9 @@ export function LocalsFavouritesTable({
           )}
         >
           {busy ? (
-            <Loader2Icon className="size-3.5 animate-spin" />
+            <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin" />
           ) : (
-            <StarIcon
+            <HugeiconsIcon icon={StarIcon}
               className={cn('size-3.5', on && 'fill-rating text-rating')}
             />
           )}

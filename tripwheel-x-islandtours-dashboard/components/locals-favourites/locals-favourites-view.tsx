@@ -1,6 +1,8 @@
 'use client';
 
-import { StarIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { StarIcon } from '@hugeicons/core-free-icons';
+
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -47,7 +49,7 @@ export function LocalsFavouritesView() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-rating/10 text-rating">
-                  <StarIcon className="size-4 fill-current" />
+                  <HugeiconsIcon icon={StarIcon} className="size-4 fill-current" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold">Locals&apos; favourite coverage</p>

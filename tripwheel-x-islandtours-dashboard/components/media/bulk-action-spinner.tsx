@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon } from '@hugeicons/core-free-icons';
+
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
 
 interface BulkActionSpinnerProps {
     bulkSelectedItems: number;
@@ -24,7 +26,7 @@ const BulkActionSpinner = ({
             <div className='relative flex flex-col items-center max-w-xs w-full'>
                 {/* Minimalist Loader */}
                 <div className='relative mb-6'>
-                    <Loader2 className='h-12 w-12 animate-spin text-primary/20 stroke-[1.5px]' />
+                    <HugeiconsIcon icon={Loading03Icon} className='h-12 w-12 animate-spin text-primary/20 stroke-[1.5px]' />
                     <div className='absolute inset-0 flex items-center justify-center'>
                         <div className='h-1.5 w-1.5 bg-primary rounded-full animate-pulse' />
                     </div>

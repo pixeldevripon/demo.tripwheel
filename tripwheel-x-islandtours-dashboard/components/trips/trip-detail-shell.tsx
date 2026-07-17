@@ -8,6 +8,12 @@ interface TripDetailShellProps {
   name: string | undefined;
   isLoading: boolean;
   subtitle: string;
+  /**
+   * The edit view spans the whole content pane: its two-column layout
+   * (form + 300px readiness rail) needs the extra room so the FORM column
+   * stays as wide as the other modules' forms (destination = max-w-6xl).
+   */
+  fullWidth?: boolean;
   children: React.ReactNode;
 }
 
@@ -16,6 +22,7 @@ export function TripDetailShell({
   name,
   isLoading,
   subtitle,
+  fullWidth = false,
   children,
 }: TripDetailShellProps) {
   return (
@@ -41,7 +48,7 @@ export function TripDetailShell({
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
 
-      <div className="max-w-6xl">
+      <div className={fullWidth ? undefined : 'max-w-6xl'}>
         {children}
       </div>
     </div>

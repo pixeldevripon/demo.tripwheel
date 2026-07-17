@@ -4,24 +4,25 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { DM_Sans, Geist, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
  * Root layout for the dashboard app.
  *
- * Fonts: two families, full stop (03 §6, Phase 13). Inter is the body AND
- * heading face - Playfair Display (70 heading usages) was dropped by user
- * decision 2026-07-17: a high-contrast editorial display serif has no place
- * in an operational CRM. DM Sans / General Sans / Noto Sans died earlier
- * (extraction + this phase). JetBrains Mono stays for refs, IDs and money.
+ * Fonts per the Devripon preset (user decision 2026-07-17): DM Sans is the
+ * HEADING face (h1-h6 in globals.css + CardTitle via font-heading), Geist
+ * the UI/body face, IBM Plex Mono carries code, refs, IDs and money.
  */
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-heading' });
 
-const jetbrainsMono = JetBrains_Mono({
-    variable: '--font-jetbrains-mono',
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
+
+const ibmPlexMono = IBM_Plex_Mono({
     subsets: ['latin'],
+    weight: ['400', '500', '600'],
+    variable: '--font-mono-face',
 });
 
 export const metadata: Metadata = {
@@ -32,18 +33,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
     children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
     return (
         <html
             lang='en'
             suppressHydrationWarning
             className={cn(
                 'h-full antialiased',
-                jetbrainsMono.variable,
+                ibmPlexMono.variable,
+                geist.variable,
                 'font-sans',
-                inter.variable
+                dmSans.variable
             )}>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>
                 <QueryProvider>
@@ -62,3 +62,4 @@ export default function RootLayout({
         </html>
     );
 }
+

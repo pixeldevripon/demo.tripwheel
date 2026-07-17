@@ -1,15 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowTurnBackwardIcon, Calendar03Icon, Globe02Icon, MapsIcon, PlusSignIcon, Search01Icon } from '@hugeicons/core-free-icons';
+
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import {
-    CalendarIcon,
-    CornerDownLeftIcon,
-    GlobeIcon,
-    MapIcon,
-    PlusIcon,
-    SearchIcon,
-} from 'lucide-react';
 import {
     Command,
     CommandDialog,
@@ -124,7 +119,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                 onClick={() => setOpen(true)}
                 aria-label='Search (Command+K)'
                 className='inline-flex h-8 items-center gap-2 rounded-md border border-input bg-surface px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:w-64 lg:w-96'>
-                <SearchIcon className='size-3.5 shrink-0' />
+                <HugeiconsIcon icon={Search01Icon} className='size-3.5 shrink-0' />
                 <span className='hidden md:inline'>Search…</span>
                 <kbd className='ml-auto hidden rounded border border-line bg-surface-inset px-1 text-2xs font-medium text-content-subtle md:inline'>
                     ⌘K
@@ -160,7 +155,10 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                         value={`${group.label} ${item.title}`}
                                         onSelect={() => go(toHref(item.url))}>
                                         {item.icon && (
-                                            <item.icon className='size-4' />
+                                            <HugeiconsIcon
+                                                icon={item.icon}
+                                                className='size-4'
+                                            />
                                         )}
                                         {item.title}
                                     </CommandItem>
@@ -177,10 +175,10 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                         <CommandItem
                                             value='actions new tour create trip'
                                             onSelect={() => go('/trips/new')}>
-                                            <PlusIcon className='size-4' />
+                                            <HugeiconsIcon icon={PlusSignIcon} className='size-4' />
                                             New tour
                                             <CommandShortcut>
-                                                <CornerDownLeftIcon className='size-3' />
+                                                <HugeiconsIcon icon={ArrowTurnBackwardIcon} className='size-3' />
                                             </CommandShortcut>
                                         </CommandItem>
                                     )}
@@ -190,7 +188,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                             onSelect={() =>
                                                 go('/tour-operators/new')
                                             }>
-                                            <PlusIcon className='size-4' />
+                                            <HugeiconsIcon icon={PlusSignIcon} className='size-4' />
                                             New tour operator
                                         </CommandItem>
                                     )}
@@ -209,7 +207,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                             onSelect={() =>
                                                 go(`/trips/${t.id}/edit`)
                                             }>
-                                            <MapIcon className='size-4' />
+                                            <HugeiconsIcon icon={MapsIcon} className='size-4' />
                                             <span className='truncate'>
                                                 {t.name}
                                             </span>
@@ -228,7 +226,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                             key={b.id}
                                             value={`booking ${b.displayRef} ${b.contactFullName ?? ''} ${debouncedQuery}`}
                                             onSelect={() => go('/bookings')}>
-                                            <CalendarIcon className='size-4' />
+                                            <HugeiconsIcon icon={Calendar03Icon} className='size-4' />
                                             <span className='font-mono text-xs'>
                                                 {b.displayRef}
                                             </span>
@@ -252,7 +250,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                                             onSelect={() =>
                                                 go(`/destinations/${d.id}`)
                                             }>
-                                            <GlobeIcon className='size-4' />
+                                            <HugeiconsIcon icon={Globe02Icon} className='size-4' />
                                             {d.name}
                                         </CommandItem>
                                     ))}

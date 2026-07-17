@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon } from '@hugeicons/core-free-icons';
+
 import { onboardOperator } from '@/app/_actions/onboardingActions';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import { OnboardingData, onboardingSchema } from '@/lib/validations/onboarding';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -166,7 +168,7 @@ export function OnboardingForm() {
                             className='px-8'>
                             {isPending ? (
                                 <>
-                                    <Loader2 className='mr-2 w-4 h-4 animate-spin' />
+                                    <HugeiconsIcon icon={Loading03Icon} className='mr-2 w-4 h-4 animate-spin' />
                                     Submitting...
                                 </>
                             ) : (

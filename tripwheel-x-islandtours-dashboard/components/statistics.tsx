@@ -1,9 +1,9 @@
 'use client';
 
+import { IconTile } from '@/components/common/icon-tile';
 import { Badge } from '@/components/ui/badge';
 import {
     Card,
-    CardAction,
     CardContent,
     CardDescription,
     CardFooter,
@@ -27,8 +27,6 @@ import {
     MoneyBagIcon,
     TradeDownIcon,
     TradeUpIcon,
-    User03Icon,
-    UserCheck01Icon,
     UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -175,22 +173,22 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
         {
             name: 'Draft',
             value: statistics.bookings?.byStatus?.draft || 0,
-            fill: 'var(--muted-foreground)',
+            fill: 'var(--chart-5)',
         },
         {
             name: 'Confirmed',
             value: statistics.bookings?.byStatus?.confirmed || 0,
-            fill: 'var(--primary)',
+            fill: 'var(--chart-1)',
         },
         {
             name: 'Cancelled',
             value: statistics.bookings?.byStatus?.cancelled || 0,
-            fill: 'var(--destructive)',
+            fill: 'var(--chart-2)',
         },
         {
             name: 'Completed',
             value: statistics.bookings?.byStatus?.completed || 0,
-            fill: 'var(--primary)',
+            fill: 'var(--chart-1)',
         },
     ];
 
@@ -198,17 +196,17 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
         {
             name: 'Draft',
             value: statistics.trips?.byStatus?.draft || 0,
-            fill: 'var(--muted-foreground)',
+            fill: 'var(--chart-5)',
         },
         {
             name: 'Published',
             value: statistics.trips?.byStatus?.published || 0,
-            fill: 'var(--primary)',
+            fill: 'var(--chart-1)',
         },
         {
             name: 'Archived',
             value: statistics.trips?.byStatus?.archived || 0,
-            fill: 'var(--destructive)',
+            fill: 'var(--chart-2)',
         },
     ];
 
@@ -332,48 +330,50 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             {/* Stats Grid */}
                 {visibleSections['statistics'] && (
                     <>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 *:min-w-0'>
                             {stats.map((stat, index) => {
                                 return (
-                                    <Card key={index} size="sm" className="gap-2 px-6 py-6">
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0">
-                                            <CardDescription className='flex items-center gap-2'>
+                                    /* Preset stat-card anatomy: tile top-left +
+                                       trend top-right (never sharing a line with
+                                       the label, so nothing wraps at any width),
+                                       then value, then label. */
+                                    <Card key={index} size="sm" className="gap-3 ">
+                                        <CardHeader className="flex flex-row items-start justify-between space-y-0 p-0">
+                                            <IconTile
+                                                icon={stat.icon}
+                                                variant='primary'
+                                            />
+                                            <Badge
+                                                variant='outline'
+                                                className={`flex items-center gap-1 text-2xs font-medium font-mono tabular-nums px-1.5 py-0 ${
+                                                    stat.isPositive
+                                                        ? 'border-success-border bg-success-subtle text-success-fg'
+                                                        : 'border-danger-border bg-danger-subtle text-danger-fg'
+                                                }`}>
                                                 <HugeiconsIcon
-                                                    icon={stat.icon}
-                                                    className="size-4"
-                                                />
-                                                {stat.label}
-                                            </CardDescription>
-                                            <CardAction>
-                                                <Badge
-                                                    variant='outline'
-                                                    className={`flex items-center gap-1 text-[11px] font-medium font-mono tabular-nums px-1.5 py-0 ${
+                                                    icon={
                                                         stat.isPositive
-                                                            ? 'border-success-border bg-success-subtle text-success-fg'
-                                                            : 'border-danger-border bg-danger-subtle text-danger-fg'
-                                                    }`}>
-                                                    <HugeiconsIcon
-                                                        icon={
-                                                            stat.isPositive
-                                                                ? TradeUpIcon
-                                                                : TradeDownIcon
-                                                        }
-                                                        className='w-3 h-3'
-                                                    />
-                                                    {stat.trend}
-                                                </Badge>
-                                            </CardAction>
+                                                            ? TradeUpIcon
+                                                            : TradeDownIcon
+                                                    }
+                                                    className='w-3 h-3'
+                                                />
+                                                {stat.trend}
+                                            </Badge>
                                         </CardHeader>
-                                        <CardContent className="p-0">
-                                            <CardTitle className='text-3xl font-semibold tracking-tight font-mono tabular-nums'>
+                                        <CardContent className="p-0 space-y-0.5">
+                                            <CardTitle className='text-2xl font-semibold tracking-tight font-mono tabular-nums truncate'>
                                                 {stat.value}
                                             </CardTitle>
+                                            <p className='text-sm text-content-muted'>
+                                                {stat.label}
+                                            </p>
                                         </CardContent>
                                         <CardFooter className='flex-col items-start gap-1 p-0'>
                                             <div className='flex items-center gap-1.5 font-medium text-xs text-foreground'>
                                                 {stat.description}
                                             </div>
-                                            <p className='text-[10px] text-muted-foreground'>
+                                            <p className='text-2xs text-muted-foreground'>
                                                 {stat.subtitle}
                                             </p>
                                         </CardFooter>
@@ -393,7 +393,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                             </TabsList>
 
                             <TabsContent value='revenue' className='space-y-4'>
-                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 *:min-w-0'>
                                     {/* Revenue Area Chart */}
                                     <Card>
                                         <CardHeader>
@@ -584,7 +584,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                             </TabsContent>
 
                             <TabsContent value='status' className='space-y-4'>
-                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 *:min-w-0'>
                                     {/* Booking Status */}
                                     <Card>
                                         <CardHeader>
@@ -767,14 +767,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                     <div
                                                         key={booking.id || idx}
                                                         className='flex items-center gap-3 py-3 border-b border-border last:border-0 hover:bg-muted/5 transition-colors rounded-md px-2 -mx-2'>
-                                                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10'>
-                                                            <HugeiconsIcon
-                                                                icon={
-                                                                    Calendar03Icon
-                                                                }
-                                                                className='size-5 text-primary'
-                                                            />
-                                                        </div>
+                                                        <IconTile
+                                                            icon={Calendar03Icon}
+                                                            variant='primary'
+                                                        />
                                                         <div className='flex-1 min-w-0'>
                                                             <div className='flex items-center justify-start gap-2 mb-1'>
                                                                 <p className='text-sm font-medium truncate pr-2'>
@@ -783,7 +779,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                                         ?.title ||
                                                                         'Untitled Trip'}
                                                                 </p>
-                                                                <span className='text-[10px] text-muted-foreground whitespace-nowrap font-mono'>
+                                                                <span className='text-2xs text-muted-foreground whitespace-nowrap font-mono'>
                                                                     {new Date(
                                                                         booking.createdAt
                                                                     ).toLocaleDateString()}
@@ -806,7 +802,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                         </div>
                                                         <Badge
                                                             variant='outline'
-                                                            className={`text-[10px] px-2 py-0.5 h-5 ${getStatusColor(
+                                                            className={`text-2xs px-2 py-0.5 h-5 ${getStatusColor(
                                                                 booking.status
                                                             )}`}>
                                                             {booking.status}
@@ -835,14 +831,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                     <div
                                                         key={payment.id || idx}
                                                         className='flex items-center gap-3 py-3 border-b border-border last:border-0 hover:bg-muted/5 transition-colors rounded-md px-2 -mx-2'>
-                                                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success-subtle'>
-                                                            <HugeiconsIcon
-                                                                icon={
-                                                                    MoneyBagIcon
-                                                                }
-                                                                className='size-5 text-success-fg'
-                                                            />
-                                                        </div>
+                                                        <IconTile
+                                                            icon={MoneyBagIcon}
+                                                            variant='success'
+                                                        />
                                                         <div className='flex-1 min-w-0'>
                                                             <div className='flex items-center justify-start gap-2 mb-1'>
                                                                 <p className='text-sm font-semibold font-mono tabular-nums'>
@@ -858,7 +850,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                                         payment.amount
                                                                     )}
                                                                 </p>
-                                                                <span className='text-[10px] text-muted-foreground whitespace-nowrap font-mono'>
+                                                                <span className='text-2xs text-muted-foreground whitespace-nowrap font-mono'>
                                                                     {new Date(
                                                                         payment.createdAt
                                                                     ).toLocaleDateString()}
@@ -881,8 +873,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                         </div>
                                                         <Badge
                                                             variant='outline'
-                                                            className={`text-[10px] px-2 py-0.5 h-5 ${getStatusColor(
-                                                                payment.status
+                                                            className={`text-2xs px-2 py-0.5 h-5 ${getStatusColor(                                                                payment.status
                                                             )}`}>
                                                             {payment.status}
                                                         </Badge>
@@ -924,12 +915,12 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                 </>
                             ) : (
                                 <div className='flex flex-col items-center justify-center py-12 text-center'>
-                                    <div className='flex h-12 w-12 items-center justify-center rounded-lg bg-muted mb-4'>
-                                        <HugeiconsIcon
-                                            icon={Mail01Icon}
-                                            className='text-muted-foreground'
-                                        />
-                                    </div>
+                                    <IconTile
+                                        icon={Mail01Icon}
+                                        variant='neutral'
+                                        size='lg'
+                                        className='mb-4'
+                                    />
                                     <p className='text-sm font-medium'>
                                         No recent activity
                                     </p>
@@ -944,7 +935,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                 )}
                 {/* Additional Metrics */}
                 {visibleSections['matrics'] && (
-                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 *:min-w-0'>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Customer Insights</CardTitle>

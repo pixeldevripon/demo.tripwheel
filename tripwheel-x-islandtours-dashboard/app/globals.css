@@ -15,36 +15,37 @@
  * the `.dark` element itself. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ═══ VEGA RE-SKIN (2026-07-17) ════════════════════════════════════════════
+ * COLORS: the gate-green Vega-tuned system (user decision: "keep the color
+ * as previous" after evaluating the raw preset) - lavender-tinted canvas,
+ * brighter raised cards, teal-blue brand (hue 214), vivid blue focus ring,
+ * blue (not orange) dark-mode primary, near-black dark canvas.
+ * TYPOGRAPHY: the Devripon preset's ramp - DM Sans headings (h1-h6 +
+ * CardTitle), Geist body at default size / 1.65 line-height, IBM Plex Mono.
+ * Any color change here MUST be mirrored in scripts/contrast-gate.mjs. */
+
 /* ─── Primitives: mode-independent ─────────────────────────────────────────
- * Nothing in this block may ever appear in `.dark`. That is what makes D-3
- * (radius changing with theme) structurally impossible rather than merely
- * discouraged. */
+ * Nothing in this block may ever appear in `.dark` (D-3: radius/type may not
+ * change with theme). */
 @theme {
-    /* Tailwind v4 derives spacing multiplicatively: p-4 = calc(var(--spacing) * 4).
-     * The scale (0.5,1,1.5,2,2.5,3,4,6,8,12,16) is deliberately NOT restricted
-     * here - 03 §3 says so outright. `eslint.config.mjs` (SPACING) is the only
-     * enforcement, and it is the file to change if the scale changes. */
     --spacing: 0.25rem;
 
-    /* Radius - a real scale, replacing the 5px `calc(var(--radius) ± 1px)`
-     * ladder (D-3). 2xl/3xl are intentionally left at Tailwind's defaults;
-     * `rounded-2xl` has 6 call sites and would silently render nothing if the
-     * token were removed rather than inherited. */
+    /* Radius - vega ladder. 2xl/3xl inherit Tailwind defaults on purpose. */
     --radius-none: 0;
-    --radius-sm: 0.25rem; /* 4px  - inputs, chips */
-    --radius-md: 0.375rem; /* 6px  - buttons, cells */
-    --radius-lg: 0.5rem; /* 8px  - cards, popovers */
-    --radius-xl: 0.75rem; /* 12px - dialogs, sheets */
+    --radius-sm: 0.375rem; /* 6px  - inputs, chips */
+    --radius-md: 0.5rem; /* 8px  - buttons, cells */
+    --radius-lg: 0.625rem; /* 10px - cards, popovers */
+    --radius-xl: 0.875rem; /* 14px - dialogs, sheets */
     --radius-full: 9999px;
 
-    /* Type scale - 6 steps. Body default is 14px (principle 2, C-11, E-1). */
+    /* Dense-UI text steps (tables, micro-labels). */
     --text-2xs: 0.6875rem; /* 11px - uppercase micro-labels ONLY */
     --text-2xs--line-height: 1rem;
     --text-xs: 0.75rem; /* 12px - dense table meta */
     --text-xs--line-height: 1.125rem;
-    --text-sm: 0.875rem; /* 14px - DEFAULT body + table cells */
+    --text-sm: 0.875rem; /* 14px - table cells, controls */
     --text-sm--line-height: 1.25rem;
-    --text-base: 1rem; /* 16px - form inputs (§5.2) */
+    --text-base: 1rem; /* 16px - body default, form inputs */
     --text-base--line-height: 1.5rem;
     --text-lg: 1.25rem; /* 20px - card + section titles */
     --text-lg--line-height: 1.75rem;
@@ -54,8 +55,8 @@
     --text-2xl--line-height: 2.25rem;
 
     --tracking-tight: -0.011em;
-    --tracking-normal: 0em; /* defect B-5: applied to body but never defined */
-    --tracking-caps: 0.06em; /* --text-2xs uppercase only */
+    --tracking-normal: 0em;
+    --tracking-caps: 0.06em;
 
     /* Motion */
     --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -66,54 +67,59 @@
 }
 
 /* ─── Neutral + brand ramps ───────────────────────────────────────────────
- * One hue (250) across BOTH modes - D-5 was a hue split between them. */
+ * One hue family across BOTH modes (D-5). Vega re-skin: neutrals carry the
+ * lavender cast (~266-275, chroma raised on the light steps); brand is the
+ * teal-blue 214 at vega's softer chroma. */
 @theme {
     --color-n-0: oklch(1 0 0);
-    --color-n-25: oklch(0.985 0.002 250);
-    --color-n-50: oklch(0.97 0.003 250);
-    --color-n-100: oklch(0.94 0.005 250);
-    --color-n-200: oklch(0.9 0.007 250);
-    --color-n-300: oklch(0.84 0.009 250);
-    --color-n-400: oklch(0.7 0.012 250);
-    --color-n-500: oklch(0.58 0.014 250);
-    --color-n-600: oklch(0.48 0.014 250);
-    --color-n-700: oklch(0.38 0.013 250);
-    --color-n-800: oklch(0.28 0.012 250);
-    --color-n-900: oklch(0.21 0.01 250);
-    --color-n-950: oklch(0.16 0.008 250);
-    --color-n-1000: oklch(0.12 0.006 250);
+    --color-n-25: oklch(0.9793 0.0083 271);
+    --color-n-50: oklch(0.9555 0.0125 271);
+    --color-n-100: oklch(0.9443 0.0165 275);
+    --color-n-200: oklch(0.9142 0.0208 274);
+    --color-n-300: oklch(0.8893 0.0169 262);
+    --color-n-400: oklch(0.7 0.014 265);
+    --color-n-500: oklch(0.53 0.015 265);
+    --color-n-600: oklch(0.47 0.015 265);
+    --color-n-700: oklch(0.38 0.014 265);
+    --color-n-800: oklch(0.28 0.012 268);
+    --color-n-900: oklch(0.21 0.012 268);
+    --color-n-950: oklch(0.15 0.009 272);
+    --color-n-1000: oklch(0.1 0.006 275);
 
-    --color-brand-50: oklch(0.97 0.015 220);
-    --color-brand-100: oklch(0.93 0.032 220);
-    --color-brand-200: oklch(0.87 0.055 220);
-    --color-brand-300: oklch(0.78 0.082 220);
-    --color-brand-400: oklch(0.68 0.104 220);
-    --color-brand-500: oklch(0.6 0.118 220);
-    --color-brand-600: oklch(0.52 0.122 220);
-    --color-brand-700: oklch(0.44 0.104 220);
-    --color-brand-800: oklch(0.36 0.082 220);
-    --color-brand-900: oklch(0.28 0.06 220);
+    --color-brand-50: oklch(0.97 0.018 214);
+    --color-brand-100: oklch(0.94 0.035 214);
+    --color-brand-200: oklch(0.88 0.06 214);
+    --color-brand-300: oklch(0.79 0.085 214);
+    --color-brand-400: oklch(0.7 0.1 214);
+    --color-brand-500: oklch(0.6 0.11 214);
+    --color-brand-600: oklch(0.52 0.11 214);
+    --color-brand-700: oklch(0.45 0.1 214);
+    --color-brand-800: oklch(0.37 0.08 214);
+    --color-brand-900: oklch(0.29 0.055 214);
 }
 
 /* ─── Semantic layer: mode-switching ──────────────────────────────────────
- * These are plain (unlayered) custom properties, NOT @theme tokens. The
- * @theme inline block at the bottom maps utilities onto them so they resolve
- * at use time and switch with the mode. */
+ * Plain (unlayered) custom properties; the @theme inline block below maps
+ * utilities onto them so they switch with the mode.
+ *
+ * Vega surface model (light): the canvas is the TINTED field (n-50) and
+ * cards rise BRIGHTER toward white; the sidebar sits brighter than the
+ * canvas. */
 :root {
-    --surface: var(--color-n-25);
-    --surface-raised: var(--color-n-0);
-    --surface-sunken: var(--color-n-50);
+    --surface: var(--color-n-50);
+    --surface-raised: var(--color-n-25);
+    --surface-sunken: var(--color-n-100);
     --surface-overlay: var(--color-n-0);
-    --surface-inset: var(--color-n-100);
+    --surface-inset: var(--color-n-200);
 
     --content: var(--color-n-900); /* primary text */
     --content-muted: var(--color-n-600); /* secondary */
     --content-subtle: var(--color-n-500); /* tertiary - lowest allowed */
     --content-inverse: var(--color-n-0);
 
-    --line: var(--color-n-200); /* default border */
-    --line-strong: var(--color-n-300);
-    --line-subtle: var(--color-n-100);
+    --line: var(--color-n-300); /* default border - vega's visible tinted line */
+    --line-strong: oklch(0.83 0.018 262);
+    --line-subtle: oklch(0.925 0.012 268);
 
     --primary: var(--color-brand-600);
     --primary-hover: var(--color-brand-700);
@@ -121,7 +127,9 @@
     --primary-subtle: var(--color-brand-50);
     --primary-subtle-content: var(--color-brand-700);
 
-    --focus-ring: var(--color-brand-500);
+    /* Vega signature: the focus ring is a VIVID blue, deliberately hotter
+     * than the teal-blue primary, so keyboard focus is unmistakable. */
+    --focus-ring: oklch(0.48 0.2 260);
 
     --success-subtle: oklch(0.95 0.02 150);
     --success-border: oklch(0.85 0.05 150);
@@ -143,26 +151,29 @@
     --info-fg: oklch(0.45 0.12 250);
     --info-solid: oklch(0.55 0.15 250);
 
-    --chart-1: oklch(0.55 0.12 220);
-    --chart-2: oklch(0.62 0.15 25);
-    --chart-3: oklch(0.58 0.13 150);
-    --chart-4: oklch(0.7 0.14 75);
-    --chart-5: oklch(0.55 0.14 300);
+    /* Chart palette: the Devripon preset's set (user decision 2026-07-17 -
+     * the old chart-2 red made positive booking bars read as danger). */
+    --chart-1: oklch(0.68 0.14 159.65);
+    --chart-2: oklch(0.37 0.18 325.25); /* preset 0.53, darkened for CVD separability vs chart-1 */
+    --chart-3: oklch(0.4 0.16 259.09);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
     --chart-6: oklch(0.6 0.11 190);
 
-    --elevation-xs: 0 1px 2px 0 oklch(0.21 0.01 250 / 0.05);
-    --elevation-sm: 0 1px 3px 0 oklch(0.21 0.01 250 / 0.08),
-        0 1px 2px -1px oklch(0.21 0.01 250 / 0.06);
-    --elevation-md: 0 4px 8px -2px oklch(0.21 0.01 250 / 0.1),
-        0 2px 4px -2px oklch(0.21 0.01 250 / 0.06);
-    --elevation-lg: 0 12px 20px -4px oklch(0.21 0.01 250 / 0.12),
-        0 4px 8px -4px oklch(0.21 0.01 250 / 0.08);
+    --elevation-xs: 0 1px 2px 0 oklch(0.21 0.03 265 / 0.05);
+    --elevation-sm: 0 1px 3px 0 oklch(0.21 0.03 265 / 0.08),
+        0 1px 2px -1px oklch(0.21 0.03 265 / 0.06);
+    --elevation-md: 0 4px 8px -2px oklch(0.21 0.03 265 / 0.1),
+        0 2px 4px -2px oklch(0.21 0.03 265 / 0.06);
+    --elevation-lg: 0 12px 20px -4px oklch(0.21 0.03 265 / 0.12),
+        0 4px 8px -4px oklch(0.21 0.03 265 / 0.08);
 
-    --sidebar: var(--color-n-50);
+    /* Vega: sidebar is BRIGHTER than the canvas. */
+    --sidebar: oklch(0.972 0.006 268);
     --sidebar-content: var(--color-n-700);
     --sidebar-active: var(--color-brand-50);
     --sidebar-active-content: var(--color-brand-700);
-    --sidebar-line: var(--color-n-200);
+    --sidebar-line: oklch(0.9 0.014 268);
 
     /* ── Compatibility aliases (see the block comment below) ── */
     --background: var(--surface);
@@ -179,7 +190,7 @@
     --accent: var(--surface-inset);
     --accent-foreground: var(--content);
     --destructive: var(--danger-solid);
-    --destructive-foreground: var(--content-inverse); /* defect B-3 */
+    --destructive-foreground: var(--content-inverse);
     --border: var(--line);
     --input: var(--line);
     --ring: var(--focus-ring);
@@ -196,34 +207,33 @@
     --success: var(--success-solid);
     --success-foreground: var(--color-n-0);
     --warning: var(--warning-solid);
-    /* Dark ink on the amber solid. The old value was near-white on oklch(0.769),
-     * which never passed contrast - carrying it forward would import a defect. */
     --warning-foreground: var(--color-n-1000);
     --info: var(--info-solid);
     --info-foreground: var(--color-n-0);
 
-    /* Shell surfaces (defect D-4). Were hardcoded hexes in dashbaord-wraper.tsx.
-     * `--shell-gutter` is the frame around the inset pane; `--shell-content` is
-     * the pane's own backdrop. */
+    /* Shell surfaces (D-4). */
     --shell-gutter: var(--sidebar);
     --shell-content: var(--surface);
 }
 
+/* Vega dark: deep near-black canvas with cards lifting in visible steps.
+ * Primary stays in the brand-blue family (user decision - not the preset's
+ * orange), flipped to the light end with dark ink. */
 .dark {
-    --surface: var(--color-n-1000);
-    --surface-raised: var(--color-n-950);
-    --surface-sunken: var(--color-n-1000);
-    --surface-overlay: var(--color-n-900);
-    --surface-inset: var(--color-n-900);
+    --surface: oklch(0.09 0.005 280);
+    --surface-raised: oklch(0.14 0.006 280);
+    --surface-sunken: oklch(0.07 0.004 280);
+    --surface-overlay: oklch(0.17 0.007 280);
+    --surface-inset: oklch(0.21 0.009 278);
 
-    --content: var(--color-n-50);
-    --content-muted: var(--color-n-400);
-    --content-subtle: var(--color-n-500);
-    --content-inverse: var(--color-n-1000);
+    --content: oklch(0.93 0.01 265);
+    --content-muted: oklch(0.71 0.02 261);
+    --content-subtle: oklch(0.64 0.018 262);
+    --content-inverse: oklch(0.09 0.005 280);
 
-    --line: var(--color-n-800);
-    --line-strong: var(--color-n-700);
-    --line-subtle: var(--color-n-900);
+    --line: oklch(0.23 0.011 278);
+    --line-strong: oklch(0.31 0.013 274);
+    --line-subtle: oklch(0.18 0.009 278);
 
     --primary: var(--color-brand-400);
     --primary-hover: var(--color-brand-300);
@@ -231,7 +241,7 @@
     --primary-subtle: var(--color-brand-900);
     --primary-subtle-content: var(--color-brand-200);
 
-    --focus-ring: var(--color-brand-400);
+    --focus-ring: oklch(0.56 0.24 261);
 
     --success-subtle: oklch(0.26 0.02 150);
     --success-border: oklch(0.36 0.05 150);
@@ -253,11 +263,11 @@
     --info-fg: oklch(0.82 0.12 250);
     --info-solid: oklch(0.62 0.15 250);
 
-    --chart-1: oklch(0.7 0.12 220);
-    --chart-2: oklch(0.72 0.15 25);
-    --chart-3: oklch(0.72 0.13 150);
-    --chart-4: oklch(0.8 0.14 75);
-    --chart-5: oklch(0.7 0.14 300);
+    --chart-1: oklch(0.69 0.16 156.32);
+    --chart-2: oklch(0.44 0.13 252.86);
+    --chart-3: oklch(0.69 0.17 256);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
     --chart-6: oklch(0.74 0.11 190);
 
     --elevation-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
@@ -268,51 +278,32 @@
     --elevation-lg: 0 12px 20px -4px oklch(0 0 0 / 0.55),
         0 4px 8px -4px oklch(0 0 0 / 0.4);
 
-    --sidebar: var(--color-n-950);
-    --sidebar-content: var(--color-n-400);
+    --sidebar: oklch(0.12 0.006 280);
+    --sidebar-content: oklch(0.71 0.02 261);
     --sidebar-active: var(--color-brand-900);
     --sidebar-active-content: var(--color-brand-200);
-    --sidebar-line: var(--color-n-800);
+    --sidebar-line: oklch(0.2 0.01 278);
 
-    /* Aliases whose target differs by mode. Every other alias in `:root`
-     * resolves through a semantic token that already switches here, so it must
-     * NOT be repeated - repeating one is how a value silently stops tracking
-     * its own mode. `--radius` is absent on purpose: D-3. */
+    /* Aliases whose target differs by mode. `--radius` is absent: D-3. */
     --success-foreground: var(--color-n-1000);
     --warning-foreground: var(--color-n-1000);
     --info-foreground: var(--color-n-1000);
 }
 
 /* ─── Compatibility aliases: DELETE AT PHASE 20 ───────────────────────────
- * ~2,000 call sites still use the shadcn names (`muted` 666, `muted-foreground`
- * 510, `destructive` 267, `foreground` 168, `primary` 143, `border` 71,
- * `sidebar` 61), plus 15 components that read `var(--primary)` and friends
- * directly. Dropping the old names in this phase would break every screen at
- * once (06 Phase 11 risk note), so they alias onto the new semantic layer and
- * are retired per module through Stage D.
- *
- * They are ALIASES, not a second system: each points at exactly one new token.
- * Never give one its own literal value - that forks the system in place, which
- * is the exact failure 01 documents.
- *
- * `--primary`, `--sidebar`, and `--chart-1..5` need no alias: the new system
- * reuses those names, so their call sites re-point automatically. */
+ * ~2,000 call sites still use the shadcn names. They are ALIASES, not a
+ * second system: each points at exactly one semantic token. Never give one
+ * its own literal value. */
 
 /* ─── Utility mapping ─────────────────────────────────────────────────────
- * @theme inline emits `--x: var(--x)` into @layer theme for the same-name
- * pairs below. That is NOT defect B-5. The real value lives in the UNLAYERED
- * `:root` above, and unlayered declarations outrank every layer, so the real
- * value always wins and no cycle forms. B-5 breaks because nothing defines
- * `--shadow-2xl` at all, leaving the self-reference as the only declaration.
- * Shadows sidestep the question entirely by using `--elevation-*` as the
- * source name, which is Tailwind's own documented pattern. */
+ * @theme inline emits `--x: var(--x)` pairs; the real values live in the
+ * UNLAYERED `:root` above, which outranks every layer. */
 @theme inline {
-    /* Fonts stay wired to next/font (Noto Sans, Playfair, JetBrains Mono).
-     * 03 §3 hardcodes Inter here, but Phase 13 owns the font swap - doing it
-     * now would change fonts two phases early and outside its own validation. */
+    /* Typography (Devripon preset): DM Sans = heading face, Geist = body,
+     * IBM Plex Mono = code/refs/money. Wired in app/layout.tsx. */
     --font-heading: var(--font-heading);
     --font-sans: var(--font-sans);
-    --font-mono: var(--font-jetbrains-mono);
+    --font-mono: var(--font-mono-face);
 
     --color-surface: var(--surface);
     --color-surface-raised: var(--surface-raised);
@@ -414,6 +405,7 @@
     --color-shell-content: var(--shell-content);
 }
 
+/* ─── Base typography (Devripon preset ramp) ─────────────────────────────── */
 @layer base {
     *,
     ::after,
@@ -425,14 +417,71 @@
     button {
         cursor: pointer;
     }
-    body {
-        @apply bg-surface text-content font-sans antialiased;
-        font-size: var(--text-sm); /* 14px default, not the browser's 16px */
-        letter-spacing: var(--tracking-normal);
-    }
     html {
         @apply font-sans;
+        /* Collapsing content (accordions) changes page height; without a
+         * reserved gutter the viewport scrollbar pops in/out and the whole
+         * layout shifts sideways ("shakes"). */
+        scrollbar-gutter: stable;
     }
+    body {
+        @apply bg-surface text-content font-sans antialiased;
+        line-height: 1.65;
+    }
+
+    h1 {
+        font-family: var(--font-heading);
+        font-size: 2.25rem;
+        line-height: 1.2;
+        letter-spacing: -0.025em;
+        font-weight: 700;
+    }
+
+    h2 {
+        font-family: var(--font-heading);
+        font-size: 1.875rem;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+    }
+
+    h3 {
+        font-family: var(--font-heading);
+        font-size: 1.5rem;
+        line-height: 1.3;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+    }
+
+    h4 {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h5 {
+        font-family: var(--font-heading);
+        font-size: 1.125rem;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h6 {
+        font-family: var(--font-heading);
+        font-size: 1rem;
+        line-height: 1.5;
+        letter-spacing: 0;
+        font-weight: 600;
+    }
+
+    code,
+    pre {
+        font-family: var(--font-mono);
+    }
+
     :focus-visible {
         outline: 2px solid var(--focus-ring);
         outline-offset: 2px;
@@ -442,6 +491,7 @@
 @layer base {
     ::-webkit-scrollbar {
         width: 7px;
+        height: 7px; /* horizontal bars were browser-default fat (data tables) */
     }
 
     ::-webkit-scrollbar-track {
@@ -466,10 +516,27 @@
         display: none;
     }
 
+    .scrollbar-thin {
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: color-mix(in oklch, var(--content-subtle), transparent 40%)
+            transparent;
+    }
+
     .scrollbar-thin::-webkit-scrollbar {
         height: 6px;
         width: 4px;
         cursor: pointer;
+    }
+
+    /* Inside data surfaces the loud primary thumb is a distraction; a quiet
+     * neutral that darkens on hover reads premium and stays out of the way. */
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: color-mix(in oklch, var(--content-subtle), transparent 40%);
+        border-radius: 10px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: var(--content-muted);
     }
 
     @keyframes collapsible-down {

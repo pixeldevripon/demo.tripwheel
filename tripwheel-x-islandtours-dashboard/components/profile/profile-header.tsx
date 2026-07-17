@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon } from '@hugeicons/core-free-icons';
+
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
 
 interface ProfileHeaderProps {
     isEditing: boolean;
@@ -34,7 +36,7 @@ export function ProfileHeader({ isEditing, setIsEditing, onSave, isLoading }: Pr
                         onClick={onSave}
                         disabled={isLoading}
                         className='px-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 gap-2'>
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {isLoading ? <HugeiconsIcon icon={Loading03Icon} className="w-4 h-4 animate-spin" /> : null}
                         Save Changes
                     </Button>
                 ) : null}

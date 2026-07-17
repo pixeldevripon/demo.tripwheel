@@ -1,15 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, Layers01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import {
-  ChevronDownIcon,
-  LayersIcon,
-  PlusIcon,
-  Trash2Icon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -343,7 +338,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
 
  {meta.hasHeading && (
  <Field>
- <Label className="text-xs font-semibold ">Heading</Label>
+ <Label>Heading</Label>
  <Input
  value={fields.heading}
  onChange={(e) =>
@@ -355,7 +350,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  )}
 
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  {meta.hasHeading ?'Body' : 'Content'}
  </Label>
  <Textarea
@@ -374,7 +369,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  className="text-destructive hover:text-destructive hover:bg-destructive/10"
  onClick={() => clearLocale(block.key, loc)}
  >
- <Trash2Icon />
+ <HugeiconsIcon icon={Delete02Icon} />
  Clear {LOCALE_LABELS[loc]} translation
  </Button>
  )}
@@ -385,7 +380,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
 
  {meta.hasImage && (
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  Image (optional, shared across locales)
  </Label>
  <ImageSelectorField
@@ -454,14 +449,14 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
  </div>
  <Button size="sm" type="button" variant="outline" onClick={() => addBlock(type)}>
- <PlusIcon />
+ <HugeiconsIcon icon={PlusSignIcon} />
  Add
  </Button>
  </div>
 
  {typeBlocks.length === 0 ? (
  <div className="flex items-center gap-2 border border-dashed px-3 py-4 text-xs text-muted-foreground">
- <LayersIcon className="size-4 opacity-40" />
+ <HugeiconsIcon icon={Layers01Icon} className="size-4 opacity-40" />
  No {meta.label} blocks yet.
  </div>
  ) : (
@@ -480,7 +475,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                     >
                       <div className="flex items-center gap-2 px-3 py-2">
                         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                          <ChevronDownIcon
+                          <HugeiconsIcon icon={ArrowDown01Icon}
                             className={`size-4 shrink-0 text-muted-foreground transition-transform ${
                               isOpen ? 'rotate-0' : '-rotate-90'
                             }`}
@@ -497,7 +492,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                             onClick={() => moveBlock(block.key, -1)}
                             aria-label="Move up"
                           >
-                            <ArrowUpIcon />
+                            <HugeiconsIcon icon={ArrowUp02Icon} />
                           </Button>
                           <Button
                             type="button"
@@ -507,7 +502,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                             onClick={() => moveBlock(block.key, 1)}
                             aria-label="Move down"
                           >
-                            <ArrowDownIcon />
+                            <HugeiconsIcon icon={ArrowDown02Icon} />
                           </Button>
                           <Button
                             type="button"
@@ -517,7 +512,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                             onClick={() => removeBlock(block.key)}
                             aria-label="Remove block"
                           >
-                            <Trash2Icon />
+                            <HugeiconsIcon icon={Delete02Icon} />
                           </Button>
                         </div>
                       </div>

@@ -98,7 +98,7 @@ function StripeCard({ operatorId }: { operatorId: string }) {
         description={data?.webhookSecret ? `Current: ${data.webhookSecret}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
       <Field>
-        <Label className="text-xs font-semibold">Payment Methods</Label>
+        <Label>Payment Methods</Label>
         <MultiSelect
           options={STRIPE_PAYMENT_METHODS}
           value={selected}
@@ -179,7 +179,7 @@ function MollieCard({ operatorId }: { operatorId: string }) {
         description={data?.apiKey ? `Current: ${data.apiKey}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
       <Field>
-        <Label className="text-xs font-semibold">Payment Methods</Label>
+        <Label>Payment Methods</Label>
         <MultiSelect
           options={MOLLIE_PAYMENT_METHODS}
           value={selected}

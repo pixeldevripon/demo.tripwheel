@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ImageSelectorField } from '@/components/media/image-selector-field';
@@ -83,7 +84,7 @@ function SocialCard({ trip }: { trip: TripListItem }) {
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Field>
-            <Label className="text-xs font-semibold">Social Share Image (OG)</Label>
+            <Label>Social Share Image (OG)</Label>
             <Controller
               name="ogImage"
               control={control}
@@ -265,7 +266,7 @@ function MetaLocalePanel({
 
       <Field>
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold">Meta Title</Label>
+          <Label>Meta Title</Label>
           <CharCount value={metaTitle} max={META_TITLE_MAX} />
         </div>
         <Input
@@ -290,7 +291,7 @@ function MetaLocalePanel({
 
       <Field>
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold">Meta Description</Label>
+          <Label>Meta Description</Label>
           <CharCount value={metaDescription} max={META_DESC_MAX} />
         </div>
         <Textarea
@@ -353,41 +354,23 @@ export function TripSeoTab({ trip }: TripSeoTabProps) {
             </p>
           </div>
 
-          <Tabs defaultValue="en">
-            <div className="pb-2 mb-6">
-              <TabsList>
-                {ALL_LOCALES.map((locale) => (
-                  <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                    <span className="sm:hidden">{locale}</span>
-                    <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-
-            <TabsContent value="en">
-              <MetaLocalePanel
-                tripId={trip.id}
-                locale="en"
-                tripName={trip.name}
-                destinationName={destinationName}
-                slug={trip.slug}
-                isEnglish
-              />
-            </TabsContent>
-
-            {ALL_LOCALES.filter((l) => l !== 'en').map((locale) => (
-              <TabsContent key={locale} value={locale}>
-                <MetaLocalePanel
+          <MetaLocalePanel
                   tripId={trip.id}
-                  locale={locale}
+                  locale='en'
                   tripName={trip.name}
                   destinationName={destinationName}
                   slug={trip.slug}
                 />
-              </TabsContent>
-            ))}
-          </Tabs>
+        <p className="mt-4 text-xs text-content-muted">
+          English only here - translate into the other languages in the{' '}
+          <Link
+            href={`/translations/tour/${trip.id}/es`}
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Translation Console
+          </Link>
+          .
+        </p>
         </CardContent>
       </Card>
 

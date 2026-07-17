@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon, Cancel01Icon, InformationCircleIcon, PlayIcon, RotateLeft01Icon, Tick02Icon, UndoIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
-import { ArchiveIcon, CheckIcon, InfoIcon, PlayIcon, RotateCcwIcon, UndoIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,7 @@ import { COLLECTION_STATUS_LABELS } from '@/types/enums';
 import { CollectionDetailShell } from './collection-detail-shell';
 import { CollectionForm } from './collection-form';
 import { CollectionToursManager } from './collection-tours-manager';
-import { CollectionTranslationForm } from './collection-translation-form';
+import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { CollectionPageContentForm } from './collection-page-content-form';
 import { FaqManager } from '@/components/faq/faq-manager';
 import { CollectionSeoTab } from './collection-seo-tab';
@@ -45,9 +47,9 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-success-solid shrink-0" />
+        <HugeiconsIcon icon={Tick02Icon} className="size-4 text-success-solid shrink-0" />
       ) : (
-        <XIcon className="size-4 text-destructive shrink-0" />
+        <HugeiconsIcon icon={Cancel01Icon} className="size-4 text-destructive shrink-0" />
       )}
       <span className={passed ? 'text-muted-foreground' : 'text-destructive'}>{label}</span>
     </div>
@@ -62,7 +64,8 @@ interface CollectionEditViewProps {
 export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) {
   const activeTab =
     initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const [tab, setTab] = useState(activeTab);
+  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
+  const [tab, setTab] = useState(resolvedTab);
   const { data: collection, isLoading, isError } = useCollection(id);
   const { data: enTranslation } = useCollectionTranslationByLocale(id, 'en');
   const { can } = useRole();
@@ -136,7 +139,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                   onClick={() => changeStatus('PUBLISHED', 'Collection published.')}
                   disabled={isUpdating}
                 >
-                  <PlayIcon className="size-3.5" />
+                  <HugeiconsIcon icon={PlayIcon} className="size-3.5" />
                   Publish
                 </Button>
               )}
@@ -148,7 +151,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                     onClick={() => changeStatus('DRAFT', 'Collection moved to draft.')}
                     disabled={isUpdating}
                   >
-                    <UndoIcon className="size-3.5" />
+                    <HugeiconsIcon icon={UndoIcon} className="size-3.5" />
                     Move to Draft
                   </Button>
                   <Button
@@ -157,7 +160,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                     onClick={() => changeStatus('ARCHIVED', 'Collection archived.')}
                     disabled={isUpdating}
                   >
-                    <ArchiveIcon className="size-3.5" />
+                    <HugeiconsIcon icon={Archive02Icon} className="size-3.5" />
                     Archive
                   </Button>
                 </>
@@ -168,7 +171,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                   onClick={() => changeStatus('DRAFT', 'Collection restored to draft.')}
                   disabled={isUpdating}
                 >
-                  <RotateCcwIcon className="size-3.5" />
+                  <HugeiconsIcon icon={RotateLeft01Icon} className="size-3.5" />
                   Restore to Draft
                 </Button>
               )}
@@ -190,7 +193,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
               </div>
               {isManual && (
                 <div className="flex items-start gap-2 text-xs text-muted-foreground border-t pt-3">
-                  <InfoIcon className="size-3.5 shrink-0 mt-0.5" />
+                  <HugeiconsIcon icon={InformationCircleIcon} className="size-3.5 shrink-0 mt-0.5" />
                   <span>
                     Every member tour also needs an English rationale (≤20 words), set in the
                     Tours tab. This is enforced by the server on publish.
@@ -206,7 +209,6 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
             <TabsList>
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="tours">Tours</TabsTrigger>
-              <TabsTrigger value="translations">Translations</TabsTrigger>
               <TabsTrigger value="page-content">Page Content</TabsTrigger>
               <TabsTrigger value="faqs">FAQs</TabsTrigger>
               <TabsTrigger value="seo">SEO</TabsTrigger>
@@ -230,11 +232,8 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
             </Card>
           </TabsContent>
 
-          <TabsContent value="translations">
-            <CollectionTranslationForm collectionId={id} collectionName={collection.name} />
-          </TabsContent>
-
-          <TabsContent value="page-content">
+          <TabsContent value="page-content" className="space-y-6">
+            <EnglishContentEditor type="collection" id={id} />
             <CollectionPageContentForm collectionId={id} />
           </TabsContent>
 

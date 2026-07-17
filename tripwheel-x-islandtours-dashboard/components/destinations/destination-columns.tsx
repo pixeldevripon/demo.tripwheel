@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Location01Icon, SquareLock02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { ACTIVE_STATUS } from '@/components/common/status-maps';
@@ -53,7 +55,7 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
                 className="size-full object-cover"
               />
             ) : (
-              <MapPinIcon className="size-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Location01Icon} className="size-4 text-muted-foreground" />
             )}
           </div>
           <Link
@@ -93,7 +95,7 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
       if (!row.original.isSeeded) return null;
       return (
         <div className="flex items-center gap-1.5">
-          <LockIcon className="size-3 text-muted-foreground" />
+          <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
           <StatusBadge variant="neutral">Protected</StatusBadge>
         </div>
       );

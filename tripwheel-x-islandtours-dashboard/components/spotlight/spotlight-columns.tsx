@@ -1,18 +1,9 @@
 'use client';
 
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+import { Alert02Icon, CalendarCheckIn01Icon, Cancel01Icon, CancelCircleIcon, CheckmarkCircle02Icon, Clock03Icon, MoreHorizontalIcon, Tick02Icon, TimeQuarter02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import {
-  AlertTriangleIcon,
-  CalendarCheckIcon,
-  CheckIcon,
-  CircleCheckIcon,
-  CircleXIcon,
-  Clock3Icon,
-  MoreHorizontalIcon,
-  TimerOffIcon,
-  XIcon,
-  type LucideIcon,
-} from 'lucide-react';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { SPOTLIGHT_STATUS } from '@/components/common/status-maps';
@@ -46,13 +37,13 @@ export type SpotlightRequestWithInfo = SpotlightRequest & {
  * COLOR comes from SPOTLIGHT_STATUS + StatusBadge (03 §5.1). */
 const statusExtras: Record<
   SpotlightStatus,
-  { Icon: LucideIcon; description: string }
+  { Icon: IconSvgElement; description: string }
 > = {
-  REQUESTED: { Icon: Clock3Icon, description: 'Waiting for admin review' },
-  APPROVED: { Icon: CalendarCheckIcon, description: 'Approved and scheduled' },
-  ACTIVE: { Icon: CircleCheckIcon, description: 'Live in Destination Spotlight' },
-  REJECTED: { Icon: CircleXIcon, description: 'Declined by admin' },
-  EXPIRED: { Icon: TimerOffIcon, description: 'Live window has ended' },
+  REQUESTED: { Icon: Clock03Icon, description: 'Waiting for admin review' },
+  APPROVED: { Icon: CalendarCheckIn01Icon, description: 'Approved and scheduled' },
+  ACTIVE: { Icon: CheckmarkCircle02Icon, description: 'Live in Destination Spotlight' },
+  REJECTED: { Icon: CancelCircleIcon, description: 'Declined by admin' },
+  EXPIRED: { Icon: TimeQuarter02Icon, description: 'Live window has ended' },
 };
 
 function getEligibilitySummary(info?: TourInfo) {
@@ -87,7 +78,7 @@ function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo })
 
   return (
     <div className="min-w-44 space-y-1.5">
-      <StatusBadge variant={meta.variant} icon={<Icon className="size-3" />}>
+      <StatusBadge variant={meta.variant} icon={<HugeiconsIcon icon={Icon} className="size-3" />}>
         {meta.label}
       </StatusBadge>
       <p className="text-xs leading-5 text-muted-foreground">{extras.description}</p>
@@ -96,9 +87,9 @@ function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo })
           variant={eligibility.isEligible ? 'success' : 'danger'}
           icon={
             eligibility.isEligible ? (
-              <CircleCheckIcon className="size-3" />
+              <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-3" />
             ) : (
-              <AlertTriangleIcon className="size-3" />
+              <HugeiconsIcon icon={Alert02Icon} className="size-3" />
             )
           }
         >
@@ -254,7 +245,7 @@ export function makeSpotlightColumns({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm">
-                <MoreHorizontalIcon />
+                <HugeiconsIcon icon={MoreHorizontalIcon} />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
@@ -264,7 +255,7 @@ export function makeSpotlightColumns({
                 disabled={!isEligible}
                 onClick={() => onApprove(req)}
               >
-                <CheckIcon />
+                <HugeiconsIcon icon={Tick02Icon} />
                 Approve Spotlight
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -272,7 +263,7 @@ export function makeSpotlightColumns({
                 className="text-destructive focus:text-destructive"
                 onClick={() => onReject(req)}
               >
-                <XIcon />
+                <HugeiconsIcon icon={Cancel01Icon} />
                 Reject Request
               </DropdownMenuItem>
             </DropdownMenuContent>

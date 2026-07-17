@@ -1,6 +1,7 @@
 'use client';
 
-import { CreditCardIcon } from 'lucide-react';
+import { CreditCardIcon } from '@hugeicons/core-free-icons';
+
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,

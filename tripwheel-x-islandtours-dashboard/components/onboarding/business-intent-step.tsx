@@ -1,10 +1,11 @@
 'use client';
 
+import { Calendar03Icon, TradeUpIcon } from '@hugeicons/core-free-icons';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UseFormReturn } from 'react-hook-form';
 import { OnboardingData } from '@/lib/validations/onboarding';
-import { Calendar, TrendingUp } from 'lucide-react';
 
 interface BusinessIntentStepProps {
   form: UseFormReturn<OnboardingData>;

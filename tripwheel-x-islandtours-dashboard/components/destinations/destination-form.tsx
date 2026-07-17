@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, SecurityWarningIcon } from '@hugeicons/core-free-icons';
+
 import { isValidIanaTimeZone } from '@/utils/intl-utils';
 import { ImageSelectorField } from '@/components/media/image-selector-field';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +27,6 @@ import {
 import type { DestinationDetail } from '@/types/destination';
 import { REGION_VALUES, CURRENCY_VALUES, CURRENCY_LABELS } from '@/types/enums';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldAlertIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -227,7 +229,7 @@ export function DestinationForm({
                         onSubmit={handleSubmit(onSubmit)}
                         className='space-y-6'>
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Name <span className='text-destructive'>*</span>
                             </Label>
                             <Input
@@ -239,7 +241,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Slug {!isEditMode && <span className='text-destructive'>*</span>}
                             </Label>
                             {isEditMode ? (
@@ -268,7 +270,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Hero Image
                             </Label>
                             <FieldDescription>
@@ -287,7 +289,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Region <span className='text-destructive'>*</span>
                             </Label>
                             <Select
@@ -314,11 +316,11 @@ export function DestinationForm({
 
                         <div className='grid gap-6 sm:grid-cols-2'>
                             <Field>
-                                <Label className='text-xs font-semibold'>Country</Label>
+                                <Label>Country</Label>
                                 <Input {...register('country')} placeholder='e.g. Curaçao' />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>Currency</Label>
+                                <Label>Currency</Label>
                                 <Select
                                     value={currencyValue || '__none__'}
                                     onValueChange={v =>
@@ -338,7 +340,7 @@ export function DestinationForm({
                                 </Select>
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>
+                                <Label>
                                     Timezone <span className='text-destructive'>*</span>
                                 </Label>
                                 <Input {...register('timezone')} placeholder='e.g. America/Curacao' aria-invalid={!!errors.timezone} />
@@ -346,11 +348,11 @@ export function DestinationForm({
                                 {errors.timezone && <FieldError>{errors.timezone.message}</FieldError>}
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>Language</Label>
+                                <Label>Language</Label>
                                 <Input {...register('language')} placeholder='e.g. en' />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>Latitude</Label>
+                                <Label>Latitude</Label>
                                 <Input
                                     type='number'
                                     step='any'
@@ -361,7 +363,7 @@ export function DestinationForm({
                                 <FieldError>{errors.latitude?.message}</FieldError>
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>Longitude</Label>
+                                <Label>Longitude</Label>
                                 <Input
                                     type='number'
                                     step='any'
@@ -374,7 +376,7 @@ export function DestinationForm({
                         </div>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Parent Destination
                             </Label>
                             <Select
@@ -403,7 +405,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Gallery Images
                             </Label>
                             <FieldDescription>
@@ -430,7 +432,7 @@ export function DestinationForm({
                                     />
                                     <Label
                                         htmlFor='isActive'
-                                        className='text-xs font-semibold cursor-pointer'>
+                                        className='cursor-pointer'>
                                         Active
                                     </Label>
                                 </div>
@@ -476,7 +478,7 @@ export function DestinationForm({
                                 </p>
                                 {destination.isSeeded && (
                                     <div className='mt-3 flex items-center gap-2 text-sm text-warning-fg'>
-                                        <ShieldAlertIcon className='size-4 shrink-0' />
+                                        <HugeiconsIcon icon={SecurityWarningIcon} className='size-4 shrink-0' />
                                         <span>
                                             This is a seeded destination and is
                                             protected from deletion.
@@ -497,7 +499,7 @@ export function DestinationForm({
                                         size='sm'
                                         type='button'
                                         onClick={() => setDeleteOpen(true)}>
-                                        <Trash2Icon />
+                                        <HugeiconsIcon icon={Delete02Icon} />
                                         Delete
                                     </Button>
                                 )}

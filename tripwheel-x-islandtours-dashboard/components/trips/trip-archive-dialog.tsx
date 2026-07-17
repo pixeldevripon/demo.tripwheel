@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon } from '@hugeicons/core-free-icons';
+
 import { toast } from 'sonner';
 import { useArchiveTrip } from '@/hooks/trips/use-trips';
 import {
@@ -12,7 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArchiveIcon } from 'lucide-react';
 
 interface TripArchiveDialogProps {
   tripId: string;
@@ -54,7 +56,7 @@ export function TripArchiveDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <ArchiveIcon className="size-5 text-destructive" />
+              <HugeiconsIcon icon={Archive02Icon} className="size-5 text-destructive" />
             </div>
             <AlertDialogTitle>Archive Trip</AlertDialogTitle>
           </div>

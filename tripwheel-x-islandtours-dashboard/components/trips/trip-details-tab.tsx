@@ -1,20 +1,19 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ChevronDownIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CollapsibleCard } from '@/components/common/collapsible-card';
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -142,7 +141,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
                   className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
                   aria-label={`Remove ${lang.language}`}
                 >
-                  <XIcon className="size-3" />
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                 </button>
               </Badge>
             ))}
@@ -154,7 +153,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
         <div className="flex items-end gap-2 pt-2 border-t">
           {showCustom ? (
             <Field className="flex-1">
-              <Label className="text-xs font-semibold">ISO 639-1 Code</Label>
+              <Label>ISO 639-1 Code</Label>
               <Input
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value)}
@@ -165,7 +164,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
             </Field>
           ) : (
             <Field className="flex-1">
-              <Label className="text-xs font-semibold">Language</Label>
+              <Label>Language</Label>
               <Select value={selected} onValueChange={setSelected}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select language..." />
@@ -375,11 +374,14 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
     setValue,
     control,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<DetailsFormValues>({
     resolver: zodResolver(detailsSchema) as unknown as Resolver<DetailsFormValues>,
     defaultValues: tripToDefaults(trip),
   });
+
+  // Native leave-page prompt while the form is dirty (Phase 18).
+  useUnsavedGuard(isDirty);
 
   useEffect(() => {
     reset(tripToDefaults(trip));
@@ -478,7 +480,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Slug</Label>
+ <Label>Slug</Label>
  <Input
  {...register('slug')}
  placeholder="e.g. sunset-catamaran-cruise"
@@ -491,7 +493,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  <FieldError>{errors.slug?.message}</FieldError>
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Destination</Label>
+ <Label>Destination</Label>
  <Input
  value={trip.destinationName ?? trip.destinationId}
  readOnly
@@ -502,7 +504,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </div>
 
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  Name <span className="text-destructive">*</span>
  </Label>
  <Input
@@ -514,7 +516,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  Categories <span className="text-destructive">*</span>
  </Label>
  <Controller
@@ -539,7 +541,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Activity Hubs</Label>
+ <Label>Activity Hubs</Label>
  <Controller
  name="hubIds"
  control={control}
@@ -560,7 +562,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Duration From (minutes)</Label>
+ <Label>Duration From (minutes)</Label>
  <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
  {durationHint(Number(durationFromWatch)) && (
  <FieldDescription>
@@ -569,7 +571,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  )}
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Duration To (minutes)</Label>
+ <Label>Duration To (minutes)</Label>
  <Input {...register('durationMinutesTo')} type="number" min={1} placeholder="Optional" />
  <FieldDescription>Leave empty for a fixed duration.</FieldDescription>
  </Field>
@@ -577,7 +579,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Pickup Model</Label>
+ <Label>Pickup Model</Label>
  <Controller
  name="pickupModel"
  control={control}
@@ -596,7 +598,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Booking Type</Label>
+ <Label>Booking Type</Label>
  <Controller
  name="bookingType"
  control={control}
@@ -617,7 +619,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Payment Model</Label>
+ <Label>Payment Model</Label>
  <Controller
  name="paymentModel"
  control={control}
@@ -637,7 +639,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Cancellation Window</Label>
+ <Label>Cancellation Window</Label>
  <Controller
  name="cancellationHours"
  control={control}
@@ -665,7 +667,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  {watchedPaymentModel ==='ON_ARRIVAL'&& (
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  On-arrival Payment
  </Label>
  <Controller
@@ -698,7 +700,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={instantConfirmation}
  onCheckedChange={(c) => setValue('instantConfirmation', !!c)}
  />
- <Label htmlFor="instantConfirmation" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="instantConfirmation" className="cursor-pointer">
  Instant confirmation
  </Label>
  </div>
@@ -708,7 +710,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={pickupRequired}
  onCheckedChange={(c) => setValue('pickupRequired', !!c)}
  />
- <Label htmlFor="pickupRequired" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="pickupRequired" className="cursor-pointer">
  Pickup required
  </Label>
  </div>
@@ -716,24 +718,24 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Min Party Size</Label>
+ <Label>Min Party Size</Label>
  <Input {...register('minPartySize')} type="number" min={1} />
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Max Party Size</Label>
+ <Label>Max Party Size</Label>
  <Input {...register('maxPartySize')} type="number" min={1} placeholder="Optional" />
  </Field>
  </div>
 
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Booking Cutoff (minutes)</Label>
+ <Label>Booking Cutoff (minutes)</Label>
  <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
  <FieldDescription>How long before departure bookings close.</FieldDescription>
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Check-in Before (minutes)</Label>
+ <Label>Check-in Before (minutes)</Label>
  <Input {...register('checkInMinutesBefore')} type="number" min={0} max={240} placeholder="e.g. 30" />
  <FieldDescription>How early travelers should arrive.</FieldDescription>
  </Field>
@@ -742,15 +744,15 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  {/* Meeting point */}
  <div className="grid grid-cols-3 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Departure City</Label>
+ <Label>Departure City</Label>
  <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Meeting Lat</Label>
+ <Label>Meeting Lat</Label>
  <Input {...register('meetingPointLat')} placeholder="e.g. 12.1091" />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Meeting Lng</Label>
+ <Label>Meeting Lng</Label>
  <Input {...register('meetingPointLng')} placeholder="e.g. -68.9316" />
  </Field>
  </div>
@@ -758,11 +760,11 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  {/* Audience */}
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Minimum Age</Label>
+ <Label>Minimum Age</Label>
  <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Fitness Level</Label>
+ <Label>Fitness Level</Label>
  <Controller
  name="fitnessLevel"
  control={control}
@@ -789,7 +791,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={weatherDependent}
  onCheckedChange={(c) => setValue('weatherDependent', !!c)}
  />
- <Label htmlFor="weatherDependent" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="weatherDependent" className="cursor-pointer">
  Weather dependent
  </Label>
  </div>
@@ -799,7 +801,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={wheelchairAccessible}
  onCheckedChange={(c) => setValue('wheelchairAccessible', !!c)}
  />
- <Label htmlFor="wheelchairAccessible" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="wheelchairAccessible" className="cursor-pointer">
  Wheelchair accessible
  </Label>
  </div>
@@ -809,7 +811,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={familyFriendly}
  onCheckedChange={(c) => setValue('familyFriendly', !!c)}
  />
- <Label htmlFor="familyFriendly" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="familyFriendly" className="cursor-pointer">
  Family friendly
  </Label>
  </div>
@@ -819,14 +821,14 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={suitableForBeginners}
  onCheckedChange={(c) => setValue('suitableForBeginners', !!c)}
  />
- <Label htmlFor="suitableForBeginners" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="suitableForBeginners" className="cursor-pointer">
  Suitable for beginners
  </Label>
  </div>
  </div>
 
  <Field>
- <Label className="text-xs font-semibold ">H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
+ <Label>H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
  <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
  <FieldDescription>
  English-only heading tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
@@ -834,13 +836,13 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Breadcrumb Label</Label>
+ <Label>Breadcrumb Label</Label>
  <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
  <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">External Reference</Label>
+ <Label>External Reference</Label>
  <Input {...register('reference')} placeholder="Your own product code / OCTO id" />
             <FieldDescription>Optional. Your external system&apos;s identifier for this product.</FieldDescription>
           </Field>
@@ -852,7 +854,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
                 checked={isActiveValue}
                 onCheckedChange={(checked) => setValue('isActive', !!checked)}
  />
- <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="isActive" className="cursor-pointer">
  Active
  </Label>
  </div>
@@ -872,24 +874,11 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
 
  {/* OCTO & Delivery: advanced integration fields, low priority for now.
  Collapsed by default; edits still save through the same form. */}
- <Collapsible>
- <Card className="gap-0 py-0">
- <CollapsibleTrigger asChild>
- <button
- type="button"
- className="group/octo flex w-full items-center justify-between gap-2 px-8 py-6 text-left"
- >
- <span className="text-lg font-semibold ">
- OCTO &amp; Delivery
- </span>
- <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/octo:rotate-180" />
- </button>
- </CollapsibleTrigger>
- <CollapsibleContent className="border-t">
- <CardContent className="pt-6 space-y-6">
+ <CollapsibleCard title='OCTO & Delivery'>
+ <div className='space-y-6'>
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">Availability Type</Label>
+ <Label>Availability Type</Label>
  <Controller
  name="availabilityType"
  control={control}
@@ -907,7 +896,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  />
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Redemption Method</Label>
+ <Label>Redemption Method</Label>
  <Controller
  name="redemptionMethod"
  control={control}
@@ -934,7 +923,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={instantDelivery}
  onCheckedChange={(c) => setValue('instantDelivery', !!c)}
  />
- <Label htmlFor="instantDelivery" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="instantDelivery" className="cursor-pointer">
  Instant delivery
  </Label>
  </div>
@@ -944,7 +933,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={availabilityRequired}
  onCheckedChange={(c) => setValue('availabilityRequired', !!c)}
  />
- <Label htmlFor="availabilityRequired" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="availabilityRequired" className="cursor-pointer">
  Availability required
  </Label>
  </div>
@@ -954,14 +943,14 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  checked={allowFreesale}
  onCheckedChange={(c) => setValue('allowFreesale', !!c)}
  />
- <Label htmlFor="allowFreesale" className="text-xs font-semibold cursor-pointer">
+ <Label htmlFor="allowFreesale" className="cursor-pointer">
  Allow freesale
  </Label>
  </div>
  </div>
 
  <Field>
- <Label className="text-xs font-semibold ">Delivery Formats</Label>
+ <Label>Delivery Formats</Label>
  <Controller
  name="deliveryFormats"
  control={control}
@@ -984,7 +973,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  />
  <Label
  htmlFor={`deliveryFormat-${opt.value}`}
- className="text-xs font-semibold cursor-pointer"
+ className="cursor-pointer"
  >
  {opt.label}
  </Label>
@@ -997,7 +986,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Delivery Methods</Label>
+ <Label>Delivery Methods</Label>
  <Controller
  name="deliveryMethods"
  control={control}
@@ -1020,7 +1009,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  />
  <Label
  htmlFor={`deliveryMethod-${opt.value}`}
- className="text-xs font-semibold cursor-pointer"
+ className="cursor-pointer"
  >
  {opt.label}
  </Label>
@@ -1033,28 +1022,21 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Time Zone</Label>
+ <Label>Time Zone</Label>
  <Input value={trip.timeZone ??''} readOnly disabled placeholder="Derived from destination" />
  <FieldDescription>Derived from the destination and used for all schedule, departure, and booking local times. Not editable here.</FieldDescription>
  </Field>
 
  <Field>
- <Label className="text-xs font-semibold ">Start Times</Label>
+ <Label>Start Times</Label>
  <FieldDescription>
  Managed on the <span className="font-medium">Schedules</span> tab,
  where they are declared alongside the recurring schedules that use
  them.
  </FieldDescription>
  </Field>
- </CardContent>
- <div className="flex justify-end px-8 pb-8">
- <Button type="button" onClick={handleSubmit(onSubmit)} disabled={isPending}>
- {isPending ?'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+ </div>
+ </CollapsibleCard>
     </div>
   );
 }

@@ -1,10 +1,12 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { AlertCircleIcon } from '@hugeicons/core-free-icons';
+
 import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { CircleAlert } from 'lucide-react';
 import { Field, inputClass, primaryBtn, SuccessBlock, ErrorNote } from './login-ui';
 
 /**
@@ -34,7 +36,7 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
         return (
             <div className={`${cardClass} text-center`}>
                 <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
-                    <CircleAlert className='size-6 text-danger-fg' strokeWidth={1.75} />
+                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
                 <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
                     Invalid reset link
@@ -80,7 +82,7 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
         return (
             <div className={`${cardClass} text-center`}>
                 <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
-                    <CircleAlert className='size-6 text-danger-fg' strokeWidth={1.75} />
+                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
                 <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
                     This link has expired

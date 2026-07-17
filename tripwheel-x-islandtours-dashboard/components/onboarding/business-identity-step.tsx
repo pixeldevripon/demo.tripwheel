@@ -1,10 +1,11 @@
 'use client';
 
+import { Building02Icon, CallIcon, Globe02Icon, Location01Icon } from '@hugeicons/core-free-icons';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UseFormReturn } from 'react-hook-form';
 import { OnboardingData } from '@/lib/validations/onboarding';
-import { Building2, Globe, MapPin, Phone } from 'lucide-react';
 
 interface BusinessIdentityStepProps {
   form: UseFormReturn<OnboardingData>;
@@ -59,7 +60,7 @@ export function BusinessIdentityStep({ form }: BusinessIdentityStepProps) {
       </div>
 
       <Field data-invalid={!!errors.companyPhone}>
-        <FieldLabel htmlFor="companyPhone">Business Phone</FieldLabel>
+        <FieldLabel htmlFor="companyPhone">Business CallIcon</FieldLabel>
         <Input
           id="companyPhone"
           placeholder="e.g. +31 6 12345678 "

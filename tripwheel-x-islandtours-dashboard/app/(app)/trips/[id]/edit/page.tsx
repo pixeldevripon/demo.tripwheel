@@ -1,4 +1,4 @@
-import { TripEditView } from '@/components/trips/trip-edit-view';
+import { TripEditorView } from '@/components/trips/editor/trip-editor-view';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -8,5 +8,5 @@ interface Props {
 export default async function EditTripPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { tab } = await searchParams;
-  return <TripEditView id={id} initialTab={tab} />;
+  return <TripEditorView id={id} initialTab={tab} />;
 }

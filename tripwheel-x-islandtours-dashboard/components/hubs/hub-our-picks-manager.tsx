@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, PlusSignIcon, StarIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PlusIcon, StarIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -160,14 +162,14 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
 
       <div className="flex items-center justify-end">
         <Button size="sm" type="button" onClick={addRow} disabled={rows.length >= MAX_PICKS}>
-          <PlusIcon />
+          <HugeiconsIcon icon={PlusSignIcon} />
           Add Pick {rows.length > 0 ? `(${rows.length}/${MAX_PICKS})` : ''}
         </Button>
       </div>
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <StarIcon className="size-10 opacity-40" />
+          <HugeiconsIcon icon={StarIcon} className="size-10 opacity-40" />
           <p className="text-sm">No picks yet.</p>
           <p className="text-xs">Add your first pick using the button above.</p>
         </div>
@@ -180,7 +182,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
               <CardContent className="pt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>
-                    <Label className="text-xs font-semibold">Tour</Label>
+                    <Label>Tour</Label>
                     <HubTourSelect
                       destinationId={hub?.destinationId ?? ''}
                       value={row.tourId}
@@ -195,7 +197,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                     )}
                   </Field>
                   <Field>
-                    <Label className="text-xs font-semibold">Pick Type</Label>
+                    <Label>Pick Type</Label>
                     <Select
                       value={row.pickType}
                       onValueChange={(v) => updateRow(row.key, { pickType: v as HubPickType })}
@@ -227,7 +229,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
 
                 <div className="flex items-end justify-between gap-4">
                   <Field className="w-32">
-                    <Label className="text-xs font-semibold">Display Order</Label>
+                    <Label>Display Order</Label>
                     <Input
                       type="number"
                       value={row.displayOrder}
@@ -243,7 +245,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => removeRow(row.key)}
                   >
-                    <Trash2Icon />
+                    <HugeiconsIcon icon={Delete02Icon} />
                     Remove
                   </Button>
                 </div>

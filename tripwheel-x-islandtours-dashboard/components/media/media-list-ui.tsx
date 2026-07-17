@@ -3,9 +3,8 @@
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatFileSize } from '@/lib/utils';
-import { Copy01Icon, Delete01Icon, CloudUploadIcon } from '@hugeicons/core-free-icons';
+import { CloudUploadIcon, Copy01Icon, Delete01Icon, LinkSquare01Icon, Loading03Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Check, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import type { MediaItem } from '@/types/media';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,7 +114,7 @@ const MediaListUi = ({
                             {isBeingDeleted && (
                                 <div className='absolute inset-0 flex items-center justify-center bg-destructive/10 rounded-lg backdrop-blur-sm'>
                                     <div className='text-destructive font-medium text-sm flex items-center'>
-                                        <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                        <HugeiconsIcon icon={Loading03Icon} className='h-4 w-4 mr-2 animate-spin' />
                                         Deleting...
                                     </div>
                                 </div>
@@ -126,7 +125,7 @@ const MediaListUi = ({
                                     <div
                                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-200 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary hover:bg-accent/20'}`}
                                         onClick={e => { e.stopPropagation(); !isDeleting && handleItemSelection(item); }}>
-                                        {isSelected && <Check className='h-4 w-4' />}
+                                        {isSelected && <HugeiconsIcon icon={Tick02Icon} className='h-4 w-4' />}
                                     </div>
                                 </div>
                             )}
@@ -175,7 +174,7 @@ const MediaListUi = ({
                                         size='sm'
                                         onClick={e => { e.stopPropagation(); window.open(item.url, '_blank'); }}
                                         className='h-8 px-2.5 text-xs'>
-                                        <ExternalLink className='h-3.5 w-3.5' />
+                                        <HugeiconsIcon icon={LinkSquare01Icon} className='h-3.5 w-3.5' />
                                     </Button>
                                 </div>
                             )}

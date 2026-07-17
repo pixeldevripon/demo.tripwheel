@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowUp01Icon, Bus01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon, BusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -130,7 +132,7 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
     <div className="ring-1 ring-foreground/10 p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <BusIcon className="size-4 text-muted-foreground shrink-0" />
+          <HugeiconsIcon icon={Bus01Icon} className="size-4 text-muted-foreground shrink-0" />
           <p className="text-sm truncate">{pickup.name}</p>
           {!pickup.isActive && <Badge variant="outline" className="text-xs shrink-0">Inactive</Badge>}
           {(pickup.windowStart || pickup.windowEnd) && (
@@ -146,7 +148,7 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            {expanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
             <span className="hidden sm:inline">Edit</span>
           </button>
           <Button
@@ -157,7 +159,7 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -167,44 +169,44 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
           <form onSubmit={handleSubmit(onSaveDetails)} className="space-y-3">
             <p className="text-xs font-semibold text-muted-foreground">Details</p>
             <Field>
-              <Label className="text-xs font-semibold">Name</Label>
+              <Label>Name</Label>
               <Input {...register('name')} aria-invalid={!!errors.name} />
               <FieldError>{errors.name?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Address</Label>
+              <Label>Address</Label>
               <Input {...register('address')} placeholder="Hotel / street address" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold">Latitude</Label>
+                <Label>Latitude</Label>
                 <Input {...register('latitude')} placeholder="12.1091" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Longitude</Label>
+                <Label>Longitude</Label>
                 <Input {...register('longitude')} placeholder="-68.9316" />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Field>
-                <Label className="text-xs font-semibold">Mins Prior</Label>
+                <Label>Mins Prior</Label>
                 <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
                 <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Window Start</Label>
+                <Label>Window Start</Label>
                 <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
                 <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Window End</Label>
+                <Label>Window End</Label>
                 <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
                 <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
               </Field>
             </div>
             <div className="flex items-center justify-between">
               <Field className="max-w-32">
-                <Label className="text-xs font-semibold">Order</Label>
+                <Label>Order</Label>
                 <Input {...register('displayOrder')} type="number" min={0} />
               </Field>
               <label className="flex items-center gap-2 cursor-pointer pt-5">
@@ -346,41 +348,41 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
           <p className="text-xs font-semibold text-muted-foreground">Add Pickup Location</p>
           <Field>
-            <Label className="text-xs font-semibold">Name</Label>
+            <Label>Name</Label>
             <Input {...register('name')} placeholder="e.g. Marriott Beach Resort - main lobby" aria-invalid={!!errors.name} />
             <FieldError>{errors.name?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Directions (English)</Label>
+            <Label>Directions (English)</Label>
             <Input {...register('directions')} placeholder="Wait near the concierge desk." />
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Address</Label>
+            <Label>Address</Label>
             <Input {...register('address')} placeholder="Street address" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Latitude</Label>
+              <Label>Latitude</Label>
               <Input {...register('latitude')} placeholder="12.1091" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Longitude</Label>
+              <Label>Longitude</Label>
               <Input {...register('longitude')} placeholder="-68.9316" />
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Mins Prior</Label>
+              <Label>Mins Prior</Label>
               <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
               <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Window Start</Label>
+              <Label>Window Start</Label>
               <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
               <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Window End</Label>
+              <Label>Window End</Label>
               <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
               <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
             </Field>

@@ -1,11 +1,8 @@
 'use client';
 
-import {
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    ChevronsLeftIcon,
-    ChevronsRightIcon,
-} from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowLeft01Icon, ArrowLeftDoubleIcon, ArrowRight01Icon, ArrowRightDoubleIcon } from '@hugeicons/core-free-icons';
+
 import type { Table } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -92,7 +89,7 @@ export function DataTablePagination<TData>({
                     aria-label='First page'
                     onClick={() => goTo(1)}
                     disabled={isLoading || page <= 1}>
-                    <ChevronsLeftIcon />
+                    <HugeiconsIcon icon={ArrowLeftDoubleIcon} />
                 </Button>
                 <Button
                     variant='outline'
@@ -100,7 +97,7 @@ export function DataTablePagination<TData>({
                     aria-label='Previous page'
                     onClick={() => goTo(page - 1)}
                     disabled={isLoading || page <= 1}>
-                    <ChevronLeftIcon />
+                    <HugeiconsIcon icon={ArrowLeft01Icon} />
                 </Button>
                 <Button
                     variant='outline'
@@ -108,7 +105,7 @@ export function DataTablePagination<TData>({
                     aria-label='Next page'
                     onClick={() => goTo(page + 1)}
                     disabled={isLoading || page >= totalPages}>
-                    <ChevronRightIcon />
+                    <HugeiconsIcon icon={ArrowRight01Icon} />
                 </Button>
                 <Button
                     variant='outline'
@@ -116,7 +113,7 @@ export function DataTablePagination<TData>({
                     aria-label='Last page'
                     onClick={() => goTo(totalPages)}
                     disabled={isLoading || page >= totalPages}>
-                    <ChevronsRightIcon />
+                    <HugeiconsIcon icon={ArrowRightDoubleIcon} />
                 </Button>
             </div>
         </div>

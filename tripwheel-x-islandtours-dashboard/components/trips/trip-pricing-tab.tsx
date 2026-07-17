@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, Delete02Icon, StarIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, StarIcon, ChevronDownIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -177,7 +179,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {ageBand.isDefault ? (
-            <StarIcon className="size-3.5 shrink-0 fill-rating text-rating" />
+            <HugeiconsIcon icon={StarIcon} className="size-3.5 shrink-0 fill-rating text-rating" />
           ) : (
             <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground" />
           )}
@@ -211,7 +213,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
             aria-label={editing ? 'Collapse age band' : 'Edit age band'}
             aria-expanded={editing}
           >
-            <ChevronDownIcon
+            <HugeiconsIcon icon={ArrowDown01Icon}
               className={`size-3.5 transition-transform ${editing ? 'rotate-180' : ''}`}
             />
           </Button>
@@ -222,7 +224,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -231,7 +233,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
         <div className="pt-3 border-t space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Age Type</Label>
+              <Label>Age Type</Label>
               <Select value={bandType} onValueChange={(v) => setBandType(v as AgeBandType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -244,7 +246,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
               </Select>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Participation</Label>
+              <Label>Participation</Label>
               <Select value={participation} onValueChange={(v) => setParticipation(v as BandParticipation)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -259,32 +261,32 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Label</Label>
+              <Label>Label</Label>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Price</Label>
+              <Label>Price</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="79.00" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Min Age</Label>
+              <Label>Min Age</Label>
               <Input value={minAge} onChange={(e) => setMinAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Max Age</Label>
+              <Label>Max Age</Label>
               <Input value={maxAge} onChange={(e) => setMaxAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Original Price</Label>
+              <Label>Original Price</Label>
               <Input value={priceOriginal} onChange={(e) => setPriceOriginal(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional pre-discount price, shown struck through to signal a deal.</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Net Price</Label>
+              <Label>Net Price</Label>
               <Input value={priceNet} onChange={(e) => setPriceNet(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional operator net (what you keep). Internal only - not shown to travelers.</FieldDescription>
             </Field>
@@ -415,7 +417,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
             aria-label={editing ? 'Collapse add-on' : 'Edit add-on'}
             aria-expanded={editing}
           >
-            <ChevronDownIcon
+            <HugeiconsIcon icon={ArrowDown01Icon}
               className={`size-3.5 transition-transform ${editing ? 'rotate-180' : ''}`}
             />
           </Button>
@@ -426,7 +428,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -435,21 +437,21 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
         <div className="pt-3 mt-2 border-t space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Name</Label>
+              <Label>Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Snorkel Equipment" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Price</Label>
+              <Label>Price</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="19.99" />
             </Field>
           </div>
           <Field>
-            <Label className="text-xs font-semibold">Description</Label>
+            <Label>Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Pricing Unit</Label>
+              <Label>Pricing Unit</Label>
               <Select value={unit} onValueChange={(v) => setUnit(v as AddOnUnit)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -461,7 +463,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
               </Select>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Max Quantity</Label>
+              <Label>Max Quantity</Label>
               <Input value={maxQuantity} onChange={(e) => setMaxQuantity(e.target.value)} type="number" min={1} placeholder="10" />
             </Field>
           </div>
@@ -582,7 +584,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold">Pricing Model</Label>
+              <Label>Pricing Model</Label>
               <Controller
                 name="pricingModel"
                 control={control}
@@ -600,7 +602,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
               />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Currency</Label>
+              <Label>Currency</Label>
               <Controller
                 name="defaultCurrency"
                 control={control}
@@ -621,7 +623,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold">Base Price</Label>
+              <Label>Base Price</Label>
               <Input {...register('basePrice')} placeholder="e.g. 49.99" aria-invalid={!!errors.basePrice} />
               <FieldDescription>
                 {isUnit
@@ -632,7 +634,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
             </Field>
             {isUnit && (
               <Field>
-                <Label className="text-xs font-semibold">Unit Type</Label>
+                <Label>Unit Type</Label>
                 <Controller
                   name="wholeUnitType"
                   control={control}
@@ -659,7 +661,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
           {isGroupUnit && (
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Guests Included in Base Price</Label>
+                <Label>Guests Included in Base Price</Label>
                 <Input
                   {...register('unitIncludedGuests')}
                   type="number"
@@ -671,7 +673,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
                 <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Extra Person Price</Label>
+                <Label>Extra Person Price</Label>
                 <Input
                   {...register('extraPersonPrice')}
                   placeholder="e.g. 175.00"
@@ -865,7 +867,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
             <p className="text-xs font-semibold text-muted-foreground">Add Age Band</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Age Type</Label>
+                <Label>Age Type</Label>
                 <Controller
                   name="bandType"
                   control={ageBandControl}
@@ -887,7 +889,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.bandType?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Participation</Label>
+                <Label>Participation</Label>
                 <Controller
                   name="participation"
                   control={ageBandControl}
@@ -912,7 +914,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Label</Label>
+                <Label>Label</Label>
                 <Input
                   {...registerAgeBand('label')}
                   placeholder="e.g. Adult (13+)"
@@ -921,7 +923,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.label?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Price</Label>
+                <Label>Price</Label>
                 <Input
                   {...registerAgeBand('price')}
                   placeholder="79.00"
@@ -933,7 +935,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Min Age</Label>
+                <Label>Min Age</Label>
                 <Input
                   {...registerAgeBand('minAge')}
                   type="number"
@@ -945,7 +947,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.minAge?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Max Age</Label>
+                <Label>Max Age</Label>
                 <Input
                   {...registerAgeBand('maxAge')}
                   type="number"
@@ -960,7 +962,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Original Price</Label>
+                <Label>Original Price</Label>
                 <Input
                   {...registerAgeBand('priceOriginal')}
                   placeholder="Optional (strikethrough)"
@@ -970,7 +972,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.priceOriginal?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Net Price</Label>
+                <Label>Net Price</Label>
                 <Input
                   {...registerAgeBand('priceNet')}
                   placeholder="Optional (operator net)"
@@ -1033,7 +1035,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
             <p className="text-xs font-semibold text-muted-foreground">Add Add-On</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Name</Label>
+                <Label>Name</Label>
                 <Input
                   {...registerAddOn('name')}
                   placeholder="e.g. Snorkel Equipment"
@@ -1042,7 +1044,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{addOnErrors.name?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Price</Label>
+                <Label>Price</Label>
                 <Input
                   {...registerAddOn('price')}
                   placeholder="19.99"
@@ -1053,13 +1055,13 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
             </div>
 
             <Field>
-              <Label className="text-xs font-semibold">Description</Label>
+              <Label>Description</Label>
               <Input {...registerAddOn('description')} placeholder="Optional description" />
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Pricing Unit</Label>
+                <Label>Pricing Unit</Label>
                 <Controller
                   name="unit"
                   control={addOnControl}
@@ -1077,7 +1079,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Max Quantity</Label>
+                <Label>Max Quantity</Label>
                 <Input {...registerAddOn('maxQuantity')} type="number" min={1} placeholder="10" />
               </Field>
             </div>

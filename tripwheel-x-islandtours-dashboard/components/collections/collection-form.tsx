@@ -1,12 +1,14 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Alert02Icon, LeftToRightListNumberIcon } from '@hugeicons/core-free-icons';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangleIcon, ListOrderedIcon } from 'lucide-react';
 import { ImageSelectorField } from '@/components/media/image-selector-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -292,7 +294,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
       <CardContent className="pt-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Field>
-            <Label className="text-xs font-semibold">
+            <Label>
               Destination <span className="text-destructive">*</span>
             </Label>
             {isEditMode ? (
@@ -317,7 +319,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold">
+            <Label>
               Name <span className="text-destructive">*</span>
             </Label>
             <Input {...register('name')} placeholder="e.g. Best Family Trips" aria-invalid={!!errors.name} />
@@ -325,7 +327,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold">
+            <Label>
               Slug {!isEditMode && <span className="text-destructive">*</span>}
             </Label>
             {isEditMode ? (
@@ -343,7 +345,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
             )}
             {!isEditMode && slugClashesCategory && (
               <div className="flex items-center gap-1.5 text-xs text-warning-fg">
-                <AlertTriangleIcon className="size-3.5 shrink-0" />
+                <HugeiconsIcon icon={Alert02Icon} className="size-3.5 shrink-0" />
                 This slug matches a category slug - the server will reject it (409). Pick a different slug.
               </div>
             )}
@@ -354,7 +356,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold">Hero Image</Label>
+            <Label>Hero Image</Label>
             <ImageSelectorField
               value={heroImageValue || null}
               onChange={url => setValue('heroImage', url ?? '', { shouldValidate: true })}
@@ -365,7 +367,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
               filter resolves + orders tours). MANUAL order is the hand-picked list. */}
           {collectionType === 'DYNAMIC' && (
             <Field>
-              <Label className="text-xs font-semibold">Sort Order</Label>
+              <Label>Sort Order</Label>
               <Select value={sortOrder || 'recommended'} onValueChange={v => setValue('sortOrder', v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -384,7 +386,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
               numbered ranked list. `displayStyle` stays NUMBERED (schema default). */}
 
           <Field>
-            <Label className="text-xs font-semibold">Type</Label>
+            <Label>Type</Label>
             {isEditMode ? (
               <Input value={collection?.collectionType ?? ''} readOnly className="opacity-60 cursor-not-allowed" />
             ) : (
@@ -406,7 +408,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
           {collectionType === 'MANUAL' ? (
             isEditMode ? (
               <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4">
-                <ListOrderedIcon className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <HugeiconsIcon icon={LeftToRightListNumberIcon} className="size-4 shrink-0 text-muted-foreground mt-0.5" />
                 <div className="space-y-2 text-sm">
                   <p className="text-muted-foreground">
                     Tour selection, ordering, and per-tour rationale are managed in the Tours tab.
@@ -423,7 +425,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
               </div>
             ) : (
               <Field>
-                <Label className="text-xs font-semibold">Tours (ordered)</Label>
+                <Label>Tours (ordered)</Label>
                 <MultiSelect
                   options={tourOptions}
                   value={tourIds}
@@ -439,7 +441,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
             <div className="space-y-6 rounded-md border border-border p-4">
               <p className="text-xs font-semibold text-muted-foreground">Filter query</p>
               <Field>
-                <Label className="text-xs font-semibold">Category</Label>
+                <Label>Category</Label>
                 <Select value={categoryId || '__any__'} onValueChange={v => setValue('categoryId', v === '__any__' ? '' : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Any category" />
@@ -453,7 +455,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
                 </Select>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Hub</Label>
+                <Label>Hub</Label>
                 <Select
                   value={hubId || '__any__'}
                   onValueChange={v => setValue('hubId', v === '__any__' ? '' : v)}
@@ -473,34 +475,34 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
-                  <Label className="text-xs font-semibold">Min Price</Label>
+                  <Label>Min Price</Label>
                   <Input type="number" min={0} {...register('minPrice')} placeholder="e.g. 0" />
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Max Price</Label>
+                  <Label>Max Price</Label>
                   <Input type="number" min={0} {...register('maxPrice')} placeholder="e.g. 200" />
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Min Duration (min)</Label>
+                  <Label>Min Duration (min)</Label>
                   <Input type="number" min={0} {...register('durationMin')} />
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Max Duration (min)</Label>
+                  <Label>Max Duration (min)</Label>
                   <Input type="number" min={0} {...register('durationMax')} />
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Min Rating</Label>
+                  <Label>Min Rating</Label>
                   <Input type="number" min={0} max={5} step="0.1" {...register('ratingMin')} placeholder="e.g. 4" />
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Free-cancellation window (max hrs)</Label>
+                  <Label>Free-cancellation window (max hrs)</Label>
                   <Input type="number" min={0} {...register('cancellationMaxHours')} placeholder="e.g. 48" />
                 </Field>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
-                  <Label className="text-xs font-semibold">Pickup</Label>
+                  <Label>Pickup</Label>
                   <Select
                     value={pickupAvailable || '__any__'}
                     onValueChange={v => setValue('pickupAvailable', v === '__any__' ? '' : v)}
@@ -516,7 +518,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
                   </Select>
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Pricing Model</Label>
+                  <Label>Pricing Model</Label>
                   <Select
                     value={pricingModel || '__any__'}
                     onValueChange={v => setValue('pricingModel', v === '__any__' ? '' : v)}
@@ -532,7 +534,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
                   </Select>
                 </Field>
                 <Field>
-                  <Label className="text-xs font-semibold">Locals&apos; Favourite</Label>
+                  <Label>Locals&apos; Favourite</Label>
                   <Select
                     value={isLocalsFavourite || '__any__'}
                     onValueChange={v => setValue('isLocalsFavourite', v === '__any__' ? '' : v)}
@@ -563,7 +565,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
                   <div className="grid gap-4 sm:grid-cols-2">
                     {scopedAttributes.map(attr => (
                       <Field key={attr.key}>
-                        <Label className="text-xs font-semibold">
+                        <Label>
                           {attr.displayName}
                         </Label>
                         <MultiSelect

@@ -1,6 +1,7 @@
 'use client';
 
-import { DatabaseIcon } from 'lucide-react';
+import { Database01Icon } from '@hugeicons/core-free-icons';
+
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
@@ -32,7 +33,7 @@ export function AttributesTable({
       columns={columns}
       data={data}
       empty={{
-        icon: DatabaseIcon,
+        icon: Database01Icon,
         title: 'No attributes found.',
       }}
       toolbar={(table) => (

@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CallIcon, Clock01Icon, Location01Icon, Mail01Icon, Tick02Icon, UnfoldMoreIcon, User03Icon } from '@hugeicons/core-free-icons';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,15 +23,6 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { detectBrowserTimezone, getTimezoneOptions } from '@/utils/intl-utils';
-import {
-    Check,
-    ChevronsUpDown,
-    Clock,
-    Mail,
-    MapPin,
-    Phone,
-    User,
-} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
@@ -65,25 +59,25 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
         {
             id: 'name',
             label: 'Full Name',
-            icon: User,
+            icon: User03Icon,
         },
         {
             id: 'email',
             label: 'Email Address',
-            icon: Mail,
+            icon: Mail01Icon,
             type: 'email',
             disabled: true,
         },
         {
             id: 'phone',
-            label: 'Phone Number',
-            icon: Phone,
+            label: 'CallIcon Number',
+            icon: CallIcon,
             type: 'tel',
         },
         {
             id: 'location',
             label: 'Location',
-            icon: MapPin,
+            icon: Location01Icon,
         },
     ] as const;
 
@@ -92,7 +86,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
             <CardHeader className='pb-4'>
                 <div className='flex items-center justify-between'>
                     <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                        <User className='w-5 h-5 text-primary' />
+                        <HugeiconsIcon icon={User03Icon} className='w-5 h-5 text-primary' />
                         Personal Information
                     </CardTitle>
                     <Badge
@@ -112,7 +106,10 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                 {field.label}
                             </Label>
                             <div className='relative'>
-                                <field.icon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+                                <HugeiconsIcon
+                                    icon={field.icon}
+                                    className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground'
+                                />
                                 <Input
                                     id={field.id}
                                     {...register(field.id)}
@@ -160,7 +157,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                         isEditing && setOpen(val)
                                     }>
                                     <div className='relative'>
-                                        <Clock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10' />
+                                        <HugeiconsIcon icon={Clock01Icon} className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10' />
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant='outline'
@@ -185,7 +182,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                         : 'Select timezone...'}
                                                 </span>
                                                 {isEditing && (
-                                                    <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                                                    <HugeiconsIcon icon={UnfoldMoreIcon} className='ml-2 h-4 w-4 shrink-0 opacity-50' />
                                                 )}
                                             </Button>
                                         </PopoverTrigger>
@@ -208,7 +205,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                                 );
                                                                 setOpen(false);
                                                             }}>
-                                                            <Check
+                                                            <HugeiconsIcon icon={Tick02Icon}
                                                                 className={cn(
                                                                     'mr-2 h-4 w-4',
                                                                     field.value ===

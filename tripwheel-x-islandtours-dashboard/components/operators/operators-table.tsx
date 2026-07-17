@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon, Store01Icon } from '@hugeicons/core-free-icons';
+
 import { useMemo } from 'react';
-import { PlusIcon, StoreIcon } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
@@ -57,7 +59,7 @@ export function OperatorsTable({
   const addButton = can('MANAGE_OPERATORS') && (
     <Button asChild size='sm'>
       <Link href='/tour-operators/new'>
-        <PlusIcon />
+        <HugeiconsIcon icon={PlusSignIcon} />
         Add Tour Operator
       </Link>
     </Button>
@@ -70,7 +72,7 @@ export function OperatorsTable({
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
-        icon: StoreIcon,
+        icon: Store01Icon,
         title: 'No tour operators found.',
         description: 'Invite your first operator to get started.',
         action: addButton,

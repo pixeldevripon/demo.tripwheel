@@ -1,6 +1,7 @@
 'use client';
 
-import { TicketIcon } from 'lucide-react';
+import { Ticket01Icon } from '@hugeicons/core-free-icons';
+
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
@@ -83,7 +84,7 @@ export function BookingsTable({
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
-        icon: TicketIcon,
+        icon: Ticket01Icon,
         title: cancellationView
           ? 'No cancellation requests.'
           : 'No bookings found.',

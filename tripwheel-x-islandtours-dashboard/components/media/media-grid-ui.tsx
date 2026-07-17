@@ -1,10 +1,9 @@
 'use client';
 
 import { useUploadStore } from '@/lib/stores/use-upload-store';
-import { CloudUploadIcon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { CloudUploadIcon, Loading03Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import MediaItemCard from './media-item';
 import type { MediaItem } from '@/types/media';
@@ -118,7 +117,7 @@ const MediaGridUi = ({
                             {isBeingDeleted && (
                                 <div className='absolute inset-0 bg-destructive/10 z-20 rounded-lg flex items-center justify-center backdrop-blur-sm'>
                                     <div className='text-destructive font-medium text-sm flex flex-col items-center'>
-                                        <Loader2 className='h-6 w-6 mb-2 animate-spin' />
+                                        <HugeiconsIcon icon={Loading03Icon} className='h-6 w-6 mb-2 animate-spin' />
                                         <span>Deleting...</span>
                                     </div>
                                 </div>

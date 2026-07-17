@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, Tick02Icon, UnfoldMoreIcon, User03Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
-import { CheckIcon, ChevronsUpDownIcon, UserIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -56,19 +58,19 @@ export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopover
           className="h-9 gap-1.5 max-w-52 justify-between"
         >
           <span className="flex items-center gap-1.5 min-w-0">
-            <UserIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <HugeiconsIcon icon={User03Icon} className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate text-xs">
               {selected ? getDisplayName(selected) : 'All operators'}
             </span>
           </span>
           <span className="flex items-center gap-0.5 shrink-0">
             {value && (
-              <XIcon
+              <HugeiconsIcon icon={Cancel01Icon}
                 className="size-3 text-muted-foreground hover:text-foreground"
                 onClick={handleClear}
               />
             )}
-            <ChevronsUpDownIcon className="size-3 text-muted-foreground" />
+            <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3 text-muted-foreground" />
           </span>
         </Button>
       </PopoverTrigger>
@@ -93,7 +95,7 @@ export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopover
                       onSelect={() => handleSelect(op)}
                       className="flex items-start gap-2"
                     >
-                      <CheckIcon
+                      <HugeiconsIcon icon={Tick02Icon}
                         className={`size-3.5 mt-0.5 shrink-0 ${
                           value === op.id ? 'opacity-100' : 'opacity-0'
                         }`}

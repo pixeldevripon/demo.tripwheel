@@ -1,6 +1,8 @@
 'use client';
 
-import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
+
 import { useState, type ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -82,7 +84,7 @@ export function TextField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold">{label}</Label>
+      <Label>{label}</Label>
       <Input
         type={type}
         placeholder={placeholder}
@@ -113,7 +115,7 @@ export function TextareaField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold">{label}</Label>
+      <Label>{label}</Label>
       <Textarea
         placeholder={placeholder}
         disabled={disabled}
@@ -145,7 +147,7 @@ export function SecretField({
   const [visible, setVisible] = useState(false);
   return (
     <Field>
-      <Label className="text-xs font-semibold">{label}</Label>
+      <Label>{label}</Label>
       <div className="relative">
         <Input
           type={visible ? 'text' : 'password'}
@@ -163,7 +165,7 @@ export function SecretField({
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           tabIndex={-1}
         >
-          {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+          {visible ? <HugeiconsIcon icon={ViewOffIcon} className="size-4" /> : <HugeiconsIcon icon={ViewIcon} className="size-4" />}
         </button>
       </div>
       {description && <FieldDescription>{description}</FieldDescription>}
@@ -188,7 +190,7 @@ export function ImageField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold">{label}</Label>
+      <Label>{label}</Label>
       {description && <FieldDescription>{description}</FieldDescription>}
       <ImageSelectorField value={value} onChange={onChange} disabled={disabled} />
     </Field>
@@ -219,7 +221,7 @@ export function CheckboxField({
           onCheckedChange={(c) => onChange(!!c)}
           disabled={disabled}
         />
-        <Label htmlFor={id} className="text-xs font-semibold cursor-pointer">
+        <Label htmlFor={id} className="cursor-pointer">
           {label}
         </Label>
       </div>

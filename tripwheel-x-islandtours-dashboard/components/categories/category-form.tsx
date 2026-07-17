@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, SecurityWarningIcon } from '@hugeicons/core-free-icons';
+
 import { ImageSelectorField } from '@/components/media/image-selector-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +26,6 @@ import {
 } from '@/hooks/categories/use-categories';
 import type { CategoryDetail } from '@/types/category';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldAlertIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -181,7 +183,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -193,7 +195,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Slug <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -214,7 +216,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Hero Image
               </Label>
               <FieldDescription>
@@ -230,13 +232,13 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold">Description</Label>
+              <Label>Description</Label>
               <Textarea {...register('description')} rows={3} placeholder="Short category description" />
             </Field>
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold">Icon</Label>
+                <Label>Icon</Label>
                 <CategoryIconPicker
                   value={iconValue || null}
                   onChange={name => setValue('icon', name ?? '')}
@@ -244,7 +246,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 <FieldDescription>Pick a Lucide icon for this category.</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Sort Order</Label>
+                <Label>Sort Order</Label>
                 <Input type="number" min={0} {...register('sortOrder')} placeholder="0" aria-invalid={!!errors.sortOrder} />
                 <FieldError>{errors.sortOrder?.message}</FieldError>
               </Field>
@@ -256,7 +258,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 via the parent's Sub-categories manager (create / detach). */}
  {!isEditMode && (
  <Field>
- <Label className="text-xs font-semibold ">Parent Category</Label>
+ <Label>Parent Category</Label>
  <Select
  value={parentValue ||'__none__'}
                   onValueChange={v =>
@@ -291,7 +293,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
  />
  <Label
  htmlFor="isActive"
- className="text-xs font-semibold cursor-pointer">
+ className="cursor-pointer">
  Active
  </Label>
  </div>
@@ -331,7 +333,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 </p>
                 {category.isSeeded && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-warning-fg">
-                    <ShieldAlertIcon className="size-4 shrink-0" />
+                    <HugeiconsIcon icon={SecurityWarningIcon} className="size-4 shrink-0" />
                     <span>This is a seeded category and is protected from deletion.</span>
                   </div>
                 )}
@@ -347,7 +349,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                     size="sm"
                     type="button"
                     onClick={() => setDeleteOpen(true)}>
-                    <Trash2Icon />
+                    <HugeiconsIcon icon={Delete02Icon} />
                     Delete
                   </Button>
                 )}

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDestination } from '@/hooks/destinations/use-destinations';
 import { DestinationDetailShell } from './destination-detail-shell';
 import { DestinationForm } from './destination-form';
-import { DestinationTranslationForm } from './destination-translation-form';
+import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { DestinationPageContentForm } from './destination-page-content-form';
 import { DestinationSeoTab } from './destination-seo-tab';
 import { FaqManager } from '@/components/faq/faq-manager';
@@ -22,6 +22,7 @@ interface DestinationEditViewProps {
 export function DestinationEditView({ id, initialTab }: DestinationEditViewProps) {
   const activeTab =
     initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
+  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
   const { data: destination, isLoading } = useDestination(id, 'en');
 
   if (isLoading) {
@@ -51,11 +52,10 @@ export function DestinationEditView({ id, initialTab }: DestinationEditViewProps
       isLoading={false}
       subtitle="Edit destination"
     >
-      <Tabs defaultValue={activeTab}>
+      <Tabs defaultValue={resolvedTab}>
         <div className="pb-2 mb-6">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="translations">Translations</TabsTrigger>
             <TabsTrigger value="page-content">Page Content</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="faqs">FAQs</TabsTrigger>
@@ -66,14 +66,8 @@ export function DestinationEditView({ id, initialTab }: DestinationEditViewProps
           <DestinationForm destination={destination} />
         </TabsContent>
 
-        <TabsContent value="translations">
-          <DestinationTranslationForm
-            destinationId={id}
-            destinationName={destination.name}
-          />
-        </TabsContent>
-
-        <TabsContent value="page-content">
+        <TabsContent value="page-content" className="space-y-6">
+          <EnglishContentEditor type="destination" id={id} />
           <DestinationPageContentForm destinationId={id} />
         </TabsContent>
 

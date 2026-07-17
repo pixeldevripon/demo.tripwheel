@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon, Location01Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon, MapPinIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -153,7 +155,7 @@ function LocationItem({ location, tripId }: LocationItemProps) {
     <div className="ring-1 ring-foreground/10 p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <MapPinIcon className="size-4 text-muted-foreground shrink-0" />
+          <HugeiconsIcon icon={Location01Icon} className="size-4 text-muted-foreground shrink-0" />
           <div className="flex gap-1 shrink-0">
             {location.types.map((t) => (
               <Badge key={t} variant="secondary" className="text-xs">{typeLabel(t)}</Badge>
@@ -168,7 +170,7 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            {expanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
             <span className="hidden sm:inline">Edit</span>
           </button>
           <Button
@@ -179,7 +181,7 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -190,7 +192,7 @@ function LocationItem({ location, tripId }: LocationItemProps) {
           <form onSubmit={handleSubmit(onSaveDetails)} className="space-y-3">
             <p className="text-xs font-semibold text-muted-foreground">Details</p>
             <Field>
-              <Label className="text-xs font-semibold">Types</Label>
+              <Label>Types</Label>
               <Controller
                 name="types"
                 control={control}
@@ -206,53 +208,53 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold">Latitude</Label>
+                <Label>Latitude</Label>
                 <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
                 <FieldError>{errors.latitude?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Longitude</Label>
+                <Label>Longitude</Label>
                 <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
                 <FieldError>{errors.longitude?.message}</FieldError>
               </Field>
             </div>
             <Field>
-              <Label className="text-xs font-semibold">Street Address</Label>
+              <Label>Street Address</Label>
               <Input {...register('streetAddress')} placeholder="Pier 3, Main Dock" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold">Locality / City</Label>
+                <Label>Locality / City</Label>
                 <Input {...register('addressLocality')} placeholder="Willemstad" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Region</Label>
+                <Label>Region</Label>
                 <Input {...register('addressRegion')} placeholder="Curaçao" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Postal Code</Label>
+                <Label>Postal Code</Label>
                 <Input {...register('postalCode')} />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Country</Label>
+                <Label>Country</Label>
                 <Input {...register('addressCountry')} placeholder="Curaçao" />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Field>
-                <Label className="text-xs font-semibold">Travel (mins)</Label>
+                <Label>Travel (mins)</Label>
                 <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
                 <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
                 <FieldError>{errors.minutesTo?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">At Stop (mins)</Label>
+                <Label>At Stop (mins)</Label>
                 <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
                 <FieldDescription>Minutes spent at this stop.</FieldDescription>
                 <FieldError>{errors.minutesAt?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Order</Label>
+                <Label>Order</Label>
                 <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
                 <FieldError>{errors.displayOrder?.message}</FieldError>
               </Field>
@@ -402,7 +404,7 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
           <p className="text-xs font-semibold text-muted-foreground">Add Location</p>
           <Field>
-            <Label className="text-xs font-semibold">Types</Label>
+            <Label>Types</Label>
             <Controller
               name="types"
               control={control}
@@ -418,41 +420,41 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
             <FieldError>{errors.types?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Title (English)</Label>
+            <Label>Title (English)</Label>
             <Input {...register('title')} placeholder="e.g. Main Dock" aria-invalid={!!errors.title} />
             <FieldError>{errors.title?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Short Description</Label>
+            <Label>Short Description</Label>
             <Input {...register('shortDescription')} placeholder="Meet your crew beside the check-in counter." />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Latitude</Label>
+              <Label>Latitude</Label>
               <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
               <FieldError>{errors.latitude?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Longitude</Label>
+              <Label>Longitude</Label>
               <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
               <FieldError>{errors.longitude?.message}</FieldError>
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field>
-              <Label className="text-xs font-semibold">Travel (mins)</Label>
+              <Label>Travel (mins)</Label>
               <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
               <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
               <FieldError>{errors.minutesTo?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">At Stop (mins)</Label>
+              <Label>At Stop (mins)</Label>
               <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
               <FieldDescription>Minutes spent at this stop.</FieldDescription>
               <FieldError>{errors.minutesAt?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold">Order</Label>
+              <Label>Order</Label>
               <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
               <FieldError>{errors.displayOrder?.message}</FieldError>
             </Field>

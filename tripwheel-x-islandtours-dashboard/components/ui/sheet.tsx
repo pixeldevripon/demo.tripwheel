@@ -1,11 +1,13 @@
 "use client"
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon } from '@hugeicons/core-free-icons';
+
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { XIcon } from "lucide-react"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -75,7 +77,7 @@ function SheetContent({
               className="absolute top-4 right-4 bg-secondary"
               size="icon-sm"
             >
-              <XIcon
+              <HugeiconsIcon icon={Cancel01Icon}
               />
               <span className="sr-only">Close</span>
             </Button>

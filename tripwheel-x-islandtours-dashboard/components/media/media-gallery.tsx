@@ -3,9 +3,8 @@
 import { useDeleteMedia, useBulkDeleteMedia, mediaKeys } from '@/hooks/media/use-media';
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
-import { Delete02Icon } from '@hugeicons/core-free-icons';
+import { Delete02Icon, Loading03Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -212,7 +211,7 @@ export default function MediaGallery({
                             className='flex items-center'>
                             {isDeleting ? (
                                 <>
-                                    <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                    <HugeiconsIcon icon={Loading03Icon} className='h-4 w-4 mr-2 animate-spin' />
                                     <span>Deleting...</span>
                                 </>
                             ) : (

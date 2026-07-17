@@ -8,7 +8,7 @@ import { useCategory } from '@/hooks/categories/use-categories';
 import { CategoryDetailShell } from './category-detail-shell';
 import { CategoryForm } from './category-form';
 import { CategorySubcategoriesManager } from './category-subcategories-manager';
-import { CategoryTranslationForm } from './category-translation-form';
+import { EnglishContentEditor } from '@/components/translations/english-content-editor';
 import { CategoryPageContentForm } from './category-page-content-form';
 import { CategorySeoTab } from './category-seo-tab';
 
@@ -31,6 +31,7 @@ interface CategoryEditViewProps {
 export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
   const activeTab =
     initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
+  const resolvedTab = activeTab === 'translations' ? 'page-content' : activeTab;
   const { data: category, isLoading } = useCategory(id, 'en');
 
   if (isLoading) {
@@ -58,14 +59,13 @@ export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
 
   return (
     <CategoryDetailShell id={id} name={category.name} isLoading={false} subtitle="Edit category">
-      <Tabs defaultValue={activeTab}>
+      <Tabs defaultValue={resolvedTab}>
         <div className="pb-2 mb-6">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             {isTopLevel && (
               <TabsTrigger value="sub-categories">Sub-categories</TabsTrigger>
             )}
-            <TabsTrigger value="translations">Translations</TabsTrigger>
             <TabsTrigger value="page-content">Page Content</TabsTrigger>
             <TabsTrigger value="faqs">FAQs</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
@@ -82,11 +82,8 @@ export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
           </TabsContent>
         )}
 
-        <TabsContent value="translations">
-          <CategoryTranslationForm categoryId={id} categoryName={category.name} />
-        </TabsContent>
-
-        <TabsContent value="page-content">
+        <TabsContent value="page-content" className="space-y-6">
+          <EnglishContentEditor type="category" id={id} />
           <CategoryPageContentForm categoryId={id} />
         </TabsContent>
 

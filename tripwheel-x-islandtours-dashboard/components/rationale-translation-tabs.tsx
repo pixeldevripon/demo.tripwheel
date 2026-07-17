@@ -63,7 +63,7 @@ export function RationaleTranslationTabs({
                 : `Translation for ${LOCALE_LABELS[loc]}. Blank falls back to English on the page.`}
             </div>
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 {label}
                 {!isBase && (
                   <span className="ml-1 normal-case text-muted-foreground">

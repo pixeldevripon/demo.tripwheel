@@ -177,7 +177,7 @@ function AttributeInput({
   const allowed = def.allowedValues ?? [];
   return (
     <Field>
-      <Label className="text-xs font-semibold">{def.displayName}</Label>
+      <Label>{def.displayName}</Label>
 
       {def.dataType === 'BOOLEAN' && (
         <div className="flex items-center gap-2">

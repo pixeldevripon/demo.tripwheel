@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { XIcon, RefreshCwIcon } from 'lucide-react';
-import { CloudUploadIcon, ImageAdd02Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, CloudUploadIcon, ImageAdd02Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -201,7 +200,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                     )}
                     title="Remove"
                   >
-                    <XIcon className="size-3" />
+                    <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                   </button>
                 </div>
               ))}
@@ -257,7 +256,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                 disabled={disabled}
                 className="text-[10px] h-6 px-2"
               >
-                <RefreshCwIcon className="size-3" />
+                <HugeiconsIcon icon={RefreshIcon} className="size-3" />
                 Change
               </Button>
               <Button
@@ -268,7 +267,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                 disabled={disabled}
                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6"
               >
-                <XIcon className="size-3" />
+                <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
               </Button>
             </div>
           </div>

@@ -1,6 +1,8 @@
 'use client';
 
-import { PlusIcon, TagIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon, Tag01Icon } from '@hugeicons/core-free-icons';
+
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
@@ -64,7 +66,7 @@ export function CategoriesTable({
   const addButton = can('CREATE_CATEGORY') && (
     <Button asChild size='sm'>
       <Link href='/categories/new'>
-        <PlusIcon />
+        <HugeiconsIcon icon={PlusSignIcon} />
         Add Category
       </Link>
     </Button>
@@ -77,7 +79,7 @@ export function CategoriesTable({
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
-        icon: TagIcon,
+        icon: Tag01Icon,
         title: 'No categories found.',
         description: 'Add your first category to get started.',
         action: addButton,

@@ -1,6 +1,8 @@
 'use client';
 
-import { Trash2Icon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +42,7 @@ export function ForceDeleteDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <Trash2Icon className="size-5 text-destructive" />
+              <HugeiconsIcon icon={Delete02Icon} className="size-5 text-destructive" />
             </div>
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>

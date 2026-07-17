@@ -4,7 +4,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import ProfileDropdown from "@/components/user-profile-dropdown"
 import { CommandPalette } from "@/components/shell/command-palette"
-import WeatherSlide from "@/components/weather-slider"
 import { Notification01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -29,9 +28,6 @@ export function SiteHeader({ userName, userEmail, userRole, userImage }: SiteHea
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <CommandPalette userRole={userRole} />
-          <div className="hidden md:block">
-            <WeatherSlide loggedInUser={{ name: userName }} />
-          </div>
           <ModeToggle />
           <HugeiconsIcon
             className="cursor-pointer size-5 text-muted-foreground hover:text-foreground transition-colors"

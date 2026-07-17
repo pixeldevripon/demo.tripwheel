@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Search01Icon } from '@hugeicons/core-free-icons';
+
 import { useEffect, useRef, useState } from 'react';
-import { SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +57,7 @@ export function TableSearchInput({
 
   return (
     <div className={cn('relative flex-1', className)}>
-      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+      <HugeiconsIcon icon={Search01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
       <Input
         placeholder={placeholder}
         value={local}

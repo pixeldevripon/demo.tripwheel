@@ -1,21 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, File02Icon, HelpCircleIcon, MoreHorizontalIcon, PencilEdit02Icon, Search01Icon, Tag02Icon, ToggleOffIcon, ToggleOnIcon, TranslateIcon, ViewIcon, ZapIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  EyeIcon,
-  PencilIcon,
-  Zap,
-  LanguagesIcon,
-  FileTextIcon,
-  SearchIcon,
-  HelpCircleIcon,
-  TagsIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
-  Trash2Icon,
-  MoreHorizontalIcon,
-} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -62,53 +51,53 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}`)}>
-            <EyeIcon />
+            <HugeiconsIcon icon={ViewIcon} />
             View
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/hubs/${hub.id}/edit`)}>
-            <PencilIcon />
+            <HugeiconsIcon icon={PencilEdit02Icon} />
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setQuickEditOpen(true)}>
-            <Zap />
+            <HugeiconsIcon icon={ZapIcon} />
             Quick Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => router.push(`/hubs/${hub.id}/edit?tab=translations`)}
+            onClick={() => router.push(`/translations/hub/${hub.id}/es`)}
           >
-            <LanguagesIcon />
+            <HugeiconsIcon icon={TranslateIcon} />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/hubs/${hub.id}/edit?tab=page-content`)}
           >
-            <FileTextIcon />
+            <HugeiconsIcon icon={File02Icon} />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/hubs/${hub.id}/edit?tab=seo`)}
           >
-            <SearchIcon />
+            <HugeiconsIcon icon={Search01Icon} />
             SEO
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/hubs/${hub.id}/edit?tab=faqs`)}
           >
-            <HelpCircleIcon />
+            <HugeiconsIcon icon={HelpCircleIcon} />
             Manage FAQs
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/hubs/${hub.id}/edit?tab=allowed-categories`)}
           >
-            <TagsIcon />
+            <HugeiconsIcon icon={Tag02Icon} />
             Allowed Categories
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -116,7 +105,7 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
             onClick={handleToggleActive}
             disabled={isPending || hub.isSeeded}
           >
-            {hub.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+            {hub.isActive ? <HugeiconsIcon icon={ToggleOffIcon} /> : <HugeiconsIcon icon={ToggleOnIcon} />}
             {hub.isActive ? 'Deactivate' : 'Activate'}
           </DropdownMenuItem>
           {can('MANAGE_HUBS') && !hub.isSeeded && hub.isActive && (
@@ -126,7 +115,7 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2Icon />
+                <HugeiconsIcon icon={Delete02Icon} />
                 Delete
               </DropdownMenuItem>
             </>

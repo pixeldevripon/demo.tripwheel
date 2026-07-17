@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, StarIcon, Tick02Icon, UnfoldMoreIcon } from '@hugeicons/core-free-icons';
+
 import { useState, type ReactNode } from 'react';
-import { CheckIcon, ChevronsUpDownIcon, StarIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -87,12 +89,17 @@ export function MultiSelect({
             variant="outline"
             size="sm"
             disabled={disabled}
-            className="h-9 w-full justify-between font-normal"
+            className="h-10 w-full justify-between px-3.5 font-normal"
           >
-            <span className="truncate text-xs text-muted-foreground">
+            <span
+              className={cn(
+                'truncate text-sm',
+                value.length > 0 ? 'text-content' : 'text-content-subtle',
+              )}
+            >
               {value.length > 0 ? `${value.length} selected` : placeholder}
             </span>
-            <ChevronsUpDownIcon className="size-3 shrink-0 text-muted-foreground" />
+            <HugeiconsIcon icon={UnfoldMoreIcon} className="size-4 shrink-0 text-content-subtle" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
@@ -110,7 +117,7 @@ export function MultiSelect({
                       onSelect={() => toggle(opt.value)}
                       className="flex items-start gap-2"
                     >
-                      <CheckIcon
+                      <HugeiconsIcon icon={Tick02Icon}
                         className={cn(
                           'mt-0.5 size-3.5 shrink-0',
                           checked ? 'opacity-100' : 'opacity-0',
@@ -144,7 +151,15 @@ export function MultiSelect({
               <Badge
                 key={opt.value}
                 variant="secondary"
-                className="gap-1 rounded-md border border-border bg-muted px-2 py-1 text-foreground normal-case tracking-normal"
+                className={cn(
+                  'gap-1 rounded-md border px-2 py-1 normal-case tracking-normal',
+                  // The primary chip must read as primary at a glance, not
+                  // only via the star (which used to point at a `rating`
+                  // token that never existed and rendered gray-on-gray).
+                  isPrimary
+                    ? 'border-primary-subtle-content/25 bg-primary-subtle text-primary-subtle-content'
+                    : 'border-border bg-muted text-foreground',
+                )}
               >
                 {onPrimaryChange && (
                   <button
@@ -153,12 +168,12 @@ export function MultiSelect({
                     title={isPrimary ? 'Primary' : 'Set as primary'}
                     className="shrink-0"
                   >
-                    <StarIcon
+                    <HugeiconsIcon icon={StarIcon}
                       className={cn(
-                        'size-3',
+                        'size-3 transition-colors duration-fast',
                         isPrimary
-                          ? 'fill-rating text-rating'
-                          : 'text-muted-foreground hover:text-foreground',
+                          ? 'fill-warning-solid text-warning-solid'
+                          : 'text-content-subtle hover:text-warning-solid',
                       )}
                     />
                   </button>
@@ -171,7 +186,7 @@ export function MultiSelect({
                     aria-label={`Remove ${opt.label}`}
                     className="shrink-0"
                   >
-                    <XIcon className="size-3 text-muted-foreground hover:text-foreground" />
+                    <HugeiconsIcon icon={Cancel01Icon} className="size-3 text-muted-foreground hover:text-foreground" />
                   </button>
                 )}
               </Badge>

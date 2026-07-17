@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -136,7 +138,7 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
             className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title={expanded ? 'Hide details' : 'Edit handling & translations'}
           >
-            {expanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
             <span className="hidden sm:inline">Edit</span>
           </button>
           <Button
@@ -147,7 +149,7 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -158,7 +160,7 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
             <p className="text-xs font-semibold text-muted-foreground">Handling</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">
+                <Label>
                   Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
                 </Label>
                 <Select
@@ -177,7 +179,7 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
  </Field>
  {isPaidType && (
  <Field>
- <Label className="text-xs font-semibold ">Price Text</Label>
+ <Label>Price Text</Label>
  <Input
  value={priceVal}
  onChange={(e) => setPriceVal(e.target.value)}
@@ -299,7 +301,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
  <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
  <p className="text-xs font-semibold text-muted-foreground">Add Exclusion</p>
  <Field>
- <Label className="text-xs font-semibold ">Label (English)</Label>
+ <Label>Label (English)</Label>
  <Input
  {...register('label')}
  placeholder="e.g. Gratuities not included"
@@ -308,7 +310,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
  <FieldError>{errors.label?.message}</FieldError>
  </Field>
  <Field>
- <Label className="text-xs font-semibold ">Icon</Label>
+ <Label>Icon</Label>
  <Select defaultValue="x" onValueChange={(val) => setValue('icon', val)}>
  <SelectTrigger>
  <SelectValue placeholder="Select icon..." />
@@ -322,7 +324,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
  </Field>
  <div className="grid grid-cols-2 gap-4">
  <Field>
- <Label className="text-xs font-semibold ">
+ <Label>
  Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
  </Label>
  <Select value={typeValue ||''} onValueChange={(val) => setValue('type', val as AddExclusionFormValues['type'])}>
@@ -338,7 +340,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             </Field>
             {isPaidType && (
               <Field>
-                <Label className="text-xs font-semibold">Price Text</Label>
+                <Label>Price Text</Label>
                 <Input {...register('priceText')} placeholder="e.g. $15 per person" />
               </Field>
             )}

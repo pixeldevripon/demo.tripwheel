@@ -1,9 +1,11 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowLeft02Icon, Mail01Icon } from '@hugeicons/core-free-icons';
+
 import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowLeft, Mail } from 'lucide-react';
 import { Field, inputClass, primaryBtn, ErrorNote } from './login-ui';
 
 /**
@@ -44,7 +46,7 @@ export function OperatorForgot() {
             <Link
                 href='/portal'
                 className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
-                <ArrowLeft className='size-3.5' strokeWidth={1.5} />
+                <HugeiconsIcon icon={ArrowLeft02Icon} className='size-3.5' strokeWidth={1.5} />
                 Back to login
             </Link>
 
@@ -83,7 +85,7 @@ export function OperatorForgot() {
                 </form>
             ) : (
                 <div className='flex gap-2 rounded-[10px] bg-it-surface px-3.5 py-2.5 text-[13px] text-it-text-muted'>
-                    <Mail className='mt-0.5 size-4 shrink-0' strokeWidth={1.5} />
+                    <HugeiconsIcon icon={Mail01Icon} className='mt-0.5 size-4 shrink-0' strokeWidth={1.5} />
                     If that email has an operator account, a reset link is on its way.
                 </div>
             )}

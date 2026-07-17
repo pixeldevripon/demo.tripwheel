@@ -27,13 +27,15 @@ const buttonVariants = cva(
           "bg-danger-solid text-n-0 hover:bg-danger-solid/90 focus-visible:border-danger-border focus-visible:ring-danger-solid/30",
         link: "text-primary underline underline-offset-4 hover:underline",
       },
+      // Vega re-skin: one step roomier across the board (default 36->40 etc.)
+      // so controls breathe next to the taller h-10 inputs.
       size: {
         default:
-          "h-9 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
-        sm: "h-8 gap-1 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-10 gap-1.5 px-6 has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4",
-        icon: "size-9",
-        "icon-sm": "size-8 [&_svg:not([class*='size-'])]:size-3.5",
+          "h-10 gap-2 px-5 has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5",
+        sm: "h-9 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-11 gap-2 px-7 has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
+        icon: "size-10",
+        "icon-sm": "size-9 [&_svg:not([class*='size-'])]:size-3.5",
       },
     },
     defaultVariants: {

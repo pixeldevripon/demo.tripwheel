@@ -1,20 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, File02Icon, HelpCircleIcon, MoreHorizontalIcon, PencilEdit02Icon, Search01Icon, ToggleOffIcon, ToggleOnIcon, TranslateIcon, ViewIcon, ZapIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  EyeIcon,
-  PencilIcon,
-  Zap,
-  LanguagesIcon,
-  FileTextIcon,
-  SearchIcon,
-  HelpCircleIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
-  Trash2Icon,
-  MoreHorizontalIcon,
-} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,31 +66,31 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => router.push(`/destinations/${destination.id}`)}>
-            <EyeIcon />
+            <HugeiconsIcon icon={ViewIcon} />
             View
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/destinations/${destination.id}/edit`)}>
-            <PencilIcon />
+            <HugeiconsIcon icon={PencilEdit02Icon} />
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setQuickEditOpen(true)}>
-            <Zap />
+            <HugeiconsIcon icon={ZapIcon} />
             Quick Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/destinations/${destination.id}/edit?tab=translations`)
+              router.push(`/translations/destination/${destination.id}/es`)
             }
           >
-            <LanguagesIcon />
+            <HugeiconsIcon icon={TranslateIcon} />
             Manage Translations
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -108,19 +98,19 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
               router.push(`/destinations/${destination.id}/edit?tab=page-content`)
             }
           >
-            <FileTextIcon />
+            <HugeiconsIcon icon={File02Icon} />
             Page Content
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/destinations/${destination.id}/edit?tab=seo`)}
           >
-            <SearchIcon />
+            <HugeiconsIcon icon={Search01Icon} />
             SEO
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/destinations/${destination.id}/edit?tab=faqs`)}
           >
-            <HelpCircleIcon />
+            <HugeiconsIcon icon={HelpCircleIcon} />
             Manage FAQs
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -128,7 +118,7 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
             onClick={handleToggleActive}
             disabled={isPending || destination.isSeeded}
           >
-            {destination.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+            {destination.isActive ? <HugeiconsIcon icon={ToggleOffIcon} /> : <HugeiconsIcon icon={ToggleOnIcon} />}
             {destination.isActive ? 'Deactivate' : 'Activate'}
           </DropdownMenuItem>
           {can('DELETE_DESTINATION') && !destination.isSeeded && destination.isActive && (
@@ -138,7 +128,7 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2Icon />
+                <HugeiconsIcon icon={Delete02Icon} />
                 Deactivate
               </DropdownMenuItem>
             </>
@@ -150,7 +140,7 @@ export function DestinationRowActions({ destination }: DestinationRowActionsProp
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => setForceDeleteOpen(true)}
               >
-                <Trash2Icon />
+                <HugeiconsIcon icon={Delete02Icon} />
                 Force Delete
               </DropdownMenuItem>
             </>

@@ -1,23 +1,102 @@
 import {
-  Ship, Sailboat, Anchor, Waves, Fish, LifeBuoy, Turtle, Bird,
-  Mountain, MountainSnow, TreePalm, Trees, Tent, Compass, Map, MapPin,
-  Binoculars, Camera, Footprints, Bike, Car, Caravan, Plane, Waypoints,
-  Sun, Sunset, Droplets, Wind, Snowflake, Zap,
-  Utensils, UtensilsCrossed, Wine, Coffee, Ticket, Sparkles,
-  Drama, Music, Palette, GraduationCap, Flower2, Gem, Crown, Star, Tag,
-  type LucideIcon,
-} from 'lucide-react';
+  Airplane01Icon,
+  AnchorIcon,
+  Bicycle01Icon,
+  BinocularsIcon,
+  BirdIcon,
+  BoatIcon,
+  Camera01Icon,
+  Car01Icon,
+  CaravanIcon,
+  CargoShipIcon,
+  Coffee01Icon,
+  CompassIcon,
+  CrabIcon,
+  CrownIcon,
+  DiamondIcon,
+  DrinkIcon,
+  DropletIcon,
+  FastWindIcon,
+  FishIcon,
+  FlowerIcon,
+  LifebuoyIcon,
+  Location01Icon,
+  MapsIcon,
+  Mortarboard02Icon,
+  MountainIcon,
+  MusicNote01Icon,
+  PaintBoardIcon,
+  Restaurant01Icon,
+  Restaurant02Icon,
+  RouteIcon,
+  SnowIcon,
+  SparklesIcon,
+  StarIcon,
+  Sun03Icon,
+  SunsetIcon,
+  Tag01Icon,
+  TentIcon,
+  TheaterIcon,
+  Ticket01Icon,
+  Tree01Icon,
+  Tree06Icon,
+  WaterEnergyIcon,
+  WorkoutRunIcon,
+  ZapIcon,
+} from '@hugeicons/core-free-icons';
+import type { IconSvgElement } from '@hugeicons/react';
 
-// Curated set of category-relevant Lucide icon names (PascalCase). The stored
-// category `icon` value is one of these names. Only these icons are bundled
-// (named imports - tree-shakeable), instead of the full lucide manifest.
-export const CATEGORY_ICON_COMPONENTS: Record<string, LucideIcon> = {
-  Ship, Sailboat, Anchor, Waves, Fish, LifeBuoy, Turtle, Bird,
-  Mountain, MountainSnow, TreePalm, Trees, Tent, Compass, Map, MapPin,
-  Binoculars, Camera, Footprints, Bike, Car, Caravan, Plane, Waypoints,
-  Sun, Sunset, Droplets, Wind, Snowflake, Zap,
-  Utensils, UtensilsCrossed, Wine, Coffee, Ticket, Sparkles,
-  Drama, Music, Palette, GraduationCap, Flower2, Gem, Crown, Star, Tag,
+// Curated set of category-relevant icon names. The stored category `icon`
+// value is one of these (historically Lucide PascalCase) names - the KEYS are
+// a stable DB contract and must never change; the VALUES were remapped to
+// Hugeicons equivalents in the 2026-07-17 icon migration. `Turtle` has no
+// free-set equivalent and renders the nearest marine-wildlife glyph.
+export const CATEGORY_ICON_COMPONENTS: Record<string, IconSvgElement> = {
+  Ship: CargoShipIcon,
+  Sailboat: BoatIcon,
+  Anchor: AnchorIcon,
+  Waves: WaterEnergyIcon,
+  Fish: FishIcon,
+  LifeBuoy: LifebuoyIcon,
+  Turtle: CrabIcon,
+  Bird: BirdIcon,
+  Mountain: MountainIcon,
+  MountainSnow: MountainIcon,
+  TreePalm: Tree06Icon,
+  Trees: Tree01Icon,
+  Tent: TentIcon,
+  Compass: CompassIcon,
+  Map: MapsIcon,
+  MapPin: Location01Icon,
+  Binoculars: BinocularsIcon,
+  Camera: Camera01Icon,
+  Footprints: WorkoutRunIcon,
+  Bike: Bicycle01Icon,
+  Car: Car01Icon,
+  Caravan: CaravanIcon,
+  Plane: Airplane01Icon,
+  Waypoints: RouteIcon,
+  Sun: Sun03Icon,
+  Sunset: SunsetIcon,
+  Droplets: DropletIcon,
+  Wind: FastWindIcon,
+  Snowflake: SnowIcon,
+  Zap: ZapIcon,
+  Utensils: Restaurant01Icon,
+  UtensilsCrossed: Restaurant02Icon,
+  Wine: DrinkIcon,
+  Coffee: Coffee01Icon,
+  Ticket: Ticket01Icon,
+  Sparkles: SparklesIcon,
+  Drama: TheaterIcon,
+  Music: MusicNote01Icon,
+  Palette: PaintBoardIcon,
+  GraduationCap: Mortarboard02Icon,
+  Flower2: FlowerIcon,
+  Gem: DiamondIcon,
+  Crown: CrownIcon,
+  Star: StarIcon,
+  Tag: Tag01Icon,
 };
 
 export const CATEGORY_ICON_NAMES = Object.keys(CATEGORY_ICON_COMPONENTS).filter(
@@ -49,7 +128,7 @@ export const CATEGORY_ICON_BY_SLUG: Record<string, string> = {
 };
 
 /**
- * Resolve a Lucide icon name for a category. Prefers the category's own `icon`
+ * Resolve an icon name for a category. Prefers the category's own `icon`
  * (set in admin), then the canonical per-slug default, then a generic fallback.
  */
 export function getCategoryIconName(
@@ -62,7 +141,7 @@ export function getCategoryIconName(
   return fallback;
 }
 
-/** Resolve the Lucide component for a category icon name (falls back to Tag). */
-export function getCategoryIconComponent(name: string | null | undefined): LucideIcon {
-  return (name && CATEGORY_ICON_COMPONENTS[name]) || Tag;
+/** Resolve the icon data for a category icon name (falls back to Tag). */
+export function getCategoryIconComponent(name: string | null | undefined): IconSvgElement {
+  return (name && CATEGORY_ICON_COMPONENTS[name]) || CATEGORY_ICON_COMPONENTS.Tag;
 }

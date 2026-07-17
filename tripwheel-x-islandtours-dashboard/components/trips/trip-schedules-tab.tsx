@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Alert02Icon, Calendar03Icon, Cancel01Icon, Delete02Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2Icon, CalendarIcon, XIcon, PlusIcon, AlertTriangleIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { scheduledSlotsForDate } from '@/lib/trips/availability';
 import { cn } from '@/lib/utils';
 import {
   useSchedules,
@@ -92,12 +95,12 @@ function DatePickerField({ value, onChange, placeholder = 'Pick a date', clearab
             !selectedDate && 'text-muted-foreground',
           )}
         >
-          <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">
             {selectedDate ? format(selectedDate, 'dd MMM yyyy') : placeholder}
           </span>
           {clearable && selectedDate && (
-            <XIcon
+            <HugeiconsIcon icon={Cancel01Icon}
               className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
               onClick={(e) => { e.stopPropagation(); onChange(''); }}
             />
@@ -181,7 +184,7 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
           disabled={isRemoving}
           className="text-destructive hover:text-destructive hover:bg-destructive/10"
         >
-          <Trash2Icon className="size-3.5" />
+          <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
         </Button>
       </div>
     </div>
@@ -278,7 +281,7 @@ function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimes
                             className="rounded-sm p-0.5 text-muted-foreground/40 cursor-not-allowed"
                             aria-label={`${t} is used by ${usedBy} schedule${usedBy > 1 ? 's' : ''}`}
                           >
-                            <XIcon className="size-3" />
+                            <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -294,7 +297,7 @@ function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimes
                         className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors disabled:opacity-50"
                         aria-label={`Remove ${t}`}
                       >
-                        <XIcon className="size-3" />
+                        <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                       </button>
                     )}
                   </Badge>
@@ -328,7 +331,7 @@ function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimes
               disabled={isPending}
               className="h-9"
             >
-              <PlusIcon className="size-3.5" />
+              <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
               Add time
             </Button>
           </div>
@@ -505,7 +508,7 @@ export function TripSchedulesTab({
         <CardContent className="pt-6 space-y-4">
           {capacityRequired && (
             <div className="flex gap-2.5 bg-warning-subtle border border-warning-border px-3 py-2.5">
-              <AlertTriangleIcon className="size-4 shrink-0 text-warning-fg mt-0.5" />
+              <HugeiconsIcon icon={Alert02Icon} className="size-4 shrink-0 text-warning-fg mt-0.5" />
               <div className="text-sm text-warning-fg">
                 <p className="font-medium">This tour has no Max Party Size set.</p>
                 <p className="mt-0.5">
@@ -553,7 +556,7 @@ export function TripSchedulesTab({
             <p className="text-xs font-semibold text-muted-foreground">Add Schedule</p>
 
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Weekdays <span className="text-destructive">*</span>
               </Label>
               <div className="flex flex-wrap gap-1.5">
@@ -579,7 +582,7 @@ export function TripSchedulesTab({
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Start Times <span className="text-destructive">*</span>
               </Label>
               {hasDeclaredTimes ? (
@@ -609,7 +612,7 @@ export function TripSchedulesTab({
               ) : (
                 <>
                   <div className="flex gap-2.5 bg-warning-subtle border border-warning-border px-3 py-2.5 mb-2">
-                    <AlertTriangleIcon className="size-4 shrink-0 text-warning-fg mt-0.5" />
+                    <HugeiconsIcon icon={Alert02Icon} className="size-4 shrink-0 text-warning-fg mt-0.5" />
                     <p className="text-sm text-warning-fg">
                       This tour has no declared start times yet. Add them on the
                       Details tab so schedules stay consistent; any time entered
@@ -627,7 +630,7 @@ export function TripSchedulesTab({
                             className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
                             aria-label={`Remove ${t}`}
                           >
-                            <XIcon className="size-3" />
+                            <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                           </button>
                         </Badge>
                       ))}
@@ -642,7 +645,7 @@ export function TripSchedulesTab({
                       className="h-9 w-40"
                     />
                     <Button type="button" size="sm" variant="outline" onClick={addTime} className="h-9">
-                      <PlusIcon className="size-3.5" />
+                      <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
                       Add time
                     </Button>
                   </div>
@@ -654,7 +657,7 @@ export function TripSchedulesTab({
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Capacity {capacityRequired ? '' : 'Override '}
                 {capacityRequired ? (
                   <span className="text-destructive">*</span>
@@ -685,11 +688,11 @@ export function TripSchedulesTab({
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold">Valid From (optional)</Label>
+                <Label>Valid From (optional)</Label>
                 <DatePickerField value={validFrom} onChange={setValidFrom} placeholder="Defaults to today" clearable />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Valid Until (optional)</Label>
+                <Label>Valid Until (optional)</Label>
                 <DatePickerField value={validUntil} onChange={setValidUntil} placeholder="Open-ended" clearable />
               </Field>
             </div>
@@ -764,30 +767,6 @@ const EXCEPTION_TYPES: {
   },
 ];
 
-// The scheduled start times that exist on a given date: recurring rules whose
-// weekday + valid window cover it (ACTIVE only), plus any ADD_SLOT exceptions on
-// that date. This is what CLOSE_SLOT / SET_CAPACITY let the operator target.
-function scheduledSlotsForDate(
-  dateStr: string,
-  schedules: TourSchedule[],
-  exceptions: TourException[]
-): string[] {
-  if (!dateStr) return [];
-  const d = new Date(dateStr + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return [];
-  const weekday = (d.getDay() + 6) % 7; // JS Sun=0 → Mon=0
-  const times = new Set<string>();
-  for (const s of schedules) {
-    if (s.weekday !== weekday || s.status !== 'ACTIVE') continue;
-    if (s.validFrom && dateStr < s.validFrom) continue;
-    if (s.validUntil && dateStr > s.validUntil) continue;
-    times.add(s.startTime);
-  }
-  for (const ex of exceptions) {
-    if (ex.type === 'ADD_SLOT' && ex.date === dateStr && ex.startTime) times.add(ex.startTime);
-  }
-  return [...times].sort();
-}
 
 const EXCEPTION_BADGE: Record<TourExceptionType, string> = {
   CLOSE_DATE: 'bg-destructive/10 text-destructive',
@@ -847,7 +826,7 @@ function ExceptionRow({ exception, tripId }: ExceptionRowProps) {
         disabled={isPending}
         className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
       >
-        <Trash2Icon className="size-3.5" />
+        <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
       </Button>
     </div>
   );
@@ -1000,7 +979,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
           <p className="text-xs font-semibold text-muted-foreground">Add Exception</p>
 
           <Field>
-            <Label className="text-xs font-semibold">
+            <Label>
               Type <span className="text-destructive">*</span>
             </Label>
             <Select value={type} onValueChange={(v) => changeType(v as TourExceptionType)}>
@@ -1020,7 +999,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Date <span className="text-destructive">*</span>
               </Label>
               <DatePickerField value={date} onChange={changeDate} placeholder="Pick a date" />
@@ -1032,7 +1011,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             {/* Free time entry - ADD_SLOT introduces a brand-new departure time. */}
             {config.timeMode === 'free' && (
               <Field>
-                <Label className="text-xs font-semibold">
+                <Label>
                   Start Time <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -1060,7 +1039,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             {/* Slot picker - CLOSE_SLOT / SET_CAPACITY target an existing scheduled slot. */}
             {isSlotPicker && (
               <Field>
-                <Label className="text-xs font-semibold">
+                <Label>
                   Time Slot{' '}
                   {config.timeMode === 'slot' ? (
                     <span className="text-destructive">*</span>
@@ -1115,7 +1094,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
 
           {config.needsCapacity && (
             <Field>
-              <Label className="text-xs font-semibold">
+              <Label>
                 Capacity {capacityRequired ? <span className="text-destructive">*</span> : '(optional)'}
               </Label>
               <Input
@@ -1141,7 +1120,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
           )}
 
           <Field>
-            <Label className="text-xs font-semibold">Note (optional)</Label>
+            <Label>Note (optional)</Label>
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}

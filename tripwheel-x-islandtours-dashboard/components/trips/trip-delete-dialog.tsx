@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { toast } from 'sonner';
 import { useRemoveTrip } from '@/hooks/trips/use-trips';
 import type { TripListItem } from '@/types/trip';
@@ -13,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Trash2Icon } from 'lucide-react';
 
 interface TripDeleteDialogProps {
   trip: TripListItem;
@@ -51,7 +53,7 @@ export function TripDeleteDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <Trash2Icon className="size-5 text-destructive" />
+              <HugeiconsIcon icon={Delete02Icon} className="size-5 text-destructive" />
             </div>
             <AlertDialogTitle>
               {isForce ? 'Force Delete Trip' : 'Permanently Delete Trip'}

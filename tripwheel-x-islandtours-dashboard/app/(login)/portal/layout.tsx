@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SecurityCheckIcon } from '@hugeicons/core-free-icons';
+
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShieldCheck } from 'lucide-react';
 import { MountReveal } from '@/components/mount-reveal';
 
 /**
@@ -46,7 +48,7 @@ export default function PortalLayout({
                     </p>
                 </div>
                 <div className='relative z-10 flex max-w-105 items-start gap-2.25 rounded-[12px] border border-white/20 bg-white/10 px-3.5 py-3 text-[13px]'>
-                    <ShieldCheck className='mt-0.5 size-4.25 shrink-0' strokeWidth={1.5} />
+                    <HugeiconsIcon icon={SecurityCheckIcon} className='mt-0.5 size-4.25 shrink-0' strokeWidth={1.5} />
                     <span>
                         We&apos;ll never ask for your password or codes by email, text, or phone.
                     </span>

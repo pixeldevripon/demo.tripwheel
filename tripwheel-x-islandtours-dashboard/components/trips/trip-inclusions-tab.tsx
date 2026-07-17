@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,7 +93,7 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
             className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title={expanded ? 'Hide translations' : 'Set translations'}
           >
-            {expanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
             <span className="hidden sm:inline">Translations</span>
           </button>
           <Button
@@ -102,7 +104,7 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -206,7 +208,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
           <p className="text-xs font-semibold text-muted-foreground">Add Inclusion</p>
           <Field>
-            <Label className="text-xs font-semibold">Label (English)</Label>
+            <Label>Label (English)</Label>
             <Input
               {...register('label')}
               placeholder="e.g. Welcome drink included"
@@ -215,7 +217,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
             <FieldError>{errors.label?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Icon</Label>
+            <Label>Icon</Label>
             <Select defaultValue="check" onValueChange={(val) => setValue('icon', val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select icon..." />

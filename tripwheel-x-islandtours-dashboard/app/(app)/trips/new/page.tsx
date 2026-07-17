@@ -1,5 +1,5 @@
-import { TripForm } from '@/components/trips/trip-form';
 import { Breadcrumb } from '@/components/breadcrumb';
+import { TripCreateForm } from '@/components/trips/create/trip-create-form';
 
 export default function NewTripPage() {
   return (
@@ -13,10 +13,10 @@ export default function NewTripPage() {
       />
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">New Trip</h1>
-        <p className="text-sm text-muted-foreground mt-1">Create a new tour listing</p>
+        <p className="text-sm text-content-muted mt-1">Create a new tour listing</p>
       </div>
-      <div className="max-w-6xl">
-        <TripForm />
+      <div className="max-w-2xl">
+        <TripCreateForm />
       </div>
     </div>
   );

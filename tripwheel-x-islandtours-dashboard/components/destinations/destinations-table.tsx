@@ -1,6 +1,8 @@
 'use client';
 
-import { PlusIcon, MapPinIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Location01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
@@ -64,7 +66,7 @@ export function DestinationsTable({
   const addButton = can('CREATE_DESTINATION') && (
     <Button asChild size='sm'>
       <Link href='/destinations/new'>
-        <PlusIcon />
+        <HugeiconsIcon icon={PlusSignIcon} />
         Add Destination
       </Link>
     </Button>
@@ -77,7 +79,7 @@ export function DestinationsTable({
       isLoading={isLoading}
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
-        icon: MapPinIcon,
+        icon: Location01Icon,
         title: 'No destinations found.',
         description: 'Add your first destination to get started.',
         action: addButton,

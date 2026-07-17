@@ -1,21 +1,22 @@
 import {
-    Calendar,
-    CalendarX,
-    CircleUser,
-    CreditCard,
-    Globe,
-    ImageIcon,
-    LayoutDashboard,
-    Map,
-    Settings,
-    SlidersHorizontal,
-    Sparkles,
-    Star,
-    Store,
-    Tag,
-    Layers,
-    Waypoints,
-} from 'lucide-react';
+    Calendar03Icon,
+    CalendarRemove01Icon,
+    CreditCardIcon,
+    DashboardSquare01Icon,
+    FilterHorizontalIcon,
+    Globe02Icon,
+    Image02Icon,
+    Layers01Icon,
+    MapsIcon,
+    RouteIcon,
+    Settings02Icon,
+    SparklesIcon,
+    StarIcon,
+    Store01Icon,
+    Tag01Icon,
+    TranslateIcon,
+    UserCircleIcon,
+} from '@hugeicons/core-free-icons';
 
 import { Permission } from '@/lib/config/rbac';
 import type { NavGroup } from '@/lib/rbac-utils';
@@ -43,25 +44,25 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Overview',
                 url: '',
-                icon: LayoutDashboard,
+                icon: DashboardSquare01Icon,
                 permissions: [Permission.VIEW_ANALYTICS],
             },
             {
                 title: 'Bookings',
                 url: 'bookings',
-                icon: Calendar,
+                icon: Calendar03Icon,
                 permissions: [Permission.VIEW_BOOKINGS],
             },
             {
                 title: 'Cancellations',
                 url: 'cancellation-requests',
-                icon: CalendarX,
+                icon: CalendarRemove01Icon,
                 permissions: [Permission.VIEW_BOOKINGS],
             },
             {
                 title: 'Payments',
                 url: 'payments',
-                icon: CreditCard,
+                icon: CreditCardIcon,
                 permissions: [Permission.VIEW_PAYMENTS],
             },
         ],
@@ -74,17 +75,25 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Tours',
                 url: 'trips',
-                icon: Map,
+                icon: MapsIcon,
                 permissions: [Permission.VIEW_TRIPS],
             },
             {
                 title: 'Media',
                 url: 'media',
-                icon: ImageIcon,
+                icon: Image02Icon,
                 permissions: [
                     Permission.UPLOAD_MEDIA,
                     Permission.MANAGE_MEDIA,
                 ],
+            },
+            {
+                // The single largest operator workload finally has a home
+                // (04 §1.2, §3): entity × locale matrix + workspace.
+                title: 'Translations',
+                url: 'translations',
+                icon: TranslateIcon,
+                permissions: [Permission.VIEW_TRIPS],
             },
         ],
     },
@@ -95,7 +104,7 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Destinations',
                 url: 'destinations',
-                icon: Globe,
+                icon: Globe02Icon,
                 permissions: [
                     Permission.VIEW_DESTINATIONS,
                     Permission.CREATE_DESTINATION,
@@ -104,19 +113,19 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Hubs',
                 url: 'hubs',
-                icon: Waypoints,
+                icon: RouteIcon,
                 permissions: [Permission.MANAGE_HUBS],
             },
             {
                 title: 'Categories',
                 url: 'categories',
-                icon: Tag,
+                icon: Tag01Icon,
                 permissions: [Permission.CREATE_CATEGORY],
             },
             {
                 title: 'Collections',
                 url: 'collections',
-                icon: Layers,
+                icon: Layers01Icon,
                 permissions: [
                     Permission.VIEW_COLLECTIONS,
                     Permission.CREATE_COLLECTION,
@@ -125,13 +134,13 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Spotlight',
                 url: 'spotlight',
-                icon: Sparkles,
+                icon: SparklesIcon,
                 permissions: [Permission.APPROVE_SPOTLIGHT],
             },
             {
                 title: "Locals' Favourites",
                 url: 'locals-favourites',
-                icon: Star,
+                icon: StarIcon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
@@ -143,13 +152,13 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Attributes',
                 url: 'attributes',
-                icon: SlidersHorizontal,
+                icon: FilterHorizontalIcon,
                 permissions: [Permission.MANAGE_SYSTEM],
             },
             {
                 title: 'Tour Operators',
                 url: 'tour-operators',
-                icon: Store,
+                icon: Store01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
             },
         ],
@@ -163,7 +172,7 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Settings',
                 url: 'settings',
-                icon: Settings,
+                icon: Settings02Icon,
                 permissions: [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
@@ -174,7 +183,7 @@ const dashboardNav: NavGroup[] = [
             {
                 title: 'Your Profile',
                 url: 'profile',
-                icon: CircleUser,
+                icon: UserCircleIcon,
                 permissions: [Permission.VIEW_PROFILE],
             },
         ],

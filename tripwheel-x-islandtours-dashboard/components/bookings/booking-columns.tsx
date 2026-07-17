@@ -1,9 +1,11 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { UserGroupIcon } from '@hugeicons/core-free-icons';
+
 import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { UsersIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/common/status-badge';
 import { BOOKING_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
@@ -124,7 +126,7 @@ export function makeBookingColumns({
       header: 'Party',
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <UsersIcon className="size-3.5 shrink-0" />
+          <HugeiconsIcon icon={UserGroupIcon} className="size-3.5 shrink-0" />
           <span className="tabular-nums">{row.original.partySize}</span>
         </div>
       ),

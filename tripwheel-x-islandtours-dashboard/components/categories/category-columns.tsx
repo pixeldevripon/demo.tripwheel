@@ -1,8 +1,9 @@
 'use client';
 
-import { createElement } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SquareLock02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/status-badge';
@@ -14,12 +15,12 @@ import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
 function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
-  // Stable module-level lookup (CATEGORY_ICON_COMPONENTS), not a render-created
-  // component. createElement avoids the static-components false positive that the
-  // JSX `<Cmp/>` form trips.
-  return createElement(getCategoryIconComponent(getCategoryIconName(slug, icon)), {
-    className: 'size-4 text-muted-foreground',
-  });
+  return (
+    <HugeiconsIcon
+      icon={getCategoryIconComponent(getCategoryIconName(slug, icon))}
+      className='size-4 text-muted-foreground'
+    />
+  );
 }
 
 export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
@@ -105,7 +106,7 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
       if (!row.original.isSeeded) return null;
       return (
         <div className="flex items-center gap-1.5">
-          <LockIcon className="size-3 text-muted-foreground" />
+          <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
           <Badge variant="secondary">Protected</Badge>
         </div>
       );

@@ -1,11 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Trash2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,9 +114,9 @@ function FeatureItem({ feature, tripId }: FeatureItemProps) {
             title={expanded ? 'Hide translations' : 'Set translations'}
           >
             {expanded ? (
-              <ChevronUpIcon className="size-3.5" />
+              <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" />
             ) : (
-              <ChevronDownIcon className="size-3.5" />
+              <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />
             )}
             <span className="hidden sm:inline">Translations</span>
           </button>
@@ -126,7 +128,7 @@ function FeatureItem({ feature, tripId }: FeatureItemProps) {
             disabled={isRemoving}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <Trash2Icon className="size-3.5" />
+            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -270,7 +272,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             Add Info / Term
           </p>
           <Field>
-            <Label className="text-xs font-semibold">Type</Label>
+            <Label>Type</Label>
             <Controller
               name="type"
               control={control}
@@ -292,7 +294,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             <FieldError>{errors.type?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Text (English)</Label>
+            <Label>Text (English)</Label>
             <Textarea
               {...register('text')}
               rows={3}
@@ -302,7 +304,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             <FieldError>{errors.text?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold">Display Order</Label>
+            <Label>Display Order</Label>
             <Input {...register('displayOrder')} type="number" min={0} />
           </Field>
           <div className="flex justify-end">

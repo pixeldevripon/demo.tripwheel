@@ -1,8 +1,12 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, Image02Icon, PencilEdit02Icon, PlusSignIcon, StarIcon } from '@hugeicons/core-free-icons';
+
 import MediaSelector from '@/components/media/media-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -27,15 +31,6 @@ import type {
     TripListItem,
     UpdateTourImagePayload,
 } from '@/types/trip';
-import {
-    ArrowDownIcon,
-    ArrowUpIcon,
-    ImageIcon,
-    PencilIcon,
-    PlusIcon,
-    StarIcon,
-    Trash2Icon,
-} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -204,10 +199,13 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
     }
 
     return (
-        <div className='space-y-6'>
-            {/* Status + action row */}
-            <div className='flex flex-wrap items-center justify-between gap-3'>
-                <div className='flex flex-wrap items-center gap-2'>
+        <Card>
+            <CardHeader className='border-b pb-4'>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
+                    <div className='flex flex-wrap items-center gap-3'>
+                        <CardTitle className='font-sans text-base'>
+                            Images
+                        </CardTitle>
                     <Badge variant='secondary'>{count}/24 images</Badge>
                     {count < 5 && (
                         <Badge variant='destructive'>
@@ -221,23 +219,24 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                             No hero image set
                         </Badge>
                     )}
+                    </div>
+                    <Button
+                        size='sm'
+                        onClick={() => setSelectorOpen(true)}
+                        disabled={isAdding || count >= 24}>
+                        <HugeiconsIcon icon={PlusSignIcon} className='size-3.5' />
+                        Select from Gallery
+                    </Button>
                 </div>
-                <Button
-                    size='sm'
-                    onClick={() => setSelectorOpen(true)}
-                    disabled={isAdding || count >= 24}>
-                    <PlusIcon className='size-3.5' />
-                    Select from Gallery
-                </Button>
-            </div>
-
+            </CardHeader>
+            <CardContent className='pt-6'>
             {/* Image grid */}
             {isLoading ? (
                 <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
                     {Array.from({ length: 4 }).map((_, i) => (
                         <Skeleton
                             key={i}
-                            className='aspect-video w-full rounded-none'
+                            className='aspect-video w-full rounded-md'
                         />
                     ))}
                 </div>
@@ -260,7 +259,7 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                 </div>
             ) : (
                 <div className='flex flex-col items-center gap-2 py-16 text-muted-foreground border border-dashed border-foreground/15'>
-                    <ImageIcon className='size-10 opacity-30' />
+                    <HugeiconsIcon icon={Image02Icon} className='size-10 opacity-30' />
                     <p className='text-sm'>No images yet.</p>
                     <Button
                         size='sm'
@@ -287,7 +286,8 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                 }}
                 onSave={handleSaveEdit}
             />
-        </div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -317,7 +317,7 @@ function ImageCard({
     onEdit,
 }: ImageCardProps) {
     return (
-        <div className='relative group ring-1 ring-foreground/10 overflow-hidden rounded-none'>
+        <div className='relative group ring-1 ring-foreground/10 overflow-hidden rounded-md'>
             <div className='aspect-video bg-muted'>
                 <img
                     src={img.url}
@@ -329,7 +329,7 @@ function ImageCard({
                 <div className='flex items-center justify-between gap-2'>
                     {img.isHero ? (
                         <div className='flex items-center gap-1'>
-                            <StarIcon className='size-3 text-rating fill-rating' />
+                            <HugeiconsIcon icon={StarIcon} className='size-3 text-warning-solid' />
                             <span className='text-xs text-warning-fg font-medium'>
                                 Hero
                             </span>
@@ -355,7 +355,7 @@ function ImageCard({
                     onClick={() => onMove(index, 'up')}
                     disabled={isUpdating || index === 0}
                     title='Move earlier'>
-                    <ArrowUpIcon className='size-3' />
+                    <HugeiconsIcon icon={ArrowUp02Icon} className='size-3' />
                 </Button>
                 <Button
                     size='icon-sm'
@@ -363,7 +363,7 @@ function ImageCard({
                     onClick={() => onMove(index, 'down')}
                     disabled={isUpdating || index === total - 1}
                     title='Move later'>
-                    <ArrowDownIcon className='size-3' />
+                    <HugeiconsIcon icon={ArrowDown02Icon} className='size-3' />
                 </Button>
             </div>
 
@@ -375,7 +375,7 @@ function ImageCard({
                     onClick={onEdit}
                     disabled={isUpdating}
                     title='Edit alt text and focal point'>
-                    <PencilIcon className='size-3' />
+                    <HugeiconsIcon icon={PencilEdit02Icon} className='size-3' />
                 </Button>
                 {!img.isHero && (
                     <Button
@@ -384,7 +384,7 @@ function ImageCard({
                         onClick={() => onSetHero(img.id)}
                         disabled={isUpdating}
                         title='Set as hero'>
-                        <StarIcon className='size-3' />
+                        <HugeiconsIcon icon={StarIcon} className='size-3' />
                     </Button>
                 )}
                 <Button
@@ -393,7 +393,7 @@ function ImageCard({
                     onClick={() => onDelete(img.id)}
                     disabled={isDeleting}
                     title='Remove image'>
-                    <Trash2Icon className='size-3' />
+                    <HugeiconsIcon icon={Delete02Icon} className='size-3' />
                 </Button>
             </div>
         </div>
@@ -461,7 +461,7 @@ function ImageEditDialog({
                         </div>
 
                         <Field>
-                            <Label className='text-xs font-semibold'>
+                            <Label>
                                 Alt Text
                             </Label>
                             <Input
@@ -473,7 +473,7 @@ function ImageEditDialog({
 
                         <div className='grid grid-cols-2 gap-3'>
                             <Field>
-                                <Label className='text-xs font-semibold'>
+                                <Label>
                                     Focal X
                                 </Label>
                                 <Input
@@ -486,7 +486,7 @@ function ImageEditDialog({
                                 />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold'>
+                                <Label>
                                     Focal Y
                                 </Label>
                                 <Input

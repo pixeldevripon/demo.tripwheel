@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
+
 import {
     Card,
     CardContent,
@@ -7,7 +10,6 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface SetupGuideProps {
@@ -114,7 +116,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                                         href={step.linkTo}
                                         className='gap-2 flex items-center border p-[6px] px-3 text-sm rounded-full hover:bg-secondary transform transition-colors duration-200'>
                                         {step.buttonText}
-                                        <ChevronRight className='w-4 h-4' />
+                                        <HugeiconsIcon icon={ArrowRight01Icon} className='w-4 h-4' />
                                     </Link>
                                 </div>
                             </div>

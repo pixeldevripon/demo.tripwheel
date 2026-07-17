@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import Link from 'next/link';
-import { PlusIcon } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -165,7 +167,7 @@ export function CategorySubcategoriesManager({ parent }: Props) {
                 disabled={isCreating || name.trim().length < 2}
                 onClick={handleAdd}
               >
-                <PlusIcon />
+                <HugeiconsIcon icon={PlusSignIcon} />
                 Add
               </Button>
             </div>

@@ -1,9 +1,11 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -75,7 +77,7 @@ export function CollectionsListView() {
             can('CREATE_COLLECTION') && (
               <Button asChild size="sm">
                 <Link href="/collections/new">
-                  <PlusIcon /> New Collection
+                  <HugeiconsIcon icon={PlusSignIcon} /> New Collection
                 </Link>
               </Button>
             )

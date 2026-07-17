@@ -1,6 +1,7 @@
 'use client';
 
-import { FolderIcon } from 'lucide-react';
+import { Folder01Icon } from '@hugeicons/core-free-icons';
+
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
@@ -34,7 +35,7 @@ export function CollectionsTable({
       columns={columns}
       data={data}
       empty={{
-        icon: FolderIcon,
+        icon: Folder01Icon,
         title: 'No collections found.',
       }}
       toolbar={(table) => (

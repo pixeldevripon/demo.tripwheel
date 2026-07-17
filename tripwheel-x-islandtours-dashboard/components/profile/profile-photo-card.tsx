@@ -1,12 +1,14 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Camera01Icon, Delete02Icon, Loading03Icon, Upload02Icon } from '@hugeicons/core-free-icons';
+
 import { mediaApi } from '@/lib/api/media';
 import { useUpdateProfilePhoto } from '@/hooks/profile/use-profile';
 import type { UserProfile } from '@/types/profile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, Loader2, Trash2, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -14,7 +16,7 @@ import { toast } from 'sonner';
 // bundle-dynamic-imports: Load heavy cropper only when needed
 const ImageCropper = dynamic(() => import('./image-cropper'), {
     loading: () => (
-        <Loader2 className='w-10 h-10 animate-spin text-primary mx-auto my-10' />
+        <HugeiconsIcon icon={Loading03Icon} className='w-10 h-10 animate-spin text-primary mx-auto my-10' />
     ),
     ssr: false,
 });
@@ -50,7 +52,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
         setUploading(true);
         try {
             const [uploaded] = await mediaApi.upload([file]);
-            if (!uploaded?.url) { toast.error('Upload failed'); return; }
+            if (!uploaded?.url) { toast.error('Upload02Icon failed'); return; }
             await updatePhoto.mutateAsync(uploaded.url);
             toast.success('Profile photo updated successfully');
         } catch (err) {
@@ -76,7 +78,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
         <Card className='border-none shadow-sm bg-card overflow-hidden'>
             <CardHeader className='pb-4'>
                 <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                    <Camera className='w-5 h-5 text-primary' />
+                    <HugeiconsIcon icon={Camera01Icon} className='w-5 h-5 text-primary' />
                     Profile Photo
                 </CardTitle>
             </CardHeader>
@@ -94,9 +96,9 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                             disabled={uploading}
                             className='absolute bottom-1 right-1 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform duration-200 ring-2 ring-background disabled:opacity-50 disabled:scale-100'>
                             {uploading ? (
-                                <Loader2 className='w-4 h-4 animate-spin' />
+                                <HugeiconsIcon icon={Loading03Icon} className='w-4 h-4 animate-spin' />
                             ) : (
-                                <Upload className='w-4 h-4' />
+                                <HugeiconsIcon icon={Upload02Icon} className='w-4 h-4' />
                             )}
                         </button>
                     </div>
@@ -121,8 +123,8 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                                 size='sm'
                                 variant='outline'
                                 className='rounded-lg h-9 gap-2'>
-                                {uploading ? <Loader2 className='w-4 h-4 animate-spin' /> : null}
-                                Upload New
+                                {uploading ? <HugeiconsIcon icon={Loading03Icon} className='w-4 h-4 animate-spin' /> : null}
+                                Upload02Icon New
                             </Button>
                             {user.image ? (
                                 <Button
@@ -131,7 +133,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                                     size='sm'
                                     variant='ghost'
                                     className='rounded-lg h-9 text-destructive hover:text-destructive hover:bg-destructive/10 gap-2'>
-                                    <Trash2 className='w-4 h-4' />
+                                    <HugeiconsIcon icon={Delete02Icon} className='w-4 h-4' />
                                     Remove
                                 </Button>
                             ) : null}

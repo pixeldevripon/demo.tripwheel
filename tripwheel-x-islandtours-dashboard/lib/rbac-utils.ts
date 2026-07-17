@@ -1,3 +1,4 @@
+import type { IconSvgElement } from '@hugeicons/react';
 /**
  * Filters a navigation tree so only items the user has permission to see are shown.
  * An item is visible if:
@@ -12,7 +13,7 @@
 export interface NavItem {
   title: string;
   url?: string;
-  icon?: React.ElementType;
+  icon?: IconSvgElement;
   isActive?: boolean;
   permissions?: string[];
   items?: NavItem[];

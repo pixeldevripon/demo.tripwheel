@@ -1,4 +1,5 @@
-import { NavigationIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Navigation03Icon } from '@hugeicons/core-free-icons';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { HubForm } from '@/components/hubs/hub-form';
 
@@ -13,7 +14,7 @@ export default function NewHubPage() {
         ]}
       />
       <div className="mb-6 flex items-center gap-3">
-        <NavigationIcon className="size-6 text-muted-foreground" />
+        <HugeiconsIcon icon={Navigation03Icon} className="size-6 text-muted-foreground" />
         <h1 className="text-2xl font-semibold">New Hub</h1>
       </div>
       <div className="max-w-6xl">

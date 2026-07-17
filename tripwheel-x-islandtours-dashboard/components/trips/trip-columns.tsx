@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CheckmarkBadge01Icon, Folder01Icon, Location01Icon, Navigation03Icon, StarIcon, Ticket01Icon } from '@hugeicons/core-free-icons';
+
 import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MapPinIcon, BadgeCheckIcon, FolderIcon, NavigationIcon, StarIcon, TicketIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/status-badge';
@@ -87,7 +89,7 @@ export function makeTripColumns({
                   className="size-full object-cover"
                 />
               ) : (
-                <MapPinIcon className="size-4 text-muted-foreground" />
+                <HugeiconsIcon icon={Location01Icon} className="size-4 text-muted-foreground" />
               )}
             </div>
             <div className="min-w-0">
@@ -137,7 +139,7 @@ export function makeTripColumns({
                 {isMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <BadgeCheckIcon className="size-3.5 text-info-solid shrink-0" />
+                      <HugeiconsIcon icon={CheckmarkBadge01Icon} className="size-3.5 text-info-solid shrink-0" />
                     </TooltipTrigger>
                     <TooltipContent>Your trip</TooltipContent>
                   </Tooltip>
@@ -192,7 +194,7 @@ export function makeTripColumns({
         if (!label) return <span className="text-xs text-muted-foreground">-</span>;
         return (
           <div className="flex items-center gap-1.5">
-            <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
+            <HugeiconsIcon icon={Folder01Icon} className="size-3.5 text-muted-foreground shrink-0" />
             {primaryId ? (
               <Link
                 href={`/categories/${primaryId}/edit`}
@@ -221,7 +223,7 @@ export function makeTripColumns({
         if (!dest) return <span className="text-xs text-muted-foreground">-</span>;
         return (
           <div className="flex items-start gap-1.5">
-            <NavigationIcon className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <HugeiconsIcon icon={Navigation03Icon} className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="min-w-0">
               <Link
                 href={`/destinations/${trip.destinationId}/edit`}
@@ -254,7 +256,7 @@ export function makeTripColumns({
           }
           return (
             <div className="flex items-center gap-1.5">
-              <StarIcon className="size-3.5 shrink-0 fill-rating text-rating" />
+              <HugeiconsIcon icon={StarIcon} className="size-3.5 shrink-0 fill-rating text-rating" />
               <span className="text-sm font-medium tabular-nums">
                 {trip.aggregateRating ?? '-'}
               </span>
@@ -271,7 +273,7 @@ export function makeTripColumns({
         header: 'Booked',
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <TicketIcon className="size-3.5 shrink-0" />
+            <HugeiconsIcon icon={Ticket01Icon} className="size-3.5 shrink-0" />
             <span className="tabular-nums">
               {row.original.bookingCount.toLocaleString()}
             </span>

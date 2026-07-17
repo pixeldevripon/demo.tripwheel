@@ -1,6 +1,8 @@
 'use client';
 
-import { SearchIcon, Settings2Icon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Search01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+
 import type { Table } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +30,7 @@ export function DataTableSearch({
 }) {
     return (
         <div className='relative min-w-36 flex-1'>
-            <SearchIcon className='absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground' />
+            <HugeiconsIcon icon={Search01Icon} className='absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground' />
             <Input
                 placeholder={placeholder}
                 value={value}
@@ -51,7 +53,7 @@ export function DataTableViewOptions<TData>({
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant='outline' size='sm'>
-                    <Settings2Icon />
+                    <HugeiconsIcon icon={Settings02Icon} />
                     Columns
                 </Button>
             </DropdownMenuTrigger>

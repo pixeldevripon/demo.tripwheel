@@ -1,6 +1,7 @@
 'use client';
 
-import { SparklesIcon } from 'lucide-react';
+import { SparklesIcon } from '@hugeicons/core-free-icons';
+
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,

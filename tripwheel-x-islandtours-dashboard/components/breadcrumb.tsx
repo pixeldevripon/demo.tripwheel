@@ -1,5 +1,6 @@
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
-import { ChevronRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface BreadcrumbItem {
@@ -20,7 +21,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
     >
       {items.map((item, index) => (
         <span key={index} className="flex items-center gap-1.5">
-          {index > 0 && <ChevronRightIcon className="size-3 shrink-0" />}
+          {index > 0 && <HugeiconsIcon icon={ArrowRight01Icon} className="size-3 shrink-0" />}
           {item.href ? (
             <Link href={item.href} className="hover:text-foreground transition-colors">
               {item.label}

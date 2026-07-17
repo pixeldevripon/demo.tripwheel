@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Mail01Icon, Store01Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { StoreIcon, MailIcon } from 'lucide-react';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
@@ -51,7 +53,7 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
         return (
           <div className="flex items-center gap-3">
             <div className="size-8 shrink-0 overflow-hidden rounded-sm bg-muted flex items-center justify-center">
-              <StoreIcon className="size-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Store01Icon} className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0">
               <Link
@@ -74,7 +76,7 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       header: 'Email',
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
-          <MailIcon className="size-3 text-muted-foreground shrink-0" />
+          <HugeiconsIcon icon={Mail01Icon} className="size-3 text-muted-foreground shrink-0" />
           <span className="text-sm truncate max-w-56">{row.original.user.email}</span>
         </div>
       ),

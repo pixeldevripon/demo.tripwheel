@@ -1,12 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CancelCircleIcon, Copy01Icon, MoreHorizontalIcon, ViewIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
-import {
-  CopyIcon,
-  EyeIcon,
-  MoreHorizontalIcon,
-  XCircleIcon,
-} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,12 +42,12 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label="Booking actions">
-            <MoreHorizontalIcon />
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
-            <EyeIcon /> View details
+            <HugeiconsIcon icon={ViewIcon} /> View details
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -58,7 +55,7 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
               toast.success('Booking reference copied.');
             }}
           >
-            <CopyIcon /> Copy reference
+            <HugeiconsIcon icon={Copy01Icon} /> Copy reference
           </DropdownMenuItem>
           {canCancel && (
             <>
@@ -67,7 +64,7 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
                 variant="destructive"
                 onClick={() => setCancelOpen(true)}
               >
-                <XCircleIcon /> Mark cancelled
+                <HugeiconsIcon icon={CancelCircleIcon} /> Mark cancelled
               </DropdownMenuItem>
             </>
           )}

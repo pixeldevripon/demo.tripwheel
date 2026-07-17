@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,7 +21,6 @@ import { useRole } from '@/contexts/role-context';
 import type { OperatorDetail, OperatorVerificationStatus } from '@/types/operator';
 import { OPERATOR_VERIFICATION_STATUS_VALUES } from '@/types/operator';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -140,7 +142,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold">Verification Status</Label>
+              <Label>Verification Status</Label>
               <Select
                 value={verificationValue}
                 onValueChange={(v) =>
@@ -168,7 +170,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold">Support Email</Label>
+                <Label>Support Email</Label>
                 <Input
                   type="email"
                   {...register('contactEmail')}
@@ -179,7 +181,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                 <FieldError>{errors.contactEmail?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold">Support Phone</Label>
+                <Label>Support Phone</Label>
                 <Input
                   {...register('contactPhone')}
                   placeholder="+5999 123 4567"
@@ -196,7 +198,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                   onCheckedChange={(checked) => setValue('isActive', !!checked)}
                   disabled={!canManage}
                 />
-                <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
+                <Label htmlFor="isActive" className="cursor-pointer">
                   Active
                 </Label>
               </div>
@@ -232,7 +234,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
               </div>
               <div className="shrink-0">
                 <Button variant="destructive" size="sm" type="button" onClick={() => setDeleteOpen(true)}>
-                  <Trash2Icon />
+                  <HugeiconsIcon icon={Delete02Icon} />
                   Delete
                 </Button>
               </div>

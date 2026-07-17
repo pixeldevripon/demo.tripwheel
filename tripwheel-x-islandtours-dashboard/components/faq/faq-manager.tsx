@@ -1,24 +1,23 @@
 'use client';
 
+import Link from 'next/link';
+
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, HelpCircleIcon, PlusSignIcon, Tick02Icon } from '@hugeicons/core-free-icons';
+
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  HelpCircleIcon,
-  PlusIcon,
-  Trash2Icon,
-} from 'lucide-react';
+import { CollapsibleCard } from '@/components/common/collapsible-card';
+import { IconTile } from '@/components/common/icon-tile';
+import { StatusBadge } from '@/components/common/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
@@ -42,6 +41,14 @@ import {
   useUpsertFaqTranslation,
 } from '@/hooks/faq/use-faq-groups';
 import { ALL_LOCALES, DEFAULT_LOCALE, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
+
+/** FAQ basePath → Translation Console entity type. */
+const CONSOLE_TYPE_BY_BASE: Record<string, string> = {
+  '/destinations': 'destination',
+  '/categories': 'category',
+  '/hubs': 'hub',
+  '/collections': 'collection',
+};
 import type { FaqGroup } from '@/types/faq';
 
 // Backend enforces question >= 5 and answer >= 10 characters.
@@ -110,18 +117,18 @@ function FaqLocaleEditor({
         )}
       </div>
       <Field>
-        <Label className="text-xs font-semibold">Question</Label>
+        <Label>Question</Label>
         <Input {...register('question')} aria-invalid={!!errors.question} />
         <FieldError>{errors.question?.message}</FieldError>
       </Field>
       <Field>
-        <Label className="text-xs font-semibold">Answer</Label>
+        <Label>Answer</Label>
         <Textarea {...register('answer')} rows={3} aria-invalid={!!errors.answer} />
         <FieldError>{errors.answer?.message}</FieldError>
       </Field>
       <div className="flex justify-end">
         <Button type="submit" size="sm" disabled={isPending}>
-          <CheckIcon />
+          <HugeiconsIcon icon={Tick02Icon} />
           {isPending ? 'Saving...' : 'Save'}
         </Button>
       </div>
@@ -138,7 +145,6 @@ interface FaqGroupCardProps {
 }
 
 function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { mutate: updateGroup, isPending: isUpdating } = useUpdateFaqGroup(basePath, entityId);
   const { mutate: deleteGroup, isPending: isDeleting } = useDeleteFaqGroup(basePath, entityId);
@@ -171,125 +177,111 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
 
   return (
     <>
-      <Card size="sm">
-        <CardContent className="pt-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm leading-snug">
-                {en?.question ?? '(no English question)'}
-              </p>
-              {en?.answer && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{en.answer}</p>
-              )}
-              <div className="flex flex-wrap items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">#{group.displayOrder}</span>
-                <Badge variant={group.isActive ? 'default' : 'secondary'}>
-                  {group.isActive ? 'Active' : 'Hidden'}
-                </Badge>
-                <Badge variant="outline">
-                  {translatedCount}/{ALL_LOCALES.length} languages
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title={expanded ? 'Hide editor' : 'Edit & translate'}
+      <CollapsibleCard
+        compact
+        leading={<IconTile icon={HelpCircleIcon} variant="primary" size="sm" />}
+        title={
+          <span className="line-clamp-1">
+            {en?.question ?? '(no English question)'}
+          </span>
+        }
+        meta={
+          <span className="flex flex-wrap items-center gap-1.5">
+            {en?.answer && (
+              <span className="line-clamp-1 max-w-96 text-xs font-normal text-content-muted">
+                {en.answer}
+              </span>
+            )}
+            <StatusBadge variant={group.isActive ? 'success' : 'neutral'}>
+              {group.isActive ? 'Active' : 'Hidden'}
+            </StatusBadge>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium tabular-nums ${
+                translatedCount === ALL_LOCALES.length
+                  ? 'bg-success-subtle text-success-fg'
+                  : 'bg-warning-subtle text-warning-fg'
+              }`}
+            >
+              {translatedCount}/{ALL_LOCALES.length}
+            </span>
+          </span>
+        }
+        actions={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-danger-fg hover:bg-danger-subtle hover:text-danger-fg"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <HugeiconsIcon icon={Delete02Icon} />
+          </Button>
+        }
+      >
+        <div className="space-y-6">
+          {/* Group settings */}
+          <div className="flex flex-wrap items-end gap-4">
+            <DisplayOrderField
+              current={group.displayOrder}
+              disabled={isUpdating}
+              onSave={(displayOrder) =>
+                updateGroup(
+                  { groupId: group.faqGroupId, payload: { displayOrder } },
+                  {
+                    onSuccess: () => toast.success('Order updated.'),
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : 'Failed to update.'),
+                  }
+                )
+              }
+            />
+            <div className="flex items-center gap-2 pb-2">
+              <Checkbox
+                id={`faq-active-${group.faqGroupId}`}
+                checked={group.isActive}
+                disabled={isUpdating}
+                onCheckedChange={(checked) => toggleActive(!!checked)}
+              />
+              <Label
+                htmlFor={`faq-active-${group.faqGroupId}`}
+                className="cursor-pointer"
               >
-                {expanded ? (
-                  <ChevronUpIcon className="size-3.5" />
-                ) : (
-                  <ChevronDownIcon className="size-3.5" />
-                )}
-                <span className="hidden sm:inline">Edit &amp; translate</span>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2Icon />
-              </Button>
+                Active
+              </Label>
             </div>
           </div>
 
-          {expanded && (
-            <div className="mt-5 pt-5 border-t space-y-6">
-              {/* Group settings */}
-              <div className="flex flex-wrap items-end gap-4">
-                <DisplayOrderField
-                  current={group.displayOrder}
-                  disabled={isUpdating}
-                  onSave={(displayOrder) =>
-                    updateGroup(
-                      { groupId: group.faqGroupId, payload: { displayOrder } },
-                      {
-                        onSuccess: () => toast.success('Order updated.'),
-                        onError: (err) =>
-                          toast.error(err instanceof Error ? err.message : 'Failed to update.'),
-                      }
-                    )
-                  }
-                />
-                <div className="flex items-center gap-2 pb-2">
-                  <Checkbox
-                    id={`faq-active-${group.faqGroupId}`}
-                    checked={group.isActive}
-                    disabled={isUpdating}
-                    onCheckedChange={(checked) => toggleActive(!!checked)}
-                  />
-                  <Label
-                    htmlFor={`faq-active-${group.faqGroupId}`}
-                    className="text-xs font-semibold cursor-pointer"
-                  >
-                    Active
-                  </Label>
-                </div>
-              </div>
-
-              {/* English base + translations - same tabbed UI as the
-                  Translations / Page Content tabs. */}
-              <Tabs defaultValue={DEFAULT_LOCALE}>
-                <div className="pb-2 mb-4">
-                  <TabsList>
-                    {ALL_LOCALES.map((locale) => (
-                      <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                        <span className="sm:hidden">{locale}</span>
-                        <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
-
-                {ALL_LOCALES.map((locale) => {
-                  const t = byLocale.get(locale);
-                  return (
-                    <TabsContent key={locale} value={locale}>
-                      <FaqLocaleEditor
-                        basePath={basePath}
-                        entityId={entityId}
-                        groupId={group.faqGroupId}
-                        locale={locale}
-                        isBase={locale === DEFAULT_LOCALE}
-                        existing={t ? { question: t.question, answer: t.answer } : undefined}
-                      />
-                    </TabsContent>
-                  );
-                })}
-              </Tabs>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          {/* ENGLISH ONLY (user rule 2026-07-17): the entity page owns
+              add/remove and the English base; translating into the other
+              locales happens in the Translation Console. */}
+          <FaqLocaleEditor
+            basePath={basePath}
+            entityId={entityId}
+            groupId={group.faqGroupId}
+            locale={DEFAULT_LOCALE}
+            isBase
+            existing={(() => {
+              const t = byLocale.get(DEFAULT_LOCALE);
+              return t ? { question: t.question, answer: t.answer } : undefined;
+            })()}
+          />
+          <p className="text-xs text-content-muted">
+            Translate this FAQ into the other languages in the{' '}
+            <Link
+              href={`/translations/${CONSOLE_TYPE_BY_BASE[basePath] ?? 'destination'}/${entityId}/es`}
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              Translation Console
+            </Link>
+            .
+          </p>
+        </div>
+      </CollapsibleCard>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
-              <Trash2Icon className="size-8 text-destructive" />
+              <HugeiconsIcon icon={Delete02Icon} className="size-8 text-destructive" />
             </AlertDialogMedia>
             <AlertDialogTitle>Delete FAQ</AlertDialogTitle>
             <AlertDialogDescription>
@@ -336,7 +328,7 @@ function DisplayOrderField({
   return (
     <div className="flex items-end gap-2">
       <Field>
-        <Label className="text-xs font-semibold">Display Order</Label>
+        <Label>Display Order</Label>
         <Input
           type="number"
           min={0}
@@ -399,7 +391,7 @@ function AddFaqForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-4 border-t">
       <p className="text-xs font-semibold text-muted-foreground">Add FAQ (English)</p>
       <Field>
-        <Label className="text-xs font-semibold">Question</Label>
+        <Label>Question</Label>
         <Input
           {...register('question')}
           placeholder="e.g. What is the best time to visit?"
@@ -408,7 +400,7 @@ function AddFaqForm({
         <FieldError>{errors.question?.message}</FieldError>
       </Field>
       <Field>
-        <Label className="text-xs font-semibold">Answer</Label>
+        <Label>Answer</Label>
         <Textarea
           {...register('answer')}
           placeholder="Write the English answer. Add other languages afterwards."
@@ -422,7 +414,7 @@ function AddFaqForm({
       </FieldDescription>
       <div className="flex justify-end">
         <Button type="submit" size="sm" disabled={isPending}>
-          <PlusIcon />
+          <HugeiconsIcon icon={PlusSignIcon} />
           {isPending ? 'Adding...' : 'Add FAQ'}
         </Button>
       </div>
@@ -454,7 +446,7 @@ export function FaqManager({ basePath, entityId }: FaqManagerProps) {
         </div>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <HelpCircleIcon className="size-10 opacity-40" />
+          <HugeiconsIcon icon={HelpCircleIcon} className="size-10 opacity-40" />
           <p className="text-sm">No FAQs yet.</p>
           <p className="text-xs">Add your first FAQ in English below.</p>
         </div>

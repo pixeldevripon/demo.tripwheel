@@ -1,5 +1,6 @@
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowLeft02Icon } from '@hugeicons/core-free-icons';
 import React from 'react'
-import { ArrowLeft } from 'lucide-react'
 import { ErrorNote } from './login-ui'
 import { inputClass, primaryBtn, quietLink } from './login-ui'
 import { OtpField } from './code-input'
@@ -23,7 +24,7 @@ const OperatorTwoFactor = ({backToCredentials, switchChannel, verify, channel, c
               type='button'
               onClick={backToCredentials}
               className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
-              <ArrowLeft className='size-3.5' strokeWidth={1.5} />
+              <HugeiconsIcon icon={ArrowLeft02Icon} className='size-3.5' strokeWidth={1.5} />
               Back
           </button>
           <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>

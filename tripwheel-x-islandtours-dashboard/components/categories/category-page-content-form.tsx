@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -75,7 +76,7 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <Field>
-        <Label className="text-xs font-semibold">About Text</Label>
+        <Label>About Text</Label>
         <Textarea
           {...register('aboutText')}
           placeholder={`About this category in ${LOCALE_LABELS[locale]}...`}
@@ -107,24 +108,17 @@ export function CategoryPageContentForm({ categoryId }: CategoryPageContentFormP
         <CardTitle>Page Content</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
-        <Tabs defaultValue="en">
-          <div className="pb-2 mb-6">
-            <TabsList>
-              {ALL_LOCALES.map((locale) => (
-                <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden">{locale}</span>
-                  <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          {ALL_LOCALES.map((locale) => (
-            <TabsContent key={locale} value={locale}>
-              <LocalePageContentTab categoryId={categoryId} locale={locale} />
-            </TabsContent>
-          ))}
-        </Tabs>
+        <LocalePageContentTab categoryId={categoryId} locale='en' />
+        <p className="mt-4 text-xs text-content-muted">
+          English only here - translate into the other languages in the{' '}
+          <Link
+            href={`/translations/category/${categoryId}/es`}
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Translation Console
+          </Link>
+          .
+        </p>
       </CardContent>
     </Card>
   );
