@@ -117,10 +117,31 @@ The **first screen every operator and admin sees after login is fake data**. Not
 
 `refundDue()` and `paymentModelLabel()` are exported from `booking-columns.tsx` and imported by `booking-row-actions.tsx` and `booking-details-dialog.tsx`. Refund eligibility is money logic living in a table's column definitions.
 
-### B-7 · S2 · Collections has full CRUD and zero RBAC gating
-**Impact 3 · Effort 1 · Ratio 3.0**
+### B-7 · ~~S2 · Collections has full CRUD and zero RBAC gating~~ **RETRACTED - FALSE FINDING**
+**~~Impact 3 · Effort 1 · Ratio 3.0~~**
 
-`components/dashboard/collections/` has no `useRole` import anywhere, despite a 594-line create/edit form, a tours manager, and delete. Every other entity module gates. The backend presumably enforces, so this is not an exploit - it is an operator seeing buttons that will 403.
+> **RETRACTED 2026-07-17 (Phase 9). This finding was never true.** At the commit these specs were
+> authored from (`6e830d0`), `components/dashboard/collections/` imported `useRole` in **two**
+> files - `collections-list-view.tsx:28` and `collection-edit-view.tsx:11` - gating
+> `CREATE_COLLECTION` / `EDIT_COLLECTION` / `DELETE_COLLECTION`. `git log -S useRole` dates that
+> gating to **2026-06-08**, five weeks before this audit claimed it was absent.
+>
+> **What is actually true** is narrower and much less interesting: collections gates in **2** files
+> where hubs gates in **4** (hubs also gates `hub-form.tsx` and `hub-row-actions.tsx`; collections
+> has no row-actions file at all - its actions live in `collection-columns.tsx`). That is a
+> thinness worth a look during the redesign, not an ungated surface.
+>
+> **Everything downstream of this finding is void:** `02` §5.4's "fix during migration", `04` §5's
+> "gate collections", `06` Phase 9's "one known intentional delta", `06` Phase 19's "Gate
+> collections (B-7)", and check #20's caveat. **Nothing was newly gated; there is no delta.**
+>
+> **The lesson, which is the reason this is retracted in place rather than deleted:** the claim was
+> "no `useRole` import anywhere" - a statement a single `grep` would have falsified. It survived
+> into five documents. This is the third false "it isn't there" claim from the same early scan,
+> after `lib/api/cache-revalidation.ts` (Phase 1) and `locals-favourites-list-view.tsx` (Phase 4).
+> **Treat every absence claim from that scan as unverified until grepped.**
+
+~~`components/dashboard/collections/` has no `useRole` import anywhere, despite a 594-line create/edit form, a tours manager, and delete. Every other entity module gates. The backend presumably enforces, so this is not an exploit - it is an operator seeing buttons that will 403.~~
 
 Related: two gating idioms are mixed throughout - capability checks `can('X')` and raw `role === 'ADMIN'` equality - **inside the same file** at `destination-row-actions.tsx:134` vs `:146`, and at `bookings-table.tsx:110`.
 

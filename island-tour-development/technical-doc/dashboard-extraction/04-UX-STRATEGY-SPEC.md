@@ -421,7 +421,7 @@ Cognitive load: an admin who learns Destinations must **re-learn** Hubs. The mod
 2. **Routed tabs** (`/destinations/[id]/details`), fixing back-button and bookmarking everywhere at once.
 3. **One `EntityTable`** (05) - server pagination for all, one skeleton, one empty state, one bulk bar, `PAGE_SIZE_OPTIONS` declared once.
 4. **One `ConfirmDialog`** - the generic one already exists with a docstring saying "any potentially-destructive dashboard action" and **two** consumers. Delete the other 3 abstractions + 4 wrappers.
-5. **Gate collections** (B-7). An intentional, flagged behavior delta.
+5. ~~**Gate collections** (B-7). An intentional, flagged behavior delta.~~ **VOID - B-7 retracted 2026-07-17 (see `01`): collections has gated since 2026-06-08.** What remains is cosmetic: it gates in 2 files where hubs gates in 4. Not a behavior delta.
 6. **Sheet quick-edit** replacing the 3 cloned dialogs.
 
 **Component Architecture**

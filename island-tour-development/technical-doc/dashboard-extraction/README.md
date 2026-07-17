@@ -143,7 +143,7 @@ What is genuinely hard is elsewhere:
 | B-4 | `ui/sidebar.tsx:478` wraps oklch tokens in `hsl()` - invalid CSS, renders nothing | S3 |
 | B-5 | `--shadow-2xl`/`--tracking-normal` self-referential; `--destructive-foreground` never defined | S3 |
 | B-6 | `refundDue`/`paymentModelLabel` (money logic) exported from a columns file | S3 |
-| B-7 | Collections: 594-line CRUD form, **zero RBAC gating** | S2 |
+| ~~B-7~~ | ~~Collections: 594-line CRUD form, **zero RBAC gating**~~ **RETRACTED - false finding (Phase 9). It has gated since 2026-06-08.** | ~~S2~~ |
 
 ---
 

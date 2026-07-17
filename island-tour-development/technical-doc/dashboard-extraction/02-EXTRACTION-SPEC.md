@@ -402,7 +402,12 @@ Matcher stays `['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)']`.
 
 `lib/config/rbac.ts` copies as-is. Its header - "Mirrors backend: src/config/roles.config.ts + prisma/enums.prisma. Keep in sync." - becomes **more** dangerous after the split, because the two files are now in different repos with no shared CI. See Appendix B.
 
-Fix during migration (finding B-7): `collections` has zero gating. Add `useRole` gates matching the other entity modules. This is a **new gate on an ungated surface**, so it is a behavior change - but in the safe direction, and the backend already enforces. Flag it in the parity checklist as an intentional delta.
+~~Fix during migration (finding B-7): `collections` has zero gating. Add `useRole` gates matching the other entity modules. This is a **new gate on an ungated surface**, so it is a behavior change - but in the safe direction, and the backend already enforces. Flag it in the parity checklist as an intentional delta.~~
+
+> **VOID 2026-07-17 (Phase 9): B-7 is retracted - see `01`.** Collections has gated since
+> 2026-06-08, five weeks before the audit said otherwise. Nothing to fix, nothing to flag, and
+> **no intentional delta** for the parity checklist. Verified: the only diff between the old and
+> new `collections-list-view.tsx` is the `/dashboard/collections/new` -> `/collections/new` href.
 
 ---
 
@@ -559,7 +564,7 @@ Run against production data on the staging subdomain, before DNS cutover. **Ever
 | 17 | FAQs: create, edit, reorder, delete | |
 | 18 | Page Content saves | |
 | 19 | Delete / deactivate / force-delete dialogs behave identically | |
-| 20 | RBAC gates match production per role (**note the intentional delta: collections is newly gated - §5.4**) | |
+| 20 | RBAC gates match production per role (~~note the intentional delta: collections is newly gated - §5.4~~ **no delta: B-7 retracted, collections has gated since 2026-06-08**) | |
 
 ### Tours (highest risk)
 

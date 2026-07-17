@@ -580,11 +580,93 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > **Local prerequisites:** backend on :5050 with the demo seed (`pnpm prisma:seed:demo`),
 > `http://localhost:3001` present in its `CORS_ORIGINS`, and the public site on :3000 for #51-55.
 
-**Risks** **One known intentional delta:** collections gains RBAC gating (B-7). Flag it; do not let it read as a regression.
+**Risks** ~~**One known intentional delta:** collections gains RBAC gating (B-7).~~ **THERE IS NO SUCH DELTA - B-7 IS A FALSE FINDING** (proven below). Old and new gate collections identically.
 
 **Validation** Every row green. No waiver without a written note.
 
 **Rollback** DNS. Old `/dashboard/*` stays live until the new origin is proven.
+
+> **EXECUTED 2026-07-17 (in progress).** Run locally, per the note above: backend :5050 with the
+> demo seed, public site :3000, dashboard :3001. **No regression found.** Findings below.
+>
+> ### The strongest evidence: the code cannot regress where it is identical
+>
+> Every one of the **171 dashboard component files** was compared old vs new:
+> **95 byte-identical · 76 differing only in import paths or the `/dashboard/x` -> `/x` prefix**
+> (= Phase 6's intended change) · **0 with a behavioral diff**. The route sets are identical, 19
+> for 19. So checks 12-50 have no regression *surface* at the code level. That is not a substitute
+> for the interactive rows, but it bounds where a regression could hide: only in the 5 rewrites,
+> the 2 known deltas, and the shell.
+>
+> **Two methodology errors of mine, recorded because they nearly became reported results:**
+> a `diff -rq` with stderr suppressed read a **missing directory** as "identical" (the new repo
+> flattens `components/dashboard/*` -> `components/*`); and a zsh `ls *.tsx *.ts` **aborted on any
+> directory with no `.ts` file**, silently skipping it. Both inflated parity. The numbers above are
+> from a `find`-based redo. **Never let a comparison's failure mode look like success.**
+>
+> ### Verified directly
+>
+> | Check | Result |
+> |---|---|
+> | #1 unauthenticated `/` -> `/portal` | **PASS** (307) |
+> | #11 legacy 308s | **PASS on the mechanism** - 6 paths, query preserved (see the correction below) |
+> | #48 `PATCH /settings/site` busts `site-info` | **PASS** - single `case 'settings'`, present in **both** repos |
+> | #51-55 transport | **PASS** - endpoint returns 200 on a matching secret, **401** on a wrong one, and **never echoes it** |
+>
+> ### FOUR SPEC ERRORS (this is Phase 9 earning its place)
+>
+> **1. `01` B-7 IS FACTUALLY FALSE, and `02` §5.4, `04` §5, this phase's Risks line, and check #20
+> all inherit the error.** B-7 says collections has "no `useRole` import anywhere". At the very
+> commit the specs were authored from (`6e830d0`), collections imported `useRole` in **two** files
+> (`collections-list-view.tsx:28`, `collection-edit-view.tsx:11`) and gated
+> `CREATE_/EDIT_/DELETE_COLLECTION`. The gating landed **2026-06-08** - five weeks *before* the
+> audit. What is true is thinner and duller: collections gates in 2 files where hubs gates in 4.
+> **Consequence: the "one known intentional delta" does not exist**, nothing was "newly gated",
+> and check #20 needs no caveat.
+>
+> **2. Check #11 is mis-worded.** "Legacy `/dashboard/tours` 308s to `/tours`" - but **`/tours` has
+> never existed in either repo**; the module is `trips` and the rename is deferred. The 308 fires
+> and lands on a 404. The *mechanism* is fine (`/dashboard/trips` -> `/trips` renders; 6 paths
+> verified with query preserved). The check presumes a rename that has not happened. **Phase 8's
+> "#11 PASS" was too generous** - it was verified against `/dashboard/trips`, not the literal path.
+>
+> **3. AN UNDOCUMENTED VISUAL DELTA: the sidebar fonts.** Phase 5 dropped **DM Sans and General
+> Sans**. All 4 usages were in the shell - `nav-main.tsx` x3 (nav item labels) and
+> `app-sidebar.tsx` x1 (brand/operator name) - and now render in the default **Noto Sans**. It is
+> deliberate and explained at `app/layout.tsx:18`, but the specs list only the shell gutter (D-4)
+> and the phantom collections delta as "known". **This one is the user's to eyeball.** No dead
+> classes were left behind.
+>
+> **4. `app/layout.tsx:18` points at a note in `app/globals.css` that does not exist.** Dangling
+> cross-reference from Phase 5.
+>
+> ### The e2e suite is NOT a parity gate - it is 45% red on BOTH sides
+>
+> `02` §11's 55 checks are a manual checklist; the Playwright suite is supplementary evidence
+> (reached for because the Chrome extension was unavailable). Run against **both** dashboards:
+>
+> | | Old (monorepo, `/dashboard/*`) | New repo |
+> |---|---|---|
+> | Passed | 125 | 120 |
+> | **Failed** | **102** | **107** |
+>
+> **`attributes.spec.ts` fails 11 / passes 20 on BOTH, with the same test names.** On the old side
+> **60 of 102 failures are the trips specs**, including **48 in the "Edit Trip" block** - the same
+> block, with the same ~17s timeout signature, that fails in the new repo. **These tests were
+> already red before the extraction existed.**
+>
+> Three failure modes, none of them the app:
+> - **Page-wide locators.** `getByRole('button').filter({has: svg}).last()` grabs whatever icon
+>   button happens to be last in the DOM; `getByText(/snake_case/i)` matches the field's help text
+>   AND the error -> strict-mode violation. The screenshot proves the app rendered the error
+>   correctly (`<div role="alert" data-slot="field-error">`) and the test failed anyway.
+> - **5s prefill races** ("Display Name is pre-filled from API").
+> - **30s hard timeouts** (the categories icon-picker popover).
+>
+> **Caveat on the counts:** the two runs above overlapped and every non-intercepted spec hit the
+> same backend and the same demo rows from both sides at once. The 5-test gap is within that noise.
+> A clean, uncontended re-run of the new suite is being diffed name-by-name against the old 102 -
+> **result below.**
 
 > **Stage B ends here. Redesign starts only when Phase 9 is green.**
 
@@ -763,7 +845,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Objective** Four forks -> one shape.
 
-**Files** Canonical routed editor for destinations/hubs/categories/collections. One `SeoForm` (was 4 x ~360). One `ConfirmDialog` (**delete 3 abstractions + 4 wrappers**). Hubs 8 tabs -> 5. Gate collections (B-7).
+**Files** Canonical routed editor for destinations/hubs/categories/collections. One `SeoForm` (was 4 x ~360). One `ConfirmDialog` (**delete 3 abstractions + 4 wrappers**). Hubs 8 tabs -> 5. ~~Gate collections (B-7).~~ **B-7 retracted (Phase 9) - collections already gates.** What is left is to even up the *thinness*: it gates in 2 files vs hubs' 4. Fold that into the canonical editor rather than treating it as a fix.
 
 **Rationale** 04 §4.1. ~10,500 -> ~4,000 LOC. `FaqManager` already proves the pattern.
 
