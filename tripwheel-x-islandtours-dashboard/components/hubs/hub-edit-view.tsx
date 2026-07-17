@@ -1,10 +1,13 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon, Cancel01Icon, PlayIcon, RotateLeft01Icon, Tick02Icon, UndoIcon } from '@hugeicons/core-free-icons';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useRole } from '@/contexts/role-context';
 import {
   useHub,
@@ -14,32 +17,16 @@ import {
 } from '@/hooks/hubs/use-hubs';
 import type { HubStatus } from '@/types/hub';
 import { HUB_STATUS_LABELS } from '@/types/enums';
-import { ArchiveIcon, CheckIcon, PlayIcon, RotateCcwIcon, UndoIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { FaqManager } from '@/components/faq/faq-manager';
+import { FaqManager } from '@/components/common/faq-manager';
 import { HubDetailShell } from './hub-detail-shell';
 import { HubForm } from './hub-form';
-import { HubTranslationForm } from './hub-translation-form';
-import { HubSeoTab } from './hub-seo-tab';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
+import { HubSeoTab } from '@/components/common/entity-seo-tab';
 import { HubContentSectionsManager } from './hub-content-sections-manager';
 import { HubOurPicksManager } from './hub-our-picks-manager';
 import { HubComparisonManager } from './hub-comparison-manager';
 import { HubAllowedCategoriesManager } from './hub-allowed-categories-manager';
-
-// Priority order: setup that unlocks the rest first (identity + the category
-// gate tours attach through), then the publish-required localized content
-// (translations), then editorial curation (picks/comparison), then the page
-// content sections (Discover / Local Tips), FAQs and SEO polish last.
-const VALID_TABS = [
-  'details',
-  'allowed-categories',
-  'translations',
-  'our-picks',
-  'comparison',
-  'page-content',
-  'faqs',
-  'seo',
-] as const;
 
 interface HubEditViewProps {
   id: string;
@@ -56,9 +43,9 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-emerald-500 shrink-0" />
+        <HugeiconsIcon icon={Tick02Icon} className="size-4 text-success-solid shrink-0" />
       ) : (
-        <XIcon className="size-4 text-destructive shrink-0" />
+        <HugeiconsIcon icon={Cancel01Icon} className="size-4 text-destructive shrink-0" />
       )}
       <span className={passed ? 'text-muted-foreground' : 'text-destructive'}>{label}</span>
     </div>
@@ -66,8 +53,6 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
 }
 
 export function HubEditView({ id, initialTab }: HubEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
   const { data: hub, isLoading } = useHub(id, 'en');
   const { data: enTranslation } = useHubTranslationByLocale(id, 'en');
   const { data: contentSections } = useHubContentSections(id);
@@ -100,46 +85,46 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
     { label: 'English overview filled', passed: !!enTranslation?.overview?.trim() },
     { label: 'At least 1 English Discover section', passed: enDiscoverCount >= 1 },
     { label: 'At least 1 English Local Tip section', passed: enLocalTipCount >= 1 },
-  ];
-  const allPassed = readinessChecks.every((c) => c.passed);
+ ];
+ const allPassed = readinessChecks.every((c) => c.passed);
 
-  if (isLoading) {
-    return (
-      <HubDetailShell id={id} name={undefined} isLoading subtitle="Edit hub">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </HubDetailShell>
-    );
-  }
+ if (isLoading) {
+ return (
+ <HubDetailShell id={id} name={undefined} isLoading subtitle="Edit hub">
+ <div className="space-y-4">
+ {Array.from({ length: 4 }).map((_, i) => (
+ <Skeleton key={i} className="h-12 w-full rounded-none" />
+ ))}
+ </div>
+ </HubDetailShell>
+ );
+ }
 
-  if (!hub) {
-    return (
-      <HubDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit hub">
-        <p className="text-sm text-muted-foreground">Hub not found.</p>
-      </HubDetailShell>
-    );
-  }
+ if (!hub) {
+ return (
+ <HubDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit hub">
+ <p className="text-sm text-muted-foreground">Hub not found.</p>
+ </HubDetailShell>
+ );
+ }
 
-  return (
-    <HubDetailShell id={id} name={hub.name} isLoading={false} subtitle="Edit hub">
-      <div className="space-y-6">
-        {/* Status + lifecycle actions */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
-            </span>
-            <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
-          </div>
+ return (
+ <HubDetailShell id={id} name={hub.name} isLoading={false} subtitle="Edit hub">
+ <div className="space-y-6">
+ {/* Status + lifecycle actions */}
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-3">
+ <span className="text-xs font-semibold text-muted-foreground">
+ Status
+ </span>
+ <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
+ </div>
 
-          {can('MANAGE_HUBS') && (
+ {can('MANAGE_HUBS') && (
             <div className="flex flex-wrap gap-2">
               {hub.status === 'DRAFT' && (
                 <Button size="sm" onClick={() => changeStatus('PUBLISHED', 'Hub published.')} disabled={isUpdating}>
-                  <PlayIcon className="size-3.5" />
+                  <HugeiconsIcon icon={PlayIcon} className="size-3.5" />
                   Publish
                 </Button>
               )}
@@ -151,7 +136,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
                     onClick={() => changeStatus('DRAFT', 'Hub moved to draft.')}
                     disabled={isUpdating}
                   >
-                    <UndoIcon className="size-3.5" />
+                    <HugeiconsIcon icon={UndoIcon} className="size-3.5" />
                     Move to Draft
                   </Button>
                   <Button
@@ -160,7 +145,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
                     onClick={() => changeStatus('ARCHIVED', 'Hub archived.')}
                     disabled={isUpdating}
                   >
-                    <ArchiveIcon className="size-3.5" />
+                    <HugeiconsIcon icon={Archive02Icon} className="size-3.5" />
                     Archive
                   </Button>
                 </>
@@ -171,7 +156,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
                   onClick={() => changeStatus('DRAFT', 'Hub restored to draft.')}
                   disabled={isUpdating}
                 >
-                  <RotateCcwIcon className="size-3.5" />
+                  <HugeiconsIcon icon={RotateLeft01Icon} className="size-3.5" />
                   Restore to Draft
                 </Button>
               )}
@@ -181,7 +166,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
 
         {/* Publish readiness (only relevant while not yet published) */}
         {hub.status !== 'PUBLISHED' && (
-          <Card className={allPassed ? 'border-emerald-200' : 'border-amber-200'}>
+          <Card className={allPassed ? 'border-success-border' : 'border-warning-border'}>
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-sm">Publish Readiness</CardTitle>
             </CardHeader>
@@ -195,61 +180,67 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
           </Card>
         )}
 
-        <Tabs defaultValue={activeTab}>
-          <div className="pb-2 mb-6">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="allowed-categories">Allowed Categories</TabsTrigger>
-              <TabsTrigger value="translations">Translations</TabsTrigger>
-              <TabsTrigger value="our-picks">Our Picks</TabsTrigger>
-              <TabsTrigger value="comparison">Comparison</TabsTrigger>
-              <TabsTrigger value="page-content">Page Content</TabsTrigger>
-              <TabsTrigger value="faqs">FAQs</TabsTrigger>
-              <TabsTrigger value="seo">SEO</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="details">
-            <HubForm hub={hub} />
-          </TabsContent>
-
-          <TabsContent value="allowed-categories">
-            <HubAllowedCategoriesManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="translations">
-            <HubTranslationForm hubId={id} hubName={hub.name} />
-          </TabsContent>
-
-          <TabsContent value="our-picks">
-            <HubOurPicksManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="comparison">
-            <HubComparisonManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="page-content">
-            <HubContentSectionsManager hubId={id} />
-          </TabsContent>
-
-          <TabsContent value="faqs">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
-                  FAQs
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <FaqManager basePath="/hubs" entityId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="seo">
-            <HubSeoTab hub={hub} />
-          </TabsContent>
-        </Tabs>
+        <EntityTabs
+          basePath={`/hubs/${id}/edit`}
+          initialTab={initialTab}
+          aliases={{
+            translations: 'page-content',
+            'allowed-categories': 'curation',
+            'our-picks': 'curation',
+            comparison: 'curation',
+          }}
+          tabs={[
+            {
+              value: 'details',
+              label: 'Details',
+              content: <HubForm hub={hub} />,
+            },
+            {
+              value: 'curation',
+              label: 'Curation',
+              /* 04 §4.1: the hub's three editorial extras become ONE tab
+                 with stacked sections - 8 tabs → 5, and an admin who learns
+                 destinations has learned hubs. Each manager keeps its own
+                 card, hooks and saves untouched. */
+              content: (
+                <div className="space-y-6">
+                  <HubAllowedCategoriesManager hubId={id} />
+                  <HubOurPicksManager hubId={id} />
+                  <HubComparisonManager hubId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'page-content',
+              label: 'Page Content',
+              content: (
+                <div className="space-y-6">
+                  <EnglishContentEditor type="hub" id={id} />
+                  <HubContentSectionsManager hubId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'faqs',
+              label: 'FAQs',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <FaqManager basePath="/hubs" entityId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'seo',
+              label: 'SEO',
+              content: <HubSeoTab hub={hub} />,
+            },
+          ]}
+        />
       </div>
     </HubDetailShell>
   );

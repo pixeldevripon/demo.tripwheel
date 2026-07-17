@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon } from '@hugeicons/core-free-icons';
+
 import { onboardOperator } from '@/app/_actions/onboardingActions';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import { OnboardingData, onboardingSchema } from '@/lib/validations/onboarding';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -107,17 +109,17 @@ export function OnboardingForm() {
                             'px-3 py-1.5 rounded-lg transition-colors',
                             currentStep === 0
                                 ? 'bg-primary/20 text-primary border border-primary/20'
-                                : 'text-slate-500'
+                                : 'text-n-500'
                         )}>
                         1. Business Identity
                     </div>
-                    <div className='w-8 h-px bg-slate-800' />
+                    <div className='w-8 h-px bg-n-800' />
                     <div
                         className={cn(
                             'px-3 py-1.5 rounded-lg transition-colors',
                             currentStep === 1
                                 ? 'bg-primary/20 text-primary border border-primary/20'
-                                : 'text-slate-500'
+                                : 'text-n-500'
                         )}>
                         2. Business Intent
                     </div>
@@ -166,7 +168,7 @@ export function OnboardingForm() {
                             className='px-8'>
                             {isPending ? (
                                 <>
-                                    <Loader2 className='mr-2 w-4 h-4 animate-spin' />
+                                    <HugeiconsIcon icon={Loading03Icon} className='mr-2 w-4 h-4 animate-spin' />
                                     Submitting...
                                 </>
                             ) : (

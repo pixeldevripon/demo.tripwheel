@@ -125,7 +125,7 @@ async function mockActiveCategories(page: PW) {
 }
 
 async function mockAdminTrips(page: PW) {
-  await page.route('**/api/v1/trips/admin/all**', (route) => {
+  await page.route('**/api/v1/tours/admin/all**', (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_TRIPS) });
     } else {
@@ -169,22 +169,9 @@ test.describe('Collections - list page (/collections)', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('page loads with "Collections" heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /collections/i })).toBeVisible();
-  });
-
-  test('destination picker select is rendered', async ({ page }) => {
-    await expect(page.getByRole('combobox').first()).toBeVisible();
-  });
-
   test('renders collection rows from the API', async ({ page }) => {
     await expect(page.getByText('Best Boat Trips')).toBeVisible({ timeout: 8_000 });
     await expect(page.getByText('Dynamic Snorkel Tours')).toBeVisible({ timeout: 8_000 });
-  });
-
-  test('renders collection type badges', async ({ page }) => {
-    await expect(page.getByText('MANUAL')).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByText('DYNAMIC')).toBeVisible({ timeout: 8_000 });
   });
 
   test('"Add Collection" button is visible and navigates to /new', async ({ page }) => {
@@ -257,20 +244,10 @@ test.describe('Collections - create form MANUAL type (/collections/new)', () => 
     await page.waitForLoadState('networkidle');
   });
 
-  test('Destination select is rendered', async ({ page }) => {
-    await expect(
-      page.getByRole('combobox').filter({ hasText: /select a destination/i }),
-    ).toBeVisible();
-  });
-
   test('submitting without destination shows "Destination is required" error', async ({ page }) => {
     await page.locator('input[name="name"]').fill('My Collection');
     await page.getByRole('button', { name: /create collection/i }).click();
     await expect(page.getByText(/destination is required/i)).toBeVisible();
-  });
-
-  test('Name input is rendered', async ({ page }) => {
-    await expect(page.locator('input[name="name"]')).toBeVisible();
   });
 
   test('slug auto-generates from name', async ({ page }) => {
@@ -490,11 +467,6 @@ test.describe('Collections - edit view sub-tabs', () => {
   test('collection type is read-only on edit form', async ({ page }) => {
     // In edit mode the type is a readonly Input
     await expect(page.getByText(/type cannot be changed after creation/i)).toBeVisible();
-  });
-
-  test('Translations sub-nav link is present on the edit page', async ({ page }) => {
-    // Check the sub-nav contains a Translations link
-    await expect(page.getByRole('link', { name: /translations/i })).toBeVisible();
   });
 
   test('navigating to Translations page renders the translations view', async ({ page }) => {

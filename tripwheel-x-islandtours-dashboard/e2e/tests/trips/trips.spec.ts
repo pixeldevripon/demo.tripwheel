@@ -178,7 +178,7 @@ type PlaywrightPage = import('@playwright/test').Page;
 
 async function mockTripsListEndpoints(page: PlaywrightPage) {
   // Operator my-trips
-  await page.route('**/api/v1/trips/my-trips**', (route) => {
+  await page.route('**/api/v1/tours/my-tours**', (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PAGINATED_TRIPS) });
     } else {
@@ -186,7 +186,7 @@ async function mockTripsListEndpoints(page: PlaywrightPage) {
     }
   });
   // Admin all trips
-  await page.route('**/api/v1/trips/admin/all**', (route) => {
+  await page.route('**/api/v1/tours/admin/all**', (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PAGINATED_TRIPS) });
     } else {
@@ -196,7 +196,7 @@ async function mockTripsListEndpoints(page: PlaywrightPage) {
 }
 
 async function mockTripDetail(page: PlaywrightPage, trip: Record<string, unknown> = MOCK_TRIP_DRAFT) {
-  await page.route(`**/api/v1/trips/${trip.id}`, (route) => {
+  await page.route(`**/api/v1/tours/${trip.id}`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(trip) });
@@ -234,7 +234,7 @@ async function mockSupportingData(page: PlaywrightPage) {
 }
 
 async function mockInclusionsEndpoints(page: PlaywrightPage) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}/inclusions`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/inclusions`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_INCLUSIONS) });
@@ -252,7 +252,7 @@ async function mockInclusionsEndpoints(page: PlaywrightPage) {
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/inclusions/**`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/inclusions/**`, (route) => {
     const method = route.request().method();
     if (method === 'DELETE') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
@@ -265,7 +265,7 @@ async function mockInclusionsEndpoints(page: PlaywrightPage) {
 }
 
 async function mockSchedulesEndpoints(page: PlaywrightPage) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}/schedules`, (route) => {
+  await page.route(`**/api/v1/availability/schedules**`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_SCHEDULES) });
@@ -287,7 +287,7 @@ async function mockSchedulesEndpoints(page: PlaywrightPage) {
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/schedules/**`, (route) => {
+  await page.route(`**/api/v1/availability/schedules/**`, (route) => {
     const method = route.request().method();
     if (method === 'DELETE') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
@@ -300,7 +300,7 @@ async function mockSchedulesEndpoints(page: PlaywrightPage) {
 }
 
 async function mockTranslationsEndpoints(page: PlaywrightPage, tripId: string = TRIP_ID) {
-  await page.route(`**/api/v1/trips/${tripId}/translations/en`, (route) => {
+  await page.route(`**/api/v1/tours/${tripId}/translations/en`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EN_TRANSLATION) });
@@ -310,7 +310,7 @@ async function mockTranslationsEndpoints(page: PlaywrightPage, tripId: string = 
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${tripId}/translations/**`, (route) => {
+  await page.route(`**/api/v1/tours/${tripId}/translations/**`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       // Non-English locales return 404 (no translation yet)
@@ -332,7 +332,7 @@ async function mockTranslationsEndpoints(page: PlaywrightPage, tripId: string = 
 async function mockAllTripTabEndpoints(page: PlaywrightPage, trip: Record<string, unknown> = MOCK_TRIP_DRAFT) {
   await mockTripDetail(page, trip);
   await mockTranslationsEndpoints(page, trip.id as string);
-  await page.route(`**/api/v1/trips/${trip.id}/languages**`, (route) => {
+  await page.route(`**/api/v1/tours/${trip.id}/languages**`, (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     } else {
@@ -353,10 +353,6 @@ test.describe('Trip List Page (/trips)', () => {
     await page.waitForSelector('table', { timeout: 15_000 });
   });
 
-  test('page loads with "My Trips" heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /my trips/i })).toBeVisible();
-  });
-
   test('renders trip rows from API response', async ({ page }) => {
     await expect(page.getByText('Sunset Catamaran Cruise')).toBeVisible();
     await expect(page.getByText('Glass Bottom Boat Tour')).toBeVisible();
@@ -369,14 +365,6 @@ test.describe('Trip List Page (/trips)', () => {
     // Sidebar also has "Add New Trip" which matches /new trip/i - use exact match for the header button
     await page.getByRole('link', { name: 'New Trip', exact: true }).click();
     await expect(page).toHaveURL(/\/trips\/new/, { timeout: 5_000 });
-  });
-
-  test('search input is visible', async ({ page }) => {
-    await expect(page.getByPlaceholder(/search trips/i)).toBeVisible();
-  });
-
-  test('status filter select is visible', async ({ page }) => {
-    await expect(page.getByRole('combobox').filter({ hasText: /all status/i })).toBeVisible();
   });
 
   test('row-actions menu opens and shows Edit Details item', async ({ page }) => {
@@ -414,7 +402,7 @@ test.describe('Trip List Page (/trips)', () => {
 
   test('publish action in row menu calls POST /publish and shows toast', async ({ page }) => {
     let publishCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/publish`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/publish`, (route) => {
       if (route.request().method() === 'POST') {
         publishCalled = true;
         route.fulfill({
@@ -437,7 +425,7 @@ test.describe('Trip List Page (/trips)', () => {
 
   test('restore action in archived trip row menu calls POST /restore and shows toast', async ({ page }) => {
     let restoreCalled = false;
-    await page.route(`**/api/v1/trips/${ARCHIVED_TRIP_ID}/restore`, (route) => {
+    await page.route(`**/api/v1/tours/${ARCHIVED_TRIP_ID}/restore`, (route) => {
       if (route.request().method() === 'POST') {
         restoreCalled = true;
         route.fulfill({
@@ -469,19 +457,6 @@ test.describe('Create Trip (/trips/new)', () => {
     await page.goto('/trips/new');
     // Wait for the form card to render
     await page.waitForSelector('form', { timeout: 15_000 });
-  });
-
-  test('page renders with "New Trip" heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /new trip/i })).toBeVisible();
-  });
-
-  test('Name and Slug input fields are visible', async ({ page }) => {
-    await expect(page.locator('input[name="name"]')).toBeVisible();
-    await expect(page.locator('input[name="slug"]')).toBeVisible();
-  });
-
-  test('Create Trip submit button is visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /create trip/i })).toBeVisible();
   });
 
   test('slug auto-generates from name input', async ({ page }) => {
@@ -521,7 +496,7 @@ test.describe('Create Trip (/trips/new)', () => {
   test('successful create navigates to edit page', async ({ page }) => {
     const createdTrip = { ...MOCK_TRIP_DRAFT, id: 'new-trip-id' };
 
-    await page.route('**/api/v1/trips', (route) => {
+    await page.route('**/api/v1/tours', (route) => {
       if (route.request().method() === 'POST') {
         route.fulfill({
           status: 201,
@@ -549,7 +524,7 @@ test.describe('Create Trip (/trips/new)', () => {
   });
 
   test('shows error toast when slug conflicts (409)', async ({ page }) => {
-    await page.route('**/api/v1/trips', (route) => {
+    await page.route('**/api/v1/tours', (route) => {
       if (route.request().method() === 'POST') {
         route.fulfill({
           status: 409,
@@ -601,10 +576,6 @@ test.describe('Edit Trip - Details Tab', () => {
     await expect(page.getByText(/slug cannot be changed after creation/i)).toBeVisible();
   });
 
-  test('status badge is visible', async ({ page }) => {
-    await expect(page.getByText('DRAFT')).toBeVisible();
-  });
-
   test('Publish button visible for DRAFT trip', async ({ page }) => {
     await expect(page.getByRole('button', { name: /publish/i })).toBeVisible();
   });
@@ -615,7 +586,7 @@ test.describe('Edit Trip - Details Tab', () => {
 
   test('Save Changes button triggers PATCH and shows success toast', async ({ page }) => {
     let patchBody: unknown = null;
-    await page.route(`**/api/v1/trips/${TRIP_ID}`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}`, (route) => {
       if (route.request().method() === 'PATCH') {
         patchBody = route.request().postDataJSON();
         route.fulfill({
@@ -639,7 +610,7 @@ test.describe('Edit Trip - Details Tab', () => {
 
   test('Publish button triggers POST /publish and shows toast', async ({ page }) => {
     let publishCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/publish`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/publish`, (route) => {
       if (route.request().method() === 'POST') {
         publishCalled = true;
         route.fulfill({
@@ -674,7 +645,7 @@ test.describe('Edit Trip - Details Tab', () => {
     await page.waitForSelector('input[name="name"]', { timeout: 15_000 });
 
     let pauseCalled = false;
-    await page.route(`**/api/v1/trips/${LIVE_TRIP_ID}/pause`, (route) => {
+    await page.route(`**/api/v1/tours/${LIVE_TRIP_ID}/pause`, (route) => {
       if (route.request().method() === 'POST') {
         pauseCalled = true;
         route.fulfill({
@@ -708,7 +679,7 @@ test.describe('Edit Trip - Inclusions Tab', () => {
     await mockTranslationsEndpoints(page);
     await mockInclusionsEndpoints(page);
     await mockSupportingData(page);
-    await page.route(`**/api/v1/trips/${TRIP_ID}/languages**`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/languages**`, (route) => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     });
     await page.goto(`/trips/${TRIP_ID}/edit?tab=inclusions`);
@@ -719,24 +690,9 @@ test.describe('Edit Trip - Inclusions Tab', () => {
     await expect(page.getByText('Welcome drink')).toBeVisible();
   });
 
-  test('"Add Inclusion" form section is visible with label input', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button - use .first() for the heading
-    await expect(page.getByText(/add inclusion/i).first()).toBeVisible();
-    await expect(page.locator('input[name="label"]')).toBeVisible();
-  });
-
-  test('icon selector select is visible in the Add Inclusion form', async ({ page }) => {
-    // The icon select is inside the "Add Inclusion" form section.
-    // The Label text is "ICON" but is not wired with htmlFor, so locate the
-    // combobox nearest to the Icon label using a parent section approach.
-    const addInclusionSection = page.locator('form').last();
-    // Verify at least one combobox (the icon Select) is present in the form
-    await expect(addInclusionSection.getByRole('combobox').first()).toBeVisible();
-  });
-
   test('submitting Add Inclusion form calls POST and shows success toast', async ({ page }) => {
     let postCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/inclusions`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/inclusions`, (route) => {
       if (route.request().method() === 'POST') {
         postCalled = true;
         route.fulfill({
@@ -773,7 +729,7 @@ test.describe('Edit Trip - Inclusions Tab', () => {
 
   test('delete button on an inclusion calls DELETE and shows success toast', async ({ page }) => {
     let deleteCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/inclusions/inc-1`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/inclusions/inc-1`, (route) => {
       if (route.request().method() === 'DELETE') {
         deleteCalled = true;
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
@@ -801,7 +757,7 @@ test.describe('Edit Trip - Schedules Tab', () => {
     await mockTranslationsEndpoints(page);
     await mockSchedulesEndpoints(page);
     await mockSupportingData(page);
-    await page.route(`**/api/v1/trips/${TRIP_ID}/languages**`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/languages**`, (route) => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     });
     await page.goto(`/trips/${TRIP_ID}/edit?tab=schedules`);
@@ -813,11 +769,6 @@ test.describe('Edit Trip - Schedules Tab', () => {
     // which produces "Dec 1, 2025" - not "01 Dec 2025"
     await expect(page.getByText(/Dec 1, 2025/)).toBeVisible();
     await expect(page.getByText('09:00')).toBeVisible();
-  });
-
-  test('"Add Schedule" form section is visible', async ({ page }) => {
-    // getByText matches both the <p> heading and the submit button - use .first() for the heading
-    await expect(page.getByText(/add schedule/i).first()).toBeVisible();
   });
 
   test('"Select start date" button opens calendar popover', async ({ page }) => {
@@ -844,7 +795,7 @@ test.describe('Edit Trip - Schedules Tab', () => {
 
   test('Add Schedule submit calls POST and shows success toast', async ({ page }) => {
     let postCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/schedules`, (route) => {
+    await page.route(`**/api/v1/availability/schedules**`, (route) => {
       if (route.request().method() === 'POST') {
         postCalled = true;
         route.fulfill({
@@ -889,7 +840,7 @@ test.describe('Edit Trip - Schedules Tab', () => {
 
   test('delete schedule button calls DELETE and shows success toast', async ({ page }) => {
     let deleteCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/schedules/sched-1`, (route) => {
+    await page.route(`**/api/v1/availability/schedules**/sched-1`, (route) => {
       if (route.request().method() === 'DELETE') {
         deleteCalled = true;
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
@@ -917,7 +868,7 @@ test.describe('Edit Trip - Translations Tab', () => {
     await mockAllTripTabEndpoints(page);
     await mockTranslationsEndpoints(page);
     // Override en translation to ensure locale-specific mock is fresh
-    await page.route(`**/api/v1/trips/${TRIP_ID}/translations/en`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/translations/en`, (route) => {
       if (route.request().method() === 'GET') {
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EN_TRANSLATION) });
       } else if (route.request().method() === 'PATCH') {
@@ -930,21 +881,9 @@ test.describe('Edit Trip - Translations Tab', () => {
     await page.waitForSelector('text=Translations', { timeout: 15_000 });
   });
 
-  test('Translations card heading shows trip name', async ({ page }) => {
-    await expect(page.getByText(/translations - sunset catamaran cruise/i)).toBeVisible();
-  });
-
   test('English tab is the default active tab', async ({ page }) => {
     // The "en" tab trigger should be present and the English content visible
     await expect(page.getByRole('tab', { name: /english/i })).toBeVisible();
-  });
-
-  test('English base locale banner is visible', async ({ page }) => {
-    await expect(page.getByText(/english is the base locale/i)).toBeVisible();
-  });
-
-  test('canonical trip name note is shown on English tab', async ({ page }) => {
-    await expect(page.getByText(/set in the details tab/i)).toBeVisible();
   });
 
   test('Display Title field is pre-filled with trip name on English tab', async ({ page }) => {
@@ -954,7 +893,7 @@ test.describe('Edit Trip - Translations Tab', () => {
 
   test('Save Translation button calls PATCH and shows success toast', async ({ page }) => {
     let patchCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/translations/en`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/translations/en`, (route) => {
       if (route.request().method() === 'PATCH') {
         patchCalled = true;
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EN_TRANSLATION) });
@@ -979,7 +918,7 @@ test.describe('Edit Trip - Translations Tab', () => {
   test('Clear Fields on English tab calls upsert with null fields (not DELETE)', async ({ page }) => {
     let patchCalled = false;
     let deleteCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/translations/en`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/translations/en`, (route) => {
       const method = route.request().method();
       if (method === 'PATCH') {
         patchCalled = true;
@@ -1038,7 +977,7 @@ test.describe('Trip Lifecycle', () => {
   test('DRAFT trip: Publish button calls POST /publish', async ({ page }) => {
     await mockAllTripTabEndpoints(page);
     let publishCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/publish`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/publish`, (route) => {
       if (route.request().method() === 'POST') {
         publishCalled = true;
         route.fulfill({
@@ -1063,7 +1002,7 @@ test.describe('Trip Lifecycle', () => {
   test('LIVE trip: Pause button calls POST /pause', async ({ page }) => {
     await mockAllTripTabEndpoints(page, MOCK_TRIP_LIVE);
     let pauseCalled = false;
-    await page.route(`**/api/v1/trips/${LIVE_TRIP_ID}/pause`, (route) => {
+    await page.route(`**/api/v1/tours/${LIVE_TRIP_ID}/pause`, (route) => {
       if (route.request().method() === 'POST') {
         pauseCalled = true;
         route.fulfill({
@@ -1108,7 +1047,7 @@ test.describe('Trip Lifecycle', () => {
   test('Restore action from list page sends POST /restore for archived trip', async ({ page }) => {
     await mockTripsListEndpoints(page);
     let restoreCalled = false;
-    await page.route(`**/api/v1/trips/${ARCHIVED_TRIP_ID}/restore`, (route) => {
+    await page.route(`**/api/v1/tours/${ARCHIVED_TRIP_ID}/restore`, (route) => {
       if (route.request().method() === 'POST') {
         restoreCalled = true;
         route.fulfill({

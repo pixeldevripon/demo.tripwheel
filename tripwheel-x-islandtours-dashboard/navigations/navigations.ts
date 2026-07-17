@@ -1,63 +1,110 @@
 import {
-    Calendar,
-    CalendarX,
-    CircleUser,
-    CreditCard,
-    Globe,
-    ImageIcon,
-    LayoutDashboard,
-    Map,
-    Settings,
-    SlidersHorizontal,
-    Sparkles,
-    Star,
-    Store,
-    Tag,
-    Layers,
-    Users,
-    Waypoints,
-} from 'lucide-react';
+    Calendar03Icon,
+    CalendarRemove01Icon,
+    CreditCardIcon,
+    DashboardSquare01Icon,
+    FilterHorizontalIcon,
+    Globe02Icon,
+    Image02Icon,
+    Layers01Icon,
+    MapsIcon,
+    RouteIcon,
+    Settings02Icon,
+    SparklesIcon,
+    StarIcon,
+    Store01Icon,
+    Tag01Icon,
+    TranslateIcon,
+    UserCircleIcon,
+} from '@hugeicons/core-free-icons';
 
 import { Permission } from '@/lib/config/rbac';
-import type { NavItem } from '@/lib/rbac-utils';
+import type { NavGroup } from '@/lib/rbac-utils';
 
 /**
- * Dashboard navigation definitions.
+ * Dashboard navigation - four groups by TASK FREQUENCY, not entity type
+ * (04 §1.2). An operator opens Bookings every morning and Attributes never;
+ * a flat list makes those equally prominent, which is the defect this
+ * structure replaces.
  *
- * `permissions` values must exactly match the `Permission` keys declared in
- * /frontend/lib/config/rbac.ts - these are what the AppSidebar filter compares
- * against. Role→Permission mapping is also in lib/config/rbac.ts, whose role
- * strings (ADMIN, TOUR_OPERATOR, USER…) come from the backend.
+ * Per-role IA falls out of permission filtering (04 §1.3): an operator holds
+ * none of the Curate/Configure permissions, so those GROUPS disappear with
+ * their contents - never greyed, absent. Group headers must never render
+ * over an empty section (filterNavGroups enforces this).
+ *
+ * `permissions` values must exactly match the `Permission` keys in
+ * lib/config/rbac.ts. Labels say "Tours" (backend + master doc vocabulary);
+ * routes stay /trips until the G-6 rename ships.
  */
-const dashboardNav: NavItem[] = [
-    // ─── Overview (always visible) ─────────────────────────────────────────────
+const dashboardNav: NavGroup[] = [
     {
-        title: 'Overview',
-        url: '',
-        icon: LayoutDashboard,
-        permissions: [Permission.VIEW_ANALYTICS],
-    },
-
-    // ─── Trips ─────────────────────────────────────────────────────────────────
-    {
-        title: 'Trips',
-        icon: Map,
-        permissions: [Permission.VIEW_TRIPS, Permission.CREATE_TRIP],
+        // Daily. The operator's morning screen-set.
+        label: 'Operate',
         items: [
             {
-                title: 'All Trips',
+                title: 'Overview',
+                url: '',
+                icon: DashboardSquare01Icon,
+                permissions: [Permission.VIEW_ANALYTICS],
+            },
+            {
+                title: 'Bookings',
+                url: 'bookings',
+                icon: Calendar03Icon,
+                permissions: [Permission.VIEW_BOOKINGS],
+            },
+            {
+                title: 'Cancellations',
+                url: 'cancellation-requests',
+                icon: CalendarRemove01Icon,
+                permissions: [Permission.VIEW_BOOKINGS],
+            },
+            {
+                title: 'Payments',
+                url: 'payments',
+                icon: CreditCardIcon,
+                permissions: [Permission.VIEW_PAYMENTS],
+            },
+        ],
+    },
+    {
+        // Weekly. The operator's own inventory.
+        // Translations joins this group when its console ships (04 §3).
+        label: 'Catalog',
+        items: [
+            {
+                title: 'Tours',
                 url: 'trips',
+                icon: MapsIcon,
                 permissions: [Permission.VIEW_TRIPS],
             },
             {
-                title: 'Add New Trip',
-                url: 'trips/new',
-                permissions: [Permission.CREATE_TRIP],
-            }, // ─── Destinations ──────────────────────────────────────────────────────────
+                title: 'Media',
+                url: 'media',
+                icon: Image02Icon,
+                permissions: [
+                    Permission.UPLOAD_MEDIA,
+                    Permission.MANAGE_MEDIA,
+                ],
+            },
+            {
+                // The single largest operator workload finally has a home
+                // (04 §1.2, §3): entity × locale matrix + workspace.
+                title: 'Translations',
+                url: 'translations',
+                icon: TranslateIcon,
+                permissions: [Permission.VIEW_TRIPS],
+            },
+        ],
+    },
+    {
+        // Admin, weekly. Marketplace curation.
+        label: 'Curate',
+        items: [
             {
                 title: 'Destinations',
-                icon: Globe,
                 url: 'destinations',
+                icon: Globe02Icon,
                 permissions: [
                     Permission.VIEW_DESTINATIONS,
                     Permission.CREATE_DESTINATION,
@@ -65,168 +112,92 @@ const dashboardNav: NavItem[] = [
             },
             {
                 title: 'Hubs',
-                icon: Waypoints,
                 url: 'hubs',
+                icon: RouteIcon,
                 permissions: [Permission.MANAGE_HUBS],
-            }, // ─── Categories ────────────────────────────────────────────────────────────
+            },
             {
                 title: 'Categories',
                 url: 'categories',
-                icon: Tag,
+                icon: Tag01Icon,
                 permissions: [Permission.CREATE_CATEGORY],
-            },
-            {
-                title: 'Attributes',
-                url: 'attributes',
-                icon: SlidersHorizontal,
-                permissions: [Permission.MANAGE_SYSTEM],
             },
             {
                 title: 'Collections',
                 url: 'collections',
-                icon: Layers,
+                icon: Layers01Icon,
                 permissions: [
                     Permission.VIEW_COLLECTIONS,
                     Permission.CREATE_COLLECTION,
                 ],
             },
-            // ─── Spotlight (admin approval queue) ───────────────────────────────────────
             {
                 title: 'Spotlight',
                 url: 'spotlight',
-                icon: Sparkles,
+                icon: SparklesIcon,
                 permissions: [Permission.APPROVE_SPOTLIGHT],
             },
-            // ─── Locals' favourites (editorial curation, admin-only) ─────────────────────
             {
                 title: "Locals' Favourites",
                 url: 'locals-favourites',
-                icon: Star,
+                icon: StarIcon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
     },
-
-    // ─── Media ─────────────────────────────────────────────────────────────────
     {
-        title: 'Media',
-        url: 'media',
-        icon: ImageIcon,
-        permissions: [Permission.UPLOAD_MEDIA, Permission.MANAGE_MEDIA],
-    },
-    // ─── Bookings ──────────────────────────────────────────────────────────────
-    {
-        title: 'Bookings',
-        url: 'bookings',
-        icon: Calendar,
-        permissions: [Permission.VIEW_BOOKINGS],
-    },
-
-    // ─── Cancellation requests (master 6.4 admin queue) ───────────────────────
-    {
-        title: 'Cancellation Requests',
-        url: 'cancellation-requests',
-        icon: CalendarX,
-        permissions: [Permission.VIEW_BOOKINGS],
-    },
-
-    // ─── Payments ──────────────────────────────────────────────────────────────
-    {
-        title: 'Payments',
-        url: 'payments',
-        icon: CreditCard,
-        permissions: [Permission.VIEW_PAYMENTS],
-    },
-    // ─── Users / Customers ─────────────────────────────────────────────────────
- /*    {
-        title: 'Users',
-        icon: Users,
-        permissions: [Permission.VIEW_USERS, Permission.MANAGE_USERS],
+        // Admin, rarely. Platform configuration.
+        label: 'Configure',
         items: [
             {
-                title: 'All Users',
-                url: 'users',
-                permissions: [Permission.VIEW_USERS],
+                title: 'Attributes',
+                url: 'attributes',
+                icon: FilterHorizontalIcon,
+                permissions: [Permission.MANAGE_SYSTEM],
             },
             {
-                title: 'Add User',
-                url: 'users/new',
-                permissions: [Permission.CREATE_USER],
-            },
-        ],
-    }, */
-    // ─── Tour Operators ──────────────────────────────────────────────────────
-    {
-        title: 'Tour Operators',
-        icon: Store,
-        permissions: [Permission.MANAGE_OPERATORS],
-        items: [
-            {
-                title: 'All Tour Operators',
+                title: 'Tour Operators',
                 url: 'tour-operators',
+                icon: Store01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
+            },
+        ],
+    },
+    {
+        // Both roles. The operator's ACCOUNT group (04 §1.3); for admins it
+        // rounds out Configure without burying Settings under admin-only
+        // permissions.
+        label: 'Account',
+        items: [
+            {
+                title: 'Settings',
+                url: 'settings',
+                icon: Settings02Icon,
+                permissions: [
+                    Permission.VIEW_SETTINGS,
+                    Permission.MANAGE_SETTINGS,
+                    Permission.EDIT_OPERATOR_PROFILE,
+                    Permission.MANAGE_OPERATOR_PAYMENTS,
+                ],
             },
             {
-                title: 'Add Tour Operator',
-                url: 'tour-operators/new',
-                permissions: [Permission.MANAGE_OPERATORS],
+                title: 'Your Profile',
+                url: 'profile',
+                icon: UserCircleIcon,
+                permissions: [Permission.VIEW_PROFILE],
             },
         ],
     },
 
-    // Enquiries and Leads were here. Both are removed: the master doc's model is
-    // "book instantly, no enquiry model", so neither page had a product behind it
-    // (each was a static heading over a sentence). Their routes are deleted, so
-    // these entries could not be uncommented without 404ing. The VIEW_ENQUIRIES /
-    // VIEW_LEADS permissions stay in rbac.ts - it mirrors the backend, which is
-    // out of scope here.
-
-    // ─── Reviews ───────────────────────────────────────────────────────────────
-    /*     {
-        title: 'Reviews',
-        url: 'reviews',
-        icon: Star,
-        permissions: [Permission.VIEW_REVIEWS],
-    }, */
-
-    // ─── Settings ──────────────────────────────────────────────────────────────
-    // Visible to admins (system settings) and operators (own company + payments).
-    {
-        title: 'Settings',
-        url: 'settings',
-        icon: Settings,
-        permissions: [
-            Permission.VIEW_SETTINGS,
-            Permission.MANAGE_SETTINGS,
-            Permission.EDIT_OPERATOR_PROFILE,
-            Permission.MANAGE_OPERATOR_PAYMENTS,
-        ],
-    },
-    {
-        title: 'Your Profile',
-        url: 'profile',
-        icon: CircleUser,
-        permissions: [Permission.VIEW_PROFILE],
-    },
+    // Enquiries and Leads stay deleted: the master doc's model is "book
+    // instantly, no enquiry model". Users and Reviews return with their
+    // modules (blocked on A3/A2).
 ];
 
 export interface NavigationMap {
-    dashboard: NavItem[];
+    dashboard: NavGroup[];
 }
 
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

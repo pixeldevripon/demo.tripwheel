@@ -4,7 +4,7 @@
  * already-converted values as strings; the frontend only formats them (never
  * computes FX). Neutral module - safe in both server and client bundles.
  */
-import type { Currency } from '@/lib/constants/locales';
+import type { Currency } from '@/types/locale';
 
 export interface Money {
     /** Currency the amounts are expressed in (target when converted, else source). */

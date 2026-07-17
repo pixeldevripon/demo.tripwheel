@@ -1,7 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, MoreHorizontalIcon, PencilEdit02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { PencilIcon, Trash2Icon, MoreHorizontalIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,7 +95,7 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm">
-                <MoreHorizontalIcon />
+                <HugeiconsIcon icon={MoreHorizontalIcon} />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
@@ -101,7 +103,7 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link href={`/attributes/${attr.key}/edit`}>
-                  <PencilIcon />
+                  <HugeiconsIcon icon={PencilEdit02Icon} />
                   Edit Attribute
                 </Link>
               </DropdownMenuItem>
@@ -112,7 +114,7 @@ export function makeAttributeColumns({ canManage, onDeactivate }: MakeAttributeC
                     className="text-destructive focus:text-destructive"
                     onClick={() => onDeactivate(attr)}
                   >
-                    <Trash2Icon />
+                    <HugeiconsIcon icon={Delete02Icon} />
                     Deactivate
                   </DropdownMenuItem>
                 </>

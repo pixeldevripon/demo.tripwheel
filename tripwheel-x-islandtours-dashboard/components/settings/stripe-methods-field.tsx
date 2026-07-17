@@ -137,7 +137,7 @@ export function StripeMethodsField({
             </DialogDescription>
           </DialogHeader>
           {guide && (
-            <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+            <ol className="list-decimal space-y-2 pl-6 text-sm text-muted-foreground">
               {guide.steps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}

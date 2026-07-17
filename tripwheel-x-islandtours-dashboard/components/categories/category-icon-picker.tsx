@@ -1,7 +1,9 @@
 'use client';
 
-import { createElement, useMemo, useState } from 'react';
-import { ChevronsUpDownIcon, XIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, UnfoldMoreIcon } from '@hugeicons/core-free-icons';
+
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,9 +18,7 @@ export { CATEGORY_ICON_NAMES };
 
 function LucideByName({ name, className }: { name: string; className?: string }) {
   // Stable module-level lookup (CATEGORY_ICON_COMPONENTS), not a render-created
-  // component. createElement avoids the static-components false positive that the
-  // JSX `<Cmp/>` form trips.
-  return createElement(getCategoryIconComponent(name), { className });
+  return <HugeiconsIcon icon={getCategoryIconComponent(name)} className={className} />;
 }
 
 interface CategoryIconPickerProps {
@@ -58,7 +58,7 @@ export function CategoryIconPicker({ value, onChange, disabled }: CategoryIconPi
                 {value || 'Select an icon…'}
               </span>
             </span>
-            <ChevronsUpDownIcon className="size-3 shrink-0 text-muted-foreground" />
+            <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3 shrink-0 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) p-2" align="start">
@@ -99,11 +99,11 @@ export function CategoryIconPicker({ value, onChange, disabled }: CategoryIconPi
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="icon-sm"
           onClick={() => onChange(null)}
           title="Clear icon"
         >
-          <XIcon className="size-3.5" />
+          <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
         </Button>
       )}
     </div>

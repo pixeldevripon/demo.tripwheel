@@ -3,6 +3,7 @@
 import { profileApi } from '@/lib/api/profile';
 import type { ProfileFormValues } from '@/lib/validations/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 export const profileKeys = {
@@ -21,11 +22,15 @@ export function useProfileQuery() {
 
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   return useMutation({
     mutationFn: ({ data, role, operatorId }: { data: ProfileFormValues; role: string; operatorId?: string }) =>
       profileApi.updateAll(data, role, operatorId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      // The shell (sidebar identity card, header avatar) renders from
+      // server-fetched profile data - refresh so it picks up the change too.
+      router.refresh();
     },
     onError: (err: Error) => toast.error(err.message || 'Update failed'),
   });
@@ -33,10 +38,12 @@ export function useUpdateProfile() {
 
 export function useUpdateProfilePhoto() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   return useMutation({
     mutationFn: (image: string | null) => profileApi.updateProfile({ image }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      router.refresh();
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to update photo'),
   });

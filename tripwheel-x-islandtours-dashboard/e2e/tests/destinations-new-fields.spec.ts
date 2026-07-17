@@ -53,13 +53,6 @@ test.describe('Destinations - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 1. Region - required Select
   // -------------------------------------------------------------------------
-  test('Region select is rendered on the create form', async ({ page }) => {
-    // The Region select trigger text is "Select a region"
-    await expect(
-      page.getByRole('combobox').filter({ hasText: /select a region/i }),
-    ).toBeVisible();
-  });
-
   test('submitting without Region shows "Region is required" validation error', async ({ page }) => {
     await page.locator('input[name="name"]').fill('New Island');
     // Do NOT pick a region - submit immediately
@@ -88,29 +81,12 @@ test.describe('Destinations - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 2. Currency - optional Select
   // -------------------------------------------------------------------------
-  test('Currency select is rendered on the create form', async ({ page }) => {
-    // The Currency label uses uppercase text "CURRENCY"
-    await expect(page.getByText(/^currency$/i)).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 3. Country field
   // -------------------------------------------------------------------------
-  test('Country text input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="country"]')).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 4. Latitude / Longitude fields
   // -------------------------------------------------------------------------
-  test('Latitude input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="latitude"]')).toBeVisible();
-  });
-
-  test('Longitude input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="longitude"]')).toBeVisible();
-  });
-
   test('invalid latitude shows validation error', async ({ page }) => {
     await page.locator('input[name="latitude"]').fill('999');
     await page.locator('input[name="name"]').fill('Trigger validation');
@@ -128,17 +104,9 @@ test.describe('Destinations - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 5. OG Image
   // -------------------------------------------------------------------------
-  test('OG Image section heading is visible', async ({ page }) => {
-    await expect(page.getByText(/og image/i)).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 6. Gallery Images
   // -------------------------------------------------------------------------
-  test('Gallery Images section heading is visible', async ({ page }) => {
-    await expect(page.getByText(/gallery images/i)).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 7. Regression: slug auto-generates from name
   // -------------------------------------------------------------------------

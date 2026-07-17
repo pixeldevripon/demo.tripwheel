@@ -1,6 +1,8 @@
 'use client';
 
-import { SlidersHorizontalIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { FilterHorizontalIcon } from '@hugeicons/core-free-icons';
+
 import { Breadcrumb } from '@/components/breadcrumb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AttributeForm } from './attribute-form';
@@ -20,8 +22,8 @@ export function AttributeEditView({ attributeKey }: { attributeKey: string }) {
       />
 
       <div className="flex items-center gap-2 mb-6">
-        <SlidersHorizontalIcon className="size-5 text-muted-foreground" />
-        <h1 className="font-heading text-2xl font-semibold uppercase tracking-wider">
+        <HugeiconsIcon icon={FilterHorizontalIcon} className="size-5 text-muted-foreground" />
+        <h1 className="text-2xl font-semibold">
           Edit Attribute
         </h1>
       </div>

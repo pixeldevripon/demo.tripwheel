@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,7 +53,7 @@ export function AttributesListView() {
           canManage && (
             <Button asChild size="sm">
               <Link href="/attributes/new">
-                <PlusIcon /> Add Attribute
+                <HugeiconsIcon icon={PlusSignIcon} /> Add Attribute
               </Link>
             </Button>
           )

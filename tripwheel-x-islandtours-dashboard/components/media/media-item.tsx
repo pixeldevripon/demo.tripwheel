@@ -16,7 +16,6 @@ import type { MediaItem } from '@/types/media';
 interface MediaItemProps {
     item: MediaItem;
     className?: string;
-    style?: React.CSSProperties;
     onClick: (item: MediaItem) => void;
     onDelete: (id: string) => void;
     onCopyUrl: (item: MediaItem) => void;
@@ -28,7 +27,6 @@ interface MediaItemProps {
 export default function MediaItemCard({
     item,
     className = '',
-    style,
     onClick,
     onDelete,
     onCopyUrl,
@@ -48,13 +46,12 @@ export default function MediaItemCard({
     return (
         <Card
             className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-all duration-300 hover:shadow-lg ${className}`}
-            style={style}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onClick={handleClick}>
             <div className='relative h-full'>
                 {item.resourceType === 'image' ? (
-                    <div className='relative w-full h-full dark:bg-gray-200 aspect-square overflow-hidden rounded-md'>
+                    <div className='relative w-full h-full bg-surface-inset aspect-square overflow-hidden rounded-md'>
                         <Image
                             width={item?.width || 300}
                             height={item?.height || 300}
@@ -111,7 +108,7 @@ export default function MediaItemCard({
                 {/* SEO Indicator */}
                 {(item?.altText || item?.caption) && (
                     <div className='absolute top-3 left-3'>
-                        <div className='bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
+                        <div className='bg-success-solid text-success-foreground text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
                             SEO Optimized
                         </div>
                     </div>

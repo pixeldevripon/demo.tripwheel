@@ -1,24 +1,20 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Mail01Icon, Store01Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { StoreIcon, MailIcon } from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import {
+  ACTIVE_STATUS,
+  OPERATOR_VERIFICATION,
+} from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
-import type { OperatorListItem, OperatorVerificationStatus } from '@/types/operator';
+import type { OperatorListItem } from '@/types/operator';
 import { getOperatorDisplayName } from '@/types/operator';
 import { OperatorRowActions } from './operator-row-actions';
-
-const VERIFICATION_BADGE: Record<
-  OperatorVerificationStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; dot: string }
-> = {
-  VERIFIED: { label: 'Verified', variant: 'default', dot: 'bg-emerald-500' },
-  PENDING: { label: 'Pending', variant: 'secondary', dot: 'bg-amber-500' },
-  UNVERIFIED: { label: 'Unverified', variant: 'outline', dot: 'bg-muted-foreground' },
-  REJECTED: { label: 'Rejected', variant: 'destructive', dot: 'bg-red-500' },
-};
 
 export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
   return [
@@ -57,7 +53,7 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
         return (
           <div className="flex items-center gap-3">
             <div className="size-8 shrink-0 overflow-hidden rounded-sm bg-muted flex items-center justify-center">
-              <StoreIcon className="size-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Store01Icon} className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0">
               <Link
@@ -80,7 +76,7 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       header: 'Email',
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
-          <MailIcon className="size-3 text-muted-foreground shrink-0" />
+          <HugeiconsIcon icon={Mail01Icon} className="size-3 text-muted-foreground shrink-0" />
           <span className="text-sm truncate max-w-56">{row.original.user.email}</span>
         </div>
       ),
@@ -90,12 +86,9 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       accessorKey: 'verificationStatus',
       header: 'Verification',
       cell: ({ row }) => {
-        const cfg = VERIFICATION_BADGE[row.original.verificationStatus];
+        const cfg = OPERATOR_VERIFICATION[row.original.verificationStatus];
         return (
-          <div className="flex items-center gap-1.5">
-            <span className={`size-1.5 rounded-full shrink-0 ${cfg.dot}`} />
-            <Badge variant={cfg.variant}>{cfg.label}</Badge>
-          </div>
+          <StatusBadge variant={cfg.variant}>{cfg.label}</StatusBadge>
         );
       },
       enableSorting: true,
@@ -105,14 +98,8 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       header: 'Status',
       cell: ({ row }) => {
         const isActive = row.original.isActive;
-        return (
-          <div className="flex items-center gap-1.5">
-            <span className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            <Badge variant={isActive ? 'default' : 'secondary'}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Badge>
-          </div>
-        );
+        const meta = ACTIVE_STATUS[isActive ? 'active' : 'inactive'];
+        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
       },
       enableSorting: true,
     },

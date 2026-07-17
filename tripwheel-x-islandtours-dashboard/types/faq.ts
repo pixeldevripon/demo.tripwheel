@@ -1,4 +1,4 @@
-import type { Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
 
 // Shared FAQ types for every entity that owns FAQs (destination, category, hub,
 // collection). A logical FAQ is one faqGroupId whose per-locale rows share the

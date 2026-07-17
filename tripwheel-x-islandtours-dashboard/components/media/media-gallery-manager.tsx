@@ -1,8 +1,8 @@
 'use client';
 
-import { useMediaList, prependMediaToCache } from '@/hooks/media/use-media';
+import { useMediaInfinite, prependMediaToCache } from '@/hooks/media/use-media';
 import { useUploadStore } from '@/lib/stores/use-upload-store';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import MediaGallery from './media-gallery';
@@ -31,10 +31,21 @@ const MediaGalleryManager = ({
     const [selectMode, setSelectMode] = useState(false);
     const [bulkSelectedItems, setBulkSelectedItems] = useState<MediaItem[]>([]);
 
-    // ── TanStack Query - replaces manual fetchMedia + useState ──────────────
+    // ── TanStack Query - pages through the whole library ────────────────────
     // refetchOnWindowFocus: true (set in QueryClient defaults + hook) means
     // the gallery automatically refreshes when the user returns to this tab.
-    const { data: mediaItems = [], isLoading } = useMediaList('limit=100&page=1');
+    const {
+        data,
+        isLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useMediaInfinite();
+    const mediaItems = useMemo(
+        () => data?.pages.flatMap(page => page.data) ?? [],
+        [data],
+    );
+    const totalCount = data?.pages[0]?.total ?? mediaItems.length;
 
     const isUploading = useUploadStore(s => s.uploadingFiles.length > 0);
 
@@ -117,6 +128,10 @@ const MediaGalleryManager = ({
                 bulkSelectedItems={bulkSelectedItems}
                 setbulkSelectedItems={setBulkSelectedItems}
                 mediaItems={mediaItems}
+                totalCount={totalCount}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onLoadMore={() => fetchNextPage()}
                 loading={isLoading && !isUploading}
                 selector={selector}
                 handleInserToForm={handleInsertToForm}

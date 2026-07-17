@@ -12,6 +12,7 @@ import {
 } from '@/hooks/settings/use-settings';
 import {
   CheckboxField,
+  ConnectionStatus,
   SecretField,
   SettingsCard,
   SettingsCardSkeleton,
@@ -75,6 +76,7 @@ function SmtpCard() {
       description="Outgoing email server used for transactional and notification emails."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.smtpHost} />}
     >
       <div className="grid gap-6 sm:grid-cols-2">
         <TextField label="Host" registration={register('smtpHost')} error={errors.smtpHost?.message} placeholder="smtp.example.com" />
@@ -147,6 +149,7 @@ function MailchimpCard() {
       description="Sync newsletter subscribers to your Mailchimp audience."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.apiKey} />}
     >
       <SecretField
         label="API Key"

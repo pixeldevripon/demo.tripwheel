@@ -1,5 +1,8 @@
 'use client';
 
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+
 import {
     Card,
     CardContent,
@@ -7,7 +10,6 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface SetupGuideProps {
@@ -30,7 +32,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Tailor your site to match your brand and attract more customers.',
             buttonText: 'Website Settings',
-            linkTo: `/settings`,
+            linkTo: `/settings?tab=site`,
         },
         {
             number: 3,
@@ -38,7 +40,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Enable secure payments to start accepting bookings online.',
             buttonText: 'Set Up Payment',
-            linkTo: `/payments`,
+            linkTo: `/settings?tab=payments`,
         },
         {
             number: 4,
@@ -46,11 +48,9 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             description:
                 'Configure your SMTP in Island Tours to ensure emails are sent from your own domain.',
             buttonText: 'Email Configuration',
-            linkTo: `/settings/email`,
+            linkTo: `/settings?tab=integrations`,
         },
     ];
-
-    const stagingUrl = process.env.NEXT_PUBLIC_STAGING_APP_URL || '#';
 
     return (
         <div className='w-full'>
@@ -61,16 +61,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                     new site is almost ready
                 </h1>
                 <p className='text-sm text-muted-foreground'>
-                    Follow these quick steps to configure your site. You can
-                    visit your staging site at{' '}
-                    <Link
-                        href={stagingUrl}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='text-primary hover:underline font-medium transition-colors'>
-                        {stagingUrl}
-                    </Link>
-                    .
+                    Follow these quick steps to configure your site.
                 </p>
             </div>
 
@@ -114,7 +105,10 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                                         href={step.linkTo}
                                         className='gap-2 flex items-center border p-[6px] px-3 text-sm rounded-full hover:bg-secondary transform transition-colors duration-200'>
                                         {step.buttonText}
-                                        <ChevronRight className='w-4 h-4' />
+                                        <HugeiconsIcon
+                                            icon={ArrowRight01Icon}
+                                            className='w-4 h-4'
+                                        />
                                     </Link>
                                 </div>
                             </div>

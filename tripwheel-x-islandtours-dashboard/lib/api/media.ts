@@ -3,9 +3,10 @@ import type { MediaItem, MediaListResponse } from '@/types/media';
 import { apiFetch } from './fetch';
 
 export const mediaApi = {
-  async getAll(queryString = 'limit=100&page=1'): Promise<MediaItem[]> {
-    const res = await apiFetch<MediaListResponse>(`/media-gallery?${queryString}`);
-    return res.data;
+  // Returns the full pagination envelope (total/page/limit) so the gallery can
+  // page through the whole library instead of capping at the first 100 items.
+  getPage(page: number, limit: number): Promise<MediaListResponse> {
+    return apiFetch<MediaListResponse>(`/media-gallery?limit=${limit}&page=${page}`);
   },
 
   delete(id: string): Promise<void> {

@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, PlusSignIcon, Tag01Icon, Tag02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PlusIcon, TagIcon, Trash2Icon, TagsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,7 +66,7 @@ function AllowedCategoryCard({ item, hubId }: AllowedCategoryCardProps) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="size-8 shrink-0 rounded-sm bg-muted flex items-center justify-center">
-                <TagIcon className="size-4 text-muted-foreground" />
+                <HugeiconsIcon icon={Tag01Icon} className="size-4 text-muted-foreground" />
               </div>
               <div>
                 <p className="font-medium text-sm">{item.category.name}</p>
@@ -75,11 +77,11 @@ function AllowedCategoryCard({ item, hubId }: AllowedCategoryCardProps) {
             </div>
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
               onClick={() => setDeleteOpen(true)}
             >
-              <Trash2Icon />
+              <HugeiconsIcon icon={Delete02Icon} />
             </Button>
           </div>
         </CardContent>
@@ -89,7 +91,7 @@ function AllowedCategoryCard({ item, hubId }: AllowedCategoryCardProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
-              <Trash2Icon className="size-8 text-destructive" />
+              <HugeiconsIcon icon={Delete02Icon} className="size-8 text-destructive" />
             </AlertDialogMedia>
             <AlertDialogTitle>Remove Category</AlertDialogTitle>
             <AlertDialogDescription>
@@ -148,7 +150,7 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
     <div className="space-y-6">
       <div className="flex items-end gap-3">
         <div className="flex-1">
-          <Label className="text-xs font-semibold uppercase mb-2 block">Add Category</Label>
+          <Label className="mb-2 block">Add Category</Label>
           {isLoadingCategories ? (
             <Skeleton className="h-9 w-full rounded-none" />
           ) : (
@@ -178,14 +180,14 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
           size="sm"
           className="shrink-0"
         >
-          <PlusIcon />
+          <HugeiconsIcon icon={PlusSignIcon} />
           {isAdding ? 'Adding...' : 'Add'}
         </Button>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <Label className="text-xs font-semibold uppercase">Allowed Categories</Label>
+          <Label>Allowed Categories</Label>
           {allowedCategories && allowedCategories.length > 0 && (
             <Badge variant="secondary">{allowedCategories.length} total</Badge>
           )}
@@ -199,7 +201,7 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
           </div>
         ) : !allowedCategories || allowedCategories.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground border border-dashed rounded-none">
-            <TagsIcon className="size-10 opacity-40" />
+            <HugeiconsIcon icon={Tag02Icon} className="size-10 opacity-40" />
             <p className="text-sm">No categories allowed yet.</p>
             <p className="text-xs">Add categories above to restrict which tour types can be assigned to this hub.</p>
           </div>

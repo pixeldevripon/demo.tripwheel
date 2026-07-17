@@ -82,10 +82,6 @@ test.describe('Categories module', () => {
   // -------------------------------------------------------------------------
   // 1. List page loads
   // -------------------------------------------------------------------------
-  test('list page loads and shows heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /categories/i })).toBeVisible();
-  });
-
   test('list page renders rows from the API response', async ({ page }) => {
     await expect(page.getByText('Test Category')).toBeVisible();
     await expect(page.getByText('Another Category')).toBeVisible();

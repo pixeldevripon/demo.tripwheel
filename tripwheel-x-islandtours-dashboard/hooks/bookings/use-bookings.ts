@@ -17,10 +17,11 @@ export const bookingKeys = {
         [...bookingKeys.all, 'list', params] as const,
 };
 
-export function useBookings(params: BookingsQueryParams = {}) {
+export function useBookings(params: BookingsQueryParams = {}, enabled = true) {
     return useQuery({
         queryKey: bookingKeys.list(params),
         queryFn: () => bookingsDashboardApi.list(params),
+        enabled,
         placeholderData: keepPreviousData,
     });
 }

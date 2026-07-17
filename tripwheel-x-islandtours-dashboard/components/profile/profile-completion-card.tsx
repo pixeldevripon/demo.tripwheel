@@ -11,6 +11,8 @@ export function ProfileCompletionCard({
             <div className='w-full bg-muted rounded-full h-2 mb-2'>
                 <div
                     className='bg-primary h-2 rounded-full transition-all duration-500'
+                    // 03 §8.3 exception: runtime-computed bar width has no class equivalent.
+                    // eslint-disable-next-line no-restricted-syntax
                     style={{ width: `${percentage}%` }}
                 />
             </div>

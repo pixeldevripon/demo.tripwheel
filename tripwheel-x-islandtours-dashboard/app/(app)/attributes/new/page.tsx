@@ -1,4 +1,5 @@
-import { SlidersHorizontalIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { FilterHorizontalIcon } from '@hugeicons/core-free-icons';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { AttributeForm } from '@/components/attributes/attribute-form';
 
@@ -14,8 +15,8 @@ export default function NewAttributePage() {
       />
 
       <div className="flex items-center gap-2 mb-6">
-        <SlidersHorizontalIcon className="size-5 text-muted-foreground" />
-        <h1 className="font-heading text-2xl font-semibold uppercase tracking-wider">
+        <HugeiconsIcon icon={FilterHorizontalIcon} className="size-5 text-muted-foreground" />
+        <h1 className="text-2xl font-semibold">
           Add Attribute
         </h1>
       </div>

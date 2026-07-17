@@ -64,7 +64,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                                 item.publicId}
                         </p>
                         <p
-                            className='hidden sm:block text-[10px] md:text-[11px] text-muted-foreground truncate max-w-lg mt-0.5'
+                            className='hidden sm:block text-2xs text-muted-foreground truncate max-w-lg mt-0.5'
                             title={item.url}>
                             {item.url}
                         </p>
@@ -76,7 +76,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                         variant='outline'
                         size='sm'
                         onClick={handleCopyUrl}
-                        className='h-7 md:h-8 px-2 md:px-3 text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2'>
+                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs flex items-center gap-1.5 md:gap-2'>
                         <HugeiconsIcon icon={Copy01Icon} size={14} />
                         <span className='hidden sm:inline'>COPY URL</span>
                         <span className='sm:hidden'>URL</span>
@@ -90,7 +90,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                         download={
                             item.originalName || item.fileName || 'media-file'
                         }
-                        className='inline-flex items-center h-7 md:h-8 px-2 md:px-3 text-[10px] md:text-xs font-medium border border-border rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-colors'>
+                        className='inline-flex items-center h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs font-medium border border-border rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-colors'>
                         <HugeiconsIcon
                             icon={Download02Icon}
                             size={14}
@@ -103,7 +103,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                         variant='ghost'
                         size='sm'
                         onClick={onClose}
-                        className='h-7 md:h-8 px-2 md:px-3 text-[10px] md:text-xs font-semibold'>
+                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs font-semibold'>
                         CLOSE
                     </Button>
                 </div>
@@ -145,7 +145,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                                 Preview not available for this file type
                             </p>
                             {item.size && (
-                                <p className='text-[10px] text-muted-foreground uppercase tracking-widest mb-4'>
+                                <p className='text-2xs text-muted-foreground mb-4'>
                                     {formatFileSize(item.size)}
                                 </p>
                             )}

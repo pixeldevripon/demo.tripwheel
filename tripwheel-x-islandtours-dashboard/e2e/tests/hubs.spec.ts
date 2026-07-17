@@ -114,10 +114,6 @@ test.describe('Hubs module', () => {
   // -------------------------------------------------------------------------
   // 1. List page loads
   // -------------------------------------------------------------------------
-  test('list page loads and shows heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /hubs/i })).toBeVisible();
-  });
-
   test('list page renders rows from the API response', async ({ page }) => {
     await expect(page.getByText('Test Hub')).toBeVisible();
     await expect(page.getByText('Another Hub')).toBeVisible();

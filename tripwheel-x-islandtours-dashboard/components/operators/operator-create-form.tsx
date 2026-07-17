@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { MailValidation01Icon } from '@hugeicons/core-free-icons';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
@@ -7,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateOperator } from '@/hooks/operators/use-operators';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MailCheckIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -57,7 +59,7 @@ export function OperatorCreateForm() {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label>
                 Contact Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -69,7 +71,7 @@ export function OperatorCreateForm() {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label>
                 Email <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -86,7 +88,7 @@ export function OperatorCreateForm() {
             </Field>
 
             <div className="flex items-start gap-2 rounded-none bg-muted px-4 py-3 text-sm text-muted-foreground">
-              <MailCheckIcon className="size-4 shrink-0 mt-0.5" />
+              <HugeiconsIcon icon={MailValidation01Icon} className="size-4 shrink-0 mt-0.5" />
               <p>
                 No password is set here. The operator receives a secure invite email and
                 chooses their own password.

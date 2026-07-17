@@ -54,7 +54,7 @@ export function TourBadgeChip({ type, className }: TourBadgeChipProps) {
   return (
     <span
       className={cn(
-        'inline-flex h-5 shrink-0 items-center justify-center rounded-full border px-2 text-[11px] font-medium leading-none',
+        'inline-flex h-5 shrink-0 items-center justify-center rounded-full border px-2 text-2xs font-medium leading-none',
         style.className,
         className,
       )}

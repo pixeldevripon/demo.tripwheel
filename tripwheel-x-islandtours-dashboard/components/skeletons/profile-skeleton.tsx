@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfileSkeleton() {
     return (
-        <div className='max-w-7xl space-y-8 pb-10'>
+        <div className='max-w-7xl space-y-8 pb-8'>
             {/* Header Skeleton */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-2">

@@ -1,12 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CancelCircleIcon, Copy01Icon, MoreHorizontalIcon, ViewIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
-import {
-  CopyIcon,
-  EyeIcon,
-  MoreHorizontalIcon,
-  XCircleIcon,
-} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,8 +17,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useRole } from '@/contexts/role-context';
 import { useCancelBooking } from '@/hooks/bookings/use-bookings';
 import type { BookingListItem } from '@/types/booking';
-import { refundDue } from './booking-columns';
-import { BookingDetailsDialog } from './booking-details-dialog';
+import { refundDue } from '@/lib/bookings/format';
 
 /** A booking the admin can still act on (master 6.4 "admin marks cancelled"). */
 const CANCELLABLE: BookingListItem['status'][] = [
@@ -30,9 +26,15 @@ const CANCELLABLE: BookingListItem['status'][] = [
   'CONFIRMED',
 ];
 
-export function BookingRowActions({ booking }: { booking: BookingListItem }) {
+export function BookingRowActions({
+  booking,
+  onViewDetails,
+}: {
+  booking: BookingListItem;
+  /** Opens the shared details sheet (owned by the table so prev/next work). */
+  onViewDetails: () => void;
+}) {
   const { can } = useRole();
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const { mutate: cancelBooking, isPending } = useCancelBooking();
 
@@ -44,13 +46,13 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs" aria-label="Booking actions">
-            <MoreHorizontalIcon />
+          <Button variant="ghost" size="icon-sm" aria-label="Booking actions">
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
-            <EyeIcon /> View details
+          <DropdownMenuItem onClick={onViewDetails}>
+            <HugeiconsIcon icon={ViewIcon} /> View details
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -58,7 +60,7 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
               toast.success('Booking reference copied.');
             }}
           >
-            <CopyIcon /> Copy reference
+            <HugeiconsIcon icon={Copy01Icon} /> Copy reference
           </DropdownMenuItem>
           {canCancel && (
             <>
@@ -67,18 +69,12 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
                 variant="destructive"
                 onClick={() => setCancelOpen(true)}
               >
-                <XCircleIcon /> Mark cancelled
+                <HugeiconsIcon icon={CancelCircleIcon} /> Mark cancelled
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <BookingDetailsDialog
-        booking={booking}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-      />
 
       <ConfirmDialog
         open={cancelOpen}

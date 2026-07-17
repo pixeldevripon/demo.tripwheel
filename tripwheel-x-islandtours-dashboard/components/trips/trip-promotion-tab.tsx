@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, InformationCircleIcon, SparklesIcon, SquareLock02Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { CheckIcon, InfoIcon, LockIcon, SparklesIcon, XIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,15 +101,15 @@ function DemandBadgeCard({ trip }: { trip: TripListItem }) {
       <CardHeader className="border-b pb-4">
         <CardTitle className="text-sm">Demand Badge Override</CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <div className="flex items-center gap-3 text-sm">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Computed now</p>
+          <p className="text-xs font-semibold text-muted-foreground">Computed now</p>
           <Badge variant={trip.likelyToSellOut ? 'default' : 'secondary'}>
             {trip.likelyToSellOut ? 'Likely to sell out' : 'Normal demand'}
           </Badge>
         </div>
         <Field className="w-full sm:w-72">
-          <Label className="text-xs font-semibold uppercase">Override</Label>
+          <Label>Override</Label>
           <Select value={value} onValueChange={(v) => handleChange(v as 'auto' | 'on' | 'off')} disabled={isPending}>
             <SelectTrigger>
               <SelectValue />
@@ -164,22 +166,22 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
       <CardHeader className="border-b pb-4">
         <CardTitle className="text-sm">Commission Tier</CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Current Tier</p>
+            <p className="text-xs font-semibold text-muted-foreground">Current Tier</p>
             <p className="mt-1 font-medium">{current.label}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Commission</p>
+            <p className="text-xs font-semibold text-muted-foreground">Commission</p>
             <p className="mt-1 font-medium">{trip.commissionTier}%</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Rank</p>
+            <p className="text-xs font-semibold text-muted-foreground">Rank</p>
             <p className="mt-1 font-medium tabular-nums">{trip.tierRank}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Eligibility</p>
+            <p className="text-xs font-semibold text-muted-foreground">Eligibility</p>
             <p className="mt-1">
               <Badge variant="secondary">{trip.eligibilityState}</Badge>
             </p>
@@ -188,7 +190,7 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
 
         {isLocked && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2">
-            <LockIcon className="size-3.5 shrink-0" />
+            <HugeiconsIcon icon={SquareLock02Icon} className="size-3.5 shrink-0" />
             <span>Tier is locked until {formatDate(trip.tierLockedUntil!)}. You can change it again after that date.</span>
           </div>
         )}
@@ -196,7 +198,7 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
         {canEdit && (
           <div className="flex flex-wrap items-end gap-3">
             <Field className="w-full sm:w-72">
-              <Label className="text-xs font-semibold uppercase">Change Tier</Label>
+              <Label>Change Tier</Label>
               <Select
                 value={selectedTier}
                 onValueChange={(v) => setSelectedTier(v as TierKey)}
@@ -267,11 +269,11 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
     <Card>
       <CardHeader className="border-b pb-4">
         <CardTitle className="text-sm flex items-center gap-2">
-          <SparklesIcon className="size-4" />
+          <HugeiconsIcon icon={SparklesIcon} className="size-4" />
           Destination Spotlight
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <p className="text-xs text-muted-foreground">
           A Destination Spotlight gives this tour a featured block on the destination page and raises
           its commission to {SPOTLIGHT_COMMISSION_PCT}% while active. Requests are reviewed and
@@ -293,11 +295,11 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         </div>
 
         {isLoading ? (
-          <Skeleton className="h-24 w-full rounded-none" />
+          <Skeleton className="h-24 w-full rounded-md" />
         ) : current ? (
           <div className="border bg-muted/40 px-4 py-3 space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Latest request</span>
+              <span className="text-xs font-semibold text-muted-foreground">Latest request</span>
               <Badge variant={spotlightStatusVariant[current.status]}>
                 {SPOTLIGHT_STATUS_LABELS[current.status]}
               </Badge>
@@ -318,8 +320,8 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         {canEdit && !blocked && (
           <div className="space-y-4 border-t pt-4">
             {!eligible && (
-              <div className="flex items-start gap-2 text-xs text-amber-600">
-                <InfoIcon className="size-3.5 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 text-xs text-warning-fg">
+                <HugeiconsIcon icon={InformationCircleIcon} className="size-3.5 shrink-0 mt-0.5" />
                 <span>
                   This tour does not yet meet the spotlight criteria. You can still submit a request,
                   but it will be rejected until the criteria are met.
@@ -328,11 +330,11 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Preferred Start (optional)</Label>
+                <Label>Preferred Start (optional)</Label>
                 <DatePickerField value={startsAt} onChange={setStartsAt} placeholder="Pick a start date" clearable />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Preferred Duration (days, optional)</Label>
+                <Label>Preferred Duration (days, optional)</Label>
                 <Input
                   type="number"
                   min={1}
@@ -345,7 +347,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
             </div>
             <div className="flex justify-end">
               <Button type="button" onClick={handleRequest} disabled={isPending}>
-                <SparklesIcon className="size-3.5" />
+                <HugeiconsIcon icon={SparklesIcon} className="size-3.5" />
                 {isPending ? 'Requesting...' : 'Request Spotlight'}
               </Button>
             </div>
@@ -362,7 +364,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         {/* History */}
         {data && data.history.length > 1 && (
           <div className="border-t pt-4 space-y-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">History</p>
+            <p className="text-xs font-semibold text-muted-foreground">History</p>
             {data.history.map((req) => (
               <div key={req.id} className="flex items-center justify-between gap-3 text-xs">
                 <span className="text-muted-foreground">{formatDate(req.requestedAt)}</span>
@@ -382,9 +384,9 @@ function EligibilityItem({ label, detail, passed }: { label: string; detail: str
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-emerald-500 shrink-0" />
+        <HugeiconsIcon icon={Tick02Icon} className="size-4 text-success-solid shrink-0" />
       ) : (
-        <XIcon className="size-4 text-destructive shrink-0" />
+        <HugeiconsIcon icon={Cancel01Icon} className="size-4 text-destructive shrink-0" />
       )}
       <span className={passed ? 'text-muted-foreground' : 'text-destructive'}>
         {label} <span className="text-muted-foreground">({detail})</span>

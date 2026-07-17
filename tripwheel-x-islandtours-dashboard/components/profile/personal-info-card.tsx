@@ -1,5 +1,18 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+    CallIcon,
+    Clock01Icon,
+    Location01Icon,
+    Loading03Icon,
+    Mail01Icon,
+    PencilEdit02Icon,
+    Tick02Icon,
+    UnfoldMoreIcon,
+    User03Icon,
+} from '@hugeicons/core-free-icons';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,34 +33,52 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { detectBrowserTimezone, getTimezoneOptions } from '@/utils/intl-utils';
-import {
-    Check,
-    ChevronsUpDown,
-    Clock,
-    Mail,
-    MapPin,
-    Phone,
-    User,
-} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 
+import { useUpdateProfile } from '@/hooks/profile/use-profile';
+import {
+    profileSchema,
+    type ProfileFormValues,
+} from '@/lib/validations/profile';
+import { profileValuesFromUser } from './profile-form-values';
 import type { UserProfile } from '@/types/profile';
 
 interface PersonalInfoCardProps {
     user: UserProfile;
-    isEditing: boolean;
 }
 
-export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
+/**
+ * Per-card edit (Phase 20): this card owns its own edit state and form, so
+ * editing personal info no longer flips the entire page into edit mode. The
+ * form carries the full profile value set; only these fields are editable
+ * here, so the save payload matches the old page-wide form exactly.
+ */
+export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
+    const updateMutation = useUpdateProfile();
+    const [isEditing, setIsEditing] = useState(false);
+    const [open, setOpen] = useState(false);
+
     const {
         register,
         control,
         formState: { errors },
         setValue,
         watch,
-    } = useFormContext();
-    const [open, setOpen] = useState(false);
+        reset,
+        handleSubmit,
+    } = useForm<ProfileFormValues>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: profileValuesFromUser(user),
+    });
+
+    // Keep in sync with fresh server data, but never clobber an edit in flight.
+    useEffect(() => {
+        if (!isEditing) reset(profileValuesFromUser(user));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, isEditing]);
 
     const selectedTz = watch('timezone');
 
@@ -61,58 +92,113 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
     // Get all supported timezones with full info
     const timezoneOptions = useMemo(() => getTimezoneOptions(), []);
 
+    const onSave = handleSubmit((data: ProfileFormValues) => {
+        updateMutation.mutate(
+            { data, role: user.role, operatorId: user.operator?.id },
+            {
+                onSuccess: () => {
+                    toast.success('Profile updated successfully');
+                    setIsEditing(false);
+                },
+            },
+        );
+    });
+
+    function cancelEdit() {
+        reset(profileValuesFromUser(user));
+        setIsEditing(false);
+    }
+
     const fields = [
         {
             id: 'name',
             label: 'Full Name',
-            icon: User,
+            icon: User03Icon,
         },
         {
             id: 'email',
             label: 'Email Address',
-            icon: Mail,
+            icon: Mail01Icon,
             type: 'email',
             disabled: true,
         },
         {
             id: 'phone',
             label: 'Phone Number',
-            icon: Phone,
+            icon: CallIcon,
             type: 'tel',
         },
         {
             id: 'location',
             label: 'Location',
-            icon: MapPin,
+            icon: Location01Icon,
         },
     ] as const;
 
     return (
-        <Card className='border-none shadow-sm bg-card '>
+        <Card>
             <CardHeader className='pb-4'>
-                <div className='flex items-center justify-between'>
-                    <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                        <User className='w-5 h-5 text-primary' />
-                        Personal Information
-                    </CardTitle>
-                    <Badge
-                        variant='secondary'
-                        className='font-normal bg-primary/5 text-primary border-primary/10'>
-                        {user?.role?.replace('_', ' ') || 'USER'}
-                    </Badge>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
+                    <div className='flex items-center gap-2'>
+                        <CardTitle className='text-lg font-semibold flex items-center gap-2'>
+                            <HugeiconsIcon
+                                icon={User03Icon}
+                                className='size-5 text-primary'
+                            />
+                            Personal Information
+                        </CardTitle>
+                        <Badge
+                            variant='secondary'
+                            className='font-normal bg-primary/5 text-primary border-primary/10'>
+                            {user?.role?.replace('_', ' ') || 'USER'}
+                        </Badge>
+                    </div>
+                    {isEditing ? (
+                        <div className='flex gap-2'>
+                            <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={cancelEdit}
+                                disabled={updateMutation.isPending}>
+                                Cancel
+                            </Button>
+                            <Button
+                                size='sm'
+                                onClick={onSave}
+                                disabled={updateMutation.isPending}>
+                                {updateMutation.isPending && (
+                                    <HugeiconsIcon
+                                        icon={Loading03Icon}
+                                        className='size-4 animate-spin'
+                                    />
+                                )}
+                                Save
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => setIsEditing(true)}>
+                            <HugeiconsIcon
+                                icon={PencilEdit02Icon}
+                                className='size-4'
+                            />
+                            Edit
+                        </Button>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                     {fields.map(field => (
                         <div key={field.id} className='space-y-2'>
-                            <Label
-                                htmlFor={field.id}
-                                className='text-sm font-medium text-muted-foreground flex items-center gap-2'>
-                                {field.label}
-                            </Label>
+                            <Label htmlFor={field.id}>{field.label}</Label>
                             <div className='relative'>
-                                <field.icon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+                                <HugeiconsIcon
+                                    icon={field.icon}
+                                    className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted'
+                                />
                                 <Input
                                     id={field.id}
                                     {...register(field.id)}
@@ -125,18 +211,12 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                     readOnly={
                                         'disabled' in field && field.disabled
                                     }
-                                    className={cn(
-                                        'pl-10 h-11 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all',
-                                        errors[field.id] &&
-                                            'border-destructive focus:border-destructive focus:ring-destructive/20',
-                                        'disabled' in field &&
-                                            field.disabled &&
-                                            'cursor-not-allowed opacity-70'
-                                    )}
+                                    aria-invalid={!!errors[field.id]}
+                                    className='pl-8'
                                 />
                             </div>
                             {errors[field.id] && (
-                                <p className='text-xs text-destructive mt-1'>
+                                <p className='text-xs font-medium text-danger-fg mt-1'>
                                     {errors[field.id]?.message as string}
                                 </p>
                             )}
@@ -145,11 +225,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
 
                     {/* Timezone Searchable Selector */}
                     <div className='space-y-2'>
-                        <Label
-                            htmlFor='timezone'
-                            className='text-sm font-medium text-muted-foreground flex items-center gap-2'>
-                            Timezone
-                        </Label>
+                        <Label htmlFor='timezone'>Timezone</Label>
                         <Controller
                             name='timezone'
                             control={control}
@@ -160,7 +236,10 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                         isEditing && setOpen(val)
                                     }>
                                     <div className='relative'>
-                                        <Clock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10' />
+                                        <HugeiconsIcon
+                                            icon={Clock01Icon}
+                                            className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted z-10'
+                                        />
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant='outline'
@@ -168,29 +247,32 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                 aria-expanded={open}
                                                 disabled={!isEditing}
                                                 className={cn(
-                                                    'w-full justify-between pl-10 h-11 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all font-normal text-left overflow-hidden',
+                                                    'w-full justify-between pl-8 font-normal text-left overflow-hidden',
                                                     errors.timezone &&
-                                                        'border-destructive',
+                                                        'border-danger-border',
                                                     !isEditing &&
-                                                        'cursor-default opacity-100 hover:bg-muted/30'
+                                                        'cursor-default',
                                                 )}>
                                                 <span className='truncate'>
                                                     {field.value
                                                         ? timezoneOptions.find(
                                                               tz =>
                                                                   tz.value ===
-                                                                  field.value
+                                                                  field.value,
                                                           )?.label ||
                                                           field.value
                                                         : 'Select timezone...'}
                                                 </span>
                                                 {isEditing && (
-                                                    <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                                                    <HugeiconsIcon
+                                                        icon={UnfoldMoreIcon}
+                                                        className='ml-2 size-4 shrink-0 opacity-50'
+                                                    />
                                                 )}
                                             </Button>
                                         </PopoverTrigger>
                                     </div>
-                                    <PopoverContent className='w-[--radix-popover-trigger-width] p-0 rounded-xl overflow-hidden'>
+                                    <PopoverContent className='w-[--radix-popover-trigger-width] p-0 overflow-hidden'>
                                         <Command>
                                             <CommandInput placeholder='Search timezone...' />
                                             <CommandList>
@@ -204,17 +286,18 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                                                             value={tz.value}
                                                             onSelect={currentValue => {
                                                                 field.onChange(
-                                                                    currentValue
+                                                                    currentValue,
                                                                 );
                                                                 setOpen(false);
                                                             }}>
-                                                            <Check
+                                                            <HugeiconsIcon
+                                                                icon={Tick02Icon}
                                                                 className={cn(
-                                                                    'mr-2 h-4 w-4',
+                                                                    'mr-2 size-4',
                                                                     field.value ===
                                                                         tz.value
                                                                         ? 'opacity-100'
-                                                                        : 'opacity-0'
+                                                                        : 'opacity-0',
                                                                 )}
                                                             />
                                                             {tz.label}
@@ -228,7 +311,7 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
                             )}
                         />
                         {errors.timezone && (
-                            <p className='text-xs text-destructive mt-1'>
+                            <p className='text-xs font-medium text-danger-fg mt-1'>
                                 {errors.timezone?.message as string}
                             </p>
                         )}
@@ -238,4 +321,3 @@ export function PersonalInfoCard({ user, isEditing }: PersonalInfoCardProps) {
         </Card>
     );
 }
-

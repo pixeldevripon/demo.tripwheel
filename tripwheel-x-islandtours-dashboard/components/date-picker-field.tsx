@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Calendar03Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { CalendarIcon, XIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -43,12 +45,12 @@ export function DatePickerField({
             !selectedDate && 'text-muted-foreground',
           )}
         >
-          <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">
             {selectedDate ? format(selectedDate, 'dd MMM yyyy') : placeholder}
           </span>
           {clearable && selectedDate && (
-            <XIcon
+            <HugeiconsIcon icon={Cancel01Icon}
               className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation();

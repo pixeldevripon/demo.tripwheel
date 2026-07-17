@@ -1,6 +1,6 @@
-import type { Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
 import type { Currency, Region } from '@/types/enums';
-export type { Locale } from '@/lib/constants/locales';
+export type { Locale } from '@/types/locale';
 export type { Region, Currency } from '@/types/enums';
 
 export interface Destination {

@@ -1,14 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, LeftToRightListNumberIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ListOrderedIcon,
-  PlusIcon,
-  Trash2Icon,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -179,14 +175,14 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
 
       <div className="flex items-center justify-end">
         <Button size="sm" type="button" onClick={addRow}>
-          <PlusIcon />
+          <HugeiconsIcon icon={PlusSignIcon} />
           Add Tour
         </Button>
       </div>
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <ListOrderedIcon className="size-10 opacity-40" />
+          <HugeiconsIcon icon={LeftToRightListNumberIcon} className="size-10 opacity-40" />
           <p className="text-sm">No tours yet.</p>
           <p className="text-xs">Add your first tour using the button above.</p>
         </div>
@@ -196,7 +192,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
             const trip = row.tourId ? tripById.get(row.tourId) : undefined;
             return (
               <Card key={row.key} size="sm">
-                <CardContent className="pt-5 space-y-4">
+                <CardContent className="pt-4 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col items-center gap-1 pt-6">
                       <span className="text-xs font-semibold text-muted-foreground tabular-nums">
@@ -206,27 +202,27 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-xs"
+                          size="icon-sm"
                           disabled={index === 0}
                           onClick={() => move(index, -1)}
                         >
-                          <ArrowUpIcon className="size-3.5" />
+                          <HugeiconsIcon icon={ArrowUp02Icon} className="size-3.5" />
                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-xs"
+                          size="icon-sm"
                           disabled={index === rows.length - 1}
                           onClick={() => move(index, 1)}
                         >
-                          <ArrowDownIcon className="size-3.5" />
+                          <HugeiconsIcon icon={ArrowDown02Icon} className="size-3.5" />
                         </Button>
                       </div>
                     </div>
 
                     <div className="flex-1 space-y-4">
                       <Field>
-                        <Label className="text-xs font-semibold uppercase">Tour</Label>
+                        <Label>Tour</Label>
                         <CollectionTourSelect
                           destinationId={destinationId}
                           value={row.tourId}
@@ -257,11 +253,11 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-6"
                       onClick={() => removeRow(row.key)}
                     >
-                      <Trash2Icon className="size-3.5" />
+                      <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -311,7 +307,7 @@ function DynamicToursPreview({ collectionId }: { collectionId: string }) {
         <p className="text-sm text-destructive">Failed to load resolved tours.</p>
       ) : !tours || tours.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
-          <ListOrderedIcon className="size-10 opacity-40" />
+          <HugeiconsIcon icon={LeftToRightListNumberIcon} className="size-10 opacity-40" />
           <p className="text-sm">No tours match this filter.</p>
           <p className="text-xs max-w-md">
             Adjust the filter query in the Details tab, or widen it, to resolve some tours.
@@ -319,7 +315,7 @@ function DynamicToursPreview({ collectionId }: { collectionId: string }) {
         </div>
       ) : (
         <>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             {tours.length} tour{tours.length === 1 ? '' : 's'} resolved
           </p>
           <div className="space-y-2">

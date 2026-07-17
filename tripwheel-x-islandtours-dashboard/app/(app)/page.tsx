@@ -15,7 +15,10 @@ export default async function DashboardPage() {
         redirect('/portal');
     }
 
-    const statsPromise = getDashboardStats();
+    // Real stats, scoped by the forwarded session cookie (admin: platform-wide,
+    // operator: own tours). Not awaited - the stats area streams in behind its
+    // Suspense skeleton while the rest of the page renders.
+    const statsPromise = getDashboardStats(cookie, user.role);
 
     return (
         <div className='flex flex-1 flex-col gap-4'>
@@ -23,4 +26,3 @@ export default async function DashboardPage() {
         </div>
     );
 }
-

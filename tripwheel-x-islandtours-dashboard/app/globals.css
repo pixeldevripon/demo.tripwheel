@@ -2,20 +2,6 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
-/* FONTS: three, not five. DM Sans and General Sans were dropped in the
- * extraction (Phase 5) and this is the note app/layout.tsx points at.
- *
- * All four usages were in the sidebar shell - nav-main.tsx x3 (nav item labels)
- * and app-sidebar.tsx x1 (the brand/operator name) - so both fonts cost a
- * download each to style one component. They now render in --font-sans
- * (Noto Sans). That is a real, if small, VISUAL DELTA vs the monorepo
- * dashboard, and it is deliberate; see 06 Phase 9. The class references were
- * removed with the fonts, so no dead `font-dm-sans` / `font-general-sans`
- * utilities remain - re-adding either class silently does nothing.
- *
- * Playfair Display stays for now at 70 usages (--font-heading); whether it
- * survives is a Phase 11 decision. */
-
 /* Island Tours brand tokens - LOGIN SURFACES ONLY (/portal, /staff).
  * Scoped by `.frontend-root` on app/(login)/layout.tsx; the admin tree never
  * carries that class. This is a deliberate fork of the public site's token file,
@@ -23,31 +9,489 @@
  * See the header of login-tokens.css. */
 @import './login-tokens.css';
 
-@custom-variant dark (&:is(.dark *));
+/* 03 §3. `:where` (not `:is`) so the variant adds ZERO specificity: a dark:
+ * utility then beats its base utility on source order alone, which is how
+ * Tailwind orders variants. `:is(.dark *)` - the old form - also failed to match
+ * the `.dark` element itself. */
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* ═══ VEGA RE-SKIN (2026-07-17) ════════════════════════════════════════════
+ * COLORS: the gate-green Vega-tuned system (user decision: "keep the color
+ * as previous" after evaluating the raw preset) - lavender-tinted canvas,
+ * brighter raised cards, teal-blue brand (hue 214), vivid blue focus ring,
+ * blue (not orange) dark-mode primary, near-black dark canvas.
+ * TYPOGRAPHY: the Devripon preset's ramp - DM Sans headings (h1-h6 +
+ * CardTitle), Geist body at default size / 1.65 line-height, IBM Plex Mono.
+ * Any color change here MUST be mirrored in scripts/contrast-gate.mjs. */
+
+/* ─── Primitives: mode-independent ─────────────────────────────────────────
+ * Nothing in this block may ever appear in `.dark` (D-3: radius/type may not
+ * change with theme). */
+@theme {
+    --spacing: 0.25rem;
+
+    /* Radius - vega ladder. 2xl/3xl inherit Tailwind defaults on purpose. */
+    --radius-none: 0;
+    --radius-sm: 0.375rem; /* 6px  - inputs, chips */
+    --radius-md: 0.5rem; /* 8px  - buttons, cells */
+    --radius-lg: 0.625rem; /* 10px - cards, popovers */
+    --radius-xl: 0.875rem; /* 14px - dialogs, sheets */
+    --radius-full: 9999px;
+
+    /* Dense-UI text steps (tables, micro-labels). */
+    --text-2xs: 0.6875rem; /* 11px - uppercase micro-labels ONLY */
+    --text-2xs--line-height: 1rem;
+    --text-xs: 0.75rem; /* 12px - dense table meta */
+    --text-xs--line-height: 1.125rem;
+    --text-sm: 0.875rem; /* 14px - table cells, controls */
+    --text-sm--line-height: 1.25rem;
+    --text-base: 1rem; /* 16px - body default, form inputs */
+    --text-base--line-height: 1.5rem;
+    --text-lg: 1.25rem; /* 20px - card + section titles */
+    --text-lg--line-height: 1.75rem;
+    --text-xl: 1.5rem; /* 24px - page titles */
+    --text-xl--line-height: 2rem;
+    --text-2xl: 1.875rem; /* 30px - metrics */
+    --text-2xl--line-height: 2.25rem;
+
+    --tracking-tight: -0.011em;
+    --tracking-normal: 0em;
+    --tracking-caps: 0.06em;
+
+    /* Motion */
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 120ms;
+    --duration-normal: 180ms;
+    --duration-slow: 260ms;
+}
+
+/* ─── Neutral + brand ramps ───────────────────────────────────────────────
+ * One hue family across BOTH modes (D-5). Vega re-skin: neutrals carry the
+ * lavender cast (~266-275, chroma raised on the light steps); brand is the
+ * teal-blue 214 at vega's softer chroma. */
+@theme {
+    --color-n-0: oklch(1 0 0);
+    --color-n-25: oklch(0.9793 0.0083 271);
+    --color-n-50: oklch(0.9555 0.0125 271);
+    --color-n-100: oklch(0.9443 0.0165 275);
+    --color-n-200: oklch(0.9142 0.0208 274);
+    --color-n-300: oklch(0.8893 0.0169 262);
+    --color-n-400: oklch(0.7 0.014 265);
+    --color-n-500: oklch(0.53 0.015 265);
+    --color-n-600: oklch(0.47 0.015 265);
+    --color-n-700: oklch(0.38 0.014 265);
+    --color-n-800: oklch(0.28 0.012 268);
+    --color-n-900: oklch(0.21 0.012 268);
+    --color-n-950: oklch(0.15 0.009 272);
+    --color-n-1000: oklch(0.1 0.006 275);
+
+    --color-brand-50: oklch(0.97 0.018 214);
+    --color-brand-100: oklch(0.94 0.035 214);
+    --color-brand-200: oklch(0.88 0.06 214);
+    --color-brand-300: oklch(0.79 0.085 214);
+    --color-brand-400: oklch(0.7 0.1 214);
+    --color-brand-500: oklch(0.6 0.11 214);
+    --color-brand-600: oklch(0.52 0.11 214);
+    --color-brand-700: oklch(0.45 0.1 214);
+    --color-brand-800: oklch(0.37 0.08 214);
+    --color-brand-900: oklch(0.29 0.055 214);
+}
+
+/* ─── Semantic layer: mode-switching ──────────────────────────────────────
+ * Plain (unlayered) custom properties; the @theme inline block below maps
+ * utilities onto them so they switch with the mode.
+ *
+ * Vega surface model (light): the canvas is the TINTED field (n-50) and
+ * cards rise BRIGHTER toward white; the sidebar sits brighter than the
+ * canvas. */
+:root {
+    --surface: var(--color-n-50);
+    --surface-raised: var(--color-n-25);
+    --surface-sunken: var(--color-n-100);
+    --surface-overlay: var(--color-n-0);
+    --surface-inset: var(--color-n-200);
+
+    --content: var(--color-n-900); /* primary text */
+    --content-muted: var(--color-n-600); /* secondary */
+    --content-subtle: var(--color-n-500); /* tertiary - lowest allowed */
+    --content-inverse: var(--color-n-0);
+
+    --line: var(--color-n-300); /* default border - vega's visible tinted line */
+    --line-strong: oklch(0.83 0.018 262);
+    --line-subtle: oklch(0.925 0.012 268);
+
+    --primary: var(--color-brand-600);
+    --primary-hover: var(--color-brand-700);
+    --primary-content: var(--color-n-0);
+    --primary-subtle: var(--color-brand-50);
+    --primary-subtle-content: var(--color-brand-700);
+
+    /* Vega signature: the focus ring is a VIVID blue, deliberately hotter
+     * than the teal-blue primary, so keyboard focus is unmistakable. */
+    --focus-ring: oklch(0.48 0.2 260);
+
+    --success-subtle: oklch(0.95 0.02 150);
+    --success-border: oklch(0.85 0.05 150);
+    --success-fg: oklch(0.42 0.12 150);
+    --success-solid: oklch(0.55 0.15 150);
+
+    --warning-subtle: oklch(0.96 0.02 75);
+    --warning-border: oklch(0.86 0.05 75);
+    --warning-fg: oklch(0.44 0.12 75);
+    --warning-solid: oklch(0.7 0.15 75);
+
+    --danger-subtle: oklch(0.95 0.02 25);
+    --danger-border: oklch(0.85 0.05 25);
+    --danger-fg: oklch(0.45 0.12 25);
+    --danger-solid: oklch(0.55 0.15 25);
+
+    --info-subtle: oklch(0.96 0.02 250);
+    --info-border: oklch(0.86 0.05 250);
+    --info-fg: oklch(0.45 0.12 250);
+    --info-solid: oklch(0.55 0.15 250);
+
+    /* Chart palette: the Devripon preset's set (user decision 2026-07-17 -
+     * the old chart-2 red made positive booking bars read as danger). */
+    --chart-1: oklch(0.68 0.14 159.65);
+    --chart-2: oklch(0.37 0.18 325.25); /* preset 0.53, darkened for CVD separability vs chart-1 */
+    --chart-3: oklch(0.4 0.16 259.09);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
+    --chart-6: oklch(0.6 0.11 190);
+
+    --elevation-xs: 0 1px 2px 0 oklch(0.21 0.03 265 / 0.05);
+    --elevation-sm: 0 1px 3px 0 oklch(0.21 0.03 265 / 0.08),
+        0 1px 2px -1px oklch(0.21 0.03 265 / 0.06);
+    --elevation-md: 0 4px 8px -2px oklch(0.21 0.03 265 / 0.1),
+        0 2px 4px -2px oklch(0.21 0.03 265 / 0.06);
+    --elevation-lg: 0 12px 20px -4px oklch(0.21 0.03 265 / 0.12),
+        0 4px 8px -4px oklch(0.21 0.03 265 / 0.08);
+
+    /* Vega: sidebar is BRIGHTER than the canvas. */
+    --sidebar: oklch(0.972 0.006 268);
+    --sidebar-content: var(--color-n-700);
+    --sidebar-active: var(--color-brand-50);
+    --sidebar-active-content: var(--color-brand-700);
+    --sidebar-line: oklch(0.9 0.014 268);
+
+    /* ── Compatibility aliases (see the block comment below) ── */
+    --background: var(--surface);
+    --foreground: var(--content);
+    --card: var(--surface-raised);
+    --card-foreground: var(--content);
+    --popover: var(--surface-overlay);
+    --popover-foreground: var(--content);
+    --primary-foreground: var(--primary-content);
+    --secondary: var(--surface-inset);
+    --secondary-foreground: var(--content);
+    --muted: var(--surface-sunken);
+    --muted-foreground: var(--content-muted);
+    --accent: var(--surface-inset);
+    --accent-foreground: var(--content);
+    --destructive: var(--danger-solid);
+    --destructive-foreground: var(--content-inverse);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--focus-ring);
+    --radius: var(--radius-md);
+
+    --sidebar-foreground: var(--sidebar-content);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-content);
+    --sidebar-accent: var(--sidebar-active);
+    --sidebar-accent-foreground: var(--sidebar-active-content);
+    --sidebar-border: var(--sidebar-line);
+    --sidebar-ring: var(--focus-ring);
+
+    --success: var(--success-solid);
+    --success-foreground: var(--color-n-0);
+    --warning: var(--warning-solid);
+    --warning-foreground: var(--color-n-1000);
+    --info: var(--info-solid);
+    --info-foreground: var(--color-n-0);
+
+    /* Shell surfaces (D-4). */
+    --shell-gutter: var(--sidebar);
+    --shell-content: var(--surface);
+}
+
+/* Vega dark: deep near-black canvas with cards lifting in visible steps.
+ * Primary stays in the brand-blue family (user decision - not the preset's
+ * orange), flipped to the light end with dark ink. */
+.dark {
+    --surface: oklch(0.09 0.005 280);
+    --surface-raised: oklch(0.14 0.006 280);
+    --surface-sunken: oklch(0.07 0.004 280);
+    --surface-overlay: oklch(0.17 0.007 280);
+    --surface-inset: oklch(0.21 0.009 278);
+
+    --content: oklch(0.93 0.01 265);
+    --content-muted: oklch(0.71 0.02 261);
+    --content-subtle: oklch(0.64 0.018 262);
+    --content-inverse: oklch(0.09 0.005 280);
+
+    --line: oklch(0.23 0.011 278);
+    --line-strong: oklch(0.31 0.013 274);
+    --line-subtle: oklch(0.18 0.009 278);
+
+    --primary: var(--color-brand-400);
+    --primary-hover: var(--color-brand-300);
+    --primary-content: var(--color-n-1000);
+    --primary-subtle: var(--color-brand-900);
+    --primary-subtle-content: var(--color-brand-200);
+
+    --focus-ring: oklch(0.56 0.24 261);
+
+    --success-subtle: oklch(0.26 0.02 150);
+    --success-border: oklch(0.36 0.05 150);
+    --success-fg: oklch(0.8 0.12 150);
+    --success-solid: oklch(0.62 0.15 150);
+
+    --warning-subtle: oklch(0.27 0.02 75);
+    --warning-border: oklch(0.37 0.05 75);
+    --warning-fg: oklch(0.82 0.12 75);
+    --warning-solid: oklch(0.75 0.15 75);
+
+    --danger-subtle: oklch(0.26 0.02 25);
+    --danger-border: oklch(0.36 0.05 25);
+    --danger-fg: oklch(0.8 0.12 25);
+    --danger-solid: oklch(0.62 0.15 25);
+
+    --info-subtle: oklch(0.27 0.02 250);
+    --info-border: oklch(0.37 0.05 250);
+    --info-fg: oklch(0.82 0.12 250);
+    --info-solid: oklch(0.62 0.15 250);
+
+    --chart-1: oklch(0.69 0.16 156.32);
+    --chart-2: oklch(0.44 0.13 252.86);
+    --chart-3: oklch(0.69 0.17 256);
+    --chart-4: oklch(0.43 0.16 259.85);
+    --chart-5: oklch(0.29 0.07 260.37);
+    --chart-6: oklch(0.74 0.11 190);
+
+    --elevation-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+    --elevation-sm: 0 1px 3px 0 oklch(0 0 0 / 0.4),
+        0 1px 2px -1px oklch(0 0 0 / 0.3);
+    --elevation-md: 0 4px 8px -2px oklch(0 0 0 / 0.45),
+        0 2px 4px -2px oklch(0 0 0 / 0.3);
+    --elevation-lg: 0 12px 20px -4px oklch(0 0 0 / 0.55),
+        0 4px 8px -4px oklch(0 0 0 / 0.4);
+
+    --sidebar: oklch(0.12 0.006 280);
+    --sidebar-content: oklch(0.71 0.02 261);
+    --sidebar-active: var(--color-brand-900);
+    --sidebar-active-content: var(--color-brand-200);
+    --sidebar-line: oklch(0.2 0.01 278);
+
+    /* Aliases whose target differs by mode. `--radius` is absent: D-3. */
+    --success-foreground: var(--color-n-1000);
+    --warning-foreground: var(--color-n-1000);
+    --info-foreground: var(--color-n-1000);
+}
+
+/* ─── Compatibility aliases: DELETE AT PHASE 20 ───────────────────────────
+ * ~2,000 call sites still use the shadcn names. They are ALIASES, not a
+ * second system: each points at exactly one semantic token. Never give one
+ * its own literal value. */
+
+/* ─── Utility mapping ─────────────────────────────────────────────────────
+ * @theme inline emits `--x: var(--x)` pairs; the real values live in the
+ * UNLAYERED `:root` above, which outranks every layer. */
+@theme inline {
+    /* Typography (Devripon preset): DM Sans = heading face, Geist = body,
+     * IBM Plex Mono = code/refs/money. Wired in app/layout.tsx. */
+    --font-heading: var(--font-heading);
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono-face);
+
+    --color-surface: var(--surface);
+    --color-surface-raised: var(--surface-raised);
+    --color-surface-sunken: var(--surface-sunken);
+    --color-surface-overlay: var(--surface-overlay);
+    --color-surface-inset: var(--surface-inset);
+
+    --color-content: var(--content);
+    --color-content-muted: var(--content-muted);
+    --color-content-subtle: var(--content-subtle);
+    --color-content-inverse: var(--content-inverse);
+
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-line-subtle: var(--line-subtle);
+
+    --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-content: var(--primary-content);
+    --color-primary-subtle: var(--primary-subtle);
+    --color-primary-subtle-content: var(--primary-subtle-content);
+
+    --color-focus-ring: var(--focus-ring);
+
+    --color-success-subtle: var(--success-subtle);
+    --color-success-border: var(--success-border);
+    --color-success-fg: var(--success-fg);
+    --color-success-solid: var(--success-solid);
+
+    --color-warning-subtle: var(--warning-subtle);
+    --color-warning-border: var(--warning-border);
+    --color-warning-fg: var(--warning-fg);
+    --color-warning-solid: var(--warning-solid);
+
+    --color-danger-subtle: var(--danger-subtle);
+    --color-danger-border: var(--danger-border);
+    --color-danger-fg: var(--danger-fg);
+    --color-danger-solid: var(--danger-solid);
+
+    --color-info-subtle: var(--info-subtle);
+    --color-info-border: var(--info-border);
+    --color-info-fg: var(--info-fg);
+    --color-info-solid: var(--info-solid);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-chart-6: var(--chart-6);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-content: var(--sidebar-content);
+    --color-sidebar-active: var(--sidebar-active);
+    --color-sidebar-active-content: var(--sidebar-active-content);
+    --color-sidebar-line: var(--sidebar-line);
+
+    --shadow-xs: var(--elevation-xs);
+    --shadow-sm: var(--elevation-sm);
+    --shadow-md: var(--elevation-md);
+    --shadow-lg: var(--elevation-lg);
+
+    /* ── Compatibility utility mappings: DELETE AT PHASE 20 ── */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+
+    --color-shell-gutter: var(--shell-gutter);
+    --color-shell-content: var(--shell-content);
+}
+
+/* ─── Base typography (Devripon preset ramp) ─────────────────────────────── */
 @layer base {
     *,
     ::after,
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-border);
+        border-color: var(--color-line);
     }
     button {
         cursor: pointer;
     }
-    body {
-        @apply antialiased font-sans bg-background text-foreground;
-        letter-spacing: var(--tracking-normal);
-    }
     html {
         @apply font-sans;
+        /* Collapsing content (accordions) changes page height; without a
+         * reserved gutter the viewport scrollbar pops in/out and the whole
+         * layout shifts sideways ("shakes"). */
+        scrollbar-gutter: stable;
+    }
+    body {
+        @apply bg-surface text-content font-sans antialiased;
+        line-height: 1.65;
+    }
+
+    h1 {
+        font-family: var(--font-heading);
+        font-size: 2.25rem;
+        line-height: 1.2;
+        letter-spacing: -0.025em;
+        font-weight: 700;
+    }
+
+    h2 {
+        font-family: var(--font-heading);
+        font-size: 1.875rem;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+    }
+
+    h3 {
+        font-family: var(--font-heading);
+        font-size: 1.5rem;
+        line-height: 1.3;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+    }
+
+    h4 {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h5 {
+        font-family: var(--font-heading);
+        font-size: 1.125rem;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+    }
+
+    h6 {
+        font-family: var(--font-heading);
+        font-size: 1rem;
+        line-height: 1.5;
+        letter-spacing: 0;
+        font-weight: 600;
+    }
+
+    code,
+    pre {
+        font-family: var(--font-mono);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
     }
 }
 
 @layer base {
     ::-webkit-scrollbar {
         width: 7px;
+        height: 7px; /* horizontal bars were browser-default fat (data tables) */
     }
 
     ::-webkit-scrollbar-track {
@@ -72,10 +516,27 @@
         display: none;
     }
 
+    .scrollbar-thin {
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: color-mix(in oklch, var(--content-subtle), transparent 40%)
+            transparent;
+    }
+
     .scrollbar-thin::-webkit-scrollbar {
         height: 6px;
         width: 4px;
         cursor: pointer;
+    }
+
+    /* Inside data surfaces the loud primary thumb is a distraction; a quiet
+     * neutral that darkens on hover reads premium and stays out of the way. */
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: color-mix(in oklch, var(--content-subtle), transparent 40%);
+        border-radius: 10px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: var(--content-muted);
     }
 
     @keyframes collapsible-down {
@@ -124,190 +585,4 @@
 /* Smooth sidebar collapse animation */
 [data-slot='sidebar-inset'] {
     transition: margin-left 0.2s ease;
-}
-
-/* ─── Light mode ──────────────────────────────── */
-:root {
-    --background: oklch(0.99 0.004 80);
-    --foreground: oklch(19.382% 0.11977 267.676);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.3015 0.0572 282.4176);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.3015 0.0572 282.4176);
-
-    /* Primary — purple */
-    --primary: oklch(0.5417 0.179 288.0332);
-    --primary-foreground: oklch(1 0 0);
-
-    --secondary: oklch(0.94 0.008 80);
-    --secondary-foreground: oklch(0.3015 0.0572 282.4176);
-    --muted: oklch(0.965 0.004 80);
-    --muted-foreground: oklch(0.5426 0.0465 284.7435);
-    --accent: oklch(0.94 0.008 80);
-    --accent-foreground: oklch(0.3015 0.0572 282.4176);
-    --destructive: oklch(0.6861 0.2061 14.9941);
-    --border: oklch(0.91 0.006 80);
-    --input: oklch(0.91 0.006 80);
-    --ring: oklch(0.5417 0.179 288.0332);
-    --radius: 0.3rem;
-
-    /* Sidebar */
-    --sidebar: oklch(0.965 0.004 80);
-    --sidebar-foreground: oklch(0.3015 0.0572 282.4176);
-    --sidebar-primary: oklch(0.5417 0.179 288.0332);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.94 0.008 80);
-    --sidebar-accent-foreground: oklch(0.3015 0.0572 282.4176);
-    --sidebar-border: oklch(0.91 0.006 80);
-    --sidebar-ring: oklch(0.5417 0.179 288.0332);
-
-    /* Charts — purple family */
-    --chart-1: oklch(0.5417 0.179 288.0332);
-    --chart-2: oklch(0.7042 0.1602 288.988);
-    --chart-3: oklch(0.5679 0.2113 276.7065);
-    --chart-4: oklch(0.6356 0.1922 281.8054);
-    --chart-5: oklch(0.4509 0.1758 279.3838);
-
-    /* Semantic */
-    --success: oklch(0.627 0.194 149.214);
-    --success-foreground: oklch(0.99 0.01 149);
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-foreground: oklch(0.99 0.01 70);
-    --info: oklch(0.659 0.162 248.812);
-    --info-foreground: oklch(0.99 0.01 248);
-
-    /* Shell surfaces (defect D-4). These two were hardcoded hexes in the old
-     * dashbaord-wraper.tsx. The light values are carried over EXACTLY, so light
-     * mode is pixel-identical. `--shell-gutter` is the frame around the inset
-     * pane; `--shell-content` is the pane's own backdrop. */
-    --shell-gutter: #f1f4fa;
-    --shell-content: #f4f7fb;
-}
-
-/* ─── Dark mode ───────────────────────────────── */
-.dark {
-    --background: oklch(14% 0.02 260);
-    --foreground: oklch(0.98 0 0);
-    --card: oklch(21% 0.018 260);
-    --card-foreground: oklch(0.98 0 0);
-    --popover: oklch(24% 0.018 260);
-    --popover-foreground: oklch(0.98 0 0);
-
-    /* Primary — same purple as light mode */
-    --primary: oklch(0.5417 0.179 288.0332);
-    --primary-foreground: oklch(0.98 0 0);
-
-    --secondary: oklch(0.25 0.015 260);
-    --secondary-foreground: oklch(0.98 0 0);
-    --muted: oklch(0.22 0.015 260);
-    --muted-foreground: oklch(0.65 0 0);
-    --accent: oklch(0.25 0.018 260);
-    --accent-foreground: oklch(0.98 0 0);
-    --destructive: oklch(0.55 0.2 25);
-    --border: oklch(0.28 0.015 260);
-    --input: oklch(0.28 0.015 260);
-    --ring: oklch(0.5417 0.179 288.0332);
-    --radius: 0.2rem;
-
-    /* Sidebar */
-    --sidebar: oklch(18% 0.02 260);
-    --sidebar-foreground: oklch(0.98 0 0);
-    --sidebar-primary: oklch(0.5417 0.179 288.0332);
-    --sidebar-primary-foreground: oklch(0.98 0 0);
-    --sidebar-accent: oklch(0.26 0.02 260);
-    --sidebar-accent-foreground: oklch(0.98 0 0);
-    --sidebar-border: oklch(0.24 0.015 260);
-    --sidebar-ring: oklch(0.5417 0.179 288.0332);
-
-    /* Charts — same purple family as light mode */
-    --chart-1: oklch(0.5417 0.179 288.0332);
-    --chart-2: oklch(0.7042 0.1602 288.988);
-    --chart-3: oklch(0.5679 0.2113 276.7065);
-    --chart-4: oklch(0.6356 0.1922 281.8054);
-    --chart-5: oklch(0.4509 0.1758 279.3838);
-
-    /* Semantic */
-    --success: oklch(0.627 0.194 149.214);
-    --success-foreground: oklch(0.2 0.05 149);
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-foreground: oklch(0.2 0.05 70);
-    --info: oklch(0.659 0.162 248.812);
-    --info-foreground: oklch(0.2 0.05 248);
-
-    /* Shell surfaces (defect D-4). The old wrapper hardcoded the gutter with NO
-     * dark variant, so dark mode painted a light lavender frame around the pane.
-     * This is the one deliberate visual delta in the port, and it is dark-mode
-     * only - light mode is unchanged. `--shell-content` matches what the old
-     * `dark:bg-background` already did. */
-    --shell-gutter: var(--sidebar);
-    --shell-content: var(--background);
-}
-
-@theme inline {
-    --font-heading: var(--font-heading);
-    --font-sans: var(--font-sans);
-    --font-mono: var(--font-jetbrains-mono);
-
-    --radius: var(--radius);
-    --radius-sm: calc(var(--radius) - 1px);
-    --radius-md: var(--radius);
-    --radius-lg: calc(var(--radius) + 1px);
-    --radius-xl: calc(var(--radius) + 2px);
-    --radius-2xl: calc(var(--radius) + 4px);
-
-    /* NOTE (defect B-5, deliberately carried unchanged): the two lines below are
-     * self-referential - `var(--shadow-2xl)` resolves to nothing because nothing
-     * defines it, and the same for `--tracking-normal` (used by `body` above).
-     * `--destructive-foreground` is likewise mapped below but never defined.
-     * This is a PORT, not the redesign: 03 owns the token system and Phase 11
-     * fixes these structurally. Fixing them here would make the Phase 9 parity
-     * diff unreviewable. Do not "tidy" them in isolation. */
-    --shadow-2xl: var(--shadow-2xl);
-    --tracking-normal: var(--tracking-normal);
-
-    /* Color mappings */
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
-
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
-
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
-
-    --color-success: var(--success);
-    --color-success-foreground: var(--success-foreground);
-    --color-warning: var(--warning);
-    --color-warning-foreground: var(--warning-foreground);
-    --color-info: var(--info);
-    --color-info-foreground: var(--info-foreground);
-
-    --color-shell-gutter: var(--shell-gutter);
-    --color-shell-content: var(--shell-content);
 }

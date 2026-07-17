@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, SecurityWarningIcon } from '@hugeicons/core-free-icons';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +19,11 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { useCreateHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import type { HubDetail } from '@/types/hub';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldAlertIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -168,7 +170,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label>
                 Destination <span className="text-destructive">*</span>
               </Label>
               {isEditMode ? (
@@ -203,7 +205,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label>
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -216,7 +218,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
 
             {isEditMode && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Slug</Label>
+                <Label>Slug</Label>
                 <Input
                   {...register('slug')}
                   placeholder="e.g. klein-curacao"
@@ -231,7 +233,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             )}
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Description</Label>
+              <Label>Description</Label>
               <Textarea
                 {...register('description')}
                 placeholder="Brief description of this hub location"
@@ -243,7 +245,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Hero Image</Label>
+              <Label>Hero Image</Label>
               <ImageSelectorField
                 value={heroImageValue || null}
                 onChange={(url) => setValue('heroImage', url ?? '')}
@@ -255,7 +257,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label>
                 Hub Type <span className="text-destructive">*</span>
               </Label>
               <Select
@@ -277,7 +279,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Latitude</Label>
+                <Label>Latitude</Label>
                 <Input
                   type="number"
                   step="any"
@@ -288,7 +290,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                 <FieldError>{errors.latitude?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Longitude</Label>
+                <Label>Longitude</Label>
                 <Input
                   type="number"
                   step="any"
@@ -308,7 +310,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                     checked={isActiveValue}
                     onCheckedChange={(checked) => setValue('isActive', !!checked)}
                   />
-                  <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
+                  <Label htmlFor="isActive" className="cursor-pointer">
                     Active
                   </Label>
                 </div>
@@ -345,8 +347,8 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                   to protect its URL slug and associated trip data.
                 </p>
                 {hub.isSeeded && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-amber-600">
-                    <ShieldAlertIcon className="size-4 shrink-0" />
+                  <div className="mt-3 flex items-center gap-2 text-sm text-warning-fg">
+                    <HugeiconsIcon icon={SecurityWarningIcon} className="size-4 shrink-0" />
                     <span>This is a seeded hub and is protected from deletion.</span>
                   </div>
                 )}
@@ -361,7 +363,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                     type="button"
                     onClick={() => setDeleteOpen(true)}
                   >
-                    <Trash2Icon />
+                    <HugeiconsIcon icon={Delete02Icon} />
                     Delete
                   </Button>
                 )}

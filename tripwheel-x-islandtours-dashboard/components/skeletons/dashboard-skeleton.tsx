@@ -41,7 +41,7 @@ export function DashboardSkeleton() {
         </header>
 
         {/* Content Area Skeleton */}
-        <main className="flex-1 p-5 md:p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

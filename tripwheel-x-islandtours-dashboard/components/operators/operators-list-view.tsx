@@ -1,24 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useTableState } from '@/components/data-table/use-table-state';
 import { OperatorsTable } from './operators-table';
 import { useOperators } from '@/hooks/operators/use-operators';
 
 export function OperatorsListView() {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  // Debounce the search input before hitting the API.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 500);
-    return () => clearTimeout(t);
-  }, [search]);
+  const {
+    page,
+    limit,
+    search,
+    debouncedSearch,
+    filters,
+    setPage,
+    setLimit,
+    setSearch,
+    setFilter,
+  } = useTableState();
+  const statusFilter = filters.isActive ?? 'all';
 
   const { data, isLoading } = useOperators({
     page,
@@ -27,15 +25,7 @@ export function OperatorsListView() {
     ...(statusFilter !== 'all' ? { isActive: statusFilter === 'active' } : {}),
   });
 
-  function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1);
-  }
 
-  function handleStatusFilterChange(value: string) {
-    setStatusFilter(value);
-    setPage(1);
-  }
 
   return (
     <OperatorsTable
@@ -48,8 +38,8 @@ export function OperatorsListView() {
       statusFilter={statusFilter}
       onSearchChange={setSearch}
       onPageChange={setPage}
-      onLimitChange={handleLimitChange}
-      onStatusFilterChange={handleStatusFilterChange}
+      onLimitChange={setLimit}
+      onStatusFilterChange={(v) => setFilter('isActive', v === 'all' ? undefined : v)}
     />
   );
 }

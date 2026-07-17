@@ -1,8 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, Delete02Icon, GridTableIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ChevronDownIcon, ColumnsIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -232,14 +234,14 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
 
       <div className="flex items-center justify-end">
         <Button size="sm" type="button" onClick={addGroup}>
-          <PlusIcon />
+          <HugeiconsIcon icon={PlusSignIcon} />
           Add Group
         </Button>
       </div>
 
       {groups.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <ColumnsIcon className="size-10 opacity-40" />
+          <HugeiconsIcon icon={GridTableIcon} className="size-10 opacity-40" />
           <p className="text-sm">No comparison groups yet.</p>
           <p className="text-xs">Add your first group using the button above.</p>
         </div>
@@ -257,7 +259,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
             >
               <div className="flex items-center gap-2 px-3 py-2">
                 <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                  <ChevronDownIcon
+                  <HugeiconsIcon icon={ArrowDown01Icon}
                     className={`size-4 shrink-0 text-muted-foreground transition-transform ${
                       isOpen ? 'rotate-0' : '-rotate-90'
                     }`}
@@ -270,11 +272,11 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="xs"
+                  size="sm"
                   className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => removeGroup(group.key)}
                 >
-                  <Trash2Icon />
+                  <HugeiconsIcon icon={Delete02Icon} />
                   Remove Group
                 </Button>
               </div>
@@ -282,7 +284,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
               <CollapsibleContent className="space-y-4 border-t px-3 py-4">
                 <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Group Name</Label>
+                    <Label>Group Name</Label>
                     <Input
                       value={group.groupName}
                       onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
@@ -290,7 +292,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                     />
                   </Field>
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Display Order</Label>
+                    <Label>Display Order</Label>
                     <Input
                       type="number"
                       value={group.displayOrder}
@@ -307,10 +309,10 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                     const trip = adminTrips?.data.find((t) => t.id === tour.tourId);
                     return (
                       <Card key={tour.key} size="sm">
-                        <CardContent className="pt-5 space-y-4">
+                        <CardContent className="pt-4 space-y-4">
                           <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
                             <Field>
-                              <Label className="text-xs font-semibold uppercase">Tour</Label>
+                              <Label>Tour</Label>
                               <HubTourSelect
                                 destinationId={hub?.destinationId ?? ''}
                                 value={tour.tourId}
@@ -325,7 +327,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                               )}
                             </Field>
                             <Field>
-                              <Label className="text-xs font-semibold uppercase">Order</Label>
+                              <Label>Order</Label>
                               <Input
                                 type="number"
                                 value={tour.displayOrder}
@@ -339,11 +341,11 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                             <Button
                               type="button"
                               variant="ghost"
-                              size="icon-xs"
+                              size="icon-sm"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 mb-1"
                               onClick={() => removeTour(group.key, tour.key)}
                             >
-                              <Trash2Icon />
+                              <HugeiconsIcon icon={Delete02Icon} />
                             </Button>
                           </div>
 
@@ -363,8 +365,8 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                       </Card>
                     );
                   })}
-                  <Button type="button" variant="outline" size="xs" onClick={() => addTour(group.key)}>
-                    <PlusIcon />
+                  <Button type="button" variant="outline" size="sm" onClick={() => addTour(group.key)}>
+                    <HugeiconsIcon icon={PlusSignIcon} />
                     Add Tour Column
                   </Button>
                 </div>

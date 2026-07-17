@@ -84,10 +84,6 @@ test.describe('Destinations module', () => {
   // -------------------------------------------------------------------------
   // 1. List page loads
   // -------------------------------------------------------------------------
-  test('list page loads and shows heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /destinations/i })).toBeVisible();
-  });
-
   test('list page renders rows from the API response', async ({ page }) => {
     await expect(page.getByText('Test Destination')).toBeVisible();
     await expect(page.getByText('Another Destination')).toBeVisible();

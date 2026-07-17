@@ -1,15 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, MoreHorizontalIcon, PencilEdit02Icon, ToggleOffIcon, ToggleOnIcon, ViewIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  EyeIcon,
-  PencilIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
-  Trash2Icon,
-  MoreHorizontalIcon,
-} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -56,25 +51,25 @@ export function OperatorRowActions({ operator }: OperatorRowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm">
-            <MoreHorizontalIcon />
+            <HugeiconsIcon icon={MoreHorizontalIcon} />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => router.push(base)}>
-            <EyeIcon />
+            <HugeiconsIcon icon={ViewIcon} />
             View
           </DropdownMenuItem>
           {can('MANAGE_OPERATORS') && (
             <>
               <DropdownMenuItem onClick={() => router.push(`${base}/edit`)}>
-                <PencilIcon />
+                <HugeiconsIcon icon={PencilEdit02Icon} />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleToggleActive} disabled={isPending}>
-                {operator.isActive ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+                {operator.isActive ? <HugeiconsIcon icon={ToggleOffIcon} /> : <HugeiconsIcon icon={ToggleOnIcon} />}
                 {operator.isActive ? 'Deactivate' : 'Activate'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -82,7 +77,7 @@ export function OperatorRowActions({ operator }: OperatorRowActionsProps) {
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2Icon />
+                <HugeiconsIcon icon={Delete02Icon} />
                 Delete
               </DropdownMenuItem>
             </>

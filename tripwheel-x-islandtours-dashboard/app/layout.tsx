@@ -4,32 +4,25 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { JetBrains_Mono, Noto_Sans, Playfair_Display } from 'next/font/google';
+import { DM_Sans, Geist, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
  * Root layout for the dashboard app.
  *
- * In the monorepo this layout served BOTH the public site and the dashboard,
- * which is why it carried admin metadata over public pages and loaded five
- * fonts for two design systems. Here the repo is the dashboard, so the layout is
- * only ever the dashboard's.
- *
- * Fonts: DM Sans (1 usage) and General Sans (3 usages, a local woff2 pair) were
- * dropped on the way over - see the note in app/globals.css. Playfair Display
- * stays for now at 70 usages; whether it survives is a Phase 11 decision.
+ * Fonts per the Devripon preset (user decision 2026-07-17): DM Sans is the
+ * HEADING face (h1-h6 in globals.css + CardTitle via font-heading), Geist
+ * the UI/body face, IBM Plex Mono carries code, refs, IDs and money.
  */
 
-const playfairDisplayHeading = Playfair_Display({
-    subsets: ['latin'],
-    variable: '--font-heading',
-});
+const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-heading' });
 
-const notoSans = Noto_Sans({ subsets: ['latin'], variable: '--font-sans' });
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
-const jetbrainsMono = JetBrains_Mono({
-    variable: '--font-jetbrains-mono',
+const ibmPlexMono = IBM_Plex_Mono({
     subsets: ['latin'],
+    weight: ['400', '500', '600'],
+    variable: '--font-mono-face',
 });
 
 export const metadata: Metadata = {
@@ -40,19 +33,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
     children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
     return (
         <html
             lang='en'
             suppressHydrationWarning
             className={cn(
                 'h-full antialiased',
-                jetbrainsMono.variable,
+                ibmPlexMono.variable,
+                geist.variable,
                 'font-sans',
-                notoSans.variable,
-                playfairDisplayHeading.variable
+                dmSans.variable
             )}>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>
                 <QueryProvider>
@@ -71,3 +62,4 @@ export default function RootLayout({
         </html>
     );
 }
+

@@ -225,6 +225,7 @@ export const MediaUploader = ({
         <div className='hidden'>
             <input
                 type='file'
+                aria-label='Upload media files'
                 accept='image/*,video/mp4,video/quicktime'
                 multiple={multiple}
                 ref={inputRef}

@@ -1,17 +1,44 @@
 'use client';
 
-import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
+
 import { useState, type ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+
+/**
+ * Inline connection indicator for integration cards: green when the service
+ * has credentials stored, neutral when it still needs configuring.
+ */
+export function ConnectionStatus({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={
+        connected
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-2.5 py-0.5 text-xs font-medium text-success-fg'
+          : 'inline-flex items-center gap-1.5 rounded-full bg-surface-inset px-2.5 py-0.5 text-xs font-medium text-content-muted'
+      }
+    >
+      <span
+        className={
+          connected
+            ? 'size-1.5 rounded-full bg-success-solid'
+            : 'size-1.5 rounded-full bg-content-subtle'
+        }
+      />
+      {connected ? 'Configured' : 'Not configured'}
+    </span>
+  );
+}
 
 /** Card shell shared by every settings form: heading, body, and a footer Save button. */
 export function SettingsCard({
@@ -22,6 +49,7 @@ export function SettingsCard({
   isSaving,
   saveLabel = 'Save Changes',
   canSave = true,
+  status,
 }: {
   title: string;
   description?: string;
@@ -30,11 +58,16 @@ export function SettingsCard({
   isSaving: boolean;
   saveLabel?: string;
   canSave?: boolean;
+  /** Optional indicator rendered beside the title (e.g. connection status). */
+  status?: ReactNode;
 }) {
   return (
     <Card>
       <CardHeader className="border-b pb-6">
-        <CardTitle>{title}</CardTitle>
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle>{title}</CardTitle>
+          {status}
+        </div>
         {description && (
           <p className="text-sm text-muted-foreground mt-1 normal-case tracking-normal font-normal">
             {description}
@@ -82,7 +115,7 @@ export function TextField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label>{label}</Label>
       <Input
         type={type}
         placeholder={placeholder}
@@ -113,7 +146,7 @@ export function TextareaField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label>{label}</Label>
       <Textarea
         placeholder={placeholder}
         disabled={disabled}
@@ -145,7 +178,7 @@ export function SecretField({
   const [visible, setVisible] = useState(false);
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label>{label}</Label>
       <div className="relative">
         <Input
           type={visible ? 'text' : 'password'}
@@ -153,7 +186,7 @@ export function SecretField({
           disabled={disabled}
           aria-invalid={!!error}
           autoComplete="off"
-          className="pr-10"
+          className="pr-8"
           {...registration}
         />
         <button
@@ -163,7 +196,7 @@ export function SecretField({
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           tabIndex={-1}
         >
-          {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+          {visible ? <HugeiconsIcon icon={ViewOffIcon} className="size-4" /> : <HugeiconsIcon icon={ViewIcon} className="size-4" />}
         </button>
       </div>
       {description && <FieldDescription>{description}</FieldDescription>}
@@ -188,7 +221,7 @@ export function ImageField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label>{label}</Label>
       {description && <FieldDescription>{description}</FieldDescription>}
       <ImageSelectorField value={value} onChange={onChange} disabled={disabled} />
     </Field>
@@ -219,7 +252,7 @@ export function CheckboxField({
           onCheckedChange={(c) => onChange(!!c)}
           disabled={disabled}
         />
-        <Label htmlFor={id} className="text-xs font-semibold uppercase cursor-pointer">
+        <Label htmlFor={id} className="cursor-pointer">
           {label}
         </Label>
       </div>

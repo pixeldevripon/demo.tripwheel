@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon, SecurityCheckIcon, SquareLock02Icon, ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
+
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -32,7 +35,6 @@ import {
 import { formatDate } from '@/utils/intl-utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { Eye, EyeOff, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -115,7 +117,7 @@ export function ChangePasswordDialog({
                     <CardHeader className='space-y-4 pb-6'>
                         <div className='flex items-center gap-3'>
                             <div className='p-2 bg-primary/10 rounded-xl border border-primary/20'>
-                                <ShieldCheck className='w-5 h-5 text-primary' />
+                                <HugeiconsIcon icon={SecurityCheckIcon} className='w-5 h-5 text-primary' />
                             </div>
                             <div className='space-y-1'>
                                 <DialogTitle className='text-xl font-bold tracking-tight'>
@@ -131,8 +133,8 @@ export function ChangePasswordDialog({
 
                         {hasPassword && (session?.user as any)?.passwordChangedAt && (
                             <div className='px-3 py-2 bg-muted/50 rounded-lg border border-border/50 flex items-center gap-2'>
-                                <Lock className='w-3.5 h-3.5 text-muted-foreground' />
-                                <span className='text-[11px] text-muted-foreground font-medium'>
+                                <HugeiconsIcon icon={SquareLock02Icon} className='w-3.5 h-3.5 text-muted-foreground' />
+                                <span className='text-2xs text-muted-foreground font-medium'>
                                     Last changed:{' '}
                                     {formatDate((session?.user as any).passwordChangedAt, {
                                         year: 'numeric',
@@ -170,7 +172,7 @@ export function ChangePasswordDialog({
                                                 type='button'
                                                 onClick={() => setShowCurrent(!showCurrent)}
                                                 className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                {showCurrent ? <HugeiconsIcon icon={ViewOffIcon} size={16} /> : <HugeiconsIcon icon={ViewIcon} size={16} />}
                                             </button>
                                         </div>
                                         {(errors as any).currentPassword && (
@@ -199,7 +201,7 @@ export function ChangePasswordDialog({
                                             type='button'
                                             onClick={() => setShowNew(!showNew)}
                                             className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                            {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            {showNew ? <HugeiconsIcon icon={ViewOffIcon} size={16} /> : <HugeiconsIcon icon={ViewIcon} size={16} />}
                                         </button>
                                     </div>
                                     {errors.newPassword && (
@@ -227,7 +229,7 @@ export function ChangePasswordDialog({
                                             type='button'
                                             onClick={() => setShowConfirm(!showConfirm)}
                                             className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all'>
-                                            {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            {showConfirm ? <HugeiconsIcon icon={ViewOffIcon} size={16} /> : <HugeiconsIcon icon={ViewIcon} size={16} />}
                                         </button>
                                     </div>
                                     {errors.confirmPassword && (
@@ -241,10 +243,10 @@ export function ChangePasswordDialog({
                             <Button
                                 type='submit'
                                 disabled={mutation.isPending}
-                                className='w-full sm:flex-1 h-12 order-1 sm:order-2 font-bold text-sm tracking-wide shadow-lg transition-all active:scale-[0.98]'>
+                                className='w-full sm:flex-1 order-1 sm:order-2'>
                                 {mutation.isPending ? (
                                     <>
-                                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                        <HugeiconsIcon icon={Loading03Icon} className='mr-2 h-4 w-4 animate-spin' />
                                         {hasPassword ? 'Updating...' : 'Setting...'}
                                     </>
                                 ) : (
@@ -256,7 +258,7 @@ export function ChangePasswordDialog({
                                 variant='outline'
                                 onClick={() => onOpenChange(false)}
                                 disabled={mutation.isPending}
-                                className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs tracking-wider uppercase opacity-70 hover:opacity-100 transition-opacity'>
+                                className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs opacity-70 hover:opacity-100 transition-opacity'>
                                 Cancel
                             </Button>
                         </CardFooter>

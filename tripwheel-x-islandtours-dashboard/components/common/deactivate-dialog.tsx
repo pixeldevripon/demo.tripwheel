@@ -1,6 +1,8 @@
 'use client';
 
-import { ArchiveIcon } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon } from '@hugeicons/core-free-icons';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,8 +38,8 @@ export function DeactivateDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <ArchiveIcon className="size-5 text-destructive" />
+            <div className="flex size-10 items-center justify-center rounded-full bg-danger-subtle shrink-0">
+              <HugeiconsIcon icon={Archive02Icon} className="size-5 text-danger-fg" />
             </div>
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>
@@ -45,9 +47,9 @@ export function DeactivateDialog({
             <div className="space-y-2">
               <p>
                 Are you sure you want to deactivate{' '}
-                <strong className="text-foreground">{entityName}</strong>?
+                <strong className="text-content">{entityName}</strong>?
               </p>
-              <p className="text-xs text-muted-foreground">{preservationNote}</p>
+              <p className="text-xs text-content-muted">{preservationNote}</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

@@ -1,10 +1,13 @@
 'use client';
 
-import { createElement } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SquareLock02Icon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import { LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { ACTIVE_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
 import { getCategoryIconName, getCategoryIconComponent } from '@/lib/constants/category-icons';
@@ -12,12 +15,12 @@ import type { CategoryLocalized } from '@/types/category';
 import { CategoryRowActions } from './category-row-actions';
 
 function CategoryLucideIcon({ slug, icon }: { slug: string; icon: string | null }) {
-  // Stable module-level lookup (CATEGORY_ICON_COMPONENTS), not a render-created
-  // component. createElement avoids the static-components false positive that the
-  // JSX `<Cmp/>` form trips.
-  return createElement(getCategoryIconComponent(getCategoryIconName(slug, icon)), {
-    className: 'size-4 text-muted-foreground',
-  });
+  return (
+    <HugeiconsIcon
+      icon={getCategoryIconComponent(getCategoryIconName(slug, icon))}
+      className='size-4 text-muted-foreground'
+    />
+  );
 }
 
 export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
@@ -91,17 +94,8 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
     accessorKey: 'isActive',
     header: 'Status',
     cell: ({ row }) => {
-      const isActive = row.original.isActive;
-      return (
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-red-500'}`}
-          />
-          <Badge variant={isActive ? 'default' : 'secondary'}>
-            {isActive ? 'Active' : 'Inactive'}
-          </Badge>
-        </div>
-      );
+      const meta = ACTIVE_STATUS[row.original.isActive ? 'active' : 'inactive'];
+    return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
     },
     enableSorting: true,
   },
@@ -112,7 +106,7 @@ export const categoryColumns: ColumnDef<CategoryLocalized>[] = [
       if (!row.original.isSeeded) return null;
       return (
         <div className="flex items-center gap-1.5">
-          <LockIcon className="size-3 text-muted-foreground" />
+          <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
           <Badge variant="secondary">Protected</Badge>
         </div>
       );

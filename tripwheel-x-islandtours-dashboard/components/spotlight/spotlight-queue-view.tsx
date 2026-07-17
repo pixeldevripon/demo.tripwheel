@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+import { CalendarCheckIn01Icon, CancelCircleIcon, CheckmarkCircle02Icon, Clock03Icon, SparklesIcon, TimeQuarter02Icon } from '@hugeicons/core-free-icons';
+
 import { DatePickerField } from '@/components/date-picker-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,15 +41,6 @@ import {
     SPOTLIGHT_STATUS_VALUES,
 } from '@/types/tier';
 import { cn } from '@/lib/utils';
-import {
-    CalendarCheckIcon,
-    CircleCheckIcon,
-    CircleXIcon,
-    Clock3Icon,
-    SparklesIcon,
-    TimerOffIcon,
-    type LucideIcon,
-} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SpotlightTable } from './spotlight-table';
@@ -54,33 +48,33 @@ import type { SpotlightRequestWithInfo } from './spotlight-columns';
 
 const statusKey: Array<{
     status: SpotlightStatus;
-    Icon: LucideIcon;
+    Icon: IconSvgElement;
     className: string;
 }> = [
     {
         status: 'REQUESTED',
-        Icon: Clock3Icon,
-        className: 'text-amber-700',
+        Icon: Clock03Icon,
+        className: 'text-warning-fg',
     },
     {
         status: 'APPROVED',
-        Icon: CalendarCheckIcon,
-        className: 'text-sky-700',
+        Icon: CalendarCheckIn01Icon,
+        className: 'text-info-fg',
     },
     {
         status: 'ACTIVE',
-        Icon: CircleCheckIcon,
-        className: 'text-emerald-700',
+        Icon: CheckmarkCircle02Icon,
+        className: 'text-success-fg',
     },
     {
         status: 'REJECTED',
-        Icon: CircleXIcon,
-        className: 'text-rose-700',
+        Icon: CancelCircleIcon,
+        className: 'text-danger-fg',
     },
     {
         status: 'EXPIRED',
-        Icon: TimerOffIcon,
-        className: 'text-slate-600',
+        Icon: TimeQuarter02Icon,
+        className: 'text-content-muted',
     },
 ];
 
@@ -195,11 +189,14 @@ export function SpotlightQueueView() {
                                         ? 'border-foreground text-foreground'
                                         : 'hover:border-border'
                                 )}>
-                                <Icon className={cn('size-3.5', className)} />
+                                <HugeiconsIcon
+                                    icon={Icon}
+                                    className={cn('size-3.5', className)}
+                                />
                                 <span>{SPOTLIGHT_STATUS_LABELS[key]}</span>
                                 <span
                                     className={cn(
-                                        'rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums text-muted-foreground',
+                                        'rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-semibold leading-none tabular-nums text-muted-foreground',
                                         status === key && 'bg-foreground text-background'
                                     )}
                                 >
@@ -345,7 +342,7 @@ function ApproveDialog({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle className='flex items-center gap-2'>
-                        <SparklesIcon className='size-4' />
+                        <HugeiconsIcon icon={SparklesIcon} className='size-4' />
                         Approve Spotlight{tourName ? ` — ${tourName}` : ''}
                     </DialogTitle>
                 </DialogHeader>
@@ -357,7 +354,7 @@ function ApproveDialog({
                     </p>
                     <div className='grid gap-4 sm:grid-cols-2'>
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label>
                                 Starts
                             </Label>
                             <DatePickerField
@@ -367,7 +364,7 @@ function ApproveDialog({
                             />
                         </Field>
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label>
                                 Ends
                             </Label>
                             <DatePickerField
@@ -378,7 +375,7 @@ function ApproveDialog({
                         </Field>
                     </div>
                     <Field>
-                        <Label className='text-xs font-semibold uppercase'>
+                        <Label>
                             Note (optional)
                         </Label>
                         <Textarea
@@ -453,7 +450,7 @@ function RejectDialog({
                     </DialogTitle>
                 </DialogHeader>
                 <Field>
-                    <Label className='text-xs font-semibold uppercase'>
+                    <Label>
                         Reason
                     </Label>
                     <Textarea

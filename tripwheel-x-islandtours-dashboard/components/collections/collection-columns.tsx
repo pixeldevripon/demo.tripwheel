@@ -1,16 +1,9 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, File02Icon, HelpCircleIcon, LeftToRightListNumberIcon, MoreHorizontalIcon, PencilEdit02Icon, Search01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
+
 import { type ColumnDef } from '@tanstack/react-table';
-import {
-  PencilIcon,
-  Trash2Icon,
-  MoreHorizontalIcon,
-  ListOrderedIcon,
-  LanguagesIcon,
-  FileTextIcon,
-  HelpCircleIcon,
-  SearchIcon,
-} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,7 +106,7 @@ export function makeCollectionColumns({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm">
-                <MoreHorizontalIcon />
+                <HugeiconsIcon icon={MoreHorizontalIcon} />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
@@ -123,39 +116,39 @@ export function makeCollectionColumns({
                 <>
                   <DropdownMenuItem asChild>
                     <Link href={`/collections/${c.id}/edit`}>
-                      <PencilIcon />
+                      <HugeiconsIcon icon={PencilEdit02Icon} />
                       Edit Details
                     </Link>
                   </DropdownMenuItem>
                   {c.collectionType === 'MANUAL' && (
                     <DropdownMenuItem asChild>
                       <Link href={`/collections/${c.id}/edit?tab=tours`}>
-                        <ListOrderedIcon />
+                        <HugeiconsIcon icon={LeftToRightListNumberIcon} />
                         Manage Tours
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild>
-                    <Link href={`/collections/${c.id}/edit?tab=translations`}>
-                      <LanguagesIcon />
+                    <Link href={`/translations/collection/${c.id}/es`}>
+                      <HugeiconsIcon icon={TranslateIcon} />
                       Manage Translations
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/collections/${c.id}/edit?tab=page-content`}>
-                      <FileTextIcon />
+                      <HugeiconsIcon icon={File02Icon} />
                       Page Content
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/collections/${c.id}/edit?tab=faqs`}>
-                      <HelpCircleIcon />
+                      <HugeiconsIcon icon={HelpCircleIcon} />
                       Manage FAQs
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/collections/${c.id}/edit?tab=seo`}>
-                      <SearchIcon />
+                      <HugeiconsIcon icon={Search01Icon} />
                       SEO
                     </Link>
                   </DropdownMenuItem>
@@ -168,7 +161,7 @@ export function makeCollectionColumns({
                     className="text-destructive focus:text-destructive"
                     onClick={() => onDeactivate(c)}
                   >
-                    <Trash2Icon />
+                    <HugeiconsIcon icon={Delete02Icon} />
                     Deactivate
                   </DropdownMenuItem>
                 </>

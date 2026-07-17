@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useTableState } from '@/components/data-table/use-table-state';
 import { usePayments } from '@/hooks/payments/use-payments';
 import type {
     PaymentKind,
@@ -10,18 +10,17 @@ import type {
 import { PaymentsTable } from './payments-table';
 
 export function PaymentsListView() {
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
-    const [filters, setFilters] = useState<Record<string, string | undefined>>(
-        {},
-    );
-    const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(search), 500);
-        return () => clearTimeout(timer);
-    }, [search]);
+    const {
+        page,
+        limit,
+        search,
+        debouncedSearch,
+        filters,
+        setPage,
+        setLimit,
+        setSearch,
+        setFilter,
+    } = useTableState();
 
     const params: PaymentsQueryParams = {
         page,
@@ -35,20 +34,8 @@ export function PaymentsListView() {
 
     const { data, isLoading } = usePayments(params);
 
-    function handleFilterChange(key: string, value: string | undefined) {
-        setFilters(prev => ({ ...prev, [key]: value }));
-        setPage(1);
-    }
 
-    function handleLimitChange(newLimit: number) {
-        setLimit(newLimit);
-        setPage(1);
-    }
 
-    function handleSearchChange(value: string) {
-        setSearch(value);
-        setPage(1);
-    }
 
     return (
         <div className='space-y-4'>
@@ -58,11 +45,12 @@ export function PaymentsListView() {
                 page={page}
                 limit={limit}
                 isLoading={isLoading}
+                filters={filters}
                 searchValue={search}
-                onSearchChange={handleSearchChange}
+                onSearchChange={setSearch}
                 onPageChange={setPage}
-                onLimitChange={handleLimitChange}
-                onFilterChange={handleFilterChange}
+                onLimitChange={setLimit}
+                onFilterChange={setFilter}
             />
         </div>
     );

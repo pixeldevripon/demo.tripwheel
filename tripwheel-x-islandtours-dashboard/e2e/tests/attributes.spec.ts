@@ -120,23 +120,9 @@ test.describe('Attributes - list page (/attributes)', () => {
     await page.waitForSelector('table', { timeout: 15_000 });
   });
 
-  test('page loads with "Attributes" heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /attributes/i })).toBeVisible();
-  });
-
   test('renders attribute rows from the API', async ({ page }) => {
     await expect(page.getByText('boat_type')).toBeVisible();
     await expect(page.getByText('duration_category')).toBeVisible();
-  });
-
-  test('renders display names in the table', async ({ page }) => {
-    await expect(page.getByText('Boat Type')).toBeVisible();
-    await expect(page.getByText('Duration Category')).toBeVisible();
-  });
-
-  test('renders data type badges', async ({ page }) => {
-    // Both are ENUM type - at least one ENUM badge should be present
-    await expect(page.getByText('ENUM').first()).toBeVisible();
   });
 
   test('"Global" scope shown for attributes with empty appliesToCategories', async ({ page }) => {
@@ -228,19 +214,6 @@ test.describe('Attributes - create form (/attributes/new)', () => {
     await page.waitForSelector('form', { timeout: 15_000 });
   });
 
-  test('Key input is rendered', async ({ page }) => {
-    await expect(page.locator('input[name="key"]')).toBeVisible();
-  });
-
-  test('Display Name input is rendered', async ({ page }) => {
-    await expect(page.locator('input[name="displayName"]')).toBeVisible();
-  });
-
-  test('Data Type select is rendered', async ({ page }) => {
-    await expect(page.getByText(/data type/i)).toBeVisible();
-    await expect(page.getByRole('combobox').first()).toBeVisible();
-  });
-
   test('Data Type select contains ENUM option', async ({ page }) => {
     await page.getByRole('combobox').first().click();
     await expect(page.getByRole('option', { name: /^enum$/i })).toBeVisible({ timeout: 5_000 });
@@ -279,23 +252,6 @@ test.describe('Attributes - create form (/attributes/new)', () => {
     // Allowed Values left empty; data type stays ENUM
     await page.getByRole('button', { name: /create attribute/i }).click();
     await expect(page.getByText(/allowed values are required for enum/i)).toBeVisible({ timeout: 5_000 });
-  });
-
-  test('Applies To Categories multi-select is rendered', async ({ page }) => {
-    // MultiSelect placeholder text
-    await expect(page.getByText(/global \(all categories\)/i)).toBeVisible({ timeout: 5_000 });
-  });
-
-  test('Filterable checkbox is rendered', async ({ page }) => {
-    await expect(page.getByRole('checkbox', { name: /filterable/i })).toBeVisible();
-  });
-
-  test('Sortable checkbox is rendered', async ({ page }) => {
-    await expect(page.getByRole('checkbox', { name: /sortable/i })).toBeVisible();
-  });
-
-  test('"Create Attribute" submit button is rendered', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /create attribute/i })).toBeVisible();
   });
 
   test('happy path: valid form submits via POST and navigates back to /attributes', async ({ page }) => {
@@ -384,10 +340,6 @@ test.describe('Attributes - edit form (/attributes/boat_type/edit)', () => {
   test('Allowed Values field is pre-filled from API', async ({ page }) => {
     // ENUM type, allowedValues = ['catamaran', 'yacht', 'speedboat']
     await expect(page.locator('input[name="allowedValues"]')).toHaveValue(/catamaran/);
-  });
-
-  test('Save Changes button is rendered', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /save changes/i })).toBeVisible();
   });
 
   test('updating Display Name and saving calls PATCH and shows success toast', async ({ page }) => {

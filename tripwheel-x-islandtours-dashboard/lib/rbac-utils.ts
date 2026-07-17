@@ -1,3 +1,4 @@
+import type { IconSvgElement } from '@hugeicons/react';
 /**
  * Filters a navigation tree so only items the user has permission to see are shown.
  * An item is visible if:
@@ -12,11 +13,35 @@
 export interface NavItem {
   title: string;
   url?: string;
-  icon?: React.ElementType;
+  icon?: IconSvgElement;
   isActive?: boolean;
   permissions?: string[];
   items?: NavItem[];
   badge?: string | number;
+}
+
+/** A labelled sidebar section (04 §1.2). */
+export interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+/**
+ * Filters each group's items, then drops groups left empty - a group header
+ * must never render over nothing (04 §1.3: for an operator, Curate and
+ * Configure are absent, not greyed).
+ */
+export function filterNavGroups(
+  groups: NavGroup[] | undefined,
+  userPermissions: string[]
+): NavGroup[] {
+  if (!groups || !Array.isArray(groups)) return [];
+  return groups
+    .map((group) => ({
+      ...group,
+      items: filterNavigationByPermissions(group.items, userPermissions),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export function filterNavigationByPermissions(

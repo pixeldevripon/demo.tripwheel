@@ -1,7 +1,7 @@
-import type { Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
 import type { Money } from '@/types/money';
 import type { HubPickType, HubSectionType, HubStatus, HubType } from '@/types/enums';
-export type { Locale } from '@/lib/constants/locales';
+export type { Locale } from '@/types/locale';
 export type { HubPickType, HubSectionType, HubStatus, HubType } from '@/types/enums';
 
 export interface Hub {

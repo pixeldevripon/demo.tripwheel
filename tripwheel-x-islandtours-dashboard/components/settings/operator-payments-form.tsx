@@ -16,6 +16,7 @@ import {
 import { MOLLIE_PAYMENT_METHODS, STRIPE_PAYMENT_METHODS } from './payment-methods';
 import {
   CheckboxField,
+  ConnectionStatus,
   SecretField,
   SettingsCard,
   SettingsCardSkeleton,
@@ -81,6 +82,7 @@ function StripeCard({ operatorId }: { operatorId: string }) {
       description="Connect your own Stripe account to receive payments for your tours."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.secretKey} />}
     >
       <TextField label="Publishable Key" registration={register('publishableKey')} error={errors.publishableKey?.message} placeholder="pk_live_..." />
       <SecretField
@@ -98,7 +100,7 @@ function StripeCard({ operatorId }: { operatorId: string }) {
         description={data?.webhookSecret ? `Current: ${data.webhookSecret}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
       <Field>
-        <Label className="text-xs font-semibold uppercase">Payment Methods</Label>
+        <Label>Payment Methods</Label>
         <MultiSelect
           options={STRIPE_PAYMENT_METHODS}
           value={selected}
@@ -170,6 +172,7 @@ function MollieCard({ operatorId }: { operatorId: string }) {
       description="Connect your own Mollie account to receive payments for your tours."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.apiKey} />}
     >
       <SecretField
         label="API Key"
@@ -179,7 +182,7 @@ function MollieCard({ operatorId }: { operatorId: string }) {
         description={data?.apiKey ? `Current: ${data.apiKey}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
       <Field>
-        <Label className="text-xs font-semibold uppercase">Payment Methods</Label>
+        <Label>Payment Methods</Label>
         <MultiSelect
           options={MOLLIE_PAYMENT_METHODS}
           value={selected}

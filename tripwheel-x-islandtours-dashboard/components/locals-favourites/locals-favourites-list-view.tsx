@@ -1,26 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useTableState } from '@/components/data-table/use-table-state';
 import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { TripStatus } from '@/types/trip';
 import { LocalsFavouritesTable } from './locals-favourites-table';
 
 /**
- * Owns list state (pagination + filters + debounced search) and feeds the table.
- * Mirrors trips-list-view; admin-only surface (page is gated by MANAGE_EDITORIAL),
- * so it always uses the admin tour list.
+ * Owns list state (URL-synced pagination + filters + debounced search) and
+ * feeds the table. Mirrors trips-list-view; admin-only surface (page is gated
+ * by MANAGE_EDITORIAL), so it always uses the admin tour list.
  */
 export function LocalsFavouritesListView() {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [filters, setFilters] = useState<Record<string, string | undefined>>({});
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const {
+    page,
+    limit,
+    search,
+    debouncedSearch,
+    filters,
+    setPage,
+    setLimit,
+    setSearch,
+    setFilter,
+  } = useTableState();
 
   const { data, isLoading } = useAdminTrips({
     page,
@@ -34,21 +35,6 @@ export function LocalsFavouritesListView() {
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
-  function handleFilterChange(key: string, value: string | undefined) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
-  }
-
-  function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1);
-  }
-
-  function handleSearchChange(value: string) {
-    setSearch(value);
-    setPage(1);
-  }
-
   return (
     <LocalsFavouritesTable
       data={data?.data ?? []}
@@ -56,11 +42,12 @@ export function LocalsFavouritesListView() {
       page={page}
       limit={limit}
       isLoading={isLoading}
+      filters={filters}
       searchValue={search}
-      onSearchChange={handleSearchChange}
+      onSearchChange={setSearch}
       onPageChange={setPage}
-      onLimitChange={handleLimitChange}
-      onFilterChange={handleFilterChange}
+      onLimitChange={setLimit}
+      onFilterChange={setFilter}
     />
   );
 }

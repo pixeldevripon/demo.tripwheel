@@ -1,10 +1,12 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { AlertCircleIcon } from '@hugeicons/core-free-icons';
+
 import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { CircleAlert } from 'lucide-react';
 import { Field, inputClass, primaryBtn, SuccessBlock, ErrorNote } from './login-ui';
 
 /**
@@ -27,22 +29,22 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
     const [error, setError] = useState('');
 
     const cardClass =
-        'w-full rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md';
+        'w-full rounded-[16px] border border-it-border bg-it-white px-8 pb-6 pt-8 shadow-it-md';
 
     /** No token in URL — link is broken/missing */
     if (!expired && !token) {
         return (
             <div className={`${cardClass} text-center`}>
-                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-red-50'>
-                    <CircleAlert className='size-6 text-red-700' strokeWidth={1.75} />
+                <div className='mx-auto mb-3 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
+                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
-                <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
+                <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
                     Invalid reset link
                 </h1>
-                <p className='mx-auto mt-2 max-w-80 text-[14px] text-it-text-muted'>
+                <p className='mx-auto mt-2 max-w-80 text-sm text-it-text-muted'>
                     This link is invalid or has already been used.
                 </p>
-                <Link href='/portal/forgot' className={`${primaryBtn} mt-5 no-underline`}>
+                <Link href='/portal/forgot' className={`${primaryBtn} mt-4 no-underline`}>
                     Request a new link
                 </Link>
             </div>
@@ -79,16 +81,16 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
     if (expired) {
         return (
             <div className={`${cardClass} text-center`}>
-                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-red-50'>
-                    <CircleAlert className='size-6 text-red-700' strokeWidth={1.75} />
+                <div className='mx-auto mb-3 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
+                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
-                <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
+                <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
                     This link has expired
                 </h1>
-                <p className='mx-auto mt-2 max-w-80 text-[14px] text-it-text-muted'>
+                <p className='mx-auto mt-2 max-w-80 text-sm text-it-text-muted'>
                     Reset links are valid for 60 minutes. Request a new one from the login page.
                 </p>
-                <Link href='/portal/forgot' className={`${primaryBtn} mt-5 no-underline`}>
+                <Link href='/portal/forgot' className={`${primaryBtn} mt-4 no-underline`}>
                     Request a new link
                 </Link>
             </div>
@@ -110,10 +112,10 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
 
     return (
         <div className={cardClass}>
-            <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
                 Set a new password
             </h1>
-            <p className='mb-5.5 mt-1.5 text-[14px] text-it-text-muted'>
+            <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
                 Choose a password you don&apos;t use anywhere else.
             </p>
             <form onSubmit={handleSubmit}>
@@ -121,6 +123,7 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
                     <div className='relative'>
                         <input
                             id='o-new-pw'
+                            aria-label='New password'
                             type={showPw ? 'text' : 'password'}
                             name='password'
                             autoComplete='new-password'
@@ -134,11 +137,11 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
                             type='button'
                             aria-live='polite'
                             onClick={() => setShowPw((v) => !v)}
-                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
+                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
                             {showPw ? 'Hide' : 'Show'}
                         </button>
                     </div>
-                    <p className='mt-1.5 text-[12.5px] text-it-text-muted'>
+                    <p className='mt-1.5 text-xs text-it-text-muted'>
                         At least 12 characters.
                     </p>
                 </Field>

@@ -33,11 +33,11 @@ export function StaffLogin() {
                 width={176}
                 height={131}
                 priority
-                className='mb-6.5 h-auto w-32 object-contain'
+                className='mb-6 h-auto w-32 object-contain'
             />
 
-            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-7 pb-6.5 pt-7.5 shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
-                <h1 className='mb-5 text-center font-it-display text-[19px] font-semibold text-it-heading'>
+            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-8 pb-6 pt-8 shadow-2xl shadow-black/40'>
+                <h1 className='mb-4 text-center font-it-display text-lg font-semibold text-it-heading'>
                     Staff access
                 </h1>
 
@@ -51,7 +51,7 @@ export function StaffLogin() {
                         <p className='mt-1.5 text-[13px] text-it-text-muted'>
                             Role and domain checked server-side, session 12 hours.
                         </p>
-                        <span className='mt-2.5 inline-block rounded-[6px] border border-dashed border-it-border px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-it-text-muted'>
+                        <span className='mt-2.5 inline-block rounded-[6px] border border-dashed border-it-border px-2 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-it-text-muted'>
                             Mockup endpoint
                         </span>
                     </div>
@@ -68,7 +68,7 @@ export function StaffLogin() {
                         {tried && (
                             <div
                                 role='alert'
-                                className='mt-4 flex items-start gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.25 py-2.5 text-left text-[13px] text-red-700'>
+                                className='mt-4 flex items-start gap-2 rounded-[10px] border border-danger-border bg-danger-subtle px-3.25 py-2.5 text-left text-[13px] text-danger-fg'>
                                 <CircleAlert className='mt-0.5 size-4 shrink-0' strokeWidth={1.75} />
                                 <span>
                                     This Google account doesn&apos;t have staff access. Ask an admin
@@ -80,12 +80,12 @@ export function StaffLogin() {
                 )}
                 </MountReveal> */}
                 <AuthForm />
-                <p className='mt-4 text-[12px] leading-[1.5] text-it-text-muted'>
+                <p className='mt-4 text-xs leading-[1.5] text-it-text-muted'>
                     Island Tours staff only. Every login and action is logged.
                 </p>
             </div>
 
-            <p className='mt-5.5 max-w-85 text-center text-[12px] text-white/65'>
+            <p className='mt-6 max-w-85 text-center text-xs text-white/65'>
                 admin.island.tours &middot; linked from nowhere, noindex,
                 authorization always server-side
             </p>
@@ -94,6 +94,9 @@ export function StaffLogin() {
 }
 
 /** Official Google "G" brand mark - kept multi-color (not recolourable). */
+/* eslint-disable no-restricted-syntax -- 03 §8.2 exemption: the four fills below
+ * are Google's fixed brand colors (brand guidelines), not themeable UI color -
+ * they must not be replaced with design-system tokens. */
 function GoogleMark() {
     return (
         <svg
@@ -119,5 +122,6 @@ function GoogleMark() {
         </svg>
     );
 }
+/* eslint-enable no-restricted-syntax */
 
 

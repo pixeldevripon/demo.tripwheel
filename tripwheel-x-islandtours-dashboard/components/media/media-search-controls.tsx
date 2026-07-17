@@ -2,16 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    CloudUploadFreeIcons,
-    Menu05Icon,
-    Search01Icon,
-    SquareIcon,
-    TickDouble01Icon,
-    UndoIcon,
-} from '@hugeicons/core-free-icons';
+import { CloudUploadFreeIcons, GridIcon, Menu05Icon, Search01Icon, SquareIcon, TickDouble01Icon, UndoIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Grid3x3 } from 'lucide-react';
 import type { MediaItem } from '@/types/media';
 
 interface MediaSearchControlsProps {
@@ -59,7 +51,7 @@ const MediaSearchControls = ({
                         placeholder='Search media...'
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className='w-full h-9 rounded-md border border-input !bg-background pl-9 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+                        className='w-full h-9 rounded-md border border-input !bg-background pl-8 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
                     />
                 </div>
 
@@ -71,7 +63,7 @@ const MediaSearchControls = ({
                             size='icon'
                             onClick={() => setViewMode('grid')}
                             title='Grid View'>
-                            <Grid3x3 size={16} />
+                            <HugeiconsIcon icon={GridIcon} size={16} />
                         </Button>
                         <Button
                             variant={viewMode === 'list' ? 'default' : 'outline'}

@@ -1,15 +1,10 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, Layers01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import {
-  ChevronDownIcon,
-  LayersIcon,
-  PlusIcon,
-  Trash2Icon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +16,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHubContentSections, useReplaceHubContentSections } from '@/hooks/hubs/use-hubs';
 import { ALL_LOCALES, DEFAULT_LOCALE, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
@@ -299,32 +294,32 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
         onSuccess: (res) => toast.success(`Saved ${res.count} content section(s).`),
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : 'Failed to save content sections.'),
-      }
-    );
-  }
+ }
+ );
+ }
 
-  /** The per-locale tabbed editor + optional image - shared by regular and singleton blocks. */
-  function renderBlockFields(
-    block: ContentBlock,
-    meta: (typeof SECTION_TYPE_META)[HubSectionType]
-  ) {
-    return (
-      <>
-        {/* Per-locale translations - same tabbed UI as the Translations / Page Content tabs. */}
-        <Tabs defaultValue={DEFAULT_LOCALE}>
-          <div className="pb-2 mb-4">
-            <TabsList>
-              {ALL_LOCALES.map((loc) => (
-                <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden uppercase">{loc}</span>
-                  <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+ /** The per-locale tabbed editor + optional image - shared by regular and singleton blocks. */
+ function renderBlockFields(
+ block: ContentBlock,
+ meta: (typeof SECTION_TYPE_META)[HubSectionType]
+ ) {
+ return (
+ <>
+ {/* Per-locale translations - same tabbed UI as the Translations / Page Content tabs. */}
+ <Tabs defaultValue={DEFAULT_LOCALE}>
+ <div className="pb-2 mb-4">
+ <TabsList>
+ {ALL_LOCALES.map((loc) => (
+ <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
+ <span className="sm:hidden ">{loc}</span>
+ <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
+ </TabsTrigger>
+ ))}
+ </TabsList>
+ </div>
 
-          {ALL_LOCALES.map((loc) => {
-            const fields = block.translations[loc] ?? { heading: '', body: '' };
+ {ALL_LOCALES.map((loc) => {
+ const fields = block.translations[loc] ?? { heading:'', body: '' };
             const isBase = loc === DEFAULT_LOCALE;
             return (
               <TabsContent key={loc} value={loc} className="space-y-4">
@@ -338,138 +333,138 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                     {meta.hasHeading
                       ? 'Fill both fields, or leave both empty to skip this locale.'
                       : 'Leave empty to skip this locale.'}
-                  </div>
-                )}
+ </div>
+ )}
 
-                {meta.hasHeading && (
-                  <Field>
-                    <Label className="text-xs font-semibold uppercase">Heading</Label>
-                    <Input
-                      value={fields.heading}
-                      onChange={(e) =>
-                        updateLocaleField(block.key, loc, { heading: e.target.value })
-                      }
-                      placeholder={`Heading in ${LOCALE_LABELS[loc]}`}
-                    />
-                  </Field>
-                )}
+ {meta.hasHeading && (
+ <Field>
+ <Label>Heading</Label>
+ <Input
+ value={fields.heading}
+ onChange={(e) =>
+ updateLocaleField(block.key, loc, { heading: e.target.value })
+ }
+ placeholder={`Heading in ${LOCALE_LABELS[loc]}`}
+ />
+ </Field>
+ )}
 
-                <Field>
-                  <Label className="text-xs font-semibold uppercase">
-                    {meta.hasHeading ? 'Body' : 'Content'}
-                  </Label>
-                  <Textarea
-                    value={fields.body}
-                    onChange={(e) => updateLocaleField(block.key, loc, { body: e.target.value })}
-                    rows={3}
-                    placeholder={`Content in ${LOCALE_LABELS[loc]}`}
-                  />
-                </Field>
+ <Field>
+ <Label>
+ {meta.hasHeading ?'Body' : 'Content'}
+ </Label>
+ <Textarea
+ value={fields.body}
+ onChange={(e) => updateLocaleField(block.key, loc, { body: e.target.value })}
+ rows={3}
+ placeholder={`Content in ${LOCALE_LABELS[loc]}`}
+ />
+ </Field>
 
-                {!isBase && (fields.heading || fields.body) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => clearLocale(block.key, loc)}
-                  >
-                    <Trash2Icon />
-                    Clear {LOCALE_LABELS[loc]} translation
-                  </Button>
-                )}
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+ {!isBase && (fields.heading || fields.body) && (
+ <Button
+ type="button"
+ variant="ghost"
+ size="sm"
+ className="text-destructive hover:text-destructive hover:bg-destructive/10"
+ onClick={() => clearLocale(block.key, loc)}
+ >
+ <HugeiconsIcon icon={Delete02Icon} />
+ Clear {LOCALE_LABELS[loc]} translation
+ </Button>
+ )}
+ </TabsContent>
+ );
+ })}
+ </Tabs>
 
-        {meta.hasImage && (
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Image (optional, shared across locales)
-            </Label>
-            <ImageSelectorField
-              value={block.image || null}
-              onChange={(url) => updateImage(block.key, url ?? null)}
-            />
-          </Field>
-        )}
-      </>
-    );
-  }
+ {meta.hasImage && (
+ <Field>
+ <Label>
+ Image (optional, shared across locales)
+ </Label>
+ <ImageSelectorField
+ value={block.image || null}
+ onChange={(url) => updateImage(block.key, url ?? null)}
+ />
+ </Field>
+ )}
+ </>
+ );
+ }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-none" />
-        ))}
-      </div>
-    );
-  }
+ if (isLoading) {
+ return (
+ <div className="space-y-3">
+ {Array.from({ length: 3 }).map((_, i) => (
+ <Skeleton key={i} className="h-40 w-full rounded-none" />
+ ))}
+ </div>
+ );
+ }
 
-  return (
-    <div className="space-y-6">
-      <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-        Editorial blocks for the hub page, grouped by type. <strong>Discover</strong> and{' '}
-        <strong>Local Tip</strong> (English) are required before the hub can be published. Each block
-        carries its own translations - switch locale inside the block. Saving replaces the full set
-        across all locales.
-      </div>
+ return (
+ <div className="space-y-6">
+ <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
+ Editorial blocks for the hub page, grouped by type. <strong>Discover</strong> and{' '}
+ <strong>Local Tip</strong> (English) are required before the hub can be published. Each block
+ carries its own translations - switch locale inside the block. Saving replaces the full set
+ across all locales.
+ </div>
 
-      {MANAGED_TYPES.map((type) => {
-        const meta = SECTION_TYPE_META[type];
-        const typeBlocks = blocks.filter((b) => b.sectionType === type);
+ {MANAGED_TYPES.map((type) => {
+ const meta = SECTION_TYPE_META[type];
+ const typeBlocks = blocks.filter((b) => b.sectionType === type);
 
-        // Singleton (Discover Intro): exactly one block, always open, no add/remove/collapse.
-        if (meta.singleton) {
-          const block = typeBlocks[0];
-          return (
-            <section key={type} className="space-y-3">
-              <div className="min-w-0">
-                <h3 className="font-heading text-sm font-semibold uppercase tracking-wider">
-                  {meta.label}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
-              </div>
-              {block && (
-                <div className="space-y-4 border bg-card px-3 py-4">
-                  {renderBlockFields(block, meta)}
-                </div>
-              )}
-            </section>
-          );
-        }
+ // Singleton (Discover Intro): exactly one block, always open, no add/remove/collapse.
+ if (meta.singleton) {
+ const block = typeBlocks[0];
+ return (
+ <section key={type} className="space-y-3">
+ <div className="min-w-0">
+ <h3 className="text-sm font-semibold ">
+ {meta.label}
+ </h3>
+ <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
+ </div>
+ {block && (
+ <div className="space-y-4 border bg-card px-3 py-4">
+ {renderBlockFields(block, meta)}
+ </div>
+ )}
+ </section>
+ );
+ }
 
-        return (
-          <section key={type} className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="font-heading text-sm font-semibold uppercase tracking-wider">
-                  {meta.label}
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    {typeBlocks.length}
-                  </span>
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
-              </div>
-              <Button size="sm" type="button" variant="outline" onClick={() => addBlock(type)}>
-                <PlusIcon />
-                Add
-              </Button>
-            </div>
+ return (
+ <section key={type} className="space-y-3">
+ <div className="flex items-start justify-between gap-3">
+ <div className="min-w-0">
+ <h3 className="text-sm font-semibold ">
+ {meta.label}
+ <span className="ml-2 text-xs font-normal text-muted-foreground">
+ {typeBlocks.length}
+ </span>
+ </h3>
+ <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
+ </div>
+ <Button size="sm" type="button" variant="outline" onClick={() => addBlock(type)}>
+ <HugeiconsIcon icon={PlusSignIcon} />
+ Add
+ </Button>
+ </div>
 
-            {typeBlocks.length === 0 ? (
-              <div className="flex items-center gap-2 border border-dashed px-3 py-4 text-xs text-muted-foreground">
-                <LayersIcon className="size-4 opacity-40" />
-                No {meta.label} blocks yet.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {typeBlocks.map((block, idx) => {
-                  const enHeading = block.translations[DEFAULT_LOCALE]?.heading?.trim();
-                  const title =
-                    enHeading || block.translations[DEFAULT_LOCALE]?.body?.trim() || 'Untitled block';
+ {typeBlocks.length === 0 ? (
+ <div className="flex items-center gap-2 border border-dashed px-3 py-4 text-xs text-muted-foreground">
+ <HugeiconsIcon icon={Layers01Icon} className="size-4 opacity-40" />
+ No {meta.label} blocks yet.
+ </div>
+ ) : (
+ <div className="space-y-2">
+ {typeBlocks.map((block, idx) => {
+ const enHeading = block.translations[DEFAULT_LOCALE]?.heading?.trim();
+ const title =
+ enHeading || block.translations[DEFAULT_LOCALE]?.body?.trim() ||'Untitled block';
                   const isOpen = openKeys.has(block.key);
                   return (
                     <Collapsible
@@ -480,7 +475,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                     >
                       <div className="flex items-center gap-2 px-3 py-2">
                         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                          <ChevronDownIcon
+                          <HugeiconsIcon icon={ArrowDown01Icon}
                             className={`size-4 shrink-0 text-muted-foreground transition-transform ${
                               isOpen ? 'rotate-0' : '-rotate-90'
                             }`}
@@ -492,32 +487,32 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             disabled={idx === 0}
                             onClick={() => moveBlock(block.key, -1)}
                             aria-label="Move up"
                           >
-                            <ArrowUpIcon />
+                            <HugeiconsIcon icon={ArrowUp02Icon} />
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             disabled={idx === typeBlocks.length - 1}
                             onClick={() => moveBlock(block.key, 1)}
                             aria-label="Move down"
                           >
-                            <ArrowDownIcon />
+                            <HugeiconsIcon icon={ArrowDown02Icon} />
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeBlock(block.key)}
                             aria-label="Remove block"
                           >
-                            <Trash2Icon />
+                            <HugeiconsIcon icon={Delete02Icon} />
                           </Button>
                         </div>
                       </div>

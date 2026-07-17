@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { ArchiveIcon, CheckIcon, InfoIcon, PlayIcon, RotateCcwIcon, UndoIcon, XIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon, Cancel01Icon, InformationCircleIcon, PlayIcon, RotateLeft01Icon, Tick02Icon, UndoIcon } from '@hugeicons/core-free-icons';
+
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useRole } from '@/contexts/role-context';
 import {
   useCollection,
@@ -19,22 +22,13 @@ import { COLLECTION_STATUS_LABELS } from '@/types/enums';
 import { CollectionDetailShell } from './collection-detail-shell';
 import { CollectionForm } from './collection-form';
 import { CollectionToursManager } from './collection-tours-manager';
-import { CollectionTranslationForm } from './collection-translation-form';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { CollectionPageContentForm } from './collection-page-content-form';
-import { FaqManager } from '@/components/faq/faq-manager';
-import { CollectionSeoTab } from './collection-seo-tab';
+import { FaqManager } from '@/components/common/faq-manager';
+import { CollectionSeoTab } from '@/components/common/entity-seo-tab';
 
 // Priority order: identity first, then the ranked membership that IS the product,
 // then the localized content travelers see, supplementary content, and SEO polish.
-const VALID_TABS = [
-  'details',
-  'tours',
-  'translations',
-  'page-content',
-  'faqs',
-  'seo',
-] as const;
-
 const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   DRAFT: 'secondary',
   PUBLISHED: 'default',
@@ -45,9 +39,9 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-emerald-500 shrink-0" />
+        <HugeiconsIcon icon={Tick02Icon} className="size-4 text-success-solid shrink-0" />
       ) : (
-        <XIcon className="size-4 text-destructive shrink-0" />
+        <HugeiconsIcon icon={Cancel01Icon} className="size-4 text-destructive shrink-0" />
       )}
       <span className={passed ? 'text-muted-foreground' : 'text-destructive'}>{label}</span>
     </div>
@@ -60,9 +54,9 @@ interface CollectionEditViewProps {
 }
 
 export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) {
-  const activeTab =
-    initialTab && (VALID_TABS as readonly string[]).includes(initialTab) ? initialTab : 'details';
-  const [tab, setTab] = useState(activeTab);
+  const router = useRouter();
+  const goToTab = (tab: string) =>
+    router.replace(`/collections/${id}/edit?tab=${tab}`, { scroll: false });
   const { data: collection, isLoading, isError } = useCollection(id);
   const { data: enTranslation } = useCollectionTranslationByLocale(id, 'en');
   const { can } = useRole();
@@ -91,44 +85,44 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
     { label: 'English H1 override filled', passed: !!enTranslation?.h1Override?.trim() },
     { label: 'English overview filled', passed: !!enTranslation?.overview?.trim() },
     ...(isManual ? [{ label: 'At least 1 member tour', passed: memberCount >= 1 }] : []),
-  ];
-  const allPassed = readinessChecks.every((c) => c.passed);
+ ];
+ const allPassed = readinessChecks.every((c) => c.passed);
 
-  if (isLoading) {
-    return (
-      <CollectionDetailShell id={id} name={undefined} isLoading subtitle="Edit collection">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </CollectionDetailShell>
-    );
-  }
+ if (isLoading) {
+ return (
+ <CollectionDetailShell id={id} name={undefined} isLoading subtitle="Edit collection">
+ <div className="space-y-4">
+ {Array.from({ length: 4 }).map((_, i) => (
+ <Skeleton key={i} className="h-12 w-full rounded-none" />
+ ))}
+ </div>
+ </CollectionDetailShell>
+ );
+ }
 
-  if (isError || !collection) {
-    return (
-      <CollectionDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit collection">
-        <p className="text-sm text-destructive">Failed to load collection.</p>
-      </CollectionDetailShell>
-    );
-  }
+ if (isError || !collection) {
+ return (
+ <CollectionDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit collection">
+ <p className="text-sm text-destructive">Failed to load collection.</p>
+ </CollectionDetailShell>
+ );
+ }
 
-  return (
-    <CollectionDetailShell id={id} name={collection.name} isLoading={false} subtitle="Edit collection">
-      <div className="space-y-6">
-        {/* Status + lifecycle actions (always visible, above the tabs) */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
-            </span>
-            <Badge variant={statusVariant[collection.status]}>
-              {COLLECTION_STATUS_LABELS[collection.status]}
-            </Badge>
-          </div>
+ return (
+ <CollectionDetailShell id={id} name={collection.name} isLoading={false} subtitle="Edit collection">
+ <div className="space-y-6">
+ {/* Status + lifecycle actions (always visible, above the tabs) */}
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-3">
+ <span className="text-xs font-semibold text-muted-foreground">
+ Status
+ </span>
+ <Badge variant={statusVariant[collection.status]}>
+ {COLLECTION_STATUS_LABELS[collection.status]}
+ </Badge>
+ </div>
 
-          {can('EDIT_COLLECTION') && (
+ {can('EDIT_COLLECTION') && (
             <div className="flex flex-wrap gap-2">
               {collection.status === 'DRAFT' && (
                 <Button
@@ -136,7 +130,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                   onClick={() => changeStatus('PUBLISHED', 'Collection published.')}
                   disabled={isUpdating}
                 >
-                  <PlayIcon className="size-3.5" />
+                  <HugeiconsIcon icon={PlayIcon} className="size-3.5" />
                   Publish
                 </Button>
               )}
@@ -148,7 +142,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                     onClick={() => changeStatus('DRAFT', 'Collection moved to draft.')}
                     disabled={isUpdating}
                   >
-                    <UndoIcon className="size-3.5" />
+                    <HugeiconsIcon icon={UndoIcon} className="size-3.5" />
                     Move to Draft
                   </Button>
                   <Button
@@ -157,7 +151,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                     onClick={() => changeStatus('ARCHIVED', 'Collection archived.')}
                     disabled={isUpdating}
                   >
-                    <ArchiveIcon className="size-3.5" />
+                    <HugeiconsIcon icon={Archive02Icon} className="size-3.5" />
                     Archive
                   </Button>
                 </>
@@ -168,7 +162,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
                   onClick={() => changeStatus('DRAFT', 'Collection restored to draft.')}
                   disabled={isUpdating}
                 >
-                  <RotateCcwIcon className="size-3.5" />
+                  <HugeiconsIcon icon={RotateLeft01Icon} className="size-3.5" />
                   Restore to Draft
                 </Button>
               )}
@@ -178,7 +172,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
 
         {/* Publish readiness (only relevant while not yet published) */}
         {collection.status !== 'PUBLISHED' && (
-          <Card className={allPassed ? 'border-emerald-200' : 'border-amber-200'}>
+          <Card className={allPassed ? 'border-success-border' : 'border-warning-border'}>
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-sm">Publish Readiness</CardTitle>
             </CardHeader>
@@ -190,7 +184,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
               </div>
               {isManual && (
                 <div className="flex items-start gap-2 text-xs text-muted-foreground border-t pt-3">
-                  <InfoIcon className="size-3.5 shrink-0 mt-0.5" />
+                  <HugeiconsIcon icon={InformationCircleIcon} className="size-3.5 shrink-0 mt-0.5" />
                   <span>
                     Every member tour also needs an English rationale (≤20 words), set in the
                     Tours tab. This is enforced by the server on publish.
@@ -201,60 +195,66 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           </Card>
         )}
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <div className="pb-2 mb-6">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="tours">Tours</TabsTrigger>
-              <TabsTrigger value="translations">Translations</TabsTrigger>
-              <TabsTrigger value="page-content">Page Content</TabsTrigger>
-              <TabsTrigger value="faqs">FAQs</TabsTrigger>
-              <TabsTrigger value="seo">SEO</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="details">
-            <CollectionForm collection={collection} onManageTours={() => setTab('tours')} />
-          </TabsContent>
-
-          <TabsContent value="tours">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
-                  Tours
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <CollectionToursManager collectionId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="translations">
-            <CollectionTranslationForm collectionId={id} collectionName={collection.name} />
-          </TabsContent>
-
-          <TabsContent value="page-content">
-            <CollectionPageContentForm collectionId={id} />
-          </TabsContent>
-
-          <TabsContent value="faqs">
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
-                  FAQs
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <FaqManager basePath="/collections" entityId={id} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="seo">
-            <CollectionSeoTab collection={collection} />
-          </TabsContent>
-        </Tabs>
+        <EntityTabs
+          basePath={`/collections/${id}/edit`}
+          initialTab={initialTab}
+          aliases={{ translations: 'page-content' }}
+          tabs={[
+            {
+              value: 'details',
+              label: 'Details',
+              content: (
+                <CollectionForm
+                  collection={collection}
+                  onManageTours={() => goToTab('tours')}
+                />
+              ),
+            },
+            {
+              value: 'tours',
+              label: 'Tours',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">Tours</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <CollectionToursManager collectionId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'page-content',
+              label: 'Page Content',
+              content: (
+                <div className="space-y-6">
+                  <EnglishContentEditor type="collection" id={id} />
+                  <CollectionPageContentForm collectionId={id} />
+                </div>
+              ),
+            },
+            {
+              value: 'faqs',
+              label: 'FAQs',
+              content: (
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">FAQs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <FaqManager basePath="/collections" entityId={id} />
+                  </CardContent>
+                </Card>
+              ),
+            },
+            {
+              value: 'seo',
+              label: 'SEO',
+              content: <CollectionSeoTab collection={collection} />,
+            },
+          ]}
+        />
       </div>
     </CollectionDetailShell>
   );

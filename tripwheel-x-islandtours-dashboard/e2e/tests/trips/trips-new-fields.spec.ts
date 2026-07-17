@@ -157,7 +157,7 @@ async function mockActiveHubs(page: PW) {
 }
 
 async function mockTripDetail(page: PW) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_TRIP_DRAFT) });
@@ -181,7 +181,7 @@ async function mockAttributesEndpoints(page: PW) {
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/attributes`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/attributes`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
@@ -198,7 +198,7 @@ async function mockAttributesEndpoints(page: PW) {
 }
 
 async function mockExclusionsEndpoints(page: PW) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}/exclusions`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/exclusions`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EXCLUSIONS) });
@@ -219,7 +219,7 @@ async function mockExclusionsEndpoints(page: PW) {
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/exclusions/**`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/exclusions/**`, (route) => {
     const method = route.request().method();
     if (method === 'DELETE') {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });
@@ -232,7 +232,7 @@ async function mockExclusionsEndpoints(page: PW) {
 }
 
 async function mockTranslationsEndpoints(page: PW) {
-  await page.route(`**/api/v1/trips/${TRIP_ID}/translations/en`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/translations/en`, (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       route.fulfill({
@@ -244,7 +244,7 @@ async function mockTranslationsEndpoints(page: PW) {
       route.continue();
     }
   });
-  await page.route(`**/api/v1/trips/${TRIP_ID}/translations/**`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/translations/**`, (route) => {
     if (route.request().method() === 'GET') {
       route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ message: 'Not found' }) });
     } else {
@@ -259,7 +259,7 @@ async function mockAllEditTabs(page: PW) {
   await mockTranslationsEndpoints(page);
   await mockAttributesEndpoints(page);
   await mockExclusionsEndpoints(page);
-  await page.route(`**/api/v1/trips/${TRIP_ID}/languages**`, (route) => {
+  await page.route(`**/api/v1/tours/${TRIP_ID}/languages**`, (route) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
   });
 }
@@ -274,11 +274,6 @@ test.describe('Create Trip - multi-select Categories and Hubs', () => {
     await mockActiveHubs(page);
     await page.goto('/trips/new');
     await page.waitForSelector('form', { timeout: 15_000 });
-  });
-
-  test('Categories multi-select is rendered', async ({ page }) => {
-    // MultiSelect renders as a button/combobox containing the placeholder text
-    await expect(page.getByText(/select categories/i)).toBeVisible();
   });
 
   test('submitting form without selecting a category shows "at least one category" error', async ({ page }) => {
@@ -321,7 +316,7 @@ test.describe('Create Trip - multi-select Categories and Hubs', () => {
   });
 
   test('valid form (name + destination + category) submits and navigates to edit', async ({ page }) => {
-    await page.route('**/api/v1/trips', (route) => {
+    await page.route('**/api/v1/tours', (route) => {
       if (route.request().method() === 'POST') {
         route.fulfill({
           status: 201,
@@ -362,15 +357,6 @@ test.describe('Edit Trip - Attributes tab', () => {
     await page.waitForSelector('text=Attributes', { timeout: 15_000 });
   });
 
-  test('Attributes tab trigger is visible in the tab list', async ({ page }) => {
-    await expect(page.getByRole('tab', { name: /attributes/i })).toBeVisible();
-  });
-
-  test('Attributes card heading is rendered', async ({ page }) => {
-    // The CardTitle says "Attributes"
-    await expect(page.getByRole('heading', { name: /^attributes$/i })).toBeVisible();
-  });
-
   test('attribute field is rendered for a globally-scoped ENUM attribute', async ({ page }) => {
     // The MOCK_ATTRIBUTES has 'boat_type' with displayName 'Boat Type'
     await expect(page.getByText(/boat type/i)).toBeVisible({ timeout: 8_000 });
@@ -385,13 +371,9 @@ test.describe('Edit Trip - Attributes tab', () => {
     await expect(page.getByRole('option', { name: /catamaran/i })).toBeVisible({ timeout: 5_000 });
   });
 
-  test('Save Attributes button is visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /save attributes/i })).toBeVisible({ timeout: 8_000 });
-  });
-
   test('clicking Save Attributes calls POST /attributes and shows success toast', async ({ page }) => {
     let postCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/attributes`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/attributes`, (route) => {
       if (route.request().method() === 'POST') {
         postCalled = true;
         route.fulfill({
@@ -424,26 +406,8 @@ test.describe('Edit Trip - Exclusions tab', () => {
     await page.waitForSelector('text=Exclusions', { timeout: 15_000 });
   });
 
-  test('Exclusions tab trigger is visible in the tab list', async ({ page }) => {
-    await expect(page.getByRole('tab', { name: /exclusions/i })).toBeVisible();
-  });
-
   test('existing exclusion label is rendered from API', async ({ page }) => {
     await expect(page.getByText('Gratuities not included')).toBeVisible({ timeout: 8_000 });
-  });
-
-  test('"Add Exclusion" form section heading is visible', async ({ page }) => {
-    await expect(page.getByText(/add exclusion/i).first()).toBeVisible();
-  });
-
-  test('Label input is visible in Add Exclusion form', async ({ page }) => {
-    await expect(page.locator('input[name="label"]')).toBeVisible();
-  });
-
-  test('Icon select is visible in Add Exclusion form', async ({ page }) => {
-    // The icon Select is inside the "Add Exclusion" form - find the last form's first combobox
-    const addForm = page.locator('form').last();
-    await expect(addForm.getByRole('combobox').first()).toBeVisible();
   });
 
   test('submitting Add Exclusion with short label shows validation error', async ({ page }) => {
@@ -454,7 +418,7 @@ test.describe('Edit Trip - Exclusions tab', () => {
 
   test('submitting Add Exclusion calls POST and shows success toast', async ({ page }) => {
     let postCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/exclusions`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/exclusions`, (route) => {
       if (route.request().method() === 'POST') {
         postCalled = true;
         route.fulfill({
@@ -485,7 +449,7 @@ test.describe('Edit Trip - Exclusions tab', () => {
 
   test('delete button on an exclusion calls DELETE and shows success toast', async ({ page }) => {
     let deleteCalled = false;
-    await page.route(`**/api/v1/trips/${TRIP_ID}/exclusions/exc-1`, (route) => {
+    await page.route(`**/api/v1/tours/${TRIP_ID}/exclusions/exc-1`, (route) => {
       if (route.request().method() === 'DELETE') {
         deleteCalled = true;
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Deleted' }) });

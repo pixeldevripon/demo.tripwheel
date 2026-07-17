@@ -1,4 +1,6 @@
-export type Locale = 'en' | 'es' | 'nl' | 'pt' | 'fr' | 'de' | 'zh';
+import type { Currency, Locale } from '@/types/locale';
+
+export type { Currency, Locale } from '@/types/locale';
 
 /** All supported locales - order matches the backend `Locale` enum. */
 export const ALL_LOCALES: Locale[] = ['en', 'es', 'nl', 'pt', 'fr', 'de', 'zh'];
@@ -28,9 +30,7 @@ export const LOCALE_NATIVE_LABELS: Record<Locale, string> = {
   zh: '中文',
 };
 
-/** Supported display currencies. */
-export type Currency = 'EUR' | 'USD';
-
+/** Supported display currencies: see types/locale.ts. */
 /** All selectable currencies - order matches the footer currency switcher. */
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 

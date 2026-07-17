@@ -105,26 +105,26 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
           <HugeiconsIcon
             size={16}
             className={cn(
-              'text-gray-600 dark:text-gray-400 transition-transform duration-200',
+              'text-content-muted transition-transform duration-200',
               open && 'rotate-180'
             )}
             icon={ArrowDown01Icon}
           />
         </div>
         {open && (
-          <div className='absolute right-[-10px] w-64 bg-background dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden text-xs mt-2'>
+          <div className='absolute right-[-10px] w-64 bg-surface-overlay border border-line rounded-xl shadow-xl z-50 overflow-hidden text-xs mt-2'>
             {/* Tail pointing to avatar */}
-            <div className='absolute -top-2 right-6 w-4 h-4 bg-background dark:bg-gray-900 border-l border-t border-gray-200 dark:border-gray-700 rotate-45 z-[-1]'></div>
+            <div className='absolute -top-2 right-6 w-4 h-4 bg-surface-overlay border-l border-t border-line rotate-45 z-[-1]'></div>
 
             <div className='p-4'>
-              <p className='font-semibold text-gray-900 dark:text-gray-100'>
+              <p className='font-semibold text-content'>
                 {loggedInUser?.name ? loggedInUser.name : 'You'}
               </p>
-              <p className='text-gray-500 dark:text-gray-400 text-xs'>
+              <p className='text-content-muted text-xs'>
                 {loggedInUser?.email}
               </p>
             </div>
-            <div className='divide-y divide-gray-200 dark:divide-gray-700'>
+            <div className='divide-y divide-line'>
               <div className='py-1'>
                 <DropdownItem
                   icon={
@@ -141,7 +141,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
                   onClick={() => handleItemClick('viewProfile')}
                 />
                 <Link
-                  className='flex bg-primary/10 text-primary justify-between items-center w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-left'
+                  className='flex bg-primary/10 text-primary justify-between items-center w-full px-4 py-2 hover:bg-surface-inset transition text-left'
                   onClick={() => handleItemClick('home')}
                   href={`/`}
                   target='_blank'
@@ -153,7 +153,7 @@ export default function ProfileDropdown({ loggedInUser, className }: ProfileDrop
                     />
                     Go to Site
                   </div>
-                  <span className='text-xs text-gray-400 dark:text-gray-500 font-mono'>
+                  <span className='text-xs text-content-subtle font-mono'>
                     ⌘ + H
                   </span>
                 </Link>
@@ -199,12 +199,12 @@ function DropdownItem({
   linkTo,
 }: DropdownItemProps) {
   const className = cn(
-    'flex justify-between items-center cursor-pointer w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-left',
+    'flex justify-between items-center cursor-pointer w-full px-4 py-2 hover:bg-surface-inset transition text-left',
     active
-      ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
+      ? 'bg-primary-subtle text-primary-subtle-content'
       : red
-        ? 'text-red-600 dark:text-red-400'
-        : 'text-gray-700 dark:text-gray-300'
+        ? 'text-danger-fg'
+        : 'text-content-muted'
   );
 
   const content = (
@@ -214,7 +214,7 @@ function DropdownItem({
         <span>{label}</span>
       </div>
       {shortcut && (
-        <span className='text-xs text-gray-400 dark:text-gray-500 font-mono'>
+        <span className='text-xs text-content-subtle font-mono'>
           {shortcut}
         </span>
       )}

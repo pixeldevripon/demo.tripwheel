@@ -1,20 +1,19 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowDown01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ChevronDownIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CollapsibleCard } from '@/components/common/collapsible-card';
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -104,14 +103,14 @@ function LanguagesCard({ tripId }: { tripId: string }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Guide Languages
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">
         {/* Insight panel */}
         <div className="border border-border bg-muted/40 px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider">What this does</p>
+          <p className="text-xs font-semibold">What this does</p>
           <ul className="space-y-1.5 text-xs text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="mt-0.5 size-1.5 rounded-full bg-primary shrink-0" />
@@ -129,12 +128,12 @@ function LanguagesCard({ tripId }: { tripId: string }) {
         </div>
 
         {isLoading ? (
-          <Skeleton className="h-8 w-48 rounded-none" />
+          <Skeleton className="h-8 w-48 rounded-md" />
         ) : (languages?.length ?? 0) > 0 ? (
           <div className="flex flex-wrap gap-2">
             {languages!.map((lang) => (
               <Badge key={lang.id} variant="secondary" className="gap-1.5 pr-1">
-                <span className="uppercase">{lang.language}</span>
+                <span className="">{lang.language}</span>
                 <button
                   type="button"
                   onClick={() => handleDelete(lang.id, lang.language)}
@@ -142,7 +141,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
                   className="rounded-sm hover:bg-foreground/10 p-0.5 transition-colors"
                   aria-label={`Remove ${lang.language}`}
                 >
-                  <XIcon className="size-3" />
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                 </button>
               </Badge>
             ))}
@@ -154,7 +153,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
         <div className="flex items-end gap-2 pt-2 border-t">
           {showCustom ? (
             <Field className="flex-1">
-              <Label className="text-xs font-semibold uppercase">ISO 639-1 Code</Label>
+              <Label>ISO 639-1 Code</Label>
               <Input
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value)}
@@ -165,7 +164,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
             </Field>
           ) : (
             <Field className="flex-1">
-              <Label className="text-xs font-semibold uppercase">Language</Label>
+              <Label>Language</Label>
               <Select value={selected} onValueChange={setSelected}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select language..." />
@@ -375,11 +374,14 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
     setValue,
     control,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<DetailsFormValues>({
     resolver: zodResolver(detailsSchema) as unknown as Resolver<DetailsFormValues>,
     defaultValues: tripToDefaults(trip),
   });
+
+  // Native leave-page prompt while the form is dirty (Phase 18).
+  useUnsavedGuard(isDirty);
 
   useEffect(() => {
     reset(tripToDefaults(trip));
@@ -463,385 +465,385 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
         },
         onError: (err) => {
           toast.error(err instanceof Error ? err.message : 'Failed to update trip.');
-        },
-      }
-    );
-  }
+ },
+ }
+ );
+ }
 
-  return (
-    <div className="space-y-6">
-    <Card>
-      <CardHeader className="border-b pb-8">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Core Details</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-8">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Slug</Label>
-              <Input
-                {...register('slug')}
-                placeholder="e.g. sunset-catamaran-cruise"
-                aria-invalid={!!errors.slug}
-              />
-              <FieldDescription>
-                Renaming the slug issues an automatic 301 redirect; the old slug is reserved for a
-                90-day cooldown before it can be reused.
-              </FieldDescription>
-              <FieldError>{errors.slug?.message}</FieldError>
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Destination</Label>
-              <Input
-                value={trip.destinationName ?? trip.destinationId}
-                readOnly
-                className="opacity-60 cursor-not-allowed"
-              />
-              <FieldDescription>Destination cannot be changed after creation.</FieldDescription>
-            </Field>
-          </div>
+ return (
+ <div className="space-y-6">
+ <Card>
+ <CardHeader className="border-b pb-8">
+ <CardTitle className="text-lg font-semibold ">Core Details</CardTitle>
+ </CardHeader>
+ <CardContent className="pt-8">
+ <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Slug</Label>
+ <Input
+ {...register('slug')}
+ placeholder="e.g. sunset-catamaran-cruise"
+ aria-invalid={!!errors.slug}
+ />
+ <FieldDescription>
+ Renaming the slug issues an automatic 301 redirect; the old slug is reserved for a
+ 90-day cooldown before it can be reused.
+ </FieldDescription>
+ <FieldError>{errors.slug?.message}</FieldError>
+ </Field>
+ <Field>
+ <Label>Destination</Label>
+ <Input
+ value={trip.destinationName ?? trip.destinationId}
+ readOnly
+ className="opacity-60 cursor-not-allowed"
+ />
+ <FieldDescription>Destination cannot be changed after creation.</FieldDescription>
+ </Field>
+ </div>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              {...register('name')}
-              placeholder="e.g. Sunset Catamaran Cruise"
-              aria-invalid={!!errors.name}
-            />
-            <FieldError>{errors.name?.message}</FieldError>
-          </Field>
+ <Field>
+ <Label>
+ Name <span className="text-destructive">*</span>
+ </Label>
+ <Input
+ {...register('name')}
+ placeholder="e.g. Sunset Catamaran Cruise"
+ aria-invalid={!!errors.name}
+ />
+ <FieldError>{errors.name?.message}</FieldError>
+ </Field>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">
-              Categories <span className="text-destructive">*</span>
-            </Label>
-            <Controller
-              name="categoryIds"
-              control={control}
-              render={({ field }) => (
-                <MultiSelect
-                  options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select categories…"
-                  searchPlaceholder="Search categories…"
-                  primaryValue={primaryCategoryId || null}
-                  onPrimaryChange={(v) => setValue('primaryCategoryId', v)}
-                />
-              )}
-            />
-            <FieldDescription>
-              The starred category is the primary (breadcrumb &amp; canonical URL).
-            </FieldDescription>
-            <FieldError>{errors.categoryIds?.message}</FieldError>
-          </Field>
+ <Field>
+ <Label>
+ Categories <span className="text-destructive">*</span>
+ </Label>
+ <Controller
+ name="categoryIds"
+ control={control}
+ render={({ field }) => (
+ <MultiSelect
+ options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
+ value={field.value}
+ onChange={field.onChange}
+ placeholder="Select categories…"
+ searchPlaceholder="Search categories…"
+ primaryValue={primaryCategoryId || null}
+ onPrimaryChange={(v) => setValue('primaryCategoryId', v)}
+ />
+ )}
+ />
+ <FieldDescription>
+ The starred category is the primary (breadcrumb &amp; canonical URL).
+ </FieldDescription>
+ <FieldError>{errors.categoryIds?.message}</FieldError>
+ </Field>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Activity Hubs</Label>
-            <Controller
-              name="hubIds"
-              control={control}
-              render={({ field }) => (
-                <MultiSelect
-                  options={(hubs ?? []).map((h) => ({ value: h.id, label: h.name }))}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select hubs…"
-                  searchPlaceholder="Search hubs…"
-                />
-              )}
-            />
-            <FieldDescription>
-              Optional discovery tags (0–n). A hub must allow one of the trip&apos;s categories.
-            </FieldDescription>
-          </Field>
+ <Field>
+ <Label>Activity Hubs</Label>
+ <Controller
+ name="hubIds"
+ control={control}
+ render={({ field }) => (
+ <MultiSelect
+ options={(hubs ?? []).map((h) => ({ value: h.id, label: h.name }))}
+ value={field.value}
+ onChange={field.onChange}
+ placeholder="Select hubs…"
+ searchPlaceholder="Search hubs…"
+ />
+ )}
+ />
+ <FieldDescription>
+ Optional discovery tags (0–n). A hub must allow one of the trip&apos;s categories.
+ </FieldDescription>
+ </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Duration From (minutes)</Label>
-              <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
-              {durationHint(Number(durationFromWatch)) && (
-                <FieldDescription>
-                  Shows on cards as &ldquo;{durationHint(Number(durationFromWatch))}&rdquo;.
-                </FieldDescription>
-              )}
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Duration To (minutes)</Label>
-              <Input {...register('durationMinutesTo')} type="number" min={1} placeholder="Optional" />
-              <FieldDescription>Leave empty for a fixed duration.</FieldDescription>
-            </Field>
-          </div>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Duration From (minutes)</Label>
+ <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
+ {durationHint(Number(durationFromWatch)) && (
+ <FieldDescription>
+ Shows on cards as &ldquo;{durationHint(Number(durationFromWatch))}&rdquo;.
+ </FieldDescription>
+ )}
+ </Field>
+ <Field>
+ <Label>Duration To (minutes)</Label>
+ <Input {...register('durationMinutesTo')} type="number" min={1} placeholder="Optional" />
+ <FieldDescription>Leave empty for a fixed duration.</FieldDescription>
+ </Field>
+ </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Pickup Model</Label>
-              <Controller
-                name="pickupModel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">None</SelectItem>
-                      <SelectItem value="INCLUDED">Included</SelectItem>
-                      <SelectItem value="PAID_ADDON">Paid add-on</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Booking Type</Label>
-              <Controller
-                name="bookingType"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PRIVATE">Private</SelectItem>
-                      <SelectItem value="SHARED">Shared</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-          </div>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Pickup Model</Label>
+ <Controller
+ name="pickupModel"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="NONE">None</SelectItem>
+ <SelectItem value="INCLUDED">Included</SelectItem>
+ <SelectItem value="PAID_ADDON">Paid add-on</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ <Field>
+ <Label>Booking Type</Label>
+ <Controller
+ name="bookingType"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue placeholder="Select..." />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="PRIVATE">Private</SelectItem>
+ <SelectItem value="SHARED">Shared</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Payment Model</Label>
-              <Controller
-                name="paymentModel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OPERATOR_LINK">Operator link (deposit)</SelectItem>
-                      <SelectItem value="ON_ARRIVAL">Pay on arrival</SelectItem>
-                      <SelectItem value="PAID_IN_FULL">Paid in full</SelectItem>
-                   {/*    <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem> */}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Cancellation Window</Label>
-              <Controller
-                name="cancellationHours"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="24">24 hours</SelectItem>
-                      <SelectItem value="48">48 hours</SelectItem>
-                      <SelectItem value="72">72 hours</SelectItem>
-                      <SelectItem value="168">7 days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-          </div>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Payment Model</Label>
+ <Controller
+ name="paymentModel"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="OPERATOR_LINK">Operator link (deposit)</SelectItem>
+ <SelectItem value="ON_ARRIVAL">Pay on arrival</SelectItem>
+ <SelectItem value="PAID_IN_FULL">Paid in full</SelectItem>
+ {/* <SelectItem value="OPERATOR_FULL">Operator-managed (full)</SelectItem> */}
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ <Field>
+ <Label>Cancellation Window</Label>
+ <Controller
+ name="cancellationHours"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="24">24 hours</SelectItem>
+ <SelectItem value="48">48 hours</SelectItem>
+ <SelectItem value="72">72 hours</SelectItem>
+ <SelectItem value="168">7 days</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ </div>
 
-          {/* Only ON_ARRIVAL tours collect on site, so this is meaningless on any
-              other model. It picks between the two on_arrival confirmation-email
-              variants, and each booking snapshots it at reserve - editing it never
-              rewrites what an existing traveler was already told. */}
-          {watchedPaymentModel === 'ON_ARRIVAL' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label className="text-xs font-semibold uppercase">
-                  On-arrival Payment
-                </Label>
-                <Controller
-                  name="onArrivalPayment"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CARD_OR_CASH">Card or cash</SelectItem>
-                        <SelectItem value="CASH_ONLY">Cash only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Cash only tells travellers to bring the balance in cash, since there
-                  is no card machine or ATM on site.
-                </p>
-              </Field>
-            </div>
-          )}
+ {/* Only ON_ARRIVAL tours collect on site, so this is meaningless on any
+ other model. It picks between the two on_arrival confirmation-email
+ variants, and each booking snapshots it at reserve - editing it never
+ rewrites what an existing traveler was already told. */}
+ {watchedPaymentModel ==='ON_ARRIVAL'&& (
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>
+ On-arrival Payment
+ </Label>
+ <Controller
+ name="onArrivalPayment"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="CARD_OR_CASH">Card or cash</SelectItem>
+ <SelectItem value="CASH_ONLY">Cash only</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ <p className="text-xs text-muted-foreground mt-1">
+ Cash only tells travellers to bring the balance in cash, since there
+ is no card machine or ATM on site.
+ </p>
+ </Field>
+ </div>
+ )}
 
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="instantConfirmation"
-                checked={instantConfirmation}
-                onCheckedChange={(c) => setValue('instantConfirmation', !!c)}
-              />
-              <Label htmlFor="instantConfirmation" className="text-xs font-semibold uppercase cursor-pointer">
-                Instant confirmation
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="pickupRequired"
-                checked={pickupRequired}
-                onCheckedChange={(c) => setValue('pickupRequired', !!c)}
-              />
-              <Label htmlFor="pickupRequired" className="text-xs font-semibold uppercase cursor-pointer">
-                Pickup required
-              </Label>
-            </div>
-          </div>
+ <div className="flex flex-col gap-3">
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="instantConfirmation"
+ checked={instantConfirmation}
+ onCheckedChange={(c) => setValue('instantConfirmation', !!c)}
+ />
+ <Label htmlFor="instantConfirmation" className="cursor-pointer">
+ Instant confirmation
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="pickupRequired"
+ checked={pickupRequired}
+ onCheckedChange={(c) => setValue('pickupRequired', !!c)}
+ />
+ <Label htmlFor="pickupRequired" className="cursor-pointer">
+ Pickup required
+ </Label>
+ </div>
+ </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Min Party Size</Label>
-              <Input {...register('minPartySize')} type="number" min={1} />
-            </Field>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Min Party Size</Label>
+ <Input {...register('minPartySize')} type="number" min={1} />
+ </Field>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Max Party Size</Label>
-              <Input {...register('maxPartySize')} type="number" min={1} placeholder="Optional" />
-            </Field>
-          </div>
+ <Field>
+ <Label>Max Party Size</Label>
+ <Input {...register('maxPartySize')} type="number" min={1} placeholder="Optional" />
+ </Field>
+ </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Booking Cutoff (minutes)</Label>
-              <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
-              <FieldDescription>How long before departure bookings close.</FieldDescription>
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Check-in Before (minutes)</Label>
-              <Input {...register('checkInMinutesBefore')} type="number" min={0} max={240} placeholder="e.g. 30" />
-              <FieldDescription>How early travelers should arrive.</FieldDescription>
-            </Field>
-          </div>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Booking Cutoff (minutes)</Label>
+ <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
+ <FieldDescription>How long before departure bookings close.</FieldDescription>
+ </Field>
+ <Field>
+ <Label>Check-in Before (minutes)</Label>
+ <Input {...register('checkInMinutesBefore')} type="number" min={0} max={240} placeholder="e.g. 30" />
+ <FieldDescription>How early travelers should arrive.</FieldDescription>
+ </Field>
+ </div>
 
-          {/* Meeting point */}
-          <div className="grid grid-cols-3 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Departure City</Label>
-              <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meeting Lat</Label>
-              <Input {...register('meetingPointLat')} placeholder="e.g. 12.1091" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Meeting Lng</Label>
-              <Input {...register('meetingPointLng')} placeholder="e.g. -68.9316" />
-            </Field>
-          </div>
+ {/* Meeting point */}
+ <div className="grid grid-cols-3 gap-4">
+ <Field>
+ <Label>Departure City</Label>
+ <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
+ </Field>
+ <Field>
+ <Label>Meeting Lat</Label>
+ <Input {...register('meetingPointLat')} placeholder="e.g. 12.1091" />
+ </Field>
+ <Field>
+ <Label>Meeting Lng</Label>
+ <Input {...register('meetingPointLng')} placeholder="e.g. -68.9316" />
+ </Field>
+ </div>
 
-          {/* Audience */}
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Minimum Age</Label>
-              <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
-            </Field>
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Fitness Level</Label>
-              <Controller
-                name="fitnessLevel"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EASY">Easy</SelectItem>
-                      <SelectItem value="MODERATE">Moderate</SelectItem>
-                      <SelectItem value="CHALLENGING">Challenging</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-          </div>
+ {/* Audience */}
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Minimum Age</Label>
+ <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
+ </Field>
+ <Field>
+ <Label>Fitness Level</Label>
+ <Controller
+ name="fitnessLevel"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue placeholder="Select..." />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="EASY">Easy</SelectItem>
+ <SelectItem value="MODERATE">Moderate</SelectItem>
+ <SelectItem value="CHALLENGING">Challenging</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="weatherDependent"
-                checked={weatherDependent}
-                onCheckedChange={(c) => setValue('weatherDependent', !!c)}
-              />
-              <Label htmlFor="weatherDependent" className="text-xs font-semibold uppercase cursor-pointer">
-                Weather dependent
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="wheelchairAccessible"
-                checked={wheelchairAccessible}
-                onCheckedChange={(c) => setValue('wheelchairAccessible', !!c)}
-              />
-              <Label htmlFor="wheelchairAccessible" className="text-xs font-semibold uppercase cursor-pointer">
-                Wheelchair accessible
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="familyFriendly"
-                checked={familyFriendly}
-                onCheckedChange={(c) => setValue('familyFriendly', !!c)}
-              />
-              <Label htmlFor="familyFriendly" className="text-xs font-semibold uppercase cursor-pointer">
-                Family friendly
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="suitableForBeginners"
-                checked={suitableForBeginners}
-                onCheckedChange={(c) => setValue('suitableForBeginners', !!c)}
-              />
-              <Label htmlFor="suitableForBeginners" className="text-xs font-semibold uppercase cursor-pointer">
-                Suitable for beginners
-              </Label>
-            </div>
-          </div>
+ <div className="grid grid-cols-2 gap-3">
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="weatherDependent"
+ checked={weatherDependent}
+ onCheckedChange={(c) => setValue('weatherDependent', !!c)}
+ />
+ <Label htmlFor="weatherDependent" className="cursor-pointer">
+ Weather dependent
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="wheelchairAccessible"
+ checked={wheelchairAccessible}
+ onCheckedChange={(c) => setValue('wheelchairAccessible', !!c)}
+ />
+ <Label htmlFor="wheelchairAccessible" className="cursor-pointer">
+ Wheelchair accessible
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="familyFriendly"
+ checked={familyFriendly}
+ onCheckedChange={(c) => setValue('familyFriendly', !!c)}
+ />
+ <Label htmlFor="familyFriendly" className="cursor-pointer">
+ Family friendly
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="suitableForBeginners"
+ checked={suitableForBeginners}
+ onCheckedChange={(c) => setValue('suitableForBeginners', !!c)}
+ />
+ <Label htmlFor="suitableForBeginners" className="cursor-pointer">
+ Suitable for beginners
+ </Label>
+ </div>
+ </div>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
-            <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
-            <FieldDescription>
-              English-only heading tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
-            </FieldDescription>
-          </Field>
+ <Field>
+ <Label>H1 Override <span className="normal-case font-normal text-muted-foreground">(English only)</span></Label>
+ <Input {...register('h1Override')} placeholder="e.g. Mambo Beach Snorkel Tour" />
+ <FieldDescription>
+ English-only heading tweak. Use when the auto-generated H1 reads awkwardly. Does not affect translated pages - those use the Display Title from the Translations tab.
+ </FieldDescription>
+ </Field>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
-            <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
-            <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
-          </Field>
+ <Field>
+ <Label>Breadcrumb Label</Label>
+ <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
+ <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
+ </Field>
 
-          <Field>
-            <Label className="text-xs font-semibold uppercase">External Reference</Label>
-            <Input {...register('reference')} placeholder="Your own product code / OCTO id" />
+ <Field>
+ <Label>External Reference</Label>
+ <Input {...register('reference')} placeholder="Your own product code / OCTO id" />
             <FieldDescription>Optional. Your external system&apos;s identifier for this product.</FieldDescription>
           </Field>
 
@@ -851,210 +853,190 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
                 id="isActive"
                 checked={isActiveValue}
                 onCheckedChange={(checked) => setValue('isActive', !!checked)}
-              />
-              <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
-                Active
-              </Label>
-            </div>
-            <FieldDescription>Inactive trips are hidden from the public site.</FieldDescription>
-          </Field>
+ />
+ <Label htmlFor="isActive" className="cursor-pointer">
+ Active
+ </Label>
+ </div>
+ <FieldDescription>Inactive trips are hidden from the public site.</FieldDescription>
+ </Field>
 
-          <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+ <div className="flex justify-end pt-2">
+ <Button type="submit" disabled={isPending}>
+ {isPending ?'Saving...' : 'Save Changes'}
+ </Button>
+ </div>
+ </form>
+ </CardContent>
+ </Card>
 
-    <LanguagesCard tripId={trip.id} />
+ <LanguagesCard tripId={trip.id} />
 
-    {/* OCTO & Delivery: advanced integration fields, low priority for now.
-        Collapsed by default; edits still save through the same form. */}
-    <Collapsible>
-      <Card className="gap-0 py-0">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="group/octo flex w-full items-center justify-between gap-2 px-8 py-6 text-left"
-          >
-            <span className="font-heading text-lg font-semibold uppercase tracking-wider">
-              OCTO &amp; Delivery
-            </span>
-            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/octo:rotate-180" />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-t">
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Availability Type</Label>
-                <Controller
-                  name="availabilityType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="START_TIME">Start time</SelectItem>
-                        <SelectItem value="OPENING_HOURS">Opening hours</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Redemption Method</Label>
-                <Controller
-                  name="redemptionMethod"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DIGITAL">Digital</SelectItem>
-                        <SelectItem value="PRINT">Print</SelectItem>
-                        <SelectItem value="MANIFEST">Manifest</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            </div>
+ {/* OCTO & Delivery: advanced integration fields, low priority for now.
+ Collapsed by default; edits still save through the same form. */}
+ <CollapsibleCard title='OCTO & Delivery'>
+ <div className='space-y-6'>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label>Availability Type</Label>
+ <Controller
+ name="availabilityType"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="START_TIME">Start time</SelectItem>
+ <SelectItem value="OPENING_HOURS">Opening hours</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ <Field>
+ <Label>Redemption Method</Label>
+ <Controller
+ name="redemptionMethod"
+ control={control}
+ render={({ field }) => (
+ <Select value={field.value} onValueChange={field.onChange}>
+ <SelectTrigger>
+ <SelectValue />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="DIGITAL">Digital</SelectItem>
+ <SelectItem value="PRINT">Print</SelectItem>
+ <SelectItem value="MANIFEST">Manifest</SelectItem>
+ </SelectContent>
+ </Select>
+ )}
+ />
+ </Field>
+ </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="instantDelivery"
-                  checked={instantDelivery}
-                  onCheckedChange={(c) => setValue('instantDelivery', !!c)}
-                />
-                <Label htmlFor="instantDelivery" className="text-xs font-semibold uppercase cursor-pointer">
-                  Instant delivery
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="availabilityRequired"
-                  checked={availabilityRequired}
-                  onCheckedChange={(c) => setValue('availabilityRequired', !!c)}
-                />
-                <Label htmlFor="availabilityRequired" className="text-xs font-semibold uppercase cursor-pointer">
-                  Availability required
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="allowFreesale"
-                  checked={allowFreesale}
-                  onCheckedChange={(c) => setValue('allowFreesale', !!c)}
-                />
-                <Label htmlFor="allowFreesale" className="text-xs font-semibold uppercase cursor-pointer">
-                  Allow freesale
-                </Label>
-              </div>
-            </div>
+ <div className="grid grid-cols-2 gap-3">
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="instantDelivery"
+ checked={instantDelivery}
+ onCheckedChange={(c) => setValue('instantDelivery', !!c)}
+ />
+ <Label htmlFor="instantDelivery" className="cursor-pointer">
+ Instant delivery
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="availabilityRequired"
+ checked={availabilityRequired}
+ onCheckedChange={(c) => setValue('availabilityRequired', !!c)}
+ />
+ <Label htmlFor="availabilityRequired" className="cursor-pointer">
+ Availability required
+ </Label>
+ </div>
+ <div className="flex items-center gap-2">
+ <Checkbox
+ id="allowFreesale"
+ checked={allowFreesale}
+ onCheckedChange={(c) => setValue('allowFreesale', !!c)}
+ />
+ <Label htmlFor="allowFreesale" className="cursor-pointer">
+ Allow freesale
+ </Label>
+ </div>
+ </div>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Delivery Formats</Label>
-              <Controller
-                name="deliveryFormats"
-                control={control}
-                render={({ field }) => (
-                  <div className="flex flex-wrap gap-4 pt-1">
-                    {DELIVERY_FORMAT_OPTIONS.map((opt) => {
-                      const checked = field.value.includes(opt.value);
-                      return (
-                        <div key={opt.value} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`deliveryFormat-${opt.value}`}
-                            checked={checked}
-                            onCheckedChange={(c) =>
-                              field.onChange(
-                                c
-                                  ? [...field.value, opt.value]
-                                  : field.value.filter((v) => v !== opt.value)
-                              )
-                            }
-                          />
-                          <Label
-                            htmlFor={`deliveryFormat-${opt.value}`}
-                            className="text-xs font-semibold uppercase cursor-pointer"
-                          >
-                            {opt.label}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-            </Field>
+ <Field>
+ <Label>Delivery Formats</Label>
+ <Controller
+ name="deliveryFormats"
+ control={control}
+ render={({ field }) => (
+ <div className="flex flex-wrap gap-4 pt-1">
+ {DELIVERY_FORMAT_OPTIONS.map((opt) => {
+ const checked = field.value.includes(opt.value);
+ return (
+ <div key={opt.value} className="flex items-center gap-2">
+ <Checkbox
+ id={`deliveryFormat-${opt.value}`}
+ checked={checked}
+ onCheckedChange={(c) =>
+ field.onChange(
+ c
+ ? [...field.value, opt.value]
+ : field.value.filter((v) => v !== opt.value)
+ )
+ }
+ />
+ <Label
+ htmlFor={`deliveryFormat-${opt.value}`}
+ className="cursor-pointer"
+ >
+ {opt.label}
+ </Label>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ />
+ </Field>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Delivery Methods</Label>
-              <Controller
-                name="deliveryMethods"
-                control={control}
-                render={({ field }) => (
-                  <div className="flex flex-wrap gap-4 pt-1">
-                    {DELIVERY_METHOD_OPTIONS.map((opt) => {
-                      const checked = field.value.includes(opt.value);
-                      return (
-                        <div key={opt.value} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`deliveryMethod-${opt.value}`}
-                            checked={checked}
-                            onCheckedChange={(c) =>
-                              field.onChange(
-                                c
-                                  ? [...field.value, opt.value]
-                                  : field.value.filter((v) => v !== opt.value)
-                              )
-                            }
-                          />
-                          <Label
-                            htmlFor={`deliveryMethod-${opt.value}`}
-                            className="text-xs font-semibold uppercase cursor-pointer"
-                          >
-                            {opt.label}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-            </Field>
+ <Field>
+ <Label>Delivery Methods</Label>
+ <Controller
+ name="deliveryMethods"
+ control={control}
+ render={({ field }) => (
+ <div className="flex flex-wrap gap-4 pt-1">
+ {DELIVERY_METHOD_OPTIONS.map((opt) => {
+ const checked = field.value.includes(opt.value);
+ return (
+ <div key={opt.value} className="flex items-center gap-2">
+ <Checkbox
+ id={`deliveryMethod-${opt.value}`}
+ checked={checked}
+ onCheckedChange={(c) =>
+ field.onChange(
+ c
+ ? [...field.value, opt.value]
+ : field.value.filter((v) => v !== opt.value)
+ )
+ }
+ />
+ <Label
+ htmlFor={`deliveryMethod-${opt.value}`}
+ className="cursor-pointer"
+ >
+ {opt.label}
+ </Label>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ />
+ </Field>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Time Zone</Label>
-              <Input value={trip.timeZone ?? ''} readOnly disabled placeholder="Derived from destination" />
-              <FieldDescription>Derived from the destination and used for all schedule, departure, and booking local times. Not editable here.</FieldDescription>
-            </Field>
+ <Field>
+ <Label>Time Zone</Label>
+ <Input value={trip.timeZone ??''} readOnly disabled placeholder="Derived from destination" />
+ <FieldDescription>Derived from the destination and used for all schedule, departure, and booking local times. Not editable here.</FieldDescription>
+ </Field>
 
-            <Field>
-              <Label className="text-xs font-semibold uppercase">Start Times</Label>
-              <FieldDescription>
-                Managed on the <span className="font-medium">Schedules</span> tab,
-                where they are declared alongside the recurring schedules that use
-                them.
-              </FieldDescription>
-            </Field>
-          </CardContent>
-          <div className="flex justify-end px-8 pb-8">
-            <Button type="button" onClick={handleSubmit(onSubmit)} disabled={isPending}>
-              {isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+ <Field>
+ <Label>Start Times</Label>
+ <FieldDescription>
+ Managed on the <span className="font-medium">Schedules</span> tab,
+ where they are declared alongside the recurring schedules that use
+ them.
+ </FieldDescription>
+ </Field>
+ </div>
+ </CollapsibleCard>
     </div>
   );
 }
