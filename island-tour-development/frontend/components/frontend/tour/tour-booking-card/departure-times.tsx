@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useBooking } from '@/hooks/tours/use-booking';
-import { springPop } from '@/lib/motion';
+import { springPop, swapFade } from '@/lib/motion';
 import { Collapse } from './collapse';
 import { formatTime } from './lib/booking.utils';
 
@@ -27,17 +27,32 @@ export function DepartureTimes() {
     return (
         <Collapse
             open={selectedDate != null && (slotsLoading || slots.length > 0)}>
+            {/* pt-2 = the stack gap, kept INSIDE the collapse so it animates
+                with the height tween (an outer flex gap would snap in). */}
             {slotsLoading ? (
-                <div className='grid grid-cols-3 gap-2'>
+                <motion.div
+                    key='loading'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={swapFade}
+                    className='grid grid-cols-3 gap-2 pt-2'>
                     {[0, 1, 2].map(i => (
                         <div
                             key={i}
-                            className='h-[52px] animate-pulse rounded-[8px] bg-it-border'
+                            // Same height as a real time chip (py-2 + time +
+                            // note lines + border), so resolving slots never
+                            // jolts the card.
+                            className='h-[74px] animate-pulse rounded-[8px] bg-it-border'
                         />
                     ))}
-                </div>
+                </motion.div>
             ) : (
-                <div className='grid grid-cols-3 gap-2'>
+                <motion.div
+                    key='slots'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={swapFade}
+                    className='grid grid-cols-3 gap-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
                         const soldOut = slot.status === 'sold_out';
@@ -82,7 +97,7 @@ export function DepartureTimes() {
                             </motion.button>
                         );
                     })}
-                </div>
+                </motion.div>
             )}
         </Collapse>
     );

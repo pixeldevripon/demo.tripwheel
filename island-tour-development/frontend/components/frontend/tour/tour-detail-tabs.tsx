@@ -28,27 +28,47 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     const scrollRef = useDragScroll<HTMLDivElement>();
     const [active, setActive] = useState(tabs[0]?.id ?? '');
     const reduce = useReducedMotion();
+    // True while a click-triggered scroll animates: the spy stays quiet so the
+    // underline glides straight to the clicked tab instead of hopping through
+    // every section the scroll passes.
+    const spyLocked = useRef(false);
 
-    // Scrollspy: the active tab is the last section whose top has passed the bar.
+    // Scrollspy: the active tab is the last section whose top has passed the
+    // bar. rAF-throttled (one measurement per frame) so fast scrolling stays
+    // smooth, and suspended while a programmatic scroll is in flight.
     useEffect(() => {
+        let frame = 0;
         const onScroll = () => {
-            const line = (barRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
-            let current = '';
-            for (const t of tabs) {
-                const el = document.getElementById(t.id);
-                if (el && el.getBoundingClientRect().top <= line) current = t.id;
-            }
-            if (current) setActive(current);
+            if (spyLocked.current || frame) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                const line =
+                    (barRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
+                let current = '';
+                for (const t of tabs) {
+                    const el = document.getElementById(t.id);
+                    if (el && el.getBoundingClientRect().top <= line)
+                        current = t.id;
+                }
+                if (current) setActive(current);
+            });
         };
         window.addEventListener('scroll', onScroll, { passive: true });
         onScroll();
-        return () => window.removeEventListener('scroll', onScroll);
+        return () => {
+            window.removeEventListener('scroll', onScroll);
+            if (frame) cancelAnimationFrame(frame);
+        };
     }, [tabs]);
 
-    const goTo = (id: string) => {
+    const goTo = async (id: string) => {
+        // The clicked tab activates immediately (one clean underline glide via
+        // the shared layoutId); the spy unlocks once the scroll settles.
         setActive(id);
+        spyLocked.current = true;
         const offset = (barRef.current?.offsetHeight ?? 0) + 96;
-        smoothScrollToId(id, offset, !!reduce);
+        await smoothScrollToId(id, offset, !!reduce);
+        spyLocked.current = false;
     };
 
     return (

@@ -1,4 +1,3 @@
-import { HubTripsPanelSkeleton } from '@/components/frontend/skeletons/hub-trips-panel-skeleton';
 import {
     getDestinationBySlug,
     getDestinationCategories,
@@ -30,9 +29,8 @@ import type {
 } from '@/types/hub';
 import type { SearchHit } from '@/types/search';
 import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
-import { Suspense } from 'react';
 import { FaqSection } from '../faq-section';
+import { MountReveal } from '../mount-reveal';
 import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
 import {
     HubAlsoWorthSection,
@@ -65,9 +63,11 @@ import { HubWhySection } from './hub-why-section';
  * tours are the private charters; `per_person` are the shared trips). A hub only
  * renders when PUBLISHED + active (render returns null otherwise -> notFound()).
  *
- * PPR: the cached render feeds a prerendered shell; the tours-dependent trips
- * section streams inside a Suspense boundary with a mirroring skeleton (same
- * pattern as the category page).
+ * Rendering: the whole page (shell + trips) resolves in ONE pass behind the
+ * entity route's loading.tsx skeleton, then mounts with a single smooth fade.
+ * The trips block deliberately has NO Suspense hole of its own - a second
+ * skeleton after the entity skeleton read as a double-load, and the cached
+ * listing resolved so fast the fallback just flashed.
  */
 
 // ── Mappers: render/listing payload -> presentational card shapes ──────────────
@@ -595,6 +595,9 @@ export async function HubPage({
 
     return (
         <HubDateProvider>
+            {/* Pure fade (no lift - the hero's own MountReveal already lifts its
+                heading) so the skeleton -> page swap is smooth, never a snap. */}
+            <MountReveal yOffset={0} duration={0.4}>
             <ToursBreadcrumb
                 locale={locale}
                 destinationName={destinationName}
@@ -624,18 +627,19 @@ export async function HubPage({
                 />
             )}
 
-            {/* Trips + charters split is the only tours-dependent block: stream it
-                with a mirroring skeleton (compare/discover panels inside reuse the
-                already-cached render, passed through). */}
-            <Suspense fallback={<HubTripsPanelSkeleton />}>
-                <HubTripsData
-                    render={render}
-                    destinationId={destination.id}
-                    destinationSlug={destinationSlug}
-                    locale={locale}
-                    dict={dict}
-                />
-            </Suspense>
+            {/* Trips + charters render in the SAME pass as the shell (no Suspense
+                hole): this route already sits behind the entity loading.tsx
+                skeleton, and a second streamed skeleton here made the load read
+                as "skeleton twice" + a flash when the cached listing resolved
+                instantly. One cached fetch is not worth that. */}
+            <HubTripsData
+                render={render}
+                destinationId={destination.id}
+                destinationSlug={destinationSlug}
+                locale={locale}
+                currency={currency}
+                dict={dict}
+            />
 
             <HubFirstTimersSection
                 dict={{
@@ -651,12 +655,14 @@ export async function HubPage({
                 locale={locale}
                 destinationSlug={destinationSlug}
             />
+            </MountReveal>
         </HubDateProvider>
     );
 }
 
 /**
- * Streamed trips/charters block. Fetches the hub-filtered tour listing and
+ * Trips/charters block (same render pass as the shell). Fetches the
+ * hub-filtered tour listing and
  * partitions it by pricing model (master 8215/11667): `per_person` -> shared
  * trips grid, `unit` -> private charters. Compare + Discover panels come from the
  * already-resolved render payload (passed in), so this makes exactly one fetch.
@@ -666,21 +672,17 @@ async function HubTripsData({
     destinationId,
     destinationSlug,
     locale,
+    currency,
     dict,
 }: {
     render: HubRender;
     destinationId: string;
     destinationSlug: string;
     locale: Locale;
+    /** Shopper currency, already resolved by HubPage - no second await here. */
+    currency: Currency;
     dict: Dictionary;
 }) {
-    // Force this into a request-time dynamic hole so the cached hub shell ships
-    // first and the trips/charters block streams behind its skeleton. The hub
-    // route is on-demand (not prerendered), and trips is a separate fetch from the
-    // hub render, so shell-first streaming is the right call here (mirrors the
-    // tour-detail page). The loader itself stays cached, so the stream is fast.
-    await connection();
-    const currency = await getServerCurrency(locale);
     const toursRes = await getDestinationTours({
         destinationId,
         hubId: render.id,

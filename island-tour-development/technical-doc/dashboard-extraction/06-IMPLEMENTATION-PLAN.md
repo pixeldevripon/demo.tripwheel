@@ -19,11 +19,23 @@
 | 6 · Base path -> `/` | B | **done** | `313d291` (dashboard, pushed) |
 | 7 · Cache revalidation | B | **done** | `631ac56` (dashboard) + `6c65d0d` (monorepo) |
 | 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
-| 9 · Parity + cutover | B | **next** | - |
-| 10-23 | C/D/E | not started | - |
+| 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
+| **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
+| **10 · Lint rules** | **C** | **DONE** - 8 rules as `warn`, 428 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
+| **11 · Token system** | **C** | **DONE** - gate GREEN (34 checks x2 modes); it caught 2 defects in the spec's own palette | `fdb0294` (dashboard, `ui-fix`) |
+| **12 · StatusBadge** | **C** | **DONE** - zero palette classes repo-wide; 5 conventions deleted (audit counted 4) | `9418b29` (dashboard, `ui-fix`) |
+| **13 · Fonts, icons, primitives** | **C** | **DONE** - Playfair dropped (user), hugeicons KEPT (user), B-4 fixed, buttons de-shouted | `aa91c02` (dashboard, `ui-fix`) |
+| **14 · Command palette + IA** | **C/D** | **DONE** + de-shout follow-up `a1a6e04` (uppercase dies outside micro-labels, user screenshot) | `64a4835` (dashboard, `ui-fix`) |
+| **15 · DataTable** | **D** | **DONE** - 11/11 forks converted (spec counted 10); URL-synced state; 3,552 -> 2,524 LOC incl. the new system | `17a1fd5` + 5 commits (dashboard, `ui-fix`) |
+| **16 · Tours: create + readiness** | **D** | **NEXT** | - |
+
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
-action, not a code task. **Phase 9 does not have to wait for it** - see that phase.
+action, not a code task. **Phase 9 did not wait for it** - see that phase.
+
+**Phase 9 found no regression.** 171/171 component files clean; all 227 e2e tests behave
+identically on both dashboards. What remains is not verification of the *move* - it is the visual
+sign-off only a human can give, plus checks #2/#9 which need the deployed origin.
 
 The spec set was written before any of this ran. Docs `00`, `01`, `03`, `04`, `05` are unexecuted
 analysis and still stand as written. `02` and `02B` carry executed corrections inline. `02C` is a
@@ -466,9 +478,9 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 
 **Objective** Deployed to a staging subdomain.
 
-**Files** ~~`Dockerfile`, `.dockerignore`~~ (Vercel — see EXECUTED below), `.env.local.example`, `.env.production.example`, `next.config.ts` (~~`output: 'standalone'`~~ — removed), `package.json` + `playwright.config.ts` (port 3001)
+**Files** ~~`Dockerfile`, `.dockerignore`~~ (Vercel - see EXECUTED below), `.env.local.example`, `.env.production.example`, `next.config.ts` (~~`output: 'standalone'`~~ - removed), `package.json` + `playwright.config.ts` (port 3001)
 
-**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.islandtours.esenc.cloud` (interim topology — `.tripwheel.io` is the *target*, and was wrong here), `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` and `http://localhost:3001`.
+**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.islandtours.esenc.cloud` (interim topology - `.tripwheel.io` is the *target*, and was wrong here), `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` and `http://localhost:3001`.
 
 **Dependencies** Phases 5-7
 
@@ -478,11 +490,11 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 
 **Rollback** Staging only.
 
-> **EXECUTED 2026-07-17 — with one approved deviation and five corrections.**
+> **EXECUTED 2026-07-17 - with one approved deviation and five corrections.**
 >
 > **DEVIATION (your call, asked before any code was written): Vercel, not Docker.**
 > The phase as written had the dashboard containerised while its sibling public app
-> deploys to Vercel — `docker-compose.yml` says so outright ("the frontend is NOT
+> deploys to Vercel - `docker-compose.yml` says so outright ("the frontend is NOT
 > here"). You chose Vercel for both. Consequences:
 > - **No `Dockerfile`, no `.dockerignore`.** They were never created.
 > - **`output: 'standalone'` REMOVED** from `next.config.ts`. Phase 5 added it *for*
@@ -491,14 +503,14 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 >   own pipeline and ignores it. Verified against the Next docs, and the build no
 >   longer emits `.next/standalone`. The config now carries a comment saying why it
 >   is absent, so it is not "helpfully" restored later.
-> - The `NEXT_PUBLIC_*`-as-build-ARG hazard that made Docker risky here is moot —
+> - The `NEXT_PUBLIC_*`-as-build-ARG hazard that made Docker risky here is moot -
 >   Vercel handles build-time inlining. It is still true that changing a
 >   `NEXT_PUBLIC_*` in Vercel needs a **redeploy**, not a restart.
 >
 > **1. `COOKIE_DOMAIN` is `.islandtours.esenc.cloud`, NOT `.tripwheel.io`.** This
 > line was stale: `02` §7 already had it right and calls it "unchanged, already the
 > default". `.tripwheel.io` is the *target* topology, not the interim one in force.
-> Same error in `02` §11 check 9 — **corrected there too.** Shipping the value as
+> Same error in `02` §11 check 9 - **corrected there too.** Shipping the value as
 > written would have caused the exact login loop this phase lists as its own risk.
 >
 > **2. `CORS_ORIGINS` is `https://dashboard.islandtours.esenc.cloud`** for the same
@@ -506,18 +518,18 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > Better Auth `trustedOrigins` as well as CORS, so a miss rejects sign-in, not just
 > fetches.
 >
-> **3. PORT COLLISION — a real defect the split introduced, fixed here.** The repo
+> **3. PORT COLLISION - a real defect the split introduced, fixed here.** The repo
 > contradicted itself: `playwright.config.ts` ran `pnpm dev` and tested
 > `localhost:3000`, while `.env.local.example` pointed `REVALIDATE_TARGET_URL` at
 > `localhost:3000` as the **public site**. Both cannot own 3000. Worse,
 > `reuseExistingServer: true` meant Playwright would silently attach to a running
 > public site and run the dashboard suite against the wrong app. **The dashboard is
 > now pinned to 3001** (`pnpm dev`/`start`, Playwright, README, env example), and
-> the backend's dev `CORS_ORIGINS` lists `http://localhost:3001` — without which
+> the backend's dev `CORS_ORIGINS` lists `http://localhost:3001` - without which
 > every dashboard API call is CORS-blocked locally, since they run in the browser
 > with credentials.
 >
-> **4. `NEXT_PUBLIC_SITE_URL` (in `02` §7's table) is a ghost — no code reads it.**
+> **4. `NEXT_PUBLIC_SITE_URL` (in `02` §7's table) is a ghost - no code reads it.**
 > The dashboard reads exactly seven vars: `NEXT_PUBLIC_BACKEND_URL`,
 > `INTERNAL_API_SECRET`, `COOKIE_DOMAIN`, `REVALIDATE_TARGET_URL`,
 > `REVALIDATE_SECRET`, `NEXT_PUBLIC_OPEN_WEATHER_API_KEY`,
@@ -530,7 +542,7 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > false.** The comment claimed "media uploads post large payloads through Server
 > Actions... load-bearing rather than a leftover." They do not: `mediaApi.upload`
 > goes browser → backend directly via `apiFetch` and never traverses Next. **No
-> Server Action in the app takes a file** — the five that exist all carry small
+> Server Action in the app takes a file** - the five that exist all carry small
 > JSON. On Vercel the setting is also unenforceable: the platform caps function
 > request bodies at **4.5 MB** and returns 413 `FUNCTION_PAYLOAD_TOO_LARGE` before
 > Next is reached. **The setting was left in place** (deleting app config is not a
@@ -538,8 +550,8 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > a later phase.**
 >
 > **VALIDATION IS ONLY PARTLY MET.** `pnpm build` is green, routes serve at the
-> root, and no `.next/standalone` is emitted. The rest of the stated validation —
-> "loads, authenticates, lists tours **on staging**" — needs the Vercel project and
+> root, and no `.next/standalone` is emitted. The rest of the stated validation -
+> "loads, authenticates, lists tours **on staging**" - needs the Vercel project and
 > DNS, which are yours to create. **Phase 9 parity stays blocked until that is
 > done**, and so does Stage D.
 
@@ -663,18 +675,135 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > - **5s prefill races** ("Display Name is pre-filled from API").
 > - **30s hard timeouts** (the categories icon-picker popover).
 >
-> **Caveat on the counts:** the two runs above overlapped and every non-intercepted spec hit the
-> same backend and the same demo rows from both sides at once. The 5-test gap is within that noise.
-> A clean, uncontended re-run of the new suite is being diffed name-by-name against the old 102 -
-> **result below.**
+> **The counts above are contaminated** - those two runs overlapped, and every non-intercepted spec
+> hit the same backend and the same demo rows from both sides at once. So the new suite was re-run
+> **clean and uncontended** (106 failed / 121 passed, 29.3m) and diffed **name-by-name** against
+> the old 102. Test names embed their routes, so `/dashboard/x` was normalised to `/x` first -
+> without that, every test reads as different.
+>
+> ### THE VERDICT: 102 of 106 failures are identical, name for name
+>
+> | | Count |
+> |---|---|
+> | Failures **identical on both sides** | **102** |
+> | Failing **only in old** | **0** |
+> | Failing **only in new** | **4** |
+>
+> The four that differed were each re-run **in isolation against BOTH dashboards**:
+>
+> | Test | New | Old |
+> |---|---|---|
+> | `categories` > shows validation error when form is submitted empty | fail | **fail** |
+> | `destinations` > navigates to create page when Add Destination is clicked | fail | **fail** |
+> | `destinations` > shows validation error when form is submitted empty | fail | **fail** |
+> | `trips` > ARCHIVED trip row-actions does not show Edit Details navigation | fail | **fail** |
+>
+> ### **ZERO REGRESSIONS. All 227 tests behave identically on both sides.**
+>
+> **The four were an artifact of DATABASE RESIDUE, not of the extraction.** Note the inversion:
+> in the *full old-suite run* they **passed**; run standalone they **fail on old too**. Their
+> outcome depends on what earlier tests left in the database, so two full runs that start from
+> different residue disagree - and ours did, because a killed run and the user's run had already
+> mutated rows before the old suite started. Point them at either app and the behaviour is the same.
+>
+> **This is why the diff had to be name-level and the outliers re-run individually.** A count
+> (102 vs 106) would have read as "4 regressions"; a full-suite re-run would have reshuffled the
+> residue and produced a *different* four. Only isolation holds the variable still.
+>
+> **It also indicts the suite, not the app:** a test whose result depends on its predecessors
+> cannot answer "did this change break anything", which is the only question a suite exists to
+> answer. Isolation is a prerequisite for the trim (and for `workers > 1`, which is unsafe until
+> then - these specs share rows).
+
+---
+
+## Phase 9B · E2E suite trim - **PARTIAL** (`2ac049c`, dashboard branch `ui-fix`)
+
+**Objective** A suite that can answer "did this change break anything". It cannot today.
+
+**Rationale** Phase 9 found the suite **~45% red on BOTH dashboards** - it is measuring its own
+decay, not the extraction. Stage C starts changing markup; a suite this red cannot tell you whether
+the redesign broke something, and **the dashboard repo has no CI at all**. This is its only net.
+
+**User decision (2026-07-17):** keep behaviour/contract tests, cut presence-only. **Not by
+red/green** - those are anti-correlated here. The green tests are mostly the worthless ones
+("Key input is rendered"); the red ones are mostly the contracts ("confirming deactivation calls
+DELETE"). Cutting by colour would have deleted everything worth having.
+
+**The keep/delete rule:** *would this test still pass if the feature were broken?*
+
+### DONE
+
+**1. Deleted 55 presence-only tests. 227 -> 172.** tsc clean; 172 collect.
+**23 were rescued** despite presence-shaped names, because they fail when something real breaks:
+data binding (`renders rows from the API`), conditional rules (`Allowed Values appears when Data
+Type is ENUM`), defaults (`Collection Type defaults to MANUAL`), dependency rules (`Hubs
+multi-select disabled until destination chosen`), and the category-slug collision warning.
+A regex classified; **a human eye rescued.** Do not re-run the regex and trust it.
+
+**2. THE MOCKS ADDRESSED AN API THAT DOES NOT EXIST.** Tests route `**/api/v1/trips/*`; the app
+calls `/api/v1/tours/*` (`lib/api/trips.ts`). Every mock missed -> every request hit the real
+backend -> `trip-uuid-1` is not there -> the page renders **"Trip not found"** -> `beforeEach`
+waits 15s for a form that never comes. **That is the entire ~17s signature across the Edit Trip
+block - 38 failures, one cause.** Also corrected: `/tours/my-tours` (not `my-trips`), and
+**schedules live at `/availability/schedules?tourId=`**, not under the tour - so a blind
+`trips`->`tours` replace would have been wrong.
+
+### PARKED - the trips fixtures are archaeological (~1 day)
+
+With the mocks matching, the app now crashes on the fixture:
+`TypeError: Cannot read properties of undefined (reading '0')` at `tripToDefaults`
+(`trip-details-tab.tsx:309`, `trip.categoryIds[0]`).
+
+`MOCK_TRIP_DRAFT` has **35 keys against a `TripListItem` of ~60**, and it predates **four**
+migrations:
+
+| Fixture says | App expects |
+|---|---|
+| `categoryId: 'cat-1'` | `categoryIds: string[]` + `primaryCategoryId` (1+ categories, one primary) |
+| `hubId: null` | `hubIds: string[]` |
+| `durationMinutes: 180` | `durationMinutesFrom` / `durationMinutesTo` |
+| `featuredSlotNumber`, `featuredSlotStatus` | **the slot economy is REMOVED** - `tierKey`/`tierRank`/`commissionTier` (CLAUDE.md rule 6) |
+| - | the whole OCTO block: `timeZone`, `availabilityType`, `deliveryFormats`, `redemptionMethod`, ... |
+
+**These tests have been asserting against a schema that no longer exists, on both dashboards, for
+a long time.** That is why they are red on both - and why Phase 9 was right to treat the suite as
+evidence rather than a gate.
+
+**Do NOT "fix" the app to tolerate the fixture.** `trip.categoryIds[0]` crashing on a malformed
+trip is fine: the real API always sends the field. The fixture is what is wrong.
+
+### Still undiagnosed (~41 failures, likely the cheap ones)
+
+collections 12 · attributes 11 · categories 9 · destinations 5 · hubs 4. Expected to be the
+fragile page-wide locators (`getByRole('button').filter({has: svg}).last()`,
+`getByText(/snake_case/i)` matching help text AND the error) and 5s prefill races. **Not verified.**
+
+### Deliberately NOT done: isolation
+
+`workers: 1, fullyParallel: false` stays. Phase 9 proved why it must: **four tests changed verdict
+purely from database residue** left by earlier tests. Isolation is what makes `workers: 4` safe
+(~172 tests would run in ~2-3 min vs today's ~19-29). It is the expensive half and it is owed.
+
+**Validation** tsc clean · 172 collect · `grep "api/v1/trips" e2e/` -> zero.
+
+**Rollback** Revert `2ac049c`. The deletions are the only irreversible part, and they are in git.
+
+---
 
 > **Stage B ends here. Redesign starts only when Phase 9 is green.**
+>
+> **READ THE GATE HONESTLY (2026-07-17):** Phase 9 bundles *parity proof* with *DNS cutover*.
+> **Parity is proven** - 171/171 component files clean, all 227 tests identical on both sides.
+> Cutover is deployment logistics, and the old `/dashboard/*` stays live regardless. **The gate
+> that protects the redesign is parity, and it is green.** Stage C may start while the deploy waits
+> on the user. Recorded as a deviation, user-approved.
 
 ---
 
 # Stage C - Foundation (new repo)
 
-## Phase 10 · Lint rules
+## Phase 10 · Lint rules - **DONE**
 
 **Objective** Make the old patterns un-writable.
 
@@ -692,9 +821,85 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `98aedb1` (dashboard, branch `ui-fix`)
+>
+> All 8 rules landed in `eslint.config.mjs` as `warn`. **428 warnings, 0 errors, `eslint` exits 0** (565 before the spacing scale was corrected) -
+> nothing is blocked, which was the design.
+>
+> **Zero new dependencies.** `eslint-config-next/core-web-vitals` already registers `import` and
+> `jsx-a11y` as plugins and configures the `typescript` resolver, so their rules are referenced by
+> name. Do **not** add a direct dep: under pnpm the transitive copy is not resolvable from
+> `eslint.config.mjs`, so importing the plugin yourself fails where referencing it by name works.
+>
+> | Rule | Warnings | Note |
+> |---|---|---|
+> | §8.1 palette classes | **132** | |
+> | §8.2 hex/rgb/hsl/oklch | **14** | |
+> | §8.3 inline `style` | **17** | see decision 1 |
+> | §8.4 spacing scale | **95** | was 232; scale gained `1.5`/`2.5` - see decision 2 |
+> | §8.5 arbitrary `text-[...]` | **84** | |
+> | §8.7 icon-button labels | **9** | `jsx-a11y/control-has-associated-label` |
+> | D1 `lib/` -/-> `components/` | **0** | |
+> | D2 `types/` imports only `types/` | **10** | |
+> | D3 module -/-> module | **18** | |
+> | D4 hook domain -/-> hook domain | **2** | exactly the two `05` predicted |
+> | D5 no public-site import | **0** | isolation holds |
+>
+> **Every rule was proved to fire before being trusted.** A regex selector that fails to parse
+> reports zero and looks identical to a clean codebase - the same "missing reads as clean" failure
+> that produced two wrong parity claims in Phase 9. A synthetic probe asserted each rule against
+> both positive and negative cases, then was deleted. The negative cases matter most: `bg-primary`,
+> `href="#"`, `top-5 w-5 duration-500 grid-cols-5`, and `p-0.5 gap-1 mt-2 px-4 m-8 space-y-12` are
+> all correctly **not** flagged. The spacing regex needs a trailing `(?![\d.])` rather than `\b` -
+> with `\b`, `p-1.5` matches the allowed `1` and silently passes.
+>
+> **Counts in the spec were occurrence-based and low.** Actual occurrences: palette **207** (spec
+> 187), arbitrary text **95** (spec 55), inline style **23** (spec 24). ESLint reports per *node*,
+> so one string literal holding three palette classes is one warning - that is why 207 occurrences
+> read as 132 warnings. Both numbers are correct; they count different things.
+>
+> **D1 and D5 are genuinely 0, verified not assumed.** `05` names `lib/tours/listing.ts` as the D1
+> offender. `lib/tours/` exists in this repo but holds only `derive-badge.ts` and `signals.ts` -
+> `listing.ts` is a public-site file that was never carried over. The extraction fixed D1 as a side
+> effect. Checked the directory exists first: a `grep` over a missing path returns nothing and reads
+> exactly like a clean result.
+>
+> #### Two decisions this phase surfaced - both belong to Phase 11
+>
+> **1. `03 §8.3`'s inline-style allowlist ("TanStack column sizing") is too narrow.** Of 17 warnings,
+> ~12 are runtime-computed values - `style={{ width: `${pct}%` }}`, `transform: translateX(...)`,
+> `height: `${item.height}px`` - which **no class or token can express**. The 11 `*-table.tsx` files
+> each carry exactly one `header.getSize()`, so that part of the spec was right. Implemented as
+> written (allowlist lifts *only* the inline-style rule for `*-table.tsx` + `ui/chart.tsx`; every
+> color/spacing/type rule still applies there). **Recommendation for the Phase 20 error-flip:**
+> narrow the selector to `JSXAttribute[name.name='style'] Property[value.type='Literal']`, which
+> flags the actual abuse (a hardcoded static value) and permits computed values. Rule §8.2 already
+> catches colors inside `style` independently, so nothing is lost.
+>
+> **2. The spacing scale was missing a step the codebase actually uses. RESOLVED - user added `1.5`
+> and `2.5` to the scale (2026-07-17), before Phase 11 opened.** `1.5` (6px) appears **128 times** -
+> the third most-used spacing value in the entire codebase, ahead of `8`. With `2.5` (47) that was
+> 175 of the 291 violating occurrences, ~60%. Not drift; a scale missing a step it needs.
+> **Rule §8.4 fell from 232 warnings to 95; the repo total fell 565 -> 428.** What remains (`5`,
+> `3.5`, `10`, `7`, `9`) is real drift. `03 §8` amended, `SPACING` in `eslint.config.mjs` amended,
+> and the rule's message updated to recite the new scale - a stale message is a rule that lies.
+> **Phase 11 must mint `--spacing-*` tokens matching this exact scale:** the regex and the tokens
+> are one decision expressed twice.
+>
+> #### Worklist the warnings define (for Stage D)
+>
+> - **D3 is mostly one misfiling.** 13 of 18 are `components/media/` (6 importers) and
+> `components/faq/` (4) - de-facto shared components living in module folders. `05 §D3`'s own remedy
+> applies: move to `components/common/`. The genuine cross-module reach is
+> `locals-favourites/ -> trips/` (2).
+> - **D2's 10 are all one cause**: `types/*` importing `Locale`/`Currency` from
+> `lib/constants/locales`. Those types have no home in `types/`. Move them.
+> - **D4's 2 are one cause**: `tripKeys` is a shared query-key factory living inside `hooks/trips/`.
+> Lift to `lib/`.
+
 ---
 
-## Phase 11 · Token system
+## Phase 11 · Token system - **DONE**
 
 **Objective** The new design system exists.
 
@@ -704,6 +909,15 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Dependencies** Phase 10
 
+> **Phase 10 handed this phase two open decisions - resolve them here, they are cheap now and
+> expensive later** (full reasoning in Phase 10's EXECUTED block):
+> 1. **Spacing scale: RESOLVED before this phase opened.** The user added `1.5` (6px) and `2.5`
+>    (10px); `03 §8` and `eslint.config.mjs` are already amended. **This phase must mint
+>    `--spacing-*` tokens for exactly `0.5,1,1.5,2,2.5,3,4,6,8,12,16`** - the `SPACING` regex and the
+>    tokens are one decision expressed twice, and they must not drift apart.
+> 2. **Inline style**: ~12 runtime-computed values cannot become tokens. Recommendation is to narrow
+>    the selector at Phase 20 rather than annotate 12 files with disable comments.
+
 **Risks**
 - **The contrast gate (03 §9) is a merge gate, not a follow-up.** Shipping a palette because its lightness values look right is exactly how the current dark mode happened.
 - Old tokens must alias to new ones for one phase, or every screen breaks at once.
@@ -712,9 +926,78 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `fdb0294` (dashboard, branch `ui-fix`)
+>
+> `app/globals.css` rewritten to `03` §3. **Build green, tsc clean, lint 0 errors.**
+> **The gate is now a runnable check, not a one-off: `pnpm gate:contrast`** (`scripts/contrast-gate.mjs`,
+> oklch -> oklab -> linear sRGB -> WCAG luminance, plus Viénot dichromacy simulation). It exits
+> non-zero on failure, so Phase 20 can wire it into CI. **34 checks pass in both modes, plus 4
+> dichromacy checks.**
+>
+> #### The gate came back RED on the first run and caught two real defects in the spec's own palette
+>
+> This is the whole reason §9 exists. Both fixes were surfaced and **user-approved** before any
+> deviation.
+>
+> **1. `--content-subtle` was unfixable as specified.** §3 maps it to `n-500` in **both** modes, but
+> light needs `L <= 0.556` for 4.5:1 on `n-25` and dark needs `L >= 0.567` for 4.5:1 on `n-1000`.
+> **The windows do not overlap - no single value exists.** Measured: light `n-500` = **4.10:1 FAIL**.
+> Every other content token already differs by mode (`content` n-900/n-50, `content-muted`
+> n-600/n-400); only `--content-subtle` was left shared, which reads as an oversight rather than a
+> tuning miss. **Fix:** added `--color-n-550` (`oklch(0.55 0.014 250)`) for light (**4.64:1**); dark
+> keeps `n-500` (**4.75:1**). Three distinct emphasis tiers survive in both modes.
+>
+> **2. §9 check 7 is un-passable and was testing the wrong token.** `--line` on `--surface` measures
+> **1.29:1** light / **1.39:1** dark against a 3:1 target. `--line-strong` is no better (1.56 / 2.03).
+> Hitting 3:1 literally forces `L = 0.658` - **a near-black hairline around every card, table row and
+> input**. §9's own wording is ">= 3:1 **where it carries meaning**", and WCAG 1.4.11 applies only
+> where the boundary is the *only* thing identifying a control. **Fix:** `--line` / `--line-strong`
+> stay decorative with **no contrast target**; new **`--line-control`** (light `n-450` = **3.09:1**,
+> dark `oklch(0.50 0.014 250)` = **3.39:1**) covers inputs, checkboxes and select triggers. The
+> shadcn `--input` alias points at `--line-control`, so the gate governs something real instead of a
+> divider. **§9 check 7 now targets `--line-control`.**
+>
+> #### Two deliberate deviations from 03 §3
+>
+> - **Fonts stay wired to `next/font`** (Noto Sans / Playfair / JetBrains). §3 hardcodes
+> `--font-sans: 'Inter Variable'`, but **Phase 13 owns the font swap** - doing it here changes fonts
+> two phases early and outside their own validation.
+> - **No `--spacing-*` tokens.** §3 says outright *"Do not restrict here; see §8"* - v4 derives
+> spacing multiplicatively (`p-1.5` = `calc(var(--spacing) * 1.5)`, verified in the compiled output),
+> so **`eslint.config.mjs` is the only enforcement**. An earlier note in this doc claiming Phase 11
+> must mint `--spacing-*` tokens was wrong and is corrected here.
+>
+> #### Compatibility aliases - DELETE AT PHASE 20
+>
+> The risk note was right: **~2,000 call sites** still use the shadcn names (`muted` **666**,
+> `muted-foreground` **510**, `destructive` **267**, `foreground` **168**, `primary` **143**,
+> `border` **71**, `sidebar` **61**), plus **15 components reading `var(--primary)` and friends
+> directly**. Every old name now aliases onto **exactly one** new semantic token and is retired per
+> module through Stage D. They are aliases, not a second system - **giving one its own literal value
+> forks the system in place, which is the exact failure `01` documents.** `--primary`, `--sidebar`
+> and `--chart-1..5` needed no alias: the new system reuses those names.
+>
+> #### Verified along the way
+>
+> - **`@theme inline { --x: var(--x) }` is NOT defect B-5** when `:root` defines `--x`. Proved with a
+> compile probe: the emission lands in `@layer theme`, the real value is **unlayered**, and unlayered
+> outranks every layer - so no cycle forms. **B-5 breaks for a different reason**: nothing defines
+> `--shadow-2xl` at all, leaving the self-reference as the only declaration. Shadows still sidestep
+> it by sourcing from `--elevation-*`, Tailwind's own documented pattern.
+> - **`--duration-*` is not a v4 theme namespace** and generates no `duration-fast` utility
+> (`--ease-*` does). Kept as `var()`-only custom properties with a note, rather than left implying a
+> utility that will never exist.
+> - `rounded-2xl` (6 call sites) inherits Tailwind's default `--radius-2xl`; removing the token would
+> have silently rendered nothing.
+>
+> **Closed:** B-3 (`--destructive-foreground` now defined), B-5 (`--tracking-normal` defined;
+> shadows sourced from `--elevation-*`), D-3 (radius is `@theme`-only), D-5 (one hue, 250).
+> Also dropped an inherited defect: the old `--warning-foreground` was near-white on `oklch(0.769)`
+> amber and never passed contrast; it is now dark ink.
+
 ---
 
-## Phase 12 · StatusBadge
+## Phase 12 · StatusBadge - **DONE**
 
 **Objective** One status primitive, zero hand-rolled colors.
 
@@ -730,9 +1013,41 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `9418b29` (dashboard, branch `ui-fix`)
+>
+> **Acceptance exceeded.** §5.1 requires the status-hue grep over `components/` to return zero; the
+> **full** palette grep - every Tailwind hue, every property (`fill`, `ring`, `divide`, ...), over
+> `components/` AND `app/` - returns zero. Lint §8.1: **132 -> 0**. Repo total: **428 -> 295**.
+> tsc clean, build green.
+>
+> - `components/common/status-badge.tsx` - the primitive, exactly per §5.1 (triplet colors, 8px dot
+>   `size-2`, label required by the type, optional `size-3` icon).
+> - `components/common/status-maps.ts` - ONE map per domain (`BOOKING_STATUS`, `PAYMENT_STATUS`,
+>   `TRIP_STATUS`, `SCHEDULE_STATUS`, `SPOTLIGHT_STATUS`, `OPERATOR_VERIFICATION`, `ACTIVE_STATUS`).
+>   A new backend status now costs one line in one file.
+> - **The audit undercounted: there were SIX conventions, not four.** `trip-columns.tsx` kept its own
+>   full `statusVariant`/`statusLabel` pair plus an inline dot ternary, and `operator-columns.tsx`
+>   kept a `VERIFICATION_BADGE` mini-map with palette dots. All six deleted in the same commit - the
+>   R7 test passed the only way it can be.
+> - **New token: `--rating`** (star gold, both modes, decorative so no contrast target). Ratings are
+>   NOT a status - mapping star fills onto the warning quartet would render a 4.8-star tour like a
+>   warning. `fill-rating text-rating` at 5 call sites (tables, pricing, images, locals-favourites,
+>   multi-select).
+> - **Brand/dark surfaces (login, onboarding) map to the mode-independent `n-*` ramp**, not the
+>   switching tokens - their backgrounds do not flip with the dashboard theme, so `text-slate-400`
+>   became `text-n-400`, and the state blocks became the state quartets. The portal anti-phishing
+>   note also lost its `text-[#1E3A5F]` hex (a §8.2 hit).
+> - `user-profile-dropdown.tsx` lost **every `dark:` branch** - 13 dual-mode literals collapsed to
+>   single semantic classes because the tokens themselves switch. This is the D-4 payoff made
+>   visible.
+> - **§9 check 10 is now satisfiable and satisfied**: every StatusBadge variant renders dot + label
+>   structurally (the label is required by the type, the dot is unconditional).
+> - Drive-by (user report, same commit): the sidebar logo is a near-black wordmark, invisible in
+>   dark mode -> `dark:invert` on the monochrome PNG.
+
 ---
 
-## Phase 13 · Fonts, icons, primitives
+## Phase 13 · Fonts, icons, primitives - **DONE**
 
 **Objective** 5 fonts -> 2; 2 icon libraries -> 1; primitives fixed.
 
@@ -748,13 +1063,47 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `aa91c02` (dashboard, branch `ui-fix`)
+>
+> **Two user decisions reshaped the scope mid-phase:**
+> - **Playfair Display: DROPPED** (user-approved). Inter absorbs the heading role; all 69
+>   `font-heading` sites stripped, the token removed. Two families load per route.
+> - **hugeicons: KEPT** - user preference, overrides D-7. The 13 files stand; the `grep hugeicons ->
+>   zero` validation above is **waived**. lucide remains the default for NEW icons.
+>
+> **The follow-on defect the spec could not have predicted:** dropping Playfair made headings look
+> "loose and ugly" (user report, same session). Playfair is naturally tight at display sizes, so its
+> call sites carried no tracking classes - large Inter without optical tightening looks airy. **Fixed
+> at the scale, not the call sites**: `--text-lg/xl/2xl--letter-spacing` (-0.011 to -0.017em, plus
+> 3xl/4xl default overrides) ride along with the size utilities (verified in compiled output;
+> explicit `tracking-*` still wins via `--tw-tracking`).
+>
+> Also: buttons de-shouted per §5.5 (sentence case 14px; 8 sizes -> 5 with 97 call sites remapped
+> `xs->sm`/`icon-xs->icon-sm`; **solid destructive**), sidebar B-4 fixed (`hsl()` off oklch tokens),
+> `ui/toggle`, `ui/toggle-group`, `ui/breadcrumb` deleted (zero importers).
+>
+> **Spec corrections found during execution:**
+> - `badge.tsx` NOT deleted (user-approved deferral): **37 importers**, mostly non-status chips the
+>   audit never inventoried. Statuses are already banned from it. Dies at Phase 20 after Stage D.
+> - `input-otp` NOT dropped: `03 §6` calls it "public site only", but the dashboard's own 2FA screen
+>   (`login/code-input.tsx`) uses it.
+> - `chart.tsx` needed NO change: its `'#ccc'`/`'#fff'` strings are recharts **attribute selectors**
+>   that override recharts' hardcoded colors with tokens - they ARE the fix `03 §6` asks for.
+> - `vaul`/`drawer.tsx`: already absent from this repo.
+>
+> **Incident, logged honestly:** the first strip script ran `re.sub(r'  +', ' ')` over whole files
+> and flattened indentation in 55 of them (~9,400-line diff). Caught by inspecting the commit stat
+> before trusting it; repaired by restoring from the parent and redoing both transforms line-safe
+> (identical counts: 69 strips, 36+61 remaps; final diff 208/457). **Whitespace-normalizing regexes
+> never run file-wide on source code.**
+
 ---
 
 # Stage D - Redesign (new repo)
 
 > Ordered by impact/effort. Each phase is one module, one PR, independently shippable.
 
-## Phase 14 · Command palette + IA
+## Phase 14 · Command palette + IA - **DONE**
 
 **Objective** New sidebar grouping; `Cmd+K` navigation.
 
@@ -764,9 +1113,42 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Dependencies** Phase 13. **Risks** none material. **Validation** Both role IAs match 04 §1.3; palette finds tours/bookings/destinations. **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `64a4835` (dashboard, branch `ui-fix`), preceded by de-shout `a1a6e04`
+>
+> **First, the interrupt that jumped the queue:** the user screenshotted "NEW TRIP / TRIP DETAILS /
+> NAME" and called the fonts ugly. Root cause was NOT the Phase 13 font swap: **three primitives
+> forced `uppercase` + wide tracking product-wide** (`CardTitle`, `Label`, `FieldLegend/FieldLabel`)
+> plus ~350 call-site copies - under Playfair it read as an editorial masthead, under a working sans
+> it is shouting. `03 §8` rule 6 already legislated this ("uppercase only at `--text-2xs`").
+> De-shouted every primitive and call site (106 files + stragglers); converted the legitimately-micro
+> surfaces (sidebar group labels, menu/select group labels, table headers, palette headings) to the
+> permitted `text-2xs tracking-caps uppercase` pattern - table headers thereby completing `03 §6`'s
+> table.tsx retarget early. Trap for the record: a string-literal regex desyncs on apostrophes in JSX
+> prose ("Locals'"); line-scoped passes + a grep gate caught the misses.
+>
+> **Phase 14 itself:**
+> - `navigations/navigations.ts` -> `NavGroup[]`: Operate / Catalog / Curate / Configure / **Account**
+>   (a 5th group holding Settings + Profile for BOTH roles - the operator's `04 §1.3` ACCOUNT group;
+>   for admins it keeps Settings out of admin-only permission gymnastics). The old structure had
+>   nested Destinations/Hubs/Categories/Spotlight INSIDE the Trips submenu.
+> - `filterNavGroups` (rbac-utils): filters each group, then drops empty groups - headers disappear
+>   with their contents, exactly the `04 §1.3` rule.
+> - `nav-main.tsx`: flat group renderer; collapsibles, SVG curve connectors and 46px rows deleted;
+>   active = `bg-sidebar-accent` + **2px leading indicator**.
+> - **Labels say "Tours"; routes stay `/trips`** - the G-6 rename remains deferred per the open
+>   decision.
+> - `command-palette.tsx`: Cmd+K; nav commands from the SAME filtered groups as the sidebar; gated
+>   quick actions; server-side search (tours by role-appropriate hook, bookings by ref/guest,
+>   destinations client-filtered) enabled only while open with >= 2 chars.
+>   `useBookings`/`useDestinations` gained a non-breaking `enabled` param.
+> - **Badges (pending counts) deferred** to the module phases that own the counts - a badge is a
+>   promise that something needs a human, and a hardcoded one would lie.
+> - **Weather widget: still in the header, still the user's call** (`04 §1.4` recommends removal).
+> - Translations nav entry lands with its console phase, not before (a nav item without a page 404s).
+
 ---
 
-## Phase 15 · DataTable
+## Phase 15 · DataTable - **DONE**
 
 **Objective** One table system; 10 forks deleted.
 
@@ -781,6 +1163,49 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Validation** All 10 tables use it. One pagination strategy, one search, one skeleton, one empty state. `PAGE_SIZE_OPTIONS` declared once. Parity checks 12, 35, 41.
 
 **Rollback** Revert (large PR - consider one table per commit inside it).
+
+> ### EXECUTED 2026-07-17 - `a28083e`..`f9fbc0b` (dashboard, branch `ui-fix`)
+>
+> **The R7 test passed: 11/11 forks converted, zero `useReactTable` calls outside
+> `components/data-table/`, `PAGE_SIZE_OPTIONS` declared exactly once, one pagination/search/
+> skeleton/empty-state.** The audit counted 10 forks; locals-favourites made 11. Net: 3,552 fork
+> lines -> 2,524 including the entire new system. Every list-view moved to `use-table-state`
+> (URL-synced, R10) - reload, back-button and shared links restore the exact view; the twice-written
+> 500ms debounce machine is retired everywhere.
+>
+> **Spec correction:** `05 §7`'s "the three client-paginated tables move to server pagination" is
+> **infeasible without backend changes** (their endpoints return unpaged arrays), and the backend is
+> untouchable by hard constraint. DataTable supports both modes; the trio (collections, attributes,
+> spotlight) stay client-paginated behind the same UI.
+>
+> **The turn also carried a stream of user-driven design decisions, all live:**
+> - **Boxed inputs per `03 §5.2`** (user: "input fields you not designed") - underline fields died;
+>   input/textarea/select/input-group get `border-input` (= `--line-control`), radius-sm, 36px,
+>   16px font, focus ring; then Vega depth (`bg-surface-raised shadow-xs`).
+> - **Radius VALUES re-cut to shadcn "Vega"** (user decision): 8/10/12/16px on the same role
+>   mapping (sm=inputs, md=buttons, lg=cards, xl=dialogs). One token block changed; every primitive
+>   followed - the token system paying rent.
+> - **Command palette resized** (user request): `w-[92vw] max-w-2xl sm:max-w-2xl` (the `sm:` prefix
+>   is load-bearing - Dialog's base `sm:max-w-md` beats an unprefixed `max-w-2xl` in tailwind-merge),
+>   55vh list, 48px/16px input, wider header trigger.
+> - **The studio-theme saga:** the user applied a shadcn/studio dump THREE times (27 ui files,
+>   `lib/utils.ts` reduced to bare `cn` - deleting `formatDate`/`toSlug`/`formatFileSize` - fonts to
+>   Source Serif 4 + IBM Plex, colors to a blue hue-260 palette, a `--radius` calc CYCLE that
+>   collapses every radius, serif `body,p` rules). Reverted twice; on the third the user chose
+>   "studio blue done properly", the blue system was built and gate-checked GREEN - then the user
+>   saw it and made the final call: **teal stays**. Restored from HEAD (one command, because every
+>   prior state was committed). KEPT from studio: `components.json` registry style `radix-vega`.
+>   NOT kept: tabler icons (no third icon library), serif body, IBM Plex mono.
+> - **Form width standard** (user call): create forms are `max-w-6xl` with `sm:grid-cols-2`
+>   sections - the destination form is the reference; the trip form's earlier 3xl cap squeezed its
+>   grids and is reverted.
+> - Cards densified 32->24px padding; card gains its §5.6 border+shadow-xs.
+>
+> **Lesson, structural:** external theme dumps and this token system cannot coexist - the dump
+> writes literals over aliases, deletes repo utilities living in `lib/utils.ts`, and its derived
+> radius block (`--radius-sm: calc(var(--radius) * 0.6)` with `--radius: var(--radius-md)`) forms a
+> cycle that zeroes every radius. Taste changes route through the token block - the Vega re-cut was
+> ONE edit. Frequent checkpoint commits made each overwrite a one-command restore.
 
 ---
 

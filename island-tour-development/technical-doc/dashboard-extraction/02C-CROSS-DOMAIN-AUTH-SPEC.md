@@ -276,13 +276,39 @@ The caching architecture made the domain split easy as a side effect.
 |---|---|---|
 | **Backend** | `CORS_ORIGINS` += `https://island.tours` (feeds CORS **and** `trustedOrigins`) | 1 env var |
 | **Backend** | `COOKIE_DOMAIN` = `.tripwheel.io` | 1 env var |
-| **Backend** | `bearer()` plugin | **already enabled**, `auth.instance.ts:177` |
+| **Backend** | `bearer()` plugin | **already enabled**, `auth.instance.ts:177` (re-verified 2026-07-17) |
 | **Public** | `lib/auth-client.ts` - global token capture + send (4A.3) | ~10 lines |
 | **Public** | `lib/api/wishlist.ts:16` - `credentials:'include'` -> `Authorization` header | 1 line |
 | **Public** | `lib/api/categories.ts:86` - same | 1 line |
+| **Public** | **`lib/api/fetch.ts:29` - same. SEE THE CORRECTION BELOW; this row was missing.** | 1 line |
 | **Dashboard** | none - same-site with `api.tripwheel.io`, cookies + HttpOnly + `guardDashboard` unchanged | 0 |
 
-**Three files on the public site. Two env vars. Zero backend code.**
+~~**Three files on the public site.**~~ **FOUR files. Two env vars. Zero backend code.**
+
+> ### CORRECTION 2026-07-17: this table missed the checkout, and §4A.6 missed it too
+>
+> **`lib/api/fetch.ts:29` carries `credentials: 'include'`** and is imported by two **public-only**
+> API clients:
+> - **`lib/api/bookings.ts`** -> `/bookings/quote`, `POST /bookings`, `/bookings/:id`. Consumed by
+>   `checkout-form.tsx`, `checkout-processing.tsx`, `thank-you-hero-actions.tsx`,
+>   `cancel-request-card.tsx`, `lib/checkout/checkout.ts`, `lib/stores/booking-store.ts`.
+>   **This is the entire booking flow - the revenue path.**
+> - **`lib/api/availability.ts`** -> `hub-trips-panel.tsx`, `hooks/tours/use-availability-sync.ts`.
+>
+> So the public site's authenticated-cookie surface was never 2 call sites. It is **3 files
+> covering the wishlist, category personalisation, availability, AND checkout.** Migrate
+> `fetch.ts` and all of `bookings.ts`/`availability.ts` follows for free - which is the good news:
+> it is one edit, not a sweep. But **omit it and Safari users cannot complete a booking**, while
+> Chrome users can, so it will not surface in testing.
+>
+> **Why the original count was wrong, worth knowing for the next audit:** the count came from
+> grepping `credentials: 'include'` and reading the *direct* hits. `fetch.ts` is a shared helper -
+> its callers inherit the cookie without ever naming it. **Grep the helper's importers, not just
+> the literal.**
+>
+> **Do not delete `fetch.ts` reflexively.** `02` §10 step 10 removes the dashboard route group from
+> the public repo, and `fetch.ts` looks dashboard-shaped (most of its importers are dashboard API
+> clients). It is not - `bookings.ts` and `availability.ts` need it. Step 10 must keep it.
 
 ### 4A.3 The client pattern (verified against current Better Auth docs)
 
@@ -340,15 +366,21 @@ site loses its CSRF surface entirely.
 
 | Call site | Today | After |
 |---|---|---|
+| **`lib/api/fetch.ts:29`** - **THE BIG ONE, added 2026-07-17** | `credentials: 'include'` | `Authorization: Bearer` |
+| ↳ serves `lib/api/bookings.ts` -> **the whole checkout**: `checkout-form`, `checkout-processing`, `thank-you-hero-actions`, `cancel-request-card`, `lib/checkout/checkout.ts`, `lib/stores/booking-store.ts` | inherits the cookie | inherits the header |
+| ↳ serves `lib/api/availability.ts` -> `hub-trips-panel`, `use-availability-sync` | inherits the cookie | inherits the header |
 | `lib/api/wishlist.ts:16` | `credentials: 'include'` | `Authorization: Bearer` |
 | `lib/api/categories.ts:86` | `credentials: 'include'` | `Authorization: Bearer` |
 | `components/frontend/wishlist-provider.tsx:63` | `useSession()` | unchanged (client config) |
 | `components/frontend/login/auth-form.tsx` | `authClient` | unchanged (client config) |
-| `components/frontend/login/operator-forgot.tsx`, `operator-reset.tsx` | `authClient` | **moves to the dashboard** (cost 3) |
-| `app/(login)/apply`, `app/(login)/bookings` | traveler-facing | verify auth usage |
+| `components/frontend/login/operator-forgot.tsx`, `operator-reset.tsx` | `authClient` | **COPIED to the dashboard, not moved - both repos have them today (verified 2026-07-17). The PUBLIC copies must be deleted** (`02` §10 step 10). Until then an operator can reset at `island.tours`, which under this topology is the wrong origin. |
+| `app/(login)/portal`, `app/(login)/staff` | dashboard doors | **same: duplicated in both repos.** Delete from public at step 10. |
+| `app/(login)/apply`, `app/(login)/bookings` | traveler-facing | genuinely public - stay |
 | `lib/api/public/*` (SSR) | `x-internal-api-key`, server-to-server | **unaffected** |
 
 This table is the checklist. **A missed `credentials: 'include'` fails silently on Safari only.**
+The `fetch.ts` row is the proof that warning was warranted: it hid the **entire booking flow** behind
+a shared helper for the whole life of this document.
 
 ### 4A.7 On the branding split
 

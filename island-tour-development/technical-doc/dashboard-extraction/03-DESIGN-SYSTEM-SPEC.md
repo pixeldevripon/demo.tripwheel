@@ -53,7 +53,9 @@ One ramp. Light mode reads it ascending, dark mode descending. **This is the fix
 | `--n-200` | `oklch(0.90 0.007 250)` |
 | `--n-300` | `oklch(0.84 0.009 250)` |
 | `--n-400` | `oklch(0.70 0.012 250)` |
+| **`--n-450`** | **`oklch(0.65 0.012 250)`** - ADDED 2026-07-17, light `--line-control` (§9) |
 | `--n-500` | `oklch(0.58 0.014 250)` |
+| **`--n-550`** | **`oklch(0.55 0.014 250)`** - ADDED 2026-07-17, light `--content-subtle`; `n-500` measured 4.10:1 and no single value serves both modes (§9) |
 | `--n-600` | `oklch(0.48 0.014 250)` |
 | `--n-700` | `oklch(0.38 0.013 250)` |
 | `--n-800` | `oklch(0.28 0.012 250)` |
@@ -113,6 +115,11 @@ Six hues spread across the wheel so categorical series are distinguishable, with
 | `--chart-4` | `oklch(0.70 0.14 75)` | `oklch(0.80 0.14 75)` | amber |
 | `--chart-5` | `oklch(0.55 0.14 300)` | `oklch(0.70 0.14 300)` | violet |
 | `--chart-6` | `oklch(0.60 0.11 190)` | `oklch(0.74 0.11 190)` | cyan |
+
+> **ADDED 2026-07-17 (Phase 12): `--rating`** - star-rating gold, light `oklch(0.77 0.16 75)` / dark
+> `oklch(0.80 0.15 78)`. Ratings are **not a status**: mapping star fills onto the warning quartet
+> would make a 4.8-star tour render like a warning. Decorative (icon fill beside a numeric label),
+> so it carries no contrast target.
 
 **Ordering constraint:** chart-1 and chart-2 must be distinguishable under deuteranopia, since a 2-series chart is the common case. Teal/coral is chosen for that reason and **must be verified with a simulator** (§9), not assumed.
 
@@ -186,7 +193,10 @@ Tailwind v4 semantics, per current docs:
   --color-n-200:  oklch(0.90 0.007 250);
   --color-n-300:  oklch(0.84 0.009 250);
   --color-n-400:  oklch(0.70 0.012 250);
+  --color-n-450:  oklch(0.65 0.012 250);  /* ADDED 2026-07-17 - light --line-control (3.09:1) */
   --color-n-500:  oklch(0.58 0.014 250);
+  --color-n-550:  oklch(0.55 0.014 250);  /* ADDED 2026-07-17 - light --content-subtle (4.64:1);
+                                             n-500 cannot serve both modes. See §9. */
   --color-n-600:  oklch(0.48 0.014 250);
   --color-n-700:  oklch(0.38 0.013 250);
   --color-n-800:  oklch(0.28 0.012 250);
@@ -216,12 +226,13 @@ Tailwind v4 semantics, per current docs:
 
   --content:          var(--color-n-900);   /* primary text */
   --content-muted:    var(--color-n-600);   /* secondary */
-  --content-subtle:   var(--color-n-500);   /* tertiary - lowest allowed */
+  --content-subtle:   var(--color-n-550);   /* tertiary - lowest allowed. n-500 measured 4.10:1; see §9 */
   --content-inverse:  var(--color-n-0);
 
-  --line:             var(--color-n-200);   /* default border */
-  --line-strong:      var(--color-n-300);
+  --line:             var(--color-n-200);   /* default border - DECORATIVE, no contrast target */
+  --line-strong:      var(--color-n-300);   /* DECORATIVE, no contrast target */
   --line-subtle:      var(--color-n-100);
+  --line-control:     var(--color-n-450);   /* 3.09:1 - WCAG 1.4.11. Inputs/checkboxes. See §9 */
 
   --primary:            var(--color-brand-600);
   --primary-hover:      var(--color-brand-700);
@@ -285,6 +296,7 @@ Tailwind v4 semantics, per current docs:
   --line:             var(--color-n-800);
   --line-strong:      var(--color-n-700);
   --line-subtle:      var(--color-n-900);
+  --line-control:     oklch(0.50 0.014 250);  /* 3.39:1 - no ramp step clears 3:1 on n-1000 */
 
   --primary:            var(--color-brand-400);
   --primary-hover:      var(--color-brand-300);
@@ -656,13 +668,29 @@ A design system that is not lintable is a suggestion. The audit's central lesson
 | 1 | No numeric Tailwind palette classes (`bg-amber-100`, `text-emerald-700`, ...) | ESLint `no-restricted-syntax` on className regex. **Catches all 187.** |
 | 2 | No hex / `rgb()` / `hsl()` / `oklch()` in components | Same. Catches the 12 hex + the `#1a0dab` x5. |
 | 3 | No inline `style={{}}` except TanStack column sizing | ESLint with an allowlist |
-| 4 | Spacing restricted to `0.5,1,2,3,4,6,8,12,16` | ESLint regex on `(p\|px\|py\|m\|gap\|space-[xy])-` |
+| 4 | Spacing restricted to `0.5,1,`**`1.5,`**`2,`**`2.5,`**`3,4,6,8,12,16` | ESLint regex on `(p\|px\|py\|m\|gap\|space-[xy])-` |
 | 5 | No arbitrary `text-[...]` | ESLint. Catches all 55. |
 | 6 | Uppercase only at `--text-2xs` | Review |
 | 7 | Every icon-only button has `aria-label` | `eslint-plugin-jsx-a11y` |
 | 8 | Contrast gate | §9 |
 
 Rules 1-5 are mechanical and should land **with** the token system, in the same phase. A migration that introduces tokens without the lint that forbids the alternatives will regrow the 187 classes within a quarter.
+
+> **AMENDED 2026-07-17 (user decision, during 06 Phase 10): the spacing scale gains `1.5` (6px) and
+> `2.5` (10px).** The original scale was authored without measuring. `1.5` is used **128 times** -
+> the **third most-used spacing value in the codebase**, ahead of `8`. With `2.5` (47) that was ~60%
+> of all spacing violations. That is not drift to be corrected; it is a scale missing a step it
+> genuinely needs. Adding both dropped rule 4 from **232 warnings to 95**, and what remains (`5`,
+> `3.5`, `10`, `7`, `9`...) is real drift worth fixing.
+>
+> **The `SPACING` regex in `eslint.config.mjs` and the `--spacing-*` tokens in `globals.css` are the
+> same decision expressed twice - change them together or the lint stops matching the system it
+> exists to protect.**
+>
+> Rules 1-5 landed **before** the token system, not with it, as `warn` (06 Phase 10). §10 of this
+> document already ordered lint first and it was the right call: the measurement above is only
+> available *because* the lint ran first, and it corrected the scale before a single token was
+> written.
 
 ---
 
@@ -682,12 +710,37 @@ Rules 1-5 are mechanical and should land **with** the token system, in the same 
 | 4 | Every `{state}-fg` on its `{state}-subtle` | >= 4.5:1 |
 | 5 | `--primary-content` on `--primary` | >= 4.5:1 |
 | 6 | `--focus-ring` on `--surface` and on `--surface-raised` | >= 3:1 |
-| 7 | `--line` on `--surface` | >= 3:1 where it carries meaning |
+| 7 | ~~`--line` on `--surface`~~ **`--line-control` on `--surface` and `--surface-raised`** | >= 3:1 - **AMENDED, see below** |
 | 8 | All of 1-7 **in both modes** | |
 | 9 | chart-1 vs chart-2 under deuteranopia and protanopia | distinguishable in a simulator |
 | 10 | Every `StatusBadge` variant carries a **non-color** cue | WCAG 1.4.1 Level A |
 
 **Any value failing its target is adjusted here, before implementation - not after.**
+
+> ### MEASURED 2026-07-17 (06 Phase 11). The gate ran RED and caught two defects in §3's own palette.
+>
+> This section worked exactly as intended. Both fixes are user-approved and are in `globals.css` and
+> `scripts/contrast-gate.mjs` (`pnpm gate:contrast`, exits non-zero on failure).
+>
+> **1. §3's `--content-subtle` is unfixable as written - `n-500` in BOTH modes.** Light needs
+> `L <= 0.556` for 4.5:1 on `n-25`; dark needs `L >= 0.567` for 4.5:1 on `n-1000`. **The windows do
+> not overlap.** Measured light `n-500` = **4.10:1 FAIL**. Every other content token already differs
+> by mode; only this one was shared. **`--color-n-550` (`oklch(0.55 0.014 250)`) added for light
+> (4.64:1); dark keeps `n-500` (4.75:1).**
+>
+> **2. Check 7 was testing the wrong token and could not be passed.** `--line` on `--surface` is
+> **1.29:1** light / **1.39:1** dark; `--line-strong` is 1.56 / 2.03. Reaching 3:1 forces `L = 0.658`
+> - a near-black hairline around every card, row and input. This section's own qualifier ("where it
+> carries meaning") is the resolution: **WCAG 1.4.11 applies only where the boundary is the ONLY
+> thing identifying a control.** `--line` and `--line-strong` are decorative and carry **no** target.
+> New **`--line-control`** (light `--color-n-450` = **3.09:1**, dark `oklch(0.50 0.014 250)` =
+> **3.39:1**) is the tested token, and the shadcn `--input` alias points at it.
+>
+> **Also fixed:** `--warning-foreground` was inherited as near-white on `oklch(0.769)` amber and had
+> never passed contrast. It is dark ink now.
+>
+> **Not measurable here, still open:** check 10 (every `StatusBadge` variant carries a non-color cue)
+> is **Phase 12's** gate - it is a component contract, not a color value.
 
 And the honest note carried forward from 01 §E: a real audit (axe, keyboard sweep, screen reader, focus order) has **not** been run. This gate covers color only. The full audit is a scoped task in `06`.
 

@@ -90,6 +90,7 @@ export function WishlistView({
                                 key={hit.id}
                                 tour={searchHitToListing(hit, locale, durationDict)}
                                 dict={cardDict}
+                                wishlistVariant='remove'
                             />
                         ))}
                     </div>

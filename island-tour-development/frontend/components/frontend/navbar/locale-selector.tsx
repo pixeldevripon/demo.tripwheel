@@ -77,8 +77,19 @@ export function LocaleSelector({
                     className='size-6 shrink-0'
                 />
                 {variant === 'desktop' && (
-                    <span className='text-base font-medium text-it-ink uppercase'>
-                        {locale}
+                    /* One-cell grid: invisible spans reserve the width of the
+                       widest locale code, so switching locales never shifts
+                       the rest of the header. */
+                    <span className='inline-grid justify-items-start text-base font-medium text-it-ink uppercase'>
+                        <span className='col-start-1 row-start-1'>{locale}</span>
+                        {ALL_LOCALES.map(code => (
+                            <span
+                                key={code}
+                                aria-hidden
+                                className='col-start-1 row-start-1 invisible'>
+                                {code}
+                            </span>
+                        ))}
                     </span>
                 )}
             </motion.button>

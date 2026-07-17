@@ -42,51 +42,59 @@ export function PartySelector() {
         String(travelerCount)
     );
 
+    const headerLabel = (
+        <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <Image
+                src='/icons/booking-travelers.svg'
+                alt=''
+                width={24}
+                height={24}
+                className='size-6 shrink-0'
+            />
+            {travelersLabel}
+        </span>
+    );
+
     return (
         <div className='rounded-[8px] bg-it-white'>
-            {/* Header row */}
-            <div className='flex items-center justify-between gap-2.5 px-4 py-4'>
-                <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            {/* Header row. Pattern B (chevron): the WHOLE row is the toggle -
+                clicking anywhere on it opens the steppers, not just the small
+                chevron. Pattern A keeps the plain row (it holds the inline
+                stepper, which is the interaction). */}
+            {headerHasChevron ? (
+                <motion.button
+                    type='button'
+                    aria-expanded={partyOpen}
+                    onClick={() => togglePartyOpen()}
+                    whileTap={{ scale: 0.99 }}
+                    transition={springPop}
+                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-4 py-4 text-left'>
+                    {headerLabel}
                     <Image
-                        src='/icons/booking-travelers.svg'
+                        src='/icons/booking-chevron-down.svg'
                         alt=''
-                        width={24}
-                        height={24}
-                        className='size-6 shrink-0'
+                        width={20}
+                        height={20}
+                        className={`size-5 shrink-0 transition-transform duration-300 ${
+                            partyOpen ? 'rotate-180' : ''
+                        }`}
                     />
-                    {travelersLabel}
-                </span>
-                {headerHasChevron && (
-                    <motion.button
-                        type='button'
-                        aria-label={travelersLabel}
-                        aria-expanded={partyOpen}
-                        onClick={() => togglePartyOpen()}
-                        whileTap={{ scale: 0.9 }}
-                        transition={springPop}
-                        className='flex cursor-pointer items-center'>
-                        <Image
-                            src='/icons/booking-chevron-down.svg'
-                            alt=''
-                            width={20}
-                            height={20}
-                            className={`size-5 shrink-0 transition-transform duration-300 ${
-                                partyOpen ? 'rotate-180' : ''
-                            }`}
+                </motion.button>
+            ) : (
+                <div className='flex items-center justify-between gap-2.5 px-4 py-4'>
+                    {headerLabel}
+                    {showInlineStepper && (
+                        <Stepper
+                            value={counts[participantBands[0].id] ?? 0}
+                            min={Math.max(0, Math.min(1, data.minPartySize))}
+                            max={effectiveMax}
+                            decLabel={`− ${participantBands[0].label}`}
+                            incLabel={`+ ${participantBands[0].label}`}
+                            onChange={n => setBandCount(participantBands[0], n)}
                         />
-                    </motion.button>
-                )}
-                {showInlineStepper && (
-                    <Stepper
-                        value={counts[participantBands[0].id] ?? 0}
-                        min={Math.max(0, Math.min(1, data.minPartySize))}
-                        max={effectiveMax}
-                        decLabel={`− ${participantBands[0].label}`}
-                        incLabel={`+ ${participantBands[0].label}`}
-                        onChange={n => setBandCount(participantBands[0], n)}
-                    />
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {/* Body: party steppers */}
             <Collapse open={showPartyBody}>

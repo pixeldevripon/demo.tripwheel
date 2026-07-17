@@ -2,8 +2,9 @@
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
+import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
@@ -17,6 +18,9 @@ export type ExploreType = {
     image?: string;
 };
 
+/** Auto-advance interval for the card slider (ms). Tune here. */
+const AUTO_ADVANCE_MS = 4000;
+
 export function DestinationExploreTypes({
     dict,
     locale,
@@ -28,11 +32,27 @@ export function DestinationExploreTypes({
     destinationSlug: string;
     categories: ExploreType[];
 }) {
-    const [emblaRef, emblaApi] = useEmblaCarousel({
-        align: 'start',
-        containScroll: 'trimSnaps',
-        dragFree: true,
-    });
+    // Auto-advance: one card every AUTO_ADVANCE_MS. Pauses on hover
+    // (stopOnMouseEnter) and while dragging, resumes after (stopOnInteraction:
+    // false), and scrolls back to the first card at the end (plugin default
+    // when embla `loop` is off). Skipped entirely under reduced motion.
+    const reduceMotion = useReducedMotion();
+    const [emblaRef, emblaApi] = useEmblaCarousel(
+        {
+            align: 'start',
+            containScroll: 'trimSnaps',
+            dragFree: true,
+        },
+        reduceMotion
+            ? []
+            : [
+                  Autoplay({
+                      delay: AUTO_ADVANCE_MS,
+                      stopOnInteraction: false,
+                      stopOnMouseEnter: true,
+                  }),
+              ]
+    );
     const [canPrev, setCanPrev] = useState(false);
     const [canNext, setCanNext] = useState(false);
 
@@ -113,7 +133,7 @@ export function DestinationExploreTypes({
                             disabled={!canPrev}
                             whileTap={canPrev ? { scale: 0.9 } : undefined}
                             transition={springPop}
-                            className='hidden lg:grid absolute top-1/2 left-0 size-12 -translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
+                            className='hidden lg:grid absolute top-1/2 left-0 size-12 -translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading-subtle enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
                             <ChevronLeft className='size-7' strokeWidth={1.5} />
                         </motion.button>
                         <motion.button
@@ -123,7 +143,7 @@ export function DestinationExploreTypes({
                             disabled={!canNext}
                             whileTap={canNext ? { scale: 0.9 } : undefined}
                             transition={springPop}
-                            className='hidden lg:grid absolute top-1/2 right-0 size-12 translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
+                            className='hidden lg:grid absolute top-1/2 right-0 size-12 translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading-subtle enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
                             <ChevronRight
                                 className='size-7'
                                 strokeWidth={1.5}

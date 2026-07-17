@@ -378,6 +378,7 @@
     "tour": {
       "save": "Enregistrer",
       "share": "Partager",
+      "linkCopied": "Lien copié",
       "localsFavorite": "Favori des locaux",
       "showAllPhotos": "Voir toutes les photos",
       "booking": {

@@ -536,6 +536,30 @@ Run against production data on the staging subdomain, before DNS cutover. **Ever
 >
 > **Already passing** (verified during Phase 8, on `next start`): **#1** and **#11**.
 
+> ## Phase 9 result, 2026-07-17: **NO REGRESSION FOUND**
+>
+> **The code-level evidence bounds where a regression could even hide.** All **171** dashboard
+> component files were compared old vs new: **95 byte-identical**, **76** differing *only* in
+> import paths or the `/dashboard/x` -> `/x` prefix (Phase 6's intended change), **0 behavioural**.
+> Route sets identical, 19 for 19.
+>
+> **The e2e suite agrees, and it is a stronger signal than its pass rate suggests.** 227 tests,
+> run against both dashboards: **102 failures identical name-for-name, 0 failing only on old**,
+> and the 4 that failed only on new **fail on old too when run in isolation** - they depend on
+> database residue left by earlier tests. Net: **all 227 behave identically.** (The suite is ~45%
+> red on *both* sides. It is measuring its own decay, not the extraction. See `06` Phase 9.)
+>
+> **Rows 12-50 are therefore waived on written evidence**, which §11 permits: they ask "does this
+> module still work" about code that did not change, and the diff above is the note. **Not waived,
+> still owed:**
+> - **#2, #9** - staging only (production-gated cookie behaviour).
+> - **#6, #7, #10, #43-45, #49** and the visual half of the module rows - **the user's to sign off.**
+>   An agent cannot report "the avatar crop looks right".
+> - **A NEW visual delta to eyeball: the sidebar fonts.** DM Sans + General Sans were dropped in
+>   Phase 5; the 4 usages (`nav-main.tsx` x3, `app-sidebar.tsx` x1) now render in Noto Sans.
+>   Deliberate, documented at `app/globals.css`, but never listed as a known delta until now.
+> - ~~The collections RBAC delta~~ - **does not exist.** B-7 retracted; see §5.4.
+
 ### Auth and shell
 
 | # | Check | Pass |

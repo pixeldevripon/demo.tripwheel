@@ -59,8 +59,28 @@ export function DestinationSelector({
                     className='size-6 shrink-0'
                 />
                 {variant === 'desktop' && (
-                    <span className='text-base font-medium text-it-ink whitespace-nowrap'>
-                        {currentIsland ? currentIsland.name : dict.selectIsland}
+                    /* One-cell grid: the invisible spans reserve the width of the
+                       longest possible label, so switching islands never shifts
+                       the rest of the header. */
+                    <span className='inline-grid justify-items-start text-base font-medium text-it-ink whitespace-nowrap'>
+                        <span className='col-start-1 row-start-1'>
+                            {currentIsland
+                                ? currentIsland.name
+                                : dict.selectIsland}
+                        </span>
+                        {islands.map(island => (
+                            <span
+                                key={island.slug}
+                                aria-hidden
+                                className='col-start-1 row-start-1 invisible'>
+                                {island.name}
+                            </span>
+                        ))}
+                        <span
+                            aria-hidden
+                            className='col-start-1 row-start-1 invisible'>
+                            {dict.selectIsland}
+                        </span>
                     </span>
                 )}
             </motion.button>

@@ -11,7 +11,9 @@ export function DestinationHeroSkeleton() {
     return (
         <>
             {/* Hero: heading group (title + subtitle) + search pill + activities line. */}
-            <section className='relative z-20 flex h-136.75 items-end justify-center bg-it-hero-bg [background-image:var(--it-hero-gradient)] pb-12 md:h-150 md:items-center md:pb-0'>
+            {/* Flat bg-it-hero-bg only - the real hero has no gradient, so the
+                skeleton must not flash one during reload. */}
+            <section className='relative z-20 flex h-136.75 items-end justify-center bg-it-hero-bg pb-12 md:h-150 md:items-center md:pb-0'>
                 <div className='it-container flex w-full justify-center'>
                     <div className='flex w-full max-w-170.75 flex-col items-center gap-10'>
                         <div className='flex w-full flex-col items-center gap-1'>

@@ -96,10 +96,10 @@ export function HubHero({
             )}
 
             <div className='it-container relative z-10 flex w-full justify-center'>
-                {/* No self entrance animation: the hero renders in the initial
-                    HTML (SSR shell), so the sitewide PageTransition owns the
-                    page-enter - a hydration-started mount animation here would
-                    flash/re-reveal already-visible content. */}
+                {/* Smooth hero entry: the hub page arrives via the entity
+                    route's loading.tsx (streamed, inserted post-paint), so
+                    mount animations are the right pattern here. The three hero
+                    blocks cascade - title, meta pills, date bar. */}
                 <div className='flex w-full max-w-172.25 flex-col items-center gap-10'>
                     {/* Title + italic tagline - gap 4 */}
                     <MountReveal className='flex flex-col items-center gap-1 text-center'>
@@ -118,6 +118,7 @@ export function HubHero({
                             divider after pill #1 falls to the start of row 2 - exactly
                             the Figma mobile layout); desktop is a single row. */}
                         {meta.length > 0 && (
+                            <MountReveal delay={0.12} yOffset={14}>
                             <ul className='m-0 flex w-fit max-w-66 flex-wrap items-center justify-center gap-2 rounded-[10px] border border-white px-3 py-2 md:max-w-none md:gap-x-4 md:px-5.5 md:py-3'>
                                 {meta.map((item, i) => (
                                     <Fragment key={item.label}>
@@ -142,9 +143,14 @@ export function HubHero({
                                     </Fragment>
                                 ))}
                             </ul>
+                            </MountReveal>
                         )}
 
                         {/* Date + Check Availability bar - white, borderless, radius full */}
+                        <MountReveal
+                            delay={0.24}
+                            yOffset={14}
+                            className='w-full'>
                         <div className='flex w-full items-center justify-between gap-2 rounded-it-full bg-it-white py-2.5 pl-5 pr-2.5 md:py-3 md:pl-9 md:pr-2.5'>
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
                                 <PopoverTrigger asChild>
@@ -184,6 +190,7 @@ export function HubHero({
                                 {dict.checkAvailability}
                             </motion.button>
                         </div>
+                        </MountReveal>
                     </div>
                 </div>
             </div>
