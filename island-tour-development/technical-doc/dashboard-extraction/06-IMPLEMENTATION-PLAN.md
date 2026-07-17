@@ -20,7 +20,9 @@
 | 7 · Cache revalidation | B | **done** | `631ac56` (dashboard) + `6c65d0d` (monorepo) |
 | 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
 | 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
-| 10-23 | C/D/E | not started | - |
+| **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
+| **10 · Lint rules** | **C** | **NEXT - unblocked, parity is green** | - |
+| 11-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -707,7 +709,89 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > answer. Isolation is a prerequisite for the trim (and for `workers > 1`, which is unsafe until
 > then - these specs share rows).
 
+---
+
+## Phase 9B · E2E suite trim - **PARTIAL** (`2ac049c`, dashboard branch `ui-fix`)
+
+**Objective** A suite that can answer "did this change break anything". It cannot today.
+
+**Rationale** Phase 9 found the suite **~45% red on BOTH dashboards** - it is measuring its own
+decay, not the extraction. Stage C starts changing markup; a suite this red cannot tell you whether
+the redesign broke something, and **the dashboard repo has no CI at all**. This is its only net.
+
+**User decision (2026-07-17):** keep behaviour/contract tests, cut presence-only. **Not by
+red/green** - those are anti-correlated here. The green tests are mostly the worthless ones
+("Key input is rendered"); the red ones are mostly the contracts ("confirming deactivation calls
+DELETE"). Cutting by colour would have deleted everything worth having.
+
+**The keep/delete rule:** *would this test still pass if the feature were broken?*
+
+### DONE
+
+**1. Deleted 55 presence-only tests. 227 -> 172.** tsc clean; 172 collect.
+**23 were rescued** despite presence-shaped names, because they fail when something real breaks:
+data binding (`renders rows from the API`), conditional rules (`Allowed Values appears when Data
+Type is ENUM`), defaults (`Collection Type defaults to MANUAL`), dependency rules (`Hubs
+multi-select disabled until destination chosen`), and the category-slug collision warning.
+A regex classified; **a human eye rescued.** Do not re-run the regex and trust it.
+
+**2. THE MOCKS ADDRESSED AN API THAT DOES NOT EXIST.** Tests route `**/api/v1/trips/*`; the app
+calls `/api/v1/tours/*` (`lib/api/trips.ts`). Every mock missed -> every request hit the real
+backend -> `trip-uuid-1` is not there -> the page renders **"Trip not found"** -> `beforeEach`
+waits 15s for a form that never comes. **That is the entire ~17s signature across the Edit Trip
+block - 38 failures, one cause.** Also corrected: `/tours/my-tours` (not `my-trips`), and
+**schedules live at `/availability/schedules?tourId=`**, not under the tour - so a blind
+`trips`->`tours` replace would have been wrong.
+
+### PARKED - the trips fixtures are archaeological (~1 day)
+
+With the mocks matching, the app now crashes on the fixture:
+`TypeError: Cannot read properties of undefined (reading '0')` at `tripToDefaults`
+(`trip-details-tab.tsx:309`, `trip.categoryIds[0]`).
+
+`MOCK_TRIP_DRAFT` has **35 keys against a `TripListItem` of ~60**, and it predates **four**
+migrations:
+
+| Fixture says | App expects |
+|---|---|
+| `categoryId: 'cat-1'` | `categoryIds: string[]` + `primaryCategoryId` (1+ categories, one primary) |
+| `hubId: null` | `hubIds: string[]` |
+| `durationMinutes: 180` | `durationMinutesFrom` / `durationMinutesTo` |
+| `featuredSlotNumber`, `featuredSlotStatus` | **the slot economy is REMOVED** - `tierKey`/`tierRank`/`commissionTier` (CLAUDE.md rule 6) |
+| - | the whole OCTO block: `timeZone`, `availabilityType`, `deliveryFormats`, `redemptionMethod`, ... |
+
+**These tests have been asserting against a schema that no longer exists, on both dashboards, for
+a long time.** That is why they are red on both - and why Phase 9 was right to treat the suite as
+evidence rather than a gate.
+
+**Do NOT "fix" the app to tolerate the fixture.** `trip.categoryIds[0]` crashing on a malformed
+trip is fine: the real API always sends the field. The fixture is what is wrong.
+
+### Still undiagnosed (~41 failures, likely the cheap ones)
+
+collections 12 · attributes 11 · categories 9 · destinations 5 · hubs 4. Expected to be the
+fragile page-wide locators (`getByRole('button').filter({has: svg}).last()`,
+`getByText(/snake_case/i)` matching help text AND the error) and 5s prefill races. **Not verified.**
+
+### Deliberately NOT done: isolation
+
+`workers: 1, fullyParallel: false` stays. Phase 9 proved why it must: **four tests changed verdict
+purely from database residue** left by earlier tests. Isolation is what makes `workers: 4` safe
+(~172 tests would run in ~2-3 min vs today's ~19-29). It is the expensive half and it is owed.
+
+**Validation** tsc clean · 172 collect · `grep "api/v1/trips" e2e/` -> zero.
+
+**Rollback** Revert `2ac049c`. The deletions are the only irreversible part, and they are in git.
+
+---
+
 > **Stage B ends here. Redesign starts only when Phase 9 is green.**
+>
+> **READ THE GATE HONESTLY (2026-07-17):** Phase 9 bundles *parity proof* with *DNS cutover*.
+> **Parity is proven** - 171/171 component files clean, all 227 tests identical on both sides.
+> Cutover is deployment logistics, and the old `/dashboard/*` stays live regardless. **The gate
+> that protects the redesign is parity, and it is green.** Stage C may start while the deploy waits
+> on the user. Recorded as a deviation, user-approved.
 
 ---
 
