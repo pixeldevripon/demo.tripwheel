@@ -139,15 +139,18 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
 
     // Admin social media (`/settings/social-media`) also feeds getUserProfile;
     // other platform settings are harmless to fold in (cheap per-user regen).
+    //
+    // On top of that, `PATCH /settings/site` is the one write in this controller
+    // that backs a public read (the `public/site` projection: logo, WhatsApp,
+    // Instagram - read by the footer and every NeedHelp surface). The rest is
+    // SEO/SMTP/Stripe/Mollie/company config that no cached public page reads, so
+    // `site-info` is scoped to `site` rather than busted on every settings save.
+    //
+    // Both live in ONE case on purpose: a second `case 'settings'` below this one
+    // is unreachable (the first match wins), which is exactly how `site-info` went
+    // un-busted for `cacheLife('days')` at a time.
     case 'settings':
       tags.push('user-profile');
-      break;
-
-    // Only `PATCH /settings/site` backs a public read (the `public/site`
-    // projection: logo, WhatsApp, Instagram). The rest of this controller is
-    // SEO/SMTP/Stripe/Mollie/company config that no cached public page reads,
-    // so scope this to `site` rather than busting on every settings save.
-    case 'settings':
       if (seg1 === 'site') tags.push('site-info');
       break;
 

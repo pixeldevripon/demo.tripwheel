@@ -1,7 +1,7 @@
 import {
     TourReviewsPreviewSkeleton,
     TourReviewsSectionSkeleton,
-} from '@/components/skelitons/tour-page-skeleton';
+} from '@/components/frontend/skeletons/tour-page-skeleton';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getServerCurrency } from '@/lib/currency/server';

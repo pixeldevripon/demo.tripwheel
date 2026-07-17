@@ -1,6 +1,6 @@
 import { getUserProfile } from '@/app/_actions/userActions';
 import DashboardWrapper from '@/components/dashboard/dashbaord-wraper';
-import { DashboardSkeleton } from '@/components/skelitons/dashboard-skeleton';
+import { DashboardSkeleton } from '@/components/dashboard/skeletons/dashboard-skeleton';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';

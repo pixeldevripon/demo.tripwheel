@@ -1,4 +1,4 @@
-import { ToursPageSkeleton } from '@/components/skelitons/tours-page-skeleton';
+import { ToursPageSkeleton } from '@/components/frontend/skeletons/tours-page-skeleton';
 
 /**
  * Route-level loading UI for `/[locale]/[destination]/tours`. Shown during client

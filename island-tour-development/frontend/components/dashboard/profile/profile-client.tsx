@@ -1,6 +1,6 @@
 'use client';
 
-import { ProfileSkeleton } from '@/components/skelitons/profile-skeleton';
+import { ProfileSkeleton } from '@/components/dashboard/skeletons/profile-skeleton';
 import { useProfileQuery, useUpdateProfile } from '@/hooks/profile/use-profile';
 import { Role } from '@/lib/config/rbac';
 import { profileSchema, type ProfileFormValues } from '@/lib/validations/profile';

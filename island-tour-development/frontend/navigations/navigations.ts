@@ -6,9 +6,7 @@ import {
     Globe,
     ImageIcon,
     LayoutDashboard,
-    Mail,
     Map,
-    MessageSquare,
     Settings,
     SlidersHorizontal,
     Sparkles,
@@ -140,7 +138,7 @@ const dashboardNav: NavItem[] = [
         permissions: [Permission.VIEW_PAYMENTS],
     },
     // ─── Users / Customers ─────────────────────────────────────────────────────
-    {
+ /*    {
         title: 'Users',
         icon: Users,
         permissions: [Permission.VIEW_USERS, Permission.MANAGE_USERS],
@@ -155,15 +153,8 @@ const dashboardNav: NavItem[] = [
                 url: 'users/new',
                 permissions: [Permission.CREATE_USER],
             },
-            // ─── Profile ───────────────────────────────────────────────────────────────
-            {
-                title: 'Your Profile',
-                url: 'profile',
-                icon: CircleUser,
-                permissions: [Permission.VIEW_PROFILE],
-            },
         ],
-    },
+    }, */
     // ─── Tour Operators ──────────────────────────────────────────────────────
     {
         title: 'Tour Operators',
@@ -183,24 +174,15 @@ const dashboardNav: NavItem[] = [
         ],
     },
 
-    // ─── Enquiries ─────────────────────────────────────────────────────────────
-/*     {
-        title: 'Enquiries',
-        url: 'enquiries',
-        icon: Mail,
-        permissions: [Permission.VIEW_ENQUIRIES],
-    }, */
-
-    // ─── Leads ─────────────────────────────────────────────────────────────────
-/*     {
-        title: 'Leads',
-        url: 'leads',
-        icon: MessageSquare,
-        permissions: [Permission.VIEW_LEADS],
-    }, */
+    // Enquiries and Leads were here. Both are removed: the master doc's model is
+    // "book instantly, no enquiry model", so neither page had a product behind it
+    // (each was a static heading over a sentence). Their routes are deleted, so
+    // these entries could not be uncommented without 404ing. The VIEW_ENQUIRIES /
+    // VIEW_LEADS permissions stay in rbac.ts - it mirrors the backend, which is
+    // out of scope here.
 
     // ─── Reviews ───────────────────────────────────────────────────────────────
-/*     {
+    /*     {
         title: 'Reviews',
         url: 'reviews',
         icon: Star,
@@ -220,6 +202,12 @@ const dashboardNav: NavItem[] = [
             Permission.MANAGE_OPERATOR_PAYMENTS,
         ],
     },
+    {
+        title: 'Your Profile',
+        url: 'profile',
+        icon: CircleUser,
+        permissions: [Permission.VIEW_PROFILE],
+    },
 ];
 
 export interface NavigationMap {
@@ -229,6 +217,7 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+
 
 
 

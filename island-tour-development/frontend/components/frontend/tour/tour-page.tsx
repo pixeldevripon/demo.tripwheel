@@ -6,7 +6,7 @@ import { TourRelatedTours } from './tour-related-tours';
 import {
     TourDetailSkeleton,
     TourRelatedSkeleton,
-} from '@/components/skelitons/tour-page-skeleton';
+} from '@/components/frontend/skeletons/tour-page-skeleton';
 
 /**
  * Tour detail page - the TOUR branch of the polymorphic `[slug]` route
@@ -23,7 +23,7 @@ import {
  *   - `TourRelatedTours` (`getDestinationTours`): the two related grids
  *
  * Component files: `tour-detail-content.tsx`, `tour-reviews-blocks.tsx`,
- * `tour-related-tours.tsx`; skeletons in `components/skelitons/tour-page-skeleton.tsx`.
+ * `tour-related-tours.tsx`; skeletons in `components/frontend/skeletons/tour-page-skeleton.tsx`.
  */
 interface TourPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */

@@ -14,8 +14,9 @@ import {
 } from '@/components/ui/collapsible';
 import { Field } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TourBadgeChip } from '@/components/frontend/tour-badge';
-import { deriveTourBadge, tourPerfSummary } from '@/lib/tours/listing';
+import { TourBadgeChip } from '@/components/dashboard/common/tour-badge';
+import { deriveTourBadge } from '@/lib/tours/derive-badge';
+import { tourPerfSummary } from '@/lib/tours/signals';
 import { RationaleTranslationTabs } from '@/components/dashboard/rationale-translation-tabs';
 import {
   useHub,

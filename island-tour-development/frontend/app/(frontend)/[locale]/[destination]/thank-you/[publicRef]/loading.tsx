@@ -1,4 +1,4 @@
-import { ThankYouPageSkeleton } from '@/components/skelitons/thank-you-page-skeleton';
+import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 
 /**
  * TYP route skeleton - the same `ThankYouPageSkeleton` the page uses as its
