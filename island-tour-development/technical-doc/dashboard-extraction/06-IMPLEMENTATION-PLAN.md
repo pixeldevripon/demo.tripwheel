@@ -22,8 +22,9 @@
 | 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
 | **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
 | **10 · Lint rules** | **C** | **DONE** - 8 rules as `warn`, 428 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
-| **11 · Token system** | **C** | **NEXT** - carries 2 decisions Phase 10 surfaced (spacing `1.5`, inline-style scope) | - |
-| 12-23 | C/D/E | not started | - |
+| **11 · Token system** | **C** | **DONE** - gate GREEN (34 checks x2 modes); it caught 2 defects in the spec's own palette | `fdb0294` (dashboard, `ui-fix`) |
+| **12 · StatusBadge** | **C** | **NEXT** - the R7 test: add the primitive AND delete the 4 conventions | - |
+| 13-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -894,7 +895,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 ---
 
-## Phase 11 · Token system
+## Phase 11 · Token system - **DONE**
 
 **Objective** The new design system exists.
 
@@ -920,6 +921,75 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Validation** 03 §9 - all 10 checks, both modes, measured. Chart-1 vs chart-2 under deuteranopia in a simulator.
 
 **Rollback** Revert.
+
+> ### EXECUTED 2026-07-17 - `fdb0294` (dashboard, branch `ui-fix`)
+>
+> `app/globals.css` rewritten to `03` §3. **Build green, tsc clean, lint 0 errors.**
+> **The gate is now a runnable check, not a one-off: `pnpm gate:contrast`** (`scripts/contrast-gate.mjs`,
+> oklch -> oklab -> linear sRGB -> WCAG luminance, plus Viénot dichromacy simulation). It exits
+> non-zero on failure, so Phase 20 can wire it into CI. **34 checks pass in both modes, plus 4
+> dichromacy checks.**
+>
+> #### The gate came back RED on the first run and caught two real defects in the spec's own palette
+>
+> This is the whole reason §9 exists. Both fixes were surfaced and **user-approved** before any
+> deviation.
+>
+> **1. `--content-subtle` was unfixable as specified.** §3 maps it to `n-500` in **both** modes, but
+> light needs `L <= 0.556` for 4.5:1 on `n-25` and dark needs `L >= 0.567` for 4.5:1 on `n-1000`.
+> **The windows do not overlap - no single value exists.** Measured: light `n-500` = **4.10:1 FAIL**.
+> Every other content token already differs by mode (`content` n-900/n-50, `content-muted`
+> n-600/n-400); only `--content-subtle` was left shared, which reads as an oversight rather than a
+> tuning miss. **Fix:** added `--color-n-550` (`oklch(0.55 0.014 250)`) for light (**4.64:1**); dark
+> keeps `n-500` (**4.75:1**). Three distinct emphasis tiers survive in both modes.
+>
+> **2. §9 check 7 is un-passable and was testing the wrong token.** `--line` on `--surface` measures
+> **1.29:1** light / **1.39:1** dark against a 3:1 target. `--line-strong` is no better (1.56 / 2.03).
+> Hitting 3:1 literally forces `L = 0.658` - **a near-black hairline around every card, table row and
+> input**. §9's own wording is ">= 3:1 **where it carries meaning**", and WCAG 1.4.11 applies only
+> where the boundary is the *only* thing identifying a control. **Fix:** `--line` / `--line-strong`
+> stay decorative with **no contrast target**; new **`--line-control`** (light `n-450` = **3.09:1**,
+> dark `oklch(0.50 0.014 250)` = **3.39:1**) covers inputs, checkboxes and select triggers. The
+> shadcn `--input` alias points at `--line-control`, so the gate governs something real instead of a
+> divider. **§9 check 7 now targets `--line-control`.**
+>
+> #### Two deliberate deviations from 03 §3
+>
+> - **Fonts stay wired to `next/font`** (Noto Sans / Playfair / JetBrains). §3 hardcodes
+> `--font-sans: 'Inter Variable'`, but **Phase 13 owns the font swap** - doing it here changes fonts
+> two phases early and outside their own validation.
+> - **No `--spacing-*` tokens.** §3 says outright *"Do not restrict here; see §8"* - v4 derives
+> spacing multiplicatively (`p-1.5` = `calc(var(--spacing) * 1.5)`, verified in the compiled output),
+> so **`eslint.config.mjs` is the only enforcement**. An earlier note in this doc claiming Phase 11
+> must mint `--spacing-*` tokens was wrong and is corrected here.
+>
+> #### Compatibility aliases - DELETE AT PHASE 20
+>
+> The risk note was right: **~2,000 call sites** still use the shadcn names (`muted` **666**,
+> `muted-foreground` **510**, `destructive` **267**, `foreground` **168**, `primary` **143**,
+> `border` **71**, `sidebar` **61**), plus **15 components reading `var(--primary)` and friends
+> directly**. Every old name now aliases onto **exactly one** new semantic token and is retired per
+> module through Stage D. They are aliases, not a second system - **giving one its own literal value
+> forks the system in place, which is the exact failure `01` documents.** `--primary`, `--sidebar`
+> and `--chart-1..5` needed no alias: the new system reuses those names.
+>
+> #### Verified along the way
+>
+> - **`@theme inline { --x: var(--x) }` is NOT defect B-5** when `:root` defines `--x`. Proved with a
+> compile probe: the emission lands in `@layer theme`, the real value is **unlayered**, and unlayered
+> outranks every layer - so no cycle forms. **B-5 breaks for a different reason**: nothing defines
+> `--shadow-2xl` at all, leaving the self-reference as the only declaration. Shadows still sidestep
+> it by sourcing from `--elevation-*`, Tailwind's own documented pattern.
+> - **`--duration-*` is not a v4 theme namespace** and generates no `duration-fast` utility
+> (`--ease-*` does). Kept as `var()`-only custom properties with a note, rather than left implying a
+> utility that will never exist.
+> - `rounded-2xl` (6 call sites) inherits Tailwind's default `--radius-2xl`; removing the token would
+> have silently rendered nothing.
+>
+> **Closed:** B-3 (`--destructive-foreground` now defined), B-5 (`--tracking-normal` defined;
+> shadows sourced from `--elevation-*`), D-3 (radius is `@theme`-only), D-5 (one hue, 250).
+> Also dropped an inherited defect: the old `--warning-foreground` was near-white on `oklch(0.769)`
+> amber and never passed contrast; it is now dark ink.
 
 ---
 

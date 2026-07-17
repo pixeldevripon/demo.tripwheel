@@ -53,7 +53,9 @@ One ramp. Light mode reads it ascending, dark mode descending. **This is the fix
 | `--n-200` | `oklch(0.90 0.007 250)` |
 | `--n-300` | `oklch(0.84 0.009 250)` |
 | `--n-400` | `oklch(0.70 0.012 250)` |
+| **`--n-450`** | **`oklch(0.65 0.012 250)`** - ADDED 2026-07-17, light `--line-control` (§9) |
 | `--n-500` | `oklch(0.58 0.014 250)` |
+| **`--n-550`** | **`oklch(0.55 0.014 250)`** - ADDED 2026-07-17, light `--content-subtle`; `n-500` measured 4.10:1 and no single value serves both modes (§9) |
 | `--n-600` | `oklch(0.48 0.014 250)` |
 | `--n-700` | `oklch(0.38 0.013 250)` |
 | `--n-800` | `oklch(0.28 0.012 250)` |
@@ -186,7 +188,10 @@ Tailwind v4 semantics, per current docs:
   --color-n-200:  oklch(0.90 0.007 250);
   --color-n-300:  oklch(0.84 0.009 250);
   --color-n-400:  oklch(0.70 0.012 250);
+  --color-n-450:  oklch(0.65 0.012 250);  /* ADDED 2026-07-17 - light --line-control (3.09:1) */
   --color-n-500:  oklch(0.58 0.014 250);
+  --color-n-550:  oklch(0.55 0.014 250);  /* ADDED 2026-07-17 - light --content-subtle (4.64:1);
+                                             n-500 cannot serve both modes. See §9. */
   --color-n-600:  oklch(0.48 0.014 250);
   --color-n-700:  oklch(0.38 0.013 250);
   --color-n-800:  oklch(0.28 0.012 250);
@@ -216,12 +221,13 @@ Tailwind v4 semantics, per current docs:
 
   --content:          var(--color-n-900);   /* primary text */
   --content-muted:    var(--color-n-600);   /* secondary */
-  --content-subtle:   var(--color-n-500);   /* tertiary - lowest allowed */
+  --content-subtle:   var(--color-n-550);   /* tertiary - lowest allowed. n-500 measured 4.10:1; see §9 */
   --content-inverse:  var(--color-n-0);
 
-  --line:             var(--color-n-200);   /* default border */
-  --line-strong:      var(--color-n-300);
+  --line:             var(--color-n-200);   /* default border - DECORATIVE, no contrast target */
+  --line-strong:      var(--color-n-300);   /* DECORATIVE, no contrast target */
   --line-subtle:      var(--color-n-100);
+  --line-control:     var(--color-n-450);   /* 3.09:1 - WCAG 1.4.11. Inputs/checkboxes. See §9 */
 
   --primary:            var(--color-brand-600);
   --primary-hover:      var(--color-brand-700);
@@ -285,6 +291,7 @@ Tailwind v4 semantics, per current docs:
   --line:             var(--color-n-800);
   --line-strong:      var(--color-n-700);
   --line-subtle:      var(--color-n-900);
+  --line-control:     oklch(0.50 0.014 250);  /* 3.39:1 - no ramp step clears 3:1 on n-1000 */
 
   --primary:            var(--color-brand-400);
   --primary-hover:      var(--color-brand-300);
@@ -698,12 +705,37 @@ Rules 1-5 are mechanical and should land **with** the token system, in the same 
 | 4 | Every `{state}-fg` on its `{state}-subtle` | >= 4.5:1 |
 | 5 | `--primary-content` on `--primary` | >= 4.5:1 |
 | 6 | `--focus-ring` on `--surface` and on `--surface-raised` | >= 3:1 |
-| 7 | `--line` on `--surface` | >= 3:1 where it carries meaning |
+| 7 | ~~`--line` on `--surface`~~ **`--line-control` on `--surface` and `--surface-raised`** | >= 3:1 - **AMENDED, see below** |
 | 8 | All of 1-7 **in both modes** | |
 | 9 | chart-1 vs chart-2 under deuteranopia and protanopia | distinguishable in a simulator |
 | 10 | Every `StatusBadge` variant carries a **non-color** cue | WCAG 1.4.1 Level A |
 
 **Any value failing its target is adjusted here, before implementation - not after.**
+
+> ### MEASURED 2026-07-17 (06 Phase 11). The gate ran RED and caught two defects in §3's own palette.
+>
+> This section worked exactly as intended. Both fixes are user-approved and are in `globals.css` and
+> `scripts/contrast-gate.mjs` (`pnpm gate:contrast`, exits non-zero on failure).
+>
+> **1. §3's `--content-subtle` is unfixable as written - `n-500` in BOTH modes.** Light needs
+> `L <= 0.556` for 4.5:1 on `n-25`; dark needs `L >= 0.567` for 4.5:1 on `n-1000`. **The windows do
+> not overlap.** Measured light `n-500` = **4.10:1 FAIL**. Every other content token already differs
+> by mode; only this one was shared. **`--color-n-550` (`oklch(0.55 0.014 250)`) added for light
+> (4.64:1); dark keeps `n-500` (4.75:1).**
+>
+> **2. Check 7 was testing the wrong token and could not be passed.** `--line` on `--surface` is
+> **1.29:1** light / **1.39:1** dark; `--line-strong` is 1.56 / 2.03. Reaching 3:1 forces `L = 0.658`
+> - a near-black hairline around every card, row and input. This section's own qualifier ("where it
+> carries meaning") is the resolution: **WCAG 1.4.11 applies only where the boundary is the ONLY
+> thing identifying a control.** `--line` and `--line-strong` are decorative and carry **no** target.
+> New **`--line-control`** (light `--color-n-450` = **3.09:1**, dark `oklch(0.50 0.014 250)` =
+> **3.39:1**) is the tested token, and the shadcn `--input` alias points at it.
+>
+> **Also fixed:** `--warning-foreground` was inherited as near-white on `oklch(0.769)` amber and had
+> never passed contrast. It is dark ink now.
+>
+> **Not measurable here, still open:** check 10 (every `StatusBadge` variant carries a non-color cue)
+> is **Phase 12's** gate - it is a component contract, not a color value.
 
 And the honest note carried forward from 01 §E: a real audit (axe, keyboard sweep, screen reader, focus order) has **not** been run. This gate covers color only. The full audit is a scoped task in `06`.
 
