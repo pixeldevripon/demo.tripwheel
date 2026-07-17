@@ -10,6 +10,8 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
+    redirect('/');
+    return null;
     return (
         <Suspense fallback={<DashboardSkeleton />}>
             <DashboardContent>{children}</DashboardContent>
