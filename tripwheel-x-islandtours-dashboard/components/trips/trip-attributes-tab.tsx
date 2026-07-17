@@ -115,7 +115,7 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
   }
 
   if (defsLoading || valuesLoading) {
-    return <Skeleton className="h-72 w-full rounded-none" />;
+    return <Skeleton className="h-72 w-full rounded-md" />;
   }
 
   return (

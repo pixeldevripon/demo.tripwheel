@@ -22,6 +22,7 @@
 
 import {
     Archive02Icon,
+    Megaphone01Icon,
     ArrowLeft01Icon,
     ArrowRight01Icon,
     PauseIcon,
@@ -296,7 +297,19 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
                         {statusMeta.label}
                     </StatusBadge>
                     {trip.isSponsored && (
-                        <StatusBadge variant='neutral'>Sponsored</StatusBadge>
+                        // Icon instead of the status dot: Sponsored is a
+                        // commercial PROPERTY, not a lifecycle state - the
+                        // megaphone keeps it from reading as a status chip.
+                        <StatusBadge
+                            variant='neutral'
+                            icon={
+                                <HugeiconsIcon
+                                    icon={Megaphone01Icon}
+                                    className='size-3'
+                                />
+                            }>
+                            Sponsored
+                        </StatusBadge>
                     )}
                 </div>
 

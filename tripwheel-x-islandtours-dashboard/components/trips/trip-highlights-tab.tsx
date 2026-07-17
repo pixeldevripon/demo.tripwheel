@@ -1,223 +1,150 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
-
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+import { StatusBadge } from '@/components/common/status-badge';
 import { Button } from '@/components/ui/button';
+import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError } from '@/components/ui/field';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { TranslationRow } from './translation-row';
 import {
-  useHighlights,
-  useAddHighlight,
-  useRemoveHighlight,
-  useUpsertHighlightTranslation,
+    useAddHighlight,
+    useHighlights,
+    useRemoveHighlight,
 } from '@/hooks/trips/use-trips';
-import type { TourHighlight } from '@/types/trip';
-import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
+import { EditableListSection } from './editable-list-section';
 
 const addHighlightSchema = z.object({
-  text: z.string().min(5, 'At least 5 characters').max(100, 'Max 100 characters'),
-  imageUrl: z.string().optional().or(z.literal('')),
-  displayOrder: z.string().optional(),
+    text: z
+        .string()
+        .min(5, 'At least 5 characters')
+        .max(100, 'Max 100 characters'),
 });
 
 type AddHighlightFormValues = z.infer<typeof addHighlightSchema>;
 
-// ── Highlight list item ───────────────────────────────────────────────────────
-
-interface HighlightItemProps {
-  highlight: TourHighlight;
-  tripId: string;
-}
-
-function HighlightItem({ highlight, tripId }: HighlightItemProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { mutate: removeHighlight, isPending: isRemoving } = useRemoveHighlight();
-  const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertHighlightTranslation();
-
-  const enTranslation = highlight.translations.find((t) => t.locale === 'en');
-
-  function handleDelete() {
-    removeHighlight(
-      { tripId, highlightId: highlight.id },
-      {
-        onSuccess: () => toast.success('Highlight removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
-      }
-    );
-  }
-
-  return (
-    <div className="ring-1 ring-foreground/10 p-3 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        {/* Left: order + thumbnail + text */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-muted-foreground shrink-0">#{highlight.displayOrder}</span>
-          <p className="text-sm truncate">{enTranslation?.text ?? '(no EN translation)'}</p>
-        </div>
-
-        {/* Right: expand translations + delete */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title={expanded ? 'Hide translations' : 'Set translations'}
-          >
-            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
-            <span className="hidden sm:inline">Translations</span>
-          </button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleDelete}
-            disabled={isRemoving}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Translations panel */}
-      {expanded && (
-        <div className="pt-3 border-t space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground">Translations</p>
-          {ALL_LOCALES.map((locale) => {
-            const existing = highlight.translations.find((t) => t.locale === locale);
-            return (
-              <TranslationRow
-                key={locale}
-                locale={locale}
-                localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
-                defaultValue={existing?.text ?? ''}
-                onSave={(text) => upsertTranslation(
-                  { tripId, highlightId: highlight.id, locale, payload: { text } },
-                  {
-                    onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
-                    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
-                  }
-                )}
-                isSaving={isUpserting}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Tab ───────────────────────────────────────────────────────────────────────
-
 interface TripHighlightsTabProps {
-  tripId: string;
+    tripId: string;
 }
 
 export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
-  const { data: highlights, isLoading } = useHighlights(tripId);
-  const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
+    const { data: highlights, isLoading } = useHighlights(tripId);
+    const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
+    const { mutate: removeHighlight, isPending: isRemoving } =
+        useRemoveHighlight();
 
-  const count = highlights?.length ?? 0;
+    const count = highlights?.length ?? 0;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<AddHighlightFormValues>({
-    resolver: zodResolver(addHighlightSchema),
-    defaultValues: { text: '', imageUrl: '', displayOrder: String(count) },
-  });
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors },
+    } = useForm<AddHighlightFormValues>({
+        resolver: zodResolver(addHighlightSchema),
+        defaultValues: { text: '' },
+    });
 
-  function onAdd(values: AddHighlightFormValues) {
-    addHighlight(
-      {
-        tripId,
-        payload: {
-          text: values.text,
-          imageUrl: values.imageUrl || undefined,
-          displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success('Highlight added.');
-          reset({ text: '', imageUrl: '', displayOrder: String((highlights?.length ?? 0) + 1) });
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add highlight.'),
-      }
+    function onAdd(values: AddHighlightFormValues) {
+        addHighlight(
+            {
+                tripId,
+                payload: {
+                    text: values.text,
+                    // The old form appended at the end via a hidden field -
+                    // preserved so ordering behavior is unchanged.
+                    displayOrder: count,
+                },
+            },
+            {
+                onSuccess: () => {
+                    toast.success('Highlight added.');
+                    reset({ text: '' });
+                },
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to add highlight.',
+                    ),
+            },
+        );
+    }
+
+    return (
+        <EditableListSection
+            title='Highlights'
+            items={highlights}
+            isLoading={isLoading}
+            getId={h => h.id}
+            headerMeta={
+                <span className='flex items-center gap-1.5'>
+                    <span className='rounded-full bg-surface-inset px-2 py-0.5 text-2xs font-medium tabular-nums text-content-muted'>
+                        {count}/6
+                    </span>
+                    {count < 3 && (
+                        <StatusBadge variant='warning'>
+                            Need at least 3 to publish
+                        </StatusBadge>
+                    )}
+                </span>
+            }
+            renderSummary={h => {
+                const en = h.translations.find(t => t.locale === 'en');
+                return (
+                    <span className='flex min-w-0 items-center gap-2'>
+                        <span className='shrink-0 text-xs text-content-subtle'>
+                            #{h.displayOrder}
+                        </span>
+                        <span className='truncate'>
+                            {en?.text ?? '(no EN translation)'}
+                        </span>
+                    </span>
+                );
+            }}
+            onDelete={h =>
+                removeHighlight(
+                    { tripId, highlightId: h.id },
+                    {
+                        onSuccess: () => toast.success('Highlight removed.'),
+                        onError: err =>
+                            toast.error(
+                                err instanceof Error
+                                    ? err.message
+                                    : 'Failed to remove.',
+                            ),
+                    },
+                )
+            }
+            isDeleting={isRemoving}
+            emptyText='No highlights yet.'
+            addForm={{
+                heading: 'Add Highlight',
+                children: (
+                    <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
+                        <Field>
+                            <Label>Highlight (English)</Label>
+                            <Input
+                                {...register('text')}
+                                placeholder='Snorkel with sea turtles at the reef'
+                                aria-invalid={!!errors.text}
+                            />
+                            <FieldError>{errors.text?.message}</FieldError>
+                        </Field>
+                        <div className='flex justify-end'>
+                            <Button
+                                type='submit'
+                                size='sm'
+                                disabled={isAdding || count >= 6}>
+                                {isAdding ? 'Adding...' : 'Add Highlight'}
+                            </Button>
+                        </div>
+                    </form>
+                ),
+            }}
+        />
     );
-  }
-
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Highlights</CardTitle>
-          <div className="flex gap-2">
-            <Badge variant="secondary">{count}/6</Badge>
-            {count < 3 && <Badge variant="destructive">Need at least 3</Badge>}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-none" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {(highlights ?? []).map((h) => (
-              <HighlightItem key={h.id} highlight={h} tripId={tripId} />
-            ))}
-            {count === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No highlights yet. Add at least 3 to publish.
-              </p>
-            )}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold text-muted-foreground">Add Highlight</p>
-          <Field>
-            <Label>Text (English)</Label>
-            <Input
-              {...register('text')}
-              placeholder="e.g. Stunning ocean views"
-              aria-invalid={!!errors.text}
-            />
-            <FieldError>{errors.text?.message}</FieldError>
-          </Field>
- {/*          <Field>
-            <Label>Image URL</Label>
-            <Input {...register('imageUrl')} placeholder="Optional image URL" />
-          </Field> */}
-          <Field>
-            <Label>Display Order</Label>
-            <Input {...register('displayOrder')} type="number" min={0} />
-          </Field>
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={isAdding || count >= 6}>
-              {isAdding ? 'Adding...' : 'Add Highlight'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
 }

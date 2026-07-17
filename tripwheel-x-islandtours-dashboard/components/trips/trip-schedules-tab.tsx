@@ -13,9 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { DatePickerField } from '@/components/date-picker-field';
 import { scheduledSlotsForDate } from '@/lib/trips/availability';
 import { cn } from '@/lib/utils';
 import {
@@ -45,13 +46,13 @@ import type { TourSchedule, TourException, TourExceptionType } from '@/types/tri
 
 // 0 = Monday … 6 = Sunday (matches the backend AvailabilitySchedule.weekday).
 const WEEKDAYS = [
-  { value: 0, label: 'Mon' },
-  { value: 1, label: 'Tue' },
-  { value: 2, label: 'Wed' },
-  { value: 3, label: 'Thu' },
-  { value: 4, label: 'Fri' },
-  { value: 5, label: 'Sat' },
-  { value: 6, label: 'Sun' },
+  { value: 0, label: 'Mon', full: 'Monday' },
+  { value: 1, label: 'Tue', full: 'Tuesday' },
+  { value: 2, label: 'Wed', full: 'Wednesday' },
+  { value: 3, label: 'Thu', full: 'Thursday' },
+  { value: 4, label: 'Fri', full: 'Friday' },
+  { value: 5, label: 'Sat', full: 'Saturday' },
+  { value: 6, label: 'Sun', full: 'Sunday' },
 ];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -71,57 +72,6 @@ function validityLabel(schedule: TourSchedule): string {
   return schedule.validUntil ? `${from} → ${formatDay(schedule.validUntil)}` : `From ${from}`;
 }
 
-// ── Reusable Calendar date-picker field ───────────────────────────────────────
-
-interface DatePickerFieldProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  clearable?: boolean;
-}
-
-function DatePickerField({ value, onChange, placeholder = 'Pick a date', clearable = false }: DatePickerFieldProps) {
-  const [open, setOpen] = useState(false);
-  const selectedDate = value ? new Date(value + 'T00:00:00') : undefined;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'flex h-9 w-full items-center gap-2 border border-input bg-transparent px-3 text-sm text-left',
-            'hover:bg-muted/50 transition-colors',
-            !selectedDate && 'text-muted-foreground',
-          )}
-        >
-          <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="flex-1 truncate">
-            {selectedDate ? format(selectedDate, 'dd MMM yyyy') : placeholder}
-          </span>
-          {clearable && selectedDate && (
-            <HugeiconsIcon icon={Cancel01Icon}
-              className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); onChange(''); }}
-            />
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={(date) => {
-            onChange(date ? format(date, 'yyyy-MM-dd') : '');
-            setOpen(false);
-          }}
-          captionLayout="dropdown"
-          autoFocus
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 // ── Schedule list row (one weekday × one start time) ──────────────────────────
 
@@ -157,7 +107,7 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 ring-1 ring-foreground/10 px-3 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg ring-1 ring-foreground/10 px-3 py-3">
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <span className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-success-solid' : 'bg-content-subtle'}`} />
         <div className="min-w-0">
@@ -525,28 +475,56 @@ export function TripSchedulesTab({
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-none" />
+                <Skeleton key={i} className="h-14 w-full rounded-md" />
               ))}
             </div>
           ) : totalSchedules > 0 ? (
+            /* Weekday tabs (user preference 2026-07-17), made friendlier:
+               ALL seven days are always present - a day without rules shows
+               a quiet 0 chip and an honest empty panel, so schedule gaps
+               stay visible without leaving the tabbed layout. */
             <Tabs defaultValue={String(activeWeekdays[0]?.value ?? 0)} className="w-full">
               <TabsList>
-                {activeWeekdays.map((w) => (
-                  <TabsTrigger key={w.value} value={String(w.value)}>
-                    {w.label}
-                    <span className="ml-1.5 rounded-full bg-muted-foreground/15 px-1.5 text-[10px] font-semibold tabular-nums">
-                      {schedulesByWeekday.get(w.value)?.length ?? 0}
-                    </span>
-                  </TabsTrigger>
-                ))}
+                {WEEKDAYS.map((w) => {
+                  const dayCount = schedulesByWeekday.get(w.value)?.length ?? 0;
+                  return (
+                    <TabsTrigger key={w.value} value={String(w.value)}>
+                      {w.label}
+                      <span
+                        className={cn(
+                          'ml-1.5 rounded-full px-1.5 text-2xs font-semibold tabular-nums',
+                          dayCount > 0
+                            ? 'bg-primary-subtle text-primary-subtle-content'
+                            : 'bg-surface-inset text-content-subtle',
+                        )}
+                      >
+                        {dayCount}
+                      </span>
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
-              {activeWeekdays.map((w) => (
-                <TabsContent key={w.value} value={String(w.value)} className="mt-4 space-y-2">
-                  {(schedulesByWeekday.get(w.value) ?? []).map((schedule) => (
-                    <ScheduleRow key={schedule.id} schedule={schedule} tripId={tripId} />
-                  ))}
-                </TabsContent>
-              ))}
+              {WEEKDAYS.map((w) => {
+                const daySchedules = schedulesByWeekday.get(w.value) ?? [];
+                return (
+                  <TabsContent key={w.value} value={String(w.value)} className="mt-4 space-y-2">
+                    {daySchedules.length > 0 ? (
+                      daySchedules.map((schedule) => (
+                        <ScheduleRow key={schedule.id} schedule={schedule} tripId={tripId} />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-content-muted">
+                          No departures on {w.full}
+                        </p>
+                        <p className="mt-1 text-xs text-content-subtle">
+                          Use “Add Schedule” below and select {w.label} to create one.
+                        </p>
+                      </div>
+                    )}
+                  </TabsContent>
+                );
+              })}
             </Tabs>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">No schedules yet.</p>
@@ -566,7 +544,7 @@ export function TripSchedulesTab({
                     type="button"
                     onClick={() => toggleWeekday(w.value)}
                     className={cn(
-                      'h-9 min-w-12 px-3 text-xs font-semibold border transition-colors',
+                      'h-9 min-w-12 rounded-md px-3 text-xs font-semibold border transition-colors duration-fast',
                       weekdays.includes(w.value)
                         ? 'border-foreground bg-foreground text-background'
                         : 'border-input hover:bg-muted',
@@ -798,11 +776,11 @@ function ExceptionRow({ exception, tripId }: ExceptionRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 ring-1 ring-foreground/10 px-3 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg ring-1 ring-foreground/10 px-3 py-3">
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <span
           className={cn(
-            'shrink-0 px-2 py-0.5 text-[10px] font-semibold',
+            'shrink-0 px-2 py-0.5 text-2xs font-semibold',
             EXCEPTION_BADGE[exception.type]
           )}
         >
@@ -962,7 +940,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-none" />
+              <Skeleton key={i} className="h-14 w-full rounded-md" />
             ))}
           </div>
         ) : sorted.length > 0 ? (
@@ -982,19 +960,40 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             <Label>
               Type <span className="text-destructive">*</span>
             </Label>
-            <Select value={type} onValueChange={(v) => changeType(v as TourExceptionType)}>
-              <SelectTrigger className="max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXCEPTION_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{config.help}</p>
+            {/* Plain-language radio cards (04 §2.2, Phase 18): each option
+                shows WHAT it does inline - no more decoding a dropdown. */}
+            <div role="radiogroup" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {EXCEPTION_TYPES.map((t) => {
+                const selected = type === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => changeType(t.value as TourExceptionType)}
+                    className={cn(
+                      'rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast',
+                      selected
+                        ? 'border-primary bg-primary-subtle'
+                        : 'border-line bg-surface hover:border-line-strong',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'block text-sm font-medium',
+                        selected ? 'text-primary-subtle-content' : 'text-content',
+                      )}
+                    >
+                      {t.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-content-muted">
+                      {t.help}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1005,6 +1004,18 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
               <DatePickerField value={date} onChange={changeDate} placeholder="Pick a date" />
               {errors.date && (
                 <p className="text-xs text-destructive mt-1.5">{errors.date}</p>
+              )}
+              {date && (
+                /* Reuses the same availability derivation the slot pickers
+                   use - the operator sees what the day actually runs. */
+                <p className="mt-1.5 text-xs text-content-muted">
+                  {(() => {
+                    const slots = scheduledSlotsForDate(date, schedules, exceptions ?? []);
+                    return slots.length > 0
+                      ? `Scheduled departures on this date: ${slots.join(', ')}`
+                      : 'No scheduled departures on this date.';
+                  })()}
+                </p>
               )}
             </Field>
 

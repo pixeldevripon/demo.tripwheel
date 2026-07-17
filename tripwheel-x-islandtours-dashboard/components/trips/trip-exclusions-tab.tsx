@@ -1,357 +1,345 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown01Icon, ArrowUp01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
-
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldError } from '@/components/ui/field';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
-import { TranslationRow } from './translation-row';
 import {
-  useExclusions,
-  useAddExclusion,
-  useUpdateExclusion,
-  useRemoveExclusion,
-  useUpsertExclusionTranslation,
+    useAddExclusion,
+    useExclusions,
+    useRemoveExclusion,
+    useUpdateExclusion,
 } from '@/hooks/trips/use-trips';
 import type { ExclusionType, TourExclusion } from '@/types/trip';
-import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
+import { EditableListSection } from './editable-list-section';
 
 const ICON_OPTIONS = [
-  { value: 'x', label: 'Cross' },
-  { value: 'ban', label: 'Not allowed' },
-  { value: 'drink', label: 'Drink' },
-  { value: 'food', label: 'Food' },
-  { value: 'transport', label: 'Transport' },
-  { value: 'gear', label: 'Gear' },
-  { value: 'ticket', label: 'Ticket' },
-  { value: 'money', label: 'Fees / Gratuities' },
+    { value: 'x', label: 'Cross' },
+    { value: 'ban', label: 'Not allowed' },
+    { value: 'drink', label: 'Drink' },
+    { value: 'food', label: 'Food' },
+    { value: 'transport', label: 'Transport' },
+    { value: 'gear', label: 'Gear' },
+    { value: 'ticket', label: 'Ticket' },
+    { value: 'money', label: 'Fees / Gratuities' },
 ];
 
 const EXCLUSION_TYPE_OPTIONS = [
-  { value: 'UNAVAILABLE', label: 'Not provided' },
-  { value: 'NOT_PERMITTED', label: 'Not permitted' },
-  { value: 'PAID_ADVANCE', label: 'Available - pay in advance' },
-  { value: 'PAID_ONSITE', label: 'Available - pay on site' },
+    { value: 'UNAVAILABLE', label: 'Not provided' },
+    { value: 'NOT_PERMITTED', label: 'Not permitted' },
+    { value: 'PAID_ADVANCE', label: 'Available - pay in advance' },
+    { value: 'PAID_ONSITE', label: 'Available - pay on site' },
 ] as const;
 
 const addExclusionSchema = z.object({
-  label: z.string().min(2, 'At least 2 characters').max(100),
-  icon: z.string().optional(),
-  type: z.enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE']).optional().or(z.literal('')),
-  priceText: z.string().max(120).optional(),
-  imageUrl: z.string().optional().or(z.literal('')),
-  displayOrder: z.string().optional(),
+    label: z.string().min(2, 'At least 2 characters').max(100),
+    icon: z.string().optional(),
+    type: z
+        .enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE'])
+        .optional()
+        .or(z.literal('')),
+    priceText: z.string().max(120).optional(),
 });
 
 type AddExclusionFormValues = z.infer<typeof addExclusionSchema>;
 
-// ── Exclusion list item ─────────────────────────────────────────────────────────
+/**
+ * Structured handling of one exclusion (LD18): how the excluded item is dealt
+ * with (`type`) and, for paid add-ons, the operator's price note
+ * (`priceText`). The public "What's Included" column derives its
+ * "(available - $X)" / "(pay on the day)" suffix from exactly these two
+ * fields. `priceText` is cleared when the type is not a paid one; `imageUrl`
+ * is hidden from the UI but preserved on save (sent unchanged).
+ */
+function ExclusionHandlingEditor({
+    exclusion,
+    tripId,
+}: {
+    exclusion: TourExclusion;
+    tripId: string;
+}) {
+    const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
+    const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
+    const { mutate: saveHandling, isPending } = useUpdateExclusion();
 
-interface ExclusionItemProps {
-  exclusion: TourExclusion;
-  tripId: string;
-}
+    const isPaidType = typeVal === 'PAID_ADVANCE' || typeVal === 'PAID_ONSITE';
 
-function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
-  const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
-  // Image URL is hidden from the UI but preserved on save (sent unchanged).
-  const [imageUrlVal] = useState<string>(exclusion.imageUrl ?? '');
-  const { mutate: removeExclusion, isPending: isRemoving } = useRemoveExclusion();
-  const { mutate: saveHandling, isPending: isSavingHandling } = useUpdateExclusion();
-  const { mutate: upsertTranslation, isPending: isUpserting } = useUpsertExclusionTranslation();
+    function handleSave() {
+        saveHandling(
+            {
+                tripId,
+                exclusionId: exclusion.id,
+                payload: {
+                    type: (typeVal || undefined) as ExclusionType | undefined,
+                    priceText: isPaidType ? priceVal || null : null,
+                    imageUrl: exclusion.imageUrl || null,
+                },
+            },
+            {
+                onSuccess: () => toast.success('Handling saved.'),
+                onError: err =>
+                    toast.error(
+                        err instanceof Error ? err.message : 'Failed to save.',
+                    ),
+            },
+        );
+    }
 
-  const enTranslation = exclusion.translations.find((t) => t.locale === 'en');
-  const isPaidType = typeVal === 'PAID_ADVANCE' || typeVal === 'PAID_ONSITE';
-  const typeLabel = EXCLUSION_TYPE_OPTIONS.find((o) => o.value === exclusion.type)?.label;
-
-  // Persist the structured handling of this exclusion (LD18): how the excluded
-  // item is dealt with (`type`) and, for paid add-ons, the operator's price note
-  // (`priceText`). The public "What's Included" column derives its "(available -
-  // $X)" / "(pay on the day)" suffix from exactly these two fields, so keeping
-  // them editable here is what lets operators shape that copy. `priceText` is
-  // cleared when the type is not a paid one.
-  function handleSaveHandling() {
-    saveHandling(
-      {
-        tripId,
-        exclusionId: exclusion.id,
-        payload: {
-          type: (typeVal || undefined) as ExclusionType | undefined,
-          priceText: isPaidType ? priceVal || null : null,
-          imageUrl: imageUrlVal || null,
-        },
-      },
-      {
-        onSuccess: () => toast.success('Handling saved.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save.'),
-      }
-    );
-  }
-
-  function handleDelete() {
-    removeExclusion(
-      { tripId, exclusionId: exclusion.id },
-      {
-        onSuccess: () => toast.success('Exclusion removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
-      }
-    );
-  }
-
-  return (
-    <div className="ring-1 ring-foreground/10 p-3 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Badge variant="secondary" className="text-xs shrink-0">{exclusion.icon}</Badge>
-          <p className="text-sm truncate">{enTranslation?.label ?? '(no EN translation)'}</p>
-          {typeLabel && (
-            <Badge variant="outline" className="text-xs shrink-0 hidden md:inline-flex">
-              {typeLabel}
-              {exclusion.priceText ? ` · ${exclusion.priceText}` : ''}
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 px-2 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title={expanded ? 'Hide details' : 'Edit handling & translations'}
-          >
-            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5" /> : <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" />}
-            <span className="hidden sm:inline">Edit</span>
-          </button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleDelete}
-            disabled={isRemoving}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="pt-3 border-t space-y-4">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground">Handling</p>
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <Label>
-                  Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-                </Label>
-                <Select
-                  value={typeVal || ''}
-                  onValueChange={(val) => setTypeVal(val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="How it's handled..." />
- </SelectTrigger>
- <SelectContent>
- {EXCLUSION_TYPE_OPTIONS.map((opt) => (
- <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
- ))}
- </SelectContent>
- </Select>
- </Field>
- {isPaidType && (
- <Field>
- <Label>Price Text</Label>
- <Input
- value={priceVal}
- onChange={(e) => setPriceVal(e.target.value)}
- placeholder="e.g. $15 per person"
- />
- </Field>
- )}
- </div>
- <div className="flex justify-end">
- <Button type="button" size="sm" variant="outline" onClick={handleSaveHandling} disabled={isSavingHandling}>
- {isSavingHandling ?'Saving...' : 'Save handling'}
- </Button>
- </div>
- </div>
-
- <p className="text-xs font-semibold text-muted-foreground ">Translations</p>
- {ALL_LOCALES.map((locale) => {
- const existing = exclusion.translations.find((t) => t.locale === locale);
- return (
- <TranslationRow
- key={locale}
- locale={locale}
- localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
- defaultValue={existing?.label ??''}
-                onSave={(label) => upsertTranslation(
-                  { tripId, exclusionId: exclusion.id, locale, payload: { label } },
-                  {
-                    onSuccess: () => toast.success(`${LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale} translation saved.`),
-                    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save translation.'),
-                  }
+    return (
+        <div className='space-y-3'>
+            <p className='text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                Handling
+            </p>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                <Field>
+                    <Label>
+                        Type{' '}
+                        <span className='font-normal text-content-muted'>
+                            (optional)
+                        </span>
+                    </Label>
+                    <Select value={typeVal || ''} onValueChange={setTypeVal}>
+                        <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='How is it handled?' />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EXCLUSION_TYPE_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </Field>
+                {isPaidType && (
+                    <Field>
+                        <Label>Price Text</Label>
+                        <Input
+                            value={priceVal}
+                            onChange={e => setPriceVal(e.target.value)}
+                            placeholder='$15 per person'
+                        />
+                    </Field>
                 )}
-                isSaving={isUpserting}
-              />
-            );
-          })}
+            </div>
+            <div className='flex justify-end'>
+                <Button
+                    type='button'
+                    size='sm'
+                    onClick={handleSave}
+                    disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save Handling'}
+                </Button>
+            </div>
         </div>
-      )}
-    </div>
-  );
+    );
 }
-
-// ── Tab ───────────────────────────────────────────────────────────────────────
 
 interface TripExclusionsTabProps {
-  tripId: string;
+    tripId: string;
 }
 
 export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
-  const { data: exclusions, isLoading } = useExclusions(tripId);
-  const { mutate: addExclusion, isPending: isAdding } = useAddExclusion();
+    const { data: exclusions, isLoading } = useExclusions(tripId);
+    const { mutate: addExclusion, isPending: isAdding } = useAddExclusion();
+    const { mutate: removeExclusion, isPending: isRemoving } =
+        useRemoveExclusion();
 
-  const count = exclusions?.length ?? 0;
+    const {
+        register,
+        handleSubmit,
+        reset,
+        watch,
+        setValue,
+        formState: { errors },
+    } = useForm<AddExclusionFormValues>({
+        resolver: zodResolver(addExclusionSchema),
+        defaultValues: { label: '', icon: 'x', type: '', priceText: '' },
+    });
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<AddExclusionFormValues>({
-    resolver: zodResolver(addExclusionSchema),
-    defaultValues: { label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String(count) },
-  });
+    const typeValue = watch('type');
+    const isPaidType =
+        typeValue === 'PAID_ADVANCE' || typeValue === 'PAID_ONSITE';
 
-  const typeValue = watch('type');
-  const isPaidType = typeValue === 'PAID_ADVANCE' || typeValue === 'PAID_ONSITE';
+    function onAdd(values: AddExclusionFormValues) {
+        addExclusion(
+            {
+                tripId,
+                payload: {
+                    label: values.label,
+                    icon: values.icon || 'x',
+                    type: values.type || undefined,
+                    priceText:
+                        (values.type === 'PAID_ADVANCE' ||
+                            values.type === 'PAID_ONSITE') &&
+                        values.priceText
+                            ? values.priceText
+                            : undefined,
+                    // The old form appended at the end via a hidden field -
+                    // preserved so ordering behavior is unchanged.
+                    displayOrder: exclusions?.length ?? 0,
+                },
+            },
+            {
+                onSuccess: () => {
+                    toast.success('Exclusion added.');
+                    reset({ label: '', icon: 'x', type: '', priceText: '' });
+                },
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to add exclusion.',
+                    ),
+            },
+        );
+    }
 
-  function onAdd(values: AddExclusionFormValues) {
-    addExclusion(
-      {
-        tripId,
-        payload: {
-          label: values.label,
-          icon: values.icon || 'x',
-          type: values.type || undefined,
-          priceText:
-            (values.type === 'PAID_ADVANCE' || values.type === 'PAID_ONSITE') && values.priceText
-              ? values.priceText
-              : undefined,
-          imageUrl: values.imageUrl || undefined,
-          displayOrder: values.displayOrder ? Number(values.displayOrder) : undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success('Exclusion added.');
-          reset({ label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add exclusion.'),
- }
- );
- }
-
- return (
- <Card>
- <CardHeader className="border-b pb-4">
- <CardTitle className="text-lg font-semibold ">Exclusions</CardTitle>
- <p className="text-sm text-muted-foreground mt-1">What&apos;s NOT included in this tour.</p>
- </CardHeader>
- <CardContent className="pt-6 space-y-4">
- {isLoading ? (
- <div className="space-y-2">
- {Array.from({ length: 3 }).map((_, i) => (
- <Skeleton key={i} className="h-10 w-full rounded-none" />
- ))}
- </div>
- ) : (
- <div className="space-y-2">
- {(exclusions ?? []).map((exc) => (
- <ExclusionItem key={exc.id} exclusion={exc} tripId={tripId} />
- ))}
- {count === 0 && (
- <p className="text-sm text-muted-foreground text-center py-4">No exclusions yet.</p>
- )}
- </div>
- )}
-
- <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
- <p className="text-xs font-semibold text-muted-foreground">Add Exclusion</p>
- <Field>
- <Label>Label (English)</Label>
- <Input
- {...register('label')}
- placeholder="e.g. Gratuities not included"
- aria-invalid={!!errors.label}
- />
- <FieldError>{errors.label?.message}</FieldError>
- </Field>
- <Field>
- <Label>Icon</Label>
- <Select defaultValue="x" onValueChange={(val) => setValue('icon', val)}>
- <SelectTrigger>
- <SelectValue placeholder="Select icon..." />
- </SelectTrigger>
- <SelectContent>
- {ICON_OPTIONS.map((opt) => (
- <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
- ))}
- </SelectContent>
- </Select>
- </Field>
- <div className="grid grid-cols-2 gap-4">
- <Field>
- <Label>
- Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
- </Label>
- <Select value={typeValue ||''} onValueChange={(val) => setValue('type', val as AddExclusionFormValues['type'])}>
-                <SelectTrigger>
-                  <SelectValue placeholder="How it's handled..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXCLUSION_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            {isPaidType && (
-              <Field>
-                <Label>Price Text</Label>
-                <Input {...register('priceText')} placeholder="e.g. $15 per person" />
-              </Field>
+    return (
+        <EditableListSection
+            title='Exclusions'
+            items={exclusions}
+            isLoading={isLoading}
+            getId={exc => exc.id}
+            renderSummary={exc => {
+                const en = exc.translations.find(t => t.locale === 'en');
+                const typeLabel = EXCLUSION_TYPE_OPTIONS.find(
+                    o => o.value === exc.type,
+                )?.label;
+                return (
+                    <span className='flex min-w-0 items-center gap-2'>
+                        <Badge variant='secondary' className='shrink-0 text-xs'>
+                            {exc.icon}
+                        </Badge>
+                        <span className='truncate'>
+                            {en?.label ?? '(no EN translation)'}
+                        </span>
+                        {typeLabel && (
+                            <Badge
+                                variant='outline'
+                                className='hidden shrink-0 text-xs md:inline-flex'>
+                                {typeLabel}
+                                {exc.priceText ? ` · ${exc.priceText}` : ''}
+                            </Badge>
+                        )}
+                    </span>
+                );
+            }}
+            renderExpanded={exc => (
+                <ExclusionHandlingEditor exclusion={exc} tripId={tripId} />
             )}
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={isAdding}>
-              {isAdding ? 'Adding...' : 'Add Exclusion'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
+            onDelete={exc =>
+                removeExclusion(
+                    { tripId, exclusionId: exc.id },
+                    {
+                        onSuccess: () => toast.success('Exclusion removed.'),
+                        onError: err =>
+                            toast.error(
+                                err instanceof Error
+                                    ? err.message
+                                    : 'Failed to remove.',
+                            ),
+                    },
+                )
+            }
+            isDeleting={isRemoving}
+            emptyText='No exclusions yet.'
+            addForm={{
+                heading: 'Add Exclusion',
+                children: (
+                    <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
+                        <Field>
+                            <Label>Label (English)</Label>
+                            <Input
+                                {...register('label')}
+                                placeholder='Gratuities'
+                                aria-invalid={!!errors.label}
+                            />
+                            <FieldError>{errors.label?.message}</FieldError>
+                        </Field>
+                        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                            <Field>
+                                <Label>Icon</Label>
+                                <Select
+                                    defaultValue='x'
+                                    onValueChange={val =>
+                                        setValue('icon', val)
+                                    }>
+                                    <SelectTrigger className='w-full'>
+                                        <SelectValue placeholder='Select icon...' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ICON_OPTIONS.map(opt => (
+                                            <SelectItem
+                                                key={opt.value}
+                                                value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            <Field>
+                                <Label>
+                                    Type{' '}
+                                    <span className='font-normal text-content-muted'>
+                                        (optional)
+                                    </span>
+                                </Label>
+                                <Select
+                                    value={typeValue || ''}
+                                    onValueChange={val =>
+                                        setValue(
+                                            'type',
+                                            val as AddExclusionFormValues['type'],
+                                        )
+                                    }>
+                                    <SelectTrigger className='w-full'>
+                                        <SelectValue placeholder='How is it handled?' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EXCLUSION_TYPE_OPTIONS.map(opt => (
+                                            <SelectItem
+                                                key={opt.value}
+                                                value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                        </div>
+                        {isPaidType && (
+                            <Field>
+                                <Label>Price Text</Label>
+                                <Input
+                                    {...register('priceText')}
+                                    placeholder='$15 per person'
+                                />
+                            </Field>
+                        )}
+                        <div className='flex justify-end'>
+                            <Button type='submit' size='sm' disabled={isAdding}>
+                                {isAdding ? 'Adding...' : 'Add Exclusion'}
+                            </Button>
+                        </div>
+                    </form>
+                ),
+            }}
+        />
+    );
 }

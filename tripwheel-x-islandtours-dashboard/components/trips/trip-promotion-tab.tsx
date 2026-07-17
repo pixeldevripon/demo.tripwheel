@@ -295,7 +295,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         </div>
 
         {isLoading ? (
-          <Skeleton className="h-24 w-full rounded-none" />
+          <Skeleton className="h-24 w-full rounded-md" />
         ) : current ? (
           <div className="border bg-muted/40 px-4 py-3 space-y-2 text-sm">
             <div className="flex items-center gap-2">

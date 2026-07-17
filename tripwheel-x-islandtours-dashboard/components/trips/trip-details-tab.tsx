@@ -128,7 +128,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
         </div>
 
         {isLoading ? (
-          <Skeleton className="h-8 w-48 rounded-none" />
+          <Skeleton className="h-8 w-48 rounded-md" />
         ) : (languages?.length ?? 0) > 0 ? (
           <div className="flex flex-wrap gap-2">
             {languages!.map((lang) => (
