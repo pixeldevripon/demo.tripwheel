@@ -26,10 +26,11 @@ export const destinationKeys = {
   faqs: (id: string, locale?: Locale) => [...destinationKeys.all, 'faqs', id, locale] as const,
 };
 
-export function useDestinations(params: DestinationsQueryParams = {}) {
+export function useDestinations(params: DestinationsQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: destinationKeys.list(params),
     queryFn: () => destinationsApi.getAll(params),
+    enabled,
     placeholderData: keepPreviousData,
   });
 }

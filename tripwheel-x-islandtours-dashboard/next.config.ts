@@ -31,13 +31,9 @@ const nextConfig: NextConfig = {
         // deleting app config is not this phase's job - see 06 Phase 8. If you
         // ever route an upload through a Server Action, this number is a promise
         // Vercel will not keep; use the direct-to-backend path instead.
-        serverActions: {
-            bodySizeLimit: '100mb',
-        },
+        serverActions: { bodySizeLimit: '100mb' },
     },
-    turbopack: {
-        root: path.resolve(__dirname),
-    },
+    turbopack: { root: path.resolve(__dirname) },
     images: {
         qualities: [100, 75],
         dangerouslyAllowSVG: true,
@@ -59,8 +55,15 @@ const nextConfig: NextConfig = {
                 hostname: 'lh3.googleusercontent.com',
                 pathname: '/**',
             },
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+                pathname: '/**',
+            },
         ],
     },
 };
 
 export default nextConfig;
+
+

@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { filterNavigationByPermissions } from '@/lib/rbac-utils';
+import { filterNavGroups } from '@/lib/rbac-utils';
 import { getNavigations } from '@/navigations/navigations';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { CommandIcon } from 'lucide-react';
@@ -32,10 +32,7 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
         const userPermissions: string[] =
             (ROLE_PERMISSIONS as Record<string, string[]>)[userRole ?? ''] ??
             [];
-        return filterNavigationByPermissions(
-            navData.dashboard,
-            userPermissions
-        );
+        return filterNavGroups(navData.dashboard, userPermissions);
     }, [userRole, navData.dashboard]);
 
     return (
@@ -55,7 +52,7 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={filteredNav} />
+                <NavMain groups={filteredNav} />
             </SidebarContent>
             <SidebarFooter className='border-t border-border/40 p-2'>
                 <div className='flex items-center gap-3 p-3 rounded-xl hover:bg-sidebar-accent transition-colors group cursor-pointer'>

@@ -1,0 +1,265 @@
+'use client';
+
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import {
+    CalendarIcon,
+    CornerDownLeftIcon,
+    GlobeIcon,
+    MapIcon,
+    PlusIcon,
+    SearchIcon,
+} from 'lucide-react';
+import {
+    Command,
+    CommandDialog,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+    CommandSeparator,
+    CommandShortcut,
+} from '@/components/ui/command';
+import { useBookings } from '@/hooks/bookings/use-bookings';
+import { useDestinations } from '@/hooks/destinations/use-destinations';
+import { useAdminTrips, useMyTrips } from '@/hooks/trips/use-trips';
+import { Permission, ROLE_PERMISSIONS } from '@/lib/config/rbac';
+import { filterNavGroups } from '@/lib/rbac-utils';
+import { getNavigations } from '@/navigations/navigations';
+
+/**
+ * Global command palette - Cmd+K (04 §1.4). Jump to any screen, any tour by
+ * name, any booking by ref, any destination. "This is the real answer to
+ * click depth - it makes the sidebar a map rather than the only road."
+ *
+ * Entity search is server-side (the same list endpoints the tables use, via
+ * the domain hooks) and fires only while the dialog is open with 2+ typed
+ * characters - the palette costs nothing while closed. Everything shown is
+ * permission-gated with the exact same filter as the sidebar.
+ */
+
+const toHref = (url?: string) => (!url ? '/' : `/${url.replace(/^\/+/, '')}`);
+
+function useDebounced<T>(value: T, ms: number): T {
+    const [debounced, setDebounced] = React.useState(value);
+    React.useEffect(() => {
+        const t = setTimeout(() => setDebounced(value), ms);
+        return () => clearTimeout(t);
+    }, [value, ms]);
+    return debounced;
+}
+
+export function CommandPalette({ userRole }: { userRole?: string }) {
+    const router = useRouter();
+    const [open, setOpen] = React.useState(false);
+    const [query, setQuery] = React.useState('');
+    const debouncedQuery = useDebounced(query.trim(), 250);
+
+    const permissions = React.useMemo(
+        () =>
+            (ROLE_PERMISSIONS as Record<string, string[]>)[userRole ?? ''] ??
+            [],
+        [userRole],
+    );
+    const can = React.useCallback(
+        (p: string) => permissions.includes(p),
+        [permissions],
+    );
+
+    const navGroups = React.useMemo(
+        () => filterNavGroups(getNavigations().dashboard, permissions),
+        [permissions],
+    );
+
+    // ⌘K / Ctrl+K
+    React.useEffect(() => {
+        const down = (e: KeyboardEvent) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setOpen((o) => !o);
+            }
+        };
+        document.addEventListener('keydown', down);
+        return () => document.removeEventListener('keydown', down);
+    }, []);
+
+    // Entity search - only while open, with a real query.
+    const searching = open && debouncedQuery.length >= 2;
+    const isAdmin = userRole === 'ADMIN';
+
+    const myTrips = useMyTrips(
+        { search: debouncedQuery, limit: 6 },
+        searching && !isAdmin && can(Permission.VIEW_TRIPS),
+    );
+    const adminTrips = useAdminTrips(
+        { search: debouncedQuery, limit: 6 },
+        searching && isAdmin,
+    );
+    const bookings = useBookings(
+        { search: debouncedQuery, limit: 6 },
+        searching && can(Permission.VIEW_BOOKINGS),
+    );
+    // Destinations are few and have no search param - fetch once per open,
+    // let cmdk filter them client-side.
+    const destinations = useDestinations(
+        { limit: 50 },
+        open && can(Permission.VIEW_DESTINATIONS),
+    );
+
+    const tours = (isAdmin ? adminTrips.data?.data : myTrips.data?.data) ?? [];
+    const bookingRows = bookings.data?.data ?? [];
+    const destinationRows = destinations.data?.data ?? [];
+
+    const go = (href: string) => {
+        setOpen(false);
+        setQuery('');
+        router.push(href);
+    };
+
+    return (
+        <>
+            <button
+                type='button'
+                onClick={() => setOpen(true)}
+                aria-label='Search (Command+K)'
+                className='inline-flex h-8 items-center gap-2 rounded-md border border-input bg-surface px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:w-56'>
+                <SearchIcon className='size-3.5 shrink-0' />
+                <span className='hidden md:inline'>Search…</span>
+                <kbd className='ml-auto hidden rounded border border-line bg-surface-inset px-1 text-2xs font-medium text-content-subtle md:inline'>
+                    ⌘K
+                </kbd>
+            </button>
+
+            <CommandDialog
+                open={open}
+                onOpenChange={(o) => {
+                    setOpen(o);
+                    if (!o) setQuery('');
+                }}
+                title='Search the dashboard'
+                description='Jump to a page, tour, booking or destination'>
+                <Command>
+                    <CommandInput
+                        placeholder='Search pages, tours, bookings…'
+                        value={query}
+                        onValueChange={setQuery}
+                    />
+                    <CommandList>
+                        <CommandEmpty>No results.</CommandEmpty>
+
+                        {navGroups.map((group) => (
+                            <CommandGroup
+                                key={group.label ?? 'nav'}
+                                heading={group.label}>
+                                {group.items.map((item) => (
+                                    <CommandItem
+                                        key={item.title}
+                                        value={`${group.label} ${item.title}`}
+                                        onSelect={() => go(toHref(item.url))}>
+                                        {item.icon && (
+                                            <item.icon className='size-4' />
+                                        )}
+                                        {item.title}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        ))}
+
+                        {(can(Permission.CREATE_TRIP) ||
+                            can(Permission.MANAGE_OPERATORS)) && (
+                            <>
+                                <CommandSeparator />
+                                <CommandGroup heading='Actions'>
+                                    {can(Permission.CREATE_TRIP) && (
+                                        <CommandItem
+                                            value='actions new tour create trip'
+                                            onSelect={() => go('/trips/new')}>
+                                            <PlusIcon className='size-4' />
+                                            New tour
+                                            <CommandShortcut>
+                                                <CornerDownLeftIcon className='size-3' />
+                                            </CommandShortcut>
+                                        </CommandItem>
+                                    )}
+                                    {can(Permission.MANAGE_OPERATORS) && (
+                                        <CommandItem
+                                            value='actions new tour operator'
+                                            onSelect={() =>
+                                                go('/tour-operators/new')
+                                            }>
+                                            <PlusIcon className='size-4' />
+                                            New tour operator
+                                        </CommandItem>
+                                    )}
+                                </CommandGroup>
+                            </>
+                        )}
+
+                        {tours.length > 0 && (
+                            <>
+                                <CommandSeparator />
+                                <CommandGroup heading='Tours'>
+                                    {tours.map((t) => (
+                                        <CommandItem
+                                            key={t.id}
+                                            value={`tour ${t.name} ${debouncedQuery}`}
+                                            onSelect={() =>
+                                                go(`/trips/${t.id}/edit`)
+                                            }>
+                                            <MapIcon className='size-4' />
+                                            <span className='truncate'>
+                                                {t.name}
+                                            </span>
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </>
+                        )}
+
+                        {bookingRows.length > 0 && (
+                            <>
+                                <CommandSeparator />
+                                <CommandGroup heading='Bookings'>
+                                    {bookingRows.map((b) => (
+                                        <CommandItem
+                                            key={b.id}
+                                            value={`booking ${b.displayRef} ${b.contactFullName ?? ''} ${debouncedQuery}`}
+                                            onSelect={() => go('/bookings')}>
+                                            <CalendarIcon className='size-4' />
+                                            <span className='font-mono text-xs'>
+                                                {b.displayRef}
+                                            </span>
+                                            <span className='truncate text-muted-foreground'>
+                                                {b.contactFullName ?? b.tourName}
+                                            </span>
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </>
+                        )}
+
+                        {destinationRows.length > 0 && query.length >= 2 && (
+                            <>
+                                <CommandSeparator />
+                                <CommandGroup heading='Destinations'>
+                                    {destinationRows.map((d) => (
+                                        <CommandItem
+                                            key={d.id}
+                                            value={`destination ${d.name}`}
+                                            onSelect={() =>
+                                                go(`/destinations/${d.id}`)
+                                            }>
+                                            <GlobeIcon className='size-4' />
+                                            {d.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </>
+                        )}
+                    </CommandList>
+                </Command>
+            </CommandDialog>
+        </>
+    );
+}
