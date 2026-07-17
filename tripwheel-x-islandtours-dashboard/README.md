@@ -8,17 +8,31 @@ app. It talks to the backend over HTTP and shares no code with the public site.
 ```bash
 cp .env.local.example .env.local   # then set NEXT_PUBLIC_BACKEND_URL + INTERNAL_API_SECRET
 pnpm install
-pnpm dev                           # http://localhost:3000/dashboard
+pnpm dev                           # http://localhost:3001
 ```
 
 The backend must be reachable at `NEXT_PUBLIC_BACKEND_URL` (default
 `http://localhost:5050`). This repo has no database and no Prisma client: every
 read and write is an API call.
 
+### Ports
+
+| Port | App |
+|---|---|
+| 5050 | backend (NestJS) |
+| 3000 | public site (`island-tours` repo) |
+| 3001 | **this dashboard** |
+
+3001 is pinned in `pnpm dev`, not incidental. 3000 belongs to the public site -
+it is what this app POSTs cache revalidations to (`REVALIDATE_TARGET_URL`), so
+the two cannot share a port. The backend's `CORS_ORIGINS` must list
+`http://localhost:3001`, because every API call here runs in the **browser** with
+credentials; omit it and each one is CORS-blocked.
+
 ## Layout
 
 ```
-app/(dashboard)/dashboard/**   the CRM routes           <- moves to / in Phase 6
+app/(app)/**                   the CRM routes (served at /)
 app/(login)/{portal,staff}     operator + staff login
 app/onboarding                 operator onboarding
 components/**                  one folder per module
@@ -57,12 +71,34 @@ Authoritative validation happens one hop later in the dashboard layout.
 | Backend | `api.islandtours.esenc.cloud` | `api.tripwheel.io` |
 | Public site | `islandtours.esenc.cloud` | `island.tours` |
 
+## Deploy
+
+Vercel, same as the public site. There is **no Dockerfile and no
+`output: 'standalone'`** here, on purpose - see the note at the top of
+`next.config.ts` before adding either.
+
+Set every var from `.env.production.example` in the Vercel project. Three of them
+are shared secrets, and each fails in its own quiet way if it drifts:
+
+| Var | If it is wrong |
+|---|---|
+| `INTERNAL_API_SECRET` | must match the backend. Mismatch = SSR requests lose their throttle exemption, a 429 reads as "no session", and logged-in users bounce to `/portal`. |
+| `COOKIE_DOMAIN` | must match the backend's cookie domain (`.islandtours.esenc.cloud`). Mismatch = login loop. |
+| `REVALIDATE_SECRET` | must match the **public** repo's value. Mismatch = every revalidation 401s and the public site serves stale pages. |
+
+Also required, on the **backend**: add this app's origin to `CORS_ORIGINS`. It
+feeds both CORS and Better Auth `trustedOrigins`, so a miss blocks API calls
+*and* rejects sign-in.
+
+`NEXT_PUBLIC_*` vars are inlined at build time, not read at runtime - changing one
+in Vercel needs a redeploy, not a restart.
+
 ## Known gaps
 
-- **Dashboard writes do not yet bust the public site's cache.** Two apps means two
-  caches, and `updateTag()` cannot cross the gap - it fails silently, with no
-  error. Phase 7 replaces the transport.
-- Routes still live under `/dashboard/*`. Phase 6 moves them to the root.
+- No CI. The cache-tag contract in `lib/cache-tags.ts` is duplicated in the public
+  repo and guarded only by a runtime 400 and a manual `diff`. See that file's
+  header.
+- `getDashboardStats` is still mock data (`app/_actions/dashboardActions.ts`).
 
 ## Specs
 

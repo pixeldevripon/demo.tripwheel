@@ -17,7 +17,11 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: 'http://localhost:3000',
+    // 3001, not 3000: since the extraction, 3000 belongs to the PUBLIC site (it
+    // is what REVALIDATE_TARGET_URL points at in .env.local.example). With
+    // `reuseExistingServer` below, a baseURL of 3000 would silently attach to
+    // the public site and run this suite against the wrong app.
+    baseURL: 'http://localhost:3001',
     storageState: authFile,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -32,7 +36,7 @@ export default defineConfig({
 
   webServer: {
     command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3001',
     reuseExistingServer: true,
     timeout: 120_000,
   },

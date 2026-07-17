@@ -8,12 +8,29 @@ const nextConfig: NextConfig = {
     // behavior change, not a simplification.
     cacheComponents: true,
 
-    // Standalone output for the Docker image (Phase 8).
-    output: 'standalone',
+    // NO `output: 'standalone'` HERE, ON PURPOSE. It was added in Phase 5 for a
+    // Docker image that Phase 8 then decided not to build: the dashboard deploys
+    // to Vercel, like the public site. `standalone` is a self-hosting feature
+    // (it emits `.next/standalone` + a minimal `server.js` to run instead of
+    // `next start`); Vercel builds through its own pipeline and ignores it. If
+    // this app is ever moved onto a container host, put it back - that is the
+    // one thing it is for.
 
     experimental: {
-        // Media uploads post large payloads through Server Actions. Dropping this
-        // breaks the media gallery, so it is load-bearing rather than a leftover.
+        // NOT what it looks like: no Server Action in this app takes a file.
+        // Media uploads go browser -> backend DIRECTLY (`mediaApi.upload` ->
+        // `apiFetch` -> NEXT_PUBLIC_BACKEND_URL/media-gallery/upload), so they
+        // never traverse Next and this limit never applies to them. The five
+        // actions we do have (onboardOperator, setPasswordAction,
+        // revalidateCacheTags, getUserProfile, getDashboardStats) all carry
+        // small JSON, far under the 1mb default.
+        //
+        // So this is vestigial, and on Vercel it is also unenforceable: the
+        // platform caps any function request body at 4.5mb and returns 413
+        // FUNCTION_PAYLOAD_TOO_LARGE before Next is reached. Kept only because
+        // deleting app config is not this phase's job - see 06 Phase 8. If you
+        // ever route an upload through a Server Action, this number is a promise
+        // Vercel will not keep; use the direct-to-backend path instead.
         serverActions: {
             bodySizeLimit: '100mb',
         },
