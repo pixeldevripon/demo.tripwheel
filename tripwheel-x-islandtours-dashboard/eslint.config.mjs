@@ -23,10 +23,14 @@ const PALETTE = String.raw`(?:bg|text|border|ring|ring-offset|from|via|to|fill|s
 // `#` fragments and slugs do not trip it.
 const RAW_COLOR = String.raw`(?:#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![0-9a-fA-F])|(?:rgba?|hsla?|oklch|oklab|lch|lab)\()`;
 
-// Rule 4 - spacing off the scale (03 §8: 0.5,1,2,3,4,6,8,12,16).
-// The trailing (?![\d.]) is load-bearing: a plain \b lets `p-1.5` pass by
-// matching the allowed `1`.
-const SPACING = String.raw`(?:^|[\s:'"])-?(?:px|py|pt|pb|pl|pr|ps|pe|p|mx|my|mt|mb|ml|mr|ms|me|m|gap-x|gap-y|gap|space-x|space-y)-(?!(?:0\.5|0|1|2|3|4|6|8|12|16|px|auto|full)(?![\d.]))\d`;
+// Rule 4 - spacing off the scale: 0.5,1,1.5,2,2.5,3,4,6,8,12,16.
+// 1.5 and 2.5 were added to 03 §8's original scale by decision 2026-07-17:
+// 1.5 (6px) is the 3rd most-used spacing value in the codebase (128 uses), so
+// the scale was missing a step it genuinely needs. This list and the `--spacing-*`
+// tokens in globals.css are the same decision - change them together.
+// The trailing (?![\d.]) is load-bearing: a plain \b lets `p-3.5` pass by
+// matching the allowed `3`.
+const SPACING = String.raw`(?:^|[\s:'"])-?(?:px|py|pt|pb|pl|pr|ps|pe|p|mx|my|mt|mb|ml|mr|ms|me|m|gap-x|gap-y|gap|space-x|space-y)-(?!(?:0\.5|1\.5|2\.5|0|1|2|3|4|6|8|12|16|px|auto|full)(?![\d.]))\d`;
 
 // Rule 5 - arbitrary type values. Matching the opening bracket is enough, and
 // it avoids escaping `]` inside an esquery selector.
@@ -52,7 +56,7 @@ const DESIGN_SELECTORS = [
   ),
   ...designRule(
     SPACING,
-    "03 §8.4: spacing is restricted to 0.5,1,2,3,4,6,8,12,16.",
+    "03 §8.4: spacing is restricted to 0.5,1,1.5,2,2.5,3,4,6,8,12,16.",
   ),
   ...designRule(
     ARBITRARY_TEXT,
