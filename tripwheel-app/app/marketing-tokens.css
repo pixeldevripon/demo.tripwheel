@@ -1,0 +1,307 @@
+/* TripWheel SaaS landing tokens - MARKETING SURFACE ONLY (/home)
+ *
+ * Same contract as login-tokens.css: a scoped, self-contained token file for a
+ * branded public-facing surface. Scoped by `.marketing-root` on
+ * app/(marketing)/layout.tsx - the admin tree never carries that class, so
+ * nothing here can leak into the dashboard, and the dashboard's semantic
+ * tokens are never used on the landing page.
+ *
+ * Design source (2026-07-17): reference screenshots supplied by the user -
+ * Clarasight-style hero / CTA / FAQ / footer, Laravel-Cloud-style hairline
+ * pricing grid + contact split, all wrapped in a "boxed boundary" frame
+ * (full-height hairline side rails over a graph-paper canvas).
+ *
+ * The landing is a FIXED LIGHT design: these are literal values on purpose,
+ * they do not switch with `.dark`.
+ */
+
+/* ── Palette + scale extensions ─────────────────────────────────────────── */
+:root {
+    /* Ink & copy on light surfaces */
+    --mk-ink: #16152e;
+    --mk-body: #55546e;
+    --mk-faint: #8b8aa3;
+
+    /* Surfaces */
+    --mk-paper: #ffffff;
+    --mk-canvas: #f5f4fb; /* lavender section field */
+    --mk-shell: #fafafd; /* page behind the boxed frame */
+
+    /* Hairlines */
+    --mk-line: #e7e6f1;
+    --mk-line-strong: #d9d8e8;
+
+    /* Brand indigo */
+    --mk-accent: #5b55e8;
+    --mk-accent-hover: #4a44d6;
+    --mk-accent-soft: #eeedfd;
+    --mk-accent-soft-fg: #4a44d6;
+
+    /* Dark chrome (navbar, black buttons) */
+    --mk-nav: #0c0b20;
+    --mk-nav-fg: rgba(255, 255, 255, 0.72);
+    --mk-nav-line: rgba(255, 255, 255, 0.08);
+    --mk-dark-btn: #131322;
+    --mk-dark-btn-hover: #26253a;
+
+    /* On-gradient (hero) translucent chrome */
+    --mk-ghost: rgba(255, 255, 255, 0.14);
+    --mk-ghost-hover: rgba(255, 255, 255, 0.22);
+    --mk-ghost-line: rgba(255, 255, 255, 0.28);
+    --mk-hero-copy: rgba(235, 234, 252, 0.85);
+
+    /* Success tick in pricing lists */
+    --mk-tick: #8f8ea6;
+
+    --mk-shadow-card: 0 1px 2px rgba(22, 21, 46, 0.05), 0 12px 32px -16px rgba(22, 21, 46, 0.18);
+    --mk-shadow-float: 0 24px 64px -24px rgba(37, 31, 121, 0.35);
+}
+
+@theme inline {
+    --color-mk-ink: var(--mk-ink);
+    --color-mk-body: var(--mk-body);
+    --color-mk-faint: var(--mk-faint);
+    --color-mk-paper: var(--mk-paper);
+    --color-mk-canvas: var(--mk-canvas);
+    --color-mk-shell: var(--mk-shell);
+    --color-mk-line: var(--mk-line);
+    --color-mk-line-strong: var(--mk-line-strong);
+    --color-mk-accent: var(--mk-accent);
+    --color-mk-accent-hover: var(--mk-accent-hover);
+    --color-mk-accent-soft: var(--mk-accent-soft);
+    --color-mk-accent-soft-fg: var(--mk-accent-soft-fg);
+    --color-mk-nav: var(--mk-nav);
+    --color-mk-nav-fg: var(--mk-nav-fg);
+    --color-mk-nav-line: var(--mk-nav-line);
+    --color-mk-dark-btn: var(--mk-dark-btn);
+    --color-mk-dark-btn-hover: var(--mk-dark-btn-hover);
+    --color-mk-ghost: var(--mk-ghost);
+    --color-mk-ghost-hover: var(--mk-ghost-hover);
+    --color-mk-ghost-line: var(--mk-ghost-line);
+    --color-mk-hero-copy: var(--mk-hero-copy);
+    --color-mk-tick: var(--mk-tick);
+
+    --shadow-mk-card: var(--mk-shadow-card);
+    --shadow-mk-float: var(--mk-shadow-float);
+}
+
+/* Marketing type + spacing steps (the dashboard scale tops out at 30px). */
+@theme {
+    --text-mk-hero: 3.5rem; /* 56px - hero h1 desktop */
+    --text-mk-hero--line-height: 1.08;
+    --text-mk-hero--letter-spacing: -0.03em;
+
+    --text-mk-display: 2.75rem; /* 44px - section headlines desktop */
+    --text-mk-display--line-height: 1.12;
+    --text-mk-display--letter-spacing: -0.025em;
+
+    --text-mk-title: 2rem; /* 32px - section headlines mobile, FAQ h2 */
+    --text-mk-title--line-height: 1.2;
+    --text-mk-title--letter-spacing: -0.02em;
+
+    --text-mk-plan: 1.375rem; /* 22px - pricing plan names */
+    --text-mk-plan--line-height: 1.3;
+    --text-mk-plan--letter-spacing: -0.01em;
+
+    --spacing-mk-section: 6.5rem; /* 104px - section block padding */
+    --spacing-mk-half: 4.5rem; /* 72px - compact section padding */
+    --spacing-mk-hero: 10rem; /* 160px - hero gradient runway */
+}
+
+/* ── Base scope ─────────────────────────────────────────────────────────── */
+@layer base {
+    .marketing-root {
+        background-color: var(--mk-shell);
+        /* Graph-paper canvas behind the boxed frame (boundary reference). */
+        background-image:
+            linear-gradient(rgba(22, 21, 46, 0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(22, 21, 46, 0.035) 1px, transparent 1px);
+        background-size: 44px 44px;
+        color: var(--mk-ink);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .marketing-root ::selection {
+        background-color: var(--mk-accent);
+        color: #ffffff;
+    }
+
+    /* Anchor navigation glides; sections stop clear of the sticky navbar. */
+    html:has(.marketing-root) {
+        scroll-behavior: smooth;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html:has(.marketing-root) {
+            scroll-behavior: auto;
+        }
+    }
+}
+
+/* ── Bespoke surfaces ───────────────────────────────────────────────────── */
+
+/* Hero: deep indigo falling into the lavender canvas (Clarasight ref). */
+.mk-hero-bg {
+    background: linear-gradient(
+        180deg,
+        #16123c 0%,
+        #2f2a9b 20%,
+        #4f49d8 45%,
+        #7f7aef 68%,
+        #c7c4f7 88%,
+        #f5f4fb 100%
+    );
+}
+
+/* Faint white grid floating over the hero gradient. */
+.mk-hero-grid {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 72%, transparent 100%);
+}
+
+/* Network CTA card: the saturated indigo panel. */
+.mk-cta-bg {
+    background: linear-gradient(135deg, #7d75f3 0%, #5d55e8 60%, #4f47dd 100%);
+}
+
+/* Photo stand-in inside the CTA card: layered aurora. */
+.mk-cta-visual {
+    background:
+        radial-gradient(120% 90% at 18% 12%, rgba(255, 214, 165, 0.9) 0%, transparent 45%),
+        radial-gradient(110% 90% at 85% 20%, rgba(255, 255, 255, 0.55) 0%, transparent 42%),
+        radial-gradient(130% 110% at 70% 95%, #241d6b 0%, transparent 60%),
+        linear-gradient(160deg, #8b84f6 0%, #4038b8 55%, #221b60 100%);
+}
+
+/* Footer field: lavender wash rising from the watermark. */
+.mk-footer-bg {
+    background: linear-gradient(180deg, #f5f4fb 0%, #eeecf9 55%, #e7e4f7 100%);
+}
+
+/* Giant translucent wordmark pinned to the very bottom (Clarasight ref).
+ * The white-fill lockup SVG is used as an alpha mask and tinted indigo. */
+.mk-watermark {
+    mask-image: url('/logo/logo-dark.svg');
+    mask-repeat: no-repeat;
+    mask-position: center bottom;
+    mask-size: contain;
+    background-color: color-mix(in oklch, #5b55e8 18%, transparent);
+}
+
+/* Soft-hover lift shared by cards and pricing columns. */
+.mk-lift {
+    transition:
+        transform 260ms cubic-bezier(0.25, 1, 0.5, 1),
+        box-shadow 260ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@media (hover: hover) {
+    .mk-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--mk-shadow-card);
+    }
+}
+
+/* ── Form controls (contact section, Laravel-Cloud ref) ─────────────────── */
+.mk-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--mk-ink);
+    margin-bottom: 0.5rem;
+}
+
+.mk-input,
+.mk-textarea {
+    width: 100%;
+    border: 1px solid var(--mk-line-strong);
+    border-radius: 0.5rem;
+    background-color: var(--mk-paper);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--mk-ink);
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.mk-input::placeholder,
+.mk-textarea::placeholder {
+    color: var(--mk-faint);
+}
+
+.mk-input:focus-visible,
+.mk-textarea:focus-visible {
+    outline: none;
+    border-color: var(--mk-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, #5b55e8 18%, transparent);
+}
+
+.mk-textarea {
+    min-height: 8.5rem;
+    resize: vertical;
+}
+
+/* ── Custom cursor ──────────────────────────────────────────────────────── */
+/* Positioned from JS via element.style (not a JSX style attribute); hidden on
+ * coarse pointers and for reduced-motion users (the component also bails). */
+.mk-cursor-dot,
+.mk-cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 90;
+    pointer-events: none;
+    border-radius: 9999px;
+    opacity: 0;
+    will-change: transform;
+}
+
+.mk-cursor-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--mk-accent);
+    transition: opacity 200ms ease, width 200ms ease, height 200ms ease;
+}
+
+.mk-cursor-ring {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid color-mix(in oklch, #5b55e8 55%, transparent);
+    transition:
+        opacity 200ms ease,
+        width 250ms cubic-bezier(0.25, 1, 0.5, 1),
+        height 250ms cubic-bezier(0.25, 1, 0.5, 1),
+        border-color 250ms ease,
+        background-color 250ms ease;
+}
+
+.mk-cursor-dot.is-visible,
+.mk-cursor-ring.is-visible {
+    opacity: 1;
+}
+
+/* Interactive hover: the ring blooms, the dot collapses. */
+.mk-cursor-ring.is-active {
+    width: 56px;
+    height: 56px;
+    border-color: color-mix(in oklch, #5b55e8 35%, transparent);
+    background-color: color-mix(in oklch, #5b55e8 10%, transparent);
+}
+
+.mk-cursor-dot.is-active {
+    width: 4px;
+    height: 4px;
+}
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+    .mk-cursor-dot,
+    .mk-cursor-ring {
+        display: none;
+    }
+}
