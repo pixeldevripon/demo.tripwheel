@@ -123,7 +123,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                 type='button'
                 onClick={() => setOpen(true)}
                 aria-label='Search (Command+K)'
-                className='inline-flex h-8 items-center gap-2 rounded-md border border-input bg-surface px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:w-56'>
+                className='inline-flex h-8 items-center gap-2 rounded-md border border-input bg-surface px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:w-64 lg:w-96'>
                 <SearchIcon className='size-3.5 shrink-0' />
                 <span className='hidden md:inline'>Search…</span>
                 <kbd className='ml-auto hidden rounded border border-line bg-surface-inset px-1 text-2xs font-medium text-content-subtle md:inline'>
@@ -138,12 +138,14 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                     if (!o) setQuery('');
                 }}
                 title='Search the dashboard'
-                description='Jump to a page, tour, booking or destination'>
+                description='Jump to a page, tour, booking or destination'
+                className='w-[92vw] max-w-2xl sm:max-w-2xl'>
                 <Command>
                     <CommandInput
                         placeholder='Search pages, tours, bookings…'
                         value={query}
                         onValueChange={setQuery}
+                        className='h-12 text-base'
                     />
                     <CommandList>
                         <CommandEmpty>No results.</CommandEmpty>

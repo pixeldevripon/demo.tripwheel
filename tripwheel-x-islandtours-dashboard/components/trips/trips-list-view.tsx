@@ -1,8 +1,8 @@
 'use client';
 
+import { useTableState } from '@/components/data-table/use-table-state';
 import { useMyTrips, useAdminTrips } from '@/hooks/trips/use-trips';
 import type { TripStatus } from '@/types/trip';
-import { useEffect, useState } from 'react';
 import { useRole } from '@/contexts/role-context';
 import { TripsTable } from './trips-table';
 
@@ -10,53 +10,37 @@ export function TripsListView() {
     const { role } = useRole();
     const isAdmin = role === 'ADMIN';
 
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(20);
-    const [filters, setFilters] = useState<Record<string, string | undefined>>({});
-    const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(search), 500);
-        return () => clearTimeout(timer);
-    }, [search]);
+    const {
+        page,
+        limit,
+        search,
+        debouncedSearch,
+        filters,
+        setPage,
+        setLimit,
+        setSearch,
+        setFilter,
+    } = useTableState();
 
     const operatorQueryParams = {
         page,
         limit,
         ...(filters.status ? { status: filters.status as TripStatus } : {}),
-        ...(filters.destinationId ? { destinationId: filters.destinationId } : {}),
+        ...(filters.destinationId
+            ? { destinationId: filters.destinationId }
+            : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
     };
 
     const adminQueryParams = {
-        page,
-        limit,
-        ...(filters.status ? { status: filters.status as TripStatus } : {}),
+        ...operatorQueryParams,
         ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
-        ...(filters.destinationId ? { destinationId: filters.destinationId } : {}),
-        ...(debouncedSearch ? { search: debouncedSearch } : {}),
     };
 
     const operatorQuery = useMyTrips(operatorQueryParams, !isAdmin);
     const adminQuery = useAdminTrips(adminQueryParams, isAdmin);
 
     const { data, isLoading } = isAdmin ? adminQuery : operatorQuery;
-
-    function handleFilterChange(key: string, value: string | undefined) {
-        setFilters(prev => ({ ...prev, [key]: value }));
-        setPage(1);
-    }
-
-    function handleLimitChange(newLimit: number) {
-        setLimit(newLimit);
-        setPage(1);
-    }
-
-    function handleSearchChange(value: string) {
-        setSearch(value);
-        setPage(1);
-    }
 
     return (
         <div className='space-y-4'>
@@ -68,10 +52,11 @@ export function TripsListView() {
                 isLoading={isLoading}
                 searchValue={search}
                 isAdminView={isAdmin}
-                onSearchChange={handleSearchChange}
+                filters={filters}
+                onSearchChange={setSearch}
                 onPageChange={setPage}
-                onLimitChange={handleLimitChange}
-                onFilterChange={handleFilterChange}
+                onLimitChange={setLimit}
+                onFilterChange={setFilter}
             />
         </div>
     );

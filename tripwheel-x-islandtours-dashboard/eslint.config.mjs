@@ -92,7 +92,7 @@ const COMPONENT_MODULES = [
 ];
 
 // Not modules - the shared surface any module may import (05 §D3).
-const SHARED_COMPONENTS = ["common", "ui", "providers", "skeletons"];
+const SHARED_COMPONENTS = ["common", "ui", "providers", "skeletons", "data-table"];
 
 const HOOK_DOMAINS = [
   "attributes",
