@@ -153,7 +153,7 @@ export function LocalsFavouritesTable({
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed',
             on
-              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/15'
+              ? 'border-warning-border bg-warning-subtle text-warning-fg hover:bg-warning-subtle/80'
               : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
@@ -161,7 +161,7 @@ export function LocalsFavouritesTable({
             <Loader2Icon className="size-3.5 animate-spin" />
           ) : (
             <StarIcon
-              className={cn('size-3.5', on && 'fill-amber-400 text-amber-500')}
+              className={cn('size-3.5', on && 'fill-rating text-rating')}
             />
           )}
           {on ? 'Favourite' : 'Mark'}

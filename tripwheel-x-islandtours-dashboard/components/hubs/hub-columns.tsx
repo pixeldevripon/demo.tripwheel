@@ -4,6 +4,8 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { MapPinIcon, LockIcon, NavigationIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { ACTIVE_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
 import type { HubLocalized } from '@/types/hub';
@@ -111,17 +113,8 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
       accessorKey: 'isActive',
       header: 'Active',
       cell: ({ row }) => {
-        const isActive = row.original.isActive;
-        return (
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-red-500'}`}
-            />
-            <Badge variant={isActive ? 'default' : 'secondary'}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Badge>
-          </div>
-        );
+        const meta = ACTIVE_STATUS[row.original.isActive ? 'active' : 'inactive'];
+      return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
       },
       enableSorting: true,
     },

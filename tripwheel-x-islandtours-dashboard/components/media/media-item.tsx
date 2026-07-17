@@ -54,7 +54,7 @@ export default function MediaItemCard({
             onClick={handleClick}>
             <div className='relative h-full'>
                 {item.resourceType === 'image' ? (
-                    <div className='relative w-full h-full dark:bg-gray-200 aspect-square overflow-hidden rounded-md'>
+                    <div className='relative w-full h-full bg-surface-inset aspect-square overflow-hidden rounded-md'>
                         <Image
                             width={item?.width || 300}
                             height={item?.height || 300}
@@ -111,7 +111,7 @@ export default function MediaItemCard({
                 {/* SEO Indicator */}
                 {(item?.altText || item?.caption) && (
                     <div className='absolute top-3 left-3'>
-                        <div className='bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
+                        <div className='bg-success-solid text-success-foreground text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
                             SEO Optimized
                         </div>
                     </div>

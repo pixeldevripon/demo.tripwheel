@@ -143,7 +143,7 @@ function SerpPreview({
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Search preview
       </p>
-      <p className="text-[13px] leading-[1.4] text-emerald-700 truncate">
+      <p className="text-[13px] leading-[1.4] text-success-fg truncate">
         islandtours.com › ... › {slug || 'category'}
       </p>
       <p className="text-[18px] leading-[1.3] text-[#1a0dab] truncate">

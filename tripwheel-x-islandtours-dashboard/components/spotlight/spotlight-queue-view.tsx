@@ -60,27 +60,27 @@ const statusKey: Array<{
     {
         status: 'REQUESTED',
         Icon: Clock3Icon,
-        className: 'text-amber-700',
+        className: 'text-warning-fg',
     },
     {
         status: 'APPROVED',
         Icon: CalendarCheckIcon,
-        className: 'text-sky-700',
+        className: 'text-info-fg',
     },
     {
         status: 'ACTIVE',
         Icon: CircleCheckIcon,
-        className: 'text-emerald-700',
+        className: 'text-success-fg',
     },
     {
         status: 'REJECTED',
         Icon: CircleXIcon,
-        className: 'text-rose-700',
+        className: 'text-danger-fg',
     },
     {
         status: 'EXPIRED',
         Icon: TimerOffIcon,
-        className: 'text-slate-600',
+        className: 'text-content-muted',
     },
 ];
 

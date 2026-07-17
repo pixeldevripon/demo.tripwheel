@@ -156,7 +156,7 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
   return (
     <div className="flex items-center justify-between gap-3 ring-1 ring-foreground/10 px-3 py-3">
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <span className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+        <span className={`size-1.5 rounded-full shrink-0 ${isActive ? 'bg-success-solid' : 'bg-content-subtle'}`} />
         <div className="min-w-0">
           <p className="text-sm font-medium">
             {weekdayLabel(schedule.weekday)} · {schedule.startTime}
@@ -504,9 +504,9 @@ export function TripSchedulesTab({
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {capacityRequired && (
-            <div className="flex gap-2.5 bg-amber-50 border border-amber-200 px-3 py-2.5">
-              <AlertTriangleIcon className="size-4 shrink-0 text-amber-600 mt-0.5" />
-              <div className="text-sm text-amber-700">
+            <div className="flex gap-2.5 bg-warning-subtle border border-warning-border px-3 py-2.5">
+              <AlertTriangleIcon className="size-4 shrink-0 text-warning-fg mt-0.5" />
+              <div className="text-sm text-warning-fg">
                 <p className="font-medium">This tour has no Max Party Size set.</p>
                 <p className="mt-0.5">
                   Each schedule needs its own capacity override, or it will not
@@ -608,9 +608,9 @@ export function TripSchedulesTab({
                 </>
               ) : (
                 <>
-                  <div className="flex gap-2.5 bg-amber-50 border border-amber-200 px-3 py-2.5 mb-2">
-                    <AlertTriangleIcon className="size-4 shrink-0 text-amber-600 mt-0.5" />
-                    <p className="text-sm text-amber-700">
+                  <div className="flex gap-2.5 bg-warning-subtle border border-warning-border px-3 py-2.5 mb-2">
+                    <AlertTriangleIcon className="size-4 shrink-0 text-warning-fg mt-0.5" />
+                    <p className="text-sm text-warning-fg">
                       This tour has no declared start times yet. Add them on the
                       Details tab so schedules stay consistent; any time entered
                       here that is not declared will be rejected on save.
@@ -792,8 +792,8 @@ function scheduledSlotsForDate(
 const EXCEPTION_BADGE: Record<TourExceptionType, string> = {
   CLOSE_DATE: 'bg-destructive/10 text-destructive',
   CLOSE_SLOT: 'bg-destructive/10 text-destructive',
-  ADD_SLOT: 'bg-emerald-500/10 text-emerald-700',
-  SET_CAPACITY: 'bg-amber-500/10 text-amber-700',
+  ADD_SLOT: 'bg-success-subtle text-success-fg',
+  SET_CAPACITY: 'bg-warning-subtle text-warning-fg',
 };
 
 function exceptionLabel(type: TourExceptionType): string {

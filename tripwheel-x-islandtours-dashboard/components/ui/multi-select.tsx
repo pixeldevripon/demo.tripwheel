@@ -157,7 +157,7 @@ export function MultiSelect({
                       className={cn(
                         'size-3',
                         isPrimary
-                          ? 'fill-amber-400 text-amber-400'
+                          ? 'fill-rating text-rating'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
                     />

@@ -29,7 +29,7 @@ export default function UserAvatarImage({ user, isVerified, onClick }: UserAvata
       <div className='relative w-9 h-9'>
         {/* Fallback - show when no image, image has error, or hasn't loaded yet */}
         {(!userImage || !imgLoaded || imgError) && (
-          <div className='absolute inset-0 flex items-center justify-center w-full h-full bg-primary dark:bg-neutral-700 text-white text-lg font-semibold rounded-full'>
+          <div className='absolute inset-0 flex items-center justify-center w-full h-full bg-primary text-white text-lg font-semibold rounded-full'>
             {userInitial}
           </div>
         )}
@@ -48,7 +48,7 @@ export default function UserAvatarImage({ user, isVerified, onClick }: UserAvata
               setImgError(true);
               setImgLoaded(false);
             }}
-            className={`rounded-full object-cover w-full h-full shadow-inner border-2 border-gray-200 dark:border-neutral-700 transition-opacity duration-300 ${
+            className={`rounded-full object-cover w-full h-full shadow-inner border-2 border-line transition-opacity duration-300 ${
               imgLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             sizes='(max-width: 768px) 48px, (max-width: 1200px) 64px, 72px'

@@ -4,51 +4,18 @@ import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { UsersIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { BOOKING_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type {
   BookingListItem,
   BookingPaymentModel,
-  BookingStatus,
 } from '@/types/booking';
 
 const entityLink =
   'hover:underline underline-offset-4 decoration-muted-foreground/50';
-
-const statusVariant: Record<
-  BookingStatus,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  ON_HOLD: 'secondary',
-  PENDING: 'secondary',
-  CONFIRMED: 'default',
-  REDEEMED: 'default',
-  EXPIRED: 'outline',
-  CANCELLED: 'destructive',
-  REJECTED: 'destructive',
-};
-
-const statusDot: Record<BookingStatus, string> = {
-  ON_HOLD: 'bg-amber-500',
-  PENDING: 'bg-amber-500',
-  CONFIRMED: 'bg-emerald-500',
-  REDEEMED: 'bg-emerald-500',
-  EXPIRED: 'bg-muted-foreground',
-  CANCELLED: 'bg-red-500',
-  REJECTED: 'bg-red-500',
-};
-
-const statusLabel: Record<BookingStatus, string> = {
-  ON_HOLD: 'On hold',
-  PENDING: 'Pending',
-  CONFIRMED: 'Confirmed',
-  REDEEMED: 'Redeemed',
-  EXPIRED: 'Expired',
-  CANCELLED: 'Cancelled',
-  REJECTED: 'Rejected',
-};
 
 export const paymentModelLabel: Record<BookingPaymentModel, string> = {
   OPERATOR_LINK: 'Operator link',
@@ -168,15 +135,8 @@ export function makeBookingColumns({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`size-1.5 rounded-full shrink-0 ${statusDot[status]}`}
-            />
-            <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>
-          </div>
-        );
+        const meta = BOOKING_STATUS[row.original.status];
+        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
       },
       enableSorting: true,
     },
@@ -256,11 +216,11 @@ export function makeBookingColumns({
           }
           return (
             <div className="min-w-0">
-              <Badge
-                variant={b.requestedInFreeWindow ? 'default' : 'outline'}
+              <StatusBadge
+                variant={b.requestedInFreeWindow ? 'success' : 'neutral'}
               >
                 {b.requestedInFreeWindow ? 'In window' : 'Outside window'}
-              </Badge>
+              </StatusBadge>
               {b.freeCancelDeadline && (
                 <span className="text-xs text-muted-foreground block mt-0.5">
                   until {formatDate(b.freeCancelDeadline, 'long')}
@@ -277,7 +237,7 @@ export function makeBookingColumns({
         cell: ({ row }) => {
           const due = refundDue(row.original);
           return due ? (
-            <span className="text-sm font-medium tabular-nums text-emerald-600">
+            <span className="text-sm font-medium tabular-nums text-success-fg">
               {due}
             </span>
           ) : (

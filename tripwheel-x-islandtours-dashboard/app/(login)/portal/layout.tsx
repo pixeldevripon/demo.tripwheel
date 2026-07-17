@@ -60,7 +60,7 @@ export default function PortalLayout({
                 </MountReveal>
 
                 {/* Anti-phishing line, mobile (brand panel hidden) */}
-                <p className='mt-4.5 block w-full max-w-100 rounded-[12px] border border-blue-200 bg-blue-50 px-3.5 py-2.75 text-[12.5px] text-[#1E3A5F] md:hidden'>
+                <p className='mt-4.5 block w-full max-w-100 rounded-[12px] border border-info-border bg-info-subtle px-3.5 py-2.75 text-[12.5px] text-info-fg md:hidden'>
                     We&apos;ll never ask for your password or codes by email, text, or phone.
                 </p>
             </main>

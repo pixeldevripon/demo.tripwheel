@@ -177,7 +177,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {ageBand.isDefault ? (
-            <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+            <StarIcon className="size-3.5 shrink-0 fill-rating text-rating" />
           ) : (
             <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground" />
           )}
@@ -394,7 +394,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
     <div className="ring-1 ring-foreground/10 px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`size-1.5 rounded-full shrink-0 ${addOn.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+          <span className={`size-1.5 rounded-full shrink-0 ${addOn.isActive ? 'bg-success-solid' : 'bg-muted-foreground'}`} />
           <span className="text-sm font-medium truncate">{addOn.name}</span>
           <span className="text-sm text-muted-foreground">${addOn.price}</span>
           <Badge variant="outline" className="text-xs">{addOn.unit === 'PER_PERSON' ? '/person' : 'flat'}</Badge>

@@ -107,17 +107,17 @@ export function OnboardingForm() {
                             'px-3 py-1.5 rounded-lg transition-colors',
                             currentStep === 0
                                 ? 'bg-primary/20 text-primary border border-primary/20'
-                                : 'text-slate-500'
+                                : 'text-n-500'
                         )}>
                         1. Business Identity
                     </div>
-                    <div className='w-8 h-px bg-slate-800' />
+                    <div className='w-8 h-px bg-n-800' />
                     <div
                         className={cn(
                             'px-3 py-1.5 rounded-lg transition-colors',
                             currentStep === 1
                                 ? 'bg-primary/20 text-primary border border-primary/20'
-                                : 'text-slate-500'
+                                : 'text-n-500'
                         )}>
                         2. Business Intent
                     </div>

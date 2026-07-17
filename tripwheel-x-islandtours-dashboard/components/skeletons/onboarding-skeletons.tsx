@@ -14,7 +14,7 @@ export default function OnboardingSkeleton() {
             <div className='space-y-6 px-8'>
                 <div className='flex items-center gap-3'>
                     <div className='h-7 w-32 animate-pulse rounded-lg bg-muted' />
-                    <div className='h-px w-8 bg-slate-800' />
+                    <div className='h-px w-8 bg-n-800' />
                     <div className='h-7 w-28 animate-pulse rounded-lg bg-muted opacity-50' />
                 </div>
                 <div className='space-y-1.5'>

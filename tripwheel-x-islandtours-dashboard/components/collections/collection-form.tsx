@@ -342,7 +342,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
               />
             )}
             {!isEditMode && slugClashesCategory && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+              <div className="flex items-center gap-1.5 text-xs text-warning-fg">
                 <AlertTriangleIcon className="size-3.5 shrink-0" />
                 This slug matches a category slug - the server will reject it (409). Pick a different slug.
               </div>

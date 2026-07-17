@@ -233,7 +233,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
           aria-invalid={!!errors.overview}
         />
         {isEnglish && (
-          <FieldDescription className="text-amber-600">
+          <FieldDescription className="text-warning-fg">
             Required for publishing. This overview appears on the trip listing.
           </FieldDescription>
         )}

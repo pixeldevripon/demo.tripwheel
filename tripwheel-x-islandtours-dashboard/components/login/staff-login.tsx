@@ -68,7 +68,7 @@ export function StaffLogin() {
                         {tried && (
                             <div
                                 role='alert'
-                                className='mt-4 flex items-start gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.25 py-2.5 text-left text-[13px] text-red-700'>
+                                className='mt-4 flex items-start gap-2 rounded-[10px] border border-danger-border bg-danger-subtle px-3.25 py-2.5 text-left text-[13px] text-danger-fg'>
                                 <CircleAlert className='mt-0.5 size-4 shrink-0' strokeWidth={1.75} />
                                 <span>
                                     This Google account doesn&apos;t have staff access. Ask an admin

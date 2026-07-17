@@ -318,7 +318,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         {canEdit && !blocked && (
           <div className="space-y-4 border-t pt-4">
             {!eligible && (
-              <div className="flex items-start gap-2 text-xs text-amber-600">
+              <div className="flex items-start gap-2 text-xs text-warning-fg">
                 <InfoIcon className="size-3.5 shrink-0 mt-0.5" />
                 <span>
                   This tour does not yet meet the spotlight criteria. You can still submit a request,
@@ -382,7 +382,7 @@ function EligibilityItem({ label, detail, passed }: { label: string; detail: str
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-emerald-500 shrink-0" />
+        <CheckIcon className="size-4 text-success-solid shrink-0" />
       ) : (
         <XIcon className="size-4 text-destructive shrink-0" />
       )}

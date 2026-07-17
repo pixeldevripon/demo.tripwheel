@@ -44,7 +44,7 @@ export function ErrorNote({ children }: { children: React.ReactNode }) {
     return (
         <div
             role='alert'
-            className='mb-4 flex items-start gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.25 py-2.5 text-[13.5px] text-red-700'>
+            className='mb-4 flex items-start gap-2 rounded-[10px] border border-danger-border bg-danger-subtle px-3.25 py-2.5 text-[13.5px] text-danger-fg'>
             <CircleAlert className='mt-0.5 size-4 shrink-0' strokeWidth={1.75} />
             <span>{children}</span>
         </div>
@@ -66,8 +66,8 @@ export function SuccessBlock({
     return (
         <div className='py-2 text-center'>
             {/* Bright green circle */}
-            <div className='mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-50'>
-                <Check className='size-7 text-emerald-600' strokeWidth={2.5} />
+            <div className='mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-success-subtle ring-4 ring-success-border/40'>
+                <Check className='size-7 text-success-fg' strokeWidth={2.5} />
             </div>
             <strong className='block text-[17px] text-it-heading'>{title}</strong>
             <p className='mt-2 text-[14px] leading-relaxed text-it-text-muted'>{body}</p>

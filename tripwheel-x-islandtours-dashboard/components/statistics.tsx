@@ -349,8 +349,8 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                     variant='outline'
                                                     className={`flex items-center gap-1 text-[11px] font-medium font-mono tabular-nums px-1.5 py-0 ${
                                                         stat.isPositive
-                                                            ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'
-                                                            : 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400'
+                                                            ? 'border-success-border bg-success-subtle text-success-fg'
+                                                            : 'border-danger-border bg-danger-subtle text-danger-fg'
                                                     }`}>
                                                     <HugeiconsIcon
                                                         icon={
@@ -480,8 +480,8 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                         ?.thisMonth || 0) >=
                                                     (statistics.revenue
                                                         ?.lastMonth || 0)
-                                                        ? 'text-green-600 dark:text-green-400'
-                                                        : 'text-red-600 dark:text-red-400'
+                                                        ? 'text-success-fg'
+                                                        : 'text-danger-fg'
                                                 }`}>
                                                 {revenueGrowth} from last month
                                                 <HugeiconsIcon
@@ -558,8 +558,8 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                         ?.thisMonth || 0) >=
                                                     (statistics.bookings
                                                         ?.lastMonth || 0)
-                                                        ? 'text-green-600 dark:text-green-400'
-                                                        : 'text-red-600 dark:text-red-400'
+                                                        ? 'text-success-fg'
+                                                        : 'text-danger-fg'
                                                 }`}>
                                                 {bookingsGrowth} from last month
                                                 <HugeiconsIcon
@@ -835,12 +835,12 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                                     <div
                                                         key={payment.id || idx}
                                                         className='flex items-center gap-3 py-3 border-b border-border last:border-0 hover:bg-muted/5 transition-colors rounded-md px-2 -mx-2'>
-                                                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500/10'>
+                                                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success-subtle'>
                                                             <HugeiconsIcon
                                                                 icon={
                                                                     MoneyBagIcon
                                                                 }
-                                                                className='size-5 text-green-600'
+                                                                className='size-5 text-success-fg'
                                                             />
                                                         </div>
                                                         <div className='flex-1 min-w-0'>
@@ -997,7 +997,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <span className='text-sm text-muted-foreground'>
                                         Completed
                                     </span>
-                                    <span className='font-semibold text-green-600 dark:text-green-400'>
+                                    <span className='font-semibold text-success-fg'>
                                         {statistics.payments?.byStatus
                                             ?.completed || 0}
                                     </span>
@@ -1006,7 +1006,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <span className='text-sm text-muted-foreground'>
                                         Pending
                                     </span>
-                                    <span className='font-semibold text-amber-600 dark:text-amber-400'>
+                                    <span className='font-semibold text-warning-fg'>
                                         {statistics.payments?.byStatus
                                             ?.pending || 0}
                                     </span>
@@ -1015,7 +1015,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <span className='text-sm text-muted-foreground'>
                                         Failed
                                     </span>
-                                    <span className='font-semibold text-red-600 dark:text-red-400'>
+                                    <span className='font-semibold text-danger-fg'>
                                         {statistics.payments?.byStatus
                                             ?.failed || 0}
                                     </span>
@@ -1049,7 +1049,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <span className='text-sm text-muted-foreground'>
                                         Pending
                                     </span>
-                                    <span className='font-semibold text-amber-600 dark:text-amber-400'>
+                                    <span className='font-semibold text-warning-fg'>
                                         {statistics.inquiries?.pending || 0}
                                     </span>
                                 </div>
@@ -1057,7 +1057,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <span className='text-sm text-muted-foreground'>
                                         Replied
                                     </span>
-                                    <span className='font-semibold text-green-600 dark:text-green-400'>
+                                    <span className='font-semibold text-success-fg'>
                                         {statistics.inquiries?.replied || 0}
                                     </span>
                                 </div>

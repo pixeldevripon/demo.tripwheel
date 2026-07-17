@@ -45,7 +45,7 @@ function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       {passed ? (
-        <CheckIcon className="size-4 text-emerald-500 shrink-0" />
+        <CheckIcon className="size-4 text-success-solid shrink-0" />
       ) : (
         <XIcon className="size-4 text-destructive shrink-0" />
       )}
@@ -178,7 +178,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
 
         {/* Publish readiness (only relevant while not yet published) */}
         {collection.status !== 'PUBLISHED' && (
-          <Card className={allPassed ? 'border-emerald-200' : 'border-amber-200'}>
+          <Card className={allPassed ? 'border-success-border' : 'border-warning-border'}>
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-sm">Publish Readiness</CardTitle>
             </CardHeader>

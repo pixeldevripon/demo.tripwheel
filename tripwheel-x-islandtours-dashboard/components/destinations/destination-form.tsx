@@ -475,7 +475,7 @@ export function DestinationForm({
                                     slug and booking history.
                                 </p>
                                 {destination.isSeeded && (
-                                    <div className='mt-3 flex items-center gap-2 text-sm text-amber-600'>
+                                    <div className='mt-3 flex items-center gap-2 text-sm text-warning-fg'>
                                         <ShieldAlertIcon className='size-4 shrink-0' />
                                         <span>
                                             This is a seeded destination and is

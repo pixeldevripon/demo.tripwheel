@@ -33,8 +33,8 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
     if (!expired && !token) {
         return (
             <div className={`${cardClass} text-center`}>
-                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-red-50'>
-                    <CircleAlert className='size-6 text-red-700' strokeWidth={1.75} />
+                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
+                    <CircleAlert className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
                 <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
                     Invalid reset link
@@ -79,8 +79,8 @@ export function OperatorReset({ expired = false }: { expired?: boolean }) {
     if (expired) {
         return (
             <div className={`${cardClass} text-center`}>
-                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-red-50'>
-                    <CircleAlert className='size-6 text-red-700' strokeWidth={1.75} />
+                <div className='mx-auto mb-3.5 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
+                    <CircleAlert className='size-6 text-danger-fg' strokeWidth={1.75} />
                 </div>
                 <h1 className='m-0 font-it-display text-[22px] font-semibold text-it-heading'>
                     This link has expired

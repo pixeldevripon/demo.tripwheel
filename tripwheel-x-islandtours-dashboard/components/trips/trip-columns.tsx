@@ -5,6 +5,8 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { MapPinIcon, BadgeCheckIcon, FolderIcon, NavigationIcon, StarIcon, TicketIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { TRIP_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
@@ -15,20 +17,6 @@ import { TripRowActions } from './trip-row-actions';
 // Shared style for clickable entity links inside table cells.
 const entityLink =
   'hover:underline underline-offset-4 decoration-muted-foreground/50';
-
-const statusVariant: Record<TripStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  LIVE: 'default',
-  PAUSED: 'outline',
-  ARCHIVED: 'destructive',
-};
-
-const statusLabel: Record<TripStatus, string> = {
-  DRAFT: 'Draft',
-  LIVE: 'Live',
-  PAUSED: 'Paused',
-  ARCHIVED: 'Archived',
-};
 
 interface MakeColumnsOptions {
   showOperator?: boolean;
@@ -120,23 +108,8 @@ export function makeTripColumns({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`size-1.5 rounded-full shrink-0 ${
-                status === 'LIVE'
-                  ? 'bg-emerald-500'
-                  : status === 'PAUSED'
-                  ? 'bg-amber-500'
-                  : status === 'ARCHIVED'
-                  ? 'bg-red-500'
-                  : 'bg-muted-foreground'
-              }`}
-            />
-            <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>
-          </div>
-        );
+        const meta = TRIP_STATUS[row.original.status];
+        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
       },
       enableSorting: true,
     },
@@ -164,7 +137,7 @@ export function makeTripColumns({
                 {isMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <BadgeCheckIcon className="size-3.5 text-blue-500 shrink-0" />
+                      <BadgeCheckIcon className="size-3.5 text-info-solid shrink-0" />
                     </TooltipTrigger>
                     <TooltipContent>Your trip</TooltipContent>
                   </Tooltip>
@@ -281,7 +254,7 @@ export function makeTripColumns({
           }
           return (
             <div className="flex items-center gap-1.5">
-              <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-500" />
+              <StarIcon className="size-3.5 shrink-0 fill-rating text-rating" />
               <span className="text-sm font-medium tabular-nums">
                 {trip.aggregateRating ?? '-'}
               </span>

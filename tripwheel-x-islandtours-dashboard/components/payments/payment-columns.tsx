@@ -1,34 +1,12 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { PAYMENT_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
-import type { PaymentKind, PaymentListItem, PaymentStatus } from '@/types/booking';
-
-const statusVariant: Record<
-  PaymentStatus,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  REQUIRES_PAYMENT: 'secondary',
-  PROCESSING: 'secondary',
-  SUCCEEDED: 'default',
-  FAILED: 'destructive',
-  REFUNDED: 'outline',
-  PARTIALLY_REFUNDED: 'outline',
-  CANCELLED: 'destructive',
-};
-
-const statusLabel: Record<PaymentStatus, string> = {
-  REQUIRES_PAYMENT: 'Requires payment',
-  PROCESSING: 'Processing',
-  SUCCEEDED: 'Succeeded',
-  FAILED: 'Failed',
-  REFUNDED: 'Refunded',
-  PARTIALLY_REFUNDED: 'Partially refunded',
-  CANCELLED: 'Cancelled',
-};
+import type { PaymentKind, PaymentListItem } from '@/types/booking';
 
 const kindLabel: Record<PaymentKind, string> = {
   DEPOSIT: 'Deposit',
@@ -100,9 +78,9 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <Badge variant={statusVariant[row.original.status]}>
-          {statusLabel[row.original.status]}
-        </Badge>
+        <StatusBadge variant={PAYMENT_STATUS[row.original.status].variant}>
+          {PAYMENT_STATUS[row.original.status].label}
+        </StatusBadge>
       ),
       enableSorting: true,
     },

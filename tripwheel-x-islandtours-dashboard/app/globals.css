@@ -167,6 +167,11 @@
     --chart-5: oklch(0.55 0.14 300);
     --chart-6: oklch(0.6 0.11 190);
 
+    /* Star-rating gold. NOT a status - ratings must never borrow the warning
+     * quartet or they become indistinguishable from warnings. Decorative
+     * (icon fill beside a numeric label), so no contrast target. */
+    --rating: oklch(0.77 0.16 75);
+
     --elevation-xs: 0 1px 2px 0 oklch(0.21 0.01 250 / 0.05);
     --elevation-sm: 0 1px 3px 0 oklch(0.21 0.01 250 / 0.08),
         0 1px 2px -1px oklch(0.21 0.01 250 / 0.06);
@@ -283,6 +288,8 @@
     --chart-5: oklch(0.7 0.14 300);
     --chart-6: oklch(0.74 0.11 190);
 
+    --rating: oklch(0.8 0.15 78);
+
     --elevation-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
     --elevation-sm: 0 1px 3px 0 oklch(0 0 0 / 0.4),
         0 1px 2px -1px oklch(0 0 0 / 0.3);
@@ -387,6 +394,8 @@
     --color-chart-4: var(--chart-4);
     --color-chart-5: var(--chart-5);
     --color-chart-6: var(--chart-6);
+
+    --color-rating: var(--rating);
 
     --color-sidebar: var(--sidebar);
     --color-sidebar-content: var(--sidebar-content);

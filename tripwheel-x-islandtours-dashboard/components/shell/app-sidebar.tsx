@@ -49,7 +49,7 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
                             width={68}
                             height={50}
                             priority
-                            className='h-11 ml-6 w-auto object-contain'
+                            className='h-11 ml-6 w-auto object-contain dark:invert'
                         />
                     </SidebarMenuItem>
                 </SidebarMenu>

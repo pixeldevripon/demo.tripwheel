@@ -19,7 +19,7 @@ function CoverageBar({ pct, target }: { pct: number; target: number }) {
         <div
           className={cn(
             'h-full rounded-full transition-[width] duration-500',
-            off ? 'bg-amber-400' : 'bg-emerald-500',
+            off ? 'bg-warning-solid' : 'bg-success-solid',
           )}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
@@ -46,7 +46,7 @@ export function LocalsFavouritesView() {
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-rating/10 text-rating">
                   <StarIcon className="size-4 fill-current" />
                 </span>
                 <div>
@@ -84,8 +84,8 @@ export function LocalsFavouritesView() {
                       className={cn(
                         'tabular-nums',
                         Math.abs(d.pct - stats.target) > COVERAGE_BAND
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-emerald-600 dark:text-emerald-400',
+                          ? 'text-warning-fg'
+                          : 'text-success-fg',
                       )}
                     >
                       {d.pct}%

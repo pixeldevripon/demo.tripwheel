@@ -60,7 +60,7 @@ function ReadinessItem({ label, passed }: ReadinessItemProps) {
     return (
         <div className='flex items-center gap-2 text-sm'>
             {passed ? (
-                <CheckIcon className='size-4 text-emerald-500 shrink-0' />
+                <CheckIcon className='size-4 text-success-solid shrink-0' />
             ) : (
                 <XIcon className='size-4 text-destructive shrink-0' />
             )}
@@ -266,12 +266,12 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
 
             {/* Warnings banner */}
             {warnings.length > 0 && (
-                <div className='mb-4 bg-amber-50 border border-amber-200 px-4 py-3 space-y-1'>
-                    <p className='text-xs font-semibold uppercase text-amber-700'>
+                <div className='mb-4 bg-warning-subtle border border-warning-border px-4 py-3 space-y-1'>
+                    <p className='text-xs font-semibold uppercase text-warning-fg'>
                         Warnings
                     </p>
                     {warnings.map((w, i) => (
-                        <p key={i} className='text-sm text-amber-700'>
+                        <p key={i} className='text-sm text-warning-fg'>
                             {w}
                         </p>
                     ))}
@@ -282,11 +282,11 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 until it has availability in the next 30 days (isBookable). This
                 keeps that state visible so a published tour is never silently missing. */}
             {trip.status === 'LIVE' && !trip.isBookable && (
-                <div className='mb-4 bg-amber-50 border border-amber-200 px-4 py-3'>
-                    <p className='text-xs font-semibold uppercase text-amber-700'>
+                <div className='mb-4 bg-warning-subtle border border-warning-border px-4 py-3'>
+                    <p className='text-xs font-semibold uppercase text-warning-fg'>
                         Published, not yet listed
                     </p>
-                    <p className='text-sm text-amber-700 mt-1'>
+                    <p className='text-sm text-warning-fg mt-1'>
                         This tour has no bookable availability in the next 30
                         days, so it will not appear in public listings yet. Add
                         recurring schedules in the Schedules tab and make sure
@@ -301,7 +301,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
             {/* Publish readiness */}
             {trip.status === 'DRAFT' && (
                 <Card
-                    className={`mb-6 ${allPassed ? 'border-emerald-200' : 'border-amber-200'}`}>
+                    className={`mb-6 ${allPassed ? 'border-success-border' : 'border-warning-border'}`}>
                     <CardHeader className='border-b pb-4'>
                         <CardTitle className='text-sm'>
                             Publish Readiness

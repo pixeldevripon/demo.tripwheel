@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { StatusBadge } from '@/components/common/status-badge';
+import { SPOTLIGHT_STATUS } from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,13 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { SpotlightRequest, SpotlightStatus } from '@/types/tier';
-import {
-  SPOTLIGHT_MIN_RATING,
-  SPOTLIGHT_MIN_REVIEWS,
-  SPOTLIGHT_STATUS_LABELS,
-} from '@/types/tier';
+import { SPOTLIGHT_MIN_RATING, SPOTLIGHT_MIN_REVIEWS } from '@/types/tier';
 
 export interface TourInfo {
   name: string;
@@ -44,45 +42,17 @@ export type SpotlightRequestWithInfo = SpotlightRequest & {
   tourInfo?: TourInfo;
 };
 
-const statusStyles: Record<
+/* Icon + description are per-status METADATA and stay here; every status
+ * COLOR comes from SPOTLIGHT_STATUS + StatusBadge (03 §5.1). */
+const statusExtras: Record<
   SpotlightStatus,
-  {
-    Icon: LucideIcon;
-    tone: string;
-    dot: string;
-    description: string;
-  }
+  { Icon: LucideIcon; description: string }
 > = {
-  REQUESTED: {
-    Icon: Clock3Icon,
-    tone: 'border-amber-200 bg-amber-50 text-amber-900',
-    dot: 'bg-amber-500',
-    description: 'Waiting for admin review',
-  },
-  APPROVED: {
-    Icon: CalendarCheckIcon,
-    tone: 'border-sky-200 bg-sky-50 text-sky-900',
-    dot: 'bg-sky-500',
-    description: 'Approved and scheduled',
-  },
-  ACTIVE: {
-    Icon: CircleCheckIcon,
-    tone: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-    dot: 'bg-emerald-500',
-    description: 'Live in Destination Spotlight',
-  },
-  REJECTED: {
-    Icon: CircleXIcon,
-    tone: 'border-rose-200 bg-rose-50 text-rose-900',
-    dot: 'bg-rose-500',
-    description: 'Declined by admin',
-  },
-  EXPIRED: {
-    Icon: TimerOffIcon,
-    tone: 'border-slate-200 bg-slate-50 text-slate-700',
-    dot: 'bg-slate-400',
-    description: 'Live window has ended',
-  },
+  REQUESTED: { Icon: Clock3Icon, description: 'Waiting for admin review' },
+  APPROVED: { Icon: CalendarCheckIcon, description: 'Approved and scheduled' },
+  ACTIVE: { Icon: CircleCheckIcon, description: 'Live in Destination Spotlight' },
+  REJECTED: { Icon: CircleXIcon, description: 'Declined by admin' },
+  EXPIRED: { Icon: TimerOffIcon, description: 'Live window has ended' },
 };
 
 function getEligibilitySummary(info?: TourInfo) {
@@ -110,39 +80,30 @@ function getEligibilitySummary(info?: TourInfo) {
 }
 
 function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo }) {
-  const style = statusStyles[request.status];
+  const meta = SPOTLIGHT_STATUS[request.status];
+  const extras = statusExtras[request.status];
   const eligibility = getEligibilitySummary(request.tourInfo);
-  const Icon = style.Icon;
+  const Icon = extras.Icon;
 
   return (
     <div className="min-w-44 space-y-1.5">
-      <div
-        className={cn(
-          'inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold',
-          style.tone
-        )}
-      >
-        <span className={cn('size-2 rounded-full', style.dot)} />
-        <Icon className="size-3.5" />
-        <span>{SPOTLIGHT_STATUS_LABELS[request.status]}</span>
-      </div>
-      <p className="text-xs leading-5 text-muted-foreground">{style.description}</p>
+      <StatusBadge variant={meta.variant} icon={<Icon className="size-3" />}>
+        {meta.label}
+      </StatusBadge>
+      <p className="text-xs leading-5 text-muted-foreground">{extras.description}</p>
       {request.status === 'REQUESTED' && (
-        <div
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-            eligibility.isEligible
-              ? 'bg-emerald-50 text-emerald-800'
-              : 'bg-rose-50 text-rose-800'
-          )}
+        <StatusBadge
+          variant={eligibility.isEligible ? 'success' : 'danger'}
+          icon={
+            eligibility.isEligible ? (
+              <CircleCheckIcon className="size-3" />
+            ) : (
+              <AlertTriangleIcon className="size-3" />
+            )
+          }
         >
-          {eligibility.isEligible ? (
-            <CircleCheckIcon className="size-3.5" />
-          ) : (
-            <AlertTriangleIcon className="size-3.5" />
-          )}
-          <span>{eligibility.isEligible ? 'Eligible' : 'Not eligible'} · {eligibility.text}</span>
-        </div>
+          {eligibility.isEligible ? 'Eligible' : 'Not eligible'} · {eligibility.text}
+        </StatusBadge>
       )}
       {request.status === 'REJECTED' && request.rejectionReason && (
         <p className="max-w-56 text-xs leading-5 text-muted-foreground">

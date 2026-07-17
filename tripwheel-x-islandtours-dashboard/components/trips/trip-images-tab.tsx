@@ -217,7 +217,7 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                     {!hasHero && count > 0 && (
                         <Badge
                             variant='outline'
-                            className='border-amber-500 text-amber-600'>
+                            className='border-warning-border text-warning-fg'>
                             No hero image set
                         </Badge>
                     )}
@@ -329,8 +329,8 @@ function ImageCard({
                 <div className='flex items-center justify-between gap-2'>
                     {img.isHero ? (
                         <div className='flex items-center gap-1'>
-                            <StarIcon className='size-3 text-amber-500 fill-amber-500' />
-                            <span className='text-xs text-amber-600 font-medium'>
+                            <StarIcon className='size-3 text-rating fill-rating' />
+                            <span className='text-xs text-warning-fg font-medium'>
                                 Hero
                             </span>
                         </div>

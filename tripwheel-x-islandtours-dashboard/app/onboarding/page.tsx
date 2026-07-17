@@ -44,7 +44,7 @@ export default function OnboardingPage() {
                     <h1 className='text-4xl font-bold tracking-tight text-white'>
                         Welcome to Island Tours
                     </h1>
-                    <p className='text-slate-400 text-lg'>
+                    <p className='text-n-400 text-lg'>
                         Let's get your operator profile set up.
                     </p>
                 </div>
