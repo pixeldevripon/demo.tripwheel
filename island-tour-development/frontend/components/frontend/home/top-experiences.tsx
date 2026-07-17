@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
-import useEmblaCarousel from 'embla-carousel-react';
-import Autoplay from 'embla-carousel-autoplay';
-import { Pause, Play } from 'lucide-react';
 import { crossFade, springPop } from '@/lib/motion';
+import Autoplay from 'embla-carousel-autoplay';
+import useEmblaCarousel from 'embla-carousel-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Pause, Play } from 'lucide-react';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Reveal } from '../reveal';
 
 type CardKey =
@@ -16,46 +16,58 @@ type CardKey =
     | 'snorkeling'
     | 'dolphin';
 
-type Card = {
-    key: CardKey;
-    image: string | null;
-    video: string | null;
-};
+type Card = { key: CardKey; image: string | null; video: string | null };
 
-type ExperiencesDict = {
-    title: string;
-    cards: Record<CardKey, string>;
-};
+type ExperiencesDict = { title: string; cards: Record<CardKey, string> };
 
-const cards: Card[] = [
+/**
+ * Cloudinary delivery transformations, injected right after `/upload/`.
+ * Cards render at 220px wide (~440px at 2x DPR), so w_640 + c_limit keeps
+ * crisp retina quality while cutting the raw PNG/MP4 payloads dramatically.
+ * Images: f_auto picks AVIF/WebP per browser, q_auto balances quality/size.
+ * Videos: vc_auto picks the codec (H.265/VP9 where supported), q_auto ditto.
+ */
+const CLD_IMAGE_TX = 'f_auto,q_auto,w_640,c_limit';
+const CLD_VIDEO_TX = 'q_auto,vc_auto,w_640,c_limit';
+
+const cld = (url: string, transform: string) =>
+    url.replace('/upload/', `/upload/${transform}/`);
+
+const RAW_CARDS: Card[] = [
     {
         key: 'sunsetCruise',
-        image: '/images/home-page/experiences/sunset-cruise.jpg',
-        video: '/videos/experiences/sunset-cruise.mp4',
+        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
+        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4',
     },
     {
         key: 'catamaranTrip',
-        image: '/images/home-page/experiences/catamaran-trip.jpg',
-        video: '/videos/experiences/catamaran-trip.mp4',
+        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/catamaran-trip_s5njba.png',
+        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296701/catamaran-trip_zohlkt.mp4',
     },
     {
         key: 'buggyTour',
-        image: '/images/home-page/experiences/buggy-tour.jpg',
-        video: '/videos/experiences/buggy-tour.mp4',
+        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296714/buggy-tour_iwaavw.png',
+        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296700/buggy-tour_xy8ctp.mp4',
     },
     // Placeholder media (only 3 shoots exist today): reuse the closest pair so
     // no card ever renders as an empty grey box. Swap for real assets when shot.
     {
         key: 'snorkeling',
-        image: '/images/home-page/experiences/catamaran-trip.jpg',
-        video: '/videos/experiences/catamaran-trip.mp4',
+        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/catamaran-trip_s5njba.png',
+        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296701/catamaran-trip_zohlkt.mp4',
     },
     {
         key: 'dolphin',
-        image: '/images/home-page/experiences/sunset-cruise.jpg',
-        video: '/videos/experiences/sunset-cruise.mp4',
+        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
+        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4',
     },
 ];
+
+const cards: Card[] = RAW_CARDS.map(card => ({
+    ...card,
+    image: card.image && cld(card.image, CLD_IMAGE_TX),
+    video: card.video && cld(card.video, CLD_VIDEO_TX),
+}));
 
 const REAL = cards.length;
 // Repeat the set so the track overflows the viewport - required for a seamless infinite loop
@@ -70,10 +82,19 @@ const H_MIN = 333;
 
 export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
     const autoplay = useRef(
-        Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
+        Autoplay({
+            delay: 5000,
+            stopOnInteraction: false,
+            stopOnMouseEnter: true,
+        })
     );
     const [emblaRef, emblaApi] = useEmblaCarousel(
-        { loop: true, align: 'center', containScroll: false, startIndex: START },
+        {
+            loop: true,
+            align: 'center',
+            containScroll: false,
+            startIndex: START,
+        },
         [autoplay.current]
     );
 
@@ -118,13 +139,15 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
         if (!emblaApi) return;
         const rect = emblaApi.rootNode().getBoundingClientRect();
         const center = rect.left + rect.width / 2;
-        emblaApi.slideNodes().forEach((slide) => {
+        emblaApi.slideNodes().forEach(slide => {
             const card = slide.firstElementChild as HTMLElement | null;
             if (!card) return;
             const r = slide.getBoundingClientRect();
             const slideCenter = r.left + r.width / 2;
             const step = Math.abs(slideCenter - center) / (SLIDE_W + GAP);
-            const h = Math.round(H_MAX - (H_MAX - H_MIN) * Math.min(step / 2, 1));
+            const h = Math.round(
+                H_MAX - (H_MAX - H_MIN) * Math.min(step / 2, 1)
+            );
             card.style.height = `${h}px`;
         });
     }, [emblaApi]);
@@ -179,19 +202,22 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                     {/* Carousel - drag to swipe (Embla handles pointer + touch) */}
                     <div
                         className='w-full overflow-hidden cursor-grab select-none active:cursor-grabbing'
-                        ref={emblaRef}
-                    >
-                        <div className='flex items-center gap-6' style={{ height: H_MAX }}>
+                        ref={emblaRef}>
+                        <div
+                            className='flex items-center gap-6'
+                            style={{ height: H_MAX }}>
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
-                                const isPlaying = playing === i && Boolean(card.video);
+                                const isPlaying =
+                                    playing === i && Boolean(card.video);
                                 const title = dict.cards[card.key];
                                 return (
-                                    <div key={`${card.key}-${i}`} className='shrink-0 w-55'>
+                                    <div
+                                        key={`${card.key}-${i}`}
+                                        className='shrink-0 w-55'>
                                         <div
                                             className='relative w-full overflow-hidden rounded-it-lg bg-it-border'
-                                            style={{ height: H_MIN }}
-                                        >
+                                            style={{ height: H_MIN }}>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in
@@ -218,10 +244,14 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     // Assign-only ref: never let a departing video's
                                                     // cleanup null the ref after the new one claimed it.
                                                     ref={el => {
-                                                        if (el) videoRef.current = el;
+                                                        if (el)
+                                                            videoRef.current =
+                                                                el;
                                                     }}
                                                     src={card.video as string}
-                                                    poster={card.image ?? undefined}
+                                                    poster={
+                                                        card.image ?? undefined
+                                                    }
                                                     autoPlay
                                                     loop
                                                     muted={false}
@@ -230,11 +260,17 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     // a departing video fires pause on unmount and
                                                     // would flip the fresh card's icon.
                                                     onPlay={e => {
-                                                        if (e.currentTarget === videoRef.current)
+                                                        if (
+                                                            e.currentTarget ===
+                                                            videoRef.current
+                                                        )
                                                             setPaused(false);
                                                     }}
                                                     onPause={e => {
-                                                        if (e.currentTarget === videoRef.current)
+                                                        if (
+                                                            e.currentTarget ===
+                                                            videoRef.current
+                                                        )
                                                             setPaused(true);
                                                     }}
                                                     initial={{ opacity: 0 }}
@@ -257,7 +293,8 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     onClick={
                                                         isPlaying
                                                             ? toggleVideo
-                                                            : () => handlePlay(i)
+                                                            : () =>
+                                                                  handlePlay(i)
                                                     }
                                                     // Keep the press away from Embla's drag watcher -
                                                     // a micro-movement during the press otherwise
@@ -267,18 +304,30 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     }
                                                     whileTap={{ scale: 0.9 }}
                                                     transition={springPop}
-                                                    className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'
-                                                >
-                                                    <AnimatePresence mode='wait' initial={false}>
+                                                    className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'>
+                                                    <AnimatePresence
+                                                        mode='wait'
+                                                        initial={false}>
                                                         <motion.span
-                                                            key={isPlaying && !paused ? 'pause' : 'play'}
-                                                            initial={{ scale: 0 }}
-                                                            animate={{ scale: 1 }}
+                                                            key={
+                                                                isPlaying &&
+                                                                !paused
+                                                                    ? 'pause'
+                                                                    : 'play'
+                                                            }
+                                                            initial={{
+                                                                scale: 0,
+                                                            }}
+                                                            animate={{
+                                                                scale: 1,
+                                                            }}
                                                             exit={{ scale: 0 }}
-                                                            transition={springPop}
-                                                            className='inline-flex'
-                                                        >
-                                                            {isPlaying && !paused ? (
+                                                            transition={
+                                                                springPop
+                                                            }
+                                                            className='inline-flex'>
+                                                            {isPlaying &&
+                                                            !paused ? (
                                                                 <Pause className='size-3.5 fill-it-white text-it-white' />
                                                             ) : (
                                                                 <Play className='size-3.5 fill-it-white text-it-white' />
@@ -301,9 +350,10 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                         transition={crossFade}
                                                         className={[
                                                             'absolute bottom-4 inset-x-8 m-0 text-center font-medium text-[20px] leading-[1.6] tracking-[-0.012em]',
-                                                            hasMedia ? 'text-it-white' : 'text-it-heading',
-                                                        ].join(' ')}
-                                                    >
+                                                            hasMedia
+                                                                ? 'text-it-white'
+                                                                : 'text-it-heading',
+                                                        ].join(' ')}>
                                                         {title}
                                                     </motion.p>
                                                 )}
@@ -317,7 +367,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
 
                     {/* Pagination - 3 dots: left / centre / right */}
                     <div className='flex items-center gap-2'>
-                        {[0, 1, 2].map((dot) => (
+                        {[0, 1, 2].map(dot => (
                             <motion.button
                                 key={dot}
                                 type='button'
@@ -327,7 +377,9 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                 transition={springPop}
                                 className={[
                                     'h-1.5 w-12 rounded-full transition-colors duration-300 cursor-pointer border-none',
-                                    dot === activeDot ? 'bg-it-ink-muted' : 'bg-it-border',
+                                    dot === activeDot
+                                        ? 'bg-it-ink-muted'
+                                        : 'bg-it-border',
                                 ].join(' ')}
                             />
                         ))}
@@ -337,3 +389,4 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
         </section>
     );
 }
+
