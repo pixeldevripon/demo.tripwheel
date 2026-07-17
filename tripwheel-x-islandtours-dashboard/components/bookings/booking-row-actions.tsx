@@ -17,8 +17,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useRole } from '@/contexts/role-context';
 import { useCancelBooking } from '@/hooks/bookings/use-bookings';
 import type { BookingListItem } from '@/types/booking';
-import { refundDue } from './booking-columns';
-import { BookingDetailsDialog } from './booking-details-dialog';
+import { refundDue } from '@/lib/bookings/format';
 
 /** A booking the admin can still act on (master 6.4 "admin marks cancelled"). */
 const CANCELLABLE: BookingListItem['status'][] = [
@@ -27,9 +26,15 @@ const CANCELLABLE: BookingListItem['status'][] = [
   'CONFIRMED',
 ];
 
-export function BookingRowActions({ booking }: { booking: BookingListItem }) {
+export function BookingRowActions({
+  booking,
+  onViewDetails,
+}: {
+  booking: BookingListItem;
+  /** Opens the shared details sheet (owned by the table so prev/next work). */
+  onViewDetails: () => void;
+}) {
   const { can } = useRole();
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const { mutate: cancelBooking, isPending } = useCancelBooking();
 
@@ -46,7 +51,7 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
+          <DropdownMenuItem onClick={onViewDetails}>
             <HugeiconsIcon icon={ViewIcon} /> View details
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -70,12 +75,6 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <BookingDetailsDialog
-        booking={booking}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-      />
 
       <ConfirmDialog
         open={cancelOpen}

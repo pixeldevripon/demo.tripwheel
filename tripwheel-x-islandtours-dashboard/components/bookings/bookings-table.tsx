@@ -17,8 +17,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRole } from '@/contexts/role-context';
+import { useState } from 'react';
 import type { BookingListItem } from '@/types/booking';
 import { makeBookingColumns } from './booking-columns';
+import { BookingDetailsSheet } from './booking-details-sheet';
 import { BookingRowActions } from './booking-row-actions';
 
 interface BookingsTableProps {
@@ -70,14 +72,45 @@ export function BookingsTable({
 }: BookingsTableProps) {
   const { role } = useRole();
 
+  // Details sheet state lives here (not per-row) so prev/next arrows can walk
+  // the rows of the current page.
+  const [detailsIndex, setDetailsIndex] = useState<number | null>(null);
+  const detailsBooking = detailsIndex != null ? data[detailsIndex] : undefined;
+
   const columns = makeBookingColumns({
     cancellationView,
     // Commission is the platform's cut (rule #22 snapshot) - admin eyes only.
     showCommission: role === 'ADMIN',
-    actions: (booking) => <BookingRowActions booking={booking} />,
+    actions: (booking) => (
+      <BookingRowActions
+        booking={booking}
+        onViewDetails={() =>
+          setDetailsIndex(data.findIndex((b) => b.id === booking.id))
+        }
+      />
+    ),
   });
 
   return (
+    <>
+      {detailsBooking && detailsIndex != null && (
+        <BookingDetailsSheet
+          booking={detailsBooking}
+          open
+          onOpenChange={(open) => {
+            if (!open) setDetailsIndex(null);
+          }}
+          onPrev={
+            detailsIndex > 0 ? () => setDetailsIndex(detailsIndex - 1) : undefined
+          }
+          onNext={
+            detailsIndex < data.length - 1
+              ? () => setDetailsIndex(detailsIndex + 1)
+              : undefined
+          }
+          position={{ index: detailsIndex + 1, count: data.length }}
+        />
+      )}
     <DataTable
       columns={columns}
       data={data}
@@ -161,5 +194,6 @@ export function BookingsTable({
         </>
       )}
     />
+    </>
   );
 }
