@@ -96,14 +96,14 @@ function UploadZone({
       <div className="text-center space-y-1">
         <p
           className={cn(
-            'font-semibold tracking-wider uppercase',
+            'font-semibold',
             compact ? 'text-[11px]' : 'text-xs'
           )}
         >
           {label}
         </p>
         {hint && (
-          <p className="text-[10px] text-muted-foreground tracking-wide">{hint}</p>
+          <p className="text-[10px] text-muted-foreground">{hint}</p>
         )}
       </div>
 
@@ -167,14 +167,14 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
         {urls.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-[10px] font-semibold text-muted-foreground">
                 Selected · {urls.length}{maxFiles ? ` / ${maxFiles}` : ''}
               </p>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto py-0.5 text-[10px] uppercase tracking-widest"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto py-0.5 text-[10px]"
                 onClick={() => onChange([])}
                 disabled={disabled}
               >
@@ -255,7 +255,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                 size="sm"
                 onClick={() => setOpen(true)}
                 disabled={disabled}
-                className="text-[10px] uppercase tracking-widest h-6 px-2"
+                className="text-[10px] h-6 px-2"
               >
                 <RefreshCwIcon className="size-3" />
                 Change

@@ -91,44 +91,44 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
     { label: 'English H1 override filled', passed: !!enTranslation?.h1Override?.trim() },
     { label: 'English overview filled', passed: !!enTranslation?.overview?.trim() },
     ...(isManual ? [{ label: 'At least 1 member tour', passed: memberCount >= 1 }] : []),
-  ];
-  const allPassed = readinessChecks.every((c) => c.passed);
+ ];
+ const allPassed = readinessChecks.every((c) => c.passed);
 
-  if (isLoading) {
-    return (
-      <CollectionDetailShell id={id} name={undefined} isLoading subtitle="Edit collection">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </CollectionDetailShell>
-    );
-  }
+ if (isLoading) {
+ return (
+ <CollectionDetailShell id={id} name={undefined} isLoading subtitle="Edit collection">
+ <div className="space-y-4">
+ {Array.from({ length: 4 }).map((_, i) => (
+ <Skeleton key={i} className="h-12 w-full rounded-none" />
+ ))}
+ </div>
+ </CollectionDetailShell>
+ );
+ }
 
-  if (isError || !collection) {
-    return (
-      <CollectionDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit collection">
-        <p className="text-sm text-destructive">Failed to load collection.</p>
-      </CollectionDetailShell>
-    );
-  }
+ if (isError || !collection) {
+ return (
+ <CollectionDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit collection">
+ <p className="text-sm text-destructive">Failed to load collection.</p>
+ </CollectionDetailShell>
+ );
+ }
 
-  return (
-    <CollectionDetailShell id={id} name={collection.name} isLoading={false} subtitle="Edit collection">
-      <div className="space-y-6">
-        {/* Status + lifecycle actions (always visible, above the tabs) */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
-            </span>
-            <Badge variant={statusVariant[collection.status]}>
-              {COLLECTION_STATUS_LABELS[collection.status]}
-            </Badge>
-          </div>
+ return (
+ <CollectionDetailShell id={id} name={collection.name} isLoading={false} subtitle="Edit collection">
+ <div className="space-y-6">
+ {/* Status + lifecycle actions (always visible, above the tabs) */}
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-3">
+ <span className="text-xs font-semibold text-muted-foreground">
+ Status
+ </span>
+ <Badge variant={statusVariant[collection.status]}>
+ {COLLECTION_STATUS_LABELS[collection.status]}
+ </Badge>
+ </div>
 
-          {can('EDIT_COLLECTION') && (
+ {can('EDIT_COLLECTION') && (
             <div className="flex flex-wrap gap-2">
               {collection.status === 'DRAFT' && (
                 <Button
@@ -220,7 +220,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           <TabsContent value="tours">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold">
                   Tours
                 </CardTitle>
               </CardHeader>
@@ -241,7 +241,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           <TabsContent value="faqs">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold">
                   FAQs
                 </CardTitle>
               </CardHeader>

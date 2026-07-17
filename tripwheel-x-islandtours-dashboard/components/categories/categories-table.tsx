@@ -226,7 +226,7 @@ export function CategoriesTable({
 
       {selectedCount > 0 && (
         <div className="flex items-center gap-3 rounded-none bg-muted px-4 py-2 text-sm">
-          <span className="font-medium text-xs uppercase tracking-wider">
+          <span className="font-medium text-xs">
             {selectedCount} selected
           </span>
           <div className="flex items-center gap-2 ml-auto">
@@ -254,7 +254,7 @@ export function CategoriesTable({
                   <TableHead
                     key={header.id}
                     style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                    className="text-xs font-semibold uppercase tracking-wider"
+                    className="text-xs font-semibold"
                   >
                     {header.isPlaceholder
                       ? null

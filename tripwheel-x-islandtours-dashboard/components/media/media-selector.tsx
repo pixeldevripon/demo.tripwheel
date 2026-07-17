@@ -35,7 +35,7 @@ export default function MediaSelector({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className='max-w-none sm:max-w-none inset-0 w-screen h-screen flex flex-col p-0 gap-0 overflow-hidden bg-background border-none rounded-none translate-x-0 translate-y-0'>
                 <DialogHeader className='px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between'>
-                    <DialogTitle className='text-lg font-bold tracking-widest uppercase'>Select Media</DialogTitle>
+                    <DialogTitle className='text-lg font-bold'>Select Media</DialogTitle>
                 </DialogHeader>
                 <div className='flex-1 min-h-0 p-6 overflow-hidden'>
                     <MediaGalleryManager

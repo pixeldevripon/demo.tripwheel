@@ -178,109 +178,109 @@ export function BookingsTable({
               {STATUS_OPTIONS.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s.charAt(0) + s.slice(1).toLowerCase().replace('_', ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+ </SelectItem>
+ ))}
+ </SelectContent>
+ </Select>
+ )}
 
-        <Select value={modelFilter} onValueChange={handleModelFilterChange}>
-          <SelectTrigger className="w-44 shrink-0">
-            <SelectValue placeholder="Payment model" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Models</SelectItem>
-            {MODEL_OPTIONS.map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+ <Select value={modelFilter} onValueChange={handleModelFilterChange}>
+ <SelectTrigger className="w-44 shrink-0">
+ <SelectValue placeholder="Payment model" />
+ </SelectTrigger>
+ <SelectContent>
+ <SelectItem value="all">All Models</SelectItem>
+ {MODEL_OPTIONS.map(([value, label]) => (
+ <SelectItem key={value} value={value}>
+ {label}
+ </SelectItem>
+ ))}
+ </SelectContent>
+ </Select>
 
-        {/* Travel-date range (matches the backend `from`/`to` on localDate). */}
-        <div className="flex items-center gap-1 shrink-0">
-          <div className="w-36">
-            <DatePickerField
-              value={fromDate}
-              onChange={handleFromChange}
-              placeholder="From date"
-              clearable
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">to</span>
-          <div className="w-36">
-            <DatePickerField
-              value={toDate}
-              onChange={handleToChange}
-              placeholder="To date"
-              clearable
-            />
-          </div>
-        </div>
+ {/* Travel-date range (matches the backend `from`/`to` on localDate). */}
+ <div className="flex items-center gap-1 shrink-0">
+ <div className="w-36">
+ <DatePickerField
+ value={fromDate}
+ onChange={handleFromChange}
+ placeholder="From date"
+ clearable
+ />
+ </div>
+ <span className="text-xs text-muted-foreground">to</span>
+ <div className="w-36">
+ <DatePickerField
+ value={toDate}
+ onChange={handleToChange}
+ placeholder="To date"
+ clearable
+ />
+ </div>
+ </div>
 
-        <div className="flex items-center gap-2 ml-auto max-[400px]:w-full max-[400px]:ml-0 max-[400px]:justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings2Icon />
-                Columns
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-              {table
-                .getAllColumns()
-                .filter((col) => col.getCanHide())
-                .map((col) => (
-                  <DropdownMenuCheckboxItem
-                    key={col.id}
-                    className="capitalize"
-                    checked={col.getIsVisible()}
-                    onCheckedChange={(value) => col.toggleVisibility(!!value)}
-                  >
-                    {col.id}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+ <div className="flex items-center gap-2 ml-auto max-[400px]:w-full max-[400px]:ml-0 max-[400px]:justify-end">
+ <DropdownMenu>
+ <DropdownMenuTrigger asChild>
+ <Button variant="outline" size="sm">
+ <Settings2Icon />
+ Columns
+ </Button>
+ </DropdownMenuTrigger>
+ <DropdownMenuContent align="end" className="w-40">
+ <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+ {table
+ .getAllColumns()
+ .filter((col) => col.getCanHide())
+ .map((col) => (
+ <DropdownMenuCheckboxItem
+ key={col.id}
+ className="capitalize"
+ checked={col.getIsVisible()}
+ onCheckedChange={(value) => col.toggleVisibility(!!value)}
+ >
+ {col.id}
+ </DropdownMenuCheckboxItem>
+ ))}
+ </DropdownMenuContent>
+ </DropdownMenu>
+ </div>
+ </div>
 
-      <div className="rounded-none ring-1 ring-foreground/5 overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{
-                      width:
-                        header.getSize() !== 150 ? header.getSize() : undefined,
-                    }}
-                    className="text-xs font-semibold uppercase tracking-wider"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <TicketIcon className="size-8 opacity-40" />
-                    <p className="text-sm">
-                      {cancellationView
-                        ? 'No cancellation requests.'
+ <div className="rounded-none ring-1 ring-foreground/5 overflow-hidden">
+ <Table>
+ <TableHeader>
+ {table.getHeaderGroups().map((headerGroup) => (
+ <TableRow key={headerGroup.id}>
+ {headerGroup.headers.map((header) => (
+ <TableHead
+ key={header.id}
+ style={{
+ width:
+ header.getSize() !== 150 ? header.getSize() : undefined,
+ }}
+ className="text-xs font-semibold "
+ >
+ {header.isPlaceholder
+ ? null
+ : flexRender(
+ header.column.columnDef.header,
+ header.getContext(),
+ )}
+ </TableHead>
+ ))}
+ </TableRow>
+ ))}
+ </TableHeader>
+ <TableBody>
+ {table.getRowModel().rows.length === 0 ? (
+ <TableRow>
+ <TableCell colSpan={columns.length} className="h-32 text-center">
+ <div className="flex flex-col items-center gap-2 text-muted-foreground">
+ <TicketIcon className="size-8 opacity-40" />
+ <p className="text-sm">
+ {cancellationView
+ ?'No cancellation requests.'
                         : 'No bookings found.'}
                     </p>
                     <p className="text-xs">

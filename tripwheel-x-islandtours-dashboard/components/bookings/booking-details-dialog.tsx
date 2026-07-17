@@ -22,7 +22,7 @@ function money(amount: string, rawCurrency: string): string {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5">
-      <span className="text-xs font-semibold uppercase text-muted-foreground shrink-0">
+      <span className="text-xs font-semibold text-muted-foreground shrink-0">
         {label}
       </span>
       <span className="text-sm text-right min-w-0 break-words">{value}</span>
@@ -45,7 +45,7 @@ export function BookingDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold uppercase tracking-wider">
+          <DialogTitle className="text-lg font-semibold">
             {b.displayRef}
           </DialogTitle>
           <DialogDescription>

@@ -227,7 +227,7 @@ export function DestinationForm({
                         onSubmit={handleSubmit(onSubmit)}
                         className='space-y-6'>
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Name <span className='text-destructive'>*</span>
                             </Label>
                             <Input
@@ -239,7 +239,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Slug {!isEditMode && <span className='text-destructive'>*</span>}
                             </Label>
                             {isEditMode ? (
@@ -268,7 +268,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Hero Image
                             </Label>
                             <FieldDescription>
@@ -287,7 +287,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Region <span className='text-destructive'>*</span>
                             </Label>
                             <Select
@@ -314,11 +314,11 @@ export function DestinationForm({
 
                         <div className='grid gap-6 sm:grid-cols-2'>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Country</Label>
+                                <Label className='text-xs font-semibold'>Country</Label>
                                 <Input {...register('country')} placeholder='e.g. Curaçao' />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Currency</Label>
+                                <Label className='text-xs font-semibold'>Currency</Label>
                                 <Select
                                     value={currencyValue || '__none__'}
                                     onValueChange={v =>
@@ -338,7 +338,7 @@ export function DestinationForm({
                                 </Select>
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>
+                                <Label className='text-xs font-semibold'>
                                     Timezone <span className='text-destructive'>*</span>
                                 </Label>
                                 <Input {...register('timezone')} placeholder='e.g. America/Curacao' aria-invalid={!!errors.timezone} />
@@ -346,11 +346,11 @@ export function DestinationForm({
                                 {errors.timezone && <FieldError>{errors.timezone.message}</FieldError>}
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Language</Label>
+                                <Label className='text-xs font-semibold'>Language</Label>
                                 <Input {...register('language')} placeholder='e.g. en' />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Latitude</Label>
+                                <Label className='text-xs font-semibold'>Latitude</Label>
                                 <Input
                                     type='number'
                                     step='any'
@@ -361,7 +361,7 @@ export function DestinationForm({
                                 <FieldError>{errors.latitude?.message}</FieldError>
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>Longitude</Label>
+                                <Label className='text-xs font-semibold'>Longitude</Label>
                                 <Input
                                     type='number'
                                     step='any'
@@ -374,7 +374,7 @@ export function DestinationForm({
                         </div>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Parent Destination
                             </Label>
                             <Select
@@ -403,7 +403,7 @@ export function DestinationForm({
                         </Field>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Gallery Images
                             </Label>
                             <FieldDescription>
@@ -430,7 +430,7 @@ export function DestinationForm({
                                     />
                                     <Label
                                         htmlFor='isActive'
-                                        className='text-xs font-semibold uppercase cursor-pointer'>
+                                        className='text-xs font-semibold cursor-pointer'>
                                         Active
                                     </Label>
                                 </div>

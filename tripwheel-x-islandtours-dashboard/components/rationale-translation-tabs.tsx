@@ -43,7 +43,7 @@ export function RationaleTranslationTabs({
         <TabsList>
           {ALL_LOCALES.map((loc) => (
             <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
-              <span className="sm:hidden uppercase">{loc}</span>
+              <span className="sm:hidden">{loc}</span>
               <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
             </TabsTrigger>
           ))}
@@ -63,7 +63,7 @@ export function RationaleTranslationTabs({
                 : `Translation for ${LOCALE_LABELS[loc]}. Blank falls back to English on the page.`}
             </div>
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 {label}
                 {!isBase && (
                   <span className="ml-1 normal-case text-muted-foreground">

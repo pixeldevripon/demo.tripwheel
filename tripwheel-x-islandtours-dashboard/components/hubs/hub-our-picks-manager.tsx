@@ -180,7 +180,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
               <CardContent className="pt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Tour</Label>
+                    <Label className="text-xs font-semibold">Tour</Label>
                     <HubTourSelect
                       destinationId={hub?.destinationId ?? ''}
                       value={row.tourId}
@@ -195,7 +195,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                     )}
                   </Field>
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Pick Type</Label>
+                    <Label className="text-xs font-semibold">Pick Type</Label>
                     <Select
                       value={row.pickType}
                       onValueChange={(v) => updateRow(row.key, { pickType: v as HubPickType })}
@@ -227,7 +227,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
 
                 <div className="flex items-end justify-between gap-4">
                   <Field className="w-32">
-                    <Label className="text-xs font-semibold uppercase">Display Order</Label>
+                    <Label className="text-xs font-semibold">Display Order</Label>
                     <Input
                       type="number"
                       value={row.displayOrder}

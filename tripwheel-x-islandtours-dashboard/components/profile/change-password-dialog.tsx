@@ -241,7 +241,7 @@ export function ChangePasswordDialog({
                             <Button
                                 type='submit'
                                 disabled={mutation.isPending}
-                                className='w-full sm:flex-1 h-12 order-1 sm:order-2 font-bold text-sm tracking-wide shadow-lg transition-all active:scale-[0.98]'>
+                                className='w-full sm:flex-1 h-12 order-1 sm:order-2 font-bold text-sm shadow-lg transition-all active:scale-[0.98]'>
                                 {mutation.isPending ? (
                                     <>
                                         <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -256,7 +256,7 @@ export function ChangePasswordDialog({
                                 variant='outline'
                                 onClick={() => onOpenChange(false)}
                                 disabled={mutation.isPending}
-                                className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs tracking-wider uppercase opacity-70 hover:opacity-100 transition-opacity'>
+                                className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs opacity-70 hover:opacity-100 transition-opacity'>
                                 Cancel
                             </Button>
                         </CardFooter>

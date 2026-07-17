@@ -87,74 +87,73 @@ export function CategorySubcategoriesManager({ parent }: Props) {
           ),
         onError: err =>
           toast.error(
-            err instanceof Error ? err.message : 'Failed to detach sub-category.'
-          ),
-      }
-    );
-  }
+            err instanceof Error ? err.message : 'Failed to detach sub-category.'),
+ }
+ );
+ }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
-          Sub-categories
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Filter-only refinements shown as chips on this category&apos;s page. A
-          sub-category has no standalone page and appears once it has at least one
-          published tour.
-        </p>
+ return (
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-lg font-semibold ">
+ Sub-categories
+ </CardTitle>
+ </CardHeader>
+ <CardContent className="space-y-4">
+ <p className="text-sm text-muted-foreground">
+ Filter-only refinements shown as chips on this category&apos;s page. A
+ sub-category has no standalone page and appears once it has at least one
+ published tour.
+ </p>
 
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full rounded-none" />
-            <Skeleton className="h-10 w-full rounded-none" />
-          </div>
-        ) : children.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No sub-categories yet.</p>
-        ) : (
-          <ul className="divide-y rounded-md border">
-            {children.map(child => (
-              <li
-                key={child.id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
-              >
-                <Link
-                  href={`/categories/${child.id}/edit`}
-                  className="text-sm font-medium hover:underline"
-                >
-                  {child.name}
-                </Link>
-                {canEdit && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isDetaching}
-                    onClick={() => handleDetach(child.id, child.name)}
-                  >
-                    Detach
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+ {isLoading ? (
+ <div className="space-y-2">
+ <Skeleton className="h-10 w-full rounded-none" />
+ <Skeleton className="h-10 w-full rounded-none" />
+ </div>
+ ) : children.length === 0 ? (
+ <p className="text-sm text-muted-foreground">No sub-categories yet.</p>
+ ) : (
+ <ul className="divide-y rounded-md border">
+ {children.map(child => (
+ <li
+ key={child.id}
+ className="flex items-center justify-between gap-3 px-4 py-3"
+ >
+ <Link
+ href={`/categories/${child.id}/edit`}
+ className="text-sm font-medium hover:underline"
+ >
+ {child.name}
+ </Link>
+ {canEdit && (
+ <Button
+ type="button"
+ variant="ghost"
+ size="sm"
+ disabled={isDetaching}
+ onClick={() => handleDetach(child.id, child.name)}
+ >
+ Detach
+ </Button>
+ )}
+ </li>
+ ))}
+ </ul>
+ )}
 
-        {canCreate && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">
-              Create new sub-category
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="New sub-category name"
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
+ {canCreate && (
+ <div className="space-y-2">
+ <p className="text-xs font-semibold text-muted-foreground">
+ Create new sub-category
+ </p>
+ <div className="flex items-center gap-2">
+ <Input
+ value={name}
+ onChange={e => setName(e.target.value)}
+ placeholder="New sub-category name"
+ onKeyDown={e => {
+ if (e.key ==='Enter') {
                     e.preventDefault();
                     handleAdd();
                   }

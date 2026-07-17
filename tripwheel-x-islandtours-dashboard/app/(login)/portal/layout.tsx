@@ -32,7 +32,7 @@ export default function PortalLayout({
                         height={131}
                         className='h-auto w-28 object-contain'
                     />
-                    <div className='mt-2.5 text-[11px] font-bold uppercase tracking-[0.12em] opacity-75'>
+                    <div className='mt-2.5 text-[11px] font-bold tracking-[0.12em] opacity-75'>
                         Operator portal
                     </div>
                 </div>

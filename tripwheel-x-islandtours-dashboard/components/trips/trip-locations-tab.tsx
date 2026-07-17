@@ -188,9 +188,9 @@ function LocationItem({ location, tripId }: LocationItemProps) {
         <div className="pt-3 border-t space-y-5">
           {/* Details */}
           <form onSubmit={handleSubmit(onSaveDetails)} className="space-y-3">
-            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Details</p>
+            <p className="text-xs font-semibold text-muted-foreground">Details</p>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Types</Label>
+              <Label className="text-xs font-semibold">Types</Label>
               <Controller
                 name="types"
                 control={control}
@@ -206,53 +206,53 @@ function LocationItem({ location, tripId }: LocationItemProps) {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Latitude</Label>
+                <Label className="text-xs font-semibold">Latitude</Label>
                 <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
                 <FieldError>{errors.latitude?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Longitude</Label>
+                <Label className="text-xs font-semibold">Longitude</Label>
                 <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
                 <FieldError>{errors.longitude?.message}</FieldError>
               </Field>
             </div>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Street Address</Label>
+              <Label className="text-xs font-semibold">Street Address</Label>
               <Input {...register('streetAddress')} placeholder="Pier 3, Main Dock" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Locality / City</Label>
+                <Label className="text-xs font-semibold">Locality / City</Label>
                 <Input {...register('addressLocality')} placeholder="Willemstad" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Region</Label>
+                <Label className="text-xs font-semibold">Region</Label>
                 <Input {...register('addressRegion')} placeholder="Curaçao" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Postal Code</Label>
+                <Label className="text-xs font-semibold">Postal Code</Label>
                 <Input {...register('postalCode')} />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Country</Label>
+                <Label className="text-xs font-semibold">Country</Label>
                 <Input {...register('addressCountry')} placeholder="Curaçao" />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Travel (mins)</Label>
+                <Label className="text-xs font-semibold">Travel (mins)</Label>
                 <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
                 <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
                 <FieldError>{errors.minutesTo?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">At Stop (mins)</Label>
+                <Label className="text-xs font-semibold">At Stop (mins)</Label>
                 <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
                 <FieldDescription>Minutes spent at this stop.</FieldDescription>
                 <FieldError>{errors.minutesAt?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Order</Label>
+                <Label className="text-xs font-semibold">Order</Label>
                 <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
                 <FieldError>{errors.displayOrder?.message}</FieldError>
               </Field>
@@ -266,7 +266,7 @@ function LocationItem({ location, tripId }: LocationItemProps) {
 
           {/* Translations */}
           <div className="space-y-3 border-t pt-3">
-            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations (title + short description)</p>
+            <p className="text-xs font-semibold text-muted-foreground">Translations (title + short description)</p>
             {ALL_LOCALES.map((locale) => {
               const existing = location.translations.find((t) => t.locale === locale);
               return (
@@ -378,7 +378,7 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Itinerary &amp; Locations</CardTitle>
+        <CardTitle className="text-lg font-semibold">Itinerary &amp; Locations</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">Start point, itinerary stops, end point and points of interest.</p>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">
@@ -400,9 +400,9 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
         )}
 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Location</p>
+          <p className="text-xs font-semibold text-muted-foreground">Add Location</p>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Types</Label>
+            <Label className="text-xs font-semibold">Types</Label>
             <Controller
               name="types"
               control={control}
@@ -418,41 +418,41 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
             <FieldError>{errors.types?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Title (English)</Label>
+            <Label className="text-xs font-semibold">Title (English)</Label>
             <Input {...register('title')} placeholder="e.g. Main Dock" aria-invalid={!!errors.title} />
             <FieldError>{errors.title?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Short Description</Label>
+            <Label className="text-xs font-semibold">Short Description</Label>
             <Input {...register('shortDescription')} placeholder="Meet your crew beside the check-in counter." />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Latitude</Label>
+              <Label className="text-xs font-semibold">Latitude</Label>
               <Input {...register('latitude')} type="number" step="any" placeholder="12.1091" aria-invalid={!!errors.latitude} />
               <FieldError>{errors.latitude?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Longitude</Label>
+              <Label className="text-xs font-semibold">Longitude</Label>
               <Input {...register('longitude')} type="number" step="any" placeholder="-68.9316" aria-invalid={!!errors.longitude} />
               <FieldError>{errors.longitude?.message}</FieldError>
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Travel (mins)</Label>
+              <Label className="text-xs font-semibold">Travel (mins)</Label>
               <Input {...register('minutesTo')} type="number" min={0} placeholder="e.g. 20" aria-invalid={!!errors.minutesTo} />
               <FieldDescription>Minutes to travel here from the previous stop.</FieldDescription>
               <FieldError>{errors.minutesTo?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">At Stop (mins)</Label>
+              <Label className="text-xs font-semibold">At Stop (mins)</Label>
               <Input {...register('minutesAt')} type="number" min={0} placeholder="e.g. 45" aria-invalid={!!errors.minutesAt} />
               <FieldDescription>Minutes spent at this stop.</FieldDescription>
               <FieldError>{errors.minutesAt?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Order</Label>
+              <Label className="text-xs font-semibold">Order</Label>
               <Input {...register('displayOrder')} type="number" min={0} aria-invalid={!!errors.displayOrder} />
               <FieldError>{errors.displayOrder?.message}</FieldError>
             </Field>

@@ -145,7 +145,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                                 Preview not available for this file type
                             </p>
                             {item.size && (
-                                <p className='text-[10px] text-muted-foreground uppercase tracking-widest mb-4'>
+                                <p className='text-[10px] text-muted-foreground mb-4'>
                                     {formatFileSize(item.size)}
                                 </p>
                             )}

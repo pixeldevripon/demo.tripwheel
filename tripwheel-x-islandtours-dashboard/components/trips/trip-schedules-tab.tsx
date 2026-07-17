@@ -254,7 +254,7 @@ function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimes
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Start Times
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
@@ -494,7 +494,7 @@ export function TripSchedulesTab({
 
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold">
             Recurring Schedules
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -550,10 +550,10 @@ export function TripSchedulesTab({
           )}
 
           <div className="space-y-4 pt-4 border-t">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Add Schedule</p>
+            <p className="text-xs font-semibold text-muted-foreground">Add Schedule</p>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Weekdays <span className="text-destructive">*</span>
               </Label>
               <div className="flex flex-wrap gap-1.5">
@@ -563,7 +563,7 @@ export function TripSchedulesTab({
                     type="button"
                     onClick={() => toggleWeekday(w.value)}
                     className={cn(
-                      'h-9 min-w-12 px-3 text-xs font-semibold uppercase border transition-colors',
+                      'h-9 min-w-12 px-3 text-xs font-semibold border transition-colors',
                       weekdays.includes(w.value)
                         ? 'border-foreground bg-foreground text-background'
                         : 'border-input hover:bg-muted',
@@ -579,7 +579,7 @@ export function TripSchedulesTab({
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Start Times <span className="text-destructive">*</span>
               </Label>
               {hasDeclaredTimes ? (
@@ -595,7 +595,7 @@ export function TripSchedulesTab({
                         type="button"
                         onClick={() => toggleTime(t)}
                         className={cn(
-                          'h-9 min-w-16 px-3 text-xs font-semibold uppercase border transition-colors tabular-nums',
+                          'h-9 min-w-16 px-3 text-xs font-semibold border transition-colors tabular-nums',
                           startTimes.includes(t)
                             ? 'border-foreground bg-foreground text-background'
                             : 'border-input hover:bg-muted',
@@ -654,7 +654,7 @@ export function TripSchedulesTab({
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Capacity {capacityRequired ? '' : 'Override '}
                 {capacityRequired ? (
                   <span className="text-destructive">*</span>
@@ -685,11 +685,11 @@ export function TripSchedulesTab({
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Valid From (optional)</Label>
+                <Label className="text-xs font-semibold">Valid From (optional)</Label>
                 <DatePickerField value={validFrom} onChange={setValidFrom} placeholder="Defaults to today" clearable />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Valid Until (optional)</Label>
+                <Label className="text-xs font-semibold">Valid Until (optional)</Label>
                 <DatePickerField value={validUntil} onChange={setValidUntil} placeholder="Open-ended" clearable />
               </Field>
             </div>
@@ -823,7 +823,7 @@ function ExceptionRow({ exception, tripId }: ExceptionRowProps) {
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <span
           className={cn(
-            'shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+            'shrink-0 px-2 py-0.5 text-[10px] font-semibold',
             EXCEPTION_BADGE[exception.type]
           )}
         >
@@ -971,7 +971,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Date Exceptions
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
@@ -997,10 +997,10 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
         )}
 
         <div className="space-y-4 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Exception</p>
+          <p className="text-xs font-semibold text-muted-foreground">Add Exception</p>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">
+            <Label className="text-xs font-semibold">
               Type <span className="text-destructive">*</span>
             </Label>
             <Select value={type} onValueChange={(v) => changeType(v as TourExceptionType)}>
@@ -1020,7 +1020,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Date <span className="text-destructive">*</span>
               </Label>
               <DatePickerField value={date} onChange={changeDate} placeholder="Pick a date" />
@@ -1032,7 +1032,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             {/* Free time entry - ADD_SLOT introduces a brand-new departure time. */}
             {config.timeMode === 'free' && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   Start Time <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -1060,7 +1060,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
             {/* Slot picker - CLOSE_SLOT / SET_CAPACITY target an existing scheduled slot. */}
             {isSlotPicker && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   Time Slot{' '}
                   {config.timeMode === 'slot' ? (
                     <span className="text-destructive">*</span>
@@ -1115,7 +1115,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
 
           {config.needsCapacity && (
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Capacity {capacityRequired ? <span className="text-destructive">*</span> : '(optional)'}
               </Label>
               <Input
@@ -1141,7 +1141,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
           )}
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Note (optional)</Label>
+            <Label className="text-xs font-semibold">Note (optional)</Label>
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}

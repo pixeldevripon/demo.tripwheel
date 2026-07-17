@@ -155,10 +155,10 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
       {expanded && (
         <div className="pt-3 border-t space-y-4">
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Handling</p>
+            <p className="text-xs font-semibold text-muted-foreground">Handling</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
                 </Label>
                 <Select
@@ -167,41 +167,41 @@ function ExclusionItem({ exclusion, tripId }: ExclusionItemProps) {
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="How it's handled..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXCLUSION_TYPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              {isPaidType && (
-                <Field>
-                  <Label className="text-xs font-semibold uppercase">Price Text</Label>
-                  <Input
-                    value={priceVal}
-                    onChange={(e) => setPriceVal(e.target.value)}
-                    placeholder="e.g. $15 per person"
-                  />
-                </Field>
-              )}
-            </div>
-            <div className="flex justify-end">
-              <Button type="button" size="sm" variant="outline" onClick={handleSaveHandling} disabled={isSavingHandling}>
-                {isSavingHandling ? 'Saving...' : 'Save handling'}
-              </Button>
-            </div>
-          </div>
+ </SelectTrigger>
+ <SelectContent>
+ {EXCLUSION_TYPE_OPTIONS.map((opt) => (
+ <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+ ))}
+ </SelectContent>
+ </Select>
+ </Field>
+ {isPaidType && (
+ <Field>
+ <Label className="text-xs font-semibold ">Price Text</Label>
+ <Input
+ value={priceVal}
+ onChange={(e) => setPriceVal(e.target.value)}
+ placeholder="e.g. $15 per person"
+ />
+ </Field>
+ )}
+ </div>
+ <div className="flex justify-end">
+ <Button type="button" size="sm" variant="outline" onClick={handleSaveHandling} disabled={isSavingHandling}>
+ {isSavingHandling ?'Saving...' : 'Save handling'}
+ </Button>
+ </div>
+ </div>
 
-          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations</p>
-          {ALL_LOCALES.map((locale) => {
-            const existing = exclusion.translations.find((t) => t.locale === locale);
-            return (
-              <TranslationRow
-                key={locale}
-                locale={locale}
-                localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
-                defaultValue={existing?.label ?? ''}
+ <p className="text-xs font-semibold text-muted-foreground ">Translations</p>
+ {ALL_LOCALES.map((locale) => {
+ const existing = exclusion.translations.find((t) => t.locale === locale);
+ return (
+ <TranslationRow
+ key={locale}
+ locale={locale}
+ localeLabel={LOCALE_LABELS[locale as keyof typeof LOCALE_LABELS] ?? locale}
+ defaultValue={existing?.label ??''}
                 onSave={(label) => upsertTranslation(
                   { tripId, exclusionId: exclusion.id, locale, payload: { label } },
                   {
@@ -268,64 +268,64 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
           reset({ label: '', icon: 'x', type: '', priceText: '', imageUrl: '', displayOrder: String((exclusions?.length ?? 0) + 1) });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add exclusion.'),
-      }
-    );
-  }
+ }
+ );
+ }
 
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Exclusions</CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">What&apos;s NOT included in this tour.</p>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-none" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {(exclusions ?? []).map((exc) => (
-              <ExclusionItem key={exc.id} exclusion={exc} tripId={tripId} />
-            ))}
-            {count === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No exclusions yet.</p>
-            )}
-          </div>
-        )}
+ return (
+ <Card>
+ <CardHeader className="border-b pb-4">
+ <CardTitle className="text-lg font-semibold ">Exclusions</CardTitle>
+ <p className="text-sm text-muted-foreground mt-1">What&apos;s NOT included in this tour.</p>
+ </CardHeader>
+ <CardContent className="pt-6 space-y-4">
+ {isLoading ? (
+ <div className="space-y-2">
+ {Array.from({ length: 3 }).map((_, i) => (
+ <Skeleton key={i} className="h-10 w-full rounded-none" />
+ ))}
+ </div>
+ ) : (
+ <div className="space-y-2">
+ {(exclusions ?? []).map((exc) => (
+ <ExclusionItem key={exc.id} exclusion={exc} tripId={tripId} />
+ ))}
+ {count === 0 && (
+ <p className="text-sm text-muted-foreground text-center py-4">No exclusions yet.</p>
+ )}
+ </div>
+ )}
 
-        <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Exclusion</p>
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Label (English)</Label>
-            <Input
-              {...register('label')}
-              placeholder="e.g. Gratuities not included"
-              aria-invalid={!!errors.label}
-            />
-            <FieldError>{errors.label?.message}</FieldError>
-          </Field>
-          <Field>
-            <Label className="text-xs font-semibold uppercase">Icon</Label>
-            <Select defaultValue="x" onValueChange={(val) => setValue('icon', val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select icon..." />
-              </SelectTrigger>
-              <SelectContent>
-                {ICON_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <Label className="text-xs font-semibold uppercase">
-                Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-              </Label>
-              <Select value={typeValue || ''} onValueChange={(val) => setValue('type', val as AddExclusionFormValues['type'])}>
+ <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
+ <p className="text-xs font-semibold text-muted-foreground">Add Exclusion</p>
+ <Field>
+ <Label className="text-xs font-semibold ">Label (English)</Label>
+ <Input
+ {...register('label')}
+ placeholder="e.g. Gratuities not included"
+ aria-invalid={!!errors.label}
+ />
+ <FieldError>{errors.label?.message}</FieldError>
+ </Field>
+ <Field>
+ <Label className="text-xs font-semibold ">Icon</Label>
+ <Select defaultValue="x" onValueChange={(val) => setValue('icon', val)}>
+ <SelectTrigger>
+ <SelectValue placeholder="Select icon..." />
+ </SelectTrigger>
+ <SelectContent>
+ {ICON_OPTIONS.map((opt) => (
+ <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+ ))}
+ </SelectContent>
+ </Select>
+ </Field>
+ <div className="grid grid-cols-2 gap-4">
+ <Field>
+ <Label className="text-xs font-semibold ">
+ Type <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+ </Label>
+ <Select value={typeValue ||''} onValueChange={(val) => setValue('type', val as AddExclusionFormValues['type'])}>
                 <SelectTrigger>
                   <SelectValue placeholder="How it's handled..." />
                 </SelectTrigger>
@@ -338,7 +338,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             </Field>
             {isPaidType && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Price Text</Label>
+                <Label className="text-xs font-semibold">Price Text</Label>
                 <Input {...register('priceText')} placeholder="e.g. $15 per person" />
               </Field>
             )}

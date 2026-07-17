@@ -226,7 +226,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
 
                     <div className="flex-1 space-y-4">
                       <Field>
-                        <Label className="text-xs font-semibold uppercase">Tour</Label>
+                        <Label className="text-xs font-semibold">Tour</Label>
                         <CollectionTourSelect
                           destinationId={destinationId}
                           value={row.tourId}
@@ -319,7 +319,7 @@ function DynamicToursPreview({ collectionId }: { collectionId: string }) {
         </div>
       ) : (
         <>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             {tours.length} tour{tours.length === 1 ? '' : 's'} resolved
           </p>
           <div className="space-y-2">

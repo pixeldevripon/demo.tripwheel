@@ -51,7 +51,7 @@ const OperatorTwoFactor = ({backToCredentials, switchChannel, verify, channel, c
                       value={code}
                       onChange={e => setCode(e.target.value.toUpperCase())}
                       placeholder='Enter a backup code'
-                      className={`${inputClass} text-center tracking-[0.15em] uppercase placeholder:tracking-normal placeholder:normal-case`}
+                      className={`${inputClass} text-center tracking-[0.15em] placeholder:tracking-normal placeholder:normal-case`}
                   />
               ) : (
                   <OtpField value={code} onChange={setCode} />

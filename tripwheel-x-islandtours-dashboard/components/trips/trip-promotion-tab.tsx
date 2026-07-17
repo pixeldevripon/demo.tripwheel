@@ -101,13 +101,13 @@ function DemandBadgeCard({ trip }: { trip: TripListItem }) {
       </CardHeader>
       <CardContent className="pt-6 space-y-5">
         <div className="flex items-center gap-3 text-sm">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Computed now</p>
+          <p className="text-xs font-semibold text-muted-foreground">Computed now</p>
           <Badge variant={trip.likelyToSellOut ? 'default' : 'secondary'}>
             {trip.likelyToSellOut ? 'Likely to sell out' : 'Normal demand'}
           </Badge>
         </div>
         <Field className="w-full sm:w-72">
-          <Label className="text-xs font-semibold uppercase">Override</Label>
+          <Label className="text-xs font-semibold">Override</Label>
           <Select value={value} onValueChange={(v) => handleChange(v as 'auto' | 'on' | 'off')} disabled={isPending}>
             <SelectTrigger>
               <SelectValue />
@@ -167,19 +167,19 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
       <CardContent className="pt-6 space-y-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Current Tier</p>
+            <p className="text-xs font-semibold text-muted-foreground">Current Tier</p>
             <p className="mt-1 font-medium">{current.label}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Commission</p>
+            <p className="text-xs font-semibold text-muted-foreground">Commission</p>
             <p className="mt-1 font-medium">{trip.commissionTier}%</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Rank</p>
+            <p className="text-xs font-semibold text-muted-foreground">Rank</p>
             <p className="mt-1 font-medium tabular-nums">{trip.tierRank}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Eligibility</p>
+            <p className="text-xs font-semibold text-muted-foreground">Eligibility</p>
             <p className="mt-1">
               <Badge variant="secondary">{trip.eligibilityState}</Badge>
             </p>
@@ -196,7 +196,7 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
         {canEdit && (
           <div className="flex flex-wrap items-end gap-3">
             <Field className="w-full sm:w-72">
-              <Label className="text-xs font-semibold uppercase">Change Tier</Label>
+              <Label className="text-xs font-semibold">Change Tier</Label>
               <Select
                 value={selectedTier}
                 onValueChange={(v) => setSelectedTier(v as TierKey)}
@@ -297,7 +297,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         ) : current ? (
           <div className="border bg-muted/40 px-4 py-3 space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Latest request</span>
+              <span className="text-xs font-semibold text-muted-foreground">Latest request</span>
               <Badge variant={spotlightStatusVariant[current.status]}>
                 {SPOTLIGHT_STATUS_LABELS[current.status]}
               </Badge>
@@ -328,11 +328,11 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Preferred Start (optional)</Label>
+                <Label className="text-xs font-semibold">Preferred Start (optional)</Label>
                 <DatePickerField value={startsAt} onChange={setStartsAt} placeholder="Pick a start date" clearable />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Preferred Duration (days, optional)</Label>
+                <Label className="text-xs font-semibold">Preferred Duration (days, optional)</Label>
                 <Input
                   type="number"
                   min={1}
@@ -362,7 +362,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
         {/* History */}
         {data && data.history.length > 1 && (
           <div className="border-t pt-4 space-y-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">History</p>
+            <p className="text-xs font-semibold text-muted-foreground">History</p>
             {data.history.map((req) => (
               <div key={req.id} className="flex items-center justify-between gap-3 text-xs">
                 <span className="text-muted-foreground">{formatDate(req.requestedAt)}</span>

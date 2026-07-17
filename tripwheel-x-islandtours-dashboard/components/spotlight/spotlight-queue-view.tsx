@@ -357,7 +357,7 @@ function ApproveDialog({
                     </p>
                     <div className='grid gap-4 sm:grid-cols-2'>
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Starts
                             </Label>
                             <DatePickerField
@@ -367,7 +367,7 @@ function ApproveDialog({
                             />
                         </Field>
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Ends
                             </Label>
                             <DatePickerField
@@ -378,7 +378,7 @@ function ApproveDialog({
                         </Field>
                     </div>
                     <Field>
-                        <Label className='text-xs font-semibold uppercase'>
+                        <Label className='text-xs font-semibold'>
                             Note (optional)
                         </Label>
                         <Textarea
@@ -453,7 +453,7 @@ function RejectDialog({
                     </DialogTitle>
                 </DialogHeader>
                 <Field>
-                    <Label className='text-xs font-semibold uppercase'>
+                    <Label className='text-xs font-semibold'>
                         Reason
                     </Label>
                     <Textarea

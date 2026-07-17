@@ -82,7 +82,7 @@ export function TextField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label className="text-xs font-semibold">{label}</Label>
       <Input
         type={type}
         placeholder={placeholder}
@@ -113,7 +113,7 @@ export function TextareaField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label className="text-xs font-semibold">{label}</Label>
       <Textarea
         placeholder={placeholder}
         disabled={disabled}
@@ -145,7 +145,7 @@ export function SecretField({
   const [visible, setVisible] = useState(false);
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label className="text-xs font-semibold">{label}</Label>
       <div className="relative">
         <Input
           type={visible ? 'text' : 'password'}
@@ -188,7 +188,7 @@ export function ImageField({
 }) {
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{label}</Label>
+      <Label className="text-xs font-semibold">{label}</Label>
       {description && <FieldDescription>{description}</FieldDescription>}
       <ImageSelectorField value={value} onChange={onChange} disabled={disabled} />
     </Field>
@@ -219,7 +219,7 @@ export function CheckboxField({
           onCheckedChange={(c) => onChange(!!c)}
           disabled={disabled}
         />
-        <Label htmlFor={id} className="text-xs font-semibold uppercase cursor-pointer">
+        <Label htmlFor={id} className="text-xs font-semibold cursor-pointer">
           {label}
         </Label>
       </div>

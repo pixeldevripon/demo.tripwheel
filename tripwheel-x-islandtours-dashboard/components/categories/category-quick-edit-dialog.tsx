@@ -99,13 +99,13 @@ export function CategoryQuickEditDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Field>
-            <Label className="text-xs font-semibold uppercase">Name</Label>
+            <Label className="text-xs font-semibold">Name</Label>
             <Input {...register('name')} placeholder="Category name" aria-invalid={!!errors.name} />
             <FieldError>{errors.name?.message}</FieldError>
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Hero Image URL</Label>
+            <Label className="text-xs font-semibold">Hero Image URL</Label>
             <Input
               {...register('heroImage')}
               placeholder="https://example.com/image.jpg"
@@ -121,7 +121,7 @@ export function CategoryQuickEditDialog({
                 checked={isActiveValue}
                 onCheckedChange={(checked) => setValue('isActive', !!checked)}
               />
-              <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
+              <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
                 Active
               </Label>
             </div>

@@ -121,7 +121,7 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Attributes
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
@@ -140,7 +140,7 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
           <div className="space-y-8">
             {editableGroups.map(group => (
               <div key={group.id} className="space-y-6">
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                <h3 className="text-xs font-semibold text-muted-foreground">
                   {group.title}
                 </h3>
                 {group.defs.map(def => (
@@ -177,7 +177,7 @@ function AttributeInput({
   const allowed = def.allowedValues ?? [];
   return (
     <Field>
-      <Label className="text-xs font-semibold uppercase">{def.displayName}</Label>
+      <Label className="text-xs font-semibold">{def.displayName}</Label>
 
       {def.dataType === 'BOOLEAN' && (
         <div className="flex items-center gap-2">

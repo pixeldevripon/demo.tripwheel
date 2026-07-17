@@ -49,7 +49,7 @@ export function DualTranslationRow({
       onSubmit={handleSubmit((v) => onSave(v.primary.trim(), v.secondary.trim()))}
       className="flex items-start gap-2"
     >
-      <span className="text-xs text-muted-foreground uppercase w-8 shrink-0 pt-2">{locale}</span>
+      <span className="text-xs text-muted-foreground w-8 shrink-0 pt-2">{locale}</span>
       <div className="flex-1 space-y-1.5">
         <Input {...register('primary')} placeholder={`${localeLabel} ${primaryLabel}`} className="h-8 text-sm" />
         <Input {...register('secondary')} placeholder={`${localeLabel} ${secondaryLabel} (optional)`} className="h-8 text-sm" />

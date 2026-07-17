@@ -76,14 +76,14 @@ function SocialCard({ trip }: { trip: TripListItem }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Social Sharing
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Field>
-            <Label className="text-xs font-semibold uppercase">Social Share Image (OG)</Label>
+            <Label className="text-xs font-semibold">Social Share Image (OG)</Label>
             <Controller
               name="ogImage"
               control={control}
@@ -148,16 +148,16 @@ function SerpPreview({
   slug: string;
 }) {
   const crumb = destinationName ? `${destinationName} › ${slug || 'tour'}` : slug || 'tour';
-  return (
-    <div className="border border-border bg-muted/30 px-4 py-3 space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Search preview
-      </p>
-      <p className="text-[13px] leading-[1.4] text-success-fg truncate">
-        islandtours.com › {crumb}
-      </p>
-      <p className="text-[18px] leading-[1.3] text-[#1a0dab] truncate">
-        {title || 'Your tour title will appear here'}
+ return (
+ <div className="border border-border bg-muted/30 px-4 py-3 space-y-1">
+ <p className="text-xs font-semibold text-muted-foreground">
+ Search preview
+ </p>
+ <p className="text-[13px] leading-[1.4] text-success-fg truncate">
+ islandtours.com › {crumb}
+ </p>
+ <p className="text-[18px] leading-[1.3] text-[#1a0dab] truncate">
+ {title ||'Your tour title will appear here'}
       </p>
       <p className="text-[13px] leading-[1.4] text-muted-foreground line-clamp-2">
         {description ||
@@ -265,7 +265,7 @@ function MetaLocalePanel({
 
       <Field>
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold uppercase">Meta Title</Label>
+          <Label className="text-xs font-semibold">Meta Title</Label>
           <CharCount value={metaTitle} max={META_TITLE_MAX} />
         </div>
         <Input
@@ -280,7 +280,7 @@ function MetaLocalePanel({
           <button
             type="button"
             onClick={() => setValue('metaTitle', suggestedTitle, { shouldDirty: true })}
-            className="shrink-0 text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+            className="shrink-0 text-xs font-semibold text-primary hover:underline"
           >
             Regenerate
           </button>
@@ -290,7 +290,7 @@ function MetaLocalePanel({
 
       <Field>
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold uppercase">Meta Description</Label>
+          <Label className="text-xs font-semibold">Meta Description</Label>
           <CharCount value={metaDescription} max={META_DESC_MAX} />
         </div>
         <Textarea
@@ -308,7 +308,7 @@ function MetaLocalePanel({
             onClick={() =>
               setValue('metaDescription', suggestedDescription, { shouldDirty: true })
             }
-            className="shrink-0 text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+            className="shrink-0 text-xs font-semibold text-primary hover:underline"
           >
             Regenerate
           </button>
@@ -338,7 +338,7 @@ export function TripSeoTab({ trip }: TripSeoTabProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold">
             Search Engine Listing
           </CardTitle>
         </CardHeader>
@@ -358,7 +358,7 @@ export function TripSeoTab({ trip }: TripSeoTabProps) {
               <TabsList>
                 {ALL_LOCALES.map((locale) => (
                   <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                    <span className="sm:hidden uppercase">{locale}</span>
+                    <span className="sm:hidden">{locale}</span>
                     <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
                   </TabsTrigger>
                 ))}

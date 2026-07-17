@@ -110,12 +110,12 @@ function FaqLocaleEditor({
         )}
       </div>
       <Field>
-        <Label className="text-xs font-semibold uppercase">Question</Label>
+        <Label className="text-xs font-semibold">Question</Label>
         <Input {...register('question')} aria-invalid={!!errors.question} />
         <FieldError>{errors.question?.message}</FieldError>
       </Field>
       <Field>
-        <Label className="text-xs font-semibold uppercase">Answer</Label>
+        <Label className="text-xs font-semibold">Answer</Label>
         <Textarea {...register('answer')} rows={3} aria-invalid={!!errors.answer} />
         <FieldError>{errors.answer?.message}</FieldError>
       </Field>
@@ -243,7 +243,7 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                   />
                   <Label
                     htmlFor={`faq-active-${group.faqGroupId}`}
-                    className="text-xs font-semibold uppercase cursor-pointer"
+                    className="text-xs font-semibold cursor-pointer"
                   >
                     Active
                   </Label>
@@ -257,7 +257,7 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
                   <TabsList>
                     {ALL_LOCALES.map((locale) => (
                       <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                        <span className="sm:hidden uppercase">{locale}</span>
+                        <span className="sm:hidden">{locale}</span>
                         <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
                       </TabsTrigger>
                     ))}
@@ -336,7 +336,7 @@ function DisplayOrderField({
   return (
     <div className="flex items-end gap-2">
       <Field>
-        <Label className="text-xs font-semibold uppercase">Display Order</Label>
+        <Label className="text-xs font-semibold">Display Order</Label>
         <Input
           type="number"
           min={0}
@@ -397,9 +397,9 @@ function AddFaqForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-4 border-t">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">Add FAQ (English)</p>
+      <p className="text-xs font-semibold text-muted-foreground">Add FAQ (English)</p>
       <Field>
-        <Label className="text-xs font-semibold uppercase">Question</Label>
+        <Label className="text-xs font-semibold">Question</Label>
         <Input
           {...register('question')}
           placeholder="e.g. What is the best time to visit?"
@@ -408,7 +408,7 @@ function AddFaqForm({
         <FieldError>{errors.question?.message}</FieldError>
       </Field>
       <Field>
-        <Label className="text-xs font-semibold uppercase">Answer</Label>
+        <Label className="text-xs font-semibold">Answer</Label>
         <Textarea
           {...register('answer')}
           placeholder="Write the English answer. Add other languages afterwards."

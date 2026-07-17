@@ -142,7 +142,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Key <span className="text-destructive">*</span>
               </Label>
               {isEditMode ? (
@@ -157,7 +157,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Display Name <span className="text-destructive">*</span>
               </Label>
               <Input {...register('displayName')} placeholder="e.g. Boat Type" aria-invalid={!!errors.displayName} />
@@ -167,7 +167,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
 
           <div className="grid gap-6 sm:grid-cols-2">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Data Type</Label>
+              <Label className="text-xs font-semibold">Data Type</Label>
               <Select value={dataType} onValueChange={v => setValue('dataType', v, { shouldValidate: true })}>
                 <SelectTrigger>
                   <SelectValue />
@@ -181,7 +181,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Sort Order</Label>
+              <Label className="text-xs font-semibold">Sort Order</Label>
               <Input type="number" min={0} {...register('sortOrder')} placeholder="0" aria-invalid={!!errors.sortOrder} />
               <FieldError>{errors.sortOrder?.message}</FieldError>
             </Field>
@@ -189,7 +189,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
 
           {needsAllowedValues && (
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Allowed Values <span className="text-destructive">*</span>
               </Label>
               <Input {...register('allowedValues')} placeholder="catamaran, yacht, speedboat" />
@@ -198,7 +198,7 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
           )}
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Applies To Categories</Label>
+            <Label className="text-xs font-semibold">Applies To Categories</Label>
             <MultiSelect
               options={(categories ?? []).map(c => ({ value: c.slug, label: `${c.name} (${c.slug})` }))}
               value={appliesTo}
@@ -213,21 +213,21 @@ export function AttributeForm({ attribute }: AttributeFormProps) {
             <Field>
               <div className="flex items-center gap-2">
                 <Checkbox id="isFilterable" checked={isFilterable} onCheckedChange={c => setValue('isFilterable', !!c)} />
-                <Label htmlFor="isFilterable" className="text-xs font-semibold uppercase cursor-pointer">Filterable</Label>
+                <Label htmlFor="isFilterable" className="text-xs font-semibold cursor-pointer">Filterable</Label>
               </div>
               <FieldDescription>Show in the public filter sidebar.</FieldDescription>
             </Field>
             <Field>
               <div className="flex items-center gap-2">
                 <Checkbox id="isSortable" checked={isSortable} onCheckedChange={c => setValue('isSortable', !!c)} />
-                <Label htmlFor="isSortable" className="text-xs font-semibold uppercase cursor-pointer">Sortable</Label>
+                <Label htmlFor="isSortable" className="text-xs font-semibold cursor-pointer">Sortable</Label>
               </div>
               <FieldDescription>Allow sorting listings by this attribute.</FieldDescription>
             </Field>
           </div>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Filter Display Type</Label>
+            <Label className="text-xs font-semibold">Filter Display Type</Label>
             <Select
               value={filterDisplayType || '__none__'}
               onValueChange={v => setValue('filterDisplayType', v === '__none__' ? '' : v)}>

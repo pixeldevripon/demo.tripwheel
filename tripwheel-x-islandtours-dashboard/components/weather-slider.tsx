@@ -149,9 +149,9 @@ const WeatherSlide = ({ loggedInUser }: WeatherSlideProps) => {
                     key={`${currentSlide}-${
                         weatherData?.weather?.main?.temp || 'loading'
                     }-${isRefreshing ? 'refreshing' : 'idle'}`}
-                    className={`absolute text-sm font-medium text-foreground text-right tracking-wide whitespace-nowrap ${
-                        currentSlide === 2
-                            ? 'cursor-pointer hover:text-primary transition-colors'
+ className={`absolute text-sm font-medium text-foreground text-right whitespace-nowrap ${
+ currentSlide === 2
+ ?'cursor-pointer hover:text-primary transition-colors'
                             : ''
                     } ${isRefreshing ? 'opacity-75' : ''}`}
                     onClick={handleSlideClick}

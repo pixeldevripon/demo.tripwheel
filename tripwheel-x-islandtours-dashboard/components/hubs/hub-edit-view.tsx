@@ -100,42 +100,42 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
     { label: 'English overview filled', passed: !!enTranslation?.overview?.trim() },
     { label: 'At least 1 English Discover section', passed: enDiscoverCount >= 1 },
     { label: 'At least 1 English Local Tip section', passed: enLocalTipCount >= 1 },
-  ];
-  const allPassed = readinessChecks.every((c) => c.passed);
+ ];
+ const allPassed = readinessChecks.every((c) => c.passed);
 
-  if (isLoading) {
-    return (
-      <HubDetailShell id={id} name={undefined} isLoading subtitle="Edit hub">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </HubDetailShell>
-    );
-  }
+ if (isLoading) {
+ return (
+ <HubDetailShell id={id} name={undefined} isLoading subtitle="Edit hub">
+ <div className="space-y-4">
+ {Array.from({ length: 4 }).map((_, i) => (
+ <Skeleton key={i} className="h-12 w-full rounded-none" />
+ ))}
+ </div>
+ </HubDetailShell>
+ );
+ }
 
-  if (!hub) {
-    return (
-      <HubDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit hub">
-        <p className="text-sm text-muted-foreground">Hub not found.</p>
-      </HubDetailShell>
-    );
-  }
+ if (!hub) {
+ return (
+ <HubDetailShell id={id} name={undefined} isLoading={false} subtitle="Edit hub">
+ <p className="text-sm text-muted-foreground">Hub not found.</p>
+ </HubDetailShell>
+ );
+ }
 
-  return (
-    <HubDetailShell id={id} name={hub.name} isLoading={false} subtitle="Edit hub">
-      <div className="space-y-6">
-        {/* Status + lifecycle actions */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
-            </span>
-            <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
-          </div>
+ return (
+ <HubDetailShell id={id} name={hub.name} isLoading={false} subtitle="Edit hub">
+ <div className="space-y-6">
+ {/* Status + lifecycle actions */}
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-3">
+ <span className="text-xs font-semibold text-muted-foreground">
+ Status
+ </span>
+ <Badge variant={statusVariant[hub.status]}>{HUB_STATUS_LABELS[hub.status]}</Badge>
+ </div>
 
-          {can('MANAGE_HUBS') && (
+ {can('MANAGE_HUBS') && (
             <div className="flex flex-wrap gap-2">
               {hub.status === 'DRAFT' && (
                 <Button size="sm" onClick={() => changeStatus('PUBLISHED', 'Hub published.')} disabled={isUpdating}>
@@ -236,7 +236,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
           <TabsContent value="faqs">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold">
                   FAQs
                 </CardTitle>
               </CardHeader>

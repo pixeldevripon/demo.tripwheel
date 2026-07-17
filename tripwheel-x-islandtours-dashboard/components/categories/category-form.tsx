@@ -181,7 +181,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -193,7 +193,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Slug <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -214,7 +214,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Hero Image
               </Label>
               <FieldDescription>
@@ -230,13 +230,13 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Description</Label>
+              <Label className="text-xs font-semibold">Description</Label>
               <Textarea {...register('description')} rows={3} placeholder="Short category description" />
             </Field>
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Icon</Label>
+                <Label className="text-xs font-semibold">Icon</Label>
                 <CategoryIconPicker
                   value={iconValue || null}
                   onChange={name => setValue('icon', name ?? '')}
@@ -244,7 +244,7 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 <FieldDescription>Pick a Lucide icon for this category.</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Sort Order</Label>
+                <Label className="text-xs font-semibold">Sort Order</Label>
                 <Input type="number" min={0} {...register('sortOrder')} placeholder="0" aria-invalid={!!errors.sortOrder} />
                 <FieldError>{errors.sortOrder?.message}</FieldError>
               </Field>
@@ -254,11 +254,11 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                 made a filter-only sub-category, but an existing top-level category
                 is never demoted (that would break its page). Re-parenting happens
                 via the parent's Sub-categories manager (create / detach). */}
-            {!isEditMode && (
-              <Field>
-                <Label className="text-xs font-semibold uppercase">Parent Category</Label>
-                <Select
-                  value={parentValue || '__none__'}
+ {!isEditMode && (
+ <Field>
+ <Label className="text-xs font-semibold ">Parent Category</Label>
+ <Select
+ value={parentValue ||'__none__'}
                   onValueChange={v =>
                     setValue('parentCategoryId', v === '__none__' ? '' : v)
                   }>
@@ -288,24 +288,24 @@ export function CategoryForm({ category, onSuccess }: CategoryFormProps) {
                     id="isActive"
                     checked={isActiveValue}
                     onCheckedChange={(checked) => setValue('isActive', !!checked)}
-                  />
-                  <Label
-                    htmlFor="isActive"
-                    className="text-xs font-semibold uppercase cursor-pointer">
-                    Active
-                  </Label>
-                </div>
-                <FieldDescription>
-                  Inactive categories are hidden from the public site.
-                </FieldDescription>
-              </Field>
-            )}
+ />
+ <Label
+ htmlFor="isActive"
+ className="text-xs font-semibold cursor-pointer">
+ Active
+ </Label>
+ </div>
+ <FieldDescription>
+ Inactive categories are hidden from the public site.
+ </FieldDescription>
+ </Field>
+ )}
 
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={isPending}>
-                {isPending
-                  ? isEditMode
-                    ? 'Saving...'
+ <div className="flex justify-end pt-2">
+ <Button type="submit" disabled={isPending}>
+ {isPending
+ ? isEditMode
+ ?'Saving...'
                     : 'Creating...'
                   : isEditMode
                     ? 'Save Changes'

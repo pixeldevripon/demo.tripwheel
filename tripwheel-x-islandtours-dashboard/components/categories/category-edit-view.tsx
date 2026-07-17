@@ -93,7 +93,7 @@ export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
         <TabsContent value="faqs">
           <Card>
             <CardHeader className="border-b pb-4">
-              <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+              <CardTitle className="text-lg font-semibold">
                 FAQs
               </CardTitle>
             </CardHeader>

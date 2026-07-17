@@ -96,13 +96,13 @@ export function HubQuickEditDialog({ hub, open, onOpenChange }: HubQuickEditDial
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Field>
-            <Label className="text-xs font-semibold uppercase">Name</Label>
+            <Label className="text-xs font-semibold">Name</Label>
             <Input {...register('name')} placeholder="Hub name" aria-invalid={!!errors.name} />
             <FieldError>{errors.name?.message}</FieldError>
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Description</Label>
+            <Label className="text-xs font-semibold">Description</Label>
             <Textarea
               {...register('description')}
               placeholder="Brief description of this hub"
@@ -117,7 +117,7 @@ export function HubQuickEditDialog({ hub, open, onOpenChange }: HubQuickEditDial
                 checked={isActiveValue}
                 onCheckedChange={(checked) => setValue('isActive', !!checked)}
               />
-              <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
+              <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
                 Active
               </Label>
             </div>

@@ -5,7 +5,7 @@ export default function HubsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold uppercase tracking-wider">Hubs</h1>
+          <h1 className="text-2xl font-semibold">Hubs</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage destination-specific hub locations
           </p>

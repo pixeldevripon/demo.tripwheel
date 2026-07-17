@@ -133,7 +133,7 @@ function FeatureItem({ feature, tripId }: FeatureItemProps) {
 
       {expanded && (
         <div className="pt-3 border-t space-y-3">
-          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+          <p className="text-xs font-semibold text-muted-foreground">
             Translations
           </p>
           {ALL_LOCALES.map((locale) => {
@@ -233,7 +233,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
     <Card>
       <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold">
             Info &amp; Terms
           </CardTitle>
           <Badge variant="secondary">{count}</Badge>
@@ -266,11 +266,11 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
         )}
 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             Add Info / Term
           </p>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Type</Label>
+            <Label className="text-xs font-semibold">Type</Label>
             <Controller
               name="type"
               control={control}
@@ -292,7 +292,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             <FieldError>{errors.type?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Text (English)</Label>
+            <Label className="text-xs font-semibold">Text (English)</Label>
             <Textarea
               {...register('text')}
               rows={3}
@@ -302,7 +302,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             <FieldError>{errors.text?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Display Order</Label>
+            <Label className="text-xs font-semibold">Display Order</Label>
             <Input {...register('displayOrder')} type="number" min={0} />
           </Field>
           <div className="flex justify-end">

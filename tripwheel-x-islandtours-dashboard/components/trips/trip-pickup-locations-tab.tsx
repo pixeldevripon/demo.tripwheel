@@ -165,51 +165,51 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
       {expanded && (
         <div className="pt-3 border-t space-y-5">
           <form onSubmit={handleSubmit(onSaveDetails)} className="space-y-3">
-            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Details</p>
+            <p className="text-xs font-semibold text-muted-foreground">Details</p>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Name</Label>
+              <Label className="text-xs font-semibold">Name</Label>
               <Input {...register('name')} aria-invalid={!!errors.name} />
               <FieldError>{errors.name?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Address</Label>
+              <Label className="text-xs font-semibold">Address</Label>
               <Input {...register('address')} placeholder="Hotel / street address" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Latitude</Label>
+                <Label className="text-xs font-semibold">Latitude</Label>
                 <Input {...register('latitude')} placeholder="12.1091" />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Longitude</Label>
+                <Label className="text-xs font-semibold">Longitude</Label>
                 <Input {...register('longitude')} placeholder="-68.9316" />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Mins Prior</Label>
+                <Label className="text-xs font-semibold">Mins Prior</Label>
                 <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
                 <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Window Start</Label>
+                <Label className="text-xs font-semibold">Window Start</Label>
                 <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
                 <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Window End</Label>
+                <Label className="text-xs font-semibold">Window End</Label>
                 <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
                 <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
               </Field>
             </div>
             <div className="flex items-center justify-between">
               <Field className="max-w-32">
-                <Label className="text-xs font-semibold uppercase">Order</Label>
+                <Label className="text-xs font-semibold">Order</Label>
                 <Input {...register('displayOrder')} type="number" min={0} />
               </Field>
               <label className="flex items-center gap-2 cursor-pointer pt-5">
                 <Checkbox checked={isActive} onCheckedChange={(c) => setValue('isActive', !!c)} />
-                <span className="text-xs font-semibold uppercase">Active</span>
+                <span className="text-xs font-semibold">Active</span>
               </label>
             </div>
             <div className="flex justify-end">
@@ -220,7 +220,7 @@ function PickupItem({ pickup, tripId }: PickupItemProps) {
           </form>
 
           <div className="space-y-3 border-t pt-3">
-            <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations (title + directions)</p>
+            <p className="text-xs font-semibold text-muted-foreground">Translations (title + directions)</p>
             {ALL_LOCALES.map((locale) => {
               const existing = pickup.translations.find((t) => t.locale === locale);
               return (
@@ -322,7 +322,7 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Pickup Locations</CardTitle>
+        <CardTitle className="text-lg font-semibold">Pickup Locations</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">Hotel / meeting points where travelers can be collected, with pickup windows.</p>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">
@@ -344,43 +344,43 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
         )}
 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Pickup Location</p>
+          <p className="text-xs font-semibold text-muted-foreground">Add Pickup Location</p>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Name</Label>
+            <Label className="text-xs font-semibold">Name</Label>
             <Input {...register('name')} placeholder="e.g. Marriott Beach Resort - main lobby" aria-invalid={!!errors.name} />
             <FieldError>{errors.name?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Directions (English)</Label>
+            <Label className="text-xs font-semibold">Directions (English)</Label>
             <Input {...register('directions')} placeholder="Wait near the concierge desk." />
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Address</Label>
+            <Label className="text-xs font-semibold">Address</Label>
             <Input {...register('address')} placeholder="Street address" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Latitude</Label>
+              <Label className="text-xs font-semibold">Latitude</Label>
               <Input {...register('latitude')} placeholder="12.1091" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Longitude</Label>
+              <Label className="text-xs font-semibold">Longitude</Label>
               <Input {...register('longitude')} placeholder="-68.9316" />
             </Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Mins Prior</Label>
+              <Label className="text-xs font-semibold">Mins Prior</Label>
               <Input {...register('minutesPrior')} type="number" min={0} placeholder="30" />
               <FieldDescription>How many minutes before departure travelers are picked up here.</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Window Start</Label>
+              <Label className="text-xs font-semibold">Window Start</Label>
               <Input {...register('windowStart')} type="time" aria-invalid={!!errors.windowStart} />
               <FieldDescription>Earliest the pickup may arrive (e.g. 07:45).</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Window End</Label>
+              <Label className="text-xs font-semibold">Window End</Label>
               <Input {...register('windowEnd')} type="time" aria-invalid={!!errors.windowEnd} />
               <FieldDescription>Latest the pickup may arrive (e.g. 08:15).</FieldDescription>
             </Field>

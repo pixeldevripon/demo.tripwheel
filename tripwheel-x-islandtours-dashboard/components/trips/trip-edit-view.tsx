@@ -267,7 +267,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
             {/* Warnings banner */}
             {warnings.length > 0 && (
                 <div className='mb-4 bg-warning-subtle border border-warning-border px-4 py-3 space-y-1'>
-                    <p className='text-xs font-semibold uppercase text-warning-fg'>
+                    <p className='text-xs font-semibold text-warning-fg'>
                         Warnings
                     </p>
                     {warnings.map((w, i) => (
@@ -283,7 +283,7 @@ export function TripEditView({ id, initialTab }: TripEditViewProps) {
                 keeps that state visible so a published tour is never silently missing. */}
             {trip.status === 'LIVE' && !trip.isBookable && (
                 <div className='mb-4 bg-warning-subtle border border-warning-border px-4 py-3'>
-                    <p className='text-xs font-semibold uppercase text-warning-fg'>
+                    <p className='text-xs font-semibold text-warning-fg'>
                         Published, not yet listed
                     </p>
                     <p className='text-sm text-warning-fg mt-1'>

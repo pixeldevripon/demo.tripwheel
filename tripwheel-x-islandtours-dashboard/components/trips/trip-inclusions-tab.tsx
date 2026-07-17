@@ -110,7 +110,7 @@ function InclusionItem({ inclusion, tripId }: InclusionItemProps) {
       {/* Translations panel */}
       {expanded && (
         <div className="pt-3 border-t space-y-3">
-          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations</p>
+          <p className="text-xs font-semibold text-muted-foreground">Translations</p>
           {ALL_LOCALES.map((locale) => {
             const existing = inclusion.translations.find((t) => t.locale === locale);
             return (
@@ -183,7 +183,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Inclusions</CardTitle>
+        <CardTitle className="text-lg font-semibold">Inclusions</CardTitle>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">
         {isLoading ? (
@@ -204,9 +204,9 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
         )}
 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Inclusion</p>
+          <p className="text-xs font-semibold text-muted-foreground">Add Inclusion</p>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Label (English)</Label>
+            <Label className="text-xs font-semibold">Label (English)</Label>
             <Input
               {...register('label')}
               placeholder="e.g. Welcome drink included"
@@ -215,7 +215,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
             <FieldError>{errors.label?.message}</FieldError>
           </Field>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Icon</Label>
+            <Label className="text-xs font-semibold">Icon</Label>
             <Select defaultValue="check" onValueChange={(val) => setValue('icon', val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select icon..." />

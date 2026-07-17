@@ -37,7 +37,7 @@ export function DestinationDetailShell({
       />
 
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold uppercase tracking-wider">
+        <h1 className="text-2xl font-semibold">
           {isLoading ? <Skeleton className="h-7 w-48 inline-block" /> : (name ?? 'Destination')}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>

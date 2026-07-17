@@ -20,7 +20,7 @@ export function AccountStatusCard({ user }: AccountStatusCardProps) {
     return (
         <Card className='border-none shadow-sm bg-gradient-to-br from-primary/5 to-primary/10  overflow-hidden border-l-4 border-l-primary'>
             <CardHeader className='pb-3'>
-                <CardTitle className='text-sm font-semibold uppercase tracking-wider text-primary/80'>
+                <CardTitle className='text-sm font-semibold text-primary/80'>
                     Account Status
                 </CardTitle>
             </CardHeader>
@@ -50,7 +50,7 @@ export function AccountStatusCard({ user }: AccountStatusCardProps) {
                     </span>
                     <Badge
                         variant='outline'
-                        className='font-medium uppercase text-[10px] tracking-widest bg-background/50'>
+                        className='font-medium text-[10px] bg-background/50'>
                         {accountType}
                     </Badge>
                 </div>

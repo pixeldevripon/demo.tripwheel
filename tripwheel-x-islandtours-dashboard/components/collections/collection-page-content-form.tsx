@@ -80,7 +80,7 @@ function LocalePageContentTab({ collectionId, locale }: LocalePageContentTabProp
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <Field>
-        <Label className="text-xs font-semibold uppercase">About Text</Label>
+        <Label className="text-xs font-semibold">About Text</Label>
         <Textarea
           {...register('aboutText')}
           placeholder={`About this collection in ${LOCALE_LABELS[locale]}...`}
@@ -117,7 +117,7 @@ export function CollectionPageContentForm({ collectionId }: CollectionPageConten
             <TabsList>
               {ALL_LOCALES.map((locale) => (
                 <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden uppercase">{locale}</span>
+                  <span className="sm:hidden">{locale}</span>
                   <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
                 </TabsTrigger>
               ))}

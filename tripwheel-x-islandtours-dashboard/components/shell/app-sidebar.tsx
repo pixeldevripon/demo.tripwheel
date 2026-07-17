@@ -75,7 +75,7 @@ export function AppSidebar({ userRole, userName, userImage, ...props }: AppSideb
                         <span className='text-sm font-semibold truncate text-foreground/90'>
                             {userName ?? 'User'}
                         </span>
-                        <span className='text-[10px] text-muted-foreground uppercase tracking-wider font-bold opacity-60 mt-0.5'>
+                        <span className='text-[10px] text-muted-foreground font-bold opacity-60 mt-0.5'>
                             {userRole?.replace('_', ' ')}
                         </span>
                     </div>

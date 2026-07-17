@@ -148,7 +148,7 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
     <div className="space-y-6">
       <div className="flex items-end gap-3">
         <div className="flex-1">
-          <Label className="text-xs font-semibold uppercase mb-2 block">Add Category</Label>
+          <Label className="text-xs font-semibold mb-2 block">Add Category</Label>
           {isLoadingCategories ? (
             <Skeleton className="h-9 w-full rounded-none" />
           ) : (
@@ -185,7 +185,7 @@ export function HubAllowedCategoriesManager({ hubId }: HubAllowedCategoriesManag
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <Label className="text-xs font-semibold uppercase">Allowed Categories</Label>
+          <Label className="text-xs font-semibold">Allowed Categories</Label>
           {allowedCategories && allowedCategories.length > 0 && (
             <Badge variant="secondary">{allowedCategories.length} total</Badge>
           )}

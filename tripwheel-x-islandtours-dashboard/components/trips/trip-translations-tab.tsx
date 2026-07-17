@@ -209,7 +209,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       )}
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Display Title</Label>
+        <Label className="text-xs font-semibold">Display Title</Label>
         <Input
           {...register('title')}
           placeholder={`${LOCALE_LABELS[locale]} name for this trip`}
@@ -223,7 +223,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">
+        <Label className="text-xs font-semibold">
           Overview{isEnglish && <span className="text-destructive ml-1">*</span>}
         </Label>
         <Textarea
@@ -241,7 +241,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Description</Label>
+        <Label className="text-xs font-semibold">Description</Label>
         <Textarea
           {...register('description')}
           placeholder={`Full description in ${LOCALE_LABELS[locale]}`}
@@ -252,7 +252,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Short Description</Label>
+        <Label className="text-xs font-semibold">Short Description</Label>
         <Input
           {...register('shortDescription')}
           placeholder="One-line teaser for cards"
@@ -263,48 +263,48 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">What to Bring</Label>
+        <Label className="text-xs font-semibold">What to Bring</Label>
         <Textarea {...register('whatToBring')} rows={4} placeholder={'Swimwear\nTowel\nReef-safe sunscreen'} />
         <FieldDescription>One item per line (max 8). Each line becomes a separate bullet.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Know Before You Go</Label>
+        <Label className="text-xs font-semibold">Know Before You Go</Label>
         <Textarea {...register('knowBeforeYouGo')} rows={4} placeholder={'Bring a valid photo ID\nTour runs rain or shine'} />
         <FieldDescription>One item per line (max 10).</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Not Suitable For</Label>
+        <Label className="text-xs font-semibold">Not Suitable For</Label>
         <Textarea {...register('notSuitableFor')} rows={3} placeholder={'Travellers who are pregnant\nWheelchair users'} />
         <FieldDescription>One item per line (max 6).</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">What to Expect (intro)</Label>
+        <Label className="text-xs font-semibold">What to Expect (intro)</Label>
         <Textarea {...register('whatToExpectIntro')} rows={3} placeholder="Short intro shown above the itinerary." />
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Category Display</Label>
+        <Label className="text-xs font-semibold">Category Display</Label>
         <Input {...register('categoryDisplay')} placeholder="e.g. Snorkeling Tours" />
         <FieldDescription>Plural noun phrase used in headings (e.g. &ldquo;Snorkeling Tours in Curaçao&rdquo;).</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Local Tip - Title</Label>
+        <Label className="text-xs font-semibold">Local Tip - Title</Label>
         <Input {...register('localTipTitle')} placeholder="e.g. Book the morning departure" />
         <FieldDescription>Short headline for the local-tip callout.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Local Tip - Description</Label>
+        <Label className="text-xs font-semibold">Local Tip - Description</Label>
         <Textarea {...register('localTipBody')} rows={2} placeholder="e.g. Afternoon wind picks up and the water gets choppier." />
         <FieldDescription>Supporting line shown under the tip title.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Note to Travellers</Label>
+        <Label className="text-xs font-semibold">Note to Travellers</Label>
         <Textarea
           {...register('operatorNote')}
           rows={3}
@@ -317,7 +317,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Meeting Point Text</Label>
+        <Label className="text-xs font-semibold">Meeting Point Text</Label>
         <Textarea {...register('meetingPointText')} rows={2} placeholder="e.g. Meet at the main dock, Pier 3, 15 minutes before departure" />
       </Field>
 
@@ -391,7 +391,7 @@ export function TripTranslationsTab({ tripId, tripName }: TripTranslationsTabPro
             <TabsList>
               {ALL_LOCALES.map((locale) => (
                 <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden uppercase">{locale}</span>
+                  <span className="sm:hidden">{locale}</span>
                   <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
                 </TabsTrigger>
               ))}

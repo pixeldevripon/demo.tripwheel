@@ -318,7 +318,7 @@ export function LocalsFavouritesTable({
                     style={{
                       width: header.getSize() !== 150 ? header.getSize() : undefined,
                     }}
-                    className="text-xs font-semibold uppercase tracking-wider"
+                    className="text-xs font-semibold"
                   >
                     {header.isPlaceholder
                       ? null

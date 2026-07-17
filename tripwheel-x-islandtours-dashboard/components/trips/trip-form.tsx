@@ -307,7 +307,7 @@ export function TripForm() {
       <CardContent className="pt-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Field>
-            <Label className="text-xs font-semibold uppercase">
+            <Label className="text-xs font-semibold">
               Name <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -319,7 +319,7 @@ export function TripForm() {
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">
+            <Label className="text-xs font-semibold">
               Slug <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -338,7 +338,7 @@ export function TripForm() {
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">
+            <Label className="text-xs font-semibold">
               Destination <span className="text-destructive">*</span>
             </Label>
             <Controller
@@ -363,7 +363,7 @@ export function TripForm() {
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">
+            <Label className="text-xs font-semibold">
               Categories <span className="text-destructive">*</span>
             </Label>
             <Controller
@@ -388,7 +388,7 @@ export function TripForm() {
           </Field>
 
           <Field>
-            <Label className="text-xs font-semibold uppercase">Activity Hubs</Label>
+            <Label className="text-xs font-semibold">Activity Hubs</Label>
             <Controller
               name="hubIds"
               control={control}
@@ -411,7 +411,7 @@ export function TripForm() {
           {/* Pricing */}
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
+              <Label className="text-xs font-semibold">Pricing Model</Label>
               <Controller
                 name="pricingModel"
                 control={control}
@@ -431,7 +431,7 @@ export function TripForm() {
 
             {pricingModel === 'UNIT' ? (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
+                <Label className="text-xs font-semibold">Unit Type</Label>
                 <Controller
                   name="wholeUnitType"
                   control={control}
@@ -455,7 +455,7 @@ export function TripForm() {
               </Field>
             ) : (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
+                <Label className="text-xs font-semibold">Currency</Label>
                 <Controller
                   name="defaultCurrency"
                   control={control}
@@ -477,7 +477,7 @@ export function TripForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Base Price</Label>
+              <Label className="text-xs font-semibold">Base Price</Label>
               <Input
                 {...register('basePrice')}
                 placeholder="e.g. 49.99"
@@ -487,7 +487,7 @@ export function TripForm() {
             </Field>
             {pricingModel === 'UNIT' && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Currency</Label>
+                <Label className="text-xs font-semibold">Currency</Label>
                 <Controller
                   name="defaultCurrency"
                   control={control}
@@ -512,7 +512,7 @@ export function TripForm() {
           {isGroupUnit && (
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   Guests Included in Base
                 </Label>
                 <Input
@@ -527,7 +527,7 @@ export function TripForm() {
                 </FieldDescription>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   Extra Person Price
                 </Label>
                 <Input
@@ -546,7 +546,7 @@ export function TripForm() {
           {/* Duration range */}
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Duration From (minutes)</Label>
+              <Label className="text-xs font-semibold">Duration From (minutes)</Label>
               <Input
                 {...register('durationMinutesFrom')}
                 type="number"
@@ -557,7 +557,7 @@ export function TripForm() {
               <FieldError>{errors.durationMinutesFrom?.message}</FieldError>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Duration To (minutes)</Label>
+              <Label className="text-xs font-semibold">Duration To (minutes)</Label>
               <Input
                 {...register('durationMinutesTo')}
                 type="number"
@@ -572,7 +572,7 @@ export function TripForm() {
           {/* Booking */}
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Pickup Model</Label>
+              <Label className="text-xs font-semibold">Pickup Model</Label>
               <Controller
                 name="pickupModel"
                 control={control}
@@ -591,7 +591,7 @@ export function TripForm() {
               />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Booking Type</Label>
+              <Label className="text-xs font-semibold">Booking Type</Label>
               <Controller
                 name="bookingType"
                 control={control}
@@ -612,7 +612,7 @@ export function TripForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Payment Model</Label>
+              <Label className="text-xs font-semibold">Payment Model</Label>
               <Controller
                 name="paymentModel"
                 control={control}
@@ -632,7 +632,7 @@ export function TripForm() {
               />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Cancellation Window</Label>
+              <Label className="text-xs font-semibold">Cancellation Window</Label>
               <Controller
                 name="cancellationHours"
                 control={control}
@@ -660,7 +660,7 @@ export function TripForm() {
           {watchedPaymentModel === 'ON_ARRIVAL' && (
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">
+                <Label className="text-xs font-semibold">
                   On-arrival Payment
                 </Label>
                 <Controller

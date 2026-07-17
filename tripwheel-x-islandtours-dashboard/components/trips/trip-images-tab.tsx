@@ -440,7 +440,7 @@ function ImageEditDialog({
         <Dialog open={image !== null} onOpenChange={onOpenChange}>
             <DialogContent className='sm:max-w-md'>
                 <DialogHeader>
-                    <DialogTitle className='uppercase tracking-wider'>
+                    <DialogTitle className=' '>
                         Edit Image
                     </DialogTitle>
                     <DialogDescription>
@@ -461,7 +461,7 @@ function ImageEditDialog({
                         </div>
 
                         <Field>
-                            <Label className='text-xs font-semibold uppercase'>
+                            <Label className='text-xs font-semibold'>
                                 Alt Text
                             </Label>
                             <Input
@@ -473,7 +473,7 @@ function ImageEditDialog({
 
                         <div className='grid grid-cols-2 gap-3'>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>
+                                <Label className='text-xs font-semibold'>
                                     Focal X
                                 </Label>
                                 <Input
@@ -486,7 +486,7 @@ function ImageEditDialog({
                                 />
                             </Field>
                             <Field>
-                                <Label className='text-xs font-semibold uppercase'>
+                                <Label className='text-xs font-semibold'>
                                     Focal Y
                                 </Label>
                                 <Input

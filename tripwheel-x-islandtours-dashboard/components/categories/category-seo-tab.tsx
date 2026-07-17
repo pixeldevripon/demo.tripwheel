@@ -72,14 +72,14 @@ function SocialCard({ category }: { category: CategoryDetail }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold">
           Social Sharing
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Field>
-            <Label className="text-xs font-semibold uppercase">Social Share Image (OG)</Label>
+            <Label className="text-xs font-semibold">Social Share Image (OG)</Label>
             <Controller
               name="ogImage"
               control={control}
@@ -140,7 +140,7 @@ function SerpPreview({
 }) {
   return (
     <div className="border border-border bg-muted/30 px-4 py-3 space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold text-muted-foreground">
         Search preview
       </p>
       <p className="text-[13px] leading-[1.4] text-success-fg truncate">
@@ -219,36 +219,36 @@ function MetaLocalePanel({ category, locale, isEnglish = false }: MetaLocalePane
         onSuccess: () => toast.success(`${LOCALE_LABELS[locale]} SEO saved.`),
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : 'Failed to save SEO.'),
-      }
-    );
-  }
+ }
+ );
+ }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full rounded-none" />
-        ))}
-      </div>
-    );
-  }
+ if (isLoading) {
+ return (
+ <div className="space-y-4">
+ {Array.from({ length: 3 }).map((_, i) => (
+ <Skeleton key={i} className="h-10 w-full rounded-none" />
+ ))}
+ </div>
+ );
+ }
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <SerpPreview
-        title={metaTitle}
-        description={metaDescription}
-        categoryName={localizedName}
-        slug={category.slug}
-      />
+ return (
+ <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+ <SerpPreview
+ title={metaTitle}
+ description={metaDescription}
+ categoryName={localizedName}
+ slug={category.slug}
+ />
 
-      <Field>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold uppercase">Meta Title</Label>
-          <CharCount value={metaTitle} max={META_TITLE_MAX} />
-        </div>
-        <Input
-          {...register('metaTitle')}
+ <Field>
+ <div className="flex items-center justify-between">
+ <Label className="text-xs font-semibold ">Meta Title</Label>
+ <CharCount value={metaTitle} max={META_TITLE_MAX} />
+ </div>
+ <Input
+ {...register('metaTitle')}
           placeholder="Appears in the browser tab and search results"
           aria-invalid={!!errors.metaTitle}
         />
@@ -259,21 +259,21 @@ function MetaLocalePanel({ category, locale, isEnglish = false }: MetaLocalePane
           <button
             type="button"
             onClick={() => setValue('metaTitle', suggestedTitle, { shouldDirty: true })}
-            className="shrink-0 text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-          >
-            Regenerate
-          </button>
-        </div>
-        <FieldError>{errors.metaTitle?.message}</FieldError>
-      </Field>
+ className="shrink-0 text-xs font-semibold text-primary hover:underline"
+ >
+ Regenerate
+ </button>
+ </div>
+ <FieldError>{errors.metaTitle?.message}</FieldError>
+ </Field>
 
-      <Field>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold uppercase">Meta Description</Label>
-          <CharCount value={metaDescription} max={META_DESC_MAX} />
-        </div>
-        <Textarea
-          {...register('metaDescription')}
+ <Field>
+ <div className="flex items-center justify-between">
+ <Label className="text-xs font-semibold ">Meta Description</Label>
+ <CharCount value={metaDescription} max={META_DESC_MAX} />
+ </div>
+ <Textarea
+ {...register('metaDescription')}
           rows={3}
           placeholder="Search-result snippet"
           aria-invalid={!!errors.metaDescription}
@@ -286,45 +286,45 @@ function MetaLocalePanel({ category, locale, isEnglish = false }: MetaLocalePane
             type="button"
             onClick={() =>
               setValue('metaDescription', suggestedDescription, { shouldDirty: true })
-            }
-            className="shrink-0 text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-          >
-            Regenerate
-          </button>
-        </div>
-        <FieldError>{errors.metaDescription?.message}</FieldError>
-      </Field>
+ }
+ className="shrink-0 text-xs font-semibold text-primary hover:underline"
+ >
+ Regenerate
+ </button>
+ </div>
+ <FieldError>{errors.metaDescription?.message}</FieldError>
+ </Field>
 
-      <div className="flex justify-end pt-2">
-        <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? 'Saving...' : 'Save SEO'}
-        </Button>
-      </div>
-    </form>
-  );
+ <div className="flex justify-end pt-2">
+ <Button type="submit" size="sm" disabled={isPending}>
+ {isPending ?'Saving...' : 'Save SEO'}
+ </Button>
+ </div>
+ </form>
+ );
 }
 
 // ── Tab entry point ─────────────────────────────────────────────────────────
 
 interface CategorySeoTabProps {
-  category: CategoryDetail;
+ category: CategoryDetail;
 }
 
 export function CategorySeoTab({ category }: CategorySeoTabProps) {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
-            Search Engine Listing
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="text-xs text-muted-foreground bg-muted px-3 py-2 mb-6 space-y-0.5">
-            <p>
-              <span className="font-semibold text-foreground">
-                Meta title and description are per-locale.
-              </span>{' '}
+ return (
+ <div className="space-y-6">
+ <Card>
+ <CardHeader className="border-b pb-4">
+ <CardTitle className="text-lg font-semibold ">
+ Search Engine Listing
+ </CardTitle>
+ </CardHeader>
+ <CardContent className="pt-6">
+ <div className="text-xs text-muted-foreground bg-muted px-3 py-2 mb-6 space-y-0.5">
+ <p>
+ <span className="font-semibold text-foreground">
+ Meta title and description are per-locale.
+ </span>{' '}
               They start pre-filled from each language&apos;s name and overview. Edit any locale to
               override, or leave the suggestion as-is.
             </p>
@@ -332,26 +332,26 @@ export function CategorySeoTab({ category }: CategorySeoTabProps) {
               Per-destination category pages build their titles from the{' '}
               <span className="font-semibold text-foreground">SEO templates</span> on the Details
               tab (with {'{destination}'} placeholders); the values here cover the category itself.
-            </p>
-          </div>
+ </p>
+ </div>
 
-          <Tabs defaultValue="en">
-            <div className="pb-2 mb-6">
-              <TabsList>
-                {ALL_LOCALES.map((locale) => (
-                  <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                    <span className="sm:hidden uppercase">{locale}</span>
-                    <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
+ <Tabs defaultValue="en">
+ <div className="pb-2 mb-6">
+ <TabsList>
+ {ALL_LOCALES.map((locale) => (
+ <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
+ <span className="sm:hidden ">{locale}</span>
+ <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
+ </TabsTrigger>
+ ))}
+ </TabsList>
+ </div>
 
-            <TabsContent value="en">
-              <MetaLocalePanel category={category} locale="en" isEnglish />
-            </TabsContent>
+ <TabsContent value="en">
+ <MetaLocalePanel category={category} locale="en" isEnglish />
+ </TabsContent>
 
-            {ALL_LOCALES.filter((l) => l !== 'en').map((locale) => (
+ {ALL_LOCALES.filter((l) => l !=='en').map((locale) => (
               <TabsContent key={locale} value={locale}>
                 <MetaLocalePanel category={category} locale={locale} />
               </TabsContent>

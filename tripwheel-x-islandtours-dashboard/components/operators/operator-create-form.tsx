@@ -57,7 +57,7 @@ export function OperatorCreateForm() {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Contact Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -69,7 +69,7 @@ export function OperatorCreateForm() {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Email <span className="text-destructive">*</span>
               </Label>
               <Input

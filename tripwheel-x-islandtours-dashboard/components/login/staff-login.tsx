@@ -51,7 +51,7 @@ export function StaffLogin() {
                         <p className='mt-1.5 text-[13px] text-it-text-muted'>
                             Role and domain checked server-side, session 12 hours.
                         </p>
-                        <span className='mt-2.5 inline-block rounded-[6px] border border-dashed border-it-border px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-it-text-muted'>
+                        <span className='mt-2.5 inline-block rounded-[6px] border border-dashed border-it-border px-2 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-it-text-muted'>
                             Mockup endpoint
                         </span>
                     </div>

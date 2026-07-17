@@ -54,7 +54,7 @@ const BulkActionSpinner = ({
                     />
                 </div>
                 
-                <p className='mt-4 text-[10px] text-muted-foreground/60 uppercase tracking-[0.2em] font-medium'>
+                <p className='mt-4 text-[10px] text-muted-foreground/60 tracking-[0.2em] font-medium'>
                     Please keep this page open
                 </p>
             </div>

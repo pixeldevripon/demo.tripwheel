@@ -91,7 +91,7 @@ function HighlightItem({ highlight, tripId }: HighlightItemProps) {
       {/* Translations panel */}
       {expanded && (
         <div className="pt-3 border-t space-y-3">
-          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Translations</p>
+          <p className="text-xs font-semibold text-muted-foreground">Translations</p>
           {ALL_LOCALES.map((locale) => {
             const existing = highlight.translations.find((t) => t.locale === locale);
             return (
@@ -163,7 +163,7 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
     <Card>
       <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Highlights</CardTitle>
+          <CardTitle className="text-lg font-semibold">Highlights</CardTitle>
           <div className="flex gap-2">
             <Badge variant="secondary">{count}/6</Badge>
             {count < 3 && <Badge variant="destructive">Need at least 3</Badge>}
@@ -191,9 +191,9 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
         )}
 
         <form onSubmit={handleSubmit(onAdd)} className="space-y-3 pt-4 border-t">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Add Highlight</p>
+          <p className="text-xs font-semibold text-muted-foreground">Add Highlight</p>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Text (English)</Label>
+            <Label className="text-xs font-semibold">Text (English)</Label>
             <Input
               {...register('text')}
               placeholder="e.g. Stunning ocean views"
@@ -202,11 +202,11 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
             <FieldError>{errors.text?.message}</FieldError>
           </Field>
  {/*          <Field>
-            <Label className="text-xs font-semibold uppercase">Image URL</Label>
+            <Label className="text-xs font-semibold">Image URL</Label>
             <Input {...register('imageUrl')} placeholder="Optional image URL" />
           </Field> */}
           <Field>
-            <Label className="text-xs font-semibold uppercase">Display Order</Label>
+            <Label className="text-xs font-semibold">Display Order</Label>
             <Input {...register('displayOrder')} type="number" min={0} />
           </Field>
           <div className="flex justify-end">

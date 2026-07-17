@@ -30,7 +30,7 @@ export function TranslationRow({ locale, localeLabel, defaultValue, onSave, isSa
 
   return (
     <form onSubmit={handleSubmit((v) => onSave(v.value))} className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground uppercase w-8 shrink-0">{locale}</span>
+      <span className="text-xs text-muted-foreground w-8 shrink-0">{locale}</span>
       <Input
         {...register('value')}
         placeholder={`${localeLabel} translation`}

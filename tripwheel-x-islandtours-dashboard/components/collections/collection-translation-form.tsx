@@ -174,7 +174,7 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
       )}
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Name</Label>
+        <Label className="text-xs font-semibold">Name</Label>
         <Input
           {...register('name')}
           placeholder={`Name in ${LOCALE_LABELS[locale]}`}
@@ -190,7 +190,7 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Overview</Label>
+        <Label className="text-xs font-semibold">Overview</Label>
         <Textarea
           {...register('overview')}
           placeholder={`Overview in ${LOCALE_LABELS[locale]}`}
@@ -200,25 +200,25 @@ function LocaleTab({ collectionId, locale, disableNameField }: LocaleTabProps) {
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Curation Note</Label>
+        <Label className="text-xs font-semibold">Curation Note</Label>
         <Input {...register('curationNote')} placeholder="e.g. Chosen by Islanders" />
         <FieldDescription>Banner subtitle on the collection page.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Eyebrow Label</Label>
+        <Label className="text-xs font-semibold">Eyebrow Label</Label>
         <Input {...register('eyebrowLabel')} placeholder="e.g. BEST THINGS TO DO" />
         <FieldDescription>Small label above the banner heading.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">H1 Override</Label>
+        <Label className="text-xs font-semibold">H1 Override</Label>
         <Input {...register('h1Override')} placeholder="Custom H1 heading" />
         <FieldDescription>Overrides the default H1 heading on the collection page.</FieldDescription>
       </Field>
 
       <Field>
-        <Label className="text-xs font-semibold uppercase">Breadcrumb Label</Label>
+        <Label className="text-xs font-semibold">Breadcrumb Label</Label>
         <Input {...register('breadcrumbLabel')} placeholder="Custom breadcrumb text" />
         <FieldDescription>Short label used in breadcrumb navigation.</FieldDescription>
       </Field>
@@ -288,7 +288,7 @@ export function CollectionTranslationForm({
             <TabsList>
               {ALL_LOCALES.map((locale) => (
                 <TabsTrigger key={locale} value={locale} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden uppercase">{locale}</span>
+                  <span className="sm:hidden">{locale}</span>
                   <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
                 </TabsTrigger>
               ))}

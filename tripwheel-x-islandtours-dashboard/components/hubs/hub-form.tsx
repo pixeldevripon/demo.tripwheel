@@ -168,7 +168,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Destination <span className="text-destructive">*</span>
               </Label>
               {isEditMode ? (
@@ -203,7 +203,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -216,7 +216,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
 
             {isEditMode && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Slug</Label>
+                <Label className="text-xs font-semibold">Slug</Label>
                 <Input
                   {...register('slug')}
                   placeholder="e.g. klein-curacao"
@@ -231,7 +231,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             )}
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Description</Label>
+              <Label className="text-xs font-semibold">Description</Label>
               <Textarea
                 {...register('description')}
                 placeholder="Brief description of this hub location"
@@ -243,7 +243,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Hero Image</Label>
+              <Label className="text-xs font-semibold">Hero Image</Label>
               <ImageSelectorField
                 value={heroImageValue || null}
                 onChange={(url) => setValue('heroImage', url ?? '')}
@@ -255,7 +255,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
             </Field>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">
+              <Label className="text-xs font-semibold">
                 Hub Type <span className="text-destructive">*</span>
               </Label>
               <Select
@@ -277,7 +277,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Latitude</Label>
+                <Label className="text-xs font-semibold">Latitude</Label>
                 <Input
                   type="number"
                   step="any"
@@ -288,7 +288,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                 <FieldError>{errors.latitude?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Longitude</Label>
+                <Label className="text-xs font-semibold">Longitude</Label>
                 <Input
                   type="number"
                   step="any"
@@ -308,7 +308,7 @@ export function HubForm({ hub, onSuccess }: HubFormProps) {
                     checked={isActiveValue}
                     onCheckedChange={(checked) => setValue('isActive', !!checked)}
                   />
-                  <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
+                  <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
                     Active
                   </Label>
                 </div>

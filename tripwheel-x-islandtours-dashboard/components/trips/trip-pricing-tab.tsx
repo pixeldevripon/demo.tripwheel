@@ -231,7 +231,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
         <div className="pt-3 border-t space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Age Type</Label>
+              <Label className="text-xs font-semibold">Age Type</Label>
               <Select value={bandType} onValueChange={(v) => setBandType(v as AgeBandType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -244,7 +244,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
               </Select>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Participation</Label>
+              <Label className="text-xs font-semibold">Participation</Label>
               <Select value={participation} onValueChange={(v) => setParticipation(v as BandParticipation)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -259,32 +259,32 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Label</Label>
+              <Label className="text-xs font-semibold">Label</Label>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Price</Label>
+              <Label className="text-xs font-semibold">Price</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="79.00" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Min Age</Label>
+              <Label className="text-xs font-semibold">Min Age</Label>
               <Input value={minAge} onChange={(e) => setMinAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Max Age</Label>
+              <Label className="text-xs font-semibold">Max Age</Label>
               <Input value={maxAge} onChange={(e) => setMaxAge(e.target.value)} type="number" min={0} max={120} placeholder="Any" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Original Price</Label>
+              <Label className="text-xs font-semibold">Original Price</Label>
               <Input value={priceOriginal} onChange={(e) => setPriceOriginal(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional pre-discount price, shown struck through to signal a deal.</FieldDescription>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Net Price</Label>
+              <Label className="text-xs font-semibold">Net Price</Label>
               <Input value={priceNet} onChange={(e) => setPriceNet(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional operator net (what you keep). Internal only - not shown to travelers.</FieldDescription>
             </Field>
@@ -435,21 +435,21 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
         <div className="pt-3 mt-2 border-t space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Name</Label>
+              <Label className="text-xs font-semibold">Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Snorkel Equipment" />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Price</Label>
+              <Label className="text-xs font-semibold">Price</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="19.99" />
             </Field>
           </div>
           <Field>
-            <Label className="text-xs font-semibold uppercase">Description</Label>
+            <Label className="text-xs font-semibold">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Pricing Unit</Label>
+              <Label className="text-xs font-semibold">Pricing Unit</Label>
               <Select value={unit} onValueChange={(v) => setUnit(v as AddOnUnit)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -461,7 +461,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
               </Select>
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Max Quantity</Label>
+              <Label className="text-xs font-semibold">Max Quantity</Label>
               <Input value={maxQuantity} onChange={(e) => setMaxQuantity(e.target.value)} type="number" min={1} placeholder="10" />
             </Field>
           </div>
@@ -572,7 +572,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Pricing</CardTitle>
+        <CardTitle className="text-lg font-semibold">Pricing</CardTitle>
         <p className="text-sm text-muted-foreground">
           How this tour is priced. Per-person tours use age bands (below); unit-priced tours charge for
           the whole unit plus a per-extra-guest surcharge.
@@ -582,7 +582,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Pricing Model</Label>
+              <Label className="text-xs font-semibold">Pricing Model</Label>
               <Controller
                 name="pricingModel"
                 control={control}
@@ -600,7 +600,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
               />
             </Field>
             <Field>
-              <Label className="text-xs font-semibold uppercase">Currency</Label>
+              <Label className="text-xs font-semibold">Currency</Label>
               <Controller
                 name="defaultCurrency"
                 control={control}
@@ -621,7 +621,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Base Price</Label>
+              <Label className="text-xs font-semibold">Base Price</Label>
               <Input {...register('basePrice')} placeholder="e.g. 49.99" aria-invalid={!!errors.basePrice} />
               <FieldDescription>
                 {isUnit
@@ -632,7 +632,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
             </Field>
             {isUnit && (
               <Field>
-                <Label className="text-xs font-semibold uppercase">Unit Type</Label>
+                <Label className="text-xs font-semibold">Unit Type</Label>
                 <Controller
                   name="wholeUnitType"
                   control={control}
@@ -659,7 +659,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
           {isGroupUnit && (
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Guests Included in Base Price</Label>
+                <Label className="text-xs font-semibold">Guests Included in Base Price</Label>
                 <Input
                   {...register('unitIncludedGuests')}
                   type="number"
@@ -671,7 +671,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
                 <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Extra Person Price</Label>
+                <Label className="text-xs font-semibold">Extra Person Price</Label>
                 <Input
                   {...register('extraPersonPrice')}
                   placeholder="e.g. 175.00"
@@ -823,7 +823,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       {isUnit ? (
         <Card>
           <CardHeader className="border-b pb-4">
-            <CardTitle className="text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+            <CardTitle className="text-lg font-semibold">Age Bands</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
@@ -836,7 +836,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       ) : (
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+          <CardTitle className="text-lg font-semibold">Age Bands</CardTitle>
           <p className="text-sm text-muted-foreground">
             Per-traveler price tiers. The tour&apos;s &ldquo;from&rdquo; price is the default band (usually Adult).
           </p>
@@ -862,10 +862,10 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
           )}
 
           <form onSubmit={handleAgeBandSubmit(onAddAgeBand)} className="space-y-4 pt-4 border-t">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Add Age Band</p>
+            <p className="text-xs font-semibold text-muted-foreground">Add Age Band</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Age Type</Label>
+                <Label className="text-xs font-semibold">Age Type</Label>
                 <Controller
                   name="bandType"
                   control={ageBandControl}
@@ -887,7 +887,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.bandType?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Participation</Label>
+                <Label className="text-xs font-semibold">Participation</Label>
                 <Controller
                   name="participation"
                   control={ageBandControl}
@@ -912,7 +912,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Label</Label>
+                <Label className="text-xs font-semibold">Label</Label>
                 <Input
                   {...registerAgeBand('label')}
                   placeholder="e.g. Adult (13+)"
@@ -921,7 +921,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.label?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Price</Label>
+                <Label className="text-xs font-semibold">Price</Label>
                 <Input
                   {...registerAgeBand('price')}
                   placeholder="79.00"
@@ -933,7 +933,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Min Age</Label>
+                <Label className="text-xs font-semibold">Min Age</Label>
                 <Input
                   {...registerAgeBand('minAge')}
                   type="number"
@@ -945,7 +945,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.minAge?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Max Age</Label>
+                <Label className="text-xs font-semibold">Max Age</Label>
                 <Input
                   {...registerAgeBand('maxAge')}
                   type="number"
@@ -960,7 +960,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Original Price</Label>
+                <Label className="text-xs font-semibold">Original Price</Label>
                 <Input
                   {...registerAgeBand('priceOriginal')}
                   placeholder="Optional (strikethrough)"
@@ -970,7 +970,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.priceOriginal?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Net Price</Label>
+                <Label className="text-xs font-semibold">Net Price</Label>
                 <Input
                   {...registerAgeBand('priceNet')}
                   placeholder="Optional (operator net)"
@@ -1009,7 +1009,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       {/* Add-Ons */}
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Add-Ons</CardTitle>
+          <CardTitle className="text-lg font-semibold">Add-Ons</CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {isLoadingAddOns ? (
@@ -1030,10 +1030,10 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
           )}
 
           <form onSubmit={handleAddOnSubmit(onAddAddOn)} className="space-y-4 pt-4 border-t">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Add Add-On</p>
+            <p className="text-xs font-semibold text-muted-foreground">Add Add-On</p>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Name</Label>
+                <Label className="text-xs font-semibold">Name</Label>
                 <Input
                   {...registerAddOn('name')}
                   placeholder="e.g. Snorkel Equipment"
@@ -1042,7 +1042,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{addOnErrors.name?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Price</Label>
+                <Label className="text-xs font-semibold">Price</Label>
                 <Input
                   {...registerAddOn('price')}
                   placeholder="19.99"
@@ -1053,13 +1053,13 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
             </div>
 
             <Field>
-              <Label className="text-xs font-semibold uppercase">Description</Label>
+              <Label className="text-xs font-semibold">Description</Label>
               <Input {...registerAddOn('description')} placeholder="Optional description" />
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Pricing Unit</Label>
+                <Label className="text-xs font-semibold">Pricing Unit</Label>
                 <Controller
                   name="unit"
                   control={addOnControl}
@@ -1077,7 +1077,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 />
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Max Quantity</Label>
+                <Label className="text-xs font-semibold">Max Quantity</Label>
                 <Input {...registerAddOn('maxQuantity')} type="number" min={1} placeholder="10" />
               </Field>
             </div>

@@ -282,7 +282,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
               <CollapsibleContent className="space-y-4 border-t px-3 py-4">
                 <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Group Name</Label>
+                    <Label className="text-xs font-semibold">Group Name</Label>
                     <Input
                       value={group.groupName}
                       onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
@@ -290,7 +290,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                     />
                   </Field>
                   <Field>
-                    <Label className="text-xs font-semibold uppercase">Display Order</Label>
+                    <Label className="text-xs font-semibold">Display Order</Label>
                     <Input
                       type="number"
                       value={group.displayOrder}
@@ -310,7 +310,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                         <CardContent className="pt-5 space-y-4">
                           <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
                             <Field>
-                              <Label className="text-xs font-semibold uppercase">Tour</Label>
+                              <Label className="text-xs font-semibold">Tour</Label>
                               <HubTourSelect
                                 destinationId={hub?.destinationId ?? ''}
                                 value={tour.tourId}
@@ -325,7 +325,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                               )}
                             </Field>
                             <Field>
-                              <Label className="text-xs font-semibold uppercase">Order</Label>
+                              <Label className="text-xs font-semibold">Order</Label>
                               <Input
                                 type="number"
                                 value={tour.displayOrder}

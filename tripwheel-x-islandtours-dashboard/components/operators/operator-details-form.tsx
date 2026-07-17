@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<OperatorVerificationStatus, string> = {
 function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-semibold uppercase text-muted-foreground">{label}</span>
+      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
       <span className="text-sm">{value}</span>
     </div>
   );
@@ -140,7 +140,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Field>
-              <Label className="text-xs font-semibold uppercase">Verification Status</Label>
+              <Label className="text-xs font-semibold">Verification Status</Label>
               <Select
                 value={verificationValue}
                 onValueChange={(v) =>
@@ -168,7 +168,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <Field>
-                <Label className="text-xs font-semibold uppercase">Support Email</Label>
+                <Label className="text-xs font-semibold">Support Email</Label>
                 <Input
                   type="email"
                   {...register('contactEmail')}
@@ -179,7 +179,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                 <FieldError>{errors.contactEmail?.message}</FieldError>
               </Field>
               <Field>
-                <Label className="text-xs font-semibold uppercase">Support Phone</Label>
+                <Label className="text-xs font-semibold">Support Phone</Label>
                 <Input
                   {...register('contactPhone')}
                   placeholder="+5999 123 4567"
@@ -196,7 +196,7 @@ export function OperatorDetailsForm({ operator }: OperatorDetailsFormProps) {
                   onCheckedChange={(checked) => setValue('isActive', !!checked)}
                   disabled={!canManage}
                 />
-                <Label htmlFor="isActive" className="text-xs font-semibold uppercase cursor-pointer">
+                <Label htmlFor="isActive" className="text-xs font-semibold cursor-pointer">
                   Active
                 </Label>
               </div>
