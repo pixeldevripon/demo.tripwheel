@@ -2,6 +2,31 @@
 
 > How the dashboard invalidates the public site's `'use cache'` entries after the split.
 
+> ## Status: **BUILT AND VERIFIED** (`06` Phase 7, 2026-07-17)
+>
+> Dashboard `631ac56` (pushed) + public `6c65d0d`. All of §10 passes - mapping 1-9, endpoint 10-18,
+> transport/throttle 25-33, plus ~20 extra cases. Both apps build green.
+>
+> **§4.2 and §11 decision #4 are WRONG and were NOT built as written.** "No profile argument"
+> **does not compile on Next 16.2.4** - `profile` is a *required* parameter, and the bare call also
+> logs a deprecation per tag per write. Shipped instead (user-confirmed):
+> **`revalidateTag(tag, { expire: 0 })`** - `revalidate.js:208` (`if (!profile || cacheLife?.expire
+> === 0)`) puts it in the same branch as both no-profile and `updateTag`'s own internal
+> `revalidate(..., undefined)`, so it is exact parity minus the deprecation. §4.2's *reasoning*
+> (parity over `'max'`) stands; only its API call was stale. `'max'` remains deferred.
+>
+> **Two more things the doc could not know:**
+> - **§6A.3's "21 POSTs -> 2" is 21 -> 3 measured.** The burst spans ~1.05s and outlives one 1s
+>   window. Still 86% off. Check 30 holds exactly: a single save fires at **0ms** (leading edge),
+>   so there is no regression on the common path.
+> - **`user-profile` is a phantom tag in both repos.** The mapping emits it for `/users/me` and
+>   every `/settings/*` write, but **nothing calls `cacheTag('user-profile')` anywhere** -
+>   `getUserProfile` is React `cache()`, deliberately off `'use cache'`. So `updateTag('user-profile')`
+>   was already a no-op long before the split. Kept for parity (cost: a few no-op POSTs).
+>   Remove from **both repos together or not at all.**
+>
+> `06` Phase 7's EXECUTED block is the authoritative record and holds all 5 corrections.
+
 > ## Read this first: the domain decision does NOT solve this
 >
 > **DECISION 2026-07-17: the public site stays on a `tripwheel.io` subdomain for now**, which parks
@@ -164,6 +189,12 @@ The Route Handler must use `revalidateTag`.
 | `revalidateTag(tag, 'max')` | Stale-while-revalidate: serves cached data while fetching fresh in the background. Next.js docs **recommend this** for webhook/API revalidation endpoints. |
 
 **Decision: use `revalidateTag(tag)` with no profile.**
+
+> **SUPERSEDED (Phase 7): the conclusion holds, the call does not.** `revalidateTag(tag)` with no
+> profile **does not compile on Next 16.2.4** - `profile` is required. **Shipped
+> `revalidateTag(tag, { expire: 0 })`**, which lands in the same code branch as no-profile *and*
+> as `updateTag`'s own internal call (`revalidate.js:208`), so the parity argument below is fully
+> preserved. See the status banner at the top.
 
 Rationale, and the trade-off is genuine:
 
@@ -590,7 +621,7 @@ Per the project's env rule, each lands in `.env.example` **and** `.env.productio
 | 1 | Server-to-server POST from the dashboard's existing Server Action | Zero backend change; keeps the secret off the browser; smallest diff |
 | 2 | Tag-mapping logic (`cache-revalidation.ts`) carried **verbatim** | It is well-reasoned and correct except for one bug |
 | 3 | **`revalidateTag`, never `updateTag`**, in the Route Handler | `updateTag` is Server-Action-only and **throws** in a Route Handler |
-| 4 | **No profile argument** (legacy semantics) | Byte-for-byte parity with today's `updateTag`. `'max'` is a separate, later, reviewed decision. |
+| 4 | ~~**No profile argument**~~ -> **`{ expire: 0 }`** (§4.2 banner) | Parity with today's `updateTag`. The bare call does not compile on 16.2.4; `{ expire: 0 }` is the same branch. `'max'` is a separate, later, reviewed decision. |
 | 5 | Public endpoint **validates tags and 400s on unknown** | Converts silent permanent staleness into a loud first-write error |
 | 6 | Reject partial batches wholly | Partial success is a lie to the caller |
 | 7 | **Log failures; never swallow** | Fire-and-forget across a network is a silent correctness bug |

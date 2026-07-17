@@ -485,19 +485,31 @@ Recorded in 06 as an explicit go/no-go.
 
 Ordered so that nothing is broken at any step, and the risky item is isolated.
 
-| # | Step | Verification |
-|---|---|---|
-| 0 | **In the current repo:** fix defect B-1 (duplicate `case 'settings'`). One-line fix, ships to production now, independent of the split. | `PATCH /settings/site` busts `site-info` |
-| 1 | **In the current repo:** sever the 7 cross-tree imports (§3.1). Reimplement `tour-badge` in `components/dashboard/common/`; split `lib/tours/listing.ts`. | `grep "@/components/frontend" components/dashboard app/(dashboard) lib/tours` -> zero. **Both apps still build.** |
-| 2 | **In the current repo:** move dashboard-only files out of `components/` root into `components/dashboard/shell/`; split `components/skelitons/`. | Both apps build. Public site untouched. |
-| 3 | **In the current repo:** delete confirmed dead code (§3.6). | Both apps build; bundle shrinks |
-| 4 | Create the new repo. Copy per §3.4. Rewrite per §3.5. Do **not** redesign anything yet. | `pnpm build` succeeds in the new repo |
-| 5 | Base path migration (§8) | `grep "/dashboard"` clean |
-| 6 | **Cache revalidation transport** (02B) - both the dashboard client and the public `/api/revalidate` endpoint, deployed together. Includes the coalescing throttle (02B §6A.3). | 02B §10 verification |
-| 7 | Env + Docker + deploy to a staging subdomain | Loads, authenticates, lists tours |
-| 8 | **Parity verification** (§11) against production | Every row green |
-| 9 | Cut DNS. Old `/dashboard/*` 308s to the new origin. | |
-| 10 | **In the public repo:** delete the dashboard route group and the now-unused exports from `lib/tours/listing.ts` | Public site builds and deploys |
+> **Status 2026-07-17: steps 0-7 are DONE** (step 7 minus the deploy itself). Live progress and
+> every executed correction live in `06`, which is the authoritative record - this table is the
+> plan, not the log.
+
+| # | Step | Verification | Status |
+|---|---|---|---|
+| 0 | **In the current repo:** fix defect B-1 (duplicate `case 'settings'`). One-line fix, ships to production now, independent of the split. | `PATCH /settings/site` busts `site-info` | **done** (`06` Ph1) |
+| 1 | **In the current repo:** sever the 7 cross-tree imports (§3.1). Reimplement `tour-badge` in `components/dashboard/common/`; split `lib/tours/listing.ts`. | `grep "@/components/frontend" components/dashboard app/(dashboard) lib/tours` -> zero. **Both apps still build.** | **done** (`06` Ph2) |
+| 2 | **In the current repo:** move dashboard-only files out of `components/` root into `components/dashboard/shell/`; split `components/skelitons/`. | Both apps build. Public site untouched. | **done** (`06` Ph3) |
+| 3 | **In the current repo:** delete confirmed dead code (§3.6). | Both apps build; bundle shrinks | **done** (`06` Ph4) |
+| 4 | Create the new repo. Copy per §3.4. Rewrite per §3.5. Do **not** redesign anything yet. | `pnpm build` succeeds in the new repo | **done** (`06` Ph5) |
+| 5 | Base path migration (§8) | `grep "/dashboard"` clean | **done** (`06` Ph6) |
+| 6 | **Cache revalidation transport** (02B) - both the dashboard client and the public `/api/revalidate` endpoint, deployed together. Includes the coalescing throttle (02B §6A.3). | 02B §10 verification | **done** (`06` Ph7) |
+| 7 | Env + ~~Docker~~ **Vercel** + deploy to a staging subdomain | Loads, authenticates, lists tours | **code done** (`06` Ph8); deploy pending |
+| 8 | **Parity verification** (§11) against production | Every row green | **next** |
+| 9 | Cut DNS. Old `/dashboard/*` 308s to the new origin. | | |
+| 10 | **In the public repo:** delete the dashboard route group and the now-unused exports from `lib/tours/listing.ts` | Public site builds and deploys | |
+
+**Step 7 is Vercel, not Docker** (user decision, 2026-07-17): the sibling public app already
+deploys there and `docker-compose.yml` states the frontend is not containerised. No `Dockerfile`
+was written and `output: 'standalone'` was removed. `06` Phase 8 carries the full consequence list.
+
+**Step 10 partly happened early, for free.** Doing step 1 before step 4 meant `deriveTourBadge` /
+`formatTourSignals` were **moved**, not copied - the public site never had a duplicate to delete.
+What remains of step 10 is the dashboard route group itself.
 
 **Steps 0-3 happen in the current monorepo and ship independently.** They are pure decoupling with no behavior change, they reduce the size of the cut, and if the split slips they are still improvements. This is the single most important property of this ordering: **the risky part (steps 4-9) is preceded by work that has value on its own.**
 
@@ -509,21 +521,31 @@ Redesign work (03/04/05) begins **only after step 9 is green**. Extraction and r
 
 Run against production data on the staging subdomain, before DNS cutover. **Every row must be green.** No row may be waived without a written note.
 
+> **Correction 2026-07-17: "on the staging subdomain" overstates it. 53 of these 55 run locally,
+> and should.** Only **#2** and **#9** need the deployed origin - both depend on production-gated
+> cookie behavior (`crossSubDomainCookies` and `proxy.ts`'s `COOKIE_DOMAIN` read are both behind
+> `NODE_ENV === 'production'`), so localhost cannot show them either way. Everything else is HTTP
+> to the backend and indifferent to where the frontend is hosted, **including #51-55** (dashboard
+> :3001 -> public :3000 `/api/revalidate`). Run the sweep locally, fix cheaply, then re-run only
+> #2 and #9 on staging. Rationale and prerequisites: `06` Phase 9.
+>
+> **Already passing** (verified during Phase 8, on `next start`): **#1** and **#11**.
+
 ### Auth and shell
 
 | # | Check | Pass |
 |---|---|---|
-| 1 | Unauthenticated `/` -> `/portal` | |
-| 2 | Malformed session cookie -> `/portal` **and cookie cleared** | |
+| 1 | Unauthenticated `/` -> `/portal` | **PASS** (Phase 8) |
+| 2 | Malformed session cookie -> `/portal` **and cookie cleared** | staging only |
 | 3 | Operator login -> lands on overview | |
 | 4 | Admin login -> lands on overview | |
 | 5 | TOUR_OPERATOR with no operator record -> `/onboarding` | |
 | 6 | Sidebar shows **exactly** the operator's permitted items (diff against production, item by item) | |
 | 7 | Sidebar shows exactly the admin's permitted items | |
 | 8 | Logout clears session, redirects, and back-button does not restore the dashboard | |
-| 9 | Session cookie is scoped **`.islandtours.esenc.cloud`** (the interim topology, and what §7 specifies — `.tripwheel.io` here was stale) and survives a reload | |
+| 9 | Session cookie is scoped **`.islandtours.esenc.cloud`** (the interim topology, and what §7 specifies — `.tripwheel.io` here was stale) and survives a reload | staging only |
 | 10 | Dark mode toggles and persists | |
-| 11 | Legacy `/dashboard/tours` 308s to `/tours` | |
+| 11 | Legacy `/dashboard/tours` 308s to `/tours` | **PASS** (Phase 8) |
 
 ### Per-module CRUD (repeat for destinations, hubs, categories, collections, attributes, operators)
 

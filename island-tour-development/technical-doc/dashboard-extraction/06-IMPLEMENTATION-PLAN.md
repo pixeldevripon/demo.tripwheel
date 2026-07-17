@@ -1,8 +1,33 @@
 # Phase 6 - Phased Implementation Plan
 
-> **Plan only. No code.** Implementation begins only on explicit approval (Phase 7).
+> **Approved and in progress.** Phases 1-8 are DONE and committed (2026-07-17); Phase 9 is next.
+> Each executed phase carries an **EXECUTED** block holding what actually happened - corrections,
+> deviations, and measured numbers. **Where an EXECUTED block contradicts the bullets above it,
+> the EXECUTED block wins:** the bullets are the plan as written before contact with the code.
 >
 > Every phase: objective · affected files · rationale · dependencies · risks · validation · rollback.
+
+## Progress
+
+| Phase | Stage | Status | Commit |
+|---|---|---|---|
+| 1 · Cache-revalidation bug | A | **done** | `bbdd159` (monorepo) |
+| 2 · Sever cross-tree imports | A | **done** | `5ee032e` (monorepo) |
+| 3 · Sort `components/` by owner | A | **done** | `44becee` (monorepo) |
+| 4 · Delete dead code | A | **done** | `528655f` (monorepo) |
+| 5 · Scaffold and copy | B | **done** | `2977a77` (dashboard, pushed) |
+| 6 · Base path -> `/` | B | **done** | `313d291` (dashboard, pushed) |
+| 7 · Cache revalidation | B | **done** | `631ac56` (dashboard) + `6c65d0d` (monorepo) |
+| 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
+| 9 · Parity + cutover | B | **next** | - |
+| 10-23 | C/D/E | not started | - |
+
+**Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
+action, not a code task. **Phase 9 does not have to wait for it** - see that phase.
+
+The spec set was written before any of this ran. Docs `00`, `01`, `03`, `04`, `05` are unexecuted
+analysis and still stand as written. `02` and `02B` carry executed corrections inline. `02C` is a
+**deferred separate project** (the `island.tours` target), untouched by phases 1-9.
 
 ---
 
@@ -20,19 +45,19 @@
 
 ## Stage map
 
-| Stage | Phases | Repo | Behavior change | Reversible |
-|---|---|---|---|---|
-| **A. Decouple** | 1-4 | current | **none** | trivially |
-| **B. Extract** | 5-9 | new | **none** | DNS |
-| **C. Foundation** | 10-13 | new | visual | per phase |
-| **D. Redesign** | 14-20 | new | UX | per phase |
-| **E. Unblocked** | 21-23 | new | new features | per phase |
+| Stage | Phases | Repo | Behavior change | Reversible | Status |
+|---|---|---|---|---|---|
+| **A. Decouple** | 1-4 | current | **none** | trivially | **done** |
+| **B. Extract** | 5-9 | new | **none** | DNS | 5-8 done, **9 next** |
+| **C. Foundation** | 10-13 | new | visual | per phase | gated on 9 |
+| **D. Redesign** | 14-20 | new | UX | per phase | gated on 9 |
+| **E. Unblocked** | 21-23 | new | new features | per phase | gated on 9 |
 
 ---
 
 # Stage A - Decouple (current repo)
 
-## Phase 1 · Fix the live cache-revalidation bug
+## Phase 1 · Fix the live cache-revalidation bug - **DONE** (`bbdd159`)
 
 **Objective** `PATCH /settings/site` busts the public `site-info` tag.
 
@@ -48,9 +73,21 @@
 
 **Rollback** Revert. Restores the bug.
 
+> **EXECUTED 2026-07-17.** The two `case 'settings'` arms merged into one. Shipped exactly as
+> specced; no corrections.
+>
+> **The file this phase fixes was on Phase 4's original delete list** - an early scan called
+> `lib/api/cache-revalidation.ts` dead when `lib/api/fetch.ts:7` imports it. Deleting it would
+> have taken the whole public-cache bridge with it. That scan was wrong a **second** time later
+> (`locals-favourites-list-view.tsx`, Phase 4). Both are recorded here because they share one
+> lesson: **verify every "dead" claim from that scan against a real importer.**
+>
+> Re-confirmed in Phase 7 that the fix is present in **both** repos - the dashboard's copy
+> carried it across the split rather than reintroducing B-1 on the new side.
+
 ---
 
-## Phase 2 · Sever the 7 cross-tree imports
+## Phase 2 · Sever the 7 cross-tree imports - **DONE** (`5ee032e`)
 
 **Objective** Zero dashboard imports from `components/frontend/`.
 
@@ -69,9 +106,37 @@
 
 **Rollback** Revert. **Note:** after this ships, the public repo should drop `deriveTourBadge`/`formatTourSignals` from its copy - track it, or the two copies drift.
 
+> **EXECUTED 2026-07-17.** tsc clean, eslint 0 errors, build green. New: `lib/tours/derive-badge.ts`
+> (`TourBadge` + `deriveTourBadge`), `lib/tours/signals.ts`, `components/dashboard/common/tour-badge.tsx`.
+> All 6 call sites repointed; `lib/tours/listing.ts` is now public-only. **Still owed: the visual
+> check of the 6 pickers** (hub tour-select / comparison / our-picks; collection form / tour-select /
+> tours-manager) - the one row in this phase an agent cannot green.
+>
+> **Three corrections:**
+>
+> **1. The Rollback note above is moot, not deferred.** It anticipated two *copies* drifting.
+> Doing the split before extraction meant the functions were **moved**, never copied - the public
+> site no longer has them. Nothing to track.
+>
+> **2. The validation grep is 1 hit off.** `grep "@/components/frontend" ... lib/tours` still
+> returns `lib/tours/listing.ts:5` (`type TourListing` from `components/frontend/tour-card`) - a
+> legitimate public->public import in a file that does **not** travel to the dashboard repo. The
+> "7 imports" were 6x `TourBadgeChip` + the `TourBadge` type at old `listing.ts:6`; line 5 was
+> never dashboard-caused. Scope the grep to `components/dashboard app/(dashboard)
+> lib/tours/{derive-badge,signals}.ts`.
+>
+> **3. The type lives in `lib/`, not the component** (`tour-badge.tsx` imports `TourBadge` from
+> `lib/tours/derive-badge`). The reverse would violate `05` D1: `lib/` never imports `components/`.
+> The admin chip is **token-only, no hex** - it maps badge to MEANING through existing tokens
+> (sponsored=`muted` per master §3.6 "gray, never brand orange", new=`info`,
+> likelyToSellOut=`warning`, mostPopular=`success`) using the subtle `border-{v}/30 bg-{v}/10
+> text-{v}` triplet already in `statistics.tsx:313` - which is the shape `03` §5.1 standardizes as
+> `StatusBadge`, so **Phase 12 absorbs it without a redesign**. The public chip stays pinned to
+> Figma hex; `--it-*` are scoped to `.frontend-root` and unusable in the dashboard.
+
 ---
 
-## Phase 3 · Sort `components/` by owner
+## Phase 3 · Sort `components/` by owner - **DONE** (`44becee`)
 
 **Objective** Dashboard-only files stop living in the shared root.
 
@@ -96,9 +161,23 @@
 
 **Rollback** Revert.
 
+> **EXECUTED 2026-07-17.** 21 files' imports rewritten; tsc clean, build exit 0.
+> `components/skelitons/` is **deleted outright** (the typo is gone), split into
+> `components/dashboard/skeletons/` (4) + `components/frontend/skeletons/` (14).
+>
+> **This phase's own validation is only reachable after Phase 4.** "Root contains only genuinely
+> shared files" stayed false here on purpose: the 3 dead navs plus 3 pre-existing dead files sit
+> at root until Phase 4 deletes them. See the CORRECTION above. Phase 4 closed it - root is now
+> empty of loose files.
+>
+> **Trap for anyone re-running this:** `git mv` from `frontend/` stages into `frontend/.git`,
+> which is a **different repo on a different branch** than the root. 23 renames landed in the
+> wrong index this way and needed a `git reset`. Renames survive it fine (git detects them by
+> content similarity at commit time), but **run every git command from the repo ROOT.**
+
 ---
 
-## Phase 4 · Delete dead code
+## Phase 4 · Delete dead code - **DONE** (`528655f`)
 
 **Objective** Remove >1,574 confirmed-dead LOC.
 
@@ -154,7 +233,7 @@
 
 # Stage B - Extract (new repo)
 
-## Phase 5 · Scaffold and copy
+## Phase 5 · Scaffold and copy - **DONE** (`2977a77`)
 
 **Objective** The new repo builds. **Zero redesign.**
 
@@ -219,7 +298,7 @@
 
 ---
 
-## Phase 6 · Base path `/dashboard/*` -> `/*`
+## Phase 6 · Base path `/dashboard/*` -> `/*` - **DONE** (`313d291`)
 
 **Objective** Dashboard serves at root.
 
@@ -278,7 +357,7 @@
 
 ---
 
-## Phase 7 · Cross-domain cache revalidation
+## Phase 7 · Cross-domain cache revalidation - **DONE** (`631ac56` + `6c65d0d`)
 
 **Objective** Dashboard writes bust `island.tours`.
 
@@ -383,7 +462,7 @@
 
 ---
 
-## Phase 8 · Env, ~~Docker~~ Vercel, staging
+## Phase 8 · Env, ~~Docker~~ Vercel, staging - **DONE, code side** (`cfdd38b` + `4c1d7f4`)
 
 **Objective** Deployed to a staging subdomain.
 
@@ -466,7 +545,7 @@
 
 ---
 
-## Phase 9 · Parity verification and cutover
+## Phase 9 · Parity verification and cutover - **NEXT**
 
 **Objective** Prove zero regression, then cut DNS.
 
@@ -475,6 +554,31 @@
 **Rationale** `02` §11 - 55 checks against production data.
 
 **Dependencies** Phases 5-8
+
+> **NOT BLOCKED ON THE STAGING DEPLOY. Run it locally first** (analysed 2026-07-17).
+> **Only 2 of the 55 checks actually need the deployed origin:** **#2** (malformed cookie cleared)
+> and **#9** (cookie scoped `.islandtours.esenc.cloud`). Both are invisible on localhost *by
+> design* - `crossSubDomainCookies` is gated on `NODE_ENV === 'production'` and `proxy.ts` reads
+> `COOKIE_DOMAIN` only in production. Everything else is HTTP to `localhost:5050` and indifferent
+> to hosting. Even the cross-service rows (**#51-55**) run locally: dashboard :3001 -> public :3000
+> `/api/revalidate`, the exact path Phase 7 exercised. **#6/#7** ("diff against production") can
+> compare against the OLD dashboard, still live at `/dashboard` until cutover.
+> **#1 and #11 already pass** - verified during Phase 8. A regression found on staging costs a
+> redeploy each; found locally it costs nothing.
+>
+> **A `*.vercel.app` URL cannot authenticate, so the custom subdomain is not optional garnish.**
+> The backend issues the session cookie scoped `.islandtours.esenc.cloud`; a browser accepts a
+> cookie only for its own host or a parent, so a different registrable domain rejects it outright
+> and every login bounces to `/portal`. **There is no "deploy now, attach the domain later" path
+> that yields a testable app.**
+>
+> **Honest limit on an agent-run pass:** many rows are visual or interactive (avatar crop, mp4
+> upload progress, drag-reorder, dark-mode persistence). API-level behavior is verifiable; "does
+> it look right" is not. Those rows are the user's to sign off, and must not be reported green
+> without them.
+>
+> **Local prerequisites:** backend on :5050 with the demo seed (`pnpm prisma:seed:demo`),
+> `http://localhost:3001` present in its `CORS_ORIGINS`, and the public site on :3000 for #51-55.
 
 **Risks** **One known intentional delta:** collections gains RBAC gating (B-7). Flag it; do not let it read as a regression.
 

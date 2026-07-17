@@ -1,7 +1,35 @@
 # Dashboard Extraction & UI/UX Redesign - Specification Set
 
-> Status: **specs complete, awaiting review. No code written. Implementation is gated on approval.**
-> Authored 2026-07-17 against branch `dashboard-ui`.
+> Status: **approved and in flight. Extraction phases 1-8 are DONE** (2026-07-17); **Phase 9
+> (parity, 55 checks) is next, and the redesign is gated on it being green.**
+> Specs authored 2026-07-17 against branch `dashboard-ui`.
+>
+> **The new repo exists:** `github.com/devripon-tr/tripwheel-x-islandtours-dashboard`.
+> The dashboard now serves at `/` on port 3001, deploys to Vercel, and reaches the backend
+> only over HTTP. **`06`'s progress table is the live status; this line is a summary.**
+
+---
+
+## Where the work stands
+
+| Stage | Phases | What | Status |
+|---|---|---|---|
+| **A. Decouple** | 1-4 | Fix B-1, sever the 7 imports, sort `components/`, delete 2,725 dead LOC | **done** (monorepo, `dashboard-ui`) |
+| **B. Extract** | 5-9 | New repo, base path `/`, cache bridge, env + Vercel, **parity** | **5-8 done · 9 next** |
+| **C-E. Redesign** | 10-23 | Tokens, StatusBadge, DataTable, IA, translation console, A1-A7 | **gated on Phase 9** |
+
+**Two things are the user's, not an agent's:**
+1. **The staging deploy** - a Vercel project for `dashboard.islandtours.esenc.cloud` plus DNS, and
+   adding that origin to `CORS_ORIGINS` in the backend's **real** `.env.production` (only the
+   committed examples were changed). A `*.vercel.app` URL **cannot authenticate** - the session
+   cookie is scoped to a different registrable domain - so there is no "deploy now, domain later".
+2. **The visual rows** of Phase 9, and the tour-picker check still owed from Phase 2.
+
+**Read `06` before doing anything.** Each executed phase has an **EXECUTED** block recording what
+actually happened; several of them **contradict the original bullets**, and where they do, they win.
+The specs were written before contact with the code and were wrong in specific, documented ways
+(`02` §3.4's copy list was wrong 3 times; `02` §3.5's "F-3 is free" was wrong; `02B`'s
+`revalidateTag` signature does not compile on Next 16.2.4).
 
 ---
 
