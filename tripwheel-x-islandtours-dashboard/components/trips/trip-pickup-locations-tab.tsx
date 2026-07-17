@@ -189,7 +189,7 @@ function PickupDetailsEditor({
                         min={0}
                     />
                 </Field>
-                <label className='flex cursor-pointer items-center gap-2 pt-5'>
+                <label className='flex cursor-pointer items-center gap-2 pt-6'>
                     <Checkbox
                         checked={isActive}
                         onCheckedChange={c => setValue('isActive', !!c)}

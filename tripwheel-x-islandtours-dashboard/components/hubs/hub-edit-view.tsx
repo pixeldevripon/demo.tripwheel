@@ -18,10 +18,10 @@ import {
 import type { HubStatus } from '@/types/hub';
 import { HUB_STATUS_LABELS } from '@/types/enums';
 import { toast } from 'sonner';
-import { FaqManager } from '@/components/faq/faq-manager';
+import { FaqManager } from '@/components/common/faq-manager';
 import { HubDetailShell } from './hub-detail-shell';
 import { HubForm } from './hub-form';
-import { EnglishContentEditor } from '@/components/translations/english-content-editor';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { HubSeoTab } from '@/components/common/entity-seo-tab';
 import { HubContentSectionsManager } from './hub-content-sections-manager';
 import { HubOurPicksManager } from './hub-our-picks-manager';

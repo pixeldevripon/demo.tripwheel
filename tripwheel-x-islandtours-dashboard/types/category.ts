@@ -1,5 +1,5 @@
-import type { Locale } from '@/lib/constants/locales';
-export type { Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
+export type { Locale } from '@/types/locale';
 
 export interface Category {
   id: string;

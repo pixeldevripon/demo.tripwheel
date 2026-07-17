@@ -49,6 +49,7 @@ export default function AuthForm() {
             <Field label='Email' htmlFor='o-email'>
                 <input
                     id='o-email'
+                    aria-label='Email'
                     type='email'
                     name='email'
                     autoComplete='username'
@@ -65,6 +66,7 @@ export default function AuthForm() {
                 <div className='relative'>
                     <input
                         id='o-pw'
+                        aria-label='Password'
                         type={showPw ? 'text' : 'password'}
                         name='password'
                         autoComplete='current-password'
@@ -77,13 +79,13 @@ export default function AuthForm() {
                         type='button'
                         aria-live='polite'
                         onClick={() => setShowPw(v => !v)}
-                        className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
+                        className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
                         {showPw ? 'Hide' : 'Show'}
                     </button>
                 </div>
             </Field>
 
-            <div className='mb-4.5 mt-0.5 flex items-center justify-end'>
+            <div className='mb-4 mt-0.5 flex items-center justify-end'>
                 <Link href='/portal/forgot' className={quietLink}>
                     Forgot your password?
                 </Link>

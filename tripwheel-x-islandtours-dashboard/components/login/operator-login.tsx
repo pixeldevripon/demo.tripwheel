@@ -63,20 +63,20 @@ export function OperatorLogin() {
     // ──────────────────────────────────────────────────────────────────────
 
     const cardClass =
-        'w-full rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md';
+        'w-full rounded-[16px] border border-it-border bg-it-white px-8 pb-6 pt-8 shadow-it-md';
 
     return (
         <MountReveal className={cardClass}>
-            <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
                 Operator portal
             </h1>
-            <p className='mb-5.5 mt-1.5 text-[14px] text-it-text-muted'>
+            <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
                 Manage your tours, availability, and bookings.
             </p>
 
             <AuthForm />
 
-            <div className='mt-5 flex flex-col items-center gap-2.5'>
+            <div className='mt-4 flex flex-col items-center gap-2.5'>
                 <Link href='/apply' className={quietLink}>
                     New here? Apply to list your tours &rarr;
                 </Link>

@@ -114,7 +114,7 @@ function EnglishContentForm({
     return (
         <form
             onSubmit={handleSubmit(onSave)}
-            className='space-y-5'>
+            className='space-y-6'>
             {fields.map(f => {
                 const disabled = disabledFields.includes(f.name);
                 return (
@@ -317,7 +317,7 @@ export function EnglishContentEditor({
                     publish fields (like the tour overview) live here.
                 </CardDescription>
             </CardHeader>
-            <CardContent className='pt-5'>
+            <CardContent className='pt-6'>
                 {type === 'tour' && <TourEnglishContent id={id} />}
                 {type === 'destination' && <DestinationEnglishContent id={id} />}
                 {type === 'category' && <CategoryEnglishContent id={id} />}

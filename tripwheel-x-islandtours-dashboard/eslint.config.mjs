@@ -5,9 +5,8 @@ import nextTs from "eslint-config-next/typescript";
 /*
  * Design-system enforcement - spec 03 §8, landed by 06 Phase 10.
  *
- * Everything added here is `warn` on purpose. There are ~600 pre-existing
- * violations; landing as `error` would block all work. They get fixed per
- * module through Stage D and flipped to `error` at Phase 20.
+ * Flipped to `error` at Phase 20 (2026-07-17) after the violation sweep -
+ * the design system and dependency direction are now enforced, not advisory.
  *
  * `import` and `jsx-a11y` are already registered as plugins by
  * eslint-config-next/core-web-vitals, so their rules are referenced by name
@@ -141,7 +140,7 @@ const eslintConfig = defineConfig([
     files: ["**/*.{ts,tsx}"],
     rules: {
       "import/no-restricted-paths": [
-        "warn",
+        "error",
         {
           zones: [
             // D1 - lib/ never imports components/.
@@ -190,7 +189,7 @@ const eslintConfig = defineConfig([
       ],
       // D5 - the isolation test. Nothing from the public site, forever.
       "no-restricted-imports": [
-        "warn",
+        "error",
         {
           patterns: [
             {
@@ -212,10 +211,10 @@ const eslintConfig = defineConfig([
   {
     files: ["components/**/*.tsx", "app/**/*.tsx"],
     rules: {
-      "no-restricted-syntax": ["warn", ...DESIGN_SELECTORS, NO_INLINE_STYLE],
+      "no-restricted-syntax": ["error", ...DESIGN_SELECTORS, NO_INLINE_STYLE],
       // 03 §8.7 - an icon-only button must carry a label.
       "jsx-a11y/control-has-associated-label": [
-        "warn",
+        "error",
         {
           controlComponents: ["Button", "Toggle", "ToggleGroupItem"],
           depth: 5,
@@ -231,7 +230,7 @@ const eslintConfig = defineConfig([
   {
     files: ["components/**/*-table.tsx", "components/ui/chart.tsx"],
     rules: {
-      "no-restricted-syntax": ["warn", ...DESIGN_SELECTORS],
+      "no-restricted-syntax": ["error", ...DESIGN_SELECTORS],
     },
   },
 ]);

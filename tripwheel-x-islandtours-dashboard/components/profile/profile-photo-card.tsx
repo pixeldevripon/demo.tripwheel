@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 // bundle-dynamic-imports: Load heavy cropper only when needed
 const ImageCropper = dynamic(() => import('./image-cropper'), {
     loading: () => (
-        <HugeiconsIcon icon={Loading03Icon} className='w-10 h-10 animate-spin text-primary mx-auto my-10' />
+        <HugeiconsIcon icon={Loading03Icon} className='w-10 h-10 animate-spin text-primary mx-auto my-8' />
     ),
     ssr: false,
 });
@@ -118,6 +118,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                                 onChange={handleFileChange}
                                 accept='image/*'
                                 className='hidden'
+                                aria-label='Upload profile photo'
                             />
                             <Button
                                 onClick={() => fileInputRef.current?.click()}

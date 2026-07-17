@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { localsFavouritesApi } from '@/lib/api/locals-favourites';
-import { tripKeys } from '@/hooks/trips/use-trips';
+import { tripKeys } from '@/lib/trips/query-keys';
 
 export const localsFavouriteKeys = {
   all: ['locals-favourites'] as const,

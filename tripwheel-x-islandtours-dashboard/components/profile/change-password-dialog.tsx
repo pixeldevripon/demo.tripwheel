@@ -134,7 +134,7 @@ export function ChangePasswordDialog({
                         {hasPassword && (session?.user as any)?.passwordChangedAt && (
                             <div className='px-3 py-2 bg-muted/50 rounded-lg border border-border/50 flex items-center gap-2'>
                                 <HugeiconsIcon icon={SquareLock02Icon} className='w-3.5 h-3.5 text-muted-foreground' />
-                                <span className='text-[11px] text-muted-foreground font-medium'>
+                                <span className='text-2xs text-muted-foreground font-medium'>
                                     Last changed:{' '}
                                     {formatDate((session?.user as any).passwordChangedAt, {
                                         year: 'numeric',

@@ -47,16 +47,12 @@ const BulkActionSpinner = ({
                 {/* Subtle Progress Bar (Indeterminate) */}
                 <div className='mt-8 w-48 h-1 bg-muted rounded-full overflow-hidden relative'>
                     <div className='absolute inset-0 bg-primary/20 animate-pulse' />
-                    <div 
-                        className='absolute inset-0 bg-primary h-full w-1/3 rounded-full animate-[progress-slide_1.5s_infinite_ease-in-out]' 
-                        style={{ 
-                            left: '-100%',
-                            boxShadow: '0 0 10px var(--color-primary)'
-                        }} 
+                    <div
+                        className='absolute inset-0 bg-primary h-full w-1/3 rounded-full animate-[progress-slide_1.5s_infinite_ease-in-out] -left-full shadow-[0_0_10px_var(--color-primary)]'
                     />
                 </div>
-                
-                <p className='mt-4 text-[10px] text-muted-foreground/60 tracking-[0.2em] font-medium'>
+
+                <p className='mt-4 text-2xs text-muted-foreground/60 tracking-[0.2em] font-medium'>
                     Please keep this page open
                 </p>
             </div>

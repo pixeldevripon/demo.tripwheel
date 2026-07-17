@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { makeTripColumns } from './trip-columns';
-import { OperatorFilterPopover } from './operator-filter-popover';
+import { makeTripColumns } from '@/components/common/trip-columns';
+import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
 import { useRemoveTrip } from '@/hooks/trips/use-trips';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';

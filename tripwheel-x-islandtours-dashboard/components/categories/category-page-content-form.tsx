@@ -74,7 +74,7 @@ function LocalePageContentTab({ categoryId, locale }: LocalePageContentTabProps)
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Field>
         <Label>About Text</Label>
         <Textarea

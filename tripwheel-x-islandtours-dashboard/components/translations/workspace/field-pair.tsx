@@ -46,7 +46,7 @@ export function FieldPair({
                         <p className='mb-1 text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
                             English (source)
                         </p>
-                        <div className='min-h-10 rounded-md border border-line-subtle bg-surface-sunken px-3.5 py-2 text-sm whitespace-pre-wrap text-content-muted'>
+                        <div className='min-h-10 rounded-md border border-line-subtle bg-surface-sunken px-3 py-2 text-sm whitespace-pre-wrap text-content-muted'>
                             {source || (
                                 <span className='text-content-subtle italic'>
                                     No English content yet.

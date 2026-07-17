@@ -89,7 +89,7 @@ export function MultiSelect({
             variant="outline"
             size="sm"
             disabled={disabled}
-            className="h-10 w-full justify-between px-3.5 font-normal"
+            className="h-10 w-full justify-between px-3 font-normal"
           >
             <span
               className={cn(

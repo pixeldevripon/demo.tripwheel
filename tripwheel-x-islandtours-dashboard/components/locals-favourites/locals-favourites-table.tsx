@@ -24,8 +24,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { OperatorFilterPopover } from '@/components/trips/operator-filter-popover';
-import { makeTripColumns } from '@/components/trips/trip-columns';
+import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
+import { makeTripColumns } from '@/components/common/trip-columns';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useSetLocalsFavourite } from '@/hooks/locals-favourites/use-locals-favourites';
 import { useSession } from '@/lib/auth-client';

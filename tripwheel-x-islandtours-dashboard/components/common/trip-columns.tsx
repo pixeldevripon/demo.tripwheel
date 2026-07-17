@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import type { TripListItem, TripStatus } from '@/types/trip';
-import { TripRowActions } from './trip-row-actions';
+import { TripRowActions } from '@/components/trips/trip-row-actions';
 
 // Shared style for clickable entity links inside table cells.
 const entityLink =

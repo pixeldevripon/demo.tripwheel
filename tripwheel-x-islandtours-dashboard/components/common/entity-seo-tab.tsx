@@ -22,7 +22,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -257,7 +257,7 @@ function EntitySeoView({
                                     metaDescription: v.metaDescription || null,
                                 }),
                             )}
-                            className='space-y-5'>
+                            className='space-y-6'>
                             <SerpPreview
                                 title={metaTitle}
                                 description={metaDescription}
@@ -364,7 +364,7 @@ function EntitySeoView({
                         onSubmit={socialForm.handleSubmit(v =>
                             onSaveOg(v.ogImage || null),
                         )}
-                        className='space-y-5'>
+                        className='space-y-6'>
                         <Field>
                             <Label>Social Share Image (OG)</Label>
                             <Controller

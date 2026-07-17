@@ -179,7 +179,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
             const trip = adminTrips?.data.find((t) => t.id === row.tourId);
             return (
             <Card key={row.key} size="sm">
-              <CardContent className="pt-5 space-y-4">
+              <CardContent className="pt-4 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>
                     <Label>Tour</Label>

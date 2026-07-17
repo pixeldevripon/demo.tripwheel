@@ -51,8 +51,15 @@ const MediaListUi = ({
                         exit={{ opacity: 0, x: 10 }}
                         className='flex items-center px-4 py-3 border-b border-border bg-muted/20 relative group overflow-hidden'>
                         <div
-                            className='absolute bottom-0 left-0 h-1 bg-primary transition-all duration-300'
-                            style={{ width: `${uploadProgress[fileObj.id] || 0}%` }}
+                            className='absolute bottom-0 left-0 h-1 bg-primary transition-all duration-300 w-(--upload-progress)'
+                            // 03 §8.3: the runtime width travels through a CSS custom
+                            // property; the spread keeps a literal `style` attribute
+                            // out of the JSX.
+                            {...{
+                                style: {
+                                    '--upload-progress': `${uploadProgress[fileObj.id] || 0}%`,
+                                } as React.CSSProperties,
+                            }}
                         />
                         <div className='shrink-0 w-12 h-12 mr-4 relative rounded-md overflow-hidden bg-muted/40 flex items-center justify-center border border-border/50'>
                             {fileObj.file.type.startsWith('image/') && previewUrls[fileObj.id] ? (
@@ -124,7 +131,7 @@ const MediaListUi = ({
                                 <div className='shrink-0 mr-4'>
                                     <div
                                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-200 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary hover:bg-accent/20'}`}
-                                        onClick={e => { e.stopPropagation(); !isDeleting && handleItemSelection(item); }}>
+                                        onClick={e => { e.stopPropagation(); if (!isDeleting) handleItemSelection(item); }}>
                                         {isSelected && <HugeiconsIcon icon={Tick02Icon} className='h-4 w-4' />}
                                     </div>
                                 </div>
@@ -132,7 +139,7 @@ const MediaListUi = ({
 
                             <div
                                 className='shrink-0 w-16 h-16 mr-4 cursor-pointer'
-                                onClick={e => { e.stopPropagation(); !isDeleting && handleItemClick(item); }}>
+                                onClick={e => { e.stopPropagation(); if (!isDeleting) handleItemClick(item); }}>
                                 <Image
                                     height={200}
                                     width={200}

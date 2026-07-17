@@ -196,7 +196,7 @@ export function SpotlightQueueView() {
                                 <span>{SPOTLIGHT_STATUS_LABELS[key]}</span>
                                 <span
                                     className={cn(
-                                        'rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums text-muted-foreground',
+                                        'rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-semibold leading-none tabular-nums text-muted-foreground',
                                         status === key && 'bg-foreground text-background'
                                     )}
                                 >

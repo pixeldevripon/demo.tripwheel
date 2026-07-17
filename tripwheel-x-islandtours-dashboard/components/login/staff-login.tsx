@@ -33,11 +33,11 @@ export function StaffLogin() {
                 width={176}
                 height={131}
                 priority
-                className='mb-6.5 h-auto w-32 object-contain'
+                className='mb-6 h-auto w-32 object-contain'
             />
 
-            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-7 pb-6.5 pt-7.5 shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
-                <h1 className='mb-5 text-center font-it-display text-[19px] font-semibold text-it-heading'>
+            <div className='w-full max-w-95 rounded-[16px] bg-it-white px-8 pb-6 pt-8 shadow-2xl shadow-black/40'>
+                <h1 className='mb-4 text-center font-it-display text-lg font-semibold text-it-heading'>
                     Staff access
                 </h1>
 
@@ -80,12 +80,12 @@ export function StaffLogin() {
                 )}
                 </MountReveal> */}
                 <AuthForm />
-                <p className='mt-4 text-[12px] leading-[1.5] text-it-text-muted'>
+                <p className='mt-4 text-xs leading-[1.5] text-it-text-muted'>
                     Island Tours staff only. Every login and action is logged.
                 </p>
             </div>
 
-            <p className='mt-5.5 max-w-85 text-center text-[12px] text-white/65'>
+            <p className='mt-6 max-w-85 text-center text-xs text-white/65'>
                 admin.island.tours &middot; linked from nowhere, noindex,
                 authorization always server-side
             </p>
@@ -94,6 +94,9 @@ export function StaffLogin() {
 }
 
 /** Official Google "G" brand mark - kept multi-color (not recolourable). */
+/* eslint-disable no-restricted-syntax -- 03 §8.2 exemption: the four fills below
+ * are Google's fixed brand colors (brand guidelines), not themeable UI color -
+ * they must not be replaced with design-system tokens. */
 function GoogleMark() {
     return (
         <svg
@@ -119,5 +122,6 @@ function GoogleMark() {
         </svg>
     );
 }
+/* eslint-enable no-restricted-syntax */
 
 

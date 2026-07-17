@@ -994,6 +994,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                       checked={field.value}
                       onChange={(e) => field.onChange(e.target.checked)}
                       className="size-4 accent-foreground"
+                      aria-label="Default band (pre-selected at booking)"
                     />
                     Default band (pre-selected at booking)
                   </label>

@@ -192,7 +192,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
             const trip = row.tourId ? tripById.get(row.tourId) : undefined;
             return (
               <Card key={row.key} size="sm">
-                <CardContent className="pt-5 space-y-4">
+                <CardContent className="pt-4 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col items-center gap-1 pt-6">
                       <span className="text-xs font-semibold text-muted-foreground tabular-nums">

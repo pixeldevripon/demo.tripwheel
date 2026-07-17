@@ -32,7 +32,7 @@ export function ProfileClient() {
     if (!user) return <div>Error loading profile. Please try again.</div>;
 
     return (
-        <div className='max-w-7xl space-y-8 pb-10'>
+        <div className='max-w-7xl space-y-8 pb-8'>
             <ProfileHeader />
 
             <motion.div

@@ -17,7 +17,7 @@ import {
  * (a backup code is a variable-length string, not a fixed digit grid).
  */
 const slotClass =
-    'size-10 text-[16px] font-semibold text-it-ink border-it-border data-[active=true]:border-it-primary data-[active=true]:ring-it-primary/30';
+    'size-10 text-base font-semibold text-it-ink border-it-border data-[active=true]:border-it-primary data-[active=true]:ring-it-primary/30';
 
 export function OtpField({
     value,

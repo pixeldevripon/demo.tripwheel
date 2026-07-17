@@ -35,7 +35,7 @@ export function DataTableSearch({
                 placeholder={placeholder}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className='pl-9'
+                className='pl-8'
                 aria-label={placeholder}
             />
         </div>

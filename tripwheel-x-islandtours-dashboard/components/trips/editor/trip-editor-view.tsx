@@ -35,7 +35,7 @@ import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/status-badge';
 import { TRIP_STATUS } from '@/components/common/status-maps';
-import { EnglishContentEditor } from '@/components/translations/english-content-editor';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';

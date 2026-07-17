@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, Image02Icon, PencilEdit02Icon, PlusSignIcon, StarIcon } from '@hugeicons/core-free-icons';
 
-import MediaSelector from '@/components/media/media-selector';
+import MediaSelector from '@/components/common/media-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

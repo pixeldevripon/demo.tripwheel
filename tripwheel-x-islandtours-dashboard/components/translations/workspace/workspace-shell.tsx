@@ -54,7 +54,7 @@ export function WorkspaceShell({
     const isEn = locale === 'en';
 
     return (
-        <div className='pb-24'>
+        <div className='pb-16'>
             <Breadcrumb
                 items={[
                     { label: 'Dashboard', href: '/' },

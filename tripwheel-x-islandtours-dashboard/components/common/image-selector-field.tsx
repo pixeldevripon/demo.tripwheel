@@ -5,7 +5,7 @@ import { Cancel01Icon, CloudUploadIcon, ImageAdd02Icon, RefreshIcon } from '@hug
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import MediaSelector from './media-selector';
+import MediaSelector from '@/components/common/media-selector';
 import type { MediaItem } from '@/types/media';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function UploadZone({
         'group w-full flex flex-col items-center justify-center border border-dashed border-border',
         'transition-all duration-200 hover:border-primary/60 hover:bg-primary/2',
         disabled ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer',
-        compact ? 'gap-2 py-4 px-3' : 'gap-4 py-10 px-6'
+        compact ? 'gap-2 py-4 px-3' : 'gap-4 py-8 px-6'
       )}
     >
       {/* Icon container */}
@@ -96,13 +96,13 @@ function UploadZone({
         <p
           className={cn(
             'font-semibold',
-            compact ? 'text-[11px]' : 'text-xs'
+            compact ? 'text-2xs' : 'text-xs'
           )}
         >
           {label}
         </p>
         {hint && (
-          <p className="text-[10px] text-muted-foreground">{hint}</p>
+          <p className="text-2xs text-muted-foreground">{hint}</p>
         )}
       </div>
 
@@ -166,14 +166,14 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
         {urls.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-muted-foreground">
+              <p className="text-2xs font-semibold text-muted-foreground">
                 Selected · {urls.length}{maxFiles ? ` / ${maxFiles}` : ''}
               </p>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto py-0.5 text-[10px]"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto py-0.5 text-2xs"
                 onClick={() => onChange([])}
                 disabled={disabled}
               >
@@ -244,7 +244,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
               size={14}
               className="text-muted-foreground shrink-0"
             />
-            <p className="flex-1 text-[11px] text-muted-foreground font-mono truncate min-w-0">
+            <p className="flex-1 text-2xs text-muted-foreground font-mono truncate min-w-0">
               {filename}
             </p>
             <div className="flex items-center gap-1 shrink-0">
@@ -254,7 +254,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                 size="sm"
                 onClick={() => setOpen(true)}
                 disabled={disabled}
-                className="text-[10px] h-6 px-2"
+                className="text-2xs h-6 px-2"
               >
                 <HugeiconsIcon icon={RefreshIcon} className="size-3" />
                 Change

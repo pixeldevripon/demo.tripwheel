@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete02Icon, SecurityWarningIcon } from '@hugeicons/core-free-icons';
 
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -6,7 +6,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import MediaGalleryManager from './media-gallery-manager';
+import MediaGalleryManager from '@/components/media/media-gallery-manager';
 import type { MediaItem } from '@/types/media';
 
 interface MediaSelectorProps {

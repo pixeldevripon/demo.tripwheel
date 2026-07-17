@@ -309,7 +309,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                     const trip = adminTrips?.data.find((t) => t.id === tour.tourId);
                     return (
                       <Card key={tour.key} size="sm">
-                        <CardContent className="pt-5 space-y-4">
+                        <CardContent className="pt-4 space-y-4">
                           <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
                             <Field>
                               <Label>Tour</Label>

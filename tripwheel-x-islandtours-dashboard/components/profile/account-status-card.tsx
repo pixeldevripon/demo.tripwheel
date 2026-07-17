@@ -47,7 +47,7 @@ export function AccountStatusCard({ user }: AccountStatusCardProps) {
                     </span>
                     <Badge
                         variant='outline'
-                        className='font-medium text-[10px] bg-background/50'>
+                        className='font-medium text-2xs bg-background/50'>
                         {accountType}
                     </Badge>
                 </div>

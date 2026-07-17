@@ -234,11 +234,11 @@ function SkeletonRows() {
         <>
             {Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className='border-b border-line last:border-0'>
-                    <td className='px-4 py-3'>
+                    <td className='px-4 py-3' aria-label='Loading'>
                         <div className='h-4 w-48 animate-pulse rounded bg-surface-inset' />
                     </td>
                     {ALL_LOCALES.map(l => (
-                        <td key={l} className='px-2 py-3 text-center'>
+                        <td key={l} className='px-2 py-3 text-center' aria-label='Loading'>
                             <div className='mx-auto size-5 animate-pulse rounded-full bg-surface-inset' />
                         </td>
                     ))}
@@ -253,7 +253,7 @@ function EmptyRow({ label }: { label: string }) {
         <tr>
             <td
                 colSpan={1 + ALL_LOCALES.length}
-                className='px-4 py-10 text-center text-sm text-content-muted'>
+                className='px-4 py-8 text-center text-sm text-content-muted'>
                 {label}
             </td>
         </tr>

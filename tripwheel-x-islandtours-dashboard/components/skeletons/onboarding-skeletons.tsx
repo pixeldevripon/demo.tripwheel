@@ -23,9 +23,9 @@ export default function OnboardingSkeleton() {
                 </div>
             </div>
 
-            {/* Content: FieldGroup (gap-10) - full name, 2-up country/city, full phone. */}
+            {/* Content: FieldGroup (~gap-10, nearest on-scale step) - full name, 2-up country/city, full phone. */}
             <div className='px-8'>
-                <div className='flex w-full flex-col gap-10'>
+                <div className='flex w-full flex-col gap-8'>
                     <FieldSkeleton />
                     <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
                         <FieldSkeleton />

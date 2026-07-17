@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import {
   useUpdateTrip,
   useTripTranslationByLocale,
@@ -82,7 +82,7 @@ function SocialCard({ trip }: { trip: TripListItem }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Field>
             <Label>Social Share Image (OG)</Label>
             <Controller
@@ -154,13 +154,13 @@ function SerpPreview({
  <p className="text-xs font-semibold text-muted-foreground">
  Search preview
  </p>
- <p className="text-[13px] leading-[1.4] text-success-fg truncate">
+ <p className="text-sm text-success-fg truncate">
  islandtours.com › {crumb}
  </p>
- <p className="text-[18px] leading-[1.3] text-[#1a0dab] truncate">
+ <p className="text-lg text-info-fg truncate">
  {title ||'Your tour title will appear here'}
       </p>
-      <p className="text-[13px] leading-[1.4] text-muted-foreground line-clamp-2">
+      <p className="text-sm text-muted-foreground line-clamp-2">
         {description ||
           'Your meta description preview shows here. Keep it compelling and under the character limit.'}
       </p>
@@ -249,7 +249,7 @@ function MetaLocalePanel({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {translation?.isMachineTranslated && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2">
           <Badge variant="secondary">Machine Translated</Badge>

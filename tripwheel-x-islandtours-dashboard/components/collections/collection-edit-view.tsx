@@ -22,9 +22,9 @@ import { COLLECTION_STATUS_LABELS } from '@/types/enums';
 import { CollectionDetailShell } from './collection-detail-shell';
 import { CollectionForm } from './collection-form';
 import { CollectionToursManager } from './collection-tours-manager';
-import { EnglishContentEditor } from '@/components/translations/english-content-editor';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { CollectionPageContentForm } from './collection-page-content-form';
-import { FaqManager } from '@/components/faq/faq-manager';
+import { FaqManager } from '@/components/common/faq-manager';
 import { CollectionSeoTab } from '@/components/common/entity-seo-tab';
 
 // Priority order: identity first, then the ranked membership that IS the product,

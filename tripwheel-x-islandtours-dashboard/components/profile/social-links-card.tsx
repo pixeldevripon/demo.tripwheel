@@ -162,7 +162,7 @@ export function SocialLinksCard({ user }: SocialLinksCardProps) {
                                     placeholder={platform.placeholder}
                                     disabled={!isEditing}
                                     aria-invalid={!!errors[platform.id]}
-                                    className='pl-10'
+                                    className='pl-8'
                                 />
                             </div>
                             {errors[platform.id] && (

@@ -83,7 +83,7 @@ const MediaGridUi = ({
                                 </span>
                             </div>
                             <div className='w-full space-y-1.5'>
-                                <p className='text-[10px] font-medium text-white/90 truncate w-full text-center'>
+                                <p className='text-2xs font-medium text-white/90 truncate w-full text-center'>
                                     {fileObj.file.name}
                                 </p>
                                 <div className='h-1 w-full bg-white/10 rounded-full overflow-hidden'>

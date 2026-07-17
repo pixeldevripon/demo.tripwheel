@@ -62,7 +62,7 @@ export function TableSearchInput({
         placeholder={placeholder}
         value={local}
         onChange={(e) => setLocal(e.target.value)}
-        className="pl-9"
+        className="pl-8"
       />
     </div>
   );

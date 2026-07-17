@@ -23,12 +23,16 @@ function CoverageBar({ pct, target }: { pct: number; target: number }) {
             'h-full rounded-full transition-[width] duration-500',
             off ? 'bg-warning-solid' : 'bg-success-solid',
           )}
+          // 03 §8.3 exception: runtime-computed bar width has no class equivalent.
+          // eslint-disable-next-line no-restricted-syntax
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
       {/* target marker */}
       <div
         className="absolute top-1/2 h-3.5 w-0.5 -translate-y-1/2 rounded-full bg-foreground/40"
+        // 03 §8.3 exception: runtime-computed marker position has no class equivalent.
+        // eslint-disable-next-line no-restricted-syntax
         style={{ left: `${Math.min(target, 100)}%` }}
         title={`Target ~${target}%`}
       />
@@ -41,7 +45,7 @@ export function LocalsFavouritesView() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-5">
+      <Card className="p-4">
         {isLoading || !stats ? (
           <Skeleton className="h-20 w-full" />
         ) : (

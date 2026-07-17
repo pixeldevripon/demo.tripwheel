@@ -212,7 +212,7 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                                         'disabled' in field && field.disabled
                                     }
                                     aria-invalid={!!errors[field.id]}
-                                    className='pl-10'
+                                    className='pl-8'
                                 />
                             </div>
                             {errors[field.id] && (
@@ -247,7 +247,7 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                                                 aria-expanded={open}
                                                 disabled={!isEditing}
                                                 className={cn(
-                                                    'w-full justify-between pl-10 font-normal text-left overflow-hidden',
+                                                    'w-full justify-between pl-8 font-normal text-left overflow-hidden',
                                                     errors.timezone &&
                                                         'border-danger-border',
                                                     !isEditing &&

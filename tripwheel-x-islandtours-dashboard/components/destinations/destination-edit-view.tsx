@@ -6,10 +6,10 @@ import { EntityTabs } from '@/components/common/entity-tabs';
 import { useDestination } from '@/hooks/destinations/use-destinations';
 import { DestinationDetailShell } from './destination-detail-shell';
 import { DestinationForm } from './destination-form';
-import { EnglishContentEditor } from '@/components/translations/english-content-editor';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { DestinationPageContentForm } from './destination-page-content-form';
 import { DestinationSeoTab } from '@/components/common/entity-seo-tab';
-import { FaqManager } from '@/components/faq/faq-manager';
+import { FaqManager } from '@/components/common/faq-manager';
 
 interface DestinationEditViewProps {
   id: string;

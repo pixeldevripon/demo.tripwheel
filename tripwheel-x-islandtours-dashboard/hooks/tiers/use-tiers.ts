@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tiersApi } from '@/lib/api/tiers';
-import { tripKeys } from '@/hooks/trips/use-trips';
+import { tripKeys } from '@/lib/trips/query-keys';
 import type {
   ApproveSpotlightPayload,
   ChangeTierPayload,

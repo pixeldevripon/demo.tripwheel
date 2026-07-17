@@ -16,7 +16,6 @@ import type { MediaItem } from '@/types/media';
 interface MediaItemProps {
     item: MediaItem;
     className?: string;
-    style?: React.CSSProperties;
     onClick: (item: MediaItem) => void;
     onDelete: (id: string) => void;
     onCopyUrl: (item: MediaItem) => void;
@@ -28,7 +27,6 @@ interface MediaItemProps {
 export default function MediaItemCard({
     item,
     className = '',
-    style,
     onClick,
     onDelete,
     onCopyUrl,
@@ -48,7 +46,6 @@ export default function MediaItemCard({
     return (
         <Card
             className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-all duration-300 hover:shadow-lg ${className}`}
-            style={style}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onClick={handleClick}>

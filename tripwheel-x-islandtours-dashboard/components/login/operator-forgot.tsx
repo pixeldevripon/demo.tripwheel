@@ -42,18 +42,18 @@ export function OperatorForgot() {
     }
 
     return (
-        <div className='w-full rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md'>
+        <div className='w-full rounded-[16px] border border-it-border bg-it-white px-8 pb-6 pt-8 shadow-it-md'>
             <Link
                 href='/portal'
-                className='mb-3.5 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
+                className='mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
                 <HugeiconsIcon icon={ArrowLeft02Icon} className='size-3.5' strokeWidth={1.5} />
                 Back to login
             </Link>
 
-            <h1 className='m-0 font-it-display text-[23px] font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
                 Forgot your password?
             </h1>
-            <p className='mb-5.5 mt-1.5 text-[14px] text-it-text-muted'>
+            <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
                 Enter your operator email and we&apos;ll send a link to set a new one.
             </p>
 
@@ -62,6 +62,7 @@ export function OperatorForgot() {
                     <Field label='Email' htmlFor='of-email'>
                         <input
                             id='of-email'
+                            aria-label='Email'
                             type='email'
                             name='email'
                             autoComplete='username'
@@ -84,7 +85,7 @@ export function OperatorForgot() {
                     </button>
                 </form>
             ) : (
-                <div className='flex gap-2 rounded-[10px] bg-it-surface px-3.5 py-2.5 text-[13px] text-it-text-muted'>
+                <div className='flex gap-2 rounded-[10px] bg-it-surface px-3 py-2.5 text-sm text-it-text-muted'>
                     <HugeiconsIcon icon={Mail01Icon} className='mt-0.5 size-4 shrink-0' strokeWidth={1.5} />
                     If that email has an operator account, a reset link is on its way.
                 </div>

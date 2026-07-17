@@ -3,12 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EntityTabs, type EntityTab } from '@/components/common/entity-tabs';
-import { FaqManager } from '@/components/faq/faq-manager';
+import { FaqManager } from '@/components/common/faq-manager';
 import { useCategory } from '@/hooks/categories/use-categories';
 import { CategoryDetailShell } from './category-detail-shell';
 import { CategoryForm } from './category-form';
 import { CategorySubcategoriesManager } from './category-subcategories-manager';
-import { EnglishContentEditor } from '@/components/translations/english-content-editor';
+import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { CategoryPageContentForm } from './category-page-content-form';
 import { CategorySeoTab } from '@/components/common/entity-seo-tab';
 

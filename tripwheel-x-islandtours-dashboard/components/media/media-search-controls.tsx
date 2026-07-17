@@ -51,7 +51,7 @@ const MediaSearchControls = ({
                         placeholder='Search media...'
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className='w-full h-9 rounded-md border border-input !bg-background pl-9 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+                        className='w-full h-9 rounded-md border border-input !bg-background pl-8 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
                     />
                 </div>
 

@@ -49,14 +49,9 @@ export default function DashboardShell({
 
     return (
         <RoleProvider role={userRole}>
-            <SidebarProvider
-                className='bg-shell-gutter shadow-none font-sans'
-                style={
-                    {
-                        '--sidebar-width': 'calc(var(--spacing) * 72)',
-                        '--header-height': 'calc(var(--spacing) * 17.5)',
-                    } as React.CSSProperties
-                }>
+            {/* [--sidebar-width]! must stay important: SidebarProvider sets its own
+                16rem default via inline style, which a plain class cannot beat. */}
+            <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:calc(var(--spacing)*72)]! [--header-height:calc(var(--spacing)*17.5)]'>
                 <AppSidebar
                     variant='inset'
                     userRole={userRole}
@@ -70,7 +65,7 @@ export default function DashboardShell({
                         userRole={userRole}
                         userImage={userImage}
                     />
-                    <div className='flex flex-1 flex-col bg-shell-content p-5'>
+                    <div className='flex flex-1 flex-col bg-shell-content p-4'>
                         <div className='@container/main flex flex-1 flex-col gap-2'>
                             <div suppressHydrationWarning>
                                 <motion.div

@@ -101,7 +101,7 @@ function DemandBadgeCard({ trip }: { trip: TripListItem }) {
       <CardHeader className="border-b pb-4">
         <CardTitle className="text-sm">Demand Badge Override</CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <div className="flex items-center gap-3 text-sm">
           <p className="text-xs font-semibold text-muted-foreground">Computed now</p>
           <Badge variant={trip.likelyToSellOut ? 'default' : 'secondary'}>
@@ -166,7 +166,7 @@ function TierCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean }) {
       <CardHeader className="border-b pb-4">
         <CardTitle className="text-sm">Commission Tier</CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-xs font-semibold text-muted-foreground">Current Tier</p>
@@ -273,7 +273,7 @@ function SpotlightCard({ trip, canEdit }: { trip: TripListItem; canEdit: boolean
           Destination Spotlight
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-6 space-y-5">
+      <CardContent className="pt-6 space-y-6">
         <p className="text-xs text-muted-foreground">
           A Destination Spotlight gives this tour a featured block on the destination page and raises
           its commission to {SPOTLIGHT_COMMISSION_PCT}% while active. Requests are reviewed and

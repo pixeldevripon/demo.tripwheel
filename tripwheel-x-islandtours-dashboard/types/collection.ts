@@ -1,7 +1,7 @@
-import type { Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
 import type { Money } from '@/types/money';
 import type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
-export type { Locale } from '@/lib/constants/locales';
+export type { Locale } from '@/types/locale';
 export type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 
 /**

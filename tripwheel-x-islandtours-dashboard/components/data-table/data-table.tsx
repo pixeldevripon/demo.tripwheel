@@ -50,7 +50,7 @@ interface ServerPagination {
 }
 
 export interface DataTableProps<TData> {
-    columns: ColumnDef<TData, /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ any>[];
+    columns: ColumnDef<TData, any>[];
     data: TData[];
     isLoading?: boolean;
     /** Server pagination; omit entirely for client-side paging. */

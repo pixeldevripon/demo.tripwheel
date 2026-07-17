@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { ImageSelectorField } from '@/components/media/image-selector-field';
+import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { useCreateHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import type { HubDetail } from '@/types/hub';

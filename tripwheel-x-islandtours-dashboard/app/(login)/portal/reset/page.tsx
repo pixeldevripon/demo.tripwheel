@@ -35,7 +35,7 @@ async function ResetCard({
 /** Card-shaped skeleton shown for the instant it takes to resolve the query param. */
 function ResetCardFallback() {
     return (
-        <div className='w-full animate-pulse rounded-[16px] border border-it-border bg-it-white px-7 pb-6.5 pt-7.5 shadow-it-md'>
+        <div className='w-full animate-pulse rounded-[16px] border border-it-border bg-it-white px-8 pb-6 pt-8 shadow-it-md'>
             <div className='mb-2 h-6 w-2/3 rounded-md bg-it-border/70' />
             <div className='mb-6 h-4 w-11/12 rounded-md bg-it-border/50' />
             <div className='mb-4 h-11 w-full rounded-[10px] bg-it-border/50' />
