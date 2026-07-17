@@ -1,25 +1,34 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { mediaApi } from '@/lib/api/media';
-import type { MediaItem } from '@/types/media';
+import type { MediaItem, MediaListResponse } from '@/types/media';
 import { toast } from 'sonner';
 
 export const mediaKeys = {
   all: ['media'] as const,
-  list: (query?: string) => [...mediaKeys.all, 'list', query ?? ''] as const,
+  infinite: () => [...mediaKeys.all, 'infinite'] as const,
 };
 
-export function useMediaList(queryString = 'limit=100&page=1', initialData?: MediaItem[]) {
-  return useQuery({
-    queryKey: mediaKeys.list(queryString),
-    queryFn: () => mediaApi.getAll(queryString),
-    // Seed with SSR data so first paint is instant
-    initialData: initialData?.length ? initialData : undefined,
-    // Mark SSR data as immediately stale so a background refetch runs on mount
-    initialDataUpdatedAt: initialData?.length ? 0 : undefined,
+export const MEDIA_PAGE_SIZE = 50;
+
+/**
+ * Pages through the entire media library (the old useMediaList capped the
+ * gallery at the first 100 items and silently hid the rest).
+ */
+export function useMediaInfinite() {
+  return useInfiniteQuery({
+    queryKey: mediaKeys.infinite(),
+    queryFn: ({ pageParam }) => mediaApi.getPage(pageParam, MEDIA_PAGE_SIZE),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page * last.limit < last.total ? last.page + 1 : undefined,
     staleTime: 30 * 1000,
-    // When user switches back to this tab, gallery re-syncs automatically
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -56,12 +65,43 @@ export function useBulkDeleteMedia() {
   });
 }
 
+/** Insert freshly uploaded items at the top of the gallery without a refetch. */
 export function prependMediaToCache(
   queryClient: ReturnType<typeof useQueryClient>,
   items: MediaItem[]
 ) {
-  queryClient.setQueryData<MediaItem[]>(
-    mediaKeys.list('limit=100&page=1'),
-    (old) => [...items, ...(old ?? [])]
+  queryClient.setQueryData<InfiniteData<MediaListResponse>>(
+    mediaKeys.infinite(),
+    (old) => {
+      if (!old?.pages.length) return old;
+      const [first, ...rest] = old.pages;
+      return {
+        ...old,
+        pages: [
+          { ...first, data: [...items, ...first.data], total: first.total + items.length },
+          ...rest,
+        ],
+      };
+    }
+  );
+}
+
+/** Optimistically remove items from every loaded gallery page. */
+export function removeMediaFromCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ids: string[]
+) {
+  queryClient.setQueryData<InfiniteData<MediaListResponse>>(
+    mediaKeys.infinite(),
+    (old) => {
+      if (!old?.pages.length) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => {
+          const kept = page.data.filter((item) => !ids.includes(item.id));
+          return { ...page, data: kept, total: Math.max(0, page.total - (page.data.length - kept.length)) };
+        }),
+      };
+    }
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
-import { useDeleteMedia, useBulkDeleteMedia, mediaKeys } from '@/hooks/media/use-media';
+import { useDeleteMedia, useBulkDeleteMedia, mediaKeys, removeMediaFromCache } from '@/hooks/media/use-media';
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
 import { Delete02Icon, Loading03Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import BulkActionSpinner from './bulk-action-spinner';
@@ -27,6 +27,11 @@ interface MediaGalleryProps {
     bulkSelectedItems?: MediaItem[];
     setbulkSelectedItems: React.Dispatch<React.SetStateAction<MediaItem[]>>;
     mediaItems: MediaItem[];
+    /** Total item count on the server (may exceed loaded items). */
+    totalCount?: number;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    onLoadMore?: () => void;
     loading?: boolean;
     selector?: boolean;
     handleInserToForm?: () => void;
@@ -46,6 +51,10 @@ export default function MediaGallery({
     bulkSelectedItems = [],
     setbulkSelectedItems,
     mediaItems,
+    totalCount,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
     loading,
     selector,
     handleInserToForm,
@@ -55,6 +64,7 @@ export default function MediaGallery({
     onUploadSuccess,
 }: MediaGalleryProps) {
     const queryClient = useQueryClient();
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const [isShowConfirm, setIsShowConfirm] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
@@ -66,6 +76,21 @@ export default function MediaGallery({
     const deleteMutation = useDeleteMedia();
     const bulkDeleteMutation = useBulkDeleteMedia();
     const isDeleting = deleteMutation.isPending || bulkDeleteMutation.isPending;
+
+    // Infinite scroll: fetch the next page when the sentinel at the bottom of
+    // the scroll container becomes visible.
+    useEffect(() => {
+        const sentinel = loadMoreRef.current;
+        if (!sentinel || !hasNextPage || !onLoadMore) return;
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries.some(e => e.isIntersecting)) onLoadMore();
+            },
+            { rootMargin: '200px' }
+        );
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasNextPage, onLoadMore]);
 
     const filteredItems = useMemo(() => {
         if (!mediaItems?.length) return [];
@@ -134,10 +159,7 @@ export default function MediaGallery({
         if (currentId === 'bulk') {
             const ids = bulkSelectedItems.map(i => i.id);
             // Optimistic: remove from cache immediately
-            queryClient.setQueryData<MediaItem[]>(
-                mediaKeys.list('limit=100&page=1'),
-                old => old?.filter(item => !ids.includes(item.id)) ?? []
-            );
+            removeMediaFromCache(queryClient, ids);
             setbulkSelectedItems([]);
             bulkDeleteMutation.mutate(ids, {
                 onError: () => {
@@ -147,10 +169,7 @@ export default function MediaGallery({
             });
         } else {
             // Optimistic: remove from cache immediately
-            queryClient.setQueryData<MediaItem[]>(
-                mediaKeys.list('limit=100&page=1'),
-                old => old?.filter(item => item.id !== currentId) ?? []
-            );
+            removeMediaFromCache(queryClient, [currentId]);
             setItemToDelete(null);
             deleteMutation.mutate(currentId, {
                 onError: () => {
@@ -266,6 +285,29 @@ export default function MediaGallery({
                             handleCopyUrl={handleCopyUrl}
                             selector={selector}
                         />
+                    )}
+
+                    {/* Infinite-scroll sentinel + progress line. Also shown when a
+                        search over the loaded subset comes up empty but more pages
+                        exist on the server, so deeper items remain reachable. */}
+                    {(filteredItems.length > 0 || hasNextPage) && (
+                        <div ref={loadMoreRef} className='flex flex-col items-center gap-2 py-6'>
+                            {isFetchingNextPage ? (
+                                <div className='flex items-center gap-2 text-sm text-content-muted'>
+                                    <HugeiconsIcon icon={Loading03Icon} className='size-4 animate-spin' />
+                                    Loading more...
+                                </div>
+                            ) : hasNextPage ? (
+                                <Button variant='outline' size='sm' onClick={onLoadMore}>
+                                    Load more
+                                </Button>
+                            ) : null}
+                            {typeof totalCount === 'number' && !searchTerm && (
+                                <p className='text-xs text-content-subtle'>
+                                    Showing {mediaItems.length} of {totalCount} items
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
 
