@@ -24,8 +24,9 @@
 | **10 · Lint rules** | **C** | **DONE** - 8 rules as `warn`, 428 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
 | **11 · Token system** | **C** | **DONE** - gate GREEN (34 checks x2 modes); it caught 2 defects in the spec's own palette | `fdb0294` (dashboard, `ui-fix`) |
 | **12 · StatusBadge** | **C** | **DONE** - zero palette classes repo-wide; 5 conventions deleted (audit counted 4) | `9418b29` (dashboard, `ui-fix`) |
-| **13 · Fonts, icons, primitives** | **C** | **NEXT** - carries the open Playfair decision | - |
-| 14-23 | C/D/E | not started | - |
+| **13 · Fonts, icons, primitives** | **C** | **DONE** - Playfair dropped (user), hugeicons KEPT (user), B-4 fixed, buttons de-shouted | `aa91c02` (dashboard, `ui-fix`) |
+| **14 · Command palette + IA** | **C/D** | **NEXT** | - |
+| 15-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -1044,7 +1045,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 ---
 
-## Phase 13 · Fonts, icons, primitives
+## Phase 13 · Fonts, icons, primitives - **DONE**
 
 **Objective** 5 fonts -> 2; 2 icon libraries -> 1; primitives fixed.
 
@@ -1059,6 +1060,40 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Validation** Two font files in the network tab. `grep hugeicons` -> zero. Sidebar rail shadow renders.
 
 **Rollback** Revert.
+
+> ### EXECUTED 2026-07-17 - `aa91c02` (dashboard, branch `ui-fix`)
+>
+> **Two user decisions reshaped the scope mid-phase:**
+> - **Playfair Display: DROPPED** (user-approved). Inter absorbs the heading role; all 69
+>   `font-heading` sites stripped, the token removed. Two families load per route.
+> - **hugeicons: KEPT** - user preference, overrides D-7. The 13 files stand; the `grep hugeicons ->
+>   zero` validation above is **waived**. lucide remains the default for NEW icons.
+>
+> **The follow-on defect the spec could not have predicted:** dropping Playfair made headings look
+> "loose and ugly" (user report, same session). Playfair is naturally tight at display sizes, so its
+> call sites carried no tracking classes - large Inter without optical tightening looks airy. **Fixed
+> at the scale, not the call sites**: `--text-lg/xl/2xl--letter-spacing` (-0.011 to -0.017em, plus
+> 3xl/4xl default overrides) ride along with the size utilities (verified in compiled output;
+> explicit `tracking-*` still wins via `--tw-tracking`).
+>
+> Also: buttons de-shouted per §5.5 (sentence case 14px; 8 sizes -> 5 with 97 call sites remapped
+> `xs->sm`/`icon-xs->icon-sm`; **solid destructive**), sidebar B-4 fixed (`hsl()` off oklch tokens),
+> `ui/toggle`, `ui/toggle-group`, `ui/breadcrumb` deleted (zero importers).
+>
+> **Spec corrections found during execution:**
+> - `badge.tsx` NOT deleted (user-approved deferral): **37 importers**, mostly non-status chips the
+>   audit never inventoried. Statuses are already banned from it. Dies at Phase 20 after Stage D.
+> - `input-otp` NOT dropped: `03 §6` calls it "public site only", but the dashboard's own 2FA screen
+>   (`login/code-input.tsx`) uses it.
+> - `chart.tsx` needed NO change: its `'#ccc'`/`'#fff'` strings are recharts **attribute selectors**
+>   that override recharts' hardcoded colors with tokens - they ARE the fix `03 §6` asks for.
+> - `vaul`/`drawer.tsx`: already absent from this repo.
+>
+> **Incident, logged honestly:** the first strip script ran `re.sub(r'  +', ' ')` over whole files
+> and flattened indentation in 55 of them (~9,400-line diff). Caught by inspecting the commit stat
+> before trusting it; repaired by restoring from the parent and redoing both transforms line-safe
+> (identical counts: 69 strips, 36+61 remaps; final diff 208/457). **Whitespace-normalizing regexes
+> never run file-wide on source code.**
 
 ---
 
