@@ -1,11 +1,11 @@
 import Image from 'next/image';
-import { MotionButton } from '../motion-primitives';
-import { springPop } from '@/lib/motion';
 import { type Locale } from '@/lib/constants/locales';
+import { TourHeaderActions } from './tour-header-actions';
 
 export type TourHeaderDict = {
     save: string;
     share: string;
+    linkCopied: string;
     localsFavorite: string;
 };
 
@@ -21,6 +21,7 @@ export type TourHeaderDict = {
  * (shared with the listing Save button), and the new share-outline.
  */
 export function TourHeader({
+    tourId,
     title,
     rating,
     reviewCount,
@@ -29,6 +30,8 @@ export function TourHeader({
     locale,
     dict,
 }: {
+    /** Tour id - drives the Save (wishlist) toggle in the actions leaf. */
+    tourId: string;
     title: string;
     rating: number | null;
     reviewCount: number;
@@ -80,12 +83,6 @@ export function TourHeader({
         );
     }
 
-    // Plain text buttons: no pill, background, or container border - icon + label
-    // with an underline (border-bottom) under the label only.
-    const actionClass =
-        'inline-flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:text-it-primary';
-    const actionLabel = 'underline decoration-1.5 underline-offset-2';
-
     return (
         <section className='bg-it-white'>
             <div className='it-container'>
@@ -108,36 +105,15 @@ export function TourHeader({
                         )}
                     </div>
 
-                    <div className='flex shrink-0 items-center gap-6'>
-                        <MotionButton
-                            type='button'
-                            whileTap={{ scale: 0.97 }}
-                            transition={springPop}
-                            className={actionClass}>
-                            <Image
-                                src='/icons/heart-outline.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6 shrink-0'
-                            />
-                            <span className={actionLabel}>{dict.save}</span>
-                        </MotionButton>
-                        <MotionButton
-                            type='button'
-                            whileTap={{ scale: 0.97 }}
-                            transition={springPop}
-                            className={actionClass}>
-                            <Image
-                                src='/icons/share-outline.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6 shrink-0'
-                            />
-                            <span className={actionLabel}>{dict.share}</span>
-                        </MotionButton>
-                    </div>
+                    <TourHeaderActions
+                        tourId={tourId}
+                        title={title}
+                        dict={{
+                            save: dict.save,
+                            share: dict.share,
+                            linkCopied: dict.linkCopied,
+                        }}
+                    />
                 </div>
             </div>
         </section>

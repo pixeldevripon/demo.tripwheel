@@ -47,8 +47,14 @@ function TourBookingCardLayout() {
                     min-h-0 + flex-1 lets overflow trigger inside the flex column.
                     The calendar popover opens at the top, so it clears the fold. */}
                 <div className='it-modal-scroll flex min-h-0 flex-1 flex-col gap-2 px-4 pt-4'>
-                    <BookingCalendar />
-                    <DepartureTimes />
+                    {/* Calendar + slots share one flex cell: the slots' top gap
+                        lives INSIDE their collapse (pt-2), so it animates with
+                        the height tween instead of the parent gap snapping in
+                        the moment the block mounts. */}
+                    <div>
+                        <BookingCalendar />
+                        <DepartureTimes />
+                    </div>
                     <PartySelector />
                     <SpectatorsPanel />
                 </div>

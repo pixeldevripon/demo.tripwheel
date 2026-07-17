@@ -132,7 +132,9 @@ export function DestinationHeroSearch({
                 onSubmit={submit}
                 role='search'
                 className='flex h-15 w-full items-center gap-2 rounded-it-full border border-it-search-border bg-it-white pl-5 pr-2 md:h-20 md:gap-0 md:pl-9 md:pr-5'>
-                {/* Search field - fills the left region */}
+                {/* Search field - fills the left region. h-full + the divider
+                    gap as padding, so the WHOLE left half of the pill focuses
+                    the input, not just the text line. */}
                 <input
                     type='search'
                     value={query}
@@ -140,21 +142,26 @@ export function DestinationHeroSearch({
                     onFocus={() => setFocused(true)}
                     placeholder={dict.searchPlaceholder}
                     aria-label={dict.searchPlaceholder}
-                    className='min-w-0 flex-1 bg-transparent border-none outline-none text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                    className='min-w-0 h-full flex-1 pr-4 md:pr-8 bg-transparent border-none outline-none text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
                 />
 
-                {/* Vertical divider - between search field and date (mobile + desktop) */}
-                <span className='mx-4 h-8.5 w-px shrink-0 bg-it-heading md:mx-8' />
+                {/* Vertical divider - between search field and date (mobile + desktop).
+                    No margins: the gaps live as padding on the clickable
+                    neighbours so there is no dead zone around the divider. */}
+                <span className='h-8.5 w-px shrink-0 bg-it-heading' />
 
-                {/* Date picker - "Select date" text on both mobile and desktop */}
+                {/* Date picker - "Select date" text on both mobile and desktop.
+                    h-full + flex-1 on desktop (absorbing the old spacer): the
+                    whole region between the divider and the action button opens
+                    the calendar. */}
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                     <PopoverTrigger asChild>
                         <motion.button
                             type='button'
                             aria-label={dict.selectDate}
-                            
+
                             transition={springPop}
-                            className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                            className={`flex h-full shrink-0 md:flex-1 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 pl-4 md:pl-8 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
                             {date ? format(date, 'd MMM yyyy') : dict.selectDate}
                         </motion.button>
                     </PopoverTrigger>
@@ -176,10 +183,8 @@ export function DestinationHeroSearch({
                     </PopoverContent>
                 </Popover>
 
-                {/* Flexible gap - pushes the action button to the right (desktop) */}
-                <div className='hidden flex-1 md:block' />
-
-                {/* Orange action button */}
+                {/* Orange action button (the old flexible spacer is now part of
+                    the date trigger's clickable area) */}
                 <motion.button
                     type='submit'
                     aria-label={dict.searchPlaceholder}

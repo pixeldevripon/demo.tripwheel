@@ -378,6 +378,7 @@
     "tour": {
       "save": "Bewaren",
       "share": "Delen",
+      "linkCopied": "Link gekopieerd",
       "localsFavorite": "Favoriet van locals",
       "showAllPhotos": "Alle foto's tonen",
       "booking": {

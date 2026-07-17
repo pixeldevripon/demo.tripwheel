@@ -345,6 +345,7 @@ export async function TourDetailContent({
             />
             <MountReveal>
             <TourHeader
+                tourId={detail.id}
                 title={title}
                 rating={rating}
                 reviewCount={reviewCount}
@@ -354,6 +355,7 @@ export async function TourDetailContent({
                 dict={{
                     save: tourDict.save,
                     share: tourDict.share,
+                    linkCopied: tourDict.linkCopied,
                     localsFavorite: tourDict.localsFavorite,
                 }}
             />

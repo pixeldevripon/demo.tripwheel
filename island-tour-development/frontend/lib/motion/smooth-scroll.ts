@@ -16,18 +16,24 @@ const SCROLL_DURATION = 0.6;
  * viewport top (offset clears any sticky navbar / tab bar). No-op when the target
  * is missing. Set `reduce` (from `useReducedMotion`) to jump instantly for users
  * who prefer reduced motion.
+ *
+ * Resolves when the scroll animation completes - callers that suspend a
+ * scrollspy during the programmatic scroll await this to release their lock.
  */
 export function smoothScrollToId(
     id: string,
     offset = 0,
     reduce = false,
-): void {
+): Promise<void> {
     const el = document.getElementById(id);
-    if (!el) return;
+    if (!el) return Promise.resolve();
     const top = el.getBoundingClientRect().top + window.scrollY - offset;
-    animate(window.scrollY, top, {
-        duration: reduce ? 0 : SCROLL_DURATION,
-        ease: SCROLL_EASE,
-        onUpdate: v => window.scrollTo(0, v),
+    return new Promise(resolve => {
+        animate(window.scrollY, top, {
+            duration: reduce ? 0 : SCROLL_DURATION,
+            ease: SCROLL_EASE,
+            onUpdate: v => window.scrollTo(0, v),
+            onComplete: () => resolve(),
+        });
     });
 }

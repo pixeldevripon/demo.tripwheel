@@ -43,8 +43,18 @@ const cards: Card[] = [
         image: '/images/home-page/experiences/buggy-tour.jpg',
         video: '/videos/experiences/buggy-tour.mp4',
     },
-    { key: 'snorkeling', image: null, video: null },
-    { key: 'dolphin', image: null, video: null },
+    // Placeholder media (only 3 shoots exist today): reuse the closest pair so
+    // no card ever renders as an empty grey box. Swap for real assets when shot.
+    {
+        key: 'snorkeling',
+        image: '/images/home-page/experiences/catamaran-trip.jpg',
+        video: '/videos/experiences/catamaran-trip.mp4',
+    },
+    {
+        key: 'dolphin',
+        image: '/images/home-page/experiences/sunset-cruise.jpg',
+        video: '/videos/experiences/sunset-cruise.mp4',
+    },
 ];
 
 const REAL = cards.length;

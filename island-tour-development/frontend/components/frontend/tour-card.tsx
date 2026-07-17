@@ -12,6 +12,7 @@
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -122,6 +123,13 @@ export interface TourCardProps {
     tour: TourListing;
     dict: TourCardDict;
     className?: string;
+    /**
+     * Top-right wishlist control. 'heart' (default) toggles save state on every
+     * listing surface; 'remove' renders an X instead - used on the wishlist
+     * page, where the card is by definition saved and the only action is
+     * taking it out.
+     */
+    wishlistVariant?: 'heart' | 'remove';
 }
 
 /**
@@ -135,9 +143,15 @@ export function TourCard(props: TourCardProps) {
     return <DefaultTourCard {...props} />;
 }
 
-function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
+function DefaultTourCard({
+    tour,
+    dict,
+    className = '',
+    wishlistVariant = 'heart',
+}: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
+    const isRemove = wishlistVariant === 'remove';
     const [isHovered, setIsHovered] = useState(false);
 
     const priceLabel = dict[tour.priceUnit];
@@ -178,7 +192,7 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                     <motion.button
                         type='button'
                         aria-label={
-                            wishlisted
+                            isRemove || wishlisted
                                 ? 'Remove from wishlist'
                                 : 'Add to wishlist'
                         }
@@ -190,18 +204,26 @@ function DefaultTourCard({ tour, dict, className = '' }: TourCardProps) {
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
                         className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-shadow duration-300 hover:shadow-it-md'>
-                        <Image
-                            src={
-                                wishlisted
-                                    ? '/icons/heart-filled.svg'
-                                    : '/icons/heart-outline.svg'
-                            }
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-5 @[220px]:size-6'
-                            aria-hidden='true'
-                        />
+                        {isRemove ? (
+                            <X
+                                className='size-4 @[220px]:size-5 text-it-heading'
+                                strokeWidth={1.5}
+                                aria-hidden='true'
+                            />
+                        ) : (
+                            <Image
+                                src={
+                                    wishlisted
+                                        ? '/icons/heart-filled.svg'
+                                        : '/icons/heart-outline.svg'
+                                }
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-5 @[220px]:size-6'
+                                aria-hidden='true'
+                            />
+                        )}
                     </motion.button>
                 </div>
             </motion.div>

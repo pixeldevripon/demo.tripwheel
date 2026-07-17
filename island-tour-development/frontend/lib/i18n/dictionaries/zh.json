@@ -378,6 +378,7 @@
     "tour": {
       "save": "收藏",
       "share": "分享",
+      "linkCopied": "链接已复制",
       "localsFavorite": "当地人最爱",
       "showAllPhotos": "查看所有照片",
       "booking": {

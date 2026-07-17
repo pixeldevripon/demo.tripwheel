@@ -72,7 +72,9 @@ export function Navbar({
     // Destination-scoped categories - only those with a published tour, so the
     // links never 404. Resolved client-side (the island comes from the path) and
     // cached per `locale:slug`. Shared by the desktop dropdown + mobile drawer.
-    const [categories, setCategories] = useState<Category[]>([]);
+    // `null` = an island is selected but its categories are still loading; the
+    // desktop menu stays mounted through that window so the header never shifts.
+    const [categories, setCategories] = useState<Category[] | null>(null);
     const categoryCache = useRef<Map<string, Category[]>>(new Map());
     useEffect(() => {
         const slug = currentIsland?.slug;
@@ -86,6 +88,7 @@ export function Navbar({
             setCategories(cached);
             return;
         }
+        setCategories(null);
         let ignore = false;
         fetchDestinationCategoriesClient(slug, locale)
             .then(rows => {
@@ -118,7 +121,10 @@ export function Navbar({
                         />
                     </Link>
 
-                    <div className='hidden md:flex items-center gap-4'>
+                    {/* No gap here: CategoriesMenu carries its own leading
+                        spacing inside its width-collapse wrapper, so appearing
+                        or disappearing animates smoothly to true zero width. */}
+                    <div className='hidden md:flex items-center'>
                         <DestinationSelector
                             variant='desktop'
                             locale={locale}
@@ -126,14 +132,13 @@ export function Navbar({
                             islands={islands}
                             currentIsland={currentIsland}
                         />
-                        {!isHome && (
-                            <CategoriesMenu
-                                locale={locale}
-                                dict={dict}
-                                categories={categories}
-                                currentIsland={currentIsland}
-                            />
-                        )}
+                        <CategoriesMenu
+                            locale={locale}
+                            dict={dict}
+                            categories={categories}
+                            currentIsland={currentIsland}
+                            show={!isHome}
+                        />
                     </div>
                 </div>
 
@@ -248,7 +253,7 @@ export function Navbar({
                 locale={locale}
                 dict={dict}
                 islands={islands}
-                categories={categories}
+                categories={categories ?? []}
                 currentIsland={currentIsland}
                 isHome={isHome}
             />
