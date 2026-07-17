@@ -25,8 +25,9 @@
 | **11 · Token system** | **C** | **DONE** - gate GREEN (34 checks x2 modes); it caught 2 defects in the spec's own palette | `fdb0294` (dashboard, `ui-fix`) |
 | **12 · StatusBadge** | **C** | **DONE** - zero palette classes repo-wide; 5 conventions deleted (audit counted 4) | `9418b29` (dashboard, `ui-fix`) |
 | **13 · Fonts, icons, primitives** | **C** | **DONE** - Playfair dropped (user), hugeicons KEPT (user), B-4 fixed, buttons de-shouted | `aa91c02` (dashboard, `ui-fix`) |
-| **14 · Command palette + IA** | **C/D** | **NEXT** | - |
-| 15-23 | C/D/E | not started | - |
+| **14 · Command palette + IA** | **C/D** | **DONE** + de-shout follow-up `a1a6e04` (uppercase dies outside micro-labels, user screenshot) | `64a4835` (dashboard, `ui-fix`) |
+| **15+** | **D** | **NEXT** - per-module redesigns | - |
+
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -1101,7 +1102,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 > Ordered by impact/effort. Each phase is one module, one PR, independently shippable.
 
-## Phase 14 · Command palette + IA
+## Phase 14 · Command palette + IA - **DONE**
 
 **Objective** New sidebar grouping; `Cmd+K` navigation.
 
@@ -1110,6 +1111,39 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Rationale** 04 §1, **ratio 2.0.** `cmdk` is already a dependency. **This is the real answer to click depth** - it makes the sidebar a map rather than the only road, and it de-risks every later IA change.
 
 **Dependencies** Phase 13. **Risks** none material. **Validation** Both role IAs match 04 §1.3; palette finds tours/bookings/destinations. **Rollback** Revert.
+
+> ### EXECUTED 2026-07-17 - `64a4835` (dashboard, branch `ui-fix`), preceded by de-shout `a1a6e04`
+>
+> **First, the interrupt that jumped the queue:** the user screenshotted "NEW TRIP / TRIP DETAILS /
+> NAME" and called the fonts ugly. Root cause was NOT the Phase 13 font swap: **three primitives
+> forced `uppercase` + wide tracking product-wide** (`CardTitle`, `Label`, `FieldLegend/FieldLabel`)
+> plus ~350 call-site copies - under Playfair it read as an editorial masthead, under a working sans
+> it is shouting. `03 §8` rule 6 already legislated this ("uppercase only at `--text-2xs`").
+> De-shouted every primitive and call site (106 files + stragglers); converted the legitimately-micro
+> surfaces (sidebar group labels, menu/select group labels, table headers, palette headings) to the
+> permitted `text-2xs tracking-caps uppercase` pattern - table headers thereby completing `03 §6`'s
+> table.tsx retarget early. Trap for the record: a string-literal regex desyncs on apostrophes in JSX
+> prose ("Locals'"); line-scoped passes + a grep gate caught the misses.
+>
+> **Phase 14 itself:**
+> - `navigations/navigations.ts` -> `NavGroup[]`: Operate / Catalog / Curate / Configure / **Account**
+>   (a 5th group holding Settings + Profile for BOTH roles - the operator's `04 §1.3` ACCOUNT group;
+>   for admins it keeps Settings out of admin-only permission gymnastics). The old structure had
+>   nested Destinations/Hubs/Categories/Spotlight INSIDE the Trips submenu.
+> - `filterNavGroups` (rbac-utils): filters each group, then drops empty groups - headers disappear
+>   with their contents, exactly the `04 §1.3` rule.
+> - `nav-main.tsx`: flat group renderer; collapsibles, SVG curve connectors and 46px rows deleted;
+>   active = `bg-sidebar-accent` + **2px leading indicator**.
+> - **Labels say "Tours"; routes stay `/trips`** - the G-6 rename remains deferred per the open
+>   decision.
+> - `command-palette.tsx`: Cmd+K; nav commands from the SAME filtered groups as the sidebar; gated
+>   quick actions; server-side search (tours by role-appropriate hook, bookings by ref/guest,
+>   destinations client-filtered) enabled only while open with >= 2 chars.
+>   `useBookings`/`useDestinations` gained a non-breaking `enabled` param.
+> - **Badges (pending counts) deferred** to the module phases that own the counts - a badge is a
+>   promise that something needs a human, and a hardcoded one would lie.
+> - **Weather widget: still in the header, still the user's call** (`04 §1.4` recommends removal).
+> - Translations nav entry lands with its console phase, not before (a nav item without a page 404s).
 
 ---
 
