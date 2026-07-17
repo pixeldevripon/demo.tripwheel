@@ -32,6 +32,13 @@ const SLIDES = [
 
 const AUTO_ADVANCE_MS = 6000;
 
+/**
+ * Panel mode switch. `true` fills the whole left panel with the promo video
+ * and hides the slider/collage content; flip to `false` to bring back the
+ * original content layout (slides, arrows, dots, floating booking cards).
+ */
+const SHOW_VIDEO_ONLY = true;
+
 const slideVariants = {
     enter: (direction: number) => ({ x: direction > 0 ? 48 : -48, opacity: 0 }),
     center: { x: 0, opacity: 1 },
@@ -66,6 +73,10 @@ export function LoginPromo() {
     }, [index, reduceMotion]);
 
     const slide = SLIDES[index];
+
+    if (SHOW_VIDEO_ONLY) {
+        return <VideoOnlyPanel />;
+    }
 
     return (
         <div className='mk-hero-bg relative flex h-full flex-col overflow-hidden rounded-3xl px-8 py-[clamp(1.5rem,3vh,3rem)] md:px-12'>
@@ -128,11 +139,11 @@ export function LoginPromo() {
                     </AnimatePresence>
                 </div>
 
-                <div className='mt-8 hidden justify-end 2xl:flex'>
-                    <PromoVideo />
+                <div className='mt-20! hidden justify-end 2xl:flex'>
+                 <PromoVideo /> 
                 </div>
 
-                <div className='flex items-center pt-8'>
+                <div className='flex items-center pt-10'>
                     <div className='flex items-center gap-2'>
                         {SLIDES.map((s, i) => (
                             <button
@@ -156,6 +167,32 @@ export function LoginPromo() {
 }
 
 /**
+ * Full-bleed variant: the promo video covers the entire left panel, no
+ * content on top. Keeps the hero gradient behind it as a fallback while the
+ * video loads (or if the file is missing). Enabled via SHOW_VIDEO_ONLY.
+ */
+function VideoOnlyPanel() {
+    return (
+        <div className='mk-hero-bg relative h-full overflow-hidden rounded-3xl'>
+            <video
+                src='/media/video.mp4'
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload='metadata'
+                aria-hidden='true'
+                className='absolute inset-0 size-full object-cover'
+            />
+   {/*          <div
+                className='pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/10'
+                aria-hidden='true'
+            /> */}
+        </div>
+    );
+}
+
+/**
  * Compact product/stock video card pinned to the bottom-right of the panel,
  * clear of the slider text and the controls row. Drop an MP4 at
  * public/media/promo.mp4 (short, loopable, plays muted). Until that file
@@ -169,7 +206,7 @@ function PromoVideo() {
     return (
         <div className='absolute right-0 bottom-16 hidden aspect-video w-84 overflow-hidden rounded-xl border border-mk-ghost-line shadow-mk-float lg:block xl:w-84'>
             <video
-                src='/media/promo.mp4'
+                src='/media/video.mp4'
                 autoPlay
                 muted
                 loop
