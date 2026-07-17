@@ -656,13 +656,29 @@ A design system that is not lintable is a suggestion. The audit's central lesson
 | 1 | No numeric Tailwind palette classes (`bg-amber-100`, `text-emerald-700`, ...) | ESLint `no-restricted-syntax` on className regex. **Catches all 187.** |
 | 2 | No hex / `rgb()` / `hsl()` / `oklch()` in components | Same. Catches the 12 hex + the `#1a0dab` x5. |
 | 3 | No inline `style={{}}` except TanStack column sizing | ESLint with an allowlist |
-| 4 | Spacing restricted to `0.5,1,2,3,4,6,8,12,16` | ESLint regex on `(p\|px\|py\|m\|gap\|space-[xy])-` |
+| 4 | Spacing restricted to `0.5,1,`**`1.5,`**`2,`**`2.5,`**`3,4,6,8,12,16` | ESLint regex on `(p\|px\|py\|m\|gap\|space-[xy])-` |
 | 5 | No arbitrary `text-[...]` | ESLint. Catches all 55. |
 | 6 | Uppercase only at `--text-2xs` | Review |
 | 7 | Every icon-only button has `aria-label` | `eslint-plugin-jsx-a11y` |
 | 8 | Contrast gate | §9 |
 
 Rules 1-5 are mechanical and should land **with** the token system, in the same phase. A migration that introduces tokens without the lint that forbids the alternatives will regrow the 187 classes within a quarter.
+
+> **AMENDED 2026-07-17 (user decision, during 06 Phase 10): the spacing scale gains `1.5` (6px) and
+> `2.5` (10px).** The original scale was authored without measuring. `1.5` is used **128 times** -
+> the **third most-used spacing value in the codebase**, ahead of `8`. With `2.5` (47) that was ~60%
+> of all spacing violations. That is not drift to be corrected; it is a scale missing a step it
+> genuinely needs. Adding both dropped rule 4 from **232 warnings to 95**, and what remains (`5`,
+> `3.5`, `10`, `7`, `9`...) is real drift worth fixing.
+>
+> **The `SPACING` regex in `eslint.config.mjs` and the `--spacing-*` tokens in `globals.css` are the
+> same decision expressed twice - change them together or the lint stops matching the system it
+> exists to protect.**
+>
+> Rules 1-5 landed **before** the token system, not with it, as `warn` (06 Phase 10). §10 of this
+> document already ordered lint first and it was the right call: the measurement above is only
+> available *because* the lint ran first, and it corrected the scale before a single token was
+> written.
 
 ---
 

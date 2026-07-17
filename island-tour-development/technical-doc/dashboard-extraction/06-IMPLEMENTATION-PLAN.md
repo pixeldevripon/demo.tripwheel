@@ -21,7 +21,7 @@
 | 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
 | 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
 | **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
-| **10 · Lint rules** | **C** | **DONE** - 8 rules landed as `warn`, 565 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
+| **10 · Lint rules** | **C** | **DONE** - 8 rules as `warn`, 428 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
 | **11 · Token system** | **C** | **NEXT** - carries 2 decisions Phase 10 surfaced (spacing `1.5`, inline-style scope) | - |
 | 12-23 | C/D/E | not started | - |
 
@@ -818,7 +818,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 > ### EXECUTED 2026-07-17 - `98aedb1` (dashboard, branch `ui-fix`)
 >
-> All 8 rules landed in `eslint.config.mjs` as `warn`. **565 warnings, 0 errors, `eslint` exits 0** -
+> All 8 rules landed in `eslint.config.mjs` as `warn`. **428 warnings, 0 errors, `eslint` exits 0** (565 before the spacing scale was corrected) -
 > nothing is blocked, which was the design.
 >
 > **Zero new dependencies.** `eslint-config-next/core-web-vitals` already registers `import` and
@@ -831,7 +831,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 > | §8.1 palette classes | **132** | |
 > | §8.2 hex/rgb/hsl/oklch | **14** | |
 > | §8.3 inline `style` | **17** | see decision 1 |
-> | §8.4 spacing scale | **232** | see decision 2 - the largest by far |
+> | §8.4 spacing scale | **95** | was 232; scale gained `1.5`/`2.5` - see decision 2 |
 > | §8.5 arbitrary `text-[...]` | **84** | |
 > | §8.7 icon-button labels | **9** | `jsx-a11y/control-has-associated-label` |
 > | D1 `lib/` -/-> `components/` | **0** | |
@@ -871,11 +871,15 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 > flags the actual abuse (a hardcoded static value) and permits computed values. Rule §8.2 already
 > catches colors inside `style` independently, so nothing is lost.
 >
-> **2. The spacing scale is missing a step the codebase actually uses.** `1.5` (6px) appears **128
-> times** - the third most-used spacing value in the entire codebase, ahead of `8`. With `2.5` (47)
-> that is 175 of the 291 violating occurrences, ~60%. This is not drift; it is a scale that needs a
-> 6px step. **Phase 11 must decide**: add `1.5`/`2.5` to the scale, or change 175 call sites. Until
-> then §8.4's 232 warnings overstate the real problem.
+> **2. The spacing scale was missing a step the codebase actually uses. RESOLVED - user added `1.5`
+> and `2.5` to the scale (2026-07-17), before Phase 11 opened.** `1.5` (6px) appears **128 times** -
+> the third most-used spacing value in the entire codebase, ahead of `8`. With `2.5` (47) that was
+> 175 of the 291 violating occurrences, ~60%. Not drift; a scale missing a step it needs.
+> **Rule §8.4 fell from 232 warnings to 95; the repo total fell 565 -> 428.** What remains (`5`,
+> `3.5`, `10`, `7`, `9`) is real drift. `03 §8` amended, `SPACING` in `eslint.config.mjs` amended,
+> and the rule's message updated to recite the new scale - a stale message is a rule that lies.
+> **Phase 11 must mint `--spacing-*` tokens matching this exact scale:** the regex and the tokens
+> are one decision expressed twice.
 >
 > #### Worklist the warnings define (for Stage D)
 >
@@ -902,10 +906,10 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 > **Phase 10 handed this phase two open decisions - resolve them here, they are cheap now and
 > expensive later** (full reasoning in Phase 10's EXECUTED block):
-> 1. **Does the spacing scale gain `1.5` (6px) and `2.5` (10px)?** `1.5` is used **128 times**, the
->    third most-used spacing value in the codebase. Either the scale admits it or 175 call sites
->    change. The lint allowlist in `eslint.config.mjs` (`SPACING`) must be updated to match whatever
->    is decided - **it is the enforcement of this decision, so it cannot be left stale.**
+> 1. **Spacing scale: RESOLVED before this phase opened.** The user added `1.5` (6px) and `2.5`
+>    (10px); `03 §8` and `eslint.config.mjs` are already amended. **This phase must mint
+>    `--spacing-*` tokens for exactly `0.5,1,1.5,2,2.5,3,4,6,8,12,16`** - the `SPACING` regex and the
+>    tokens are one decision expressed twice, and they must not drift apart.
 > 2. **Inline style**: ~12 runtime-computed values cannot become tokens. Recommendation is to narrow
 >    the selector at Phase 20 rather than annotate 12 files with disable comments.
 
