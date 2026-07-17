@@ -21,8 +21,9 @@
 | 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
 | 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
 | **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
-| **10 · Lint rules** | **C** | **NEXT - unblocked, parity is green** | - |
-| 11-23 | C/D/E | not started | - |
+| **10 · Lint rules** | **C** | **DONE** - 8 rules landed as `warn`, 565 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
+| **11 · Token system** | **C** | **NEXT** - carries 2 decisions Phase 10 surfaced (spacing `1.5`, inline-style scope) | - |
+| 12-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -472,9 +473,9 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 
 **Objective** Deployed to a staging subdomain.
 
-**Files** ~~`Dockerfile`, `.dockerignore`~~ (Vercel — see EXECUTED below), `.env.local.example`, `.env.production.example`, `next.config.ts` (~~`output: 'standalone'`~~ — removed), `package.json` + `playwright.config.ts` (port 3001)
+**Files** ~~`Dockerfile`, `.dockerignore`~~ (Vercel - see EXECUTED below), `.env.local.example`, `.env.production.example`, `next.config.ts` (~~`output: 'standalone'`~~ - removed), `package.json` + `playwright.config.ts` (port 3001)
 
-**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.islandtours.esenc.cloud` (interim topology — `.tripwheel.io` is the *target*, and was wrong here), `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` and `http://localhost:3001`.
+**Rationale** `02` §7. **Backend config changes:** `COOKIE_DOMAIN=.islandtours.esenc.cloud` (interim topology - `.tripwheel.io` is the *target*, and was wrong here), `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` and `http://localhost:3001`.
 
 **Dependencies** Phases 5-7
 
@@ -484,11 +485,11 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 
 **Rollback** Staging only.
 
-> **EXECUTED 2026-07-17 — with one approved deviation and five corrections.**
+> **EXECUTED 2026-07-17 - with one approved deviation and five corrections.**
 >
 > **DEVIATION (your call, asked before any code was written): Vercel, not Docker.**
 > The phase as written had the dashboard containerised while its sibling public app
-> deploys to Vercel — `docker-compose.yml` says so outright ("the frontend is NOT
+> deploys to Vercel - `docker-compose.yml` says so outright ("the frontend is NOT
 > here"). You chose Vercel for both. Consequences:
 > - **No `Dockerfile`, no `.dockerignore`.** They were never created.
 > - **`output: 'standalone'` REMOVED** from `next.config.ts`. Phase 5 added it *for*
@@ -497,14 +498,14 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 >   own pipeline and ignores it. Verified against the Next docs, and the build no
 >   longer emits `.next/standalone`. The config now carries a comment saying why it
 >   is absent, so it is not "helpfully" restored later.
-> - The `NEXT_PUBLIC_*`-as-build-ARG hazard that made Docker risky here is moot —
+> - The `NEXT_PUBLIC_*`-as-build-ARG hazard that made Docker risky here is moot -
 >   Vercel handles build-time inlining. It is still true that changing a
 >   `NEXT_PUBLIC_*` in Vercel needs a **redeploy**, not a restart.
 >
 > **1. `COOKIE_DOMAIN` is `.islandtours.esenc.cloud`, NOT `.tripwheel.io`.** This
 > line was stale: `02` §7 already had it right and calls it "unchanged, already the
 > default". `.tripwheel.io` is the *target* topology, not the interim one in force.
-> Same error in `02` §11 check 9 — **corrected there too.** Shipping the value as
+> Same error in `02` §11 check 9 - **corrected there too.** Shipping the value as
 > written would have caused the exact login loop this phase lists as its own risk.
 >
 > **2. `CORS_ORIGINS` is `https://dashboard.islandtours.esenc.cloud`** for the same
@@ -512,18 +513,18 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > Better Auth `trustedOrigins` as well as CORS, so a miss rejects sign-in, not just
 > fetches.
 >
-> **3. PORT COLLISION — a real defect the split introduced, fixed here.** The repo
+> **3. PORT COLLISION - a real defect the split introduced, fixed here.** The repo
 > contradicted itself: `playwright.config.ts` ran `pnpm dev` and tested
 > `localhost:3000`, while `.env.local.example` pointed `REVALIDATE_TARGET_URL` at
 > `localhost:3000` as the **public site**. Both cannot own 3000. Worse,
 > `reuseExistingServer: true` meant Playwright would silently attach to a running
 > public site and run the dashboard suite against the wrong app. **The dashboard is
 > now pinned to 3001** (`pnpm dev`/`start`, Playwright, README, env example), and
-> the backend's dev `CORS_ORIGINS` lists `http://localhost:3001` — without which
+> the backend's dev `CORS_ORIGINS` lists `http://localhost:3001` - without which
 > every dashboard API call is CORS-blocked locally, since they run in the browser
 > with credentials.
 >
-> **4. `NEXT_PUBLIC_SITE_URL` (in `02` §7's table) is a ghost — no code reads it.**
+> **4. `NEXT_PUBLIC_SITE_URL` (in `02` §7's table) is a ghost - no code reads it.**
 > The dashboard reads exactly seven vars: `NEXT_PUBLIC_BACKEND_URL`,
 > `INTERNAL_API_SECRET`, `COOKIE_DOMAIN`, `REVALIDATE_TARGET_URL`,
 > `REVALIDATE_SECRET`, `NEXT_PUBLIC_OPEN_WEATHER_API_KEY`,
@@ -536,7 +537,7 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > false.** The comment claimed "media uploads post large payloads through Server
 > Actions... load-bearing rather than a leftover." They do not: `mediaApi.upload`
 > goes browser → backend directly via `apiFetch` and never traverses Next. **No
-> Server Action in the app takes a file** — the five that exist all carry small
+> Server Action in the app takes a file** - the five that exist all carry small
 > JSON. On Vercel the setting is also unenforceable: the platform caps function
 > request bodies at **4.5 MB** and returns 413 `FUNCTION_PAYLOAD_TOO_LARGE` before
 > Next is reached. **The setting was left in place** (deleting app config is not a
@@ -544,8 +545,8 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > a later phase.**
 >
 > **VALIDATION IS ONLY PARTLY MET.** `pnpm build` is green, routes serve at the
-> root, and no `.next/standalone` is emitted. The rest of the stated validation —
-> "loads, authenticates, lists tours **on staging**" — needs the Vercel project and
+> root, and no `.next/standalone` is emitted. The rest of the stated validation -
+> "loads, authenticates, lists tours **on staging**" - needs the Vercel project and
 > DNS, which are yours to create. **Phase 9 parity stays blocked until that is
 > done**, and so does Stage D.
 
@@ -797,7 +798,7 @@ purely from database residue** left by earlier tests. Isolation is what makes `w
 
 # Stage C - Foundation (new repo)
 
-## Phase 10 · Lint rules
+## Phase 10 · Lint rules - **DONE**
 
 **Objective** Make the old patterns un-writable.
 
@@ -815,6 +816,78 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 **Rollback** Revert.
 
+> ### EXECUTED 2026-07-17 - `98aedb1` (dashboard, branch `ui-fix`)
+>
+> All 8 rules landed in `eslint.config.mjs` as `warn`. **565 warnings, 0 errors, `eslint` exits 0** -
+> nothing is blocked, which was the design.
+>
+> **Zero new dependencies.** `eslint-config-next/core-web-vitals` already registers `import` and
+> `jsx-a11y` as plugins and configures the `typescript` resolver, so their rules are referenced by
+> name. Do **not** add a direct dep: under pnpm the transitive copy is not resolvable from
+> `eslint.config.mjs`, so importing the plugin yourself fails where referencing it by name works.
+>
+> | Rule | Warnings | Note |
+> |---|---|---|
+> | §8.1 palette classes | **132** | |
+> | §8.2 hex/rgb/hsl/oklch | **14** | |
+> | §8.3 inline `style` | **17** | see decision 1 |
+> | §8.4 spacing scale | **232** | see decision 2 - the largest by far |
+> | §8.5 arbitrary `text-[...]` | **84** | |
+> | §8.7 icon-button labels | **9** | `jsx-a11y/control-has-associated-label` |
+> | D1 `lib/` -/-> `components/` | **0** | |
+> | D2 `types/` imports only `types/` | **10** | |
+> | D3 module -/-> module | **18** | |
+> | D4 hook domain -/-> hook domain | **2** | exactly the two `05` predicted |
+> | D5 no public-site import | **0** | isolation holds |
+>
+> **Every rule was proved to fire before being trusted.** A regex selector that fails to parse
+> reports zero and looks identical to a clean codebase - the same "missing reads as clean" failure
+> that produced two wrong parity claims in Phase 9. A synthetic probe asserted each rule against
+> both positive and negative cases, then was deleted. The negative cases matter most: `bg-primary`,
+> `href="#"`, `top-5 w-5 duration-500 grid-cols-5`, and `p-0.5 gap-1 mt-2 px-4 m-8 space-y-12` are
+> all correctly **not** flagged. The spacing regex needs a trailing `(?![\d.])` rather than `\b` -
+> with `\b`, `p-1.5` matches the allowed `1` and silently passes.
+>
+> **Counts in the spec were occurrence-based and low.** Actual occurrences: palette **207** (spec
+> 187), arbitrary text **95** (spec 55), inline style **23** (spec 24). ESLint reports per *node*,
+> so one string literal holding three palette classes is one warning - that is why 207 occurrences
+> read as 132 warnings. Both numbers are correct; they count different things.
+>
+> **D1 and D5 are genuinely 0, verified not assumed.** `05` names `lib/tours/listing.ts` as the D1
+> offender. `lib/tours/` exists in this repo but holds only `derive-badge.ts` and `signals.ts` -
+> `listing.ts` is a public-site file that was never carried over. The extraction fixed D1 as a side
+> effect. Checked the directory exists first: a `grep` over a missing path returns nothing and reads
+> exactly like a clean result.
+>
+> #### Two decisions this phase surfaced - both belong to Phase 11
+>
+> **1. `03 §8.3`'s inline-style allowlist ("TanStack column sizing") is too narrow.** Of 17 warnings,
+> ~12 are runtime-computed values - `style={{ width: `${pct}%` }}`, `transform: translateX(...)`,
+> `height: `${item.height}px`` - which **no class or token can express**. The 11 `*-table.tsx` files
+> each carry exactly one `header.getSize()`, so that part of the spec was right. Implemented as
+> written (allowlist lifts *only* the inline-style rule for `*-table.tsx` + `ui/chart.tsx`; every
+> color/spacing/type rule still applies there). **Recommendation for the Phase 20 error-flip:**
+> narrow the selector to `JSXAttribute[name.name='style'] Property[value.type='Literal']`, which
+> flags the actual abuse (a hardcoded static value) and permits computed values. Rule §8.2 already
+> catches colors inside `style` independently, so nothing is lost.
+>
+> **2. The spacing scale is missing a step the codebase actually uses.** `1.5` (6px) appears **128
+> times** - the third most-used spacing value in the entire codebase, ahead of `8`. With `2.5` (47)
+> that is 175 of the 291 violating occurrences, ~60%. This is not drift; it is a scale that needs a
+> 6px step. **Phase 11 must decide**: add `1.5`/`2.5` to the scale, or change 175 call sites. Until
+> then §8.4's 232 warnings overstate the real problem.
+>
+> #### Worklist the warnings define (for Stage D)
+>
+> - **D3 is mostly one misfiling.** 13 of 18 are `components/media/` (6 importers) and
+> `components/faq/` (4) - de-facto shared components living in module folders. `05 §D3`'s own remedy
+> applies: move to `components/common/`. The genuine cross-module reach is
+> `locals-favourites/ -> trips/` (2).
+> - **D2's 10 are all one cause**: `types/*` importing `Locale`/`Currency` from
+> `lib/constants/locales`. Those types have no home in `types/`. Move them.
+> - **D4's 2 are one cause**: `tripKeys` is a shared query-key factory living inside `hooks/trips/`.
+> Lift to `lib/`.
+
 ---
 
 ## Phase 11 · Token system
@@ -826,6 +899,15 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Rationale** 03. Closes B-3, B-5, D-2, D-3, D-5 structurally.
 
 **Dependencies** Phase 10
+
+> **Phase 10 handed this phase two open decisions - resolve them here, they are cheap now and
+> expensive later** (full reasoning in Phase 10's EXECUTED block):
+> 1. **Does the spacing scale gain `1.5` (6px) and `2.5` (10px)?** `1.5` is used **128 times**, the
+>    third most-used spacing value in the codebase. Either the scale admits it or 175 call sites
+>    change. The lint allowlist in `eslint.config.mjs` (`SPACING`) must be updated to match whatever
+>    is decided - **it is the enforcement of this decision, so it cannot be left stale.**
+> 2. **Inline style**: ~12 runtime-computed values cannot become tokens. Recommendation is to narrow
+>    the selector at Phase 20 rather than annotate 12 files with disable comments.
 
 **Risks**
 - **The contrast gate (03 §9) is a merge gate, not a follow-up.** Shipping a palette because its lightness values look right is exactly how the current dark mode happened.
