@@ -19,11 +19,15 @@
 | 6 · Base path -> `/` | B | **done** | `313d291` (dashboard, pushed) |
 | 7 · Cache revalidation | B | **done** | `631ac56` (dashboard) + `6c65d0d` (monorepo) |
 | 8 · Env + Vercel | B | **done, code side** | `cfdd38b` (dashboard) + `4c1d7f4` (monorepo) |
-| 9 · Parity + cutover | B | **next** | - |
+| 9 · Parity + cutover | B | **automated half DONE - no regression.** Visual rows + staging + DNS open | - |
 | 10-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
-action, not a code task. **Phase 9 does not have to wait for it** - see that phase.
+action, not a code task. **Phase 9 did not wait for it** - see that phase.
+
+**Phase 9 found no regression.** 171/171 component files clean; all 227 e2e tests behave
+identically on both dashboards. What remains is not verification of the *move* - it is the visual
+sign-off only a human can give, plus checks #2/#9 which need the deployed origin.
 
 The spec set was written before any of this ran. Docs `00`, `01`, `03`, `04`, `05` are unexecuted
 analysis and still stand as written. `02` and `02B` carry executed corrections inline. `02C` is a
@@ -663,10 +667,45 @@ analysis and still stand as written. `02` and `02B` carry executed corrections i
 > - **5s prefill races** ("Display Name is pre-filled from API").
 > - **30s hard timeouts** (the categories icon-picker popover).
 >
-> **Caveat on the counts:** the two runs above overlapped and every non-intercepted spec hit the
-> same backend and the same demo rows from both sides at once. The 5-test gap is within that noise.
-> A clean, uncontended re-run of the new suite is being diffed name-by-name against the old 102 -
-> **result below.**
+> **The counts above are contaminated** - those two runs overlapped, and every non-intercepted spec
+> hit the same backend and the same demo rows from both sides at once. So the new suite was re-run
+> **clean and uncontended** (106 failed / 121 passed, 29.3m) and diffed **name-by-name** against
+> the old 102. Test names embed their routes, so `/dashboard/x` was normalised to `/x` first -
+> without that, every test reads as different.
+>
+> ### THE VERDICT: 102 of 106 failures are identical, name for name
+>
+> | | Count |
+> |---|---|
+> | Failures **identical on both sides** | **102** |
+> | Failing **only in old** | **0** |
+> | Failing **only in new** | **4** |
+>
+> The four that differed were each re-run **in isolation against BOTH dashboards**:
+>
+> | Test | New | Old |
+> |---|---|---|
+> | `categories` > shows validation error when form is submitted empty | fail | **fail** |
+> | `destinations` > navigates to create page when Add Destination is clicked | fail | **fail** |
+> | `destinations` > shows validation error when form is submitted empty | fail | **fail** |
+> | `trips` > ARCHIVED trip row-actions does not show Edit Details navigation | fail | **fail** |
+>
+> ### **ZERO REGRESSIONS. All 227 tests behave identically on both sides.**
+>
+> **The four were an artifact of DATABASE RESIDUE, not of the extraction.** Note the inversion:
+> in the *full old-suite run* they **passed**; run standalone they **fail on old too**. Their
+> outcome depends on what earlier tests left in the database, so two full runs that start from
+> different residue disagree - and ours did, because a killed run and the user's run had already
+> mutated rows before the old suite started. Point them at either app and the behaviour is the same.
+>
+> **This is why the diff had to be name-level and the outliers re-run individually.** A count
+> (102 vs 106) would have read as "4 regressions"; a full-suite re-run would have reshuffled the
+> residue and produced a *different* four. Only isolation holds the variable still.
+>
+> **It also indicts the suite, not the app:** a test whose result depends on its predecessors
+> cannot answer "did this change break anything", which is the only question a suite exists to
+> answer. Isolation is a prerequisite for the trim (and for `workers > 1`, which is unsafe until
+> then - these specs share rows).
 
 > **Stage B ends here. Redesign starts only when Phase 9 is green.**
 
