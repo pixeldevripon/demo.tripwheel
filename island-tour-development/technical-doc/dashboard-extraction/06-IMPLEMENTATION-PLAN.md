@@ -23,8 +23,9 @@
 | **9B · E2E suite trim** | B | **PARTIAL** - 55 cut, mocks repointed; trips fixtures parked (~1 day) | `2ac049c` (dashboard, branch `ui-fix`) |
 | **10 · Lint rules** | **C** | **DONE** - 8 rules as `warn`, 428 warnings / 0 errors, all validated firing | `98aedb1` (dashboard, branch `ui-fix`) |
 | **11 · Token system** | **C** | **DONE** - gate GREEN (34 checks x2 modes); it caught 2 defects in the spec's own palette | `fdb0294` (dashboard, `ui-fix`) |
-| **12 · StatusBadge** | **C** | **NEXT** - the R7 test: add the primitive AND delete the 4 conventions | - |
-| 13-23 | C/D/E | not started | - |
+| **12 · StatusBadge** | **C** | **DONE** - zero palette classes repo-wide; 5 conventions deleted (audit counted 4) | `9418b29` (dashboard, `ui-fix`) |
+| **13 · Fonts, icons, primitives** | **C** | **NEXT** - carries the open Playfair decision | - |
+| 14-23 | C/D/E | not started | - |
 
 **Phase 8 has one open half:** the staging deploy itself (Vercel project + DNS) is the user's
 action, not a code task. **Phase 9 did not wait for it** - see that phase.
@@ -993,7 +994,7 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 
 ---
 
-## Phase 12 · StatusBadge
+## Phase 12 · StatusBadge - **DONE**
 
 **Objective** One status primitive, zero hand-rolled colors.
 
@@ -1008,6 +1009,38 @@ Rules: no palette classes · no hex/rgb/hsl/oklch in components · no inline `st
 **Validation** `grep -E "(bg|text|border)-(amber|emerald|green|red|rose|sky|violet|blue)-[0-9]" components/` -> **zero**. Every variant renders its non-color cue. Both modes measured.
 
 **Rollback** Revert.
+
+> ### EXECUTED 2026-07-17 - `9418b29` (dashboard, branch `ui-fix`)
+>
+> **Acceptance exceeded.** §5.1 requires the status-hue grep over `components/` to return zero; the
+> **full** palette grep - every Tailwind hue, every property (`fill`, `ring`, `divide`, ...), over
+> `components/` AND `app/` - returns zero. Lint §8.1: **132 -> 0**. Repo total: **428 -> 295**.
+> tsc clean, build green.
+>
+> - `components/common/status-badge.tsx` - the primitive, exactly per §5.1 (triplet colors, 8px dot
+>   `size-2`, label required by the type, optional `size-3` icon).
+> - `components/common/status-maps.ts` - ONE map per domain (`BOOKING_STATUS`, `PAYMENT_STATUS`,
+>   `TRIP_STATUS`, `SCHEDULE_STATUS`, `SPOTLIGHT_STATUS`, `OPERATOR_VERIFICATION`, `ACTIVE_STATUS`).
+>   A new backend status now costs one line in one file.
+> - **The audit undercounted: there were SIX conventions, not four.** `trip-columns.tsx` kept its own
+>   full `statusVariant`/`statusLabel` pair plus an inline dot ternary, and `operator-columns.tsx`
+>   kept a `VERIFICATION_BADGE` mini-map with palette dots. All six deleted in the same commit - the
+>   R7 test passed the only way it can be.
+> - **New token: `--rating`** (star gold, both modes, decorative so no contrast target). Ratings are
+>   NOT a status - mapping star fills onto the warning quartet would render a 4.8-star tour like a
+>   warning. `fill-rating text-rating` at 5 call sites (tables, pricing, images, locals-favourites,
+>   multi-select).
+> - **Brand/dark surfaces (login, onboarding) map to the mode-independent `n-*` ramp**, not the
+>   switching tokens - their backgrounds do not flip with the dashboard theme, so `text-slate-400`
+>   became `text-n-400`, and the state blocks became the state quartets. The portal anti-phishing
+>   note also lost its `text-[#1E3A5F]` hex (a §8.2 hit).
+> - `user-profile-dropdown.tsx` lost **every `dark:` branch** - 13 dual-mode literals collapsed to
+>   single semantic classes because the tokens themselves switch. This is the D-4 payoff made
+>   visible.
+> - **§9 check 10 is now satisfiable and satisfied**: every StatusBadge variant renders dot + label
+>   structurally (the label is required by the type, the dot is unconditional).
+> - Drive-by (user report, same commit): the sidebar logo is a near-black wordmark, invisible in
+>   dark mode -> `dark:invert` on the monochrome PNG.
 
 ---
 

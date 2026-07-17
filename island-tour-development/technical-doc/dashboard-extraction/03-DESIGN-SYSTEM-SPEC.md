@@ -116,6 +116,11 @@ Six hues spread across the wheel so categorical series are distinguishable, with
 | `--chart-5` | `oklch(0.55 0.14 300)` | `oklch(0.70 0.14 300)` | violet |
 | `--chart-6` | `oklch(0.60 0.11 190)` | `oklch(0.74 0.11 190)` | cyan |
 
+> **ADDED 2026-07-17 (Phase 12): `--rating`** - star-rating gold, light `oklch(0.77 0.16 75)` / dark
+> `oklch(0.80 0.15 78)`. Ratings are **not a status**: mapping star fills onto the warning quartet
+> would make a 4.8-star tour render like a warning. Decorative (icon fill beside a numeric label),
+> so it carries no contrast target.
+
 **Ordering constraint:** chart-1 and chart-2 must be distinguishable under deuteranopia, since a 2-series chart is the common case. Teal/coral is chosen for that reason and **must be verified with a simulator** (§9), not assumed.
 
 ---
