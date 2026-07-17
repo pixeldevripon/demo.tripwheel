@@ -27,14 +27,18 @@
     --spacing: 0.25rem;
 
     /* Radius - a real scale, replacing the 5px `calc(var(--radius) ± 1px)`
-     * ladder (D-3). 2xl/3xl are intentionally left at Tailwind's defaults;
-     * `rounded-2xl` has 6 call sites and would silently render nothing if the
-     * token were removed rather than inherited. */
+     * ladder (D-3). VALUES AMENDED 2026-07-17 by user decision: shadcn
+     * "Vega"-style soft rounding (03 §3's original 4/6/8/12 was the sharper
+     * "Sera" look). The ROLE mapping is unchanged - sm=inputs/chips,
+     * md=buttons/cells, lg=cards/popovers, xl=dialogs - so this one block is
+     * the only place the taste lives. 2xl/3xl stay at Tailwind's defaults;
+     * `rounded-2xl` has 6 call sites and would render nothing if the token
+     * were removed rather than inherited. */
     --radius-none: 0;
-    --radius-sm: 0.25rem; /* 4px  - inputs, chips */
-    --radius-md: 0.375rem; /* 6px  - buttons, cells */
-    --radius-lg: 0.5rem; /* 8px  - cards, popovers */
-    --radius-xl: 0.75rem; /* 12px - dialogs, sheets */
+    --radius-sm: 0.5rem; /* 8px  - inputs, chips, menu items */
+    --radius-md: 0.625rem; /* 10px - buttons, cells */
+    --radius-lg: 0.75rem; /* 12px - cards, popovers */
+    --radius-xl: 1rem; /* 16px - dialogs, sheets */
     --radius-full: 9999px;
 
     /* Type scale - 6 steps. Body default is 14px (principle 2, C-11, E-1). */
