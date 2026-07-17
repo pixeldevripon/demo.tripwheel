@@ -2,6 +2,20 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* FONTS: three, not five. DM Sans and General Sans were dropped in the
+ * extraction (Phase 5) and this is the note app/layout.tsx points at.
+ *
+ * All four usages were in the sidebar shell - nav-main.tsx x3 (nav item labels)
+ * and app-sidebar.tsx x1 (the brand/operator name) - so both fonts cost a
+ * download each to style one component. They now render in --font-sans
+ * (Noto Sans). That is a real, if small, VISUAL DELTA vs the monorepo
+ * dashboard, and it is deliberate; see 06 Phase 9. The class references were
+ * removed with the fonts, so no dead `font-dm-sans` / `font-general-sans`
+ * utilities remain - re-adding either class silently does nothing.
+ *
+ * Playfair Display stays for now at 70 usages (--font-heading); whether it
+ * survives is a Phase 11 decision. */
+
 /* Island Tours brand tokens - LOGIN SURFACES ONLY (/portal, /staff).
  * Scoped by `.frontend-root` on app/(login)/layout.tsx; the admin tree never
  * carries that class. This is a deliberate fork of the public site's token file,
