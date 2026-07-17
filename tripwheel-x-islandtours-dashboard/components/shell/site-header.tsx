@@ -24,7 +24,7 @@ export function SiteHeader({ userName, userEmail, userRole, userImage }: SiteHea
             orientation="vertical"
             className="mx-2 data-[orientation=vertical]:h-4"
           />
-          <h1 className="text-base font-medium font-sans">Island Tours</h1>
+          <h1 className="text-base font-medium font-sans">Welcome to Tripwheel</h1>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <CommandPalette userRole={userRole} />

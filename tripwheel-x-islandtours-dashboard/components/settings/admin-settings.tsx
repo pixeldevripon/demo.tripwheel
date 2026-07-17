@@ -1,6 +1,6 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { CompanyInfoForm } from './company-info-form';
 import { IntegrationsForm } from './integrations-form';
 import { PaymentsForm } from './payments-form';
@@ -8,44 +8,27 @@ import { SeoForm } from './seo-form';
 import { SiteInfoForm } from './site-info-form';
 import { SocialMediaForm } from './social-media-form';
 
-const TABS = [
-  { value: 'general', label: 'General' },
-  { value: 'seo', label: 'SEO' },
-  { value: 'social', label: 'Social' },
-  { value: 'company', label: 'Company' },
-  { value: 'payments', label: 'Payments' },
-  { value: 'integrations', label: 'Integrations' },
-] as const;
-
+/**
+ * Admin settings sections. Renames (Phase 20) resolve the old naming
+ * collision with the operator view: "General" is really the public site's
+ * identity, and "Company" here is the platform's legal entity - not the
+ * operator's business (that lives in the operator settings as "Your
+ * Business"). Tabs are URL-synced and stay mounted so switching sections
+ * never discards unsaved edits.
+ */
 export function AdminSettings() {
   return (
-    <Tabs defaultValue="general" className="w-full">
-      <TabsList>
-        {TABS.map((t) => (
-          <TabsTrigger key={t.value} value={t.value}>
-            {t.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-
-      <TabsContent value="general" className="mt-6">
-        <SiteInfoForm />
-      </TabsContent>
-      <TabsContent value="seo" className="mt-6">
-        <SeoForm />
-      </TabsContent>
-      <TabsContent value="social" className="mt-6">
-        <SocialMediaForm />
-      </TabsContent>
-      <TabsContent value="company" className="mt-6">
-        <CompanyInfoForm />
-      </TabsContent>
-      <TabsContent value="payments" className="mt-6">
-        <PaymentsForm />
-      </TabsContent>
-      <TabsContent value="integrations" className="mt-6">
-        <IntegrationsForm />
-      </TabsContent>
-    </Tabs>
+    <EntityTabs
+      basePath="/settings"
+      aliases={{ general: 'site', company: 'legal-entity' }}
+      tabs={[
+        { value: 'site', label: 'Site', content: <SiteInfoForm /> },
+        { value: 'seo', label: 'SEO', content: <SeoForm /> },
+        { value: 'social', label: 'Social', content: <SocialMediaForm /> },
+        { value: 'legal-entity', label: 'Legal Entity', content: <CompanyInfoForm /> },
+        { value: 'payments', label: 'Payments', content: <PaymentsForm /> },
+        { value: 'integrations', label: 'Integrations', content: <IntegrationsForm /> },
+      ]}
+    />
   );
 }

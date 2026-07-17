@@ -52,7 +52,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
         setUploading(true);
         try {
             const [uploaded] = await mediaApi.upload([file]);
-            if (!uploaded?.url) { toast.error('Upload02Icon failed'); return; }
+            if (!uploaded?.url) { toast.error('Upload failed'); return; }
             await updatePhoto.mutateAsync(uploaded.url);
             toast.success('Profile photo updated successfully');
         } catch (err) {
@@ -86,7 +86,9 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                 <div className='flex flex-col md:flex-row items-center gap-8'>
                     <div className='relative group'>
                         <Avatar className='w-32 h-32 border-4 border-background shadow-xl ring-1 ring-border group-hover:opacity-90 transition-all duration-300'>
-                            <AvatarImage src={user.image ?? ''} className='object-cover' />
+                            {user.image ? (
+                                <AvatarImage src={user.image} className='object-cover' />
+                            ) : null}
                             <AvatarFallback className='bg-primary/10 text-primary text-2xl'>
                                 {user.name?.charAt(0) || 'U'}
                             </AvatarFallback>
@@ -124,7 +126,7 @@ export function ProfilePhotoCard({ user }: { user: UserProfile }) {
                                 variant='outline'
                                 className='rounded-lg h-9 gap-2'>
                                 {uploading ? <HugeiconsIcon icon={Loading03Icon} className='w-4 h-4 animate-spin' /> : null}
-                                Upload02Icon New
+                                Upload New
                             </Button>
                             {user.image ? (
                                 <Button

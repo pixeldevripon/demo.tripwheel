@@ -13,12 +13,45 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useBookings } from '@/hooks/bookings/use-bookings';
+import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
 import { cn } from '@/lib/utils';
 
 interface NavMainProps {
     groups: NavGroup[];
 }
+
+function CountChip({ count }: { count: number }) {
+    if (count <= 0) return null;
+    return (
+        <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-semibold tabular-nums text-primary-subtle-content'>
+            {count > 99 ? '99+' : count}
+        </span>
+    );
+}
+
+/** Open cancellation requests awaiting admin review. */
+function CancellationsBadge() {
+    const { data } = useBookings({ limit: 1, cancellationRequested: true });
+    return <CountChip count={data?.total ?? 0} />;
+}
+
+/** Spotlight requests waiting for an approve/reject decision. */
+function SpotlightBadge() {
+    const { data } = useSpotlightQueue({ status: 'REQUESTED' });
+    return <CountChip count={data?.data?.length ?? 0} />;
+}
+
+/**
+ * Actionable count badges (04 §1.4: badges only where a number demands
+ * action). Keyed by nav url; each badge only mounts when its item survived
+ * permission filtering, so operators never fire admin-only queries.
+ */
+const NAV_BADGES: Record<string, React.ComponentType> = {
+    'cancellation-requests': CancellationsBadge,
+    spotlight: SpotlightBadge,
+};
 
 /**
  * Grouped flat navigation (04 §1.2). Groups arrive already permission-filtered
@@ -75,6 +108,9 @@ export function NavMain({ groups }: NavMainProps) {
                             <SidebarMenu className='gap-0.5 px-2'>
                                 {group.items.map(item => {
                                     const active = isPathActive(item.url);
+                                    const DynamicBadge = item.url
+                                        ? NAV_BADGES[item.url]
+                                        : undefined;
                                     return (
                                         <SidebarMenuItem key={item.title}>
                                             <SidebarMenuButton
@@ -107,11 +143,13 @@ export function NavMain({ groups }: NavMainProps) {
                                                     <span className='text-sm'>
                                                         {item.title}
                                                     </span>
-                                                    {item.badge != null && (
+                                                    {item.badge != null ? (
                                                         <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-semibold tabular-nums text-primary-subtle-content'>
                                                             {item.badge}
                                                         </span>
-                                                    )}
+                                                    ) : DynamicBadge ? (
+                                                        <DynamicBadge />
+                                                    ) : null}
                                                 </Link>
                                             </SidebarMenuButton>
                                         </SidebarMenuItem>

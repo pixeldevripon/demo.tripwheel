@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/components/common/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { UserProfile } from '@/types/profile';
@@ -29,14 +30,10 @@ export function AccountStatusCard({ user }: AccountStatusCardProps) {
                     <span className='text-sm text-muted-foreground'>
                         Verification
                     </span>
-                    <Badge
-                        className={
-                            user?.emailVerified
-                                ? 'bg-success/10 text-success border-success/20 hover:bg-success/20 transition-colors'
-                                : 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20 transition-colors'
-                        }>
+                    <StatusBadge
+                        variant={user?.emailVerified ? 'success' : 'danger'}>
                         {status}
-                    </Badge>
+                    </StatusBadge>
                 </div>
                 <div className='flex items-center justify-between'>
                     <span className='text-sm text-muted-foreground'>

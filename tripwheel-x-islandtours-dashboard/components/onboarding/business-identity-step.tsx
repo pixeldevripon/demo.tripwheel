@@ -60,7 +60,7 @@ export function BusinessIdentityStep({ form }: BusinessIdentityStepProps) {
       </div>
 
       <Field data-invalid={!!errors.companyPhone}>
-        <FieldLabel htmlFor="companyPhone">Business CallIcon</FieldLabel>
+        <FieldLabel htmlFor="companyPhone">Business Phone</FieldLabel>
         <Input
           id="companyPhone"
           placeholder="e.g. +31 6 12345678 "

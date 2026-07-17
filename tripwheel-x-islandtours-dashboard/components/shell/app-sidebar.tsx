@@ -57,21 +57,21 @@ export function AppSidebar({
                             href='/'
                             className='flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-fast hover:bg-sidebar-accent/60'>
                             <Image
-                                src='/logo/logo.png'
+                                src='/logo/logo-light.svg'
                                 alt='Island Tours'
                                 width={68}
                                 height={50}
                                 priority
-                                className='h-8 w-auto shrink-0 object-contain dark:invert'
+                                className='h-8 w-auto shrink-0 object-contain dark:hidden'
                             />
-                            <span className='min-w-0 group-data-[collapsible=icon]:hidden'>
-                                <span className='block truncate font-heading text-sm font-bold tracking-tight text-sidebar-foreground'>
-                                    Island Tours
-                                </span>
-                                <span className='block text-2xs font-semibold tracking-caps uppercase text-sidebar-content/70'>
-                                    Operations
-                                </span>
-                            </span>
+                            <Image
+                                src='/logo/logo-dark.svg'
+                                alt='Island Tours'
+                                width={68}
+                                height={50}
+                                priority
+                                className='h-8 w-auto shrink-0 object-contain hidden dark:block'
+                            />
                         </Link>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -115,3 +115,5 @@ export function AppSidebar({
         </Sidebar>
     );
 }
+
+

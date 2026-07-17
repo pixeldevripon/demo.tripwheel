@@ -8,7 +8,7 @@ import { Field, FieldDescription } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import { useStripeConfig, useUpdateStripeConfig } from '@/hooks/settings/use-settings';
 import { StripeMethodsField } from './stripe-methods-field';
-import { SecretField, SettingsCard, SettingsCardSkeleton, TextField } from './settings-fields';
+import { ConnectionStatus, SecretField, SettingsCard, SettingsCardSkeleton, TextField } from './settings-fields';
 
 // ── Stripe ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +70,7 @@ function StripeCard() {
       description="Card and local payment processing via Stripe."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.secretKey} />}
     >
       <div className="grid gap-6 sm:grid-cols-2">
         <TextField label="Payment Label" registration={register('paymentLabel')} error={errors.paymentLabel?.message} placeholder="Stripe" />

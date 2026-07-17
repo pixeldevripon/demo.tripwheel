@@ -15,6 +15,31 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 
+/**
+ * Inline connection indicator for integration cards: green when the service
+ * has credentials stored, neutral when it still needs configuring.
+ */
+export function ConnectionStatus({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={
+        connected
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-2.5 py-0.5 text-xs font-medium text-success-fg'
+          : 'inline-flex items-center gap-1.5 rounded-full bg-surface-inset px-2.5 py-0.5 text-xs font-medium text-content-muted'
+      }
+    >
+      <span
+        className={
+          connected
+            ? 'size-1.5 rounded-full bg-success-solid'
+            : 'size-1.5 rounded-full bg-content-subtle'
+        }
+      />
+      {connected ? 'Configured' : 'Not configured'}
+    </span>
+  );
+}
+
 /** Card shell shared by every settings form: heading, body, and a footer Save button. */
 export function SettingsCard({
   title,
@@ -24,6 +49,7 @@ export function SettingsCard({
   isSaving,
   saveLabel = 'Save Changes',
   canSave = true,
+  status,
 }: {
   title: string;
   description?: string;
@@ -32,11 +58,16 @@ export function SettingsCard({
   isSaving: boolean;
   saveLabel?: string;
   canSave?: boolean;
+  /** Optional indicator rendered beside the title (e.g. connection status). */
+  status?: ReactNode;
 }) {
   return (
     <Card>
       <CardHeader className="border-b pb-6">
-        <CardTitle>{title}</CardTitle>
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle>{title}</CardTitle>
+          {status}
+        </div>
         {description && (
           <p className="text-sm text-muted-foreground mt-1 normal-case tracking-normal font-normal">
             {description}

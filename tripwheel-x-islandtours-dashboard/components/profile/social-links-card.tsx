@@ -1,28 +1,76 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import {
     Facebook01Icon,
     InstagramIcon,
     Linkedin01Icon,
+    Loading03Icon,
     NewTwitterRectangleFreeIcons,
+    PencilEdit02Icon,
     Share01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useFormContext } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+
+import { useUpdateProfile } from '@/hooks/profile/use-profile';
+import {
+    profileSchema,
+    type ProfileFormValues,
+} from '@/lib/validations/profile';
+import { profileValuesFromUser } from './profile-form-values';
+import type { UserProfile } from '@/types/profile';
 
 interface SocialLinksCardProps {
-    isEditing: boolean;
+    user: UserProfile;
 }
 
-export function SocialLinksCard({ isEditing }: SocialLinksCardProps) {
+/**
+ * Per-card edit (Phase 20): owns its edit state and form. The form carries
+ * the full profile value set so the save payload matches the old page-wide
+ * form's shape exactly; only the social URLs are editable here.
+ */
+export function SocialLinksCard({ user }: SocialLinksCardProps) {
+    const updateMutation = useUpdateProfile();
+    const [isEditing, setIsEditing] = useState(false);
+
     const {
         register,
         formState: { errors },
-    } = useFormContext();
+        reset,
+        handleSubmit,
+    } = useForm<ProfileFormValues>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: profileValuesFromUser(user),
+    });
+
+    useEffect(() => {
+        if (!isEditing) reset(profileValuesFromUser(user));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, isEditing]);
+
+    const onSave = handleSubmit((data: ProfileFormValues) => {
+        updateMutation.mutate(
+            { data, role: user.role, operatorId: user.operator?.id },
+            {
+                onSuccess: () => {
+                    toast.success('Profile updated successfully');
+                    setIsEditing(false);
+                },
+            },
+        );
+    });
+
+    function cancelEdit() {
+        reset(profileValuesFromUser(user));
+        setIsEditing(false);
+    }
 
     const socialPlatforms = [
         {
@@ -52,44 +100,73 @@ export function SocialLinksCard({ isEditing }: SocialLinksCardProps) {
     ] as const;
 
     return (
-        <Card className='border-none shadow-sm bg-card '>
+        <Card>
             <CardHeader className='pb-4'>
-                <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                    <HugeiconsIcon
-                        icon={Share01Icon}
-                        className='w-5 h-5 text-primary'
-                    />
-                    Social Media Profiles
-                </CardTitle>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
+                    <CardTitle className='text-lg font-semibold flex items-center gap-2'>
+                        <HugeiconsIcon
+                            icon={Share01Icon}
+                            className='size-5 text-primary'
+                        />
+                        Social Media Profiles
+                    </CardTitle>
+                    {isEditing ? (
+                        <div className='flex gap-2'>
+                            <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={cancelEdit}
+                                disabled={updateMutation.isPending}>
+                                Cancel
+                            </Button>
+                            <Button
+                                size='sm'
+                                onClick={onSave}
+                                disabled={updateMutation.isPending}>
+                                {updateMutation.isPending && (
+                                    <HugeiconsIcon
+                                        icon={Loading03Icon}
+                                        className='size-4 animate-spin'
+                                    />
+                                )}
+                                Save
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => setIsEditing(true)}>
+                            <HugeiconsIcon
+                                icon={PencilEdit02Icon}
+                                className='size-4'
+                            />
+                            Edit
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                     {socialPlatforms.map(platform => (
                         <div key={platform.id} className='space-y-2'>
-                            <Label
-                                htmlFor={platform.id}
-                                className='text-sm font-medium text-muted-foreground flex items-center gap-2'>
-                                {platform.label}
-                            </Label>
+                            <Label htmlFor={platform.id}>{platform.label}</Label>
                             <div className='relative'>
                                 <HugeiconsIcon
                                     icon={platform.icon}
-                                    className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground'
+                                    className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted'
                                 />
                                 <Input
                                     id={platform.id}
                                     {...register(platform.id)}
                                     placeholder={platform.placeholder}
                                     disabled={!isEditing}
-                                    className={cn(
-                                        'pl-10 h-11 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all',
-                                        errors[platform.id] &&
-                                            'border-destructive focus:border-destructive'
-                                    )}
+                                    aria-invalid={!!errors[platform.id]}
+                                    className='pl-10'
                                 />
                             </div>
                             {errors[platform.id] && (
-                                <p className='text-xs text-destructive mt-1'>
+                                <p className='text-xs font-medium text-danger-fg mt-1'>
                                     {errors[platform.id]?.message as string}
                                 </p>
                             )}
@@ -100,4 +177,3 @@ export function SocialLinksCard({ isEditing }: SocialLinksCardProps) {
         </Card>
     );
 }
-

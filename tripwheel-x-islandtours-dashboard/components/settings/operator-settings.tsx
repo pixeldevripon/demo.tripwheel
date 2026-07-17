@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EntityTabs } from '@/components/common/entity-tabs';
 import { useProfileQuery } from '@/hooks/profile/use-profile';
 import { OperatorCompanyForm } from './operator-company-form';
 import { OperatorPaymentsForm } from './operator-payments-form';
@@ -23,19 +23,24 @@ export function OperatorSettings() {
     );
   }
 
+  // "Your Business" (Phase 20 rename) - this is the operator's own company,
+  // distinct from the platform's Legal Entity section in admin settings.
   return (
-    <Tabs defaultValue="company" className="w-full">
-      <TabsList>
-        <TabsTrigger value="company">Company</TabsTrigger>
-        <TabsTrigger value="payments">Payments</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="company" className="mt-6">
-        <OperatorCompanyForm operatorId={operatorId} />
-      </TabsContent>
-      <TabsContent value="payments" className="mt-6">
-        <OperatorPaymentsForm operatorId={operatorId} />
-      </TabsContent>
-    </Tabs>
+    <EntityTabs
+      basePath="/settings"
+      aliases={{ company: 'business' }}
+      tabs={[
+        {
+          value: 'business',
+          label: 'Your Business',
+          content: <OperatorCompanyForm operatorId={operatorId} />,
+        },
+        {
+          value: 'payments',
+          label: 'Payments',
+          content: <OperatorPaymentsForm operatorId={operatorId} />,
+        },
+      ]}
+    />
   );
 }
