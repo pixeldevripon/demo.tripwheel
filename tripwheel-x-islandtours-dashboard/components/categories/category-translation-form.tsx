@@ -197,7 +197,7 @@ function LocaleTab({ categoryId, locale, disableNameField }: LocaleTabProps) {
               <Button
                 type="button"
                 variant="destructive"
-                size="xs"
+                size="sm"
                 onClick={handleDelete}
                 disabled={disableNameField ? isUpserting : isDeleting}
               >
@@ -208,7 +208,7 @@ function LocaleTab({ categoryId, locale, disableNameField }: LocaleTabProps) {
               <Button
                 type="button"
                 variant="outline"
-                size="xs"
+                size="sm"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel

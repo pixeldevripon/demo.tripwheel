@@ -99,7 +99,7 @@ export function CategoryIconPicker({ value, onChange, disabled }: CategoryIconPi
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="icon-sm"
           onClick={() => onChange(null)}
           title="Clear icon"
         >

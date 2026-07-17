@@ -206,7 +206,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-xs"
+                          size="icon-sm"
                           disabled={index === 0}
                           onClick={() => move(index, -1)}
                         >
@@ -215,7 +215,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-xs"
+                          size="icon-sm"
                           disabled={index === rows.length - 1}
                           onClick={() => move(index, 1)}
                         >
@@ -257,7 +257,7 @@ function ManualToursEditor({ collectionId, destinationId, members }: ManualTours
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-6"
                       onClick={() => removeRow(row.key)}
                     >

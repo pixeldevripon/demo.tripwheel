@@ -44,7 +44,7 @@ export function BookingRowActions({ booking }: { booking: BookingListItem }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs" aria-label="Booking actions">
+          <Button variant="ghost" size="icon-sm" aria-label="Booking actions">
             <MoreHorizontalIcon />
           </Button>
         </DropdownMenuTrigger>

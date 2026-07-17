@@ -236,7 +236,7 @@ export function HubEditView({ id, initialTab }: HubEditViewProps) {
           <TabsContent value="faqs">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
                   FAQs
                 </CardTitle>
               </CardHeader>

@@ -350,7 +350,7 @@ function ImageCard({
             {/* Reorder controls (bottom-left on hover) */}
             <div className='absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                 <Button
-                    size='icon-xs'
+                    size='icon-sm'
                     variant='secondary'
                     onClick={() => onMove(index, 'up')}
                     disabled={isUpdating || index === 0}
@@ -358,7 +358,7 @@ function ImageCard({
                     <ArrowUpIcon className='size-3' />
                 </Button>
                 <Button
-                    size='icon-xs'
+                    size='icon-sm'
                     variant='secondary'
                     onClick={() => onMove(index, 'down')}
                     disabled={isUpdating || index === total - 1}
@@ -370,7 +370,7 @@ function ImageCard({
             {/* Edit / hero / delete (top-right on hover) */}
             <div className='absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                 <Button
-                    size='icon-xs'
+                    size='icon-sm'
                     variant='secondary'
                     onClick={onEdit}
                     disabled={isUpdating}
@@ -379,7 +379,7 @@ function ImageCard({
                 </Button>
                 {!img.isHero && (
                     <Button
-                        size='icon-xs'
+                        size='icon-sm'
                         variant='secondary'
                         onClick={() => onSetHero(img.id)}
                         disabled={isUpdating}
@@ -388,7 +388,7 @@ function ImageCard({
                     </Button>
                 )}
                 <Button
-                    size='icon-xs'
+                    size='icon-sm'
                     variant='destructive'
                     onClick={() => onDelete(img.id)}
                     disabled={isDeleting}
@@ -440,7 +440,7 @@ function ImageEditDialog({
         <Dialog open={image !== null} onOpenChange={onOpenChange}>
             <DialogContent className='sm:max-w-md'>
                 <DialogHeader>
-                    <DialogTitle className='font-heading uppercase tracking-wider'>
+                    <DialogTitle className='uppercase tracking-wider'>
                         Edit Image
                     </DialogTitle>
                     <DialogDescription>

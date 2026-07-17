@@ -199,7 +199,7 @@ export function AttributesTable({
           </span>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -207,7 +207,7 @@ export function AttributesTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -215,7 +215,7 @@ export function AttributesTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -223,7 +223,7 @@ export function AttributesTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >

@@ -230,14 +230,14 @@ export function DestinationsTable({
             {selectedCount} selected
           </span>
           <div className="flex items-center gap-2 ml-auto">
-            <Button size="xs" variant="outline" onClick={handleBulkActivate}>
+            <Button size="sm" variant="outline" onClick={handleBulkActivate}>
               Activate
             </Button>
-            <Button size="xs" variant="outline" onClick={handleBulkDeactivate}>
+            <Button size="sm" variant="outline" onClick={handleBulkDeactivate}>
               Deactivate
             </Button>
             {can('DELETE_DESTINATION') && (
-              <Button size="xs" variant="destructive" onClick={handleBulkDelete}>
+              <Button size="sm" variant="destructive" onClick={handleBulkDelete}>
                 Delete
               </Button>
             )}
@@ -315,7 +315,7 @@ export function DestinationsTable({
           </span>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(1)}
             disabled={page <= 1}
           >
@@ -323,7 +323,7 @@ export function DestinationsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
           >
@@ -331,7 +331,7 @@ export function DestinationsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
           >
@@ -339,7 +339,7 @@ export function DestinationsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
           >

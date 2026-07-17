@@ -272,7 +272,7 @@ export function TripsTable({
                   <div className='flex items-center gap-2 ml-auto'>
                       {can('DELETE_TRIP') && (
                           <Button
-                              size='xs'
+                              size='sm'
                               variant='destructive'
                               onClick={handleBulkDelete}>
                               Delete
@@ -373,28 +373,28 @@ export function TripsTable({
                   </span>
                   <Button
                       variant='outline'
-                      size='icon-xs'
+                      size='icon-sm'
                       onClick={() => onPageChange(1)}
                       disabled={page <= 1}>
                       <ChevronsLeftIcon />
                   </Button>
                   <Button
                       variant='outline'
-                      size='icon-xs'
+                      size='icon-sm'
                       onClick={() => onPageChange(page - 1)}
                       disabled={page <= 1}>
                       <ChevronLeftIcon />
                   </Button>
                   <Button
                       variant='outline'
-                      size='icon-xs'
+                      size='icon-sm'
                       onClick={() => onPageChange(page + 1)}
                       disabled={page >= totalPages}>
                       <ChevronRightIcon />
                   </Button>
                   <Button
                       variant='outline'
-                      size='icon-xs'
+                      size='icon-sm'
                       onClick={() => onPageChange(totalPages)}
                       disabled={page >= totalPages}>
                       <ChevronsRightIcon />

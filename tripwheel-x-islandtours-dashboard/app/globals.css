@@ -46,12 +46,26 @@
     --text-sm--line-height: 1.25rem;
     --text-base: 1rem; /* 16px - form inputs (§5.2) */
     --text-base--line-height: 1.5rem;
+    /* Heading steps carry NEGATIVE letter-spacing baked into the scale.
+     * Inter needs optical tightening at display sizes - Playfair (the old
+     * heading serif) was naturally tight, so its call sites carried no
+     * tracking classes, and dropping it left large Inter looking loose and
+     * airy. Baking the tracking into --text-lg/xl/2xl fixes every heading
+     * without touching a call site. (Tailwind v4: --text-*--letter-spacing
+     * rides along with the size utility.) */
     --text-lg: 1.25rem; /* 20px - card + section titles */
     --text-lg--line-height: 1.75rem;
+    --text-lg--letter-spacing: -0.011em;
     --text-xl: 1.5rem; /* 24px - page titles */
     --text-xl--line-height: 2rem;
+    --text-xl--letter-spacing: -0.014em;
     --text-2xl: 1.875rem; /* 30px - metrics */
     --text-2xl--line-height: 2.25rem;
+    --text-2xl--letter-spacing: -0.017em;
+    /* Tailwind-default sizes above our scale (rare: 3 usages) get the same
+     * optical correction. */
+    --text-3xl--letter-spacing: -0.019em;
+    --text-4xl--letter-spacing: -0.021em;
 
     --tracking-tight: -0.011em;
     --tracking-normal: 0em; /* defect B-5: applied to body but never defined */
@@ -337,10 +351,10 @@
  * Shadows sidestep the question entirely by using `--elevation-*` as the
  * source name, which is Tailwind's own documented pattern. */
 @theme inline {
-    /* Fonts stay wired to next/font (Noto Sans, Playfair, JetBrains Mono).
-     * 03 §3 hardcodes Inter here, but Phase 13 owns the font swap - doing it
-     * now would change fonts two phases early and outside its own validation. */
-    --font-heading: var(--font-heading);
+    /* Two families (03 §6, Phase 13): Inter (--font-sans, body AND headings -
+     * Playfair dropped by user decision 2026-07-17) + JetBrains Mono. Both
+     * load via next/font in app/layout.tsx. There is no --font-heading:
+     * headings inherit the sans stack; re-adding the class does nothing. */
     --font-sans: var(--font-sans);
     --font-mono: var(--font-jetbrains-mono);
 

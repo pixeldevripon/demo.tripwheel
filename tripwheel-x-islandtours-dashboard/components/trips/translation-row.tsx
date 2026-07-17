@@ -36,7 +36,7 @@ export function TranslationRow({ locale, localeLabel, defaultValue, onSave, isSa
         placeholder={`${localeLabel} translation`}
         className="flex-1 h-8 text-sm"
       />
-      <Button type="submit" size="xs" disabled={isSaving}>Save</Button>
+      <Button type="submit" size="sm" disabled={isSaving}>Save</Button>
     </form>
   );
 }

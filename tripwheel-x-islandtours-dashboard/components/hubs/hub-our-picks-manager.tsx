@@ -239,7 +239,7 @@ export function HubOurPicksManager({ hubId }: HubOurPicksManagerProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => removeRow(row.key)}
                   >

@@ -414,7 +414,7 @@ export function CollectionForm({ collection, onManageTours }: CollectionFormProp
                   <Button
                     type="button"
                     variant="outline"
-                    size="xs"
+                    size="sm"
                     onClick={() => onManageTours?.()}
                   >
                     Manage Tours

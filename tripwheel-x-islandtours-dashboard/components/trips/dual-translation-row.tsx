@@ -54,7 +54,7 @@ export function DualTranslationRow({
         <Input {...register('primary')} placeholder={`${localeLabel} ${primaryLabel}`} className="h-8 text-sm" />
         <Input {...register('secondary')} placeholder={`${localeLabel} ${secondaryLabel} (optional)`} className="h-8 text-sm" />
       </div>
-      <Button type="submit" size="xs" disabled={isSaving} className="mt-0.5">
+      <Button type="submit" size="sm" disabled={isSaving} className="mt-0.5">
         Save
       </Button>
     </form>

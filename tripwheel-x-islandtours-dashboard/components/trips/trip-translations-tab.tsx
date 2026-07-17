@@ -343,7 +343,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
               <Button
                 type="button"
                 variant="destructive"
-                size="xs"
+                size="sm"
                 onClick={handleDelete}
                 disabled={isEnglish ? isUpserting : isDeleting}
               >
@@ -358,7 +358,7 @@ function LocaleTab({ tripId, locale, tripName, isEnglish = false }: LocaleTabPro
               <Button
                 type="button"
                 variant="outline"
-                size="xs"
+                size="sm"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel

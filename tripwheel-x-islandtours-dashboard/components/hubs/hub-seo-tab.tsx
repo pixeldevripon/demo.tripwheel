@@ -72,7 +72,7 @@ function SocialCard({ hub }: { hub: HubDetail }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Social Sharing
         </CardTitle>
       </CardHeader>
@@ -315,7 +315,7 @@ export function HubSeoTab({ hub }: HubSeoTabProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
             Search Engine Listing
           </CardTitle>
         </CardHeader>

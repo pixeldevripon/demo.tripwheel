@@ -312,7 +312,7 @@ export function PaymentsTable({
           </span>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(1)}
             disabled={page <= 1}
           >
@@ -320,7 +320,7 @@ export function PaymentsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
           >
@@ -328,7 +328,7 @@ export function PaymentsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
           >
@@ -336,7 +336,7 @@ export function PaymentsTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
           >

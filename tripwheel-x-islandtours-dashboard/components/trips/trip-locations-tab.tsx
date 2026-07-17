@@ -378,7 +378,7 @@ export function TripLocationsTab({ tripId }: TripLocationsTabProps) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Itinerary &amp; Locations</CardTitle>
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Itinerary &amp; Locations</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">Start point, itinerary stops, end point and points of interest.</p>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">

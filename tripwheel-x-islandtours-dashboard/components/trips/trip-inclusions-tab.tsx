@@ -183,7 +183,7 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Inclusions</CardTitle>
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Inclusions</CardTitle>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">
         {isLoading ? (

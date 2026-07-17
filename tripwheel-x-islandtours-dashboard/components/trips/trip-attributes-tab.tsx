@@ -121,7 +121,7 @@ export function TripAttributesTab({ trip }: { trip: TripListItem }) {
   return (
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Attributes
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">

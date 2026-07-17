@@ -171,7 +171,7 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
           </span>{' '}
           cap
         </span>
-        <Button size="xs" variant="outline" onClick={handleToggleActive} disabled={isUpdating}>
+        <Button size="sm" variant="outline" onClick={handleToggleActive} disabled={isUpdating}>
           {isActive ? 'Pause' : 'Activate'}
         </Button>
         <Button
@@ -254,7 +254,7 @@ function StartTimesSection({ tripId, declaredStartTimes, schedules }: StartTimes
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Start Times
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
@@ -494,7 +494,7 @@ export function TripSchedulesTab({
 
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
             Recurring Schedules
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
@@ -971,7 +971,7 @@ function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectio
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Date Exceptions
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">

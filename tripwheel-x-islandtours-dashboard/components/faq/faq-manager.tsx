@@ -120,7 +120,7 @@ function FaqLocaleEditor({
         <FieldError>{errors.answer?.message}</FieldError>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" size="xs" disabled={isPending}>
+        <Button type="submit" size="sm" disabled={isPending}>
           <CheckIcon />
           {isPending ? 'Saving...' : 'Save'}
         </Button>
@@ -207,7 +207,7 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
               </button>
               <Button
                 variant="ghost"
-                size="icon-xs"
+                size="icon-sm"
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => setDeleteOpen(true)}
               >
@@ -347,7 +347,7 @@ function DisplayOrderField({
       </Field>
       <Button
         type="button"
-        size="xs"
+        size="sm"
         variant="outline"
         disabled={disabled || !dirty || value === ''}
         onClick={() => onSave(Number(value))}

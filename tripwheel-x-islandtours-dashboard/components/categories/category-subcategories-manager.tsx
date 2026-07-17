@@ -96,7 +96,7 @@ export function CategorySubcategoriesManager({ parent }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Sub-categories
         </CardTitle>
       </CardHeader>

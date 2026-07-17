@@ -45,7 +45,7 @@ export function BookingDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          <DialogTitle className="text-lg font-semibold uppercase tracking-wider">
             {b.displayRef}
           </DialogTitle>
           <DialogDescription>

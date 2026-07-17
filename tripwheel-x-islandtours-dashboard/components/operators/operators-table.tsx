@@ -159,10 +159,10 @@ export function OperatorsTable({
           </span>
           {can('MANAGE_OPERATORS') && (
             <div className="flex items-center gap-2 ml-auto">
-              <Button size="xs" variant="outline" onClick={() => bulkSetActive(true)}>
+              <Button size="sm" variant="outline" onClick={() => bulkSetActive(true)}>
                 Activate
               </Button>
-              <Button size="xs" variant="outline" onClick={() => bulkSetActive(false)}>
+              <Button size="sm" variant="outline" onClick={() => bulkSetActive(false)}>
                 Deactivate
               </Button>
             </div>
@@ -235,16 +235,16 @@ export function OperatorsTable({
           <span className="text-xs text-muted-foreground mr-2">
             Page {page} of {totalPages}
           </span>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(1)} disabled={page <= 1}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(1)} disabled={page <= 1}>
             <ChevronsLeftIcon />
           </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
             <ChevronLeftIcon />
           </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
             <ChevronRightIcon />
           </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
             <ChevronsRightIcon />
           </Button>
         </div>

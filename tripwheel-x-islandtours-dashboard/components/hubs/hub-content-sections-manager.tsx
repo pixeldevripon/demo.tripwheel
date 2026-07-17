@@ -370,7 +370,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                   <Button
                     type="button"
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => clearLocale(block.key, loc)}
                   >
@@ -427,7 +427,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
           return (
             <section key={type} className="space-y-3">
               <div className="min-w-0">
-                <h3 className="font-heading text-sm font-semibold uppercase tracking-wider">
+                <h3 className="text-sm font-semibold uppercase tracking-wider">
                   {meta.label}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">{meta.hint}</p>
@@ -445,7 +445,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
           <section key={type} className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="font-heading text-sm font-semibold uppercase tracking-wider">
+                <h3 className="text-sm font-semibold uppercase tracking-wider">
                   {meta.label}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">
                     {typeBlocks.length}
@@ -492,7 +492,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             disabled={idx === 0}
                             onClick={() => moveBlock(block.key, -1)}
                             aria-label="Move up"
@@ -502,7 +502,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             disabled={idx === typeBlocks.length - 1}
                             onClick={() => moveBlock(block.key, 1)}
                             aria-label="Move down"
@@ -512,7 +512,7 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon-xs"
+                            size="icon-sm"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeBlock(block.key)}
                             aria-label="Remove block"

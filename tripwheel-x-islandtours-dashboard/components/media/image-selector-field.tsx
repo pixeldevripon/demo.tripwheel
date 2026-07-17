@@ -173,7 +173,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
               <Button
                 type="button"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto py-0.5 text-[10px] uppercase tracking-widest"
                 onClick={() => onChange([])}
                 disabled={disabled}
@@ -252,7 +252,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
               <Button
                 type="button"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 onClick={() => setOpen(true)}
                 disabled={disabled}
                 className="text-[10px] uppercase tracking-widest h-6 px-2"
@@ -263,7 +263,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-xs"
+                size="icon-sm"
                 onClick={() => onChange(null)}
                 disabled={disabled}
                 className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6"

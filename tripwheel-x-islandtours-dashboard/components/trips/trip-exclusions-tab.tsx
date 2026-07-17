@@ -275,7 +275,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Exclusions</CardTitle>
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Exclusions</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">What&apos;s NOT included in this tour.</p>
       </CardHeader>
       <CardContent className="pt-6 space-y-4">

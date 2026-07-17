@@ -15,7 +15,7 @@ export default function NewDestinationPage() {
 
       <div className="flex items-center gap-2 mb-6">
         <MapPinIcon className="size-5 text-muted-foreground" />
-        <h1 className="font-heading text-2xl font-semibold uppercase tracking-wider">
+        <h1 className="text-2xl font-semibold uppercase tracking-wider">
           Add Destination
         </h1>
       </div>

@@ -197,7 +197,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             onClick={handleSetDefault}
             disabled={isUpdating || ageBand.isDefault}
@@ -401,7 +401,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             onClick={handleToggleActive}
             disabled={isUpdating}
@@ -572,7 +572,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Pricing</CardTitle>
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Pricing</CardTitle>
         <p className="text-sm text-muted-foreground">
           How this tour is priced. Per-person tours use age bands (below); unit-priced tours charge for
           the whole unit plus a per-extra-guest surcharge.
@@ -823,7 +823,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       {isUnit ? (
         <Card>
           <CardHeader className="border-b pb-4">
-            <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+            <CardTitle className="text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
@@ -836,7 +836,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       ) : (
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Age Bands</CardTitle>
           <p className="text-sm text-muted-foreground">
             Per-traveler price tiers. The tour&apos;s &ldquo;from&rdquo; price is the default band (usually Adult).
           </p>
@@ -1009,7 +1009,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
       {/* Add-Ons */}
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Add-Ons</CardTitle>
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Add-Ons</CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           {isLoadingAddOns ? (

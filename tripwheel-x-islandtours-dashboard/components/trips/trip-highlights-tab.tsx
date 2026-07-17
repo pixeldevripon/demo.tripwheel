@@ -163,7 +163,7 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
     <Card>
       <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Highlights</CardTitle>
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">Highlights</CardTitle>
           <div className="flex gap-2">
             <Badge variant="secondary">{count}/6</Badge>
             {count < 3 && <Badge variant="destructive">Need at least 3</Badge>}

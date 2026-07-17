@@ -233,7 +233,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
     <Card>
       <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+          <CardTitle className="text-lg font-semibold uppercase tracking-wider">
             Info &amp; Terms
           </CardTitle>
           <Badge variant="secondary">{count}</Badge>

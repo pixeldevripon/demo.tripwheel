@@ -270,7 +270,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="xs"
+                  size="sm"
                   className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => removeGroup(group.key)}
                 >
@@ -339,7 +339,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                             <Button
                               type="button"
                               variant="ghost"
-                              size="icon-xs"
+                              size="icon-sm"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 mb-1"
                               onClick={() => removeTour(group.key, tour.key)}
                             >
@@ -363,7 +363,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                       </Card>
                     );
                   })}
-                  <Button type="button" variant="outline" size="xs" onClick={() => addTour(group.key)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => addTour(group.key)}>
                     <PlusIcon />
                     Add Tour Column
                   </Button>

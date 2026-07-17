@@ -377,15 +377,15 @@ export function LocalsFavouritesTable({
           <span className="text-xs text-muted-foreground mr-2">
             Page {page} of {totalPages || 1}
           </span>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(1)} disabled={page <= 1}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(1)} disabled={page <= 1}>
             <ChevronsLeftIcon />
           </Button>
-          <Button variant="outline" size="icon-xs" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+          <Button variant="outline" size="icon-sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
             <ChevronLeftIcon />
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
           >
@@ -393,7 +393,7 @@ export function LocalsFavouritesTable({
           </Button>
           <Button
             variant="outline"
-            size="icon-xs"
+            size="icon-sm"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
           >

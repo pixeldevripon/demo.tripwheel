@@ -220,7 +220,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           <TabsContent value="tours">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
                   Tours
                 </CardTitle>
               </CardHeader>
@@ -241,7 +241,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
           <TabsContent value="faqs">
             <Card>
               <CardHeader className="border-b pb-4">
-                <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+                <CardTitle className="text-lg font-semibold uppercase tracking-wider">
                   FAQs
                 </CardTitle>
               </CardHeader>

@@ -75,7 +75,7 @@ function AllowedCategoryCard({ item, hubId }: AllowedCategoryCardProps) {
             </div>
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
               onClick={() => setDeleteOpen(true)}
             >

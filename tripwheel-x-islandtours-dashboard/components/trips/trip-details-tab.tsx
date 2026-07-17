@@ -104,7 +104,7 @@ function LanguagesCard({ tripId }: { tripId: string }) {
   return (
     <Card>
       <CardHeader className="border-b pb-4">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">
           Guide Languages
         </CardTitle>
       </CardHeader>
@@ -472,7 +472,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
     <div className="space-y-6">
     <Card>
       <CardHeader className="border-b pb-8">
-        <CardTitle className="font-heading text-lg font-semibold uppercase tracking-wider">Core Details</CardTitle>
+        <CardTitle className="text-lg font-semibold uppercase tracking-wider">Core Details</CardTitle>
       </CardHeader>
       <CardContent className="pt-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -879,7 +879,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
             type="button"
             className="group/octo flex w-full items-center justify-between gap-2 px-8 py-6 text-left"
           >
-            <span className="font-heading text-lg font-semibold uppercase tracking-wider">
+            <span className="text-lg font-semibold uppercase tracking-wider">
               OCTO &amp; Delivery
             </span>
             <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/octo:rotate-180" />
