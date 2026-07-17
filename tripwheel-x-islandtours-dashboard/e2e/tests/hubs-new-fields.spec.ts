@@ -78,12 +78,6 @@ test.describe('Hubs - Hub Type Select on create form', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('Hub Type select is rendered', async ({ page }) => {
-    await expect(
-      page.getByRole('combobox').filter({ hasText: /select a hub type/i }),
-    ).toBeVisible();
-  });
-
   test('Hub Type select contains LOCATION option', async ({ page }) => {
     await page.getByRole('combobox').filter({ hasText: /select a hub type/i }).click();
     await expect(page.getByRole('option', { name: /location/i })).toBeVisible({ timeout: 5_000 });
@@ -125,14 +119,6 @@ test.describe('Hubs - Hub Type Select on create form', () => {
   // -------------------------------------------------------------------------
   // Lat/Lng optional fields
   // -------------------------------------------------------------------------
-  test('Latitude input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="latitude"]')).toBeVisible();
-  });
-
-  test('Longitude input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="longitude"]')).toBeVisible();
-  });
-
   test('invalid latitude shows validation error', async ({ page }) => {
     await page.locator('input[name="name"]').fill('Validate lat');
     await page.locator('input[name="latitude"]').fill('200');

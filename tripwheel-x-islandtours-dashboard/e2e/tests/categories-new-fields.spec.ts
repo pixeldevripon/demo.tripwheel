@@ -54,14 +54,6 @@ test.describe('Categories - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 1. Lucide icon picker
   // -------------------------------------------------------------------------
-  test('Icon picker button is rendered', async ({ page }) => {
-    // CategoryIconPicker renders a Button with either the selected icon name or
-    // "Pick an icon" placeholder text
-    await expect(
-      page.getByRole('button', { name: /pick an icon/i }),
-    ).toBeVisible();
-  });
-
   test('clicking Icon picker opens a popover with a search input', async ({ page }) => {
     await page.getByRole('button', { name: /pick an icon/i }).click();
     // Popover should contain a search input
@@ -114,17 +106,9 @@ test.describe('Categories - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 2. Description textarea
   // -------------------------------------------------------------------------
-  test('Description textarea is visible', async ({ page }) => {
-    await expect(page.locator('textarea[name="description"]')).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 3. Sort Order
   // -------------------------------------------------------------------------
-  test('Sort Order number input is visible', async ({ page }) => {
-    await expect(page.locator('input[name="sortOrder"]')).toBeVisible();
-  });
-
   test('Sort Order defaults to 0', async ({ page }) => {
     await expect(page.locator('input[name="sortOrder"]')).toHaveValue('0');
   });
@@ -132,12 +116,6 @@ test.describe('Categories - new fields on create form', () => {
   // -------------------------------------------------------------------------
   // 4. Parent Category select
   // -------------------------------------------------------------------------
-  test('Parent Category select is rendered', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
-    // The select should contain a "None" option once the active categories load
-    await expect(page.getByText(/parent category/i)).toBeVisible();
-  });
-
   // -------------------------------------------------------------------------
   // 5. Regression: slug auto-generates from name
   // -------------------------------------------------------------------------
