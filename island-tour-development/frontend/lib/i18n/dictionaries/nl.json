@@ -3,11 +3,13 @@
     "selectIsland": "Kies je eiland",
     "wishlist": "Verlanglijst",
     "account": "Account",
+    "logout": "Uitloggen",
     "menu": "Menu",
     "close": "Sluiten",
     "language": "Taal",
     "categories": "Categorieën",
-    "search": "Zoeken naar"
+    "search": "Zoeken naar",
+    "myBookings": "Mijn boekingen"
   },
   "footer": {
     "tagline": "Gemaakt door eilandbewoners.",
@@ -56,7 +58,12 @@
     "hours": "{value} uur",
     "hour": "1 uur",
     "minutes": "{value} min",
-    "range": "{from} tot {to} uur"
+    "range": "{from} tot {to} uur",
+    "toursIn": "Tours in {name}",
+    "beyond": "Verder dan {name}",
+    "tourCount": "{count} tours",
+    "tourCountOne": "1 tour",
+    "seeAllTours": "Alle tours bekijken"
   },
   "wishlist": {
     "title": "Jouw verlanglijst",
@@ -761,5 +768,31 @@
     "issueTitle": "Probleem met boeking of betaling?",
     "issueBody": "Mail {email} en vermeld je ref ({ref})",
     "replyTime": "We reageren meestal binnen 12 uur"
+  },
+  "travelerLogin": {
+    "title": "Jouw boekingen",
+    "subtitle": "Log in met het e-mailadres waarmee je hebt geboekt en je boekingsreferentie.",
+    "emailLabel": "E-mailadres",
+    "refLabel": "Boekingsreferentie",
+    "refHint": "Bovenaan je bevestigingsmail.",
+    "submit": "Toon mijn boekingen",
+    "checking": "Controleren",
+    "redirecting": "Doorsturen",
+    "errorBefore": "Dat e-mailadres en die referentie komen niet overeen. Controleer je bevestigingsmail, of",
+    "errorLink": "stuur ons een WhatsApp",
+    "errorAfter": "en we lossen het op.",
+    "lostLink": "Referentie kwijt?",
+    "back": "Terug",
+    "lostTitle": "We mailen hem naar je",
+    "lostSubtitle": "Vul het e-mailadres in waarmee je hebt geboekt.",
+    "lostSubmit": "Mail mij mijn referentie",
+    "sending": "Versturen",
+    "sentNote": "Als er boekingen bij ons op dat e-mailadres staan, is de referentie onderweg.",
+    "whatsapp": "WhatsApp ons",
+    "operatorCta": "Touroperator? Log in op het operatorportaal",
+    "terms": "Voorwaarden",
+    "privacy": "Privacybeleid",
+    "help": "Help",
+    "tagline": "Gemaakt door eilandbewoners."
   }
 }

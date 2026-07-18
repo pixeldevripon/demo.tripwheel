@@ -90,9 +90,11 @@ export async function generateMetadata(): Promise<Metadata> {
         ...(googleVerification
             ? { verification: { google: googleVerification } }
             : {}),
-        // Dashboard-managed favicon; the static app/favicon.ico remains the
-        // fallback when none is configured.
-        ...(site.favicon ? { icons: { icon: site.favicon } } : {}),
+        // Dashboard-managed favicon. The static file lives in public/ (NOT
+        // app/ - an app/favicon.ico is always auto-injected by Next and
+        // browsers prefer it over the dynamic link), so exactly one icon link
+        // is emitted: the settings URL, or the bundled fallback.
+        icons: { icon: site.favicon || '/favicon.ico' },
         openGraph: {
             title: seo.ogTitle ?? title,
             description: seo.ogDescription ?? description,

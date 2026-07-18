@@ -42,6 +42,38 @@ export interface SearchHit {
   /** Listing badge (master §3.6/§3.7), at most one by priority; null = none. */
   badge: 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null;
   images: { url: string; altText: string | null }[];
+  /** Localized primary-category name - context label on typeahead rows. */
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  /** Destination display name (suggest endpoint only - "Beyond X" rows). */
+  destinationName?: string | null;
+}
+
+// ── Typeahead suggestions (GET /search/suggest) ─────────────────────────────
+
+export interface SuggestCategory {
+  id: string;
+  slug: string;
+  name: string;
+  tourCount: number;
+}
+
+export interface SuggestHub {
+  id: string;
+  slug: string;
+  name: string;
+  destinationSlug: string;
+  destinationName: string;
+}
+
+export interface SearchSuggest {
+  query: string;
+  /** Scoped total for the "see all N results" footer. */
+  total: number;
+  categories: SuggestCategory[];
+  hubs: SuggestHub[];
+  tours: SearchHit[];
+  beyondTours: SearchHit[];
 }
 
 export interface SearchResults {

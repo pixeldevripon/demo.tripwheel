@@ -3,7 +3,7 @@ import { ToursService } from '@/tours/tours.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SearchQueryDto } from './dto/search.dto';
-import { ApiSearchToursDocs } from './search.swagger';
+import { ApiSearchSuggestDocs, ApiSearchToursDocs } from './search.swagger';
 
 @ApiTags('Search')
 @Controller('search')
@@ -22,6 +22,25 @@ export class SearchController {
       currency: query.currency,
       page: query.page,
       limit: query.limit,
+    });
+  }
+
+  /**
+   * GET /search/suggest
+   *
+   * Navbar typeahead: matched categories (with scoped tour counts), published
+   * hubs, tours in the active destination, and a "beyond" strip from other
+   * destinations when scoped.
+   */
+  @Get('suggest')
+  @Public()
+  @ApiSearchSuggestDocs()
+  suggest(@Query() query: SearchQueryDto) {
+    return this.toursService.suggest({
+      q: query.q,
+      destinationSlug: query.destinationSlug,
+      locale: query.locale,
+      currency: query.currency,
     });
   }
 }

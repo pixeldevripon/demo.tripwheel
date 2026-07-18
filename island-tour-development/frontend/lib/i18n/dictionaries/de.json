@@ -3,11 +3,13 @@
     "selectIsland": "Insel auswählen",
     "wishlist": "Merkliste",
     "account": "Konto",
+    "logout": "Abmelden",
     "menu": "Menü",
     "close": "Schließen",
     "language": "Sprache",
     "categories": "Kategorien",
-    "search": "Suchen"
+    "search": "Suchen",
+    "myBookings": "Meine Buchungen"
   },
   "footer": {
     "tagline": "Von Inselbewohnern gemacht.",
@@ -56,7 +58,12 @@
     "hours": "{value} Std.",
     "hour": "1 Std.",
     "minutes": "{value} Min.",
-    "range": "{from} bis {to} Std."
+    "range": "{from} bis {to} Std.",
+    "toursIn": "Touren in {name}",
+    "beyond": "Jenseits von {name}",
+    "tourCount": "{count} Touren",
+    "tourCountOne": "1 Tour",
+    "seeAllTours": "Alle Touren ansehen"
   },
   "wishlist": {
     "title": "Deine Wunschliste",
@@ -761,5 +768,31 @@
     "issueTitle": "Problem mit Buchung oder Zahlung?",
     "issueBody": "Schreib an {email} und gib deine Ref. an ({ref})",
     "replyTime": "Wir antworten meist innerhalb von 12 Stunden"
+  },
+  "travelerLogin": {
+    "title": "Deine Buchungen",
+    "subtitle": "Melde dich mit der E-Mail-Adresse deiner Buchung und deiner Buchungsreferenz an.",
+    "emailLabel": "E-Mail",
+    "refLabel": "Buchungsreferenz",
+    "refHint": "Oben in deiner Bestätigungs-E-Mail.",
+    "submit": "Meine Buchungen anzeigen",
+    "checking": "Wird geprüft",
+    "redirecting": "Weiterleiten",
+    "errorBefore": "Diese E-Mail-Adresse und Referenz passen nicht zusammen. Prüfe deine Bestätigungs-E-Mail oder",
+    "errorLink": "schreib uns auf WhatsApp",
+    "errorAfter": "und wir klären das.",
+    "lostLink": "Referenz verloren?",
+    "back": "Zurück",
+    "lostTitle": "Wir mailen sie dir",
+    "lostSubtitle": "Gib die E-Mail-Adresse ein, mit der du gebucht hast.",
+    "lostSubmit": "Referenz per E-Mail senden",
+    "sending": "Wird gesendet",
+    "sentNote": "Wenn zu dieser E-Mail-Adresse Buchungen bestehen, ist die Referenz unterwegs.",
+    "whatsapp": "WhatsApp",
+    "operatorCta": "Touranbieter? Zum Anbieter-Portal",
+    "terms": "AGB",
+    "privacy": "Datenschutz",
+    "help": "Hilfe",
+    "tagline": "Von Inselbewohnern gemacht."
   }
 }

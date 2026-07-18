@@ -21,7 +21,7 @@ import {
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
-import type { SearchHit } from '@/types/search';
+import type { SearchHit, SearchSuggest } from '@/types/search';
 
 /**
  * Destination hero search - the page's whole search responsibility, split out of
@@ -204,15 +204,31 @@ export function DestinationHeroSearch({
             <AnimatePresence>
                 {showPanel && (
                     <SearchTypeahead
-                        hits={hits}
-                        total={total}
+                        // Hero search stays tours-only (it carries the date
+                        // filter, which /search/suggest doesn't) - wrapped in
+                        // the suggest shape with empty entity buckets.
+                        suggest={
+                            {
+                                query: trimmed,
+                                total,
+                                categories: [],
+                                hubs: [],
+                                tours: hits,
+                                beyondTours: [],
+                            } satisfies SearchSuggest
+                        }
                         loading={loading}
                         query={trimmed}
                         locale={locale}
                         currency={currency}
                         dict={search}
+                        islandName={null}
                         searchHref={searchHref}
                         tourHref={tourHref}
+                        categoryHref={null}
+                        hubHref={(destSlug, slug) =>
+                            localizeHref(locale, `/${destSlug}/${slug}`)
+                        }
                         onSelect={() => setFocused(false)}
                     />
                 )}

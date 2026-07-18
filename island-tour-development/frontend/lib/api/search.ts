@@ -4,7 +4,7 @@
  * `lib/api/public/search.ts`; this one runs in the browser.
  */
 import type { Currency, Locale } from '@/lib/constants/locales';
-import type { SearchResults } from '@/types/search';
+import type { SearchResults, SearchSuggest } from '@/types/search';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
@@ -43,6 +43,48 @@ export async function searchToursClient(
     });
     if (!res.ok) return empty;
     return (await res.json()) as SearchResults;
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * Typeahead suggestions across entity types (categories, hubs, tours in and
+ * beyond the active destination). Same failure contract as searchToursClient:
+ * empty buckets on any error, so the dropdown never needs a try/catch.
+ */
+export async function searchSuggestClient(
+  params: {
+    q: string;
+    locale?: Locale;
+    currency?: Currency;
+    destinationSlug?: string;
+  },
+  signal?: AbortSignal,
+): Promise<SearchSuggest> {
+  const q = params.q.trim();
+  const empty: SearchSuggest = {
+    query: q,
+    total: 0,
+    categories: [],
+    hubs: [],
+    tours: [],
+    beyondTours: [],
+  };
+  if (q.length < 2) return empty;
+
+  const qs = new URLSearchParams({ q });
+  if (params.locale) qs.set('locale', params.locale);
+  if (params.currency) qs.set('currency', params.currency);
+  if (params.destinationSlug) qs.set('destinationSlug', params.destinationSlug);
+
+  try {
+    const res = await fetch(`${BASE_URL}/search/suggest?${qs.toString()}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+    });
+    if (!res.ok) return empty;
+    return (await res.json()) as SearchSuggest;
   } catch {
     return empty;
   }

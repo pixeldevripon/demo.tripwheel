@@ -3,11 +3,13 @@
     "selectIsland": "Select your Island",
     "wishlist": "Wishlist",
     "account": "Account",
+    "logout": "Log out",
     "menu": "Menu",
     "close": "Close",
     "language": "Language",
     "categories": "Categories",
-    "search": "Search for"
+    "search": "Search for",
+    "myBookings": "My bookings"
   },
   "footer": {
     "tagline": "Built by Islanders.",
@@ -56,7 +58,12 @@
     "hours": "{value} hours",
     "hour": "1 hour",
     "minutes": "{value} min",
-    "range": "{from} to {to} hours"
+    "range": "{from} to {to} hours",
+    "toursIn": "Tours in {name}",
+    "beyond": "Beyond {name}",
+    "tourCount": "{count} tours",
+    "tourCountOne": "1 tour",
+    "seeAllTours": "See all tours"
   },
   "wishlist": {
     "title": "Your wishlist",
@@ -761,5 +768,31 @@
     "issueTitle": "Booking or payment issue?",
     "issueBody": "Email {email} and include your ref ({ref})",
     "replyTime": "We usually reply within 12 hours"
+  },
+  "travelerLogin": {
+    "title": "Your bookings",
+    "subtitle": "Log in with the email you booked with and your booking reference.",
+    "emailLabel": "Email",
+    "refLabel": "Booking reference",
+    "refHint": "Top of your confirmation email.",
+    "submit": "Show my bookings",
+    "checking": "Checking",
+    "redirecting": "Redirecting",
+    "errorBefore": "That email and reference don't match. Check your confirmation email, or",
+    "errorLink": "WhatsApp us",
+    "errorAfter": "and we'll fix it.",
+    "lostLink": "Lost your reference?",
+    "back": "Back",
+    "lostTitle": "We'll email it to you",
+    "lostSubtitle": "Enter the email you booked with.",
+    "lostSubmit": "Email me my reference",
+    "sending": "Sending",
+    "sentNote": "If that email has bookings with us, the reference is on its way.",
+    "whatsapp": "WhatsApp us",
+    "operatorCta": "Tour operator? Log in to the operator portal",
+    "terms": "Terms",
+    "privacy": "Privacy Policy",
+    "help": "Help",
+    "tagline": "Built by Islanders."
   }
 }

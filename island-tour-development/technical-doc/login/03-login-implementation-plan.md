@@ -218,6 +218,33 @@ rough: S (1-2 days), M (3-5 days), L (1-2 weeks).
 7. **Tracking**: GA4 `login` (`method: booking_ref`) on success; PII-free failure counter; lockout ->
    ops alert.
 
+> **EXECUTED 2026-07-18 (partial - the core lookup loop is live):**
+> - Item 1 DONE, simplified: `POST /api/v1/bookings/lookup` (`@Public`) verifies
+>   `displayRef` + `contactEmail` (both case-insensitive) and returns
+>   `{ publicRef, displayRef, destinationSlug }`; every failure is the same generic 404
+>   (enumeration-proof message; constant-time comparison NOT implemented - it is a Prisma
+>   lookup, timing is dominated by the query). No signed token/session was minted: success is
+>   remembered CLIENT-side as the `it.travelerBooking` cookie holding the TYP path
+>   (`lib/traveler-booking.ts`, 90 days) - acceptable because the TYP page itself is keyed on
+>   the unguessable `publicRef`, so the cookie grants nothing the URL doesn't.
+> - Item 2 PARTIAL: per-IP `@Throttle` tiers (2/10s, 6/min, 30/hr) via the existing
+>   `@nestjs/throttler` setup; browser-only (the SSR internal-key bypass would skip limits).
+>   No per-email / per-reference caps yet (needs Redis).
+> - Item 6 PARTIAL: `/bookings` (no locale prefix, `app/(login)/bookings`) is wired to the real
+>   endpoint - controlled inputs, busy state, generic `ErrorNote` on failure, success saves the
+>   cookie and redirects to `/{destinationSlug}/thank-you/{publicRef}`. Copy is English-only
+>   (the screens were built pre-i18n); the navbar account icon + its "My bookings" item
+>   deep-link to the cookie's TYP path when present, `/bookings` otherwise.
+> - Item 4 DONE (2026-07-18, same day): `POST /bookings/lookup/recover-reference` (`@Public`,
+>   same human-pace per-IP throttle as resend: 1/10s, 3/min, 10/hr). Always acks
+>   `{ sent: true }`; when the email has bookings it sends ONE branded notice (the shared
+>   `booking-notice` shell) to the STORED contact address listing up to the 5 most recent
+>   references + a TYP CTA, fire-and-forget so response timing doesn't leak whether mail went
+>   out. The "Lost your reference?" panel is wired (busy state, always the generic "on its way"
+>   note). Per-email caps (1/email/min, 5/day) still pending Redis.
+> - NOT DONE: item 3 (non-sequential displayRef), item 5 (email-code step-up),
+>   item 7 (tracking events).
+
 ## Phase 2 - Operator seats & roles (L)
 
 *Recommended model: a custom `operator_users` table (see the sign-off callout in Part A). The

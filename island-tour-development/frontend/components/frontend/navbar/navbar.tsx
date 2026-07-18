@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchDestinationCategoriesClient } from '@/lib/api/categories-public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
+import { AccountMenu } from './account-menu';
 import { CategoriesMenu } from './categories-menu';
 import { DestinationSelector } from './destination-selector';
 import { LocaleSelector } from './locale-selector';
@@ -47,6 +48,14 @@ export function Navbar({
 
     const [mobileOpen, setMobileOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+    // Any navigation dismisses the mobile drawer/search - the menu links call
+    // onClose themselves, but this also covers the logo, search results, and
+    // same-layout client transitions where the overlay would otherwise linger.
+    useEffect(() => {
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
+    }, [pathname]);
 
     // Home keeps the discovery layout; every other page shows the inner layout.
     const isHome = pathname === '/' || pathname === `/${locale}`;
@@ -153,6 +162,7 @@ export function Navbar({
                     nav={dict}
                     search={search}
                     currentIsland={currentIsland}
+                    categories={categories}
                     showDesktop={!isHome}
                     mobileOpen={mobileSearchOpen}
                     onMobileClose={() => setMobileSearchOpen(false)}
@@ -164,20 +174,7 @@ export function Navbar({
                     <div className='w-px h-5 bg-it-border' />
                     <WishlistLink locale={locale} dict={dict} />
                     <div className='w-px h-5 bg-it-border' />
-                    <Link
-                        href='/login'
-                        aria-label={dict.account}
-                        className='flex items-center no-underline'>
-                        <motion.span className='inline-flex' {...iconPress}>
-                            <Image
-                                src='/icons/nav-profile.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6'
-                            />
-                        </motion.span>
-                    </Link>
+                    <AccountMenu locale={locale} dict={dict} />
                 </div>
 
                 {/* ── Mobile right: search + island + language + account + menu ── */}
@@ -212,20 +209,7 @@ export function Navbar({
                     />
                     <LocaleSelector variant='mobile' locale={locale} dict={dict} />
 
-                    <Link
-                        href='/login'
-                        aria-label={dict.account}
-                        className='flex items-center no-underline'>
-                        <motion.span className='inline-flex' {...iconPress}>
-                            <Image
-                                src='/icons/nav-profile.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6'
-                            />
-                        </motion.span>
-                    </Link>
+                    <AccountMenu locale={locale} dict={dict} />
 
                     <motion.button
                         className='bg-transparent border-none cursor-pointer p-0 text-it-ink'

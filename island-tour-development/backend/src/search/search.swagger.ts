@@ -21,3 +21,24 @@ export function ApiSearchToursDocs() {
     ApiResponse({ status: 500, type: InternalServerErrorDto }),
   );
 }
+
+export function ApiSearchSuggestDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Typeahead suggestions across entity types (public)',
+      description:
+        'Feeds the navbar search dropdown: matched categories (with a ' +
+        'destination-scoped LIVE-tour count), matched published hubs, tours ' +
+        'inside the active destination, and a "beyond" strip of tours from ' +
+        'other destinations when `destinationSlug` is set. Same matching ' +
+        'rules as GET /search, small fixed page sizes.',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Suggestion buckets: { query, total, categories, hubs, tours, beyondTours }',
+    }),
+    ApiResponse({ status: 400, type: BadRequestErrorDto }),
+    ApiResponse({ status: 500, type: InternalServerErrorDto }),
+  );
+}

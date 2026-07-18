@@ -3,11 +3,13 @@
     "selectIsland": "选择您的岛屿",
     "wishlist": "收藏夹",
     "account": "账户",
+    "logout": "退出登录",
     "menu": "菜单",
     "close": "关闭",
     "language": "语言",
     "categories": "分类",
-    "search": "搜索"
+    "search": "搜索",
+    "myBookings": "我的预订"
   },
   "footer": {
     "tagline": "由岛民打造。",
@@ -56,7 +58,12 @@
     "hours": "{value} 小时",
     "hour": "1 小时",
     "minutes": "{value} 分钟",
-    "range": "{from} 至 {to} 小时"
+    "range": "{from} 至 {to} 小时",
+    "toursIn": "{name}的行程",
+    "beyond": "{name}以外",
+    "tourCount": "{count} 个行程",
+    "tourCountOne": "1 个行程",
+    "seeAllTours": "查看全部行程"
   },
   "wishlist": {
     "title": "你的心愿单",
@@ -761,5 +768,31 @@
     "issueTitle": "预订或付款遇到问题？",
     "issueBody": "请发邮件至 {email} 并附上您的编号（{ref}）",
     "replyTime": "我们通常会在 12 小时内回复"
+  },
+  "travelerLogin": {
+    "title": "我的预订",
+    "subtitle": "使用预订时的邮箱和预订编号登录。",
+    "emailLabel": "邮箱",
+    "refLabel": "预订编号",
+    "refHint": "在确认邮件顶部。",
+    "submit": "查看我的预订",
+    "checking": "正在核对",
+    "redirecting": "正在跳转",
+    "errorBefore": "邮箱与预订编号不匹配。请核对确认邮件，或",
+    "errorLink": "通过 WhatsApp 联系我们",
+    "errorAfter": "，我们会为你解决。",
+    "lostLink": "找不到预订编号？",
+    "back": "返回",
+    "lostTitle": "我们会发送到你的邮箱",
+    "lostSubtitle": "输入预订时使用的邮箱。",
+    "lostSubmit": "发送我的预订编号",
+    "sending": "发送中",
+    "sentNote": "如果该邮箱有预订记录，预订编号已在发送途中。",
+    "whatsapp": "WhatsApp 联系我们",
+    "operatorCta": "旅游运营商？登录运营商门户",
+    "terms": "条款",
+    "privacy": "隐私政策",
+    "help": "帮助",
+    "tagline": "由岛民打造。"
   }
 }
