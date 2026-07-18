@@ -47,7 +47,7 @@ export function ThankYouNextSteps({
                             steps.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'
                         }`}>
                         {steps.map((step, i) => (
-                            <Reveal key={step.title} delay={0.2 + i * 0.12}>
+                            <Reveal key={step.title} listItem>
                                 <div className='flex flex-col items-center gap-8'>
                                     <span className='flex size-16 items-center justify-center rounded-full border border-[#d9d9d9] bg-it-white'>
                                         <span className='font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>

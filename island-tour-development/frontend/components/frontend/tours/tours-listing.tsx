@@ -27,6 +27,7 @@ export function ToursListing({
     pageCount,
     currentPage,
     emptyState,
+    peachFirst = false,
 }: {
     tours: TourListing[];
     dict: TourCardDict;
@@ -35,6 +36,12 @@ export function ToursListing({
     currentPage?: number;
     /** Empty-filtering-result copy. When provided, a zero-result grid shows it. */
     emptyState?: ToursEmptyStateDict;
+    /**
+     * Peach tint (master §B.63): tints card #1 (page 1 only). The caller gates
+     * it to the All Tours page under the DEFAULT sort - price sorts drop it,
+     * and category/search/hub/collection listings never pass it.
+     */
+    peachFirst?: boolean;
 }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -80,14 +87,20 @@ export function ToursListing({
     return (
         <Reveal className='flex flex-col gap-12 sm:gap-18'>
             {/* ── Tour grid ───────────────────────────────────────────────
-                Mobile: 2-col grid of compact 177px cards (16px gaps) - the
-                <TourCard> renders its compact variant automatically below a
-                220px container width (Figma node 48540:16790).
-                sm: 2-col with wider gaps · lg: 3-col (node 47167:4083). */}
-            <div className='grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3'>
+                Sitewide tour grid: 2-col mobile (compact cards - <TourCard>
+                switches variants below a 220px container width, Figma node
+                48540:16790), 3-col from sm with wider gaps, 4-col from lg. */}
+            <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
                 {tours.map((tour, i) => (
-                    <MountReveal key={tour.id} delay={0.02 + i * 0.1}>
-                        <TourCard tour={tour} dict={dict} />
+                    <MountReveal key={tour.id} listItem>
+                        <TourCard
+                            tour={tour}
+                            dict={dict}
+                            tinted={peachFirst && page === 1 && i === 0}
+                            // First card of the list renders pre-highlighted
+                            // (static hover treatment - top placement marker).
+                            highlighted={page === 1 && i === 0}
+                        />
                     </MountReveal>
                 ))}
             </div>

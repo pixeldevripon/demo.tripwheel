@@ -19,13 +19,22 @@ The default sort - shown to travelers as **"Locals' favorites"** (a.k.a.
 "Recommended") - is exactly:
 
 ```
-tier_rank ASC, quality_score DESC, id ASC
+is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC
 ```
 
+> `is_sponsored DESC` added by product decision 2026-07-18: the ACTIVE
+> Destination Spotlight tours (max 3 per destination, the only cards wearing the
+> Sponsored badge) lead every listing - the master's "separate labeled block" is
+> realized as spotlight-first within the single grid. Below them the pure master
+> §7.2 order applies.
+
+- **`is_sponsored`** = ACTIVE Destination Spotlight (max 3/destination) - the
+  leading sort key since 2026-07-18.
 - **`tier_rank`** (`1` = premium … `5` = standard) is denormalized from the
-  operator's commission tier. Paid placements float to the top **through tier_rank
-  alone** - there is no separate "sponsored" sort key. The Sponsored *badge* (§3.6)
-  is cosmetic and never changes position.
+  operator's commission tier. Below the spotlight block, paid placements float to
+  the top through tier_rank. The Sponsored *badge* (the FALLBACK label on any
+  paid placement with no earned badge - see TOUR-BADGES-AND-RANKING §2.2) never
+  reorders anything - the spotlight FLAG does, as its own sort key.
 - **`quality_score`** (0-100, nightly job, read-only at query time):
   ```
   quality_score = (avg_rating / 5)              * 40
@@ -45,7 +54,7 @@ tier_rank ASC, quality_score DESC, id ASC
 
 | UI label | Logic |
 |---|---|
-| Locals' favorites (default) | `tier_rank ASC, quality_score DESC, id` |
+| Locals' favorites (default) | `is_sponsored DESC, tier_rank ASC, quality_score DESC, id` |
 | Price: low to high | `price_from ASC` (then `base_price`) |
 | Price: high to low | `price_from DESC` |
 
@@ -57,10 +66,10 @@ tier_rank ASC, quality_score DESC, id ASC
 A tour is excluded from **every** ranked result set, regardless of tier, when
 `status != LIVE`, `is_active = false`, `is_bookable = false`, or it has no
 availability in the next 30 days. An excluded tour does **not** occupy a position
-(the next eligible tour moves up). In `findAll` the where-clause enforces
-`status = LIVE AND isActive AND isBookable`; the "no availability in 30 days" rule
-is carried by `isBookable`, which the nightly availability job clears (avoids a
-per-request departures join).
+(the next eligible tour moves up). Enforced in `findAll`, `search()`, the
+`suggest()` tour hits, and `findPublicByIds` (manual collections); the "no
+availability in 30 days" rule is carried by `isBookable`, which the nightly
+availability job recomputes (avoids a per-request departures join).
 
 ## Diversity pass (master §3.8)
 
@@ -75,17 +84,19 @@ are never reordered.
 ## Peach tint (master §B.63) — frontend only
 
 A subtle peach background (`#FFF5EE`) on **card #1 of the All Tours page under the
-default sort only**, dropped during price sorts. **Excluded:** hub pages and
-numbered collections. The destination "Locals' favorites" grid is not the All Tours
-page, so it carries no peach tint. This is a pure presentation rule (no effect on
-order); apply it in the All Tours listing component when built.
+default sort only**, dropped during price sorts. **Excluded:** hub pages, numbered
+collections, search, related tours, and category pages. The destination "Locals'
+favorites" grid is not the All Tours page, so it carries no peach tint. Pure
+presentation (no effect on order). **Built 2026-07-18:** `ToursListingSection` →
+`peachFirst` → `TourCard tinted` (sponsored/hover cream still takes over).
 
 ## Pointers
 
 - Order + diversity: `backend/src/tours/tours.service.ts` → `buildOrderBy`,
   `applyDiversityPass`, and the `findAll` where-clause / return.
-- API: `GET /api/v1/tours?sort=recommended|price_asc|price_desc|rating|newest`
-  (default `recommended`); `total` reflects the bookability-filtered set.
+- API: `GET /api/v1/tours?sort=recommended|price_asc|price_desc` (default
+  `recommended`; the public DTO rejects `rating`/`newest` per conflict log 68 -
+  `LAUNCH_TOUR_SORTS`); `total` reflects the bookability-filtered set.
 - Frontend: listings consume the API order verbatim and must not re-sort - see the
   header comment in `frontend/components/frontend/destination/destination-listings.tsx`.
 - Badges (independent of position): `TOUR-BADGES.md`.

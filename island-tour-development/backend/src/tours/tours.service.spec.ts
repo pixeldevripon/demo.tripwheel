@@ -649,12 +649,17 @@ describe('ToursService', () => {
       expect(countCall.where.priceFrom).toEqual({ gte: 50, lte: 200 });
     });
 
-    it('defaults to the Recommended sort (tierRank → rating → reviews → recency)', async () => {
+    it('defaults to the Recommended sort (spotlight first, then tierRank → quality → id)', async () => {
       prisma.tour.count.mockResolvedValue(0);
       prisma.tour.findMany.mockResolvedValue([]);
       await service.findAll({ page: 1, limit: 20 });
       const call = prisma.tour.findMany.mock.calls[0][0];
-      expect(call.orderBy[0]).toEqual({ tierRank: 'asc' });
+      expect(call.orderBy).toEqual([
+        { isSponsored: 'desc' },
+        { tierRank: 'asc' },
+        { qualityScore: 'desc' },
+        { id: 'asc' },
+      ]);
     });
 
     it('builds AND-ed attribute filters from raw query params (dictionary keys only)', async () => {
@@ -1614,6 +1619,120 @@ describe('ToursService', () => {
           flagged: 0,
           pct: 0,
         },
+      ]);
+    });
+  });
+
+  // ── Badges (earned first, sponsored = paid-placement fallback; 2026-07-18) ──
+
+  describe('deriveTourBadge (earned > sponsored fallback)', () => {
+    const derive = (t: Record<string, unknown>) =>
+      (service as any).deriveTourBadge({
+        isSponsored: false,
+        tierRank: 5,
+        likelyToSellOut: false,
+        likelyToSellOutOverride: null,
+        publishedAt: null,
+        aggregateRating: null,
+        aggregateReviewCount: 0,
+        ...t,
+      });
+
+    it('earned badges win over sponsored on paid placements', () => {
+      expect(derive({ tierRank: 1, likelyToSellOut: true })).toBe(
+        'likelyToSellOut',
+      );
+      expect(
+        derive({
+          isSponsored: true,
+          aggregateRating: 4.8,
+          aggregateReviewCount: 20,
+        }),
+      ).toBe('mostPopular');
+      expect(
+        derive({
+          tierRank: 2,
+          publishedAt: new Date(Date.now() - 5 * 86_400_000),
+        }),
+      ).toBe('new');
+    });
+
+    it('sponsored is the fallback for paid tiers P1-P3 and spotlight with no earned badge', () => {
+      expect(derive({ tierRank: 1 })).toBe('sponsored');
+      expect(
+        derive({ tierRank: 3, aggregateRating: 4.8, aggregateReviewCount: 4 }),
+      ).toBe('sponsored');
+      expect(
+        derive({
+          isSponsored: true,
+          aggregateRating: 4.3,
+          aggregateReviewCount: 3,
+        }),
+      ).toBe('sponsored');
+    });
+
+    it('open tiers with nothing earned show no badge', () => {
+      expect(derive({ tierRank: 4 })).toBeNull();
+      expect(
+        derive({ tierRank: 5, aggregateRating: 5, aggregateReviewCount: 4 }),
+      ).toBeNull();
+    });
+
+    it('earned priority: sell-out > most popular > new', () => {
+      expect(
+        derive({
+          likelyToSellOut: true,
+          aggregateRating: 5,
+          aggregateReviewCount: 50,
+        }),
+      ).toBe('likelyToSellOut');
+      expect(derive({ aggregateRating: 4.6, aggregateReviewCount: 12 })).toBe(
+        'mostPopular',
+      );
+    });
+  });
+
+  describe('applyMostPopularCap (master §3.6 "max 1 per category")', () => {
+    it('keeps the badge on the first per category; later ones fall back to sponsored (paid) or none', () => {
+      const items = [
+        {
+          badge: 'mostPopular',
+          primaryCategoryId: 'cat-a',
+          isSponsored: false,
+          tierRank: 3,
+        },
+        {
+          badge: 'mostPopular',
+          primaryCategoryId: 'cat-a',
+          isSponsored: false,
+          tierRank: 2,
+        },
+        {
+          badge: 'mostPopular',
+          primaryCategoryId: 'cat-b',
+          isSponsored: false,
+          tierRank: 4,
+        },
+        {
+          badge: 'mostPopular',
+          primaryCategoryId: 'cat-a',
+          isSponsored: false,
+          tierRank: 5,
+        },
+        {
+          badge: 'new',
+          primaryCategoryId: 'cat-a',
+          isSponsored: false,
+          tierRank: 1,
+        },
+      ] as any[];
+      (service as any).applyMostPopularCap(items);
+      expect(items.map((i) => i.badge)).toEqual([
+        'mostPopular', // first in cat-a keeps it
+        'sponsored', // capped, paid tier -> sponsored fallback
+        'mostPopular', // first in cat-b
+        null, // capped, open tier -> no badge
+        'new', // other badges untouched
       ]);
     });
   });

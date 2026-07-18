@@ -83,6 +83,8 @@ export const COARSE_CACHE_TAGS = [
     // footer and every NeedHelp surface, so a Settings > General save has to bust
     // it or the site serves the old number until the cacheLife expires.
     'site-info',
+    // Third-party platform reviews (Trustpilot/Google) - homepage testimonials.
+    'platform-reviews',
     // VESTIGIAL, AND KNOWINGLY KEPT. Nothing calls `cacheTag('user-profile')` in
     // either repo: it belonged to the dashboard's `getUserProfile`, which was
     // deliberately moved off `'use cache'` onto React `cache()` (caching a

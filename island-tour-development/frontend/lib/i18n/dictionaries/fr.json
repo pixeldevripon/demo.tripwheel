@@ -22,8 +22,6 @@
     "currency": "Devise",
     "links": {
       "boatTours": "Excursions en bateau",
-      "buggyTours": "Excursions en buggy",
-      "sunsetCruises": "Croisières au coucher du soleil",
       "help": "Centre d'aide",
       "contact": "Nous contacter",
       "listTour": "Référencez votre tour",

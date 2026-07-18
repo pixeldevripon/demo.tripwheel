@@ -43,7 +43,8 @@ export function TrustStrip({ items }: { items: TrustItem[] }) {
                     {items.map((item, i) => (
                         <Reveal
                             key={item.title}
-                            delay={i * 0.12}
+                            delay={0}
+                            listItem
                             className='flex-1'>
                             <TrustCard icon={icons[i]} item={item} />
                         </Reveal>

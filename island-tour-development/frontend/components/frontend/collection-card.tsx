@@ -73,10 +73,6 @@ export function CollectionCard({ collection, locale, destinationSlug, dict, clas
                     animate={{ paddingLeft: isHovered ? 16 : 0, paddingRight: isHovered ? 16 : 0 }}
                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                 >
-                    {/* Invisible spacer so the title aligns with where the star row would be */}
-                    <div className="flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]" aria-hidden="true">
-                        <span className="invisible select-none text-[14px] leading-[1.6]">&nbsp;</span>
-                    </div>
 
                     {/* Collection title */}
                     <h3 className="m-0 font-medium text-[14px] @[220px]:text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2">

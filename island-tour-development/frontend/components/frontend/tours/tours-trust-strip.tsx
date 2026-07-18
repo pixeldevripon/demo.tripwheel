@@ -30,10 +30,10 @@ export function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                     32px band padding (Figma node 48540:16942).
                     md+: single justified row of 16px items (node 47626:9337). */}
                 <div className='grid grid-cols-2 gap-x-4 gap-y-4 py-8 md:flex md:items-center md:justify-between md:gap-x-6 md:py-22.5'>
-                    {ITEMS.map(({ key, icon }, i) => {
+                    {ITEMS.map(({ key, icon }) => {
                         const item = dict[key];
                         return (
-                            <Reveal key={key} width='auto' delay={0.2 + i * 0.08}>
+                            <Reveal key={key} width='auto' listItem>
                             <div className='flex items-start gap-3 md:gap-4'>
                                 <Image
                                     src={icon}

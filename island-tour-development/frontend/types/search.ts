@@ -41,6 +41,12 @@ export interface SearchHit {
   isLocalsFavourite: boolean;
   /** Listing badge (master §3.6/§3.7), at most one by priority; null = none. */
   badge: 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null;
+  /**
+   * ACTIVE Destination Spotlight placement (max 3/destination). Distinct from
+   * the Sponsored BADGE (which also covers paid tiers as a fallback label):
+   * only the spotlight placement gets the pre-highlighted card treatment.
+   */
+  isSponsored: boolean;
   images: { url: string; altText: string | null }[];
   /** Localized primary-category name - context label on typeahead rows. */
   categoryName?: string | null;

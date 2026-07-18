@@ -194,6 +194,11 @@ export async function ToursListingSection({
                     dict={dict.destination.listings}
                     pageCount={pageCount}
                     currentPage={page}
+                    // §B.63 peach tint: All Tours only (not category pages),
+                    // default "Locals' favorites" sort only - price sorts drop it.
+                    peachFirst={
+                        !lockedCategory && filters.sort === 'localsFavorites'
+                    }
                     emptyState={{
                         title: dict.destination.allTours.emptyState.title,
                         description:

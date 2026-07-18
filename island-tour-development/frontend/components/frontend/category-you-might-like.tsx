@@ -69,11 +69,11 @@ export function CategoryYouMightLike({
                         {/* Mobile: horizontal snap-scroll of 274px cards (16px gap).
                             lg+: static 3-column grid (24px gap). */}
                         <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible'>
-                            {items.map((item, i) => (
+                            {items.map(item => (
                                 <Reveal
                                     key={item.slug}
                                     width='auto'
-                                    delay={0.2 + i * 0.1}
+                                    listItem
                                     className='w-68.5 shrink-0 snap-start lg:w-auto'>
                                     <MotionLink
                                         href={localizeHref(

@@ -50,7 +50,8 @@ import {
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SpotlightTable } from './spotlight-table';
-import type { SpotlightRequestWithInfo } from './spotlight-columns';
+import { deriveTourBadge } from '@/lib/tours/derive-badge';
+import type { SpotlightRequestWithInfo, TourInfo } from './spotlight-columns';
 
 const statusKey: Array<{
     status: SpotlightStatus;
@@ -102,12 +103,10 @@ export function SpotlightQueueView() {
     const [approveTarget, setApproveTarget] = useState<SpotlightRequestWithInfo | null>(null);
     const [rejectTarget, setRejectTarget] = useState<SpotlightRequestWithInfo | null>(null);
 
-    // Tour id -> display info (name, operator, destination, image, rating, reviewCount) from the admin tour list.
+    // Tour id -> display info (name, operator, destination, image, rating,
+    // reviewCount, tier + derived badge) from the admin tour list.
     const tourMap = useMemo(() => {
-        const map = new Map<
-            string,
-            { name: string; operator: string; destination: string; image?: string | null; rating: number | null; reviewCount: number }
-        >();
+        const map = new Map<string, TourInfo>();
         for (const t of adminTrips?.data ?? []) {
             map.set(t.id, {
                 name: t.name,
@@ -119,6 +118,9 @@ export function SpotlightQueueView() {
                 image: t.heroImage?.url,
                 rating: t.aggregateRating,
                 reviewCount: t.aggregateReviewCount,
+                tierKey: t.tierKey,
+                tierRank: t.tierRank,
+                badge: deriveTourBadge(t),
             });
         }
         return map;

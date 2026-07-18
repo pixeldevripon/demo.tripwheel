@@ -27,11 +27,11 @@ export function CategoryTrustStrip({ dict }: { dict: CategoryTrustDict }) {
     return (
         <Reveal className='flex flex-col gap-6 md:gap-10'>
             <ul className='m-0 flex list-none flex-col gap-2 p-0 md:flex-row md:items-center md:justify-between md:gap-2'>
-                {ORDER.map((key, i) => (
+                {ORDER.map(key => (
                     <li key={key}>
                         <Reveal
                             width='auto'
-                            delay={0.2 + i * 0.08}
+                            listItem
                             className='flex items-center gap-2'>
                             <Image
                                 src='/icons/trust-check.svg'

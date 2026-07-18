@@ -76,6 +76,8 @@ export interface CollectionRenderTour {
   cancellationHours: number | null;
   /** Server-derived badge (master §3.6); absent for MANUAL membership cards. */
   badge?: 'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored' | null;
+  /** ACTIVE Destination Spotlight placement (drives the highlighted card). */
+  isSponsored?: boolean;
   images?: { url: string }[];
   /** MANUAL only: the per-tour rationale for the requested locale (falls back to en). */
   rationale?: string | null;

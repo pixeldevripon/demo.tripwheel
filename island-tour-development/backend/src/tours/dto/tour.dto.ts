@@ -513,6 +513,18 @@ export enum TourSort {
   newest = 'newest',
 }
 
+/**
+ * Traveler-facing sort options at LAUNCH (master conflict log 68): three only.
+ * `rating`/`newest` stay in the enum for internal use (dynamic-collection
+ * `sortOrder`, and the documented reactivation path once review/booking volume
+ * is meaningful) but are rejected on the public query.
+ */
+export const LAUNCH_TOUR_SORTS = [
+  TourSort.recommended,
+  TourSort.price_asc,
+  TourSort.price_desc,
+] as const;
+
 export class RecomputeDemandResponseDto {
   @ApiProperty({ example: 9, description: 'Number of tours evaluated' })
   evaluated!: number;
@@ -535,12 +547,13 @@ export class TourQueryDto {
   search?: string;
 
   @ApiPropertyOptional({
-    enum: TourSort,
+    enum: LAUNCH_TOUR_SORTS,
     default: TourSort.recommended,
-    description: 'Sort order (default: Recommended)',
+    description:
+      'Sort order (default: Recommended). Launch set per master B.68 - rating/newest return later.',
   })
   @IsOptional()
-  @IsEnum(TourSort)
+  @IsIn(LAUNCH_TOUR_SORTS)
   sort?: TourSort = TourSort.recommended;
 
   @ApiPropertyOptional({ example: 60, description: 'Min duration in minutes' })

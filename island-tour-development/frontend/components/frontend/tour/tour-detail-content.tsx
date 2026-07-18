@@ -440,7 +440,7 @@ export async function TourDetailContent({
                                                     <li key={i}>
                                                         <Reveal
                                                             width='auto'
-                                                            delay={0.2 + i * 0.05}>
+                                                            listItem>
                                                             {h}
                                                         </Reveal>
                                                     </li>
@@ -488,11 +488,11 @@ export async function TourDetailContent({
                                         <div className='grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-16 md:gap-y-0'>
                                             {includedItems.length > 0 && (
                                                 <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {includedItems.map((item, i) => (
+                                                    {includedItems.map(item => (
                                                         <li key={item.id}>
                                                         <Reveal
                                                             width='auto'
-                                                            delay={0.2 + i * 0.05}
+                                                            listItem
                                                             className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                             <Image
                                                                 src='/icons/check-green.svg'
@@ -509,11 +509,11 @@ export async function TourDetailContent({
                                             )}
                                             {excludedItems.length > 0 && (
                                                 <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {excludedItems.map((item, i) => (
+                                                    {excludedItems.map(item => (
                                                         <li key={item.id}>
                                                         <Reveal
                                                             width='auto'
-                                                            delay={0.2 + i * 0.05}
+                                                            listItem
                                                             className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                             <Image
                                                                 src='/icons/exclude-cross.svg'
@@ -561,7 +561,7 @@ export async function TourDetailContent({
                                                         }`}>
                                                         <Reveal
                                                             width='auto'
-                                                            delay={0.2 + i * 0.08}
+                                                            listItem
                                                             className='flex gap-4'>
                                                         {i <
                                                             expectSteps.length -
@@ -620,10 +620,10 @@ export async function TourDetailContent({
                                         id='tour-info'
                                         title={tourDict.sections.info}>
                                         <div className='flex flex-col gap-6'>
-                                            {infoGroups.map((group, gi) => (
+                                            {infoGroups.map(group => (
                                                 <Reveal
                                                     key={group.title}
-                                                    delay={0.2 + gi * 0.08}
+                                                    listItem
                                                     className='flex flex-col gap-2'>
                                                     <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                                         {group.title}

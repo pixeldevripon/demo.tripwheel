@@ -1,7 +1,8 @@
 /**
  * Public tour-listing data (server-side, cached). Backs destination-page tour
  * grids (e.g. "Locals' favorites"). Hits the public `GET /tours` listing, which
- * returns LIVE tours with localized titles, hero image, price, rating, and the
+ * returns LIVE tours with localized titles, hero image, price, rating, the
+ * backend-derived `badge` (sponsored = paid tiers P1-P3 / spotlight), and the
  * `isLocalsFavourite` flag - the same shape as a search hit (`SearchHit`).
  */
 import 'server-only';

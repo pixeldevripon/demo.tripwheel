@@ -20,19 +20,27 @@ export type TourBadge = 'new' | 'likelyToSellOut' | 'mostPopular' | 'sponsored' 
 /** A tour is "new" for this long after publication, while it has no reviews. */
 const NEW_TOUR_WINDOW_MS = 30 * 864e5;
 
+/** Highest tier_rank that counts as a PAID placement (premium/featured/boosted). */
+const PAID_TIER_MAX_RANK = 3;
+
 /**
- * Derive the single badge for a tour (master §3.6 priority:
- * sponsored > likelyToSellOut > mostPopular > new). First match wins.
+ * Derive the single badge for a tour. Priority (product decision 2026-07-18,
+ * final): earned badges lead, 'sponsored' is the FALLBACK label for a paid
+ * placement (active Spotlight OR paid tier P1-P3) with nothing better to show:
+ *
+ *   likelyToSellOut > mostPopular > new > sponsored
+ *
+ * First match wins.
  */
 export function deriveTourBadge(t: {
   isSponsored?: boolean;
+  tierRank?: number;
   likelyToSellOut?: boolean;
   likelyToSellOutOverride?: boolean | null;
   aggregateRating?: number | null;
   aggregateReviewCount?: number;
   publishedAt?: string | null;
 }): TourBadge {
-  if (t.isSponsored) return 'sponsored';
   if (t.likelyToSellOutOverride ?? t.likelyToSellOut ?? false) return 'likelyToSellOut';
   const reviews = t.aggregateReviewCount ?? 0;
   if (reviews >= 10 && (t.aggregateRating ?? 0) >= 4.5) return 'mostPopular';
@@ -40,5 +48,6 @@ export function deriveTourBadge(t: {
     const published = new Date(t.publishedAt).getTime();
     if (Number.isFinite(published) && Date.now() - published < NEW_TOUR_WINDOW_MS) return 'new';
   }
+  if (t.isSponsored || (t.tierRank ?? 99) <= PAID_TIER_MAX_RANK) return 'sponsored';
   return null;
 }
