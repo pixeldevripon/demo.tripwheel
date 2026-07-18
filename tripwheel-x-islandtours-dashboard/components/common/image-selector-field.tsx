@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import MediaSelector from '@/components/common/media-selector';
 import type { MediaItem } from '@/types/media';
+import Image from 'next/image';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                   key={url}
                   className="group relative aspect-square overflow-hidden border border-border bg-muted"
                 >
-                  <img src={url} alt="" className="w-full h-full object-cover block" />
+                  <Image src={url} alt="" className="w-full h-full object-cover block" />
                   {/* Always-visible remove button in corner */}
                   <button
                     type="button"
@@ -229,11 +230,11 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
       {value ? (
         <>
           {/* Image preview */}
-          <div className="relative">
+          <div className="relative bg-muted/40 p-3">
             <img
               src={value}
               alt="Selected image"
-              className="w-full h-44 object-cover block"
+              className="w-full h-38 object-contain block"
             />
           </div>
 
