@@ -54,10 +54,10 @@ export function DestinationHero({
                 <div className='relative z-10 flex w-full max-w-170.75 flex-col items-center gap-10'>
                     {/* Heading group - title + subtitle, gap 4 */}
                     <div className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
+                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
                             {destinationName} {dict.toursActivities}
                         </h1>
-                        <p className='m-0 max-w-138 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
+                        <p className='m-0 max-w-138 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                             {dict.subtitle}
                         </p>
                     </div>
@@ -71,16 +71,21 @@ export function DestinationHero({
                             search={search}
                         />
 
-                        {/* Activities (categories) - label muted, names dark links, dots muted */}
+                        {/* Activities (categories) - home-hero colors: white label,
+                            warm-white links, ink dots */}
                         {activities.length > 0 && (
-                            <p className='m-0 text-center text-sm md:text-base leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
+                            <p className='m-0 text-center text-sm md:text-base leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
                                 {dict.popularLabel}:{' '}
                                 {activities.map((item, i) => (
                                     <span key={item.href}>
-                                        {i > 0 && <span className='mx-1.5'>·</span>}
+                                        {i > 0 && (
+                                            <span className='mx-1.5 text-it-hero-heading'>
+                                                ·
+                                            </span>
+                                        )}
                                         <Link
                                             href={item.href}
-                                            className='text-it-hero-heading no-underline transition-colors duration-300 hover:text-it-primary'>
+                                            className='text-it-primary-subtle no-underline transition-colors duration-300 hover:text-it-primary'>
                                             {item.label}
                                         </Link>
                                     </span>

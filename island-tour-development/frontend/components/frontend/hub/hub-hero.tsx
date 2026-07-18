@@ -107,10 +107,10 @@ export function HubHero({
                 <div className='flex w-full max-w-172.25 flex-col items-center gap-10'>
                     {/* Title + italic tagline - gap 4 */}
                     <MountReveal className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-white'>
+                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
                             {title}
                         </h1>
-                        <p className='m-0 text-[16px] md:text-[18px] italic leading-[1.6] tracking-[-0.012em] text-it-white'>
+                        <p className='m-0 text-[16px] md:text-[18px] italic leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -140,7 +140,7 @@ export function HubHero({
                                                 height={24}
                                                 className='size-5 shrink-0 md:size-6'
                                             />
-                                            <span className='whitespace-nowrap text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                            <span className='whitespace-nowrap text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
                                                 {item.label}
                                             </span>
                                         </li>

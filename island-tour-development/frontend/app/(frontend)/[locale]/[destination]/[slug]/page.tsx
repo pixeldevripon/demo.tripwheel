@@ -26,9 +26,10 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 /**
- * Localized destination display name from the public cached loader. On any fetch
- * error we fall back to a prettified slug rather than 404 - a successful slug
- * resolve already implies the destination is active (§5.10).
+ * Localized destination display name from the public cached loader. On a backend
+ * 404 we fall back to a prettified slug rather than 404 - a successful slug
+ * resolve already implies the destination is active (§5.10). A backend outage
+ * throws (strict loader) and fails the render/revalidation instead.
  */
 async function resolveDestinationName(
     destination: string,

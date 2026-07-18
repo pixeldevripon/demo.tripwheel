@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from 'next/cache';
 
 import type { SlugResolution } from '@/types/slug-registry';
-import { publicFetch } from './public/fetch';
+import { publicGetStrict } from './public/fetch';
 
 /**
  * Slug-registry resolver - the single lookup that disambiguates the polymorphic
@@ -18,10 +18,12 @@ import { publicFetch } from './public/fetch';
 
 /**
  * Resolve a `(destinationSlug, slug)` pair to its entity.
- * Returns `null` on a `404` (unknown or inactive slug) so callers can render
- * `notFound()` authoritatively. Also returns `null` on any transport/server
- * error (e.g. backend down during build) after `publicFetch` has retried a
- * transient 429/503, so a spike degrades to not-found rather than crashing.
+ * Returns `null` only on a backend `404` (unknown or inactive slug) so callers
+ * can render `notFound()` authoritatively. On any transport/server error (after
+ * `publicFetch` has retried a transient 429/503) it THROWS, so an ISR background
+ * revalidation fails and Next keeps serving the last good page - swallowing the
+ * error here used to reroute every slug to the TOUR branch during an outage,
+ * which then cached a 404 over category/hub/collection/tour pages.
  */
 export async function resolveSlug(
     destinationSlug: string,
@@ -37,14 +39,6 @@ export async function resolveSlug(
     cacheTag(`slug:${destinationSlug}:${slug}`, 'slug-registry');
 
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
-    try {
-        const res = await publicFetch(`/slug-registry/resolve?${query}`);
-        if (res.status === 404 || !res.ok) return null;
-        return (await res.json()) as SlugResolution;
-    } catch {
-        // Handle ECONNREFUSED when backend is down during build so Next.js can
-        // gracefully fall back to 404/not-found instead of crashing the build.
-        return null;
-    }
+    return publicGetStrict<SlugResolution>(`/slug-registry/resolve?${query}`);
 }
 

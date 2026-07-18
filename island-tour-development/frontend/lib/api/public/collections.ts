@@ -17,7 +17,7 @@ import type {
 } from '@/types/collection';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
-import { buildQuery, publicGet } from './fetch';
+import { buildQuery, publicGet, publicGetStrict } from './fetch';
 
 /**
  * Active (published) collections for a destination, localized - backs the
@@ -42,7 +42,10 @@ export async function getActiveCollectionsForDestination(
 
 /**
  * Full render payload for a published collection. `destinationId` (the destination
- * UUID) scopes the lookup; get it from `getDestinationBySlug(...).id`.
+ * UUID) scopes the lookup; get it from `getDestinationBySlug(...).id`. Returns
+ * `null` only on a backend 404 (draft/unknown collection) - callers `notFound()`
+ * on null. When the backend is unreachable it throws (`publicGetStrict`) so
+ * revalidation fails and the last good page keeps serving.
  *
  * Cached hourly; `slug` + `destinationId` + `locale` are the cache key. Tagged
  * granularly `collection:<id>` (editing this collection regenerates only this
@@ -59,7 +62,7 @@ export async function getCollectionRender(
   'use cache';
   cacheLife('hours');
 
-  const data = await publicGet<CollectionRender>(
+  const data = await publicGetStrict<CollectionRender>(
     `/collections/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
   );
   cacheTag('tours', data ? `collection:${data.id}` : 'collections');
