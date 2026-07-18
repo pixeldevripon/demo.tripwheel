@@ -109,6 +109,125 @@ export class PublicSiteInfoResponseDto {
   instagramWidgetId!: string | null;
 }
 
+/**
+ * Public-safe projection of SiteSEO for the unauthenticated marketing site.
+ * Meta/OG/Twitter tags only - analytics IDs, verification codes, and robots.txt
+ * stay behind VIEW_SETTINGS.
+ */
+export class PublicSiteSEOResponseDto {
+  @ApiProperty({
+    example: 'Island Tours - Curacao Trips & Tours',
+    nullable: true,
+  })
+  metaTitle!: string | null;
+
+  @ApiProperty({ example: 'Book island tours and activities.', nullable: true })
+  metaDescription!: string | null;
+
+  @ApiProperty({ example: 'tours, island, travel', nullable: true })
+  metaKeywords!: string | null;
+
+  @ApiProperty({ example: 'https://example.com', nullable: true })
+  canonicalUrl!: string | null;
+
+  @ApiProperty({ example: 'index, follow', nullable: true })
+  robotsMeta!: string | null;
+
+  @ApiProperty({ example: 'OG Title', nullable: true })
+  ogTitle!: string | null;
+
+  @ApiProperty({ example: 'OG Description', nullable: true })
+  ogDescription!: string | null;
+
+  @ApiProperty({ example: 'https://example.com/og.png', nullable: true })
+  ogImage!: string | null;
+
+  @ApiProperty({ example: 'Twitter Title', nullable: true })
+  twitterTitle!: string | null;
+
+  @ApiProperty({ example: 'Twitter Description', nullable: true })
+  twitterDescription!: string | null;
+
+  @ApiProperty({ example: 'https://example.com/twitter.png', nullable: true })
+  twitterImage!: string | null;
+
+  @ApiProperty({
+    example: 'dBw5CvburAxi537Rp9qi5uG2174Vb6JwHwIRwPSLIK8',
+    nullable: true,
+    description:
+      'Search Console ownership token, rendered publicly as the google-site-verification meta tag.',
+  })
+  googleSearchConsole!: string | null;
+
+  @ApiProperty({
+    example: '12345678-abcd-1234-abcd-123456789abc',
+    nullable: true,
+    description:
+      'Cookiebot domain group ID (data-cbid). Public by nature - it ships in the consent script tag on every page.',
+  })
+  cookiebotCbid!: string | null;
+}
+
+/** Public-safe SocialMedia projection - the profile URLs, nothing else. */
+export class PublicSocialMediaResponseDto {
+  @ApiProperty({ example: 'https://facebook.com/islandtour', nullable: true })
+  facebookUrl!: string | null;
+
+  @ApiProperty({ example: 'https://twitter.com/islandtour', nullable: true })
+  twitterUrl!: string | null;
+
+  @ApiProperty({
+    example: 'https://linkedin.com/company/islandtour',
+    nullable: true,
+  })
+  linkedinUrl!: string | null;
+
+  @ApiProperty({ example: 'https://instagram.com/islandtour', nullable: true })
+  instagramUrl!: string | null;
+
+  @ApiProperty({ example: 'https://youtube.com/@islandtour', nullable: true })
+  youtubeUrl!: string | null;
+
+  @ApiProperty({ example: 'https://tiktok.com/@islandtour', nullable: true })
+  tiktokUrl!: string | null;
+}
+
+/**
+ * Public-safe CompanyInformations projection for footer/legal surfaces.
+ * companySize and record timestamps are internal and deliberately excluded.
+ */
+export class PublicCompanyInfoResponseDto {
+  @ApiProperty({ example: 'Island Tour Ltd.', nullable: true })
+  companyName!: string | null;
+
+  @ApiProperty({ example: 'info@islandtour.com', nullable: true })
+  companyEmail!: string | null;
+
+  @ApiProperty({ example: '+1234567890', nullable: true })
+  companyPhone!: string | null;
+
+  @ApiProperty({ example: 'https://islandtour.com', nullable: true })
+  companyWebsite!: string | null;
+
+  @ApiProperty({ example: '123 Street Name', nullable: true })
+  companyAddress!: string | null;
+
+  @ApiProperty({ example: 'City Name', nullable: true })
+  companyCity!: string | null;
+
+  @ApiProperty({ example: 'State Name', nullable: true })
+  companyState!: string | null;
+
+  @ApiProperty({ example: '12345', nullable: true })
+  companyZip!: string | null;
+
+  @ApiProperty({ example: 'Country Name', nullable: true })
+  companyCountry!: string | null;
+
+  @ApiProperty({ example: 'VAT123456', nullable: true })
+  companyVat!: string | null;
+}
+
 export class SiteSEOResponseDto {
   @ApiProperty({ example: 'default' })
   id!: string;
@@ -169,6 +288,12 @@ export class SiteSEOResponseDto {
 
   @ApiProperty({ example: 'User-agent: *', nullable: true })
   robotsTxt!: string | null;
+
+  @ApiProperty({
+    example: '12345678-abcd-1234-abcd-123456789abc',
+    nullable: true,
+  })
+  cookiebotCbid!: string | null;
 }
 
 export class SocialMediaResponseDto {
@@ -189,6 +314,12 @@ export class SocialMediaResponseDto {
 
   @ApiProperty({ example: 'https://instagram.com/islandtour', nullable: true })
   instagramUrl!: string | null;
+
+  @ApiProperty({ example: 'https://youtube.com/@islandtour', nullable: true })
+  youtubeUrl!: string | null;
+
+  @ApiProperty({ example: 'https://tiktok.com/@islandtour', nullable: true })
+  tiktokUrl!: string | null;
 }
 
 export class SMTPResponseDto {
@@ -462,6 +593,11 @@ export class UpdateSiteSEODto {
   @IsOptional()
   @IsString()
   robotsTxt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cookiebotCbid?: string;
 }
 
 export class UpdateSocialMediaDto {
@@ -484,6 +620,16 @@ export class UpdateSocialMediaDto {
   @IsOptional()
   @IsString()
   instagramUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  youtubeUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  tiktokUrl?: string;
 }
 
 export class UpdateSMTPDto {

@@ -32,11 +32,16 @@ export function Navbar({
     dict,
     search,
     islands,
+    logo,
+    siteName,
 }: {
     locale: Locale;
     dict: NavDict;
     search: SearchDict;
     islands: Island[];
+    /** Dashboard-managed logo URL; falls back to the bundled asset. */
+    logo?: string | null;
+    siteName?: string | null;
 }) {
     const pathname = usePathname();
 
@@ -112,8 +117,8 @@ export function Navbar({
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
                     <Link href={localizeHref(locale, '/')} className='shrink-0'>
                         <Image
-                            src='/logo/logo.png'
-                            alt='Island Tours'
+                            src={logo || '/logo/logo.png'}
+                            alt={siteName || 'Island Tours'}
                             width={68}
                             height={50}
                             priority

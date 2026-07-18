@@ -113,7 +113,13 @@ export function SeoForm() {
       <div className="grid gap-6 sm:grid-cols-2">
         <TextField label="Google Analytics ID" registration={register('googleAnalyticsId')} error={errors.googleAnalyticsId?.message} placeholder="G-XXXXXXX" />
         <TextField label="Google Tag Manager ID" registration={register('googleTagManagerId')} error={errors.googleTagManagerId?.message} placeholder="GTM-XXXXX" />
-        <TextField label="Google Search Console" registration={register('googleSearchConsole')} error={errors.googleSearchConsole?.message} />
+        <TextField
+          label="Search Console Verification Code"
+          description="Ownership token from Google Search Console (HTML-tag method) - rendered on the site as the google-site-verification meta tag. Not a G-XXXX ID."
+          registration={register('googleSearchConsole')}
+          error={errors.googleSearchConsole?.message}
+          placeholder="dBw5CvburAxi537Rp9qi5uG2..."
+        />
         <TextField label="Facebook Pixel ID" registration={register('facebookPixelId')} error={errors.facebookPixelId?.message} />
       </div>
     </SettingsCard>

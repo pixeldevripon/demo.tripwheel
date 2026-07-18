@@ -54,3 +54,123 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
         }
     );
 }
+
+/** Public-safe SiteSEO projection: meta/OG/Twitter tag values only. */
+export interface PublicSiteSeo {
+    metaTitle: string | null;
+    metaDescription: string | null;
+    metaKeywords: string | null;
+    canonicalUrl: string | null;
+    robotsMeta: string | null;
+    ogTitle: string | null;
+    ogDescription: string | null;
+    ogImage: string | null;
+    twitterTitle: string | null;
+    twitterDescription: string | null;
+    twitterImage: string | null;
+    /** Search Console ownership token - rendered as google-site-verification. */
+    googleSearchConsole: string | null;
+    /** Cookiebot domain group ID (data-cbid) - loads the consent banner. */
+    cookiebotCbid: string | null;
+}
+
+/** The public social profile URLs (footer). */
+export interface PublicSocialMedia {
+    facebookUrl: string | null;
+    twitterUrl: string | null;
+    linkedinUrl: string | null;
+    instagramUrl: string | null;
+    youtubeUrl: string | null;
+    tiktokUrl: string | null;
+}
+
+/** Public-safe company/legal details (footer, legal pages). */
+export interface PublicCompanyInfo {
+    companyName: string | null;
+    companyEmail: string | null;
+    companyPhone: string | null;
+    companyWebsite: string | null;
+    companyAddress: string | null;
+    companyCity: string | null;
+    companyState: string | null;
+    companyZip: string | null;
+    companyCountry: string | null;
+    companyVat: string | null;
+}
+
+/**
+ * Same caching contract as getPublicSiteInfo: all three ride the coarse
+ * `site-info` tag, and the dashboard busts it after any settings save that
+ * backs a public read (see the dashboard's cache-revalidation mapping).
+ * Null-object fallbacks keep an outage to "generic metadata / empty footer
+ * links" instead of a broken page.
+ */
+export async function getPublicSiteSeo(): Promise<PublicSiteSeo> {
+    'use cache';
+    cacheLife('days');
+    cacheTag('site-info');
+
+    const res = await publicGet<PublicSiteSeo>('/settings/public/seo');
+
+    return (
+        res ?? {
+            metaTitle: null,
+            metaDescription: null,
+            metaKeywords: null,
+            canonicalUrl: null,
+            robotsMeta: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImage: null,
+            twitterTitle: null,
+            twitterDescription: null,
+            twitterImage: null,
+            googleSearchConsole: null,
+            cookiebotCbid: null,
+        }
+    );
+}
+
+export async function getPublicSocialMedia(): Promise<PublicSocialMedia> {
+    'use cache';
+    cacheLife('days');
+    cacheTag('site-info');
+
+    const res = await publicGet<PublicSocialMedia>(
+        '/settings/public/social-media',
+    );
+
+    return (
+        res ?? {
+            facebookUrl: null,
+            twitterUrl: null,
+            linkedinUrl: null,
+            instagramUrl: null,
+            youtubeUrl: null,
+            tiktokUrl: null,
+        }
+    );
+}
+
+export async function getPublicCompanyInfo(): Promise<PublicCompanyInfo> {
+    'use cache';
+    cacheLife('days');
+    cacheTag('site-info');
+
+    const res = await publicGet<PublicCompanyInfo>('/settings/public/company');
+
+    return (
+        res ?? {
+            companyName: null,
+            companyEmail: null,
+            companyPhone: null,
+            companyWebsite: null,
+            companyAddress: null,
+            companyCity: null,
+            companyState: null,
+            companyZip: null,
+            companyCountry: null,
+            companyVat: null,
+        }
+    );
+}

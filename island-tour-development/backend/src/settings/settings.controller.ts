@@ -16,7 +16,10 @@ import {
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
 import {
+  ApiGetPublicCompanyInfoDocs,
   ApiGetPublicSiteInfoDocs,
+  ApiGetPublicSiteSEODocs,
+  ApiGetPublicSocialMediaDocs,
   ApiGetSiteInfoDocs,
   ApiUpdateSiteInfoDocs,
   ApiGetSiteSEODocs,
@@ -84,6 +87,46 @@ export class SettingsController {
   @ApiGetPublicSiteInfoDocs()
   getPublicSiteInfo() {
     return this.settingsService.getPublicSiteInfo();
+  }
+
+  /**
+   * GET /settings/public/seo
+   *
+   * Public-safe SiteSEO for the marketing site's meta/OG/Twitter tags plus the
+   * Search Console verification token (public by design - its only job is to be
+   * rendered in the public <head>). Same contract as public/site: the service
+   * hand-picks fields, so analytics IDs never reach an unauthenticated response.
+   */
+  @Get('public/seo')
+  @Public()
+  @ApiGetPublicSiteSEODocs()
+  getPublicSiteSEO() {
+    return this.settingsService.getPublicSiteSEO();
+  }
+
+  /**
+   * GET /settings/public/social-media
+   *
+   * The four public social profile URLs for the marketing site footer.
+   */
+  @Get('public/social-media')
+  @Public()
+  @ApiGetPublicSocialMediaDocs()
+  getPublicSocialMedia() {
+    return this.settingsService.getPublicSocialMedia();
+  }
+
+  /**
+   * GET /settings/public/company
+   *
+   * Public-safe company/legal details for the marketing site footer and legal
+   * pages. Excludes companySize and record timestamps.
+   */
+  @Get('public/company')
+  @Public()
+  @ApiGetPublicCompanyInfoDocs()
+  getPublicCompanyInformations() {
+    return this.settingsService.getPublicCompanyInformations();
   }
 
   /**

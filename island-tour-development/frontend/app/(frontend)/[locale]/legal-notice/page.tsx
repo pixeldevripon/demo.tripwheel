@@ -1,0 +1,183 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+
+import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
+import { isLocale } from '@/lib/constants/locales';
+
+export const metadata: Metadata = { title: 'Legal Notice' };
+
+/**
+ * Global legal page - text is the verbatim handover copy from
+ * public/Legal Pages (change it only through Denley, per the README).
+ */
+export default async function LegalNoticePage({
+    params,
+}: {
+    params: Promise<{ locale: string }>;
+}) {
+    const { locale } = await params;
+    if (!isLocale(locale)) notFound();
+
+    return (
+        <LegalPageShell locale={locale} title='Legal Notice'>
+            <p>
+                Island Tours is built and run by ITG B.V. (short for Island
+                Tours Group), a company based in Willemstad, Curacao. We operate
+                the marketplace. The tours are run by independent local
+                operators, the Islanders who know these waters and roads. This
+                page is the formal record of who stands behind the site and how
+                to reach us. For how we handle your personal data, see our
+                Privacy Policy. For booking, payment, and cancellation, see our
+                Terms of Service and Cancellation Policy.
+            </p>
+
+            <h2>Who runs this website</h2>
+            <p>
+                ITG B.V., trading as Island Tours. Legal form: besloten
+                vennootschap (B.V.) under the law of Curacao. Incorporated on 12
+                March 2025 in Curacao. Registered office: Caracasbaaiweg 366,
+                Willemstad, Curacao. Chamber of Commerce (Kamer van Koophandel)
+                Curacao, registration number 169950. Tax identification (CRIB)
+                number: 102734732 (registered for Curacao turnover tax,
+                omzetbelasting). ITG B.V. is established in Curacao and does not
+                hold a European Union VAT identification number. Managing
+                director (sole director): Denley Felisie. Responsible for the
+                content of this website: Denley Felisie, at the address above.
+            </p>
+
+            <h2>How to reach us</h2>
+            <p>
+                Email: <a href='mailto:info@island.tours'>info@island.tours</a>{' '}
+                Phone: +5999 5266046 (Curacao) WhatsApp: +5999 5266046, every
+                day 08:00 to 18:00 (local time) Website: www.island.tours
+            </p>
+
+            <h2>What Island Tours is</h2>
+            <p>
+                Island Tours is an online marketplace that connects travelers
+                with independent local tour operators. The tour itself is
+                provided by the operator, not by ITG B.V. The contract for the
+                tour is concluded between the traveler and the operator. ITG
+                B.V. provides and operates the platform, facilitates the
+                booking, and collects the deposit. The full description of these
+                roles, and of the payment models, is in our Terms of Service.
+            </p>
+
+            <h2>Payments</h2>
+            <p>
+                Payments made through the platform are processed by Site Bar
+                B.V. (Netherlands) as merchant of record, on behalf of ITG
+                B.V., through Stripe. For this reason, a charge on your bank or
+                card statement may appear under the name of Site Bar B.V. We
+                will never ask for your card details by reply email, text, or
+                phone. Always pay only through the secure links in your booking
+                emails.
+            </p>
+
+            <h2>Our representative in the European Union (data protection)</h2>
+            <p>
+                ITG B.V. is established outside the European Union. For matters
+                concerning the personal data of travelers in the European Union
+                and the European Economic Area, we have appointed a
+                representative under Article 27 of the General Data Protection
+                Regulation (Regulation (EU) 2016/679):
+            </p>
+            <p>
+                Site Bar B.V., Aert van Nesstraat 45, 3012 EB Rotterdam,
+                Netherlands. Email:{' '}
+                <a href='mailto:info@sitebar.info'>info@sitebar.info</a>.
+            </p>
+            <p>
+                You can contact our EU representative on data protection
+                matters. How we handle personal data, and the supervisory
+                authorities you can turn to, are set out in our Privacy Policy.
+            </p>
+
+            <h2>
+                Our representative in the European Union (Digital Services Act)
+            </h2>
+            <p>
+                For the purposes of the European Union Digital Services Act
+                (Regulation (EU) 2022/2065), ITG B.V. has designated the
+                following legal representative in the Union. The legal
+                representative may be addressed by recipients of the service and
+                by the competent authorities, the European Commission, and the
+                European Board for Digital Services, in matters relating to that
+                Regulation.
+            </p>
+            <p>
+                Site Bar B.V., Aert van Nesstraat 45, 3012 EB Rotterdam,
+                Netherlands. Email:{' '}
+                <a href='mailto:info@sitebar.info'>info@sitebar.info</a>.
+            </p>
+
+            <h2>Contact point and languages (Digital Services Act)</h2>
+            <p>
+                For the purposes of the Digital Services Act, our point of
+                contact for recipients of the service (Article 12) is email{' '}
+                <a href='mailto:info@island.tours'>info@island.tours</a>. You
+                can contact us directly and rapidly at this address. We handle
+                these communications in English and Dutch.
+            </p>
+
+            <h2>Supervisory authority</h2>
+            <p>
+                The supervisory authority for data protection in Curacao is the
+                College bescherming persoonsgegevens (CBP), under the
+                Landsverordening bescherming persoonsgegevens (LBP). If you are
+                in the European Union or the European Economic Area, you also
+                have the right to lodge a complaint with the competent national
+                data protection authority under Article 77 of the General Data
+                Protection Regulation. Contact routes are listed in our Privacy
+                Policy.
+            </p>
+
+            <h2>Consumer disputes</h2>
+            <p>
+                If you have a complaint, please contact us first at{' '}
+                <a href='mailto:info@island.tours'>info@island.tours</a> and we
+                will try to resolve it with you. If we cannot resolve it, you
+                may be able to refer it to an alternative dispute resolution
+                body or to the consumer authority in your country of residence.
+                We are not obliged to use a particular body and do not commit to
+                one, but this does not affect your right to use any scheme
+                available to you or to bring a dispute before a competent court,
+                and consumers in the European Union and the European Economic
+                Area keep the mandatory protections of their home country. The
+                EU Online Dispute Resolution platform was discontinued on 20
+                July 2025 and is no longer available. Our full
+                dispute-resolution terms are in our Terms of Service.
+            </p>
+
+            <h2>Content and trademarks</h2>
+            <p>
+                The content of this website, including its text, layout,
+                graphics, and logos, belongs to ITG B.V. or its licensors and is
+                protected by applicable intellectual property rights. Island
+                Tours and the Built by Islanders tagline are names and marks we
+                use for the platform. Tour descriptions, photographs, and other
+                material supplied by operators remain the responsibility of
+                those operators. Traveler reviews and other user content are
+                governed by our Terms of Service. You may not copy, reproduce,
+                or reuse the content of this website without our prior written
+                permission, except where the law allows.
+            </p>
+
+            <h2>Links to other websites</h2>
+            <p>
+                This website may link to websites run by others, for example
+                tour operators, payment providers, and social media. We do not
+                control those websites and are not responsible for their
+                content, their products, or their privacy practices. Following
+                an external link is at your own risk.
+            </p>
+
+            <h2>About this notice</h2>
+            <p>
+                This Legal Notice was last updated on 17 June 2026. We may
+                update it when our details change. Island Tours. Built by
+                Islanders.
+            </p>
+        </LegalPageShell>
+    );
+}

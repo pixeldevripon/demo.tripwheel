@@ -5,7 +5,7 @@ import {
   faqSelect,
   translationSelect,
 } from '@/common/utils/translation.util';
-import { generateSlug } from '@/common/utils/slug.util';
+import { generateSlug, RESERVED_GLOBAL_SLUGS } from '@/common/utils/slug.util';
 import { DEFAULT_DESTINATION_TIMEZONES } from '@/common/validators/is-iana-timezone.validator';
 import {
   clearCooledDownDestinationSlugs,
@@ -179,6 +179,15 @@ export class DestinationService {
 
   async create(dto: CreateDestinationDto, adminId: string) {
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
+
+    // Global static pages (legal pages, search, ...) live at the same path
+    // level as destinations; a destination with one of those slugs would be
+    // unreachable behind the static route.
+    if (RESERVED_GLOBAL_SLUGS.has(slug)) {
+      throw new ConflictException(
+        `Destination slug "${slug}" is reserved for a platform page`,
+      );
+    }
 
     // Timezone is required platform data (all tour/departure math anchors to it).
     // Prefer the admin's IANA value; otherwise derive a known launch zone from the

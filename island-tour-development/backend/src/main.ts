@@ -86,56 +86,55 @@ async function bootstrap() {
   });
 
   // ── Swagger (non-production only) ───────────────────────────────────────────
-  if (!isProd) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Island Tours API')
-      .setDescription('Tour marketplace - operators, slots, bookings')
-      .setVersion('1.0')
-      .addCookieAuth('better-auth.session_token')
-      .build();
 
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Island Tours API')
+    .setDescription('Tour marketplace - operators, slots, bookings')
+    .setVersion('1.0')
+    .addCookieAuth('better-auth.session_token')
+    .build();
 
-    try {
-      const authSchema = await auth.api.generateOpenAPISchema();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
 
-      const transformedAuthPaths: any = {};
-      for (const [pathKey, pathItem] of Object.entries(authSchema.paths)) {
-        const newPathKey = `/api/auth${pathKey}`;
-        const newPathItem: any = { ...pathItem };
+  try {
+    const authSchema = await auth.api.generateOpenAPISchema();
 
-        for (const method of [
-          'get',
-          'post',
-          'put',
-          'delete',
-          'patch',
-          'options',
-          'head',
-        ]) {
-          if (newPathItem[method]) {
-            newPathItem[method].tags = ['Auth'];
-          }
+    const transformedAuthPaths: any = {};
+    for (const [pathKey, pathItem] of Object.entries(authSchema.paths)) {
+      const newPathKey = `/api/auth${pathKey}`;
+      const newPathItem: any = { ...pathItem };
+
+      for (const method of [
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch',
+        'options',
+        'head',
+      ]) {
+        if (newPathItem[method]) {
+          newPathItem[method].tags = ['Auth'];
         }
-
-        transformedAuthPaths[newPathKey] = newPathItem;
       }
 
-      document.paths = { ...document.paths, ...transformedAuthPaths };
-
-      if (authSchema.components?.schemas) {
-        document.components = document.components || {};
-        document.components.schemas = {
-          ...document.components.schemas,
-          ...(authSchema.components.schemas as any),
-        };
-      }
-    } catch (err) {
-      console.warn('Failed to merge Better Auth OpenAPI schema:', err);
+      transformedAuthPaths[newPathKey] = newPathItem;
     }
 
-    SwaggerModule.setup('api/docs', app, document);
+    document.paths = { ...document.paths, ...transformedAuthPaths };
+
+    if (authSchema.components?.schemas) {
+      document.components = document.components || {};
+      document.components.schemas = {
+        ...document.components.schemas,
+        ...(authSchema.components.schemas as any),
+      };
+    }
+  } catch (err) {
+    console.warn('Failed to merge Better Auth OpenAPI schema:', err);
   }
+
+  SwaggerModule.setup('api/docs', app, document);
 
   // ── Graceful shutdown ───────────────────────────────────────────────────────
   app.enableShutdownHooks();

@@ -48,6 +48,7 @@ model SiteSEO {
   googleTagManagerId  String? @default("")
   googleSearchConsole String? @default("")
   facebookPixelId     String? @default("")
+  cookiebotCbid       String? @default("")
   schemaType          String? @default("")
   customSchema        String? @default("")
   autoGenerateSitemap String? @default("")
@@ -67,6 +68,8 @@ model SocialMedia {
   twitterUrl   String? @default("")
   linkedinUrl  String? @default("")
   instagramUrl String? @default("")
+  youtubeUrl   String? @default("")
+  tiktokUrl    String? @default("")
 
   @@map("social_media")
 }
