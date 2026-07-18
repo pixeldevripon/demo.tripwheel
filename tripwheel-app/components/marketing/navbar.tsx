@@ -24,8 +24,8 @@ export function MarketingNavbar() {
                     <Image
                         src='/logo/logo-dark.svg'
                         alt='TripWheel'
-                        width={135}
-                        height={26}
+                        width={109}
+                        height={14}
                         priority
                     />
                 </Link>

@@ -69,8 +69,8 @@ export function LoginForm() {
                 <Image
                     src='/logo/logo-light.svg'
                     alt='TripWheel'
-                    width={156}
-                    height={30}
+                    width={125}
+                    height={16}
                     priority
                 />
             </Link>
@@ -152,15 +152,7 @@ export function LoginForm() {
                     {loading ? 'Signing in...' : 'Continue'}
                 </button>
             </form>
-
-            <p className='mt-8 text-center text-sm text-mk-body'>
-                Don&apos;t have an account?{' '}
-                <Link
-                    href='/#pricing'
-                    className='font-medium text-mk-accent transition-colors hover:text-mk-accent-hover'>
-                    Start free
-                </Link>
-            </p>
         </div>
     );
 }
+

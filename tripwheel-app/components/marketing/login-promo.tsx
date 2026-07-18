@@ -47,7 +47,7 @@ const slideVariants = {
 
 /**
  * Left promo panel of the auth screens, in the homepage's own language: the
- * hero gradient with the faint boxed grid overlay, floating booking-ops
+ * hero gradient, floating booking-ops
  * cards up top, an auto-advancing content slider bottom-left (arrows + dots,
  * directional slide animation, paused for reduced-motion users), and a
  * compact product video card pinned to the bottom-right.
@@ -80,11 +80,6 @@ export function LoginPromo() {
 
     return (
         <div className='mk-hero-bg relative flex h-full flex-col overflow-hidden rounded-3xl px-8 py-[clamp(1.5rem,3vh,3rem)] md:px-12'>
-            <div
-                className='mk-hero-grid pointer-events-none absolute inset-0'
-                aria-hidden='true'
-            />
-
             <BookingCollage />
 
             <div className='absolute top-1/2 right-8 z-10 flex -translate-y-1/2 gap-2 md:right-12'>

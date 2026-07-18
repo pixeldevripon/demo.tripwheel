@@ -53,8 +53,8 @@ export function ResetForm() {
                 <Image
                     src='/logo/logo-light.svg'
                     alt='TripWheel'
-                    width={156}
-                    height={30}
+                    width={125}
+                    height={16}
                     priority
                 />
             </Link>
