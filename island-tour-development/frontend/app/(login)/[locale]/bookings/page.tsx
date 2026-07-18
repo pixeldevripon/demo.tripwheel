@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { TravelerLogin } from '@/components/frontend/login/traveler-login';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 import {
     ALL_LOCALES,
     DEFAULT_LOCALE,
@@ -45,6 +46,12 @@ export default async function BookingsLoginPage({
             siteName={siteInfo.siteName}
             locale={locale}
             dict={dict.travelerLogin}
+            // Dashboard-managed WhatsApp (master 6.6): null when the chat is
+            // disabled or the number is unusable - the button then hides.
+            whatsappHref={buildWhatsappUrl(
+                siteInfo.whatsappNumber,
+                siteInfo.enableWhatsappChat
+            )}
         />
     );
 }

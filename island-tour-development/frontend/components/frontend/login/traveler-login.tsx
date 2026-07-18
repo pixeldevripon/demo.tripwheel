@@ -47,6 +47,7 @@ export function TravelerLogin({
     siteName,
     locale,
     dict,
+    whatsappHref,
 }: {
     /** Dashboard-managed logo URL; falls back to the bundled asset. */
     logo?: string | null;
@@ -55,6 +56,8 @@ export function TravelerLogin({
     locale: string;
     /** `travelerLogin` dictionary slice, locale-resolved by the page. */
     dict: Dictionary['travelerLogin'];
+    /** wa.me deep link (buildWhatsappUrl); null hides the button entirely. */
+    whatsappHref?: string | null;
 }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -153,18 +156,22 @@ export function TravelerLogin({
                 </Link>
                 <div className='flex items-center gap-2'>
                     <LoginLocaleSwitch />
-                    <a
-                        href='#'
-                        className='flex items-center gap-2 rounded-full bg-it-green px-3.5 py-2 text-[14px] font-semibold text-it-white transition-colors hover:bg-it-green/90'>
-                        <Image
-                            src='/icons/whatsapp.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-4.5 shrink-0'
-                        />
-                        {dict.whatsapp}
-                    </a>
+                    {whatsappHref && (
+                        <a
+                            href={whatsappHref}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='flex items-center gap-2 rounded-full bg-it-green px-3.5 py-2 text-[14px] font-semibold text-it-white transition-colors hover:bg-it-green/90'>
+                            <Image
+                                src='/icons/whatsapp.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-4.5 shrink-0'
+                            />
+                            {dict.whatsapp}
+                        </a>
+                    )}
                 </div>
             </header>
 
