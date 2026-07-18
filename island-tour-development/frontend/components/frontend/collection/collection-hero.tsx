@@ -43,16 +43,20 @@ export function CollectionHero({
     return (
         <section
             aria-label={title}
-            className='relative flex min-h-105 w-full items-end overflow-hidden bg-it-ink-placeholder md:min-h-120 xl:min-h-133.25'>
+            className='relative flex h-136.75 md:h-150 2xl:h-180 w-full items-end overflow-hidden bg-it-ink-placeholder'>
             {heroImage && (
-                <Image
-                    src={heroImage}
-                    alt={title}
-                    fill
-                    priority
-                    sizes='100vw'
-                    className='object-cover'
-                />
+                <>
+                    <Image
+                        src={heroImage}
+                        alt={title}
+                        fill
+                        priority
+                        sizes='100vw'
+                        className='object-cover'
+                    />
+                    {/* Legibility overlay over the photo */}
+                    <div className='absolute inset-0 bg-black/50' />
+                </>
             )}
 
             {/* ── Share pill: pinned top-right, aligned to the container gutter ── */}
