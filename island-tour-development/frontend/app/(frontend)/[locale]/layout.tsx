@@ -5,6 +5,7 @@ import { Navbar } from '@/components/frontend/navbar/navbar';
 import { PageTransition } from '@/components/frontend/page-transition';
 import { WishlistProvider } from '@/components/frontend/wishlist-provider';
 import { getActiveDestinations } from '@/lib/api/public';
+import { getPublicSiteInfo } from '@/lib/api/public/settings';
 import { ALL_LOCALES, isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
@@ -23,9 +24,10 @@ export default async function LocaleLayout({
     const { locale } = await params;
     if (!isLocale(locale)) notFound();
 
-    const [dict, destinations] = await Promise.all([
+    const [dict, destinations, siteInfo] = await Promise.all([
         getDictionary(locale),
         getActiveDestinations(locale),
+        getPublicSiteInfo(),
     ]);
 
     // Navbar only needs the display name + slug for the island selector.
@@ -48,6 +50,8 @@ export default async function LocaleLayout({
                     from: dict.destination.listings.from,
                 }}
                 islands={islands}
+                logo={siteInfo.logo}
+                siteName={siteInfo.siteName}
             />
             {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
                 as a dynamic hole so request-time routes don't block the shell.

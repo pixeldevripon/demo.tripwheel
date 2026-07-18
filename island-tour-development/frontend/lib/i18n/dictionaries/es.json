@@ -3,11 +3,13 @@
     "selectIsland": "Elige tu isla",
     "wishlist": "Lista de deseos",
     "account": "Cuenta",
+    "logout": "Cerrar sesión",
     "menu": "Menú",
     "close": "Cerrar",
     "language": "Idioma",
     "categories": "Categorías",
-    "search": "Buscar"
+    "search": "Buscar",
+    "myBookings": "Mis reservas"
   },
   "footer": {
     "tagline": "Hecho por isleños.",
@@ -56,7 +58,12 @@
     "hours": "{value} horas",
     "hour": "1 hora",
     "minutes": "{value} min",
-    "range": "{from} a {to} horas"
+    "range": "{from} a {to} horas",
+    "toursIn": "Tours en {name}",
+    "beyond": "Más allá de {name}",
+    "tourCount": "{count} tours",
+    "tourCountOne": "1 tour",
+    "seeAllTours": "Ver todos los tours"
   },
   "wishlist": {
     "title": "Tu lista de deseos",
@@ -761,5 +768,31 @@
     "issueTitle": "¿Problema con la reserva o el pago?",
     "issueBody": "Escribe a {email} e incluye tu ref. ({ref})",
     "replyTime": "Solemos responder en menos de 12 horas"
+  },
+  "travelerLogin": {
+    "title": "Tus reservas",
+    "subtitle": "Inicia sesión con el email con el que reservaste y tu referencia de reserva.",
+    "emailLabel": "Email",
+    "refLabel": "Referencia de reserva",
+    "refHint": "En la parte superior de tu email de confirmación.",
+    "submit": "Ver mis reservas",
+    "checking": "Comprobando",
+    "redirecting": "Redirigiendo",
+    "errorBefore": "Ese email y esa referencia no coinciden. Revisa tu email de confirmación o",
+    "errorLink": "escríbenos por WhatsApp",
+    "errorAfter": "y lo solucionamos.",
+    "lostLink": "¿Perdiste tu referencia?",
+    "back": "Volver",
+    "lostTitle": "Te la enviamos por email",
+    "lostSubtitle": "Introduce el email con el que reservaste.",
+    "lostSubmit": "Enviarme mi referencia",
+    "sending": "Enviando",
+    "sentNote": "Si ese email tiene reservas con nosotros, la referencia está en camino.",
+    "whatsapp": "WhatsApp",
+    "operatorCta": "¿Operador turístico? Accede al portal de operadores",
+    "terms": "Términos",
+    "privacy": "Política de privacidad",
+    "help": "Ayuda",
+    "tagline": "Hecho por isleños."
   }
 }

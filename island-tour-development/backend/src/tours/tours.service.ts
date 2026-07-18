@@ -30,6 +30,7 @@ import {
   BandParticipation,
   Currency,
   DepartureStatus,
+  HubStatus,
   PickupModel,
   Prisma,
   PricingModel,
@@ -528,16 +529,41 @@ export class ToursService {
           destination: { select: { slug: true } },
           translations: { where: { locale }, select: { title: true } },
           images: this.cardImagesArgs,
+          // Widened from tourSelect's id-only shape: the typeahead groups hits
+          // under their (localized) primary-category name.
+          categories: {
+            select: {
+              categoryId: true,
+              isPrimary: true,
+              category: {
+                select: {
+                  slug: true,
+                  name: true,
+                  translations: {
+                    where: { locale },
+                    select: { name: true },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: this.buildOrderBy(TourSort.recommended),
         skip,
         take: limit,
       }),
     ]);
-    const hits = data.map((t) => ({
-      ...this.flattenSearchHit(t),
-      badge: this.deriveTourBadge(t),
-    }));
+    const hits = data.map((t) => {
+      const primary = t.categories.find((c) => c.isPrimary) ?? t.categories[0];
+      const category = primary?.category;
+      return {
+        ...this.flattenSearchHit(t),
+        badge: this.deriveTourBadge(t),
+        categorySlug: category?.slug ?? null,
+        categoryName:
+          category?.translations?.[0]?.name?.trim() || category?.name || null,
+      };
+    });
     await this.attachMoney(hits, params.currency);
     return {
       total,
@@ -567,6 +593,189 @@ export class ToursService {
       ...this.flattenTour(rest),
       destinationSlug: destination?.slug ?? null,
       title: translations?.[0]?.title?.trim() || hit.name,
+    };
+  }
+
+  /**
+   * Typeahead suggestions across entity types (Fever-style navbar dropdown):
+   * matched categories (with a destination-scoped LIVE-tour count), matched
+   * published hubs, tours inside the active destination, and a "beyond"
+   * strip of tours from other destinations when the search is scoped.
+   *
+   * Same ILIKE matching rules as search(); intentionally small page sizes -
+   * this feeds a dropdown, not a results page.
+   */
+  async suggest(params: {
+    q?: string;
+    destinationSlug?: string;
+    locale?: Locale;
+    currency?: Currency;
+  }) {
+    const { destinationSlug, locale = Locale.en } = params;
+    const term = params.q?.trim();
+    if (!term || term.length < 2) {
+      return {
+        query: term ?? '',
+        total: 0,
+        categories: [],
+        hubs: [],
+        tours: [],
+        beyondTours: [],
+      };
+    }
+
+    const ci = { contains: term, mode: 'insensitive' as const };
+
+    // LIVE-and-active filter, scoped to the destination when one is set.
+    const liveTourWhere: Prisma.TourWhereInput = {
+      status: TourStatus.LIVE,
+      isActive: true,
+      ...(destinationSlug && { destination: { slug: destinationSlug } }),
+    };
+
+    // Same term surface as search(): name/translations/categories/hubs/highlights.
+    const termOr: Prisma.TourWhereInput[] = [
+      { name: ci },
+      {
+        translations: {
+          some: { OR: [{ title: ci }, { overview: ci }, { description: ci }] },
+        },
+      },
+      { categories: { some: { category: { name: ci } } } },
+      { hubs: { some: { hub: { name: ci } } } },
+      { highlights: { some: { translations: { some: { text: ci } } } } },
+    ];
+
+    const scopedWhere: Prisma.TourWhereInput = { ...liveTourWhere, OR: termOr };
+    const beyondWhere: Prisma.TourWhereInput | null = destinationSlug
+      ? {
+          status: TourStatus.LIVE,
+          isActive: true,
+          destination: { slug: { not: destinationSlug } },
+          OR: termOr,
+        }
+      : null;
+
+    const hitSelect = {
+      ...this.tourSelect,
+      destination: { select: { slug: true, name: true } },
+      translations: { where: { locale }, select: { title: true } },
+      images: this.cardImagesArgs,
+      categories: {
+        select: {
+          categoryId: true,
+          isPrimary: true,
+          category: {
+            select: {
+              slug: true,
+              name: true,
+              translations: { where: { locale }, select: { name: true } },
+            },
+          },
+        },
+      },
+    } as const;
+
+    const [categories, hubs, total, scopedTours, beyondTours] =
+      await Promise.all([
+        this.prisma.category.findMany({
+          where: {
+            isActive: true,
+            OR: [
+              { name: ci },
+              { translations: { some: { locale, name: ci } } },
+            ],
+            tourCategories: { some: { tour: liveTourWhere } },
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            translations: { where: { locale }, select: { name: true } },
+            _count: {
+              select: { tourCategories: { where: { tour: liveTourWhere } } },
+            },
+          },
+          orderBy: { sortOrder: 'asc' },
+          take: 3,
+        }),
+        this.prisma.hub.findMany({
+          where: {
+            isActive: true,
+            status: HubStatus.PUBLISHED,
+            ...(destinationSlug && { destination: { slug: destinationSlug } }),
+            OR: [
+              { name: ci },
+              { translations: { some: { locale, name: ci } } },
+            ],
+            tourHubs: {
+              some: { tour: { status: TourStatus.LIVE, isActive: true } },
+            },
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            translations: { where: { locale }, select: { name: true } },
+            destination: { select: { slug: true, name: true } },
+          },
+          take: 3,
+        }),
+        this.prisma.tour.count({ where: scopedWhere }),
+        this.prisma.tour.findMany({
+          where: scopedWhere,
+          select: hitSelect,
+          orderBy: this.buildOrderBy(TourSort.recommended),
+          take: 4,
+        }),
+        beyondWhere
+          ? this.prisma.tour.findMany({
+              where: beyondWhere,
+              select: hitSelect,
+              orderBy: this.buildOrderBy(TourSort.recommended),
+              take: 3,
+            })
+          : Promise.resolve(
+              [] as Prisma.TourGetPayload<{ select: typeof hitSelect }>[],
+            ),
+      ]);
+
+    const toHit = (t: (typeof scopedTours)[number]) => {
+      const primary = t.categories.find((c) => c.isPrimary) ?? t.categories[0];
+      const category = primary?.category;
+      const destinationName = t.destination?.name ?? null;
+      return {
+        ...this.flattenSearchHit(t),
+        badge: this.deriveTourBadge(t),
+        destinationName,
+        categorySlug: category?.slug ?? null,
+        categoryName:
+          category?.translations?.[0]?.name?.trim() || category?.name || null,
+      };
+    };
+
+    const tours = scopedTours.map(toHit);
+    const beyond = beyondTours.map(toHit);
+    await this.attachMoney([...tours, ...beyond], params.currency);
+
+    return {
+      query: term,
+      total,
+      categories: categories.map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.translations[0]?.name?.trim() || c.name,
+        tourCount: c._count.tourCategories,
+      })),
+      hubs: hubs.map((h) => ({
+        id: h.id,
+        slug: h.slug,
+        name: h.translations[0]?.name?.trim() || h.name,
+        destinationSlug: h.destination.slug,
+        destinationName: h.destination.name,
+      })),
+      tours,
+      beyondTours: beyond,
     };
   }
 

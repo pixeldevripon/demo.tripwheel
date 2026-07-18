@@ -50,6 +50,7 @@ export interface SiteSEO {
   customSchema: string | null;
   autoGenerateSitemap: string | null;
   robotsTxt: string | null;
+  cookiebotCbid: string | null;
 }
 
 export type UpdateSiteSEOPayload = Partial<Omit<SiteSEO, 'id'>>;
@@ -60,6 +61,8 @@ export interface SocialMediaSettings {
   twitterUrl: string | null;
   linkedinUrl: string | null;
   instagramUrl: string | null;
+  youtubeUrl: string | null;
+  tiktokUrl: string | null;
 }
 
 export type UpdateSocialMediaPayload = Partial<Omit<SocialMediaSettings, 'id'>>;

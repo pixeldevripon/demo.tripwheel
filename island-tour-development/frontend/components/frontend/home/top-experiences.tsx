@@ -1,7 +1,6 @@
 'use client';
 
 import { crossFade, springPop } from '@/lib/motion';
-import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
@@ -74,68 +73,60 @@ const REAL = cards.length;
 const SLIDES = [...cards, ...cards, ...cards];
 const START = REAL + 2; // centre the middle card (Buggy) of the middle set
 
-// Figma arc - tallest card in the centre, shrinking toward the edges
-const SLIDE_W = 220;
-const GAP = 24;
-const H_MAX = 403;
-const H_MIN = 333;
+// Size arc (reference: Fever-style reel) - the centre card renders at full
+// 250x440, neighbours at ~0.85x, outer cards at ~0.7x. Cards scale
+// PROPORTIONALLY (width + height together) via transform, and a translate
+// correction pulls the shrunken cards inward so the visual gaps stay even
+// instead of growing toward the edges.
+const SLIDE_W = 250;
+const GAP = 18;
+const H_MAX = 440;
+/** Scale by distance-from-centre in slide units: 1 -> 0.85 -> 0.7, clamped. */
+const SCALE_STEP = 0.15;
+const SCALE_MIN = 0.7;
+const arcScale = (d: number) => Math.max(1 - SCALE_STEP * d, SCALE_MIN);
+/**
+ * How far a slide at distance `d` must shift toward the centre so the packed
+ * look holds: the integral of the accumulated scale insets, W * ∫(1-scale).
+ * For scale(t)=1-0.15t (floored at 0.7 from t=2): 0.075d² up to d=2, then
+ * linear at the 0.3 floor.
+ */
+const arcShift = (d: number) =>
+    SLIDE_W * (d <= 2 ? 0.075 * d * d : 0.3 * (d - 2) + 0.3);
+
+/**
+ * Exactly five packed cards fill the viewport: centre (1x) + two neighbours
+ * (0.85x) + two outer (0.7x) + four gaps. Capping the embla viewport at this
+ * width keeps the sixth/seventh loop slides fully outside it - no cropped
+ * slivers at the edges.
+ */
+const VIEWPORT_W = Math.round(SLIDE_W * (1 + 2 * 0.85 + 2 * 0.7) + 4 * GAP);
 
 export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
-    const autoplay = useRef(
-        Autoplay({
-            delay: 5000,
-            stopOnInteraction: false,
-            stopOnMouseEnter: true,
-        })
-    );
-    const [emblaRef, emblaApi] = useEmblaCarousel(
-        {
-            loop: true,
-            align: 'center',
-            containScroll: false,
-            startIndex: START,
-        },
-        [autoplay.current]
-    );
+    // No timer-driven autoplay: the reel is video-driven. The CENTRE card's
+    // video always plays; when it ends, `onEnded` advances the carousel and
+    // the next centred card takes over.
+    const [emblaRef, emblaApi] = useEmblaCarousel({
+        loop: true,
+        align: 'center',
+        containScroll: false,
+        startIndex: START,
+        // Longer tween for scrollTo/scrollNext - Embla eases with a cubic
+        // curve, so this reads as a smooth "cubic swipe" into the centre.
+        duration: 35,
+    });
 
     const [selected, setSelected] = useState(START);
-    const [playing, setPlaying] = useState<number | null>(null);
     const [paused, setPaused] = useState(false);
+    // Automatic playback (page load, ended-advance) must start muted or the
+    // browser blocks it; the first explicit play click unlocks sound.
+    const [soundOn, setSoundOn] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Mirror of `playing` for the embla event handlers below (registered once).
-    const playingRef = useRef<number | null>(null);
-    useEffect(() => {
-        playingRef.current = playing;
-    }, [playing]);
-
-    // `stopOnInteraction: false` + `stopOnMouseEnter` re-arm the autoplay timer
-    // after any drag or hover-leave, silently undoing the `.stop()` from
-    // handlePlay - the reel would slide away mid-video. Re-stop on every resume
-    // path (plugin event, drag release, and the root's own mouseleave, which
-    // resumes without emitting an event). The stop is DEFERRED a tick because a
-    // synchronous stop() inside the plugin's own dispatch gets re-armed.
-    useEffect(() => {
-        if (!emblaApi) return;
-        const holdWhileVideoPlays = () => {
-            if (playingRef.current === null) return;
-            setTimeout(() => {
-                if (playingRef.current !== null) autoplay.current.stop();
-            }, 0);
-        };
-        const root = emblaApi.rootNode();
-        emblaApi.on('autoplay:play', holdWhileVideoPlays);
-        emblaApi.on('pointerUp', holdWhileVideoPlays);
-        root.addEventListener('mouseleave', holdWhileVideoPlays);
-        return () => {
-            emblaApi.off('autoplay:play', holdWhileVideoPlays);
-            emblaApi.off('pointerUp', holdWhileVideoPlays);
-            root.removeEventListener('mouseleave', holdWhileVideoPlays);
-        };
-    }, [emblaApi]);
-
-    // Height varies by each slide's live distance from the carousel centre
-    const applyHeights = useCallback(() => {
+    // Size arc: each card scales (and shifts inward) by its live distance from
+    // the carousel centre, re-applied on every scroll frame so the arc morphs
+    // continuously while dragging/sliding.
+    const applyArc = useCallback(() => {
         if (!emblaApi) return;
         const rect = emblaApi.rootNode().getBoundingClientRect();
         const center = rect.left + rect.width / 2;
@@ -143,52 +134,72 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
             const card = slide.firstElementChild as HTMLElement | null;
             if (!card) return;
             const r = slide.getBoundingClientRect();
+            // Undo any transform we applied last frame: measure from the
+            // slide's layout box, not its shifted visual box.
             const slideCenter = r.left + r.width / 2;
-            const step = Math.abs(slideCenter - center) / (SLIDE_W + GAP);
-            const h = Math.round(
-                H_MAX - (H_MAX - H_MIN) * Math.min(step / 2, 1)
-            );
-            card.style.height = `${h}px`;
+            const signed = (slideCenter - center) / (SLIDE_W + GAP);
+            const d = Math.abs(signed);
+            const shift = -Math.sign(signed) * arcShift(d);
+            card.style.transform = `translateX(${shift.toFixed(2)}px) scale(${arcScale(d).toFixed(4)})`;
+            // Stacked-deck feel: the centre card floats highest (big soft
+            // shadow, top of the stack); shadows fade and cards slide UNDER
+            // their neighbours toward the edges.
+            const t = Math.min(d / 2, 1);
+            const y = 24 - 16 * t;
+            const blur = 48 - 30 * t;
+            const alpha = 0.25 - 0.18 * t;
+            card.style.boxShadow = `0 ${y.toFixed(1)}px ${blur.toFixed(1)}px -12px rgba(0,0,0,${alpha.toFixed(3)})`;
+            slide.style.zIndex = String(Math.round(100 - d * 10));
         });
     }, [emblaApi]);
 
     useEffect(() => {
         if (!emblaApi) return;
-        const onSelect = () => setSelected(emblaApi.selectedScrollSnap());
+        const onSelect = () => {
+            setSelected(emblaApi.selectedScrollSnap());
+            // A fresh centre card always starts playing, never pre-paused.
+            setPaused(false);
+        };
         onSelect();
-        applyHeights();
+        applyArc();
         emblaApi.on('select', onSelect);
-        emblaApi.on('scroll', applyHeights);
-        emblaApi.on('reInit', applyHeights);
+        emblaApi.on('scroll', applyArc);
+        emblaApi.on('reInit', applyArc);
         return () => {
             emblaApi.off('select', onSelect);
-            emblaApi.off('scroll', applyHeights);
-            emblaApi.off('reInit', applyHeights);
+            emblaApi.off('scroll', applyArc);
+            emblaApi.off('reInit', applyArc);
         };
-    }, [emblaApi, applyHeights]);
+    }, [emblaApi, applyArc]);
 
+    // Side-card play button: unlock sound (we have a user gesture) and glide
+    // the card to the centre - `select` fires on the way and mounts its video.
     const handlePlay = (index: number) => {
-        setPlaying(index);
+        setSoundOn(true);
         setPaused(false);
-        autoplay.current.stop();
+        emblaApi?.scrollTo(index);
     };
 
-    // Toggle the currently mounted video between play and pause (same button)
+    // Toggle the currently mounted video between play and pause (same button).
+    // An explicit play press is a user gesture - unlock sound with it.
     const toggleVideo = () => {
         const v = videoRef.current;
         if (!v) return;
-        if (v.paused) void v.play();
-        else v.pause();
+        if (v.paused) {
+            setSoundOn(true);
+            v.muted = false;
+            void v.play();
+        } else {
+            v.pause();
+        }
     };
 
-    // 3 dots - left / centre / right
+    // One dot per real card; clicking a dot centres (and thereby plays) it.
     const realIndex = ((selected % REAL) + REAL) % REAL;
-    const activeDot = realIndex <= 1 ? 0 : realIndex === 2 ? 1 : 2;
     const goToDot = (dot: number) => {
         if (!emblaApi) return;
-        const targetReal = dot === 0 ? 0 : dot === 1 ? 2 : 4;
         const base = selected - realIndex;
-        emblaApi.scrollTo(base + targetReal);
+        emblaApi.scrollTo(base + dot);
     };
 
     return (
@@ -201,23 +212,30 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
 
                     {/* Carousel - drag to swipe (Embla handles pointer + touch) */}
                     <div
-                        className='w-full overflow-hidden cursor-grab select-none active:cursor-grabbing'
+                        className='w-full mx-auto overflow-hidden cursor-grab select-none active:cursor-grabbing'
+                        style={{ maxWidth: VIEWPORT_W }}
                         ref={emblaRef}>
                         <div
-                            className='flex items-center gap-6'
-                            style={{ height: H_MAX }}>
+                            className='flex items-center'
+                            // Extra vertical room: the embla viewport is
+                            // overflow-hidden, and without it the centre
+                            // card's drop shadow would clip at the bottom.
+                            style={{ height: H_MAX + 88, gap: GAP }}>
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
+                                // The centre (selected) card is always the one
+                                // playing - side cards only show their poster.
                                 const isPlaying =
-                                    playing === i && Boolean(card.video);
+                                    selected === i && Boolean(card.video);
                                 const title = dict.cards[card.key];
                                 return (
                                     <div
                                         key={`${card.key}-${i}`}
-                                        className='shrink-0 w-55'>
+                                        className='relative shrink-0'
+                                        style={{ width: SLIDE_W }}>
                                         <div
-                                            className='relative w-full overflow-hidden rounded-it-lg bg-it-border'
-                                            style={{ height: H_MIN }}>
+                                            className='relative w-full overflow-hidden rounded-it-lg bg-it-border will-change-transform'
+                                            style={{ height: H_MAX }}>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in
@@ -253,9 +271,30 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                         card.image ?? undefined
                                                     }
                                                     autoPlay
-                                                    loop
-                                                    muted={false}
+                                                    muted={!soundOn}
                                                     playsInline
+                                                    // The reel advances when the
+                                                    // video finishes (no loop) -
+                                                    // the next centred card then
+                                                    // auto-plays.
+                                                    onEnded={() =>
+                                                        emblaApi?.scrollNext()
+                                                    }
+                                                    // If the browser still blocks
+                                                    // (un)muted autoplay, retry
+                                                    // muted so the reel never
+                                                    // freezes on a poster.
+                                                    onLoadedData={e => {
+                                                        const v =
+                                                            e.currentTarget;
+                                                        if (!v.paused) return;
+                                                        v.play().catch(() => {
+                                                            v.muted = true;
+                                                            v.play().catch(
+                                                                () => {}
+                                                            );
+                                                        });
+                                                    }}
                                                     // Only the CURRENT video drives the paused state -
                                                     // a departing video fires pause on unmount and
                                                     // would flip the fresh card's icon.
@@ -365,19 +404,19 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                         </div>
                     </div>
 
-                    {/* Pagination - 3 dots: left / centre / right */}
+                    {/* Pagination - one dot per card */}
                     <div className='flex items-center gap-2'>
-                        {[0, 1, 2].map(dot => (
+                        {cards.map((card, dot) => (
                             <motion.button
-                                key={dot}
+                                key={card.key}
                                 type='button'
-                                aria-label={`Go to ${['left', 'centre', 'right'][dot]} slides`}
+                                aria-label={`Go to ${dict.cards[card.key]}`}
                                 onClick={() => goToDot(dot)}
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
                                 className={[
-                                    'h-1.5 w-12 rounded-full transition-colors duration-300 cursor-pointer border-none',
-                                    dot === activeDot
+                                    'h-1.5 w-8 rounded-full transition-colors duration-300 cursor-pointer border-none',
+                                    dot === realIndex
                                         ? 'bg-it-ink-muted'
                                         : 'bg-it-border',
                                 ].join(' ')}

@@ -14,9 +14,11 @@ import {
   NotFoundErrorDto,
 } from '@/common/dto/error-responses.dto';
 import {
+  BookingLookupResponseDto,
   BookingQuoteResponseDto,
   BookingResponseDto,
   ListBookingsResponseDto,
+  RecoverReferenceResponseDto,
   RequestCancellationResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
@@ -87,6 +89,33 @@ export const ApiUpdateBookingDocs = () =>
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiLookupBookingDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Traveller booking lookup (email + booking reference)',
+      description:
+        'The `/bookings` login surface: verifies the email + display-reference pair and returns ' +
+        'the TYP coordinates (`publicRef` + `destinationSlug`). Enumeration-proof - every failed ' +
+        'pair returns the same generic 404. Throttled to a human pace.',
+    }),
+    ApiOkResponse({ type: BookingLookupResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
+  );
+
+export const ApiRecoverReferenceDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: "'Lost your reference?' recovery (email in, notice out)",
+      description:
+        'Always responds `{ sent: true }` whether or not the email has bookings (enumeration-proof). ' +
+        'When it does, one branded notice lists the references of up to the five most recent ' +
+        'bookings, sent to the stored contact address. Throttled to a human pace.',
+    }),
+    ApiOkResponse({ type: RecoverReferenceResponseDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
   );
 
 export const ApiThankYouDocs = () =>

@@ -2,7 +2,10 @@ import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import {
+  PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
+  PublicSiteSEOResponseDto,
+  PublicSocialMediaResponseDto,
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
   UpdateMollieConfigurationDto,
@@ -98,6 +101,50 @@ export class SettingsService {
     });
   }
 
+  /**
+   * Public-safe SiteSEO for the unauthenticated site's meta/OG/Twitter tags.
+   *
+   * Same contract as getPublicSiteInfo: explicit select, findFirst so an
+   * anonymous GET never writes, and analytics IDs / verification codes /
+   * robots.txt stay out of the world-readable response.
+   */
+  async getPublicSiteSEO(): Promise<PublicSiteSEOResponseDto> {
+    const seo = await this.prisma.siteSEO.findFirst({
+      where: { id: 'default' },
+      select: {
+        metaTitle: true,
+        metaDescription: true,
+        metaKeywords: true,
+        canonicalUrl: true,
+        robotsMeta: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImage: true,
+        twitterTitle: true,
+        twitterDescription: true,
+        twitterImage: true,
+        googleSearchConsole: true,
+        cookiebotCbid: true,
+      },
+    });
+
+    return {
+      metaTitle: seo?.metaTitle ?? null,
+      metaDescription: seo?.metaDescription ?? null,
+      metaKeywords: seo?.metaKeywords ?? null,
+      canonicalUrl: seo?.canonicalUrl ?? null,
+      robotsMeta: seo?.robotsMeta ?? null,
+      ogTitle: seo?.ogTitle ?? null,
+      ogDescription: seo?.ogDescription ?? null,
+      ogImage: seo?.ogImage ?? null,
+      twitterTitle: seo?.twitterTitle ?? null,
+      twitterDescription: seo?.twitterDescription ?? null,
+      twitterImage: seo?.twitterImage ?? null,
+      googleSearchConsole: seo?.googleSearchConsole ?? null,
+      cookiebotCbid: seo?.cookiebotCbid || null,
+    };
+  }
+
   async updateSiteSEO(dto: UpdateSiteSEODto) {
     return this.prisma.siteSEO.upsert({
       where: { id: 'default' },
@@ -114,6 +161,41 @@ export class SettingsService {
       update: {},
       create: { id: 'default' },
     });
+  }
+
+  /**
+   * Public-safe CompanyInformations for footer/legal surfaces. findFirst keeps
+   * the anonymous GET read-only; companySize and timestamps are excluded.
+   */
+  async getPublicCompanyInformations(): Promise<PublicCompanyInfoResponseDto> {
+    const company = await this.prisma.companyInformations.findFirst({
+      where: { id: 'default' },
+      select: {
+        companyName: true,
+        companyEmail: true,
+        companyPhone: true,
+        companyWebsite: true,
+        companyAddress: true,
+        companyCity: true,
+        companyState: true,
+        companyZip: true,
+        companyCountry: true,
+        companyVat: true,
+      },
+    });
+
+    return {
+      companyName: company?.companyName ?? null,
+      companyEmail: company?.companyEmail ?? null,
+      companyPhone: company?.companyPhone ?? null,
+      companyWebsite: company?.companyWebsite ?? null,
+      companyAddress: company?.companyAddress ?? null,
+      companyCity: company?.companyCity ?? null,
+      companyState: company?.companyState ?? null,
+      companyZip: company?.companyZip ?? null,
+      companyCountry: company?.companyCountry ?? null,
+      companyVat: company?.companyVat ?? null,
+    };
   }
 
   async createCompanyInformations(dto: UpdateCompanyInformationsDto) {
@@ -215,6 +297,30 @@ export class SettingsService {
       update: {},
       create: { id: 'default' },
     });
+  }
+
+  /** Public-safe SocialMedia projection: the profile URLs, read-only. */
+  async getPublicSocialMedia(): Promise<PublicSocialMediaResponseDto> {
+    const social = await this.prisma.socialMedia.findFirst({
+      where: { id: 'default' },
+      select: {
+        facebookUrl: true,
+        twitterUrl: true,
+        linkedinUrl: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        tiktokUrl: true,
+      },
+    });
+
+    return {
+      facebookUrl: social?.facebookUrl ?? null,
+      twitterUrl: social?.twitterUrl ?? null,
+      linkedinUrl: social?.linkedinUrl ?? null,
+      instagramUrl: social?.instagramUrl ?? null,
+      youtubeUrl: social?.youtubeUrl ?? null,
+      tiktokUrl: social?.tiktokUrl ?? null,
+    };
   }
 
   async updateSocialMedia(dto: any) {

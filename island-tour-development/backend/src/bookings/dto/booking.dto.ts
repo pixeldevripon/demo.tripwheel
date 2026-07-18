@@ -114,6 +114,55 @@ export class RequestCancellationResponseDto {
   @ApiProperty({ example: true }) requested!: boolean;
 }
 
+/**
+ * Traveller booking lookup (`/bookings` login surface, spec 2): the email the
+ * booking was made with + the human display reference from the confirmation
+ * email. No passwords, no sign-up.
+ */
+export class LookupBookingDto {
+  @ApiProperty({ example: 'traveller@example.com' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({
+    example: 'IT-2026-0A1B2C',
+    description: 'Human booking reference from the confirmation email',
+  })
+  @IsString()
+  @MaxLength(40)
+  reference!: string;
+}
+
+/** "Lost your reference?" recovery: the email the traveller booked with. */
+export class RecoverReferenceDto {
+  @ApiProperty({ example: 'traveller@example.com' })
+  @IsEmail()
+  email!: string;
+}
+
+/**
+ * Always `{ sent: true }` - whether or not the email has bookings - so the
+ * endpoint can never be used to probe which addresses booked with us.
+ */
+export class RecoverReferenceResponseDto {
+  @ApiProperty({ example: true }) sent!: boolean;
+}
+
+/**
+ * Successful lookup: just enough to build the TYP url
+ * (`/{destinationSlug}/thank-you/{publicRef}`). A failed pair returns a generic
+ * 404 - the response never confirms whether the email alone exists.
+ */
+export class BookingLookupResponseDto {
+  @ApiProperty() publicRef!: string;
+
+  @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
+
+  @ApiProperty({ example: 'curacao', nullable: true }) destinationSlug!:
+    | string
+    | null;
+}
+
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;

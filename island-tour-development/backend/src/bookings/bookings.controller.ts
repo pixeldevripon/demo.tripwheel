@@ -19,7 +19,9 @@ import {
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  LookupBookingDto,
   QuoteBookingDto,
+  RecoverReferenceDto,
   RequestCancellationDto,
   ReserveBookingDto,
   UpdateBookingDto,
@@ -31,7 +33,9 @@ import {
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
+  ApiLookupBookingDocs,
   ApiQuoteDocs,
+  ApiRecoverReferenceDocs,
   ApiRequestCancellationDocs,
   ApiReserveDocs,
   ApiResendConfirmationDocs,
@@ -105,6 +109,50 @@ export class BookingsController {
   @ApiUpdateBookingDocs()
   update(@Param('id') id: string, @Body() dto: UpdateBookingDto) {
     return this.bookings.update(id, dto);
+  }
+
+  /**
+   * POST /bookings/lookup
+   *
+   * The traveller `/bookings` login surface: email + display reference in, TYP
+   * coordinates out. Effectively a credential check, so it gets the same
+   * human-pace throttle as the other public TYP actions (the global tiers are
+   * far too loose for guessing pairs) - and like them it MUST be called from
+   * the browser, never SSR (`skipIf: isTrustedInternalOrigin` would bypass
+   * every limit below).
+   */
+  @Throttle({
+    short: { limit: 2, ttl: 10_000 },
+    medium: { limit: 6, ttl: 60_000 },
+    long: { limit: 30, ttl: 3_600_000 },
+  })
+  @Post('lookup')
+  @Public()
+  @ApiLookupBookingDocs()
+  lookup(@Body() dto: LookupBookingDto) {
+    return this.bookings.lookupBooking(dto);
+  }
+
+  /**
+   * POST /bookings/lookup/recover-reference
+   *
+   * "Lost your reference?" on the `/bookings` surface. Always acks with
+   * `{ sent: true }` (enumeration-proof); when the email has bookings, the
+   * service mails the references to the STORED contact address - the recipient
+   * is never accepted from the caller. Sends mail, so it gets the same
+   * human-pace throttle as resend (and the same browser-only rule: the SSR
+   * internal-key bypass would skip every limit below).
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('lookup/recover-reference')
+  @Public()
+  @ApiRecoverReferenceDocs()
+  recoverReference(@Body() dto: RecoverReferenceDto) {
+    return this.bookings.recoverReference(dto);
   }
 
   @Get('typ/:publicRef')

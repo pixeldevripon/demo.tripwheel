@@ -1,6 +1,10 @@
 import QueryProvider from '@/components/providers/query-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+    getPublicSiteInfo,
+    getPublicSiteSeo,
+} from '@/lib/api/public/settings';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
@@ -45,11 +49,66 @@ const jetbrainsMono = JetBrains_Mono({
     subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-    title: 'Island Tours - Admin',
-    description:
-        'Island Tours admin dashboard - manage trips, bookings, and more.',
-};
+/**
+ * Site-wide defaults sourced from the admin-managed settings (Settings > SEO
+ * and Settings > General in the dashboard). Both reads are cached under the
+ * `site-info` tag, so a dashboard save shows up without a redeploy. Pages with
+ * their own generateMetadata (tour/search/wishlist) still override these.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+    const [site, seo] = await Promise.all([
+        getPublicSiteInfo(),
+        getPublicSiteSeo(),
+    ]);
+
+    const title = seo.metaTitle ?? site.siteName ?? 'Island Tours';
+    const description =
+        seo.metaDescription ?? site.siteTagline ?? undefined;
+
+    // canonicalUrl doubles as the metadataBase so relative OG images resolve.
+    let metadataBase: URL | undefined;
+    try {
+        if (seo.canonicalUrl) metadataBase = new URL(seo.canonicalUrl);
+    } catch {
+        // Malformed admin input - fall back to Next's default resolution.
+    }
+
+    // Admins sometimes paste Google's full <meta> tag instead of just the
+    // token - accept both by extracting the content value when present.
+    const googleVerification =
+        seo.googleSearchConsole?.match(/content=["']([^"']+)["']/)?.[1] ??
+        seo.googleSearchConsole?.trim();
+
+    return {
+        title,
+        description,
+        ...(seo.metaKeywords ? { keywords: seo.metaKeywords } : {}),
+        ...(seo.robotsMeta ? { robots: seo.robotsMeta } : {}),
+        ...(metadataBase ? { metadataBase } : {}),
+        // Search Console ownership proof: renders the
+        // <meta name="google-site-verification"> tag site-wide.
+        ...(googleVerification
+            ? { verification: { google: googleVerification } }
+            : {}),
+        // Dashboard-managed favicon. The static file lives in public/ (NOT
+        // app/ - an app/favicon.ico is always auto-injected by Next and
+        // browsers prefer it over the dynamic link), so exactly one icon link
+        // is emitted: the settings URL, or the bundled fallback.
+        icons: { icon: site.favicon || '/favicon.ico' },
+        openGraph: {
+            title: seo.ogTitle ?? title,
+            description: seo.ogDescription ?? description,
+            ...(seo.ogImage ? { images: [seo.ogImage] } : {}),
+        },
+        twitter: {
+            card: seo.twitterImage ? 'summary_large_image' : 'summary',
+            title: seo.twitterTitle ?? seo.ogTitle ?? title,
+            description:
+                seo.twitterDescription ?? seo.ogDescription ?? description,
+            ...(seo.twitterImage ? { images: [seo.twitterImage] } : {}),
+        },
+    };
+}
 
 export default function RootLayout({
     children,

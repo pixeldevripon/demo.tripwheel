@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { searchToursClient } from '@/lib/api/search';
+import { searchSuggestClient } from '@/lib/api/search';
 import {
     localizeHref,
     LOCALE_CURRENCY,
@@ -14,10 +14,11 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
-import type { SearchHit } from '@/types/search';
+import type { SearchHit, SearchSuggest } from '@/types/search';
 
 import { iconPress, pressSpring } from './lib/navbar.constants';
-import type { Island, NavDict, SearchDict } from './lib/navbar.types';
+import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
+import { RotatingSearchPlaceholder } from './rotating-search-placeholder';
 import { SearchTypeahead } from './search-typeahead';
 import { useClickOutside } from './lib/use-click-outside';
 
@@ -35,6 +36,7 @@ export function NavSearch({
     nav,
     search,
     currentIsland,
+    categories,
     showDesktop,
     mobileOpen,
     onMobileClose,
@@ -43,14 +45,15 @@ export function NavSearch({
     nav: NavDict;
     search: SearchDict;
     currentIsland: Island | null;
+    /** Destination-scoped categories - feed the rotating placeholder. */
+    categories: Category[] | null;
     showDesktop: boolean;
     mobileOpen: boolean;
     onMobileClose: () => void;
 }) {
     const router = useRouter();
     const [query, setQuery] = useState('');
-    const [hits, setHits] = useState<SearchHit[]>([]);
-    const [total, setTotal] = useState(0);
+    const [suggest, setSuggest] = useState<SearchSuggest | null>(null);
     const [loading, setLoading] = useState(false);
     const [focused, setFocused] = useState(false);
     // Display currency for the typeahead prices. Starts from the locale default
@@ -73,31 +76,28 @@ export function NavSearch({
         setCurrency(currencyFromCookie(document.cookie, locale));
     }, [locale]);
 
-    // Live previews as the user types (debounced 250ms, abortable).
+    // Live suggestions as the user types (debounced 250ms, abortable).
     useEffect(() => {
         const q = query.trim();
         if (q.length < 2) {
-            setHits([]);
-            setTotal(0);
+            setSuggest(null);
             setLoading(false);
             return;
         }
         setLoading(true);
         const controller = new AbortController();
         const timer = setTimeout(() => {
-            searchToursClient(
+            searchSuggestClient(
                 {
                     q,
                     locale,
                     currency,
                     destinationSlug: currentIsland?.slug,
-                    limit: 6,
                 },
                 controller.signal
             )
                 .then(res => {
-                    setHits(res.data);
-                    setTotal(res.total);
+                    setSuggest(res);
                     setLoading(false);
                 })
                 .catch(() => setLoading(false));
@@ -138,17 +138,35 @@ export function NavSearch({
         onMobileClose();
     };
 
+    // Fever-style placeholder: "Search for" + rotating category names of the
+    // active island. Falls back to the plain placeholder attr when there are
+    // no categories to rotate.
+    const categoryNames = (categories ?? []).map(c => c.name);
+    const rotating = categoryNames.length > 0;
+
     const panel = (
         <SearchTypeahead
-            hits={hits}
-            total={total}
+            suggest={suggest}
             loading={loading}
             query={trimmed}
             locale={locale}
             currency={currency}
             dict={search}
+            islandName={currentIsland?.name ?? null}
             searchHref={searchHref}
             tourHref={tourHref}
+            categoryHref={
+                currentIsland
+                    ? (slug: string) =>
+                          localizeHref(
+                              locale,
+                              `/${currentIsland.slug}/${slug}`
+                          )
+                    : null
+            }
+            hubHref={(destinationSlug: string, slug: string) =>
+                localizeHref(locale, `/${destinationSlug}/${slug}`)
+            }
             onSelect={onSelect}
         />
     );
@@ -177,15 +195,23 @@ export function NavSearch({
                                 className='size-4.5 shrink-0'
                             />
                         </motion.button>
-                        <input
-                            type='search'
-                            value={query}
-                            onChange={e => setQuery(e.target.value)}
-                            onFocus={() => setFocused(true)}
-                            placeholder={nav.search}
-                            aria-label={nav.search}
-                            className='flex-1 min-w-0 bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
-                        />
+                        <span className='relative flex-1 min-w-0'>
+                            <input
+                                type='search'
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                onFocus={() => setFocused(true)}
+                                placeholder={rotating ? '' : nav.search}
+                                aria-label={nav.search}
+                                className='w-full bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                            />
+                            {rotating && query === '' && (
+                                <RotatingSearchPlaceholder
+                                    prefix={nav.search}
+                                    names={categoryNames}
+                                />
+                            )}
+                        </span>
                     </form>
                     <AnimatePresence>
                         {showDesktopPanel && panel}
@@ -215,15 +241,23 @@ export function NavSearch({
                             onSubmit={submit}
                             role='search'
                             className='flex flex-1 items-center gap-2 rounded-it-full border border-it-heading-subtle px-4 py-2.5 bg-it-white'>
-                            <input
-                                ref={mobileInputRef}
-                                type='search'
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                                placeholder={nav.search}
-                                aria-label={nav.search}
-                                className='flex-1 min-w-0 bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
-                            />
+                            <span className='relative flex-1 min-w-0'>
+                                <input
+                                    ref={mobileInputRef}
+                                    type='search'
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                    placeholder={rotating ? '' : nav.search}
+                                    aria-label={nav.search}
+                                    className='w-full bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                />
+                                {rotating && query === '' && (
+                                    <RotatingSearchPlaceholder
+                                        prefix={nav.search}
+                                        names={categoryNames}
+                                    />
+                                )}
+                            </span>
                             <motion.button
                                 type='submit'
                                 aria-label={nav.search}

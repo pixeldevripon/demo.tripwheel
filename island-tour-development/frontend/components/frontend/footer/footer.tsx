@@ -1,9 +1,14 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { MotionButton, MotionSpan } from '@/components/frontend/motion-primitives';
+import { MotionSpan } from '@/components/frontend/motion-primitives';
 import { Reveal } from '@/components/frontend/reveal';
+import {
+    getPublicCompanyInfo,
+    getPublicSocialMedia,
+} from '@/lib/api/public/settings';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
+import Image from 'next/image';
+import Link from 'next/link';
+import { CurrentYear } from './current-year';
 import { CurrencySelector, LanguageSelector } from './footer-selectors';
 
 type FooterDict = {
@@ -35,29 +40,83 @@ type FooterDict = {
 };
 
 // Social ring icons - each SVG bakes in the grey-ringed circle + white glyph.
-const socials = [
-    { src: '/footer/social/social-1.svg', alt: 'Instagram', href: '#' },
-    { src: '/footer/social/social-2.svg', alt: 'Facebook', href: '#' },
-    { src: '/footer/social/social-3.svg', alt: 'YouTube', href: '#' },
-    { src: '/footer/social/social-4.svg', alt: 'TikTok', href: '#' },
-];
+// Only networks with a dashboard-managed URL render; Twitter/LinkedIn exist in
+// settings but have no ring assets yet, so they stay unused here.
+const SOCIAL_ICONS = {
+    instagram: { src: '/footer/social/social-1.svg', alt: 'Instagram' },
+    facebook: { src: '/footer/social/social-2.svg', alt: 'Facebook' },
+    youtube: { src: '/footer/social/social-3.svg', alt: 'YouTube' },
+    tiktok: { src: '/footer/social/social-4.svg', alt: 'TikTok' },
+} as const;
 
 // Payment marks - white Figma glyphs. `cls` carries the exact mobile + desktop
 // box from Figma (mobile renders ~1.6× larger than desktop).
 const paymentsRow1 = [
-    { src: '/footer/payment/pay-1.svg', alt: 'Visa', w: 55, h: 20, cls: 'h-5 w-[55px] lg:h-3 lg:w-[34px]' },
-    { src: '/footer/payment/pay-2.svg', alt: 'Mastercard', w: 38, h: 23, cls: 'h-[23px] w-[38px] lg:h-3.5 lg:w-[23px]' },
-    { src: '/footer/payment/pay-3.svg', alt: 'PayPal', w: 43, h: 41, cls: 'h-[41px] w-[43px] lg:h-[25px] lg:w-[26px]' },
-    { src: '/footer/payment/pay-4.svg', alt: 'iDEAL', w: 41, h: 38, cls: 'h-[38px] w-[41px] lg:h-[25px] lg:w-[25px]' },
+    {
+        src: '/footer/payment/pay-1.svg',
+        alt: 'Visa',
+        w: 55,
+        h: 20,
+        cls: 'h-5 w-[55px] lg:h-3 lg:w-[34px]',
+    },
+    {
+        src: '/footer/payment/pay-2.svg',
+        alt: 'Mastercard',
+        w: 38,
+        h: 23,
+        cls: 'h-[23px] w-[38px] lg:h-3.5 lg:w-[23px]',
+    },
+    {
+        src: '/footer/payment/pay-3.svg',
+        alt: 'PayPal',
+        w: 43,
+        h: 41,
+        cls: 'h-[41px] w-[43px] lg:h-[25px] lg:w-[26px]',
+    },
+    {
+        src: '/footer/payment/pay-4.svg',
+        alt: 'iDEAL',
+        w: 41,
+        h: 38,
+        cls: 'h-[38px] w-[41px] lg:h-[25px] lg:w-[25px]',
+    },
 ];
 const paymentsRow2 = [
-    { src: '/footer/payment/pay-5.svg', alt: 'Apple Pay', w: 51, h: 23, cls: 'h-[23px] w-[51px] lg:h-3.5 lg:w-[31px]' },
-    { src: '/footer/payment/pay-6.svg', alt: 'Google Pay', w: 68, h: 26, cls: 'h-6.5 w-[68px] lg:h-4 lg:w-[41px]' },
-    { src: '/footer/payment/pay-7.svg', alt: 'Klarna', w: 56, h: 18, cls: 'h-[18px] w-[56px] lg:h-[11px] lg:w-[35px]' },
-    { src: '/footer/payment/pay-8.svg', alt: 'American Express', w: 58, h: 21, cls: 'h-[21px] w-[58px] lg:h-[13px] lg:w-[35px]' },
+    {
+        src: '/footer/payment/pay-5.svg',
+        alt: 'Apple Pay',
+        w: 51,
+        h: 23,
+        cls: 'h-[23px] w-[51px] lg:h-3.5 lg:w-[31px]',
+    },
+    {
+        src: '/footer/payment/pay-6.svg',
+        alt: 'Google Pay',
+        w: 68,
+        h: 26,
+        cls: 'h-6.5 w-[68px] lg:h-4 lg:w-[41px]',
+    },
+    {
+        src: '/footer/payment/pay-7.svg',
+        alt: 'Klarna',
+        w: 56,
+        h: 18,
+        cls: 'h-[18px] w-[56px] lg:h-[11px] lg:w-[35px]',
+    },
+    {
+        src: '/footer/payment/pay-8.svg',
+        alt: 'American Express',
+        w: 58,
+        h: 21,
+        cls: 'h-[21px] w-[58px] lg:h-[13px] lg:w-[35px]',
+    },
 ];
 
-/** A single link column (heading + list). */
+/**
+ * A single link column (heading + list). Links without an `href` are pages
+ * that do not exist yet - they render as plain text (same look, no hover, no
+ * navigation) so nothing in the footer can land on a 404.
+ */
 function LinkColumn({
     locale,
     title,
@@ -66,7 +125,7 @@ function LinkColumn({
 }: {
     locale: Locale;
     title: string;
-    links: { label: string; href: string }[];
+    links: { label: string; href?: string }[];
     className?: string;
 }) {
     return (
@@ -75,13 +134,19 @@ function LinkColumn({
                 {title}
             </h3>
             <ul className='m-0 flex list-none flex-col gap-2 p-0 lg:gap-3'>
-                {links.map((link) => (
+                {links.map(link => (
                     <li key={link.label}>
-                        <Link
-                            href={localizeHref(locale, link.href)}
-                            className='inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
-                            {link.label}
-                        </Link>
+                        {link.href ? (
+                            <Link
+                                href={localizeHref(locale, link.href)}
+                                className='inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
+                                {link.label}
+                            </Link>
+                        ) : (
+                            <span className='inline-block cursor-default text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                                {link.label}
+                            </span>
+                        )}
                     </li>
                 ))}
             </ul>
@@ -93,7 +158,7 @@ function LinkColumn({
 function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
     return (
         <div className='flex items-center justify-between gap-4'>
-            {items.map((p) => (
+            {items.map(p => (
                 <Image
                     key={p.alt}
                     src={p.src}
@@ -107,7 +172,40 @@ function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
     );
 }
 
-export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
+export async function Footer({
+    locale,
+    dict,
+}: {
+    locale: Locale;
+    dict: FooterDict;
+}) {
+    // Dashboard-managed settings (Settings > Social Media / Company). Cached
+    // under the `site-info` tag, so an admin save shows up without a redeploy.
+    const [social, company] = await Promise.all([
+        getPublicSocialMedia(),
+        getPublicCompanyInfo(),
+    ]);
+
+    const socials = [
+        { ...SOCIAL_ICONS.instagram, href: social.instagramUrl },
+        { ...SOCIAL_ICONS.facebook, href: social.facebookUrl },
+        { ...SOCIAL_ICONS.youtube, href: social.youtubeUrl },
+        { ...SOCIAL_ICONS.tiktok, href: social.tiktokUrl },
+    ].filter((s): s is typeof s & { href: string } => !!s.href);
+
+    // The year renders via a client leaf: Server Components may not read the
+    // current time during prerender (next-prerender-current-time).
+    const copyrightLine = company.companyName ? (
+        <>
+            © <CurrentYear /> ITG B.V. (Island Tours Group)
+        </>
+    ) : (
+        dict.copyright
+    );
+    const registrationLine = company.companyVat
+        ? company.companyVat
+        : dict.registration;
+
     // Destination & tour names are proper nouns - not translated, only the URL is localized.
     const exploreLinks = [
         { label: 'Curaçao', href: '/curacao' },
@@ -116,19 +214,23 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
         { label: dict.links.sunsetCruises, href: '/curacao/sunset-cruises' },
         { label: 'Klein Curaçao', href: '/curacao/klein-curacao' },
     ];
+    // Help/contact/list-your-tour/affiliate pages don't exist yet - no href
+    // deactivates them (plain text, no 404) until those pages are built.
     const supportLinks = [
-        { label: dict.links.help, href: '/help' },
-        { label: dict.links.contact, href: '/contact' },
+        { label: dict.links.help },
+        { label: dict.links.contact },
     ];
     const workLinks = [
-        { label: dict.links.listTour, href: '/list-your-tour' },
-        { label: dict.links.affiliate, href: '/affiliate' },
+        { label: dict.links.listTour },
+        { label: dict.links.affiliate },
     ];
+    // Slugs from the legal handover README (public/Legal Pages): static
+    // routes, English on every locale.
     const legalLinks = [
-        { label: dict.links.privacy, href: '/privacy' },
-        { label: dict.links.cookies, href: '/cookies' },
+        { label: dict.links.privacy, href: '/privacy-policy' },
+        { label: dict.links.cookies, href: '/cookie-policy' },
         { label: dict.links.terms, href: '/terms' },
-        { label: dict.links.cancellation, href: '/cancellation' },
+        { label: dict.links.cancellation, href: '/cancellation-policy' },
         { label: dict.links.legalNotice, href: '/legal-notice' },
     ];
 
@@ -146,7 +248,9 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         <div className='grid grid-cols-2 gap-x-6 lg:contents'>
                             <div className='flex flex-col gap-6 lg:w-52.5 lg:gap-8'>
                                 <div className='flex flex-col gap-4 lg:gap-6'>
-                                    <Link href={localizeHref(locale, '/')} className='inline-flex'>
+                                    <Link
+                                        href={localizeHref(locale, '/')}
+                                        className='inline-flex'>
                                         <Image
                                             src='/logo/footer-logo.png'
                                             alt='Island Tours'
@@ -161,33 +265,38 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                                 </div>
 
                                 <div className='flex flex-col gap-2 lg:gap-4'>
-                                    <Link
-                                        href={localizeHref(locale, '/about')}
-                                        className='inline-block w-fit text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
+                                    {/* /about doesn't exist yet - plain text until it does. */}
+                                    <span className='inline-block w-fit cursor-default text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
                                         {dict.ourStory}
-                                    </Link>
-                                    <div className='flex items-center gap-1.25 lg:gap-2'>
-                                        {socials.map((s) => (
-                                            <Link
-                                                key={s.alt}
-                                                href={s.href}
-                                                aria-label={s.alt}
-                                                className='inline-flex'>
-                                                <MotionSpan
-                                                    className='inline-flex'
-                                                    whileTap={{ scale: 0.9 }}
-                                                    transition={springPop}>
-                                                    <Image
-                                                        src={s.src}
-                                                        alt={s.alt}
-                                                        width={40}
-                                                        height={40}
-                                                        className='size-6 lg:size-10'
-                                                    />
-                                                </MotionSpan>
-                                            </Link>
-                                        ))}
-                                    </div>
+                                    </span>
+                                    {socials.length > 0 && (
+                                        <div className='flex items-center gap-1.25 lg:gap-2'>
+                                            {socials.map(s => (
+                                                <a
+                                                    key={s.alt}
+                                                    href={s.href}
+                                                    target='_blank'
+                                                    rel='noopener noreferrer'
+                                                    aria-label={s.alt}
+                                                    className='inline-flex'>
+                                                    <MotionSpan
+                                                        className='inline-flex'
+                                                        whileTap={{
+                                                            scale: 0.9,
+                                                        }}
+                                                        transition={springPop}>
+                                                        <Image
+                                                            src={s.src}
+                                                            alt={s.alt}
+                                                            width={40}
+                                                            height={40}
+                                                            className='size-6 lg:size-10'
+                                                        />
+                                                    </MotionSpan>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -202,8 +311,16 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         {/* Support + Work with us - same 2-col grid as Brand|Explore (so
                             "Work with us" lines up under "Explore"), stacked on desktop */}
                         <div className='grid grid-cols-2 gap-x-6 lg:flex lg:flex-col lg:justify-start lg:gap-9.5 lg:whitespace-nowrap'>
-                            <LinkColumn locale={locale} title={dict.support} links={supportLinks} />
-                            <LinkColumn locale={locale} title={dict.workWithUs} links={workLinks} />
+                            <LinkColumn
+                                locale={locale}
+                                title={dict.support}
+                                links={supportLinks}
+                            />
+                            <LinkColumn
+                                locale={locale}
+                                title={dict.workWithUs}
+                                links={workLinks}
+                            />
                         </div>
 
                         <LinkColumn
@@ -218,8 +335,14 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                             stretch uglily across tablet widths. */}
                         <div className='flex w-full flex-col gap-8 min-[480px]:max-w-92.5 lg:w-55.25 lg:max-w-none lg:gap-12'>
                             <div className='flex flex-col gap-4'>
-                                <LanguageSelector locale={locale} label={dict.language} />
-                                <CurrencySelector locale={locale} label={dict.currency} />
+                                <LanguageSelector
+                                    locale={locale}
+                                    label={dict.language}
+                                />
+                                <CurrencySelector
+                                    locale={locale}
+                                    label={dict.currency}
+                                />
                             </div>
 
                             <div className='flex flex-col gap-8 lg:gap-6'>
@@ -245,20 +368,20 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
                         <div className='flex flex-col gap-2.5 py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
                             <div className='flex flex-wrap items-center gap-4 lg:gap-6'>
                                 <span className='text-xs leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
-                                    {dict.copyright}
+                                    {copyrightLine}
                                 </span>
                                 <span className='size-1.25 shrink-0 rounded-full bg-it-ink-muted' />
                                 <span className='text-xs leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
-                                    {dict.registration}
+                                    {registrationLine}
                                 </span>
                             </div>
-                            <MotionButton
-                                type='button'
-                                
-                                transition={springPop}
-                                className='w-fit cursor-pointer border-none bg-transparent p-0 text-left text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted transition-colors hover:text-it-white lg:text-base'>
+                            {/* Cookie preferences live on /manage-cookies (the page's
+                                button reopens the Cookiebot dialog once it ships). */}
+                            <Link
+                                href={localizeHref(locale, '/manage-cookies')}
+                                className='w-fit text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors hover:text-it-white lg:text-base'>
                                 {dict.manageCookies}
-                            </MotionButton>
+                            </Link>
                         </div>
                     </Reveal>
                 </div>
@@ -266,3 +389,4 @@ export function Footer({ locale, dict }: { locale: Locale; dict: FooterDict }) {
         </footer>
     );
 }
+

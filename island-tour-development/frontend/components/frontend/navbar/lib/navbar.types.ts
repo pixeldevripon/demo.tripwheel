@@ -8,6 +8,8 @@ export type NavDict = {
     selectIsland: string;
     wishlist: string;
     account: string;
+    myBookings: string;
+    logout: string;
     menu: string;
     close: string;
     language: string;
@@ -20,6 +22,12 @@ export type SearchDict = {
     searching: string;
     seeAll: string;
     noResults: string;
+    // Suggest panel sections (Fever-style).
+    toursIn: string;
+    beyond: string;
+    tourCount: string;
+    tourCountOne: string;
+    seeAllTours: string;
     // Duration units (satisfies DurationDict for formatDuration).
     hours: string;
     hour: string;

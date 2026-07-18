@@ -16,10 +16,11 @@ import { NextResponse } from 'next/server';
  * traveler surface resolves locale via Accept-Language/cookie without a prefix
  * (spec 2.1), and the operator/admin/apply surfaces are single-locale.
  */
+// `/bookings` moved UNDER the locale segment (`/{locale}/bookings`) - the bare
+// path now goes through the standard locale redirect like any public page.
 const NON_LOCALIZED_PREFIXES = [
     '/dashboard',
     '/onboarding',
-    '/bookings',
     '/portal',
     '/staff',
     '/apply',

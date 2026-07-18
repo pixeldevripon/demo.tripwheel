@@ -10,7 +10,10 @@ import {
   CompanyInformationsResponseDto,
   MailchimpResponseDto,
   MollieConfigurationResponseDto,
+  PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
+  PublicSiteSEOResponseDto,
+  PublicSocialMediaResponseDto,
   SiteInfoResponseDto,
   SiteSEOResponseDto,
   SMTPResponseDto,
@@ -91,6 +94,70 @@ export function ApiUpdateSiteInfoDocs() {
       type: SiteInfoResponseDto,
     }),
     ...adminErrors,
+  );
+}
+
+export function ApiGetPublicSiteSEODocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get public SEO settings (no auth)',
+      description:
+        'Public-safe subset of SiteSEO for the marketing site: meta, Open ' +
+        'Graph, and Twitter tag values plus canonical URL and robots meta. ' +
+        'Never returns analytics IDs, verification codes, or robots.txt.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Public SEO settings retrieved successfully',
+      type: PublicSiteSEOResponseDto,
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal server error',
+      type: InternalServerErrorDto,
+    }),
+  );
+}
+
+export function ApiGetPublicSocialMediaDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get public social media links (no auth)',
+      description:
+        'The four public social profile URLs for the marketing site footer.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Public social media links retrieved successfully',
+      type: PublicSocialMediaResponseDto,
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal server error',
+      type: InternalServerErrorDto,
+    }),
+  );
+}
+
+export function ApiGetPublicCompanyInfoDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get public company information (no auth)',
+      description:
+        'Public-safe company/legal details (name, contact, address, VAT) for ' +
+        'the marketing site footer and legal pages. Excludes companySize and ' +
+        'record timestamps.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Public company information retrieved successfully',
+      type: PublicCompanyInfoResponseDto,
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal server error',
+      type: InternalServerErrorDto,
+    }),
   );
 }
 

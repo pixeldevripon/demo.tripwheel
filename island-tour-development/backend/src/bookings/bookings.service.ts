@@ -71,13 +71,17 @@ import {
 } from './booking-email.context';
 import { buildBookingIcs } from './booking-ics.util';
 import type {
+  BookingLookupResponseDto,
   BookingQuoteResponseDto,
   CancelBookingDto,
   ConfirmBookingDto,
   ExtendBookingDto,
   ListBookingsQueryDto,
+  LookupBookingDto,
   QuoteBookingDto,
   QuoteLineDto,
+  RecoverReferenceDto,
+  RecoverReferenceResponseDto,
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
@@ -1543,6 +1547,138 @@ export class BookingsService {
     const booking = await this.loadOr404(id);
     await this.assertCanView(booking, actor);
     return mapBooking(booking);
+  }
+
+  /**
+   * Traveller booking lookup (the `/bookings` login surface): verifies the
+   * email + display-reference pair and returns the TYP coordinates so the
+   * frontend can redirect to `/{destinationSlug}/thank-you/{publicRef}`.
+   *
+   * Enumeration-proof: "email unknown", "reference unknown", and "pair
+   * mismatch" all throw the same generic 404, so the endpoint never confirms
+   * whether an email has bookings. Matching is case-insensitive on both sides
+   * (references are retyped from an email, addresses from memory).
+   */
+  async lookupBooking(
+    dto: LookupBookingDto,
+  ): Promise<BookingLookupResponseDto> {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        displayRef: { equals: dto.reference.trim(), mode: 'insensitive' },
+        contactEmail: { equals: dto.email.trim(), mode: 'insensitive' },
+      },
+      select: {
+        publicRef: true,
+        displayRef: true,
+        tour: { select: { destination: { select: { slug: true } } } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException(
+        'No booking matches that email and reference',
+      );
+    }
+
+    return {
+      publicRef: booking.publicRef,
+      displayRef: booking.displayRef,
+      destinationSlug: booking.tour.destination?.slug ?? null,
+    };
+  }
+
+  /**
+   * "Lost your reference?" recovery for the `/bookings` login surface. Always
+   * resolves `{ sent: true }` - whether or not the email has bookings - so the
+   * endpoint can never be used to probe which addresses booked with us. When
+   * bookings exist, ONE branded notice (shared shell) lists the references of
+   * up to the five most recent; the send is fire-and-forget so response timing
+   * does not leak whether mail went out.
+   */
+  async recoverReference(
+    dto: RecoverReferenceDto,
+  ): Promise<RecoverReferenceResponseDto> {
+    const email = dto.email.trim();
+    const bookings = await this.prisma.booking.findMany({
+      where: { contactEmail: { equals: email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        displayRef: true,
+        publicRef: true,
+        contactEmail: true,
+        customerLocale: true,
+        localDate: true,
+        tourStartDateTime: true,
+        startTime: true,
+        tour: {
+          select: { name: true, destination: { select: { slug: true } } },
+        },
+      },
+    });
+
+    if (!bookings.length) {
+      this.logger.log(
+        'Reference recovery requested for an email with no bookings',
+      );
+      return { sent: true };
+    }
+
+    const [latest] = bookings;
+    const site = await this.prisma.siteInfo.findFirst({
+      select: { logo: true },
+    });
+    const base = (process.env.FRONTEND_URL ?? 'https://island.tours').replace(
+      /\/$/,
+      '',
+    );
+    const locale = toLocale(latest.customerLocale);
+    const ctx: EmailTemplateContext = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: site?.logo ?? '',
+      bookingRef: latest.displayRef,
+      tourName: latest.tour?.name ?? 'Your tour',
+      startTime: latest.startTime ?? '',
+      dateLong: formatDateLong(
+        latest.tourStartDateTime ?? latest.localDate,
+        locale,
+      ),
+      noticeTitle: 'Your booking reference.',
+      noticeParagraphs: [
+        bookings.length === 1
+          ? `Your booking reference is ${latest.displayRef}.`
+          : 'Here are the references for your recent bookings:',
+        ...(bookings.length > 1
+          ? bookings.map(
+              (b) =>
+                `${b.displayRef} - ${b.tour?.name ?? 'Tour'} (${formatDateLong(
+                  b.tourStartDateTime ?? b.localDate,
+                  locale,
+                )})`,
+            )
+          : []),
+        `Use it together with this email address at ${base}/bookings to open your booking details.`,
+      ],
+      ctaUrl: `${base}/${latest.tour?.destination?.slug ?? 'curacao'}/thank-you/${latest.publicRef}`,
+      ctaLabel: 'View your latest booking',
+    };
+
+    // Send to the STORED address (never echo the caller's casing) and don't
+    // await - a failed send is logged, the caller still gets the generic ack.
+    void this.mail
+      .sendBookingNoticeEmail(
+        latest.contactEmail ?? email,
+        `Your booking reference - ${latest.displayRef}`,
+        ctx,
+        buildNoticeText(ctx),
+      )
+      .catch((err: Error) => {
+        this.logger.error(
+          `Reference recovery email failed for ${latest.displayRef}`,
+          err,
+        );
+      });
+
+    return { sent: true };
   }
 
   /**
