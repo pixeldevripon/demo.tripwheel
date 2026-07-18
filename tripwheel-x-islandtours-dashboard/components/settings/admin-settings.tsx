@@ -4,6 +4,7 @@ import { EntityTabs } from '@/components/common/entity-tabs';
 import { CompanyInfoForm } from './company-info-form';
 import { IntegrationsForm } from './integrations-form';
 import { PaymentsForm } from './payments-form';
+import { ReviewsForm } from './reviews-form';
 import { SeoForm } from './seo-form';
 import { SiteInfoForm } from './site-info-form';
 import { SocialMediaForm } from './social-media-form';
@@ -28,6 +29,7 @@ export function AdminSettings() {
         { value: 'legal-entity', label: 'Legal Entity', content: <CompanyInfoForm /> },
         { value: 'payments', label: 'Payments', content: <PaymentsForm /> },
         { value: 'integrations', label: 'Integrations', content: <IntegrationsForm /> },
+        { value: 'reviews', label: 'Reviews', content: <ReviewsForm /> },
       ]}
     />
   );

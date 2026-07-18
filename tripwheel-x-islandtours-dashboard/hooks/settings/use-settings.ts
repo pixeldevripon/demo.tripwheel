@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api/settings';
 import type {
   UpdateCompanyInformationsPayload,
+  UpdatePlatformReviewsPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
   UpdateSiteInfoPayload,
@@ -24,6 +25,7 @@ export const settingsKeys = {
   mollie: () => [...settingsKeys.all, 'mollie'] as const,
   smtp: () => [...settingsKeys.all, 'smtp'] as const,
   mailchimp: () => [...settingsKeys.all, 'mailchimp'] as const,
+  platformReviews: () => [...settingsKeys.all, 'platform-reviews'] as const,
 };
 
 const onError = (err: Error) => toast.error(err.message || 'Failed to save settings');
@@ -152,6 +154,43 @@ export function useUpdateMailchimpConfig() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.mailchimp() });
       saved();
+    },
+    onError,
+  });
+}
+
+// ── Platform reviews (Trustpilot / Google) ─────────────────────────────────
+export function usePlatformReviews() {
+  return useQuery({
+    queryKey: settingsKeys.platformReviews(),
+    queryFn: settingsApi.getPlatformReviews,
+  });
+}
+export function useUpdatePlatformReviews() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdatePlatformReviewsPayload) =>
+      settingsApi.updatePlatformReviews(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: settingsKeys.platformReviews() });
+      saved();
+    },
+    onError,
+  });
+}
+export function useRefreshPlatformReviews() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: settingsApi.refreshPlatformReviews,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: settingsKeys.platformReviews() });
+      if (result.ok) {
+        toast.success(
+          `Fetched ${result.reviewCount ?? '?'} reviews (rating ${result.rating ?? '?'})`,
+        );
+      } else {
+        toast.error(result.error || 'Fetch failed');
+      }
     },
     onError,
   });

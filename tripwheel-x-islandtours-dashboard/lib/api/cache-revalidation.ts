@@ -162,6 +162,12 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       }
       break;
 
+    // Reviews integration (Settings > Reviews): config saves and manual
+    // refreshes both change the public testimonials band.
+    case 'platform-reviews':
+      tags.push('platform-reviews');
+      break;
+
     default:
       break; // media-gallery, operator-settings, wishlist, read-only lookups, ...
   }

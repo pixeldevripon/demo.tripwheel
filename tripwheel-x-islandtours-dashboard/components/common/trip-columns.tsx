@@ -13,6 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
+import { deriveTourBadge } from '@/lib/tours/derive-badge';
+import { TourBadgeChip } from '@/components/common/tour-badge';
+import { TIER_META } from '@/types/tier';
 import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripRowActions } from '@/components/trips/trip-row-actions';
 
@@ -112,6 +115,44 @@ export function makeTripColumns({
       cell: ({ row }) => {
         const meta = TRIP_STATUS[row.original.status];
         return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+      },
+      enableSorting: true,
+    },
+    {
+      // Commercial placement: tier + rank (the dominant §7.2 sort key) and the
+      // §3.6 card badge a shopper would see, derived client-side from the raw
+      // signals (the admin list carries no server-derived badge field).
+      id: 'placement',
+      header: 'Tier & Badge',
+      accessorFn: (row) => row.tierRank,
+      cell: ({ row }) => {
+        const trip = row.original;
+        const tier = TIER_META[trip.tierKey];
+        const badge = deriveTourBadge(trip);
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant={trip.tierRank <= 3 ? 'default' : 'secondary'}
+                className="text-xs"
+              >
+                {tier?.label ?? trip.tierKey}
+              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                    #{trip.tierRank}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Ranking key: tier rank {trip.tierRank} · quality{' '}
+                  {Number(trip.qualityScore).toFixed(0)}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <TourBadgeChip type={badge} />
+          </div>
+        );
       },
       enableSorting: true,
     },

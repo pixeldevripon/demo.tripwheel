@@ -156,3 +156,35 @@ export interface UpdateMailchimpConfigurationPayload {
   audienceId?: string;
   serverPrefix?: string;
 }
+
+// ── Platform reviews (Trustpilot / Google) ─────────────────────────────────
+
+/** GET response - apiKey is masked by the backend or null. */
+export interface PlatformReviewsConfig {
+  id: string;
+  provider: 'trustpilot' | 'google' | null;
+  apiKey: string | null;
+  businessId: string | null;
+  enabled: boolean;
+  displayPages: string[];
+  fetchedAt: string | null;
+  lastError: string | null;
+  reviewCount: number | null;
+  rating: number | null;
+}
+
+export interface UpdatePlatformReviewsPayload {
+  provider?: 'trustpilot' | 'google';
+  /** Omit to keep the stored key; masked echoes are ignored; '' clears. */
+  apiKey?: string;
+  businessId?: string;
+  enabled?: boolean;
+  displayPages?: string[];
+}
+
+export interface RefreshPlatformReviewsResult {
+  ok: boolean;
+  reviewCount?: number;
+  rating?: number;
+  error?: string;
+}

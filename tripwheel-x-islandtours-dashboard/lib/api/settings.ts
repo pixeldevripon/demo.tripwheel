@@ -1,5 +1,8 @@
 import type {
   CompanyInformations,
+  PlatformReviewsConfig,
+  RefreshPlatformReviewsResult,
+  UpdatePlatformReviewsPayload,
   MailchimpConfiguration,
   MollieConfiguration,
   SiteInfo,
@@ -20,6 +23,24 @@ import { apiFetch } from './fetch';
 
 /** Platform-wide (admin) settings. All endpoints require VIEW/MANAGE_SETTINGS. */
 export const settingsApi = {
+  // ── Platform reviews (Trustpilot / Google) ────────────────────────────────
+  getPlatformReviews(): Promise<PlatformReviewsConfig> {
+    return apiFetch<PlatformReviewsConfig>('/platform-reviews/config');
+  },
+  updatePlatformReviews(
+    payload: UpdatePlatformReviewsPayload,
+  ): Promise<PlatformReviewsConfig> {
+    return apiFetch<PlatformReviewsConfig>('/platform-reviews/config', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  refreshPlatformReviews(): Promise<RefreshPlatformReviewsResult> {
+    return apiFetch<RefreshPlatformReviewsResult>('/platform-reviews/refresh', {
+      method: 'POST',
+    });
+  },
+
   // ── Site Info ──────────────────────────────────────────────────────────────
   getSiteInfo(): Promise<SiteInfo> {
     return apiFetch<SiteInfo>('/settings/site');
