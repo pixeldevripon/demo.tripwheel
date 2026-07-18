@@ -74,19 +74,13 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
         <div className='fixed inset-0 z-99999 h-screen flex flex-col bg-background overflow-hidden animate-in fade-in duration-200'>
             {/* Header - Fixed height */}
             <div className='flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-border bg-card shrink-0 z-50'>
-                <div className='flex items-center gap-3 md:gap-4 min-w-0 flex-1'>
-                    <Button
-                        variant='ghost'
-                        size='icon'
-                        onClick={onClose}
-                        className='text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 md:h-9 md:w-9'>
-                        <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
-                    </Button>
-
-                    <p className='min-w-0 flex-1 text-xs md:text-sm font-medium text-foreground truncate'>
-                        {displayName}
-                    </p>
-                </div>
+                <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={onClose}
+                    className='text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 md:h-9 md:w-9'>
+                    <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
+                </Button>
 
                 <div className='flex items-center gap-2 shrink-0 ml-2'>
                     <Button

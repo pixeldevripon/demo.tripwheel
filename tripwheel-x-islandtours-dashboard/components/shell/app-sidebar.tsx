@@ -15,6 +15,7 @@ import {
     SidebarHeader,
     SidebarMenu,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { filterNavGroups } from '@/lib/rbac-utils';
@@ -40,6 +41,9 @@ export function AppSidebar({
     ...props
 }: AppSidebarProps) {
     const navData = getNavigations();
+    // Mobile: the sidebar is an overlay sheet - navigating via the logo must
+    // dismiss it just like the NavMain links do. No-op on desktop.
+    const { setOpenMobile } = useSidebar();
 
     const filteredNav = useMemo(() => {
         const userPermissions: string[] =
@@ -55,6 +59,7 @@ export function AppSidebar({
                     <SidebarMenuItem>
                         <Link
                             href='/'
+                            onClick={() => setOpenMobile(false)}
                             className='flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-fast hover:bg-sidebar-accent/60'>
                             <Image
                                 src='/logo/logo-light.svg'

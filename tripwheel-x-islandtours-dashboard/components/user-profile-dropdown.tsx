@@ -80,7 +80,18 @@ export default function ProfileDropdown({
                     fetchOptions: {
                         onSuccess: () => {
                             queryClient.clear();
-                            router.push('/portal');
+                            // Land each role on its own login surface. The
+                            // admin login is a separate app on another origin,
+                            // so it needs a full navigation, not router.push.
+                            if (loggedInUser?.role === 'ADMIN') {
+                                window.location.href =
+                                    process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL ||
+                                    '/portal';
+                            } else if (loggedInUser?.role === 'STAFF') {
+                                router.push('/staff');
+                            } else {
+                                router.push('/portal');
+                            }
                         },
                     },
                 });

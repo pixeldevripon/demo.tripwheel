@@ -24,12 +24,15 @@ interface MakeColumnsOptions {
   showCommission?: boolean;
   /** Trailing cell renderer (row-actions dropdown). */
   actions?: (booking: BookingListItem) => ReactNode;
+  /** When set, the reference cell becomes a button that opens the details sheet. */
+  onOpenDetails?: (booking: BookingListItem) => void;
 }
 
 export function makeBookingColumns({
   cancellationView = false,
   showCommission = false,
   actions,
+  onOpenDetails,
 }: MakeColumnsOptions = {}): ColumnDef<BookingListItem>[] {
   const cols: ColumnDef<BookingListItem>[] = [
     {
@@ -37,15 +40,30 @@ export function makeBookingColumns({
       header: 'Booking',
       cell: ({ row }) => {
         const b = row.original;
-        return (
-          <div className="min-w-0">
-            <span className="font-mono text-sm font-medium block">
+        const inner = (
+          <>
+            <span
+              className={`font-mono text-sm font-medium block ${
+                onOpenDetails ? entityLink : ''
+              }`}
+            >
               {b.displayRef}
             </span>
             <span className="text-xs text-muted-foreground">
               booked {formatDate(b.createdAt)}
             </span>
-          </div>
+          </>
+        );
+        return onOpenDetails ? (
+          <button
+            type="button"
+            onClick={() => onOpenDetails(b)}
+            className="min-w-0 cursor-pointer border-none bg-transparent p-0 text-left"
+          >
+            {inner}
+          </button>
+        ) : (
+          <div className="min-w-0">{inner}</div>
         );
       },
       enableSorting: true,
