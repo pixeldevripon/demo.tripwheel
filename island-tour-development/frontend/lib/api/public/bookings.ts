@@ -3,11 +3,13 @@
  * backend endpoint `GET /bookings/typ/:publicRef` as the trusted SSR origin.
  *
  * The booking lookup is per-traveller data - UNCACHED by design; callers await it
- * inside a `<Suspense>` boundary after `connection()`. Returns null on any failure
- * (unknown ref / non-2xx) so the TYP can `notFound()` cleanly.
+ * inside a `<Suspense>` boundary after `connection()`. Returns null only on a
+ * backend 404 (unknown ref) so the TYP can `notFound()` cleanly; when the backend
+ * is unreachable it throws (`publicGetStrict`) and the error boundary renders -
+ * a traveller with a real booking must never be told it does not exist.
  */
 import 'server-only';
-import { publicGet } from './fetch';
+import { publicGetStrict } from './fetch';
 
 /** Conversion payload (master booking_complete contract; value = EUR commission). */
 export interface TypConversion {
@@ -77,9 +79,9 @@ export interface TypResponse {
     conversion: TypConversion | null;
 }
 
-/** Fetch the real TYP payload by public ref, or null if it can't be resolved. */
+/** Fetch the real TYP payload by public ref, or null on a backend 404. */
 export function getTypByRef(publicRef: string): Promise<TypResponse | null> {
-    return publicGet<TypResponse>(
+    return publicGetStrict<TypResponse>(
         `/bookings/typ/${encodeURIComponent(publicRef)}`
     );
 }

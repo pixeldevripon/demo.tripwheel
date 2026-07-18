@@ -241,12 +241,26 @@ components). No `cookies()`/`headers()` in any server route file. Per-user data
   adds `x-internal-api-key: <secret>` to identify the SSR/build server as a trusted
   origin so the backend skips its per-IP rate limiter (secret is server-only, never
   `NEXT_PUBLIC_`). Base URL: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`.
-- Error handling is throw-free: `publicFetch` retries only on HTTP 429/503 with fixed
-  backoff `[300, 800]` ms (no jitter, since it runs inside `'use cache'`), returns the
-  raw Response regardless of status. `publicGet` returns `null` on non-ok or thrown
-  error. `resolveSlug` calls `publicFetch` directly and treats `404 || !res.ok` as
-  `null`, with a catch for ECONNREFUSED during build. A backend outage degrades to
-  empty/null/not-found rather than crashing or blanking a prerender.
+- Two error contracts (EXECUTED 2026-07-19, the cached-404 fix): `publicFetch`
+  retries only on HTTP 429/503 with fixed backoff `[300, 800]` ms (no jitter, since it
+  runs inside `'use cache'`) and returns the raw Response regardless of status.
+  - `publicGet<T>` is throw-free: `null` on any failure (network, non-2xx, bad JSON).
+    Use it ONLY for soft-fallback data (lists that render empty, optional sections).
+  - `publicGetStrict<T>` is for data a page gates with `notFound()`: `null` only on a
+    backend 404 (genuine not-found); throws `BackendUnavailableError` on network
+    error / 5xx / 429-after-retries / bad JSON. The throw makes an ISR background
+    revalidation FAIL, so Next keeps serving the last good prerendered page instead
+    of caching a 404 over it. Before this split, a backend outage during the 5-min
+    stale-window revalidation replaced every destination/entity page with a cached
+    404 (observed in production 2026-07-19 as `/en/curacao` + `/en/aruba` 404s).
+  - Strict callers: `getDestinationBySlug`, `resolveSlug` (now a thin
+    `publicGetStrict` wrapper - no more swallow-to-TOUR-branch on outage),
+    `getTourBySlug`, `getCategoryBySlugForDestination`, `getHubRender`,
+    `getCollectionRender`, `getTypByRef`. Everything else stays on `publicGet`.
+  - Trade-off: `next build` now requires the backend to be reachable for prerendered
+    entity routes (it fails loudly instead of silently baking 404s). Soft contexts
+    that embed a strict loader must `.catch(() => null)` locally (done in
+    `lib/thank-you/thank-you.ts` `getRelatedThankYouTours`).
 
 ### The complete tag universe emitted by loaders
 

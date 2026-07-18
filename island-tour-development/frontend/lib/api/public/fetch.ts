@@ -60,6 +60,9 @@ export async function publicFetch(path: string): Promise<Response> {
  * Plain GET against a public backend endpoint. Returns `null` on any failure
  * (network error, non-2xx, bad JSON) so callers can fall back to a safe default
  * instead of throwing and blanking the prerendered page.
+ *
+ * NEVER use this for data a page gates with `notFound()` - use `publicGetStrict`
+ * there, or a backend outage gets baked into the route cache as a real 404.
  */
 export async function publicGet<T>(path: string): Promise<T | null> {
   try {
@@ -68,5 +71,54 @@ export async function publicGet<T>(path: string): Promise<T | null> {
     return (await res.json()) as T;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Thrown by `publicGetStrict` when the backend is unreachable or answers with
+ * anything other than 2xx/404. Extends the base error only to carry a stable
+ * `name` for logs; callers are not expected to catch it (see below).
+ */
+export class BackendUnavailableError extends Error {
+  constructor(path: string, detail: string) {
+    super(`Public API unavailable for ${path}: ${detail}`);
+    this.name = 'BackendUnavailableError';
+  }
+}
+
+/**
+ * GET for data that a page gates with `notFound()`. Unlike `publicGet`, this
+ * distinguishes "the backend said this does not exist" from "the backend could
+ * not be asked":
+ *
+ *   - 2xx  -> parsed body
+ *   - 404  -> `null` (a genuine not-found; the caller may `notFound()`)
+ *   - anything else (network error, 5xx, 429 after retries, bad JSON)
+ *     -> throws `BackendUnavailableError`
+ *
+ * The throw is the point: inside a `'use cache'` loader it aborts the render, so
+ * an ISR background revalidation FAILS and Next keeps serving the last good
+ * prerendered page instead of caching a 404 over it. (With the old swallow-to-null
+ * behavior, a backend outage during revalidation replaced every destination page
+ * with a cached 404.) At build time it fails the build loudly - which requires the
+ * backend to be up during `next build`, and is still better than silently baking
+ * 404s for every prerendered route.
+ */
+export async function publicGetStrict<T>(path: string): Promise<T | null> {
+  let res: Response;
+  try {
+    res = await publicFetch(path);
+  } catch (err) {
+    throw new BackendUnavailableError(
+      path,
+      err instanceof Error ? err.message : 'network error',
+    );
+  }
+  if (res.status === 404) return null;
+  if (!res.ok) throw new BackendUnavailableError(path, `HTTP ${res.status}`);
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new BackendUnavailableError(path, 'invalid JSON body');
   }
 }

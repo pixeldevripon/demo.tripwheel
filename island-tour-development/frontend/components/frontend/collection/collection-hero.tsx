@@ -73,15 +73,15 @@ export function CollectionHero({
                     <MountReveal delay={0.1} yOffset={28}>
                         <div className='flex flex-col gap-1'>
                             {eyebrow && (
-                                <p className='m-0 font-normal uppercase text-[14px] xl:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                <p className='m-0 font-normal uppercase text-[14px] xl:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                                     {eyebrow}
                                 </p>
                             )}
-                            <h1 className='m-0 font-medium text-[28px] md:text-[36px] xl:text-[48px] md:w-180 leading-[1.2] tracking-[-0.012em] text-it-white'>
+                            <h1 className='m-0 font-medium text-[28px] md:text-[36px] xl:text-[48px] md:w-180 leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
                                 {title}
                             </h1>
                             {subtitle && (
-                                <p className='m-0 font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                <p className='m-0 font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                                     {subtitle}
                                 </p>
                             )}
@@ -92,7 +92,7 @@ export function CollectionHero({
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
                             <div className='flex items-center gap-4'>
-                                <span className='font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                <span className='font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
                                     {tourCount} {dict.tours}
                                 </span>
 
@@ -103,10 +103,10 @@ export function CollectionHero({
                                             className='size-1.25 shrink-0 rounded-it-full bg-it-white'
                                         />
                                         <span className='flex items-baseline gap-1'>
-                                            <span className='font-normal text-[12px] md:text-[13px] xl:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                            <span className='font-normal text-[12px] md:text-[13px] xl:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                                                 {dict.from}
                                             </span>
-                                            <span className='font-medium text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                            <span className='font-medium text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
                                                 {startingPrice}
                                             </span>
                                         </span>

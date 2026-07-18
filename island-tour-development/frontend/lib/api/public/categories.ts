@@ -16,7 +16,7 @@ import type {
 } from '@/types/category';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
-import { buildQuery, publicGet } from './fetch';
+import { buildQuery, publicGet, publicGetStrict } from './fetch';
 
 /**
  * Active, tour-gated categories for a destination (localized names, ordered by
@@ -43,11 +43,13 @@ export async function getDestinationCategories(
 }
 
 /**
- * Destination-scoped, tour-gated category detail (localized). Returns `null` when
- * the category has zero published tours at this destination (backend 404) or the
- * backend is unreachable. Cached hourly; tagged granularly `category:<id>` (from
- * the response) plus coarse `tours` (its published-tour count depends on tours).
- * Falls back to coarse `categories` when not found.
+ * Destination-scoped, tour-gated category detail (localized). Returns `null` only
+ * on a backend 404 (zero published tours at this destination) - callers
+ * `notFound()` on null. When the backend is unreachable it throws
+ * (`publicGetStrict`) so revalidation fails and the last good page keeps serving.
+ * Cached hourly; tagged granularly `category:<id>` (from the response) plus
+ * coarse `tours` (its published-tour count depends on tours). Falls back to
+ * coarse `categories` when not found.
  */
 export async function getCategoryBySlugForDestination(
   destinationSlug: string,
@@ -57,7 +59,7 @@ export async function getCategoryBySlugForDestination(
   'use cache';
   cacheLife('hours');
 
-  const data = await publicGet<CategoryDetailByDestination>(
+  const data = await publicGetStrict<CategoryDetailByDestination>(
     `/categories/destination/${destinationSlug}/${categorySlug}${buildQuery({ locale })}`,
   );
   cacheTag('tours', data ? `category:${data.id}` : 'categories');

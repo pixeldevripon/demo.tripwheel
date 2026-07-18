@@ -323,7 +323,11 @@ export async function getThankYouRelatedTours(params: {
     const { destinationSlug, excludeTourId, locale, currency } = params;
     if (!destinationSlug) return [];
 
-    const destination = await getDestinationBySlug(destinationSlug, locale);
+    // Soft context: this section simply hides when the destination can't be
+    // resolved, so a backend outage (strict loader throw) must not error the TYP.
+    const destination = await getDestinationBySlug(destinationSlug, locale).catch(
+        () => null,
+    );
     if (!destination) return [];
 
     const { data } = await getDestinationTours({

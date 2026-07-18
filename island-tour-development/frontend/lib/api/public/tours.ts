@@ -13,7 +13,7 @@ import type { SearchHit } from '@/types/search';
 import type { PublicTourDetail } from '@/types/tour-detail';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
-import { buildQuery, publicGet } from './fetch';
+import { buildQuery, publicGet, publicGetStrict } from './fetch';
 
 export interface TourListResult {
   total: number;
@@ -132,9 +132,10 @@ export async function getDestinationTours(params: {
  * A single LIVE tour by its flat slug, scoped to a destination
  * (`/{locale}/{destinationSlug}/{slug}/` - ROUTING-AND-RESOLUTION.md §5.2). The
  * backend filters `status: LIVE, isActive: true` and returns localized fields
- * with a field-by-field English fallback already applied. Returns `null` when
- * the tour is unknown/unpublished or the backend is unreachable - callers should
- * `notFound()` on null.
+ * with a field-by-field English fallback already applied. Returns `null` only on
+ * a backend 404 (unknown/unpublished tour) - callers `notFound()` on null. When
+ * the backend is unreachable it throws (`publicGetStrict`) so revalidation fails
+ * and the last good page keeps serving instead of caching a 404.
  *
  * Cached hourly; `slug` + `destinationSlug` + `locale` are the cache key. Tagged
  * granularly `tour:<id>` (from the response) so editing ONE tour regenerates only
@@ -152,7 +153,7 @@ export async function getTourBySlug(params: {
   cacheLife('hours');
 
   const { slug, destinationSlug, locale = DEFAULT_LOCALE, currency } = params;
-  const data = await publicGet<PublicTourDetail>(
+  const data = await publicGetStrict<PublicTourDetail>(
     `/tours/slug/${slug}${buildQuery({ destinationSlug, locale, currency })}`,
   );
   // `tour:<id>` for the tour's own edits; `operator:<id>` because the operator's
