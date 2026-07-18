@@ -35,6 +35,14 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
 };
 
 const OPTIONAL: Record<string, (v: string) => string | null> = {
+  // Public traveller site origin - booking-email links (TYP, /bookings, the
+  // cancel page) send travellers here. Supersedes FRONTEND_URL for email
+  // links (FRONTEND_URL remains as a fallback). No trailing slash/junk: the
+  // value is embedded verbatim into emailed links.
+  ISLAND_TOURS_URL: (v) =>
+    /^https?:\/\/\S+[^\s./]$/.test(v.trim())
+      ? null
+      : 'must be an http(s) URL with no trailing slash, dot, or whitespace',
   // Operator portal base URL (the separated dashboard app), INCLUDING the
   // /portal path - operator emails (invite set-password link) send users here,
   // NOT to FRONTEND_URL (the public traveller site). No trailing slash/junk:

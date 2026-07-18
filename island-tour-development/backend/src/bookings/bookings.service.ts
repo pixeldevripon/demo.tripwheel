@@ -29,6 +29,10 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
+import {
+  dashboardAppBase,
+  islandToursBase,
+} from '@/common/utils/app-urls.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import {
   combineDateTime,
@@ -786,7 +790,7 @@ export class BookingsService {
             null),
         guestEmail: booking.contactEmail,
         guestPhone: booking.contactPhone,
-        dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+        dashboardUrl: `${dashboardAppBase()}/bookings`,
       });
       await this.mail.sendOperatorBookingReceivedEmail(
         to,
@@ -974,7 +978,7 @@ export class BookingsService {
       },
       relatedTours: related,
       config: {
-        frontendUrl: process.env.FRONTEND_URL ?? 'https://island.tours',
+        frontendUrl: islandToursBase(),
         // BETTER_AUTH_URL is this API's own public origin (it is what Better Auth
         // builds callback URLs from) and is a REQUIRED env, so it is the one value
         // guaranteed to be right here. PUBLIC_API_URL overrides it if the API is
@@ -1148,7 +1152,7 @@ export class BookingsService {
       totalAmount: `${booking.currency} ${booking.totalRetail.toString()}`,
       paymentModel: booking.paymentModel,
       reason: reason?.trim() || null,
-      dashboardUrl: `${(process.env.FRONTEND_URL ?? 'https://island.tours').replace(/\/$/, '')}/dashboard/bookings`,
+      dashboardUrl: `${dashboardAppBase()}/bookings`,
     });
 
     // Master 6.4 v1 flow: request -> admin email -> admin marks cancelled ->
@@ -1192,10 +1196,10 @@ export class BookingsService {
       this.prisma.siteInfo.findFirst({ select: { logo: true } }),
     ]);
 
-    const base = (process.env.FRONTEND_URL ?? 'https://island.tours').replace(
-      /\/$/,
-      '',
-    );
+    // Two audiences, two apps: traveller links go to the public site, the
+    // operator's link goes to the dashboard app.
+    const siteBase = islandToursBase();
+    const dashBase = dashboardAppBase();
     const tourName = booking.tour?.name ?? 'Your tour';
     const guestName =
       booking.contactFullName ??
@@ -1226,7 +1230,7 @@ export class BookingsService {
           "We're processing it now. The amount you paid is refunded to your original payment method. We'll email you to confirm once it's done.",
           'Changed your mind? Just reply to this email before we confirm the cancellation.',
         ],
-        ctaUrl: `${base}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaUrl: `${siteBase}/${booking.island}/thank-you/${booking.publicRef}`,
         ctaLabel: 'View your booking',
       };
       try {
@@ -1260,7 +1264,7 @@ export class BookingsService {
           ...(reason ? [`Their note: ${reason}`] : []),
           "Island Tours processes the refund and confirms the cancellation. You'll be notified when it is final - no action needed from you yet.",
         ],
-        ctaUrl: `${base}/dashboard/bookings`,
+        ctaUrl: `${dashBase}/bookings`,
         ctaLabel: 'View booking in your dashboard',
       };
       try {
@@ -1627,10 +1631,7 @@ export class BookingsService {
     const site = await this.prisma.siteInfo.findFirst({
       select: { logo: true },
     });
-    const base = (process.env.FRONTEND_URL ?? 'https://island.tours').replace(
-      /\/$/,
-      '',
-    );
+    const base = islandToursBase();
     const locale = toLocale(latest.customerLocale);
     const ctx: EmailTemplateContext = {
       emailIconBase: emailIconBase(),
