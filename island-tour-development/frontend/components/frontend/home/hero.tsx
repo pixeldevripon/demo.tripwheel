@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
@@ -31,15 +32,31 @@ export function Hero({
 
     return (
         <section className='relative h-136.75 md:h-150 flex items-end justify-center overflow-hidden bg-it-hero-bg  pb-12 md:items-center md:pb-0'>
+            {/* Photo background (token bg above stays as the loading fallback).
+                Local 3840x2160 original; Next's optimizer serves responsive
+                AVIF/WebP variants, so quality stays hero-grade without the
+                2.7 MB source ever reaching a browser. */}
+            <Image
+                src='/images/hero-aerial.jpg'
+                alt=''
+                fill
+                quality={85}
+                priority
+                sizes='100vw'
+                className='object-cover'
+            />
+            {/* Soft veil so the ink heading/subtitle stay legible on the photo */}
+            <div className='absolute inset-0 bg-black/30' />
+
             {/* Centered content - 841px max */}
-            <div className='it-container w-full flex justify-center'>
+            <div className='it-container relative w-full flex justify-center'>
                 <div className='flex flex-col items-center gap-10 w-full max-w-220.25'>
                     {/* Heading + subtitle */}
                     <Reveal className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-hero-heading'>
+                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-hero-text'>
+                        <p className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
                             {dict.subtitle}
                         </p>
                     </Reveal>
@@ -57,7 +74,7 @@ export function Hero({
                         {/* Popular - clickable destinations (live) */}
                         {popular.length > 0 && (
                             <p className='m-0 text-sm md:text-base tracking-[-0.012em] text-center'>
-                                <span className='text-it-hero-text'>
+                                <span className='text-it-primary-fg'>
                                     {dict.popular}:{' '}
                                 </span>
                                 {popular.map((island, i) => (
@@ -67,7 +84,7 @@ export function Hero({
                                                 locale,
                                                 `/${island.slug}`
                                             )}
-                                            className='text-it-hero-heading no-underline transition-colors duration-300 hover:text-it-primary'>
+                                            className='text-it-primary-subtle no-underline transition-colors duration-300 hover:text-it-primary'>
                                             {island.name}
                                         </Link>
                                         {i < popular.length - 1 && (
@@ -86,4 +103,5 @@ export function Hero({
         </section>
     );
 }
+
 
