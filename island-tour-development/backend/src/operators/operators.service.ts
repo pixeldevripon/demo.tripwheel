@@ -24,8 +24,14 @@ import {
 @Injectable()
 export class OperatorsService {
   private readonly logger = new Logger(OperatorsService.name);
-  private readonly frontendUrl =
-    process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  // Operator portal (the separated dashboard app), including the /portal path.
+  // Trimmed and stripped of trailing junk defensively: this value is embedded
+  // verbatim in emailed links, where a stray "/", ".", or space breaks them.
+  private readonly portalUrl = (
+    process.env.PORTAL_URL ?? 'http://localhost:3001/portal'
+  )
+    .trim()
+    .replace(/[/.\s]+$/, '');
 
   // Shared projection for operator detail responses - never return raw rows.
   private readonly operatorSelect = {
@@ -158,10 +164,12 @@ export class OperatorsService {
 
       // Server-initiated reset -> invite branch in auth.instance.ts sends the
       // operator-invite email (set-password link) instead of a reset email.
+      // The link must land on the DASHBOARD app's reset screen (/portal/reset,
+      // which reads ?token=), not the public site.
       await auth.api.requestPasswordReset({
         body: {
           email,
-          redirectTo: `${this.frontendUrl}/reset-password`,
+          redirectTo: `${this.portalUrl}/reset`,
         },
       });
 

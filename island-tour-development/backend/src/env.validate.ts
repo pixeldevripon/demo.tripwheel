@@ -35,6 +35,14 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
 };
 
 const OPTIONAL: Record<string, (v: string) => string | null> = {
+  // Operator portal base URL (the separated dashboard app), INCLUDING the
+  // /portal path - operator emails (invite set-password link) send users here,
+  // NOT to FRONTEND_URL (the public traveller site). No trailing slash/junk:
+  // the value is embedded verbatim into emailed links.
+  PORTAL_URL: (v) =>
+    /^https?:\/\/\S+[^\s./]$/.test(v.trim())
+      ? null
+      : 'must be an http(s) URL with no trailing slash, dot, or whitespace',
   // Shared secret the trusted SSR/build server sends as `x-internal-api-key` to
   // bypass the per-IP throttle (see AuthModule). Must match the frontend's
   // server-only INTERNAL_API_SECRET. Server-only - never expose as NEXT_PUBLIC_.
