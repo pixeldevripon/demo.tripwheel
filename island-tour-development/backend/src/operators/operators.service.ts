@@ -297,12 +297,39 @@ export class OperatorsService {
     });
   }
 
+  /**
+   * Deletes the operator AND its auth user (the invite created both, see
+   * {@link create}) - otherwise the email stays claimed and can never be
+   * re-invited. The user is removed only when it is a plain TOUR_OPERATOR:
+   * an ADMIN's auto-provisioned operator record (rule #19) must never take
+   * the admin account down with it.
+   */
   async remove(id: string) {
-    await this.ensureExists(id);
+    const operator = await this.prisma.operator.findUnique({
+      where: { id },
+      select: { userId: true, user: { select: { role: true, email: true } } },
+    });
+    if (!operator) throw new NotFoundException('Operator not found');
+
     await this.prisma.operator.delete({
       where: { id },
       select: { id: true },
     });
+
+    if (operator.user.role === Role.TOUR_OPERATOR) {
+      // internalAdapter.deleteUser also removes sessions/accounts, so the
+      // email is fully released for a future re-invite.
+      const authCtx = await auth.$context;
+      await authCtx.internalAdapter.deleteUser(operator.userId);
+      this.logger.log(
+        `Operator ${id} deleted along with user account ${operator.user.email}`,
+      );
+    } else {
+      this.logger.log(
+        `Operator ${id} deleted; user ${operator.user.email} kept (role ${operator.user.role})`,
+      );
+    }
+
     return { message: 'Operator deleted successfully' };
   }
 

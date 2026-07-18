@@ -1,3 +1,4 @@
+import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as nodemailer from 'nodemailer';
@@ -104,9 +105,35 @@ export class MailService {
     }
   }
 
+  // ── Dashboard-managed logo (auth-email brand bars) ─────────────────────────
+  /**
+   * SiteInfo.logo for the auth emails' brand bar, read via the pre-DI
+   * `authPrismaClient` (this service also runs as a DI-free singleton, see
+   * mail.singleton.ts). Cached for 5 minutes; any failure falls back to null,
+   * which the shell renders as the text logo - an email must never fail over
+   * branding.
+   */
+  private siteLogoCache: { url: string | null; at: number } | null = null;
+  private async getSiteLogo(): Promise<string | null> {
+    const now = Date.now();
+    if (this.siteLogoCache && now - this.siteLogoCache.at < 5 * 60_000) {
+      return this.siteLogoCache.url;
+    }
+    try {
+      const info = await authPrismaClient.siteInfo.findFirst({
+        select: { logo: true },
+      });
+      this.siteLogoCache = { url: info?.logo || null, at: now };
+    } catch {
+      this.siteLogoCache = { url: null, at: now };
+    }
+    return this.siteLogoCache.url;
+  }
+
   // ── Password reset ────────────────────────────────────────────────────────────
   async sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-    const { html, text } = passwordResetTemplate({ resetUrl });
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = passwordResetTemplate({ resetUrl, siteLogoUrl });
     await this.sendMail({
       to,
       subject: 'Reset your Island Tours password',
@@ -121,7 +148,12 @@ export class MailService {
     inviteUrl: string,
     name?: string,
   ): Promise<void> {
-    const { html, text } = operatorInviteTemplate({ inviteUrl, name });
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = operatorInviteTemplate({
+      inviteUrl,
+      siteLogoUrl,
+      name,
+    });
     await this.sendMail({
       to,
       subject: "You've been invited to Island Tours - set your password",
@@ -136,7 +168,12 @@ export class MailService {
     verifyUrl: string,
     name?: string,
   ): Promise<void> {
-    const { html, text } = emailVerificationTemplate({ verifyUrl, name });
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = emailVerificationTemplate({
+      verifyUrl,
+      siteLogoUrl,
+      name,
+    });
     await this.sendMail({
       to,
       subject: 'Verify your Island Tours email address',
