@@ -1,27 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Cancel01Icon, CloudUploadIcon, ImageAdd02Icon, RefreshIcon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, CloudUploadIcon, ImageAdd02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import MediaSelector from '@/components/common/media-selector';
 import type { MediaItem } from '@/types/media';
-import Image from 'next/image';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function urlToMediaItem(url: string): MediaItem {
   return { id: '', userId: '', url, publicId: '', resourceType: 'image', uploadedAt: '' };
-}
-
-function getFilename(url: string): string {
-  try {
-    const parts = new URL(url).pathname.split('/');
-    return decodeURIComponent(parts[parts.length - 1] ?? url);
-  } catch {
-    return url;
-  }
 }
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
@@ -188,7 +178,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
                   key={url}
                   className="group relative aspect-square overflow-hidden border border-border bg-muted"
                 >
-                  <Image src={url} alt="" className="w-full h-full object-cover block" />
+                  <img src={url} alt="" className="w-full h-full object-cover block" />
                   {/* Always-visible remove button in corner */}
                   <button
                     type="button"
@@ -223,56 +213,39 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
 
   // ── Single mode ───────────────────────────────────────────────────────────
   const { value, onChange } = props;
-  const filename = value ? getFilename(value) : null;
 
   return (
-    <div className={cn('overflow-hidden border border-dashed border-border', className)}>
+    <div className={cn('space-y-3', className)}>
       {value ? (
-        <>
-          {/* Image preview */}
-          <div className="relative bg-muted/40 p-3">
-            <img
-              src={value}
-              alt="Selected image"
-              className="w-full h-38 object-contain block"
-            />
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div
+            className={cn(
+              'group relative aspect-square overflow-hidden border border-border bg-muted',
+              disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+            )}
+            onClick={disabled ? undefined : () => setOpen(true)}
+            title="Change image"
+          >
+            <img src={value} alt="" className="w-full h-full object-contain block p-2" />
+            {/* Always-visible remove button in corner */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(null);
+              }}
+              disabled={disabled}
+              className={cn(
+                'absolute top-1.5 right-1.5 size-5 flex items-center justify-center',
+                'bg-black/60 text-white hover:bg-destructive transition-colors',
+                'disabled:pointer-events-none'
+              )}
+              title="Remove"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+            </button>
           </div>
-
-          {/* Persistent bottom action bar */}
-          <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-background">
-            <HugeiconsIcon
-              icon={ImageAdd02Icon}
-              size={14}
-              className="text-muted-foreground shrink-0"
-            />
-            <p className="flex-1 text-2xs text-muted-foreground font-mono truncate min-w-0">
-              {filename}
-            </p>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpen(true)}
-                disabled={disabled}
-                className="text-2xs h-6 px-2"
-              >
-                <HugeiconsIcon icon={RefreshIcon} className="size-3" />
-                Change
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => onChange(null)}
-                disabled={disabled}
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-              </Button>
-            </div>
-          </div>
-        </>
+        </div>
       ) : (
         <UploadZone
           onClick={() => setOpen(true)}

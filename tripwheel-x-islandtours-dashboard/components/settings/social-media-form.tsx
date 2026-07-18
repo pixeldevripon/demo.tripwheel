@@ -12,6 +12,8 @@ const schema = z.object({
   twitterUrl: z.string().optional(),
   linkedinUrl: z.string().optional(),
   instagramUrl: z.string().optional(),
+  youtubeUrl: z.string().optional(),
+  tiktokUrl: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -27,7 +29,14 @@ export function SocialMediaForm() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { facebookUrl: '', twitterUrl: '', linkedinUrl: '', instagramUrl: '' },
+    defaultValues: {
+      facebookUrl: '',
+      twitterUrl: '',
+      linkedinUrl: '',
+      instagramUrl: '',
+      youtubeUrl: '',
+      tiktokUrl: '',
+    },
   });
 
   useEffect(() => {
@@ -37,6 +46,8 @@ export function SocialMediaForm() {
         twitterUrl: data.twitterUrl ?? '',
         linkedinUrl: data.linkedinUrl ?? '',
         instagramUrl: data.instagramUrl ?? '',
+        youtubeUrl: data.youtubeUrl ?? '',
+        tiktokUrl: data.tiktokUrl ?? '',
       });
     }
   }, [data, reset]);
@@ -55,6 +66,8 @@ export function SocialMediaForm() {
         <TextField label="Instagram URL" registration={register('instagramUrl')} error={errors.instagramUrl?.message} placeholder="https://instagram.com/islandtours" />
         <TextField label="Twitter / X URL" registration={register('twitterUrl')} error={errors.twitterUrl?.message} placeholder="https://x.com/islandtours" />
         <TextField label="LinkedIn URL" registration={register('linkedinUrl')} error={errors.linkedinUrl?.message} placeholder="https://linkedin.com/company/islandtours" />
+        <TextField label="YouTube URL" registration={register('youtubeUrl')} error={errors.youtubeUrl?.message} placeholder="https://youtube.com/@islandtours" />
+        <TextField label="TikTok URL" registration={register('tiktokUrl')} error={errors.tiktokUrl?.message} placeholder="https://tiktok.com/@islandtours" />
       </div>
     </SettingsCard>
   );
