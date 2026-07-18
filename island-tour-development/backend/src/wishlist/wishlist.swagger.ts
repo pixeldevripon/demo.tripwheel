@@ -37,6 +37,25 @@ export function ApiGetWishlistDocs() {
   );
 }
 
+export function ApiResolveWishlistDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'PUBLIC: resolve cookie-wishlist tour ids into card-ready tours (order preserved; stale ids dropped)',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Card-shaped tours for the given ids',
+      type: [WishlistTourDto],
+    }),
+    ApiResponse({
+      status: 500,
+      description: 'Internal Server Error',
+      type: InternalServerErrorDto,
+    }),
+  );
+}
+
 export function ApiGetWishlistIdsDocs() {
   return applyDecorators(
     ApiOperation({

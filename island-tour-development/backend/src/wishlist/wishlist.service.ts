@@ -1,7 +1,7 @@
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Currency, Locale } from '@prisma/client';
+import { Currency, Locale, TourStatus } from '@prisma/client';
 
 @Injectable()
 export class WishlistService {
@@ -66,6 +66,47 @@ export class WishlistService {
       });
 
     // Same reusable converter as the public tour/hub cards.
+    await this.fx.attachMoney(cards, currency, 'defaultCurrency');
+    return cards;
+  }
+
+  /**
+   * PUBLIC id resolver for the cookie-based wishlist: shapes the given tour ids
+   * for card rendering (same search-hit shape as `list`, no `savedAt`). The
+   * browser owns the saved set (a 6-month `it.wishlist` cookie) - the backend
+   * only turns ids into displayable cards. Input order is preserved (the cookie
+   * keeps newest-first); unknown / non-LIVE / inactive ids are dropped
+   * silently so a stale cookie never breaks the page. Capped at 100 ids.
+   */
+  async resolveByIds(
+    ids: string[],
+    locale: Locale = Locale.en,
+    currency?: Currency,
+  ) {
+    const unique = [...new Set(ids)].slice(0, 100);
+    if (unique.length === 0) return [];
+
+    const rows = await this.prisma.tour.findMany({
+      where: { id: { in: unique }, status: TourStatus.LIVE, isActive: true },
+      select: {
+        ...this.tourSelect,
+        translations: { where: { locale }, select: { title: true } },
+      },
+    });
+
+    const byId = new Map(rows.map((t) => [t.id, t]));
+    const cards = unique
+      .map((id) => byId.get(id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      .map((tour) => {
+        const { destination, translations, ...rest } = tour;
+        return {
+          ...rest,
+          destinationSlug: destination?.slug ?? null,
+          title: translations?.[0]?.title?.trim() || tour.name,
+        };
+      });
+
     await this.fx.attachMoney(cards, currency, 'defaultCurrency');
     return cards;
   }
