@@ -1,100 +1,29 @@
+import { authEmailShell } from './auth-email-shell';
+
 export interface PasswordResetTemplateProps {
   resetUrl: string;
+  /** Dashboard-managed logo URL; text-logo fallback when absent. */
+  siteLogoUrl?: string | null;
 }
 
+/**
+ * "Forgot password" email. Rendered through the shared auth shell so it
+ * matches the booking-confirmation family verbatim.
+ */
 export function passwordResetTemplate({
   resetUrl,
+  siteLogoUrl,
 }: PasswordResetTemplateProps) {
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reset your password</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background:#0f172a;padding:32px 40px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">
-                🏝 Island Tours
-              </h1>
-            </td>
-          </tr>
-
-          <!-- Body -->
-          <tr>
-            <td style="padding:40px;">
-              <h2 style="margin:0 0 12px;color:#0f172a;font-size:20px;font-weight:600;">
-                Reset your password
-              </h2>
-              <p style="margin:0 0 8px;color:#475569;font-size:15px;line-height:1.6;">
-                We received a request to reset the password for your Island Tours account.
-              </p>
-              <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.6;">
-                Click the button below to choose a new password. This link will expire in <strong>1 hour</strong>.
-              </p>
-
-              <!-- CTA Button -->
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="border-radius:6px;background:#0f172a;">
-                    <a href="${resetUrl}"
-                       style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;border-radius:6px;">
-                      Reset Password
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:28px 0 0;color:#94a3b8;font-size:13px;line-height:1.6;">
-                If the button doesn't work, copy and paste this link into your browser:
-              </p>
-              <p style="margin:4px 0 0;font-size:13px;word-break:break-all;">
-                <a href="${resetUrl}" style="color:#0f172a;">${resetUrl}</a>
-              </p>
-
-              <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0;" />
-              <p style="margin:0;color:#94a3b8;font-size:13px;">
-                If you didn't request a password reset, you can safely ignore this email. Your password won't change.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">
-                &copy; ${new Date().getFullYear()} Island Tours. All rights reserved.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-
-  const text = `
-Reset your Island Tours password
----------------------------------
-
-We received a request to reset your password.
-
-Click the link below to reset it (expires in 1 hour):
-${resetUrl}
-
-If you didn't request this, you can safely ignore this email.
-
-© ${new Date().getFullYear()} Island Tours
-  `.trim();
-
-  return { html, text };
+  return authEmailShell({
+    siteLogoUrl,
+    title: 'Reset your password.',
+    paragraphs: [
+      'We received a request to reset your Island Tours password.',
+      'The link expires in <b style="color:#1F2937">1 hour</b>.',
+    ],
+    ctaLabel: 'Reset password',
+    ctaUrl: resetUrl,
+    footnote:
+      "Didn't request this? You can safely ignore this email - your password stays unchanged.",
+  });
 }

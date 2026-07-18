@@ -1,18 +1,15 @@
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { mailService } from '@/mail/mail.singleton';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role, UserStatus } from '@prisma/client';
+import { authPrismaClient } from '@/auth/auth-prisma.client';
+import { Role, UserStatus } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { bearer, openAPI } from 'better-auth/plugins';
 import 'dotenv/config';
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// Exported so AuthModule can disconnect it on app shutdown
-export const authPrismaClient = new PrismaClient({ adapter });
+// Re-exported so AuthModule can disconnect it on app shutdown (the client now
+// lives in auth-prisma.client.ts so mail.service can share it cycle-free).
+export { authPrismaClient };
 
 const trustedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
 

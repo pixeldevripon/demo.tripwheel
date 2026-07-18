@@ -1,0 +1,160 @@
+/**
+ * Shared shell for the account/auth emails (operator invite, password reset,
+ * email verification). Mirrors the booking family's shell
+ * (booking-notice.template.html) VERBATIM - same background, card, type
+ * family, ink/muted colors, orange CTA, and sign-off block - so every email
+ * the platform sends reads as one system and cannot drift apart.
+ *
+ * The brand bar shows the dashboard-managed logo when the caller provides it
+ * (MailService reads it from SiteInfo) and falls back to the shell's text-logo
+ * variant - the same [IF siteLogoUrl] behavior as the booking shell.
+ */
+
+export interface AuthEmailShellProps {
+  /** <title>, preheader, and the 22px/800 headline. */
+  title: string;
+  /** Dashboard-managed logo URL; text-logo fallback when absent. */
+  siteLogoUrl?: string | null;
+  /** "Hi Name," line above the paragraphs; omitted when absent. */
+  greeting?: string;
+  /** Body copy lines (developer-authored; may contain inline markup). */
+  paragraphs: string[];
+  ctaLabel: string;
+  ctaUrl: string;
+  /** Muted line under the link fallback (e.g. "didn't request this?"). */
+  footnote?: string;
+}
+
+/** Escapes HTML-significant characters so user data cannot inject markup. */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function authEmailShell({
+  title,
+  siteLogoUrl,
+  greeting,
+  paragraphs,
+  ctaLabel,
+  ctaUrl,
+  footnote,
+}: AuthEmailShellProps): { html: string; text: string } {
+  // Same brand-bar variants as booking-notice.template.html.
+  const brandBar = siteLogoUrl
+    ? `<img src="${siteLogoUrl}" height="40" alt="Island Tours" style="display:block;border:0;height:40px;width:auto">`
+    : `<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>`;
+
+  const bodyBlocks = [
+    ...(greeting
+      ? [
+          `<div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">${greeting}</div>`,
+        ]
+      : []),
+    ...paragraphs.map(
+      (p) =>
+        `<div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">${p}</div>`,
+    ),
+  ].join('\n          ');
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    @media only screen and (max-width: 480px) {
+      .it-shell-pad { padding: 12px 6px !important; }
+      .it-cell { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#EDEFF2;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#1F2937;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    ${title}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#EDEFF2">
+    <tr><td align="center" class="it-shell-pad" style="padding:26px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E8EAED;border-collapse:separate">
+
+        <!-- Brand bar -->
+        <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
+          ${brandBar}
+        </td></tr>
+
+        <!-- Headline -->
+        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">${title}</div>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td class="it-cell" style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          ${bodyBlocks}
+
+          <a href="${ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px;margin-top:4px">${ctaLabel}</a>
+
+          <div style="font-size:12.5px;color:#9aa3b2;margin-top:16px;line-height:1.6">If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${ctaUrl}" style="color:#4B5563;word-break:break-all">${ctaUrl}</a>
+          </div>
+          ${
+            footnote
+              ? `\n          <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px;line-height:1.6">${footnote}</div>`
+              : ''
+          }
+        </td></tr>
+
+        <!-- Sign-off -->
+        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:18px">
+            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
+            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
+            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional account email.</div>
+          </div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  // Strip inline markup AND decode escaped entities - the callers HTML-escape
+  // user data (names) for the HTML part, which must read plain in the text part.
+  const toText = (value: string) =>
+    value
+      .replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&');
+  const text = [
+    title,
+    '-'.repeat(title.length),
+    '',
+    ...(greeting ? [toText(greeting), ''] : []),
+    ...paragraphs.map(toText),
+    '',
+    `${ctaLabel}: ${ctaUrl}`,
+    ...(footnote ? ['', toText(footnote)] : []),
+    '',
+    'Island Tours. Built by Islanders.',
+  ].join('\n');
+
+  return { html, text };
+}
