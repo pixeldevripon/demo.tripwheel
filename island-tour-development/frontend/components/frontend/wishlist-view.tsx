@@ -1,25 +1,27 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { TourCard, type TourCardDict } from '@/components/frontend/tour-card';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { WishlistSkeleton } from '@/components/frontend/skeletons/wishlist-skeleton';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
 import { searchHitToListing, type DurationDict } from '@/lib/tours/listing';
+import type { SearchHit } from '@/types/search';
 
 export type WishlistViewDict = {
     title: string;
     empty: string;
     emptyHint: string;
-    signInTitle: string;
-    signInHint: string;
-    signInCta: string;
 };
 
+/**
+ * Wishlist page body - COOKIE-BASED, no login. The provider owns the saved ids
+ * (6-month `it.wishlist` cookie); this view resolves them into cards via the
+ * public `/wishlist/resolve` endpoint, newest first.
+ */
 export function WishlistView({
     locale,
     dict,
@@ -31,13 +33,16 @@ export function WishlistView({
     cardDict: TourCardDict;
     durationDict: DurationDict;
 }) {
-    const { ready, isAuthed, isSaved } = useWishlist();
+    const { ready, ids, isSaved } = useWishlist();
     const [tours, setTours] = useState<WishlistTour[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Resolve the cookie ids into card data once the provider has hydrated.
+    // Intentionally NOT re-run on every toggle (ids changes) - un-hearting is
+    // reflected optimistically via the `visible` filter below.
     useEffect(() => {
         if (!ready) return;
-        if (!isAuthed) {
+        if (ids.length === 0) {
             setTours([]);
             setLoading(false);
             return;
@@ -47,7 +52,7 @@ export function WishlistView({
         // Convert card prices to the shopper's chosen currency (cookie-resolved).
         const currency = currencyFromCookie(document.cookie, locale);
         wishlistApi
-            .list(locale, currency)
+            .resolve(ids, locale, currency)
             .then((rows) => {
                 if (!ignore) setTours(rows);
             })
@@ -60,7 +65,8 @@ export function WishlistView({
         return () => {
             ignore = true;
         };
-    }, [ready, isAuthed, locale]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ready, locale]);
 
     // Reflect optimistic removals (un-hearting a card drops it immediately).
     const visible = tours.filter((t) => isSaved(t.id));
@@ -74,13 +80,6 @@ export function WishlistView({
 
                 {!ready || loading ? (
                     <WishlistSkeleton />
-                ) : !isAuthed ? (
-                    <Prompt
-                        title={dict.signInTitle}
-                        hint={dict.signInHint}
-                        cta={dict.signInCta}
-                        href={localizeHref(locale, '/login')}
-                    />
                 ) : visible.length === 0 ? (
                     <Prompt title={dict.empty} hint={dict.emptyHint} />
                 ) : (
@@ -88,7 +87,15 @@ export function WishlistView({
                         {visible.map((hit) => (
                             <TourCard
                                 key={hit.id}
-                                tour={searchHitToListing(hit, locale, durationDict)}
+                                tour={searchHitToListing(
+                                    {
+                                        ...hit,
+                                        badge: hit.badge ?? null,
+                                        isSponsored: hit.isSponsored ?? false,
+                                    } as SearchHit,
+                                    locale,
+                                    durationDict,
+                                )}
                                 dict={cardDict}
                                 wishlistVariant='remove'
                             />
@@ -100,17 +107,7 @@ export function WishlistView({
     );
 }
 
-function Prompt({
-    title,
-    hint,
-    cta,
-    href,
-}: {
-    title: string;
-    hint: string;
-    cta?: string;
-    href?: string;
-}) {
+function Prompt({ title, hint }: { title: string; hint: string }) {
     return (
         <div className='flex flex-col items-center gap-3 py-16 text-center'>
             <p className='m-0 font-medium text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
@@ -119,14 +116,6 @@ function Prompt({
             <p className='m-0 max-w-md text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
                 {hint}
             </p>
-            {cta && href && (
-                <Link
-                    href={href}
-                    className='mt-2 inline-flex items-center rounded-it-full bg-it-primary px-6 py-3 text-[14px] font-medium text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
-                    {cta}
-                </Link>
-            )}
         </div>
     );
 }
-

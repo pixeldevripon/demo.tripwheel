@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency, Locale } from '@prisma/client';
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { MoneyDto } from '@/fx/dto/money.dto';
 
 // ── Query ─────────────────────────────────────────────────────────────────────
@@ -23,6 +23,18 @@ export class WishlistQueryDto {
   @IsOptional()
   @IsEnum(Currency)
   currency?: Currency;
+}
+
+/** Query for the PUBLIC cookie-wishlist resolver (`GET /wishlist/resolve`). */
+export class ResolveWishlistQueryDto extends WishlistQueryDto {
+  @ApiProperty({
+    example: 'd1f1a0…,e2b2c1…',
+    description:
+      'Comma-separated tour ids from the it.wishlist cookie (max 100; order preserved)',
+  })
+  @IsString()
+  @MaxLength(4000)
+  ids!: string;
 }
 
 // ── Response ────────────────────────────────────────────────────────────────
