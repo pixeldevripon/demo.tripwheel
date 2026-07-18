@@ -29,6 +29,7 @@ const schema = z.object({
   googleTagManagerId: z.string().optional(),
   googleSearchConsole: z.string().optional(),
   facebookPixelId: z.string().optional(),
+  cookiebotCbid: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -38,6 +39,7 @@ const EMPTY: FormValues = {
   ogTitle: '', ogDescription: '', ogImage: '',
   twitterTitle: '', twitterDescription: '', twitterImage: '',
   googleAnalyticsId: '', googleTagManagerId: '', googleSearchConsole: '', facebookPixelId: '',
+  cookiebotCbid: '',
 };
 
 export function SeoForm() {
@@ -71,6 +73,7 @@ export function SeoForm() {
         googleTagManagerId: data.googleTagManagerId ?? '',
         googleSearchConsole: data.googleSearchConsole ?? '',
         facebookPixelId: data.facebookPixelId ?? '',
+        cookiebotCbid: data.cookiebotCbid ?? '',
       });
     }
   }, [data, reset]);
@@ -113,8 +116,21 @@ export function SeoForm() {
       <div className="grid gap-6 sm:grid-cols-2">
         <TextField label="Google Analytics ID" registration={register('googleAnalyticsId')} error={errors.googleAnalyticsId?.message} placeholder="G-XXXXXXX" />
         <TextField label="Google Tag Manager ID" registration={register('googleTagManagerId')} error={errors.googleTagManagerId?.message} placeholder="GTM-XXXXX" />
-        <TextField label="Google Search Console" registration={register('googleSearchConsole')} error={errors.googleSearchConsole?.message} />
+        <TextField
+          label="Search Console Verification Code"
+          description="Ownership token from Google Search Console (HTML-tag method) - rendered on the site as the google-site-verification meta tag. Not a G-XXXX ID."
+          registration={register('googleSearchConsole')}
+          error={errors.googleSearchConsole?.message}
+          placeholder="dBw5CvburAxi537Rp9qi5uG2..."
+        />
         <TextField label="Facebook Pixel ID" registration={register('facebookPixelId')} error={errors.facebookPixelId?.message} />
+        <TextField
+          label="Cookiebot Domain Group ID"
+          description="The data-cbid UUID from Cookiebot admin > Settings > Your scripts. Enables the consent banner and the Manage Cookies dialog on the public site."
+          registration={register('cookiebotCbid')}
+          error={errors.cookiebotCbid?.message}
+          placeholder="12345678-abcd-1234-abcd-123456789abc"
+        />
       </div>
     </SettingsCard>
   );

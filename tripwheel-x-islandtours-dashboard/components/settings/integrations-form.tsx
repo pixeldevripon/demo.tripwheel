@@ -6,8 +6,10 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
   useMailchimpConfig,
+  useSiteInfo,
   useSmtpConfig,
   useUpdateMailchimpConfig,
+  useUpdateSiteInfo,
   useUpdateSmtpConfig,
 } from '@/hooks/settings/use-settings';
 import {
@@ -166,11 +168,84 @@ function MailchimpCard() {
   );
 }
 
+// ── WhatsApp & Instagram ─────────────────────────────────────────────────--
+
+const socialWidgetsSchema = z.object({
+  enableWhatsappChat: z.boolean(),
+  whatsappNumber: z.string().optional(),
+  enableInstagram: z.boolean(),
+  instagramWidgetId: z.string().optional(),
+});
+type SocialWidgetsFormValues = z.infer<typeof socialWidgetsSchema>;
+
+function SocialWidgetsCard() {
+  const { data, isLoading } = useSiteInfo();
+  const { mutate, isPending } = useUpdateSiteInfo();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<SocialWidgetsFormValues>({
+    resolver: zodResolver(socialWidgetsSchema),
+    defaultValues: {
+      enableWhatsappChat: false,
+      whatsappNumber: '',
+      enableInstagram: false,
+      instagramWidgetId: '',
+    },
+  });
+
+  useEffect(() => {
+    if (data) {
+      reset({
+        enableWhatsappChat: data.enableWhatsappChat ?? false,
+        whatsappNumber: data.whatsappNumber ?? '',
+        enableInstagram: data.enableInstagram ?? false,
+        instagramWidgetId: data.instagramWidgetId ?? '',
+      });
+    }
+  }, [data, reset]);
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  return (
+    <SettingsCard
+      title="WhatsApp & Instagram"
+      description="Chat button and feed widget shown on the public site."
+      onSubmit={handleSubmit((v) => mutate(v))}
+      isSaving={isPending}
+    >
+      <CheckboxField
+        id="enableWhatsappChat"
+        label="Enable WhatsApp Chat"
+        description="Show a WhatsApp chat button on the public site."
+        checked={watch('enableWhatsappChat')}
+        onChange={(c) => setValue('enableWhatsappChat', c, { shouldDirty: true })}
+      />
+      <TextField label="WhatsApp Number" registration={register('whatsappNumber')} error={errors.whatsappNumber?.message} placeholder="+5999 123 4567" />
+
+      <CheckboxField
+        id="enableInstagram"
+        label="Enable Instagram Feed"
+        description="Display an Instagram widget in the footer."
+        checked={watch('enableInstagram')}
+        onChange={(c) => setValue('enableInstagram', c, { shouldDirty: true })}
+      />
+      <TextField label="Instagram Widget ID" registration={register('instagramWidgetId')} error={errors.instagramWidgetId?.message} />
+    </SettingsCard>
+  );
+}
+
 export function IntegrationsForm() {
   return (
     <div className="space-y-6">
-      <SmtpCard />
+     {/*  <SmtpCard /> */}
       <MailchimpCard />
+      <SocialWidgetsCard />
     </div>
   );
 }

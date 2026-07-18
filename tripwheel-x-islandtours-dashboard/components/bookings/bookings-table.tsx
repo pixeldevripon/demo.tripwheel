@@ -81,6 +81,9 @@ export function BookingsTable({
     cancellationView,
     // Commission is the platform's cut (rule #22 snapshot) - admin eyes only.
     showCommission: role === 'ADMIN',
+    // Clicking the reference cell opens the same details sheet as the row menu.
+    onOpenDetails: (booking) =>
+      setDetailsIndex(data.findIndex((b) => b.id === booking.id)),
     actions: (booking) => (
       <BookingRowActions
         booking={booking}

@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useSiteInfo, useUpdateSiteInfo } from '@/hooks/settings/use-settings';
 import {
-  CheckboxField,
   ImageField,
   SettingsCard,
   SettingsCardSkeleton,
@@ -20,10 +19,6 @@ const schema = z.object({
   siteDescription: z.string().optional(),
   logo: z.string().optional(),
   favicon: z.string().optional(),
-  enableWhatsappChat: z.boolean(),
-  whatsappNumber: z.string().optional(),
-  enableInstagram: z.boolean(),
-  instagramWidgetId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -47,10 +42,6 @@ export function SiteInfoForm() {
       siteDescription: '',
       logo: '',
       favicon: '',
-      enableWhatsappChat: false,
-      whatsappNumber: '',
-      enableInstagram: false,
-      instagramWidgetId: '',
     },
   });
 
@@ -62,10 +53,6 @@ export function SiteInfoForm() {
         siteDescription: data.siteDescription ?? '',
         logo: data.logo ?? '',
         favicon: data.favicon ?? '',
-        enableWhatsappChat: data.enableWhatsappChat ?? false,
-        whatsappNumber: data.whatsappNumber ?? '',
-        enableInstagram: data.enableInstagram ?? false,
-        instagramWidgetId: data.instagramWidgetId ?? '',
       });
     }
   }, [data, reset]);
@@ -98,24 +85,6 @@ export function SiteInfoForm() {
           onChange={(url) => setValue('favicon', url ?? '', { shouldDirty: true })}
         />
       </div>
-
-      <CheckboxField
-        id="enableWhatsappChat"
-        label="Enable WhatsApp Chat"
-        description="Show a WhatsApp chat button on the public site."
-        checked={watch('enableWhatsappChat')}
-        onChange={(c) => setValue('enableWhatsappChat', c, { shouldDirty: true })}
-      />
-      <TextField label="WhatsApp Number" registration={register('whatsappNumber')} error={errors.whatsappNumber?.message} placeholder="+5999 123 4567" />
-
-      <CheckboxField
-        id="enableInstagram"
-        label="Enable Instagram Feed"
-        description="Display an Instagram widget in the footer."
-        checked={watch('enableInstagram')}
-        onChange={(c) => setValue('enableInstagram', c, { shouldDirty: true })}
-      />
-      <TextField label="Instagram Widget ID" registration={register('instagramWidgetId')} error={errors.instagramWidgetId?.message} />
     </SettingsCard>
   );
 }

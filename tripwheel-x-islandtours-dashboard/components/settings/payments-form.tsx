@@ -4,20 +4,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Field, FieldDescription } from '@/components/ui/field';
-import { Label } from '@/components/ui/label';
 import { useStripeConfig, useUpdateStripeConfig } from '@/hooks/settings/use-settings';
-import { StripeMethodsField } from './stripe-methods-field';
 import { ConnectionStatus, SecretField, SettingsCard, SettingsCardSkeleton, TextField } from './settings-fields';
 
 // ── Stripe ─────────────────────────────────────────────────────────────────
+// The Payment Methods selector was removed from this card: the offered-methods
+// list is not admin-configurable for v1. The PATCH no longer sends
+// paymentMethods, so whatever is stored stays as-is.
 
 const stripeSchema = z.object({
   paymentLabel: z.string().optional(),
   publishableKey: z.string().optional(),
   secretKey: z.string().optional(),
   webhookSecret: z.string().optional(),
-  paymentMethods: z.array(z.string()),
 });
 type StripeFormValues = z.infer<typeof stripeSchema>;
 
@@ -29,12 +28,10 @@ function StripeCard() {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<StripeFormValues>({
     resolver: zodResolver(stripeSchema),
-    defaultValues: { paymentLabel: 'Stripe', publishableKey: '', secretKey: '', webhookSecret: '', paymentMethods: [] },
+    defaultValues: { paymentLabel: 'Stripe', publishableKey: '', secretKey: '', webhookSecret: '' },
   });
 
   useEffect(() => {
@@ -44,7 +41,6 @@ function StripeCard() {
         publishableKey: data.publishableKey ?? '',
         secretKey: '',
         webhookSecret: '',
-        paymentMethods: data.paymentMethods ?? [],
       });
     }
   }, [data, reset]);
@@ -53,7 +49,6 @@ function StripeCard() {
     mutate({
       paymentLabel: values.paymentLabel,
       publishableKey: values.publishableKey,
-      paymentMethods: values.paymentMethods,
       // Only send secrets when a new value is entered; blank keeps the current key.
       ...(values.secretKey ? { secretKey: values.secretKey } : {}),
       ...(values.webhookSecret ? { webhookSecret: values.webhookSecret } : {}),
@@ -61,8 +56,6 @@ function StripeCard() {
   }
 
   if (isLoading) return <SettingsCardSkeleton />;
-
-  const selected = watch('paymentMethods');
 
   return (
     <SettingsCard
@@ -90,15 +83,6 @@ function StripeCard() {
         placeholder="whsec_..."
         description={data?.webhookSecret ? `Current: ${data.webhookSecret}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
-      <Field>
-        <Label>Payment Methods</Label>
-        {/* Enabling a method opens a setup guide; disabling asks to confirm. */}
-        <StripeMethodsField
-          value={selected}
-          onChange={(next) => setValue('paymentMethods', next, { shouldDirty: true })}
-        />
-        <FieldDescription>Methods offered to travelers at checkout.</FieldDescription>
-      </Field>
     </SettingsCard>
   );
 }

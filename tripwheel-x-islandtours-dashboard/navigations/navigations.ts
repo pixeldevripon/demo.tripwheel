@@ -180,12 +180,12 @@ const dashboardNav: NavGroup[] = [
                     Permission.MANAGE_OPERATOR_PAYMENTS,
                 ],
             },
-            {
+/*             {
                 title: 'Your Profile',
                 url: 'profile',
                 icon: UserCircleIcon,
                 permissions: [Permission.VIEW_PROFILE],
-            },
+            }, */
         ],
     },
 

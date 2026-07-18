@@ -15,6 +15,7 @@ import {
     SidebarHeader,
     SidebarMenu,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { filterNavGroups } from '@/lib/rbac-utils';
@@ -40,6 +41,9 @@ export function AppSidebar({
     ...props
 }: AppSidebarProps) {
     const navData = getNavigations();
+    // Mobile: the sidebar is an overlay sheet - navigating via the logo must
+    // dismiss it just like the NavMain links do. No-op on desktop.
+    const { setOpenMobile } = useSidebar();
 
     const filteredNav = useMemo(() => {
         const userPermissions: string[] =
@@ -55,22 +59,23 @@ export function AppSidebar({
                     <SidebarMenuItem>
                         <Link
                             href='/'
+                            onClick={() => setOpenMobile(false)}
                             className='flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-fast hover:bg-sidebar-accent/60'>
                             <Image
                                 src='/logo/logo-light.svg'
                                 alt='Island Tours'
-                                width={68}
+                                width={50}
                                 height={50}
                                 priority
-                                className='h-8 w-auto shrink-0 object-contain dark:hidden'
+                                className='h-4 w-auto shrink-0 object-contain dark:hidden'
                             />
                             <Image
                                 src='/logo/logo-dark.svg'
                                 alt='Island Tours'
-                                width={68}
+                                width={50}
                                 height={50}
                                 priority
-                                className='h-8 w-auto shrink-0 object-contain hidden dark:block'
+                                className='h-4 w-auto shrink-0 object-contain hidden dark:block'
                             />
                         </Link>
                     </SidebarMenuItem>
@@ -81,7 +86,7 @@ export function AppSidebar({
                 <NavMain groups={filteredNav} />
             </SidebarContent>
 
-            <SidebarFooter className='border-t border-sidebar-line p-2'>
+    {/*         <SidebarFooter className='border-t border-sidebar-line p-2'>
                 <Link
                     href='/profile'
                     title='Your profile'
@@ -111,7 +116,7 @@ export function AppSidebar({
                         className='size-4 shrink-0 text-sidebar-content/50 transition-transform duration-fast group-hover/identity:translate-x-0.5 group-data-[collapsible=icon]:hidden'
                     />
                 </Link>
-            </SidebarFooter>
+            </SidebarFooter> */}
         </Sidebar>
     );
 }

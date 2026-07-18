@@ -12,6 +12,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
@@ -73,6 +74,10 @@ const toHref = (url?: string) => (!url ? '/' : `/${url.replace(/^\/+/, '')}`);
 export function NavMain({ groups }: NavMainProps) {
     const pathname = usePathname();
     const reduceMotion = useReducedMotion();
+    // On mobile the sidebar is an overlay sheet - navigating must dismiss it,
+    // or it keeps covering the page the user just navigated to. No-op on
+    // desktop (openMobile is only rendered under the mobile breakpoint).
+    const { setOpenMobile } = useSidebar();
 
     const isPathActive = (url?: string) => {
         const target = toHref(url);
@@ -123,7 +128,11 @@ export function NavMain({ groups }: NavMainProps) {
                                                         ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                                                         : 'hover:bg-sidebar-accent/50',
                                                 )}>
-                                                <Link href={toHref(item.url)}>
+                                                <Link
+                                                    href={toHref(item.url)}
+                                                    onClick={() =>
+                                                        setOpenMobile(false)
+                                                    }>
                                                     {/* 2px leading indicator - the non-color active cue */}
                                                     <span
                                                         aria-hidden
