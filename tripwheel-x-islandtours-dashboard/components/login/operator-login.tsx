@@ -76,14 +76,14 @@ export function OperatorLogin() {
 
             <AuthForm />
 
-            <div className='mt-4 flex flex-col items-center gap-2.5'>
+{/*             <div className='mt-4 flex flex-col items-center gap-2.5'>
                 <Link href='/apply' className={quietLink}>
                     New here? Apply to list your tours &rarr;
                 </Link>
                 <Link href='/bookings' className={quietLink}>
                     Looking for your booking? Go to island.tours/bookings &rarr;
                 </Link>
-            </div>
+            </div> */}
 
             {/*
              * ── 2FA step — uncomment block + setStep(2) call above when enabled ──
