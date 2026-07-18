@@ -73,10 +73,11 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
 
                     {/* Tips - title + orange-ruled body */}
                     <div className='flex flex-col gap-6 md:gap-8'>
-                        {dict.tips.map((tip, i) => (
+                        {dict.tips.map(tip => (
                             <Reveal
                                 key={tip.title}
-                                delay={0.02 + i * 0.1}
+                                delay={0.02}
+                                listItem
                                 className='flex flex-col gap-2'>
                                 <h3 className='m-0 font-medium text-[16px] md:text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {tip.title}

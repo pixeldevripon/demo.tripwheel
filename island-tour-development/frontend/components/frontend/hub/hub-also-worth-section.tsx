@@ -40,8 +40,8 @@ export function HubAlsoWorthSection({
                     {/* Mobile: horizontal snap-scroll of 274px cards (16px gap).
                         lg+: static 3-column grid (24px gap). */}
                     <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible'>
-                        {items.map((item, i) => (
-                            <Reveal key={item.slug} delay={0.02 + i * 0.1}>
+                        {items.map(item => (
+                            <Reveal key={item.slug} delay={0.02} listItem>
                                 <Link
                                     href={localizeHref(
                                         locale,

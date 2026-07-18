@@ -25,9 +25,9 @@ export function TourRelatedSection({
                     {title}
                 </h2>
             </Reveal>
-            <div className='grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3'>
-                {tours.map((tour, i) => (
-                    <Reveal key={tour.id} delay={0.2 + i * 0.08}>
+            <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
+                {tours.map(tour => (
+                    <Reveal key={tour.id} listItem>
                         <TourCard tour={tour} dict={dict} />
                     </Reveal>
                 ))}

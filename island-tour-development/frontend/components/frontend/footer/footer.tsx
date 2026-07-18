@@ -1,5 +1,7 @@
 import { MotionSpan } from '@/components/frontend/motion-primitives';
 import { Reveal } from '@/components/frontend/reveal';
+import { getDestinationCategories } from '@/lib/api/public/categories';
+import { getDestinationHubs } from '@/lib/api/public/hubs';
 import {
     getPublicCompanyInfo,
     getPublicSocialMedia,
@@ -22,8 +24,6 @@ type FooterDict = {
     currency: string;
     links: {
         boatTours: string;
-        buggyTours: string;
-        sunsetCruises: string;
         help: string;
         contact: string;
         listTour: string;
@@ -38,6 +38,16 @@ type FooterDict = {
     registration: string;
     manageCookies: string;
 };
+
+// Explore column anchors - the launch destination plus two always-present
+// entities (a category and a hub). Up to 2 extra links (5 max) are
+// data-driven: the most popular remaining categories/hubs, gated to at least
+// EXPLORE_TOUR_GATE published tours ("more than 4") so a thin page never
+// earns a sitewide footer link.
+const EXPLORE_DESTINATION = { label: 'Curaçao', slug: 'curacao' };
+const PINNED_CATEGORY_SLUG = 'boat-tours';
+const PINNED_HUB_SLUG = 'klein-curacao';
+const EXPLORE_TOUR_GATE = 5; // published tours required to earn a dynamic slot
 
 // Social ring icons - each SVG bakes in the grey-ringed circle + white glyph.
 // Only networks with a dashboard-managed URL render; Twitter/LinkedIn exist in
@@ -181,9 +191,12 @@ export async function Footer({
 }) {
     // Dashboard-managed settings (Settings > Social Media / Company). Cached
     // under the `site-info` tag, so an admin save shows up without a redeploy.
-    const [social, company] = await Promise.all([
+    // Categories/hubs feed the dynamic Explore column (both tour-gated + cached).
+    const [social, company, categories, hubs] = await Promise.all([
         getPublicSocialMedia(),
         getPublicCompanyInfo(),
+        getDestinationCategories(EXPLORE_DESTINATION.slug, locale),
+        getDestinationHubs(EXPLORE_DESTINATION.slug, locale),
     ]);
 
     const socials = [
@@ -206,13 +219,40 @@ export async function Footer({
         ? company.companyVat
         : dict.registration;
 
-    // Destination & tour names are proper nouns - not translated, only the URL is localized.
+    // Explore column: 3 pinned anchors + up to 2 data-driven picks (5 links
+    // max). Pinned labels come from the localized API rows when available
+    // (dict/proper-noun fallback keeps them rendered even if the backend is
+    // unreachable). Category and hub pages share the flat
+    // `/{destination}/{slug}` URL, so both map the same way.
+    const pinnedCategory = categories.find(
+        c => c.slug === PINNED_CATEGORY_SLUG,
+    );
+    const pinnedHub = hubs.find(h => h.slug === PINNED_HUB_SLUG);
+    // Most popular remaining categories/hubs - popularity proxy is the
+    // published tour count, gated so only substantial pages win a slot.
+    const topPicks = [
+        ...categories.filter(c => c.slug !== PINNED_CATEGORY_SLUG),
+        ...hubs.filter(h => h.slug !== PINNED_HUB_SLUG),
+    ]
+        .filter(e => e.publishedTourCount >= EXPLORE_TOUR_GATE)
+        .sort((a, b) => b.publishedTourCount - a.publishedTourCount)
+        .slice(0, 2);
+
+    const destinationBase = `/${EXPLORE_DESTINATION.slug}`;
     const exploreLinks = [
-        { label: 'Curaçao', href: '/curacao' },
-        { label: dict.links.boatTours, href: '/curacao/boat-tours' },
-        { label: dict.links.buggyTours, href: '/curacao/buggy-tours' },
-        { label: dict.links.sunsetCruises, href: '/curacao/sunset-cruises' },
-        { label: 'Klein Curaçao', href: '/curacao/klein-curacao' },
+        { label: EXPLORE_DESTINATION.label, href: destinationBase },
+        {
+            label: pinnedCategory?.name ?? dict.links.boatTours,
+            href: `${destinationBase}/${PINNED_CATEGORY_SLUG}`,
+        },
+        ...topPicks.map(pick => ({
+            label: pick.name,
+            href: `${destinationBase}/${pick.slug}`,
+        })),
+        {
+            label: pinnedHub?.name ?? 'Klein Curaçao',
+            href: `${destinationBase}/${PINNED_HUB_SLUG}`,
+        },
     ];
     // Help/contact/list-your-tour/affiliate pages don't exist yet - no href
     // deactivates them (plain text, no 404) until those pages are built.

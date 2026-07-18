@@ -40,12 +40,12 @@ export function DestinationCollections({
                     {/* ── Collections ────────────────────────────────────────────────
                         Mobile: horizontal swipe carousel of compact cards.
                         sm+: standard 2 × 3 grid. */}
-                    <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
-                        {collections.map((collection, i) => (
+                    <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
+                        {collections.map(collection => (
                             <Reveal
                                 key={collection.id}
                                 width='auto'
-                                delay={0.2 + i * 0.08}
+                                listItem
                                 className='w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto'>
                                 <CollectionCard
                                     collection={collection}

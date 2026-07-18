@@ -84,7 +84,7 @@ export function WishlistView({
                 ) : visible.length === 0 ? (
                     <Prompt title={dict.empty} hint={dict.emptyHint} />
                 ) : (
-                    <div className='grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10'>
+                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
                         {visible.map((hit) => (
                             <TourCard
                                 key={hit.id}

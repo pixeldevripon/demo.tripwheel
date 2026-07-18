@@ -105,7 +105,7 @@ export function HubCompareSection({
             {/* Tables */}
             <div className='flex flex-col gap-4 md:gap-8'>
                 {tables.map((table, i) => (
-                    <Reveal key={i} delay={0.02 + i * 0.1}>
+                    <Reveal key={i} delay={0.02} listItem>
                         <CompareTableCard table={table} dict={dict} />
                     </Reveal>
                 ))}

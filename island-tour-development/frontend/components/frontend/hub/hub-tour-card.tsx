@@ -63,9 +63,15 @@ const BADGE_STYLE: Record<Exclude<HubTourBadge, null>, string> = {
 export function HubTourCard({
     tour,
     dict,
+    highlighted = false,
 }: {
     tour: HubTour;
     dict: HubTourCardDict;
+    /**
+     * Pre-highlighted card (the panel's FIRST tour): static hover treatment -
+     * cream fill + merged image + inset content. Static so nothing re-wraps.
+     */
+    highlighted?: boolean;
 }) {
     const { isSaved, toggle } = useWishlist();
     const saved = isSaved(tour.id);
@@ -80,11 +86,12 @@ export function HubTourCard({
     const card = (
         <article
             aria-label={tour.title}
-            className='group flex flex-col overflow-hidden rounded-[8px] bg-it-white transition-colors duration-300 ease-in-out hover:bg-[#fdf6f0] md:rounded-[16px]'>
-            {/* Image - single photo, badge top-left + wishlist top-right. On hover
-                the card fills cream and the image's bottom corners square off so it
-                merges into the inset content area (mirrors <TourCard>). */}
-            <div className='relative aspect-177/148 w-full shrink-0 overflow-hidden rounded-[8px] bg-it-border transition-[border-radius] duration-300 ease-in-out group-hover:rounded-b-none md:aspect-384/270 md:rounded-[16px]'>
+            className={`group flex flex-col overflow-hidden rounded-[8px] transition-colors duration-300 ease-in-out hover:bg-[#fdf6f0] md:rounded-[16px] ${highlighted ? 'bg-[#fdf6f0]' : 'bg-it-white'}`}>
+            {/* Image - single photo, badge top-left + wishlist top-right. The
+                bottom corners are ALWAYS squared so the image merges into the
+                inset content area; only the card fill reacts to hover (mirrors
+                the latest <TourCard>). */}
+            <div className='relative aspect-177/148 w-full shrink-0 overflow-hidden rounded-t-[8px] bg-it-border md:aspect-384/270 md:rounded-t-[16px]'>
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
@@ -126,10 +133,10 @@ export function HubTourCard({
                 </div>
             </div>
 
-            {/* Content - on hover it insets horizontally + gains bottom padding so
-                the cream card wraps it (mirrors <TourCard>). The top padding stands
-                in for the previous image->content gap. */}
-            <div className='flex flex-col gap-1.5 pt-2 transition-[padding] duration-300 ease-in-out group-hover:px-3 group-hover:pb-3 md:gap-3 md:pt-4 md:group-hover:px-4 md:group-hover:pb-4'>
+            {/* Content - PERMANENT inset (mirrors the latest <TourCard>): the
+                padding never animates, so hover only tints the card and nothing
+                re-wraps or shifts. */}
+            <div className='flex flex-col gap-1.5 px-3 pt-2 pb-3 md:gap-3 md:px-4 md:pt-4 md:pb-4'>
                 {/* Rating */}
                 <div className='flex items-center gap-2'>
                     <Image
@@ -149,7 +156,7 @@ export function HubTourCard({
                     <h3 className='m-0 font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[16px]'>
                         {tour.title}
                     </h3>
-                    <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0 md:gap-x-4'>
+                    <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0'>
                         {tour.attributes.map((attr, i) => (
                             <Fragment key={attr}>
                                 {i > 0 && (

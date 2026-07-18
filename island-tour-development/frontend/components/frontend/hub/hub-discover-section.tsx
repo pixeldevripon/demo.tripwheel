@@ -97,7 +97,7 @@ export function HubDiscoverSection({
             <div className='flex flex-col gap-6 md:gap-14'>
                 <Reveal className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6'>
                     {items.map((item, i) => (
-                        <Reveal key={i} delay={0.02 + i * 0.1}>
+                        <Reveal key={i} delay={0.02} listItem>
                             <HubDiscoverCard
                                 item={item}
                                 dict={{

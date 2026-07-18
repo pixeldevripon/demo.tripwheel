@@ -99,8 +99,8 @@ export function TourReviews({
 
             {/* Review cards */}
             <div className='grid gap-4 md:grid-cols-2 md:gap-6'>
-                {reviews.map((review, i) => (
-                    <Reveal key={review.id} delay={0.2 + i * 0.08}>
+                {reviews.map(review => (
+                    <Reveal key={review.id} listItem>
                         <ReviewCard review={review} dict={dict} />
                     </Reveal>
                 ))}

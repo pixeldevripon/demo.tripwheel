@@ -23,12 +23,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { TourBadgeChip } from '@/components/frontend/tour-badge';
+import type { TourBadge } from '@/lib/tours/derive-badge';
 import { cn, formatDate } from '@/lib/utils';
-import type { SpotlightRequest, SpotlightStatus } from '@/types/tier';
+import type { SpotlightRequest, SpotlightStatus, TierKey } from '@/types/tier';
 import {
   SPOTLIGHT_MIN_RATING,
   SPOTLIGHT_MIN_REVIEWS,
   SPOTLIGHT_STATUS_LABELS,
+  TIER_META,
 } from '@/types/tier';
 
 export interface TourInfo {
@@ -38,6 +42,10 @@ export interface TourInfo {
   image?: string | null;
   rating: number | null;
   reviewCount: number;
+  /** Commercial placement (tier drives §7.2 ranking; badge = §3.6 card chip). */
+  tierKey: TierKey;
+  tierRank: number;
+  badge: TourBadge;
 }
 
 export type SpotlightRequestWithInfo = SpotlightRequest & {
@@ -245,6 +253,35 @@ export function makeSpotlightColumns({
           >
             {name}
           </Link>
+        );
+      },
+      enableSorting: true,
+    },
+    {
+      // Commercial placement: current tier + rank and the live card badge -
+      // the context an admin needs when deciding a Spotlight approval.
+      id: 'placement',
+      header: 'Tier & Badge',
+      accessorFn: (row) => row.tourInfo?.tierRank ?? 99,
+      cell: ({ row }) => {
+        const info = row.original.tourInfo;
+        if (!info) return <span className="text-xs text-muted-foreground">—</span>;
+        const tier = TIER_META[info.tierKey];
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant={info.tierRank <= 3 ? 'default' : 'secondary'}
+                className="text-xs"
+              >
+                {tier?.label ?? info.tierKey}
+              </Badge>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                #{info.tierRank}
+              </span>
+            </div>
+            {info.badge && <TourBadgeChip type={info.badge} size="sm" />}
+          </div>
         );
       },
       enableSorting: true,

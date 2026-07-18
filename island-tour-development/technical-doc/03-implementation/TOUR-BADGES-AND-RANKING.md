@@ -5,6 +5,20 @@ ranks in a listing**. Derives master §3.6 (Badges), §3.7 (Demand signaling), �
 (Ranking), §3.8 (Diversity pass), §B.63 (Peach tint). The master HTML
 (`technical-doc/island-tours-platform-master.html`) is canonical on any conflict.
 
+> **EXECUTED 2026-07-18 — master alignment pass.** Fixed after a full master
+> cross-check: (1) Sponsored badge — FINAL after two iterations: earned badges
+> lead, Sponsored is the **fallback label for any paid placement** (Spotlight
+> or tier P1-P3) with no earned badge (§2.2); ranking = spotlight first, then
+> full master logic; (2) bookability gate added to
+> `search()`, `suggest()` tour hits, and `findPublicByIds` (collections);
+> (3) Most-popular **max-1-per-category** cap implemented page-local
+> (`applyMostPopularCap`); (4) §B.63 peach tint implemented on All Tours card #1
+> (default sort, page 1); (5) nightly **quality_score** job built
+> (`src/tours/quality-score.ts`); (6) **eligibility engine** built: flat bar +
+> provisional window enforced in `changeTier`, nightly grace/demotion lifecycle
+> (`runEligibilityLifecycle`); (7) public sorts restricted to the 3 launch
+> options (`LAUNCH_TOUR_SORTS`). Sections below updated to match.
+
 > Quick references: [`TOUR-BADGES.md`](./TOUR-BADGES.md) ·
 > [`TOUR-RANKING.md`](./TOUR-RANKING.md). This document is the deep dive.
 
@@ -22,8 +36,9 @@ they never re-sort and never recompute a badge.
   field on every list item.
 
 Surfaces that consume this identical pipeline: destination "Locals' favorites"
-grid, All Tours, category pages, hub tours, and search (the search results page
-applies the same `tier_rank` order *within* relevance buckets).
+grid, All Tours, category pages, hub tours, and search (search results are one
+flat set ordered by the same canonical `tier_rank` sort — there are no relevance
+buckets; ILIKE matching only decides membership).
 
 ---
 
@@ -64,7 +79,7 @@ A card shows **at most one** badge in its top-left slot.
 
 | Badge (`TourBadge` key) | Trigger | Colour |
 |---|---|---|
-| `sponsored` | Tour has an **ACTIVE Destination Spotlight** (`isSponsored=true`). | Gray (`bg-it-surface`) |
+| `sponsored` | **Fallback for any paid placement with no earned badge**: ACTIVE Destination Spotlight (`isSponsored=true`) OR paid tier P1–P3 (`tier_rank <= 3`, master §3.6 "Paid tiers P1 to P3 placements"). An earned badge always replaces it. | Gray (`bg-it-surface`) |
 | `likelyToSellOut` | §3.7 demand signal true (`likelyToSellOut`/override). | Navy `#193c5e` |
 | `mostPopular` | `aggregateReviewCount ≥ 10` AND `aggregateRating ≥ 4.5`. | Orange `#e8611a` |
 | `new` | `publishedAt` < 30 days ago AND `aggregateReviewCount == 0`. | Cream `#fdf6f0` |
@@ -73,25 +88,29 @@ Not in `deriveTourBadge` (handled elsewhere): **Numbered rank 01–10** (circle;
 Top-10 collections only) and **Locals' favorite ✦** (tour-page meta-row; manual
 `isLocalsFavourite`).
 
-### 2.2 Priority (resolving overlaps)
+### 2.2 Priority (resolving overlaps) — FINAL, product decision 2026-07-18
 
-`deriveTourBadge` returns the **first** match:
+`deriveTourBadge` returns the **first** match — earned badges lead, `sponsored`
+is the **fallback** label for a paid placement with nothing better to show:
 
-1. `sponsored` — *"always shown on paid placement; transparency is a brand pillar."*
-2. `likelyToSellOut` — most selective (~5–10% of catalog).
-3. `mostPopular` — organic social proof; *never on commission-tier grounds*.
-4. `new` — freshness fallback.
+1. `likelyToSellOut` — most selective (~5–10% of catalog).
+2. `mostPopular` — organic social proof; *never on commission-tier grounds*.
+3. `new` — freshness.
+4. `sponsored` — paid placement fallback: ACTIVE Spotlight (`isSponsored`) **or**
+   paid tier P1–P3 (`tier_rank <= 3`). It answers "why is this unrated tour at
+   the top?" — a card with an earned badge already explains itself, so the
+   earned badge always replaces it.
 
 Most pairs are mutually exclusive by definition (`new` needs 0 reviews ⇒ can't be
-`mostPopular`; `likelyToSellOut` needs age ≥ 90d, `new` needs < 30d). Real overlaps:
-sponsored vs. any earned badge (sponsored wins); `likelyToSellOut` vs. `mostPopular`
-(sell-out wins). Code: `backend/src/tours/tours.service.ts → deriveTourBadge`.
+`mostPopular`; `likelyToSellOut` needs age ≥ 90d, `new` needs < 30d). The real
+overlap is a paid placement that also earns a badge — the earned badge wins.
+Code: `backend/src/tours/tours.service.ts → deriveTourBadge`.
 
 ### 2.2b How each badge is earned (summary)
 
 | Badge | Earned when… | Who sets the input | Timing | Position effect |
 |---|---|---|---|---|
-| `sponsored` | the tour holds an **ACTIVE Destination Spotlight** (`isSponsored=true`) | admin approval + spotlight lifecycle | immediate on approve if window open, else nightly | **none** — does not reorder |
+| `sponsored` | paid placement (ACTIVE Spotlight OR tier P1–P3) **and** no earned badge | operator tier pick / admin spotlight approval + lifecycle | immediate on tier change; spotlight on approve or nightly | **none** — the badge itself never reorders (the spotlight FLAG and tier_rank already did) |
 | `likelyToSellOut` | age ≥ 90d **and** ≥ 3 sellouts/60d **and** < 40% availability/30d | nightly demand recompute (or manual override) | nightly | **none** |
 | `mostPopular` | `aggregateReviewCount ≥ 10` **and** `aggregateRating ≥ 4.5` | reviews module (recompute on approve) | real-time | **none** |
 | `new` | `publishedAt` < 30d ago **and** `aggregateReviewCount == 0` | publish + reviews | real-time | **none** |
@@ -103,10 +122,15 @@ Spotlight tends to sit on a high-tier tour, not because the badge sorts.)
 
 ### 2.3 Per-badge lifecycle (the full story)
 
-#### `sponsored` — driven by Destination Spotlight (§3.6 "paid placements P1–P3")
+#### `sponsored` — the paid-placement fallback label
 
-Commission tier alone does **not** make a tour sponsored — the badge marks the
-max-3 paid Spotlight slots per destination.
+**Final product decision 2026-07-18** (after two iterations): a paid placement
+— ACTIVE Spotlight or paid tier P1–P3 — wears Sponsored **only when it has no
+earned badge**. Rationale: top-ranked unrated cards need to explain why they
+lead ("transparency is a brand pillar"), but an earned badge (Likely to sell
+out / Most popular / New) is more valuable information and takes the slot.
+Open-tier tours are never labeled Sponsored. Ranking is untouched:
+`is_sponsored DESC, tier_rank ASC, quality_score DESC, id`.
 
 ```
 operator requestSpotlight()            SpotlightRequest: REQUESTED
@@ -136,8 +160,10 @@ Reads `aggregateRating` + `aggregateReviewCount`, which the **reviews module**
 recomputes whenever a review is approved/edited/removed
 (`ReviewsService.recomputeAggregates`). The badge appears the moment a tour crosses
 `≥10 reviews ∧ ≥4.5 rating` and disappears if it drops below. No scheduled job — it
-tracks live review data. (Master's *"max 1 per category"* cap is a listing-level
-refinement deferred to ranking; `deriveTourBadge` returns per-tour eligibility.)
+tracks live review data. Master's *"max 1 per category"* cap is applied
+**page-local at listing level** (`applyMostPopularCap`, run after the final
+ordering in `findAll`, `search`, and the typeahead strips): the first-ranked tour
+of each primary category keeps the badge, later ones drop to no badge.
 
 #### `new` — freshness (real-time, no job)
 
@@ -182,6 +208,17 @@ deriveTourBadge: (override ?? likelyToSellOut) ? 'likelyToSellOut'
   (type `TourBadge`); the mapper `lib/tours/listing.ts → searchHitToListing` passes
   `hit.badge` through unchanged. Hub variant: `hub-tour-card.tsx` (`HubTourBadge`,
   no `new` by design — it keeps a rating row).
+- **First-card highlight (final product decision 2026-07-18, beyond master):**
+  the FIRST card of each main tour listing (All Tours page 1, destination grid,
+  collection tours, hub trips panel) renders the hover treatment statically —
+  cream `#fdf6f0` fill, image corners merged, inset content. Position-based via
+  a `highlighted` prop the listing passes (`i === 0`), NOT badge- or
+  spotlight-based. **No layout shift rule:** the content inset is static-only
+  and hover animates ONLY background + corner radius — animating horizontal
+  padding shrinks the text box, re-wraps titles and shifts the fixed-width
+  grid (bug fixed 2026-07-18 in `tour-card.tsx` + `hub-tour-card.tsx`).
+  Distinct from the §B.63 peach tint (`tinted`), which the cream highlight
+  visually overrides on card #1.
 
 ---
 
@@ -244,7 +281,7 @@ and same-tier collisions are expected.
 
 | Bar | Requirement | Opens | Enforced? |
 |---|---|---|---|
-| Flat bar | ≥ 5 reviews **and** rating ≥ 4.0 **and** operator 90-day cancellation rate ≤ 10% (min 10 bookings; admin force-majeure pardons) | `boosted`, `featured`, `premium` | Spec (master §7.2); enforcement is the eligibility engine — **partly pending** |
+| Flat bar | ≥ 5 reviews **and** rating ≥ 4.0 **and** operator 90-day cancellation rate ≤ 10% (min 10 bookings; admin force-majeure pardons) | `boosted`, `featured`, `premium` | **Enforced** — `evaluateFlatBar` gates `changeTier` (unless inside the provisional window; admins bypass) + nightly `runEligibilityLifecycle` |
 | Spotlight bar | ≥ 10 reviews **and** rating ≥ 4.5 **and** manual admin approval **and** < 3 active in destination | Destination Spotlight | **Enforced** — `assertSpotlightEligible` + `SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION` |
 | (none) | — | `organic`, `standard` | n/a |
 
@@ -253,38 +290,49 @@ and same-tier collisions are expected.
 Every tour gets a **one-time 90-day provisional window** from first publish during
 which *any* tier may be held (no tour has history at launch). After it, a nightly
 check enforces the bar: fail → notify → **30 days GRACE** → automatic demotion to the
-highest tier the tour still qualifies for. Existing bookings keep their snapshotted
-commission (tier changes are never retroactive). States
-(`enums.prisma → EligibilityState`): `LOCKED` · `PROVISIONAL` · `ELIGIBLE` ·
-`GRACE` · `DEMOTED`. (The nightly eligibility/demotion job plugs into the §4
-scheduler — currently pending; the `eligibilityState` column already exists.)
+highest tier the tour still qualifies for (= `organic`, since the flat bar gates all
+three paid tiers). Existing bookings keep their snapshotted commission (tier changes
+are never retroactive). States (`enums.prisma → EligibilityState`): `LOCKED` ·
+`PROVISIONAL` · `ELIGIBLE` · `GRACE` · `DEMOTED`. **Built:**
+`TiersService.runEligibilityLifecycle` runs in the §4 nightly job — it also
+refreshes `operator.cancellationRate90d`. Grace entry/demotion are logged; the
+operator email notice lands with the operator notification templates
+(wireframe-gated, TODO). `DEMOTED` stays visible on the (now open-tier) tour until
+the bar passes again.
 
 #### Worked example — the Curaçao "Locals' favorites" grid
 
 Pure `tier_rank ASC` (badges do **not** reorder):
 
-| # | Tour | Tier (rank) | quality | Badge |
-|---|---|---|---|---|
-| 1 | Klein Curaçao Full-Day | premium (1) | 65 | Sponsored |
-| 2 | Curaçao Street Food | featured (2) | 70 | — |
-| 3 | Sunset Sail with Open Bar | featured (2) | 70 | New |
-| 4 | West Point Snorkel | boosted (3) | 75 | Most popular |
-| 5 | Willemstad Old Town | boosted (3) | 75 | — |
-| 6 | Tugboat & Coral Garden | organic (4) | 80 | Likely to sell out |
+Spotlight tours lead, then pure `tier_rank ASC` (badges never reorder):
 
-"Most popular" sits at #4 (not higher) because it's *boosted* tier; "Likely to sell
-out" is last because it's *organic*. A plain tier-2 tour outranks a badged tier-3
-tour — that is the commercial model working as designed.
+| # | Tour | Spotlight | Tier (rank) | quality | Badge |
+|---|---|---|---|---|---|
+| 1 | Klein Curaçao Full-Day | ACTIVE | premium (1) | 65 | Sponsored (fallback) |
+| 2 | Curaçao Street Food | — | featured (2) | 70 | Sponsored (fallback) |
+| 3 | Sunset Sail with Open Bar | — | featured (2) | 70 | New (earned wins) |
+| 4 | West Point Snorkel | — | boosted (3) | 75 | Most popular (earned wins) |
+| 5 | Willemstad Old Town | — | boosted (3) | 75 | Sponsored (fallback) |
+| 6 | Tugboat & Coral Garden | — | organic (4) | 80 | Likely to sell out |
 
-### 3.1 Canonical order (master §7.2) — the "Locals' favorites" / Recommended sort
+Every paid-placement card explains itself: an earned badge when it has one
+(#3, #4), the Sponsored fallback otherwise (#1, #2, #5). Open tiers are only
+labeled when earned (#6). "Most popular" sits at #4 (not higher) because it's
+*boosted* tier — a plain tier-2 tour outranks a badged tier-3 tour; that is the
+commercial model working as designed.
+
+### 3.1 Canonical order (master §7.2 + spotlight-first) — the "Locals' favorites" / Recommended sort
 
 ```
-tier_rank ASC, quality_score DESC, id ASC
+is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC
 ```
 
+- **`is_sponsored`** (product decision 2026-07-18): the ACTIVE Spotlight tours
+  (max 3/destination) lead every listing — the master's "separate labeled block,
+  never interleaved" is realized as spotlight-first within the single grid.
 - **`tier_rank`** (1=premium…5=standard), denormalized from the commission tier.
-  Paid placements float up **through tier_rank alone** — there is no separate
-  "sponsored" sort key; the Sponsored badge is cosmetic and never changes position.
+  Below the spotlight leaders, paid placements float up through tier_rank; the
+  Sponsored badge itself is cosmetic (the spotlight FLAG is the sort key).
 - **`quality_score`** (0–100, nightly job, read-only at query time):
   ```text
   quality_score = (avg_rating / 5)               * 40
@@ -316,15 +364,15 @@ nightly quality-score job and read-only at query time.
   performer in the *same category*, so a niche category isn't penalised for lower
   absolute conversion than, say, day trips.
 - **Demo placeholder:** the seed sets `quality_score = 60 + tier_rank*5` (65/70/75/
-  80/85), which is intentionally simplistic — it only ever breaks within-tier ties in
-  demo data. The real formula above runs once the nightly job is wired (§4).
+  80/85) — but the real formula (nightly job §4, `recomputeQualityScores`) now
+  overwrites it on the first run after seeding.
 - **Stored on** `tour.qualityScore`; **never** computed at request time.
 
 ### 3.2 Sort options (launch)
 
 | UI label | Logic |
 |---|---|
-| Locals' favorites (default) | `tier_rank ASC, quality_score DESC, id` |
+| Locals' favorites (default) | `is_sponsored DESC, tier_rank ASC, quality_score DESC, id` |
 | Price: low to high | `price_from ASC` then `base_price` |
 | Price: high to low | `price_from DESC` |
 
@@ -335,10 +383,10 @@ meaningful; "Newest" stays out (the New badge covers recency).
 
 Excluded from **every** ranked set: `status != LIVE`, `isActive=false`,
 `isBookable=false`, or no availability in the next 30 days. An excluded tour does
-not occupy a slot (the next tour moves up). `findAll`'s where-clause enforces
-`status=LIVE ∧ isActive ∧ isBookable`; the "30-day availability" rule is carried by
-`isBookable` (cleared by the availability job) to avoid a per-request departures
-join.
+not occupy a slot (the next tour moves up). Enforced by `findAll`, `search()`, the
+`suggest()` tour hits, AND `findPublicByIds` (manual collections) — the "30-day
+availability" rule is carried by `isBookable` (recomputed by the nightly
+availability job) to avoid a per-request departures join.
 
 ### 3.4 Diversity pass (master §3.8)
 
@@ -358,10 +406,12 @@ same subtype (primary category) consecutively.* Implemented in `applyDiversityPa
 ### 3.5 Peach tint (master §B.63) — frontend only
 
 A peach background (`#FFF5EE`) on **card #1 of the All Tours page, default sort
-only**, dropped during price sorts. Excluded: hub pages, numbered collections, and
-the destination "Locals' favorites" grid (not the All Tours page). Pure
-presentation — no effect on order. Apply in the All Tours listing component when
-built.
+only**, dropped during price sorts. Excluded: hub pages, numbered collections,
+search results, related tours, category pages, and the destination "Locals'
+favorites" grid. Pure presentation — no effect on order. **Built:**
+`ToursListingSection` passes `peachFirst` (All Tours + default sort only) →
+`ToursListing` tints card #1 on page 1 → `TourCard tinted` (resting bg `#FFF5EE`;
+the hover / sponsored cream `#fdf6f0` still takes over when active).
 
 ---
 
@@ -377,13 +427,16 @@ retry/concurrency queues, so no Redis/BullMQ needed). Registered via
    `isSponsored`.
 2. `ToursService.recomputeLikelyToSellOut()` — recompute the §3.7 demand signal for
    every LIVE tour.
+3. `AvailabilityService.materializeAllLive()` + `recomputeAllBookable()` — departures
+   + the §7.2 bookability gate.
+4. `ToursService.recomputeQualityScores()` — the §7.2 `quality_score` formula
+   (`src/tours/quality-score.ts`: rating 40 + reviews 25 + completeness 20 +
+   conversion 15; conversion contributes 0 until pageview tracking lands).
+5. `TiersService.runEligibilityLifecycle()` — provisional window → flat bar →
+   30-day grace → demotion (+ refresh `operator.cancellationRate90d`).
 
 Each is also a plain method, callable on demand (admin endpoint / tests / seed) and
 exposed together via `NightlyJobsService.run()`.
-
-**Still TODO (master §7, not badge-blocking):** the `quality_score` recompute job
-and the tier eligibility/grace/demotion lifecycle plug into this same scheduler when
-built.
 
 ---
 
@@ -393,7 +446,7 @@ built.
 GET /tours?destinationId=…&sort=recommended
    │
    1. WHERE  status=LIVE ∧ isActive ∧ isBookable (+ destination/category/hub/…)   ← bookability §7.2
-   2. ORDER BY tier_rank ASC, quality_score DESC, id ASC                          ← ranking §7.2
+   2. ORDER BY is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC       ← spotlight-first + §7.2
    3. flattenTour → attach localized title, destinationSlug, primaryCategoryId
    4. deriveTourBadge(tour) → badge                                               ← badges §3.6/§3.7
    5. applyDiversityPass(page)  (recommended sort only)                           ← diversity §3.8
@@ -452,6 +505,10 @@ rows, so clean first).
 ## 8. Invariants & edge cases
 
 - **One badge per card.** Priority is total; ties resolved as in §2.2.
+- **Sponsored = paid-placement FALLBACK** (final decision 2026-07-18) — shown on
+  Spotlight/paid-tier cards only when no earned badge applies; earned badges
+  always take the slot. Spotlight tours LEAD the ranking (`is_sponsored DESC`
+  is the first sort key) regardless of which chip they wear.
 - **`isSponsored` is derived state.** Never set it manually outside the spotlight
   lifecycle (prod) or the demo seed; it is recomputed from ACTIVE spotlights.
 - **`tier_rank` is never client-written**; it is denormalized from `tier_key` on

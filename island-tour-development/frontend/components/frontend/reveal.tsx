@@ -3,6 +3,23 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
+/**
+ * True below Tailwind's `sm` breakpoint (640px). Starts `false` (matching the
+ * SSR output) and flips after hydration - list items animate-skip only once
+ * the client knows it's a phone, so there is no hydration mismatch.
+ */
+export function useIsMobile() {
+    const [isMobile, setIsMobile] = React.useState(false);
+    React.useEffect(() => {
+        const mq = window.matchMedia('(max-width: 639px)');
+        setIsMobile(mq.matches);
+        const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+    return isMobile;
+}
+
 interface RevealProps {
     children: React.ReactNode;
     /** Wrapper width - '100%' (default), shrink to content, or 'auto' to set
@@ -21,6 +38,10 @@ interface RevealProps {
     amount?: number;
     /** IntersectionObserver root margin - negative values trigger a little earlier */
     margin?: string;
+    /** Mark a repeated child rendered from a `.map()` (list/grid cells).
+     *  On mobile the wrapper renders a plain div - no per-item animation.
+     *  List items share the same delay (never increment it by index). */
+    listItem?: boolean;
     className?: string;
 }
 
@@ -44,9 +65,23 @@ export const Reveal = ({
     once = true,
     amount,
     margin = '-50px',
+    listItem = false,
     className,
 }: RevealProps) => {
     const reduceMotion = useReducedMotion();
+    const isMobile = useIsMobile();
+
+    // List/grid cells on phones render statically - a column of individually
+    // fading cards reads as jank there, and delayed items waste scroll time.
+    if (listItem && isMobile) {
+        return (
+            <div
+                className={className}
+                style={width === 'auto' ? undefined : { width }}>
+                {children}
+            </div>
+        );
+    }
 
     return (
         <motion.div
@@ -62,34 +97,5 @@ export const Reveal = ({
             style={width === 'auto' ? undefined : { width }}>
             {children}
         </motion.div>
-    );
-};
-
-/**
- * Reveals a list of children with a staggered delay between each.
- *
- * ```tsx
- * <RevealList staggerDelay={0.1}>
- *   {items.map((i) => <Card key={i.id} {...i} />)}
- * </RevealList>
- * ```
- */
-export const RevealList = ({
-    children,
-    delay = 0.1,
-    staggerDelay = 0.1,
-}: {
-    children: React.ReactNode[];
-    delay?: number;
-    staggerDelay?: number;
-}) => {
-    return (
-        <>
-            {React.Children.map(children, (child, index) => (
-                <Reveal delay={delay + index * staggerDelay} key={index}>
-                    {child}
-                </Reveal>
-            ))}
-        </>
     );
 };

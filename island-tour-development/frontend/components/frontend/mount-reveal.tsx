@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { useIsMobile } from './reveal';
 
 /**
  * Mount-based fade + lift - for content that arrives via Suspense streaming.
@@ -18,6 +19,7 @@ export function MountReveal({
     delay = 0,
     duration = 0.6,
     yOffset = 20,
+    listItem = false,
     className,
 }: {
     children: ReactNode;
@@ -27,9 +29,19 @@ export function MountReveal({
     duration?: number;
     /** Vertical travel distance in px (set 0 for a pure fade). */
     yOffset?: number;
+    /** Mark a repeated child rendered from a `.map()` (list/grid cells).
+     *  On mobile the wrapper renders a plain div - no per-item animation.
+     *  List items share the same delay (never increment it by index). */
+    listItem?: boolean;
     className?: string;
 }) {
     const reduceMotion = useReducedMotion();
+    const isMobile = useIsMobile();
+
+    // List/grid cells on phones render statically (same rule as <Reveal>).
+    if (listItem && isMobile) {
+        return <div className={className}>{children}</div>;
+    }
 
     return (
         <motion.div

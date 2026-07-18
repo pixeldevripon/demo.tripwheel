@@ -10,15 +10,15 @@
  */
 
 import { useWishlist } from '@/components/frontend/wishlist-provider';
+import type { Currency } from '@/lib/constants/locales';
+import { springPop } from '@/lib/motion';
+import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { springPop } from '@/lib/motion';
-import type { Currency } from '@/lib/constants/locales';
-import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
 import { TourCardCarousel } from './tour-card-carousel';
 
@@ -130,6 +130,21 @@ export interface TourCardProps {
      * taking it out.
      */
     wishlistVariant?: 'heart' | 'remove';
+    /**
+     * Peach tint (master §B.63): resting background #FFF5EE instead of white.
+     * Position-based, applied by the LISTING (card #1 of All Tours / curated
+     * persona lists, default sort only) - never set it from tour data. The
+     * hover / highlighted cream (#fdf6f0) still takes over when active.
+     */
+    tinted?: boolean;
+    /**
+     * Pre-highlighted card: renders the hover treatment statically (cream fill,
+     * image merged into the content). POSITION-BASED - the listing passes it
+     * for its FIRST card only, marking the top placement. The content inset is
+     * permanent on every card, so neither hover nor highlight ever reflows
+     * text (no layout shift).
+     */
+    highlighted?: boolean;
 }
 
 /**
@@ -148,12 +163,19 @@ function DefaultTourCard({
     dict,
     className = '',
     wishlistVariant = 'heart',
+    tinted = false,
+    highlighted = false,
 }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
     const isRemove = wishlistVariant === 'remove';
     const [isHovered, setIsHovered] = useState(false);
-
+    // Cream state: hover, or the listing's first card (`highlighted`). Only the
+    // background + image corner radius react - the content inset is STATIC on
+    // the highlighted card and never animates on hover, so text never re-wraps
+    // and the grid never shifts.
+    const creamed = isHovered || highlighted;
+    const isRated = tour.rating !== undefined;
     const priceLabel = dict[tour.priceUnit];
 
     const card = (
@@ -161,12 +183,22 @@ function DefaultTourCard({
             aria-label={tour.title}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            animate={{ backgroundColor: isHovered ? '#fdf6f0' : '#ffffff' }}
+            animate={{
+                backgroundColor: creamed
+                    ? '#fdf6f0'
+                    : tinted
+                      ? '#FFF5EE'
+                      : '#ffffff',
+            }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={[
                 // @container: the card adapts its own typography to its width -
                 // compact at ~172px (mobile carousel), full size in wide grid cells.
                 '@container group flex flex-col rounded-[16px] @[220px]:rounded-[24px] overflow-hidden',
+                // Class fallbacks so the first-card highlight / peach tint are
+                // already painted in the server HTML (framer animate styles only
+                // apply post-hydration).
+                highlighted ? 'bg-[#fdf6f0]' : tinted ? 'bg-[#FFF5EE]' : '',
                 className,
             ].join(' ')}>
             {/* ── Image area ──────────────────────────────────────────────── */}
@@ -175,8 +207,8 @@ function DefaultTourCard({
                 animate={{
                     borderTopLeftRadius: '16px',
                     borderTopRightRadius: '16px',
-                    borderBottomLeftRadius: isHovered ? '0px' : '16px',
-                    borderBottomRightRadius: isHovered ? '0px' : '16px',
+                    borderBottomLeftRadius: '0px',
+                    borderBottomRightRadius: '0px',
                 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}>
                 <TourCardCarousel
@@ -228,45 +260,39 @@ function DefaultTourCard({
                 </div>
             </motion.div>
 
-            {/* ── Card info ────────────────────────────────────────────────── */}
+            {/* ── Card info ──────────────────────────────────────────────────
+                Original behavior: the inset animates in on hover; the
+                highlighted (first) card carries it statically via the class
+                fallback so its server HTML is already inset. */}
             <motion.div
                 className={cn(
                     'flex flex-col gap-1 pt-3 pb-1 @[220px]:gap-3 @[220px]:pt-4 @[220px]:pb-5',
+                    highlighted && 'px-4',
+                    !isRated && 'pt-8 @[220px]:pt-6',
                     className
                 )}
-                animate={{
-                    paddingLeft: isHovered ? 16 : 0,
-                    paddingRight: isHovered ? 16 : 0,
-                }}
+                animate={{ paddingLeft: 16, paddingRight: 16 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}>
-                {/* Star rating row - always rendered to keep card heights consistent */}
-                <div
-                    className='flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]'
-                    aria-hidden={tour.rating === undefined}>
-                    {tour.rating !== undefined ? (
-                        <>
-                            <Image
-                                src='/icons/star-listings.svg'
-                                alt='Star'
-                                width={16}
-                                height={16}
-                                className='size-4'
-                                aria-hidden='true'
-                            />
-                            <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                                {tour.rating}{' '}
-                                <span className='text-it-heading/50'>
-                                    ({tour.reviewCount?.toLocaleString()})
-                                </span>
+                {/* Star rating row - only when the tour has a rating (an empty
+                    spacer row reads as a hole above the title). */}
+                {isRated && (
+                    <div className='flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]'>
+                        <Image
+                            src='/icons/star-listings.svg'
+                            alt='Star'
+                            width={16}
+                            height={16}
+                            className='size-4'
+                            aria-hidden='true'
+                        />
+                        <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                            {tour.rating}{' '}
+                            <span className='text-it-heading/50'>
+                                ({tour.reviewCount?.toLocaleString()})
                             </span>
-                        </>
-                    ) : (
-                        /* invisible spacer - same line-height, no content */
-                        <span className='invisible select-none text-[14px] leading-[1.6]'>
-                            &nbsp;
                         </span>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {/* Tour title */}
                 <h3 className='m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
@@ -275,7 +301,7 @@ function DefaultTourCard({
 
                 {/* Duration · Pickup */}
                 <div className='flex items-center flex-wrap'>
-                    <span className='flex items-center gap-1'>
+                    <span className='flex items-center gap-[2px] @[220px]:gap-1'>
                         <Image
                             src='/icons/clock.svg'
                             alt=''
@@ -284,7 +310,7 @@ function DefaultTourCard({
                             className='size-3 @[220px]:size-4'
                             aria-hidden='true'
                         />
-                        <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                        <span className='text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                             {tour.duration}
                         </span>
                     </span>
@@ -295,7 +321,7 @@ function DefaultTourCard({
                                 className='mx-2 @[220px]:mx-3 size-1 rounded-full bg-it-heading/20 flex-none'
                                 aria-hidden='true'
                             />
-                            <span className='flex items-center gap-1'>
+                            <span className='flex items-center gap-[2px] @[220px]:gap-1'>
                                 <Image
                                     src='/icons/car.svg'
                                     alt=''
@@ -304,7 +330,7 @@ function DefaultTourCard({
                                     className='size-3 @[220px]:size-4'
                                     aria-hidden='true'
                                 />
-                                <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                <span className='text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                     {dict.pickupAvailable}
                                 </span>
                             </span>
@@ -375,7 +401,7 @@ function DefaultTourCard({
 function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
     const [isHovered, setIsHovered] = useState(false);
     const rank = String(tour.rank).padStart(2, '0');
-
+    const isRated = tour.rating !== undefined;
     const card = (
         // @container: the card adapts its own typography to its width - compact in
         // a 2-col mobile grid (~177px), full size in a wide desktop cell - mirroring
@@ -397,8 +423,8 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                 animate={{
                     borderTopLeftRadius: '16px',
                     borderTopRightRadius: '16px',
-                    borderBottomLeftRadius: isHovered ? '0px' : '16px',
-                    borderBottomRightRadius: isHovered ? '0px' : '16px',
+                    borderBottomLeftRadius: '0px',
+                    borderBottomRightRadius: '0px',
                 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}>
                 <TourCardCarousel
@@ -412,10 +438,15 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
             </motion.div>
 
             {/* Info */}
-            <div className='flex flex-col gap-2 px-2.5 @[220px]:gap-3 @[220px]:px-4'>
-                {/* Rating */}
-                {tour.rating !== undefined && (
-                    <div className='flex items-center gap-1.5 @[220px]:gap-2'>
+            <div
+                className={cn(
+                    'flex flex-col gap-2 px-2.5 @[220px]:gap-3 @[220px]:px-4',
+                    !isRated && 'py-4'
+                )}>
+                {/* Rating - a taller fixed row than the standard card so it
+                    breathes between the image and the title/description stack. */}
+                {isRated && (
+                    <div className='flex items-center gap-1.5  @[220px]:gap-2 @[220px]:h-7'>
                         <Image
                             src='/icons/star-listings.svg'
                             alt=''
@@ -425,7 +456,10 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                             aria-hidden='true'
                         />
                         <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
-                            {tour.rating} ({tour.reviewCount?.toLocaleString()})
+                            {tour.rating}{' '}
+                            <span className='text-it-heading/50'>
+                                ({tour.reviewCount?.toLocaleString()})
+                            </span>
                         </span>
                     </div>
                 )}

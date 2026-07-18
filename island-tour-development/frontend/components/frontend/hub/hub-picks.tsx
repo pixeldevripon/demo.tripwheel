@@ -35,8 +35,8 @@ export function HubPicks({ data }: { data: HubPicksData }) {
             </div>
 
             <div className='flex flex-col gap-4 md:gap-10'>
-                {data.items.map((pick, i) => (
-                    <Reveal key={pick.id} delay={0.2 + i * 0.06}>
+                {data.items.map(pick => (
+                    <Reveal key={pick.id} listItem>
                         <HubPickCard
                             key={pick.id}
                             pick={pick}

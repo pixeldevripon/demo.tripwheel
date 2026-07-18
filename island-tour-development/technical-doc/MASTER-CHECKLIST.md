@@ -167,6 +167,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ## §5 Page specifications (frontend)
 
 - [x] 5.1 Homepage (hero H1, micro trust bar, video carousel, social proof, featured destinations, NeedHelp, footer)
+- [x] 5.1a Third-party platform reviews (external review point 15, 2026-07-18): admin configures Trustpilot API or Google Reviews API in dashboard Settings > Reviews (`/platform-reviews` module: encrypted key, DB-cached payload, 12h lazy refresh, manual "Fetch now"); homepage Testimonials band renders the live payload and stays hidden until enabled AND platform review count > 100 (gate enforced server-side in `GET /platform-reviews/public`)
 - [x] 5.2 Destination page (hero+search, category quick links, Locals' favorites, Instagram, About 350–500w/3×H2)
 - [x] 5.3 All Tours page (H1 with year, filter row, 3×6 grid/18 per page, trust strip, ranking + diversity)
 - [x] 5.4 Category page (H1+intro, filters, ranked grid, About content, related categories, no trust bar)

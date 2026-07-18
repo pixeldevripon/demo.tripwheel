@@ -38,11 +38,7 @@ export function DestinationExploreTypes({
     // when embla `loop` is off). Skipped entirely under reduced motion.
     const reduceMotion = useReducedMotion();
     const [emblaRef, emblaApi] = useEmblaCarousel(
-        {
-            align: 'start',
-            containScroll: 'trimSnaps',
-            dragFree: true,
-        },
+        { align: 'start', containScroll: 'trimSnaps', dragFree: true },
         reduceMotion
             ? []
             : [
@@ -77,7 +73,7 @@ export function DestinationExploreTypes({
                 {/* Static-shell section: PageTransition owns the page-enter, so no
                     section-level mount animation (it would flash on hydration).
                     The cards stagger on scroll instead. */}
-                <div className='flex flex-col gap-10 md:gap-12'>
+                <Reveal className='flex flex-col gap-10 md:gap-12'>
                     <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                         {dict.title}
                     </h2>
@@ -85,12 +81,13 @@ export function DestinationExploreTypes({
                     <div className='relative'>
                         <div
                             ref={emblaRef}
-                            className='overflow-x-scroll it-scrollbar-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden '>
+                            className='overflow-x-scroll overflow-y-hidden it-scrollbar-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden '>
                             <div className='flex gap-4 md:gap-6'>
-                                {categories.map((cat, i) => (
+                                {categories.map(cat => (
                                     <Reveal
                                         key={cat.slug}
                                         width='auto'
+                                        listItem
                                         className='shrink-0'>
                                         <MotionLink
                                             href={localizeHref(
@@ -150,7 +147,7 @@ export function DestinationExploreTypes({
                             />
                         </motion.button>
                     </div>
-                </div>
+                </Reveal>
             </div>
         </section>
     );

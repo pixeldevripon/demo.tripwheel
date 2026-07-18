@@ -46,7 +46,9 @@ export default async function HomePage({
             />
             <TrustStrip items={home.trust} />
             <TopExperiences dict={home.experiences} />
-            {/* Testimonials are database-driven - not translated via the i18n dictionary */}
+            {/* Live third-party reviews (Trustpilot/Google, admin-configured).
+                Renders nothing until enabled AND the platform count passes 100.
+                Review text comes from the platform - not translated. */}
             <Testimonials />
             <ExploreIslands
                 dict={home.explore}

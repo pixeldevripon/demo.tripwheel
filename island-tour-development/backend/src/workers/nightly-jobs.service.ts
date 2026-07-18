@@ -46,6 +46,13 @@ export class NightlyJobsService {
     demand: { evaluated: number; flagged: number };
     materialized: { evaluated: number; failed: number };
     bookable: { evaluated: number; bookable: number };
+    quality: { evaluated: number };
+    eligibility: {
+      evaluated: number;
+      provisional: number;
+      graced: number;
+      demoted: number;
+    };
   }> {
     this.logger.log('Nightly jobs: starting');
     const spotlight = await this.tiers.runSpotlightLifecycle();
@@ -55,12 +62,19 @@ export class NightlyJobsService {
     // (EXISTS an open departure within 30 days) off the fresh departures.
     const materialized = await this.availability.materializeAllLive();
     const bookable = await this.availability.recomputeAllBookable();
+    // §7.2 quality_score (within-tier tie-breaker) off fresh review aggregates.
+    const quality = await this.tours.recomputeQualityScores();
+    // §7.2 eligibility: provisional window -> flat bar -> 30d grace -> demotion.
+    const eligibility = await this.tiers.runEligibilityLifecycle();
     this.logger.log(
       `Nightly jobs: spotlight(activated=${spotlight.activated}, expired=${spotlight.expired}) ` +
         `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged}) ` +
         `materialized(evaluated=${materialized.evaluated}, failed=${materialized.failed}) ` +
-        `bookable(evaluated=${bookable.evaluated}, bookable=${bookable.bookable})`,
+        `bookable(evaluated=${bookable.evaluated}, bookable=${bookable.bookable}) ` +
+        `quality(evaluated=${quality.evaluated}) ` +
+        `eligibility(evaluated=${eligibility.evaluated}, provisional=${eligibility.provisional}, ` +
+        `graced=${eligibility.graced}, demoted=${eligibility.demoted})`,
     );
-    return { spotlight, demand, materialized, bookable };
+    return { spotlight, demand, materialized, bookable, quality, eligibility };
   }
 }

@@ -1,6 +1,8 @@
 import {
     Bar,
     DESTINATION_CARD_CELL,
+    COLLECTION_CARD_CELL,
+    COLLECTION_RAIL,
     DESTINATION_RAIL,
 } from './skeleton-bar';
 import { CollectionCardSkeleton } from './collection-card-skeleton';
@@ -93,9 +95,9 @@ export function DestinationCollectionsSkeleton() {
                 <div className='flex flex-col gap-12'>
                     <Bar className='h-8 w-56 max-w-full md:h-12' />
 
-                    <div className={DESTINATION_RAIL}>
+                    <div className={COLLECTION_RAIL}>
                         {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className={DESTINATION_CARD_CELL}>
+                            <div key={i} className={COLLECTION_CARD_CELL}>
                                 <CollectionCardSkeleton />
                             </div>
                         ))}

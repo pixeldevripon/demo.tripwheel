@@ -34,12 +34,15 @@ export function CollectionToursSection({
                         className='h-px w-full bg-it-heading/10'
                     />
 
-                    {/* Same responsive grid as the All Tours listing page: 2-col
-                        (compact cards) on mobile, 3-col from lg. */}
-                    <div className='grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3'>
+                    {/* Sitewide tour grid: 2-col mobile, 3-col sm, 4-col lg. */}
+                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10'>
                         {tours.map((tour, i) => (
-                            <MountReveal key={tour.id} delay={0.02 + i * 0.1}>
-                                <TourCard tour={tour} dict={dict} />
+                            <MountReveal key={tour.id} listItem>
+                                <TourCard
+                                    tour={tour}
+                                    dict={dict}
+                                    highlighted={i === 0}
+                                />
                             </MountReveal>
                         ))}
                     </div>

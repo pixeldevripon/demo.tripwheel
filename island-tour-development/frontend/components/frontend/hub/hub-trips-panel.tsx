@@ -41,7 +41,7 @@ export type HubTripsFilterDict = {
 };
 
 const GRID =
-    'grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10';
+    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
 
 /**
  * One panel of the hub trips/charters listing - a heading + its own date chip,
@@ -252,10 +252,15 @@ export function HubTripsPanel({
                                           {group.tours.map((tour, i) => (
                                               <Reveal
                                                   key={tour.id}
-                                                  delay={0.2 + i * 0.06}>
+                                                  listItem>
                                                   <HubTourCard
                                                       tour={tour}
                                                       dict={card}
+                                                      // First card of the panel
+                                                      // (first group only).
+                                                      highlighted={
+                                                          gi === 0 && i === 0
+                                                      }
                                                   />
                                               </Reveal>
                                           ))}
@@ -268,10 +273,11 @@ export function HubTripsPanel({
                                   {filteredGroups[0].tours.map((tour, i) => (
                                       <Reveal
                                           key={tour.id}
-                                          delay={0.2 + i * 0.06}>
+                                          listItem>
                                           <HubTourCard
                                               tour={tour}
                                               dict={card}
+                                              highlighted={i === 0}
                                           />
                                       </Reveal>
                                   ))}

@@ -1,32 +1,12 @@
+import { getPlatformReviews } from '@/lib/api/public/platform-reviews';
+
 import { Reveal } from '../reveal';
 
-type Review = {
-    quote: string;
-    name: string;
-    country: string;
-    trip: string;
+/** Provider display names for the summary line. */
+const PROVIDER_LABELS: Record<string, string> = {
+    trustpilot: 'Trustpilot',
+    google: 'Google',
 };
-
-const reviews: Review[] = [
-    {
-        quote: 'Vestibulum placerat. id ex in Nullam sodales. sit sed In massa hendrerit leo. id maximus ac sit non Nullam nec ac placerat.',
-        name: 'Anna M.',
-        country: 'Netherlands',
-        trip: 'Snorkel Trip',
-    },
-    {
-        quote: 'Vestibulum placerat. id ex in Nullam sodales. sit sed In massa hendrerit leo. id maximus ac sit non Nullam nec ac placerat.',
-        name: 'Anna M.',
-        country: 'Netherlands',
-        trip: 'Snorkel Trip',
-    },
-    {
-        quote: 'Vestibulum placerat. id ex in Nullam sodales. sit sed In massa hendrerit leo. id maximus ac sit non Nullam nec ac placerat.',
-        name: 'Anna M.',
-        country: 'Netherlands',
-        trip: 'Snorkel Trip',
-    },
-];
 
 // Figma star - fill inherits from text colour (currentColor) so it can be green or coral
 function Star({ className }: { className?: string }) {
@@ -41,67 +21,95 @@ function Star({ className }: { className?: string }) {
     );
 }
 
-function Stars({ className }: { className?: string }) {
+function Stars({
+    className,
+    count = 5,
+}: {
+    className?: string;
+    count?: number;
+}) {
     return (
         <div
             className={`flex items-center gap-1 md:gap-1.5 ${className ?? ''}`}>
-            {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className='size-4 md:size-5' />
-            ))}
+            {Array.from({ length: Math.max(1, Math.min(5, count)) }).map(
+                (_, i) => (
+                    <Star key={i} className='size-4 md:size-5' />
+                )
+            )}
         </div>
     );
 }
 
-export function Testimonials() {
+/**
+ * Homepage testimonials band - live third-party reviews (Trustpilot / Google),
+ * admin-configured in the dashboard. The backend gates visibility (enabled +
+ * fetched + count > 100), so this renders nothing until the platform has real
+ * social proof to show.
+ */
+export async function Testimonials() {
+    const data = await getPlatformReviews();
+    if (!data.visible || !data.displayPages.includes('homepage')) return null;
+
+    const providerLabel =
+        PROVIDER_LABELS[data.provider ?? ''] ?? (data.provider || 'reviews');
+    const cards = data.reviews.slice(0, 3);
+
     return (
         <section className='it-section bg-it-surface'>
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-8 md:gap-12'>
-                    {/* Trustpilot summary */}
+                    {/* Platform summary (Trustpilot / Google) */}
                     <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2 md:gap-x-4'>
                         <Stars className='text-it-green' />
                         <p className='m-0 flex flex-wrap items-baseline gap-x-1.5'>
                             <span className='text-[15px] md:text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                4.8 on{' '}
+                                {data.rating ?? ''} on{' '}
                                 <span className='font-medium text-it-green'>
-                                    Trustpilot
+                                    {providerLabel}
                                 </span>
                             </span>
                             <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                247 reviews
+                                {data.reviewCount} reviews
                             </span>
                         </p>
                     </div>
 
                     {/* Review cards - peek scroll on mobile, 3-col grid on desktop */}
-                    <div className='flex w-full snap-x gap-4 overflow-x-auto pb-1 -mr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mr-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0'>
-                        {reviews.map((r, i) => (
+                    <div className='flex w-full snap-x gap-4 overflow-x-auto overflow-y-hidden pb-1 -mr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mr-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0'>
+                        {cards.map((r, i) => (
                             <Reveal
-                                key={i}
+                                key={`${r.author}-${i}`}
                                 width='auto'
-                                delay={0.2 + i * 0.1}
+                                listItem
                                 className='w-60 shrink-0 snap-start md:w-auto'>
                             <article
                                 className='flex h-64.25 flex-col justify-between gap-10 rounded-it-lg bg-it-white p-4 md:h-84.25 md:gap-0 md:p-6'>
                                 <div className='flex flex-col gap-4 md:gap-6'>
-                                    <Stars className='text-it-primary' />
-                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        {r.quote}
+                                    <Stars
+                                        className='text-it-primary'
+                                        count={Math.round(r.rating)}
+                                    />
+                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading line-clamp-5 md:line-clamp-7'>
+                                        {r.text}
                                     </p>
                                 </div>
 
                                 <div className='flex flex-col gap-0.5'>
                                     <div className='flex items-center gap-2 md:gap-2.5'>
                                         <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {r.name}
+                                            {r.author}
                                         </span>
-                                        <span className='size-1 md:size-1.25 rounded-full bg-it-heading' />
-                                        <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {r.country}
-                                        </span>
+                                        {r.relativeTime && (
+                                            <>
+                                                <span className='size-1 md:size-1.25 rounded-full bg-it-heading' />
+                                                <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                    {r.relativeTime}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                     <span className='text-[12px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/40'>
-                                        {r.trip}
+                                        via {providerLabel}
                                     </span>
                                 </div>
                             </article>

@@ -8,6 +8,7 @@ import { AuthModule } from '@/auth/auth.module';
 import { MailModule } from '@/mail/mail.module';
 import { UserModule } from '@/users/user.module';
 import { SettingsModule } from './settings/settings.module';
+import { PlatformReviewsModule } from './platform-reviews/platform-reviews.module';
 import { OperatorsModule } from './operators/operators.module';
 import { MediaGalleryModule } from './media-gallery/media-gallery.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -42,6 +43,7 @@ import { WorkersModule } from '@/workers/workers.module';
     MailModule,
     UserModule,
     SettingsModule,
+    PlatformReviewsModule,
     OperatorsModule,
     MediaGalleryModule,
     CategoriesModule,

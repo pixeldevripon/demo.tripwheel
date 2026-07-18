@@ -17,7 +17,9 @@ import {
   derivedAttributeTourSelect,
   buildDerivedAttributeWhere,
 } from '@/attributes/derived-attributes';
+import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
 import { evaluateLikelyToSellOut } from './demand-signal';
+import { computeQualityScore, listingCompleteness } from './quality-score';
 import {
   BadRequestException,
   ConflictException,
@@ -251,37 +253,40 @@ export class ToursService {
    * directly (no translation layer needed). Full write-up:
    * `technical-doc/03-implementation/TOUR-BADGES.md`.
    *
-   * Priority (first match wins):
-   *   1. 'sponsored'        Paid placement = an ACTIVE Destination Spotlight (master
-   *                         "paid placements P1-P3"; max 3 per destination). The
-   *                         spotlight lifecycle mirrors that onto `tour.isSponsored`
-   *                         (TiersService.runSpotlightLifecycle / approveSpotlight),
-   *                         which this reads. Master: "always shown on paid placement;
-   *                         transparency is a brand pillar" - so it outranks every
-   *                         earned badge. (Commission tier alone is NOT sponsored.)
-   *   2. 'likelyToSellOut'  Demand signal (§3.7), evaluated daily: tour_age >= 90d
+   * Priority (first match wins) - PRODUCT DECISION 2026-07-18 (final): earned
+   * badges lead; 'sponsored' is the FALLBACK label for any paid placement with
+   * nothing better to show, so a top-ranked card always explains why it is up
+   * there ("transparency is a brand pillar"):
+   *
+   *   1. 'likelyToSellOut'  Demand signal (§3.7), evaluated daily: tour_age >= 90d
    *                         AND >= 3 sellouts in the last 60d AND < 40% availability
    *                         over the next 30d. Computed by `evaluateLikelyToSellOut`
    *                         (src/tours/demand-signal.ts) into `tour.likelyToSellOut`;
    *                         the manual CMS launch override (`likelyToSellOutOverride`)
-   *                         wins when set. Read here as `override ?? computed`. It is
-   *                         the most selective badge (~5-10% of catalog), so it ranks
-   *                         above 'mostPopular'.
-   *   3. 'mostPopular'      Organic social proof: NOT sponsored, review_count >= 10
-   *                         AND rating >= 4.5. Master also caps it at "max 1 per
-   *                         category"; that listing-level dedup belongs to the
-   *                         ranking pass (§7.2) and is intentionally NOT applied
-   *                         here - this returns per-tour eligibility only.
-   *   4. 'new'              Freshness: published < 30 days ago AND review_count == 0.
+   *                         wins when set. Read here as `override ?? computed`. The
+   *                         most selective badge (~5-10% of catalog).
+   *   2. 'mostPopular'      Organic social proof: review_count >= 10 AND rating
+   *                         >= 4.5. Never granted on commission grounds. The
+   *                         "max 1 per category" cap is listing-level
+   *                         (`applyMostPopularCap`); this returns per-tour
+   *                         eligibility only.
+   *   3. 'new'              Freshness: published < 30 days ago AND review_count == 0.
    *                         On the card it replaces the rating row.
+   *   4. 'sponsored'        Paid placement with no earned badge: an ACTIVE
+   *                         Destination Spotlight (`isSponsored`) OR a paid tier
+   *                         P1-P3 (`tier_rank <= 3`, master §3.6 "Paid tiers P1
+   *                         to P3 placements"). Labels why an unrated card sits
+   *                         at the top; an earned badge is always more valuable
+   *                         and replaces it.
    *
-   * 2 and 4 are mutually exclusive (age >= 90 vs < 30); 3 and 4 are mutually
-   * exclusive (>= 10 reviews vs 0). The only real overlaps are 'sponsored' with any
-   * earned badge (sponsored wins) and 'likelyToSellOut' with 'mostPopular'.
+   * 1 and 3 are mutually exclusive (age >= 90 vs < 30); 2 and 3 are mutually
+   * exclusive (>= 10 reviews vs 0). RANKING is untouched by any of this:
+   * `is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC`.
    */
   private deriveTourBadge(
     tour: {
       isSponsored: boolean;
+      tierRank: number;
       likelyToSellOut: boolean;
       likelyToSellOutOverride: boolean | null;
       publishedAt: Date | null;
@@ -290,25 +295,28 @@ export class ToursService {
     },
     now: Date = new Date(),
   ): 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null {
-    // 1. Sponsored (paid placement) - always shown, outranks earned badges.
-    if (tour.isSponsored) return 'sponsored';
-
-    // 2. Likely to sell out (§3.7) - the daily-evaluated demand signal stored on
+    // 1. Likely to sell out (§3.7) - the daily-evaluated demand signal stored on
     //    `likelyToSellOut` (worker output, see src/tours/demand-signal.ts), with the
     //    manual CMS launch override taking precedence (`override ?? computed`).
     if (tour.likelyToSellOutOverride ?? tour.likelyToSellOut)
       return 'likelyToSellOut';
 
-    // 3. Most popular - earned by organic reviews (never on commission-tier grounds).
+    // 2. Most popular - earned by organic reviews (never on commission-tier grounds).
     if (tour.aggregateReviewCount >= 10 && (tour.aggregateRating ?? 0) >= 4.5) {
       return 'mostPopular';
     }
 
-    // 4. New - recently published with no reviews yet.
+    // 3. New - recently published with no reviews yet.
     if (tour.aggregateReviewCount === 0 && tour.publishedAt) {
       const ageDays = (now.getTime() - tour.publishedAt.getTime()) / 86_400_000;
       if (ageDays < 30) return 'new';
     }
+
+    // 4. Sponsored - fallback label for a paid placement (spotlight or paid
+    //    tier P1-P3) with no earned badge: explains an otherwise unexplained
+    //    top position.
+    if (tour.isSponsored || tour.tierRank <= PAID_TIER_MAX_RANK)
+      return 'sponsored';
 
     return null;
   }
@@ -438,7 +446,14 @@ export class ToursService {
   async findPublicByIds(ids: string[], target?: Currency) {
     if (!ids.length) return [];
     const tours = await this.prisma.tour.findMany({
-      where: { id: { in: ids }, status: TourStatus.LIVE, isActive: true },
+      // Bookability gate (master §7.2): excluded from EVERY ranked result set -
+      // curated collection lists included.
+      where: {
+        id: { in: ids },
+        status: TourStatus.LIVE,
+        isActive: true,
+        isBookable: true,
+      },
       select: {
         ...this.tourSelect,
         images: this.cardImagesArgs,
@@ -499,8 +514,11 @@ export class ToursService {
       : null;
     const ci = { contains: term, mode: 'insensitive' as const };
     const where: Prisma.TourWhereInput = {
+      // Bookability gate (master §7.2): excluded from EVERY ranked result set -
+      // search results included.
       status: TourStatus.LIVE,
       isActive: true,
+      isBookable: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
       ...(dateAvailableTourIds && { id: { in: dateAvailableTourIds } }),
       OR: [
@@ -564,6 +582,8 @@ export class ToursService {
           category?.translations?.[0]?.name?.trim() || category?.name || null,
       };
     });
+    // §3.6 "max 1 per category" cap on the Most popular badge (display order).
+    this.applyMostPopularCap(hits);
     await this.attachMoney(hits, params.currency);
     return {
       total,
@@ -646,11 +666,18 @@ export class ToursService {
       { highlights: { some: { translations: { some: { text: ci } } } } },
     ];
 
-    const scopedWhere: Prisma.TourWhereInput = { ...liveTourWhere, OR: termOr };
+    // Tour HITS additionally carry the §7.2 bookability gate (ranked result
+    // set); category/hub suggestion gating stays on published-tour existence.
+    const scopedWhere: Prisma.TourWhereInput = {
+      ...liveTourWhere,
+      isBookable: true,
+      OR: termOr,
+    };
     const beyondWhere: Prisma.TourWhereInput | null = destinationSlug
       ? {
           status: TourStatus.LIVE,
           isActive: true,
+          isBookable: true,
           destination: { slug: { not: destinationSlug } },
           OR: termOr,
         }
@@ -756,6 +783,9 @@ export class ToursService {
 
     const tours = scopedTours.map(toHit);
     const beyond = beyondTours.map(toHit);
+    // §3.6 "max 1 per category" Most-popular cap, per rendered strip.
+    this.applyMostPopularCap(tours);
+    this.applyMostPopularCap(beyond);
     await this.attachMoney([...tours, ...beyond], params.currency);
 
     return {
@@ -1015,6 +1045,8 @@ export class ToursService {
     // only - explicit price/rating sorts keep the exact order the user requested.
     const ordered =
       sort === TourSort.recommended ? this.applyDiversityPass(mapped) : mapped;
+    // §3.6 "max 1 per category" cap on the Most popular badge, in display order.
+    this.applyMostPopularCap(ordered);
 
     await this.attachMoney(ordered, query.currency);
     return { total, page, limit, sort, data: ordered };
@@ -1051,17 +1083,94 @@ export class ToursService {
   }
 
   /**
+   * Recomputes the §7.2 `quality_score` (0-100) for every LIVE tour and writes
+   * it to `tour.qualityScore` - the within-tier tie-breaker of the canonical
+   * ranking (`tier_rank ASC, quality_score DESC, id ASC`). Formula, weights and
+   * the listing-completeness checklist live in `src/tours/quality-score.ts`
+   * (single source of truth). Runs nightly (NightlyJobsService) and on demand.
+   *
+   * The conversion term (15) is category-relative (`conversion / max_conv` among
+   * active tours in the same primary category). Until pageview tracking lands
+   * there is no conversion data, so the term contributes 0 for every tour.
+   */
+  async recomputeQualityScores(): Promise<{ evaluated: number }> {
+    const tours = await this.prisma.tour.findMany({
+      where: { status: TourStatus.LIVE, isActive: true },
+      select: {
+        id: true,
+        aggregateRating: true,
+        aggregateReviewCount: true,
+        meetingPointLat: true,
+        meetingPointLng: true,
+        departureCity: true,
+        // EN is the canonical content locale - completeness reads the base copy.
+        translations: {
+          where: { locale: Locale.en },
+          select: { overview: true, description: true },
+        },
+        _count: {
+          select: {
+            images: true,
+            highlights: true,
+            inclusions: true,
+            exclusions: true,
+            languages: true,
+            attributes: true,
+            locations: true,
+          },
+        },
+      },
+    });
+
+    for (const t of tours) {
+      const en = t.translations[0];
+      const completeness = listingCompleteness({
+        imageCount: t._count.images,
+        hasOverview: Boolean(en?.overview?.trim()),
+        hasDescription: Boolean(en?.description?.trim()),
+        highlightCount: t._count.highlights,
+        inclusionCount: t._count.inclusions,
+        exclusionCount: t._count.exclusions,
+        languageCount: t._count.languages,
+        attributeCount: t._count.attributes,
+        hasMeetingPoint:
+          (t.meetingPointLat != null && t.meetingPointLng != null) ||
+          Boolean(t.departureCity?.trim()),
+        locationCount: t._count.locations,
+      });
+      const score = computeQualityScore({
+        avgRating: t.aggregateRating,
+        reviewCount: t.aggregateReviewCount,
+        completeness,
+        conversionRate: null, // no pageview tracking yet - term contributes 0
+        maxCategoryConversion: null,
+      });
+      await this.prisma.tour.update({
+        where: { id: t.id },
+        data: { qualityScore: score },
+      });
+    }
+    this.logger.log(
+      `recomputeQualityScores: evaluated ${tours.length} tour(s)`,
+    );
+    return { evaluated: tours.length };
+  }
+
+  /**
    * Maps the requested sort to a Prisma orderBy. Full write-up:
    * technical-doc/03-implementation/TOUR-RANKING.md.
    *
    * The DEFAULT ("recommended", shown to travelers as "Locals' favorites") is the
-   * canonical platform ranking from master §7.2:
+   * canonical platform ranking from master §7.2, with the Spotlight placements
+   * leading (product decision 2026-07-18 - the master's "separate labeled block"
+   * is realized as spotlight-first within the single grid):
    *
-   *     tier_rank ASC, quality_score DESC, id ASC
+   *     is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC
    *
+   * - `is_sponsored` = ACTIVE Destination Spotlight (max 3/destination) - those
+   *   tours lead the list and are the only ones wearing the Sponsored badge.
    * - `tier_rank` (1=premium … 5=standard) is denormalized from the operator's
-   *   commission tier, so paid placements naturally float to the top - there is NO
-   *   separate "isSponsored" sort key (the Sponsored *badge* is cosmetic, §3.6).
+   *   commission tier, so paid placements naturally float to the top.
    * - `quality_score` (0-100) is a nightly job output, read-only here.
    * - `id` is the stable final tie-break (same-tier collisions are expected and
    *   valid; there is no per-category tier cap).
@@ -1090,8 +1199,13 @@ export class ToursService {
         return [{ publishedAt: 'desc' }];
       case TourSort.recommended:
       default:
-        // Master §7.2 canonical order.
-        return [{ tierRank: 'asc' }, { qualityScore: 'desc' }, { id: 'asc' }];
+        // Spotlight placements first, then the master §7.2 canonical order.
+        return [
+          { isSponsored: 'desc' },
+          { tierRank: 'asc' },
+          { qualityScore: 'desc' },
+          { id: 'asc' },
+        ];
     }
   }
 
@@ -1152,6 +1266,38 @@ export class ToursService {
       result.push(pool.splice(pick, 1)[0]);
     }
     return result;
+  }
+
+  /**
+   * Master §3.6: the "Most popular" badge is capped at MAX 1 PER CATEGORY.
+   * Page-local like the diversity pass: walking the final display order, the
+   * first tour of each primary category keeps the badge; later ones fall back
+   * to the next badge down the priority - 'sponsored' when the tour is a paid
+   * placement (spotlight or tier P1-P3), otherwise no badge ('new' can never
+   * apply here: it needs zero reviews, mostPopular needs >= 10). Mutates in
+   * place.
+   */
+  private applyMostPopularCap<
+    T extends {
+      badge: 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null;
+      primaryCategoryId: string | null;
+      isSponsored: boolean;
+      tierRank: number;
+    },
+  >(items: T[]): T[] {
+    const seen = new Set<string | null>();
+    for (const item of items) {
+      if (item.badge !== 'mostPopular') continue;
+      if (seen.has(item.primaryCategoryId)) {
+        item.badge =
+          item.isSponsored || item.tierRank <= PAID_TIER_MAX_RANK
+            ? 'sponsored'
+            : null;
+      } else {
+        seen.add(item.primaryCategoryId);
+      }
+    }
+    return items;
   }
 
   /**

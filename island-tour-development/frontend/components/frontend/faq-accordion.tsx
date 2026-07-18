@@ -38,7 +38,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
             {items.map((faq, i) => {
                 const open = i === openIndex;
                 return (
-                    <Reveal key={faq.q} delay={0.2 + i * 0.06}>
+                    <Reveal key={faq.q} listItem>
                         <div
                             className={`rounded-it-md border border-it-heading/10 transition-colors ${open ? 'bg-it-white' : 'bg-transparent'}`}>
                             <motion.button

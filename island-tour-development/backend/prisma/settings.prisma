@@ -163,3 +163,35 @@ model mollieConfiguration {
   @@index([id])
   @@map("mollie_configuration")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Third-party platform reviews (Trustpilot / Google) — admin-configured
+// (singleton). The fetched payload is cached here so public reads never hit
+// the third-party API on the request path.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PlatformReviewsConfig {
+  id String @id @default("default")
+
+  // 'trustpilot' | 'google' — null = not configured
+  provider   String?
+  // Encrypted at rest (crypto.util) — Trustpilot API key / Google API key
+  apiKey     String? @default("")
+  // Trustpilot business-unit ID or Google Place ID
+  businessId String? @default("")
+  enabled    Boolean @default(false)
+
+  // Where the section renders (page keys, e.g. ["homepage"])
+  displayPages Json @default("[\"homepage\"]")
+
+  // Normalized fetched payload + freshness stamp (lazy TTL refresh)
+  cachedPayload Json?
+  fetchedAt     DateTime?
+  // Last fetch failure (surfaced to the admin; cleared on success)
+  lastError     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_reviews_config")
+}

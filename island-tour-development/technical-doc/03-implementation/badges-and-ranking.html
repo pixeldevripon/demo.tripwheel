@@ -1,0 +1,427 @@
+<title>Island Tours — Badges & Ranking, Explained</title>
+<style>
+  :root {
+    --paper: #fbfaf8;
+    --card: #ffffff;
+    --ink: #23211e;
+    --ink-soft: #5f5a53;
+    --ink-faint: #8d877e;
+    --line: #e7e3dc;
+    --accent: #e8611a;          /* brand orange — also the Most-popular chip */
+    --accent-soft: #fdf6f0;
+    --navy: #193c5e;            /* Likely-to-sell-out chip */
+    --good: #1e7a4f;
+    --tier1: #0b4f63;
+    --tier2: #17707f;
+    --tier3: #4097a3;
+    --tier4: #8ac3cb;
+    --tier5: #c6e2e6;
+    --tier4-ink: #23211e;
+    --focus-ring: #e8611a;
+    --chip-sponsored-bg: #efece7;
+    --chip-sponsored-ink: #2c2c2c;
+    --shadow: 0 1px 2px rgba(35,33,30,.06), 0 8px 24px rgba(35,33,30,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16181a;
+      --card: #1e2124;
+      --ink: #eceae6;
+      --ink-soft: #aaa69f;
+      --ink-faint: #7c7871;
+      --line: #33373b;
+      --accent: #f0742f;
+      --accent-soft: #2b2320;
+      --navy: #2e5d8c;
+      --good: #4cb782;
+      --tier1: #1d7f9c;
+      --tier2: #2a93a6;
+      --tier3: #4fadb9;
+      --tier4: #3d6d74;
+      --tier5: #2e4a4f;
+      --tier4-ink: #eceae6;
+      --chip-sponsored-bg: #33373b;
+      --chip-sponsored-ink: #eceae6;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16181a; --card: #1e2124; --ink: #eceae6; --ink-soft: #aaa69f;
+    --ink-faint: #7c7871; --line: #33373b; --accent: #f0742f; --accent-soft: #2b2320;
+    --navy: #2e5d8c; --good: #4cb782;
+    --tier1: #1d7f9c; --tier2: #2a93a6; --tier3: #4fadb9; --tier4: #3d6d74; --tier5: #2e4a4f;
+    --tier4-ink: #eceae6;
+    --chip-sponsored-bg: #33373b; --chip-sponsored-ink: #eceae6;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  }
+  :root[data-theme="light"] {
+    --paper: #fbfaf8; --card: #ffffff; --ink: #23211e; --ink-soft: #5f5a53;
+    --ink-faint: #8d877e; --line: #e7e3dc; --accent: #e8611a; --accent-soft: #fdf6f0;
+    --navy: #193c5e; --good: #1e7a4f;
+    --tier1: #0b4f63; --tier2: #17707f; --tier3: #4097a3; --tier4: #8ac3cb; --tier5: #c6e2e6;
+    --tier4-ink: #23211e;
+    --chip-sponsored-bg: #efece7; --chip-sponsored-ink: #2c2c2c;
+    --shadow: 0 1px 2px rgba(35,33,30,.06), 0 8px 24px rgba(35,33,30,.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 56px 24px 96px; }
+  .num, .rank-pos, .qcell, .rating { font-variant-numeric: tabular-nums; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; }
+
+  .eyebrow {
+    text-transform: uppercase; letter-spacing: .14em; font-size: 12px;
+    font-weight: 600; color: var(--accent); margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 44px); line-height: 1.12; margin: 0 0 18px;
+    letter-spacing: -0.015em; text-wrap: balance; font-weight: 700;
+  }
+  h2 {
+    font-size: 24px; letter-spacing: -0.01em; margin: 0 0 6px;
+    text-wrap: balance; font-weight: 700;
+  }
+  .kicker { color: var(--ink-soft); max-width: 62ch; margin: 0 0 8px; }
+  section { margin-top: 72px; }
+  .sec-note { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; max-width: 70ch; }
+  .src { font-size: 12px; color: var(--ink-faint); }
+
+  /* ── answer hero ── */
+  .answer {
+    margin-top: 28px; padding: 26px 28px; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
+    display: grid; gap: 14px;
+  }
+  .answer strong { color: var(--accent); }
+  .answer p { margin: 0; max-width: 75ch; }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 8px; width: fit-content;
+    font-size: 13px; font-weight: 600; color: var(--good);
+    border: 1px solid currentColor; border-radius: 999px; padding: 4px 14px;
+  }
+
+  /* ── the two systems ── */
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .twocol { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .panel h3 { margin: 0 0 4px; font-size: 17px; }
+  .panel .sub { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  /* chips — exact product colors */
+  .chip {
+    display: inline-flex; align-items: center; height: 24px; padding: 0 12px;
+    border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .chip.sponsored { background: var(--chip-sponsored-bg); color: var(--chip-sponsored-ink); }
+  .chip.sellout   { background: #193c5e; color: #fff; }
+  .chip.popular   { background: #e8611a; color: #fff; }
+  .chip.newb      { background: #fdf6f0; color: #2c2c2c; }
+  .chip.none      { background: transparent; color: var(--ink-faint); border: 1px dashed var(--line); }
+
+  /* badge waterfall */
+  .wfall { display: grid; gap: 0; }
+  .wfall .step {
+    display: grid; grid-template-columns: 28px 130px 1fr; gap: 14px; align-items: start;
+    padding: 13px 0; border-top: 1px solid var(--line);
+  }
+  .wfall .step:first-child { border-top: 0; }
+  .wfall .pri {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700;
+  }
+  .wfall .cond { font-size: 13.5px; color: var(--ink-soft); }
+  .wfall .cond b { color: var(--ink); font-weight: 600; }
+  .wfall .cond .mono { font-size: 12px; }
+
+  /* sort keys */
+  .keys { display: grid; gap: 10px; counter-reset: k; }
+  .key {
+    display: grid; grid-template-columns: 40px 1fr; gap: 14px; align-items: start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .key .kn {
+    width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+    font-weight: 700; font-size: 14px; color: #fff; background: var(--navy);
+  }
+  .key.first .kn { background: var(--accent); }
+  .key h4 { margin: 0; font-size: 15px; }
+  .key p { margin: 3px 0 0; font-size: 13.5px; color: var(--ink-soft); max-width: 68ch; }
+  .gatecard {
+    border: 1px dashed var(--line); border-radius: 12px; padding: 12px 18px;
+    font-size: 13.5px; color: var(--ink-soft); background: transparent;
+  }
+  .gatecard b { color: var(--ink); }
+
+  /* ── the live board ── */
+  .board {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow); overflow: hidden; margin-top: 24px;
+  }
+  .board-scroll { overflow-x: auto; }
+  .board-inner { min-width: 720px; }
+  .band-head {
+    display: flex; align-items: baseline; gap: 12px; padding: 10px 18px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .band-head:first-child { border-top: 0; }
+  .band-tag {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: #fff; border-radius: 6px; padding: 3px 10px;
+  }
+  .band-tag.t4 { color: var(--tier4-ink); }
+  .band-tag.t5 { color: var(--tier4-ink); }
+  .band-meta { font-size: 12px; color: var(--ink-faint); }
+  .trow {
+    display: grid;
+    grid-template-columns: 44px 8px minmax(230px,1fr) 120px 64px 150px;
+    gap: 14px; align-items: center; padding: 7px 18px;
+  }
+  .trow.focus {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .rank-pos { font-weight: 700; font-size: 14px; color: var(--ink-faint); }
+  .trow.focus .rank-pos { color: var(--accent); }
+  .tickbar { width: 8px; height: 22px; border-radius: 3px; }
+  .tname { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tname .divnote { font-size: 11px; color: var(--ink-faint); margin-left: 8px; white-space: nowrap; }
+  .rating { font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+  .rating .star { color: var(--accent); }
+  .rating.mute { color: var(--ink-faint); }
+  .qcell { font-size: 12.5px; color: var(--ink-faint); }
+  .callout {
+    margin: 10px 18px 14px 66px; padding: 12px 16px; border-radius: 10px;
+    background: var(--accent-soft); border: 1px solid var(--accent);
+    font-size: 13.5px; max-width: 66ch;
+  }
+  .callout b { color: var(--accent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 22px; padding: 14px 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-soft); align-items: center; }
+  .legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+
+  /* moves */
+  .moves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 820px) { .moves { grid-template-columns: 1fr; } }
+  .move { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .move h4 { margin: 0 0 6px; font-size: 15px; }
+  .move p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .move .tagline { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+
+  /* footnotes */
+  .foot { margin-top: 64px; border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--ink-soft); }
+  .foot ul { margin: 8px 0 0; padding-left: 18px; }
+  .foot li { margin: 4px 0; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Island Tours · Commercial engine</p>
+  <h1>Why is the “Most popular” tour ranked 12th?<br>Because badges describe — rank is bought.</h1>
+  <p class="kicker">A visual walkthrough of how every tour on a listing gets its badge and its position,
+     using the live Curaçao data. Everything here mirrors the master spec
+     (§3.6 Badges · §3.7 Demand · §7.2 Ranking · §3.8 Diversity).</p>
+
+  <div class="answer">
+    <span class="verdict">✓ No logic mismatch — this is the commercial model working as designed</span>
+    <p><b>West Point Snorkel &amp; Beach Hop</b> is the best-reviewed tour on Curaçao
+       (★5.0 · 14 reviews → it earns <span class="chip popular">Most popular</span>) — but its operator pays the
+       <b>Boosted</b> tier (25% commission, placement rank&nbsp;3). Eleven tours ahead of it pay <b>more</b>:
+       one active Spotlight (35%) plus the Premium (30%) and Featured (27.5%) tiers.
+       <strong>Ratings never compete across tiers — they only break ties inside the same tier.</strong>
+       The same rule puts the well-rated Standard-tier tours (20%) at the bottom: they pay the least, so they rank last,
+       no matter how good their stars are. And so a top card never sits there unexplained, every paid placement
+       without an earned badge wears <span class="chip sponsored">Sponsored</span> — the honest hint for
+       “this position was bought”. An earned badge is worth more, so it always replaces the hint.</p>
+  </div>
+
+  <!-- ══ 1 · The two independent systems ══ -->
+  <section>
+    <h2>One card, two independent systems</h2>
+    <p class="sec-note">Every tour card is the meeting point of two separate computations. Neither one ever influences the other.</p>
+    <div class="twocol">
+      <div class="panel">
+        <h3>🏅 Badge — “what is true about this tour?”</h3>
+        <p class="sub">Max one per card, first match wins. Earned badges lead; <b>Sponsored is the fallback
+          for paid placements with nothing better to show</b> — so a top card always explains itself:</p>
+        <div class="wfall">
+          <div class="step">
+            <span class="pri">1</span>
+            <span class="chip sellout">Likely to sell out</span>
+            <span class="cond">All three, recomputed nightly: tour age <b>≥ 90 days</b> · <b>≥ 3 sell-outs</b> in the last 60 days ·
+              <b>&lt; 40% seats left</b> over the next 30 days. (~5–10% of catalog — selectivity is the feature.)</span>
+          </div>
+          <div class="step">
+            <span class="pri">2</span>
+            <span class="chip popular">Most popular</span>
+            <span class="cond"><b>≥ 10 reviews</b> and <b>rating ≥ 4.5</b>. Never granted on commission grounds.
+              Max 1 per category per page (later duplicates fall back to Sponsored when paid).</span>
+          </div>
+          <div class="step">
+            <span class="pri">3</span>
+            <span class="chip newb">New</span>
+            <span class="cond">Published <b>&lt; 30 days</b> ago and <b>0 reviews</b>. Replaces the rating row on the card.</span>
+          </div>
+          <div class="step">
+            <span class="pri">4</span>
+            <span class="chip sponsored">Sponsored</span>
+            <span class="cond"><b>Fallback for any paid placement</b>: an active Destination Spotlight (max 3 per island,
+              35%) <b>or</b> a paid tier P1–P3 (Premium/Featured/Boosted) — shown only when no earned badge applies.
+              It answers “why is this unrated tour at the top?”; an earned badge is more valuable and takes the slot.
+              Open tiers are never labeled.</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>📍 Position — “how much placement did the operator buy?”</h3>
+        <p class="sub">Sorted by commission, refined by quality. Master §7.2. Badges never move a card.</p>
+        <div class="keys">
+          <div class="key first">
+            <span class="kn">1</span>
+            <div><h4>Spotlight first <span class="mono">is_sponsored DESC</span></h4>
+            <p>The (max 3) active Spotlight tours lead the whole list — the master’s “labeled placement block”, realized as the top of the grid.</p></div>
+          </div>
+          <div class="key">
+            <span class="kn">2</span>
+            <div><h4>Commission tier <span class="mono">tier_rank ASC</span></h4>
+            <p>Premium 30% → rank 1 · Featured 27.5% → 2 · Boosted 25% → 3 · Organic 22.5% → 4 · Standard 20% → 5.
+               <b>This is the dominant key</b> — a higher commission buys a better shelf.</p></div>
+          </div>
+          <div class="key">
+            <span class="kn">3</span>
+            <div><h4>Quality score <span class="mono">quality_score DESC</span></h4>
+            <p>0–100, nightly: rating&nbsp;×40 + review volume&nbsp;×25 + listing completeness&nbsp;×20 + conversion&nbsp;×15.
+               <b>Only breaks ties inside a tier</b> — it can never lift a tour over a better-paying one.</p></div>
+          </div>
+          <div class="key">
+            <span class="kn">4</span>
+            <div><h4>Stable tie-break <span class="mono">id ASC</span></h4>
+            <p>Same tier, same quality → fixed order, no shuffling between visits.</p></div>
+          </div>
+          <div class="gatecard">
+            <b>Before sorting:</b> unbookable tours are removed entirely (not LIVE, deactivated, or no availability in 30 days — §7.2).
+            <b>After sorting:</b> the diversity pass (§3.8) prevents 3+ same-category tours in a row by pulling
+            the next different-category tour up one or two slots — the small “ripples” you see in the list below.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 2 · The live Curaçao board ══ -->
+  <section>
+    <h2>The live Curaçao list, decoded</h2>
+    <p class="sec-note">All 27 bookable tours, in the exact order the API serves them right now.
+       Color = what the operator pays. Stars are shown so you can see that great ratings sit in <em>every</em> band —
+       and only decide order <em>within</em> a band.</p>
+
+    <div class="board"><div class="board-scroll"><div class="board-inner">
+
+      <div class="band-head"><span class="band-tag" style="background: var(--accent)">Spotlight · 35%</span><span class="band-meta">admin-approved paid placement — always leads, always labeled</span></div>
+      <div class="trow"><span class="rank-pos">1</span><span class="tickbar" style="background: var(--accent)"></span><span class="tname">Klein Curaçao Full-Day Catamaran</span><span class="rating"><span class="star">★</span> 4.3 (3)</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+
+      <div class="band-head"><span class="band-tag" style="background: var(--tier1)">P1 · Premium · 30%</span><span class="band-meta">tier_rank 1 — the most-paid shelf</span></div>
+      <div class="trow"><span class="rank-pos">2</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Klein Curaçao Super Yacht with Beach House</span><span class="rating"><span class="star">★</span> 5.0 (3)</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">3</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Sunset Catamaran Cruise &amp; Snorkel 5</span><span class="rating mute">no reviews yet</span><span class="qcell">q 0</span><span class="chip newb">New</span></div>
+      <div class="trow"><span class="rank-pos">4</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Klein Curaçao Overnight Yacht Charter</span><span class="rating mute">no reviews yet</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">5</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Klein Curaçao Private Catamaran Charter</span><span class="rating mute">no reviews yet</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">6</span><span class="tickbar" style="background: var(--tier2)"></span><span class="tname">Discover Scuba Diving for Beginners<span class="divnote">← pulled up by the diversity pass (breaks a boat-tour run)</span></span><span class="rating"><span class="star">★</span> 4.8 (4)</span><span class="qcell">q 70</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">7</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Klein Curaçao Luxury Overnight Catamaran</span><span class="rating mute">no reviews yet</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">8</span><span class="tickbar" style="background: var(--tier1)"></span><span class="tname">Klein Curaçao Luxury Yacht Charter</span><span class="rating mute">no reviews yet</span><span class="qcell">q 65</span><span class="chip sponsored">Sponsored</span></div>
+
+      <div class="band-head"><span class="band-tag" style="background: var(--tier2)">P2 · Featured · 27.5%</span><span class="band-meta">tier_rank 2</span></div>
+      <div class="trow"><span class="rank-pos">9</span><span class="tickbar" style="background: var(--tier2)"></span><span class="tname">Curaçao Street Food &amp; Market Tour</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 70</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">10</span><span class="tickbar" style="background: var(--tier2)"></span><span class="tname">Klein Curaçao Catamaran with Open Bar</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 70</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">11</span><span class="tickbar" style="background: var(--tier2)"></span><span class="tname">Klein Curaçao Sailing Yacht Day Charter</span><span class="rating mute">no reviews yet</span><span class="qcell">q 70</span><span class="chip sponsored">Sponsored</span></div>
+
+      <div class="band-head"><span class="band-tag" style="background: var(--tier3)">P3 · Boosted · 25%</span><span class="band-meta">tier_rank 3 — this is where our star lives</span></div>
+      <div class="trow focus"><span class="rank-pos">12</span><span class="tickbar" style="background: var(--tier3)"></span><span class="tname">West Point Snorkel &amp; Beach Hop</span><span class="rating"><span class="star">★</span> 5.0 (14)</span><span class="qcell">q 75</span><span class="chip popular">Most popular</span></div>
+      <div class="callout"><b>Here is the answer.</b> Best rating on the island (★5.0 · 14 reviews) → it earns the badge.
+        But 11 tours above it pay more commission (1 Spotlight + 7 Premium + 3 Featured), and commission is sort key #2 —
+        ahead of any rating. Rank ≈ 12–13 (the diversity pass wobbles it ±1 as neighbors change). To rank higher the operator
+        upgrades the tier or wins a Spotlight — the badge alone will never move it.</div>
+      <div class="trow"><span class="rank-pos">13</span><span class="tickbar" style="background: var(--tier2)"></span><span class="tname">Sunset Sail with Open Bar<span class="divnote">← diversity ripple, Featured tour lands here</span></span><span class="rating mute">no reviews yet</span><span class="qcell">q 70</span><span class="chip newb">New</span></div>
+      <div class="trow"><span class="rank-pos">14</span><span class="tickbar" style="background: var(--tier3)"></span><span class="tname">Two-Tank Certified Reef Dive</span><span class="rating"><span class="star">★</span> 5.0 (3)</span><span class="qcell">q 75</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">15</span><span class="tickbar" style="background: var(--tier3)"></span><span class="tname">Klein Curaçao Private Speedboat Charter</span><span class="rating mute">no reviews yet</span><span class="qcell">q 75</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">16</span><span class="tickbar" style="background: var(--tier3)"></span><span class="tname">Willemstad Old Town Walking Tour</span><span class="rating"><span class="star">★</span> 4.7 (3)</span><span class="qcell">q 75</span><span class="chip sponsored">Sponsored</span></div>
+      <div class="trow"><span class="rank-pos">17</span><span class="tickbar" style="background: var(--tier3)"></span><span class="tname">Klein Curaçao Family Boat with Beach House</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 75</span><span class="chip sponsored">Sponsored</span></div>
+
+      <div class="band-head"><span class="band-tag t4" style="background: var(--tier4)">P4 · Organic · 22.5%</span><span class="band-meta">tier_rank 4 — the open “good citizen” baseline</span></div>
+      <div class="trow"><span class="rank-pos">18</span><span class="tickbar" style="background: var(--tier4)"></span><span class="tname">Rum &amp; Chocolate Tasting Experience</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 80</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">19</span><span class="tickbar" style="background: var(--tier4)"></span><span class="tname">Turtle Bay Guided Snorkel</span><span class="rating"><span class="star">★</span> 5.0 (3)</span><span class="qcell">q 80</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">20</span><span class="tickbar" style="background: var(--tier4)"></span><span class="tname">Tugboat &amp; Coral Garden Snorkel</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 80</span><span class="chip sellout">Likely to sell out</span></div>
+      <div class="trow"><span class="rank-pos">21</span><span class="tickbar" style="background: var(--tier4)"></span><span class="tname">Klein Curaçao Powerboat Adventure</span><span class="rating"><span class="star">★</span> 5.0 (3)</span><span class="qcell">q 80</span><span class="chip none">no badge</span></div>
+
+      <div class="band-head"><span class="band-tag t5" style="background: var(--tier5)">P5 · Standard · 20%</span><span class="band-meta">tier_rank 5 — lowest commission, so the last shelf (even at ★5.0)</span></div>
+      <div class="trow"><span class="rank-pos">22</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Klein Curaçao Sailing Catamaran with Breakfast</span><span class="rating"><span class="star">★</span> 4.3 (4)</span><span class="qcell">q 85</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">23</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Hato Caves &amp; North Coast Culture Tour</span><span class="rating"><span class="star">★</span> 4.5 (4)</span><span class="qcell">q 85</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">24</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Island Highlights Sightseeing Drive</span><span class="rating"><span class="star">★</span> 4.3 (3)</span><span class="qcell">q 85</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">25</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Night Dive at Director’s Bay</span><span class="rating"><span class="star">★</span> 4.7 (3)</span><span class="qcell">q 85</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">26</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Spanish Water Mangrove Day Trip</span><span class="rating"><span class="star">★</span> 5.0 (4)</span><span class="qcell">q 85</span><span class="chip none">no badge</span></div>
+      <div class="trow"><span class="rank-pos">27</span><span class="tickbar" style="background: var(--tier5)"></span><span class="tname">Sunset Catamaran Cruise &amp; Snorkel</span><span class="rating mute">no reviews yet</span><span class="qcell">q 0</span><span class="chip newb">New</span></div>
+
+      <div class="legend">
+        <span><span class="sw" style="background: var(--accent)"></span>Spotlight 35%</span>
+        <span><span class="sw" style="background: var(--tier1)"></span>Premium 30%</span>
+        <span><span class="sw" style="background: var(--tier2)"></span>Featured 27.5%</span>
+        <span><span class="sw" style="background: var(--tier3)"></span>Boosted 25%</span>
+        <span><span class="sw" style="background: var(--tier4)"></span>Organic 22.5%</span>
+        <span><span class="sw" style="background: var(--tier5)"></span>Standard 20%</span>
+        <span class="src">q = stored quality_score · order = live <span class="mono">GET /tours?destinationId=curaçao</span></span>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ══ 3 · How a tour moves up ══ -->
+  <section>
+    <h2>So how does a great tour climb?</h2>
+    <p class="sec-note">Three levers, in order of impact. Reviews alone only win the fight <em>inside</em> a tier.</p>
+    <div class="moves">
+      <div class="move">
+        <p class="tagline">Biggest jump</p>
+        <h4>Win a Destination Spotlight</h4>
+        <p>≥ 10 reviews + ★4.5, operator requests, admin approves, max 3 per island. 35% commission while active —
+           the tour leads every listing and wears <b>Sponsored</b>. West Point Snorkel already qualifies.</p>
+      </div>
+      <div class="move">
+        <p class="tagline">Sustained placement</p>
+        <h4>Upgrade the commission tier</h4>
+        <p>Paid tiers need the eligibility bar: ≥ 5 reviews, ★4.0, operator 90-day cancellation ≤ 10%.
+           New tours get a one-time 90-day window to hold any tier. Changes lock for 30 days;
+           failing the bar later means 30 days grace, then automatic demotion.</p>
+      </div>
+      <div class="move">
+        <p class="tagline">Within the tier</p>
+        <h4>Raise the quality score</h4>
+        <p>More reviews, better rating, complete listing (4+ photos, description, highlights, inclusions, meeting point…).
+           Decides who stands first <em>among equals</em> — never across tiers.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <b>Spec fidelity &amp; current caveats</b>
+    <ul>
+      <li>Order, badge triggers, thresholds, bookability filter and diversity pass match the master
+          (§3.6, §3.7, §7.2, §3.8) and the derived docs <span class="mono">TOUR-RANKING.md</span> /
+          <span class="mono">TOUR-BADGES-AND-RANKING.md</span>. Recorded product decisions on top of master:
+          Spotlight tours lead the list (<span class="mono">is_sponsored DESC</span> as sort key #1);
+          Sponsored is the paid-placement <b>fallback</b> badge (earned badges replace it);
+          and each listing’s <b>first card</b> renders pre-highlighted (cream) as the top-placement marker.</li>
+      <li>The <b>q</b> values shown are still the demo-seed placeholders (60 + tier×5, and 0 on two just-published tours).
+          They look inverted across tiers but are harmless — quality only compares tours <em>within</em> one tier.
+          The real nightly quality-score job overwrites them on its next 3:00 UTC run.</li>
+      <li>Badges are recomputed on every request from live data; position ±1 wobbles come from the §3.8 diversity pass, by design.</li>
+    </ul>
+  </div>
+</div>
