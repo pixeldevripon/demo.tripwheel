@@ -148,13 +148,43 @@ export const auth = betterAuth({
           }
 
           // ── Validate or fall back to safe default ─────────────
-          const allowedRoles: Role[] = [Role.USER, Role.TOUR_OPERATOR];
+          // STAFF is allowed ONLY because staff accounts are provisioned
+          // server-side via the admin-gated staff invite flow (StaffService);
+          // there is no public sign-up path that could reach this with STAFF.
+          const allowedRoles: Role[] = [
+            Role.USER,
+            Role.TOUR_OPERATOR,
+            Role.STAFF,
+          ];
           const finalRole: Role = allowedRoles.includes(incomingRole as Role)
             ? (incomingRole as Role)
             : Role.TOUR_OPERATOR;
           return {
             data: { ...userData, role: finalRole },
           };
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          // Staff bookkeeping on login: stamp lastLoginAt and flip an INVITED
+          // member to ACTIVE on their first successful sign-in. Non-staff
+          // users match zero rows (updateMany = no-op). Never let bookkeeping
+          // break a login.
+          try {
+            const now = new Date();
+            await authPrismaClient.staffMember.updateMany({
+              where: { userId: session.userId },
+              data: { lastLoginAt: now },
+            });
+            await authPrismaClient.staffMember.updateMany({
+              where: { userId: session.userId, status: 'INVITED' },
+              data: { status: 'ACTIVE', activatedAt: now },
+            });
+          } catch (err) {
+            console.error('[auth] staff login bookkeeping failed:', err);
+          }
         },
       },
     },

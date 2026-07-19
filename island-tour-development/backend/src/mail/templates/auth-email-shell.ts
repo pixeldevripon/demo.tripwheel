@@ -46,7 +46,7 @@ export function authEmailShell({
 }: AuthEmailShellProps): { html: string; text: string } {
   // Same brand-bar variants as booking-notice.template.html.
   const brandBar = siteLogoUrl
-    ? `<img src="${siteLogoUrl}" height="40" alt="Island Tours" style="display:block;border:0;height:40px;width:auto">`
+    ? `<img src="${siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">`
     : `<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>`;
 
   const bodyBlocks = [
@@ -69,12 +69,19 @@ export function authEmailShell({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="x-apple-disable-message-reformatting">
   <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
   <title>${title}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
 
     @media only screen and (max-width: 480px) {
       .it-shell-pad { padding: 12px 6px !important; }

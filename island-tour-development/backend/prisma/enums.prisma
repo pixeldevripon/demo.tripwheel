@@ -57,6 +57,13 @@ enum Permission {
   UPDATE_USER
   DELETE_USER
 
+  // Staff & teams (staff.prisma). MANAGE_STAFF = platform (admin-side) staff +
+  // designations; MANAGE_TEAM = an operator's own team seats. MANAGE_STAFF is
+  // deliberately OUTSIDE the platform-staff grant ceiling (staff can never be
+  // granted the right to manage staff — privilege-escalation guard).
+  MANAGE_STAFF
+  MANAGE_TEAM
+
   // Operators
   CREATE_OPERATOR
   VIEW_OPERATOR_PROFILE
@@ -158,6 +165,23 @@ enum Permission {
   VIEW_ANALYTICS
   EXPORT_DATA
   BULK_OPERATIONS
+}
+
+// ── Staff & Teams (staff.prisma) ──────────────────────────────────────────────
+
+// Intra-operator seat role (login doc E.11: owner/manager/staff). OWNER rows are
+// created by the operator backfill/create path only — never via the invite API.
+// Platform (admin-side) staff always carry STAFF here.
+enum StaffSeatRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StaffStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
 }
 
 // ── Tour ──────────────────────────────────────────────────────────────────────

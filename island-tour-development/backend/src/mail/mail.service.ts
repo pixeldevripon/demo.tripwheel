@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Resend } from 'resend';
+import { emailSafeLogoUrl } from './email-logo.util';
 import {
   emailVerificationTemplate,
   operatorInviteTemplate,
@@ -118,7 +119,7 @@ export class MailService {
       const info = await authPrismaClient.siteInfo.findFirst({
         select: { logo: true },
       });
-      this.siteLogoCache = { url: info?.logo || null, at: now };
+      this.siteLogoCache = { url: emailSafeLogoUrl(info?.logo), at: now };
     } catch {
       this.siteLogoCache = { url: null, at: now };
     }

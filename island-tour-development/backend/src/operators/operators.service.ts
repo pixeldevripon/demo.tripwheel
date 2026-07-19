@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, Role, StaffSeatRole, StaffStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import {
   CreateOperatorDto,
@@ -76,6 +76,11 @@ export class OperatorsService {
       throw new NotFoundException(`Operator ${operatorId} not found`);
   }
 
+  /**
+   * OWNER-only gate: the operator account itself (or an admin). Team seats -
+   * even managers - never pass. Use for payout/bank config (Stripe/Mollie),
+   * per the login doc's owner-only rule.
+   */
   private assertOwnerOrAdmin(
     operator: { userId: string },
     requestingUserId: string,
@@ -92,6 +97,40 @@ export class OperatorsService {
         'You can only access your own operator profile',
       );
     }
+  }
+
+  /**
+   * Membership gate: the owner account, an admin, or an ACTIVE team seat of
+   * THIS operator. Use for profile-level resources (detail, company info,
+   * social media) - the PermissionsGuard has already checked the caller's
+   * fine-grained permission; this only pins them to their own operator.
+   */
+  private async assertMemberOrAdmin(
+    operator: { id: string; userId: string },
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    if (requestingUserRole === Role.ADMIN) return;
+    if (requestingUserRole === Role.USER) {
+      throw new ForbiddenException(
+        'Traveler accounts are not allowed to manage operator resources',
+      );
+    }
+    if (operator.userId === requestingUserId) return;
+
+    const seat = await this.prisma.staffMember.findUnique({
+      where: { userId: requestingUserId },
+      select: { operatorId: true, status: true },
+    });
+    if (
+      seat?.operatorId === operator.id &&
+      seat.status !== StaffStatus.SUSPENDED
+    ) {
+      return;
+    }
+    throw new ForbiddenException(
+      'You can only access your own operator profile',
+    );
   }
 
   /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
@@ -161,6 +200,21 @@ export class OperatorsService {
         },
       });
       operatorId = operator.id;
+
+      // The operator account IS the team's OWNER seat (login doc Phase 2).
+      // Owner seats are never permission-managed; the row makes the seat model
+      // uniform for the team dashboard. Cascades away with user/operator on
+      // the rollback below.
+      await this.prisma.staffMember.create({
+        data: {
+          userId: user.id,
+          operatorId: operator.id,
+          seatRole: StaffSeatRole.OWNER,
+          status: StaffStatus.ACTIVE,
+          activatedAt: new Date(),
+        },
+        select: { id: true },
+      });
 
       // Server-initiated reset -> invite branch in auth.instance.ts sends the
       // operator-invite email (set-password link) instead of a reset email.
@@ -280,7 +334,11 @@ export class OperatorsService {
     requestingUserRole: Role,
   ) {
     const operator = await this.resolveOperator(id);
-    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+    await this.assertMemberOrAdmin(
+      operator,
+      requestingUserId,
+      requestingUserRole,
+    );
 
     return this.prisma.operator.findUnique({
       where: { id },
@@ -311,10 +369,35 @@ export class OperatorsService {
     });
     if (!operator) throw new NotFoundException('Operator not found');
 
+    // Team seats cascade with the operator row, but the seat USERS are
+    // separate TOUR_OPERATOR accounts that would otherwise linger with live
+    // sessions and no operator - delete them (owner handled below).
+    const seats = await this.prisma.staffMember.findMany({
+      where: {
+        operatorId: id,
+        userId: { not: operator.userId },
+        user: { role: Role.TOUR_OPERATOR },
+      },
+      select: { userId: true },
+    });
+
     await this.prisma.operator.delete({
       where: { id },
       select: { id: true },
     });
+
+    if (seats.length > 0) {
+      const authCtx = await auth.$context;
+      for (const seat of seats) {
+        // Removes the user plus their sessions/accounts (immediate sign-out).
+        await authCtx.internalAdapter
+          .deleteUser(seat.userId)
+          .catch(() => undefined);
+      }
+      this.logger.log(
+        `Operator ${id}: removed ${seats.length} team seat account(s)`,
+      );
+    }
 
     if (operator.user.role === Role.TOUR_OPERATOR) {
       // internalAdapter.deleteUser also removes sessions/accounts, so the
@@ -341,7 +424,11 @@ export class OperatorsService {
     requestingUserRole: Role,
   ) {
     const operator = await this.resolveOperator(operatorId);
-    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+    await this.assertMemberOrAdmin(
+      operator,
+      requestingUserId,
+      requestingUserRole,
+    );
 
     return this.prisma.operatorCompanyInfo.findUnique({
       where: { operatorId },
@@ -355,7 +442,11 @@ export class OperatorsService {
     dto: UpdateOperatorCompanyInfoDto,
   ) {
     const operator = await this.resolveOperator(operatorId);
-    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+    await this.assertMemberOrAdmin(
+      operator,
+      requestingUserId,
+      requestingUserRole,
+    );
 
     return this.prisma.operatorCompanyInfo.upsert({
       where: { operatorId },
@@ -372,7 +463,11 @@ export class OperatorsService {
     requestingUserRole: Role,
   ) {
     const operator = await this.resolveOperator(operatorId);
-    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+    await this.assertMemberOrAdmin(
+      operator,
+      requestingUserId,
+      requestingUserRole,
+    );
 
     return this.prisma.operatorSocialMedia.findUnique({
       where: { operatorId },
@@ -386,7 +481,11 @@ export class OperatorsService {
     dto: UpdateOperatorSocialMediaDto,
   ) {
     const operator = await this.resolveOperator(operatorId);
-    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+    await this.assertMemberOrAdmin(
+      operator,
+      requestingUserId,
+      requestingUserRole,
+    );
 
     return this.prisma.operatorSocialMedia.upsert({
       where: { operatorId },

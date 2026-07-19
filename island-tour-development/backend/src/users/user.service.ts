@@ -1,6 +1,6 @@
 import { auth } from '@/auth/auth.instance';
-import { ROLE_PERMISSIONS } from '@/config/roles.config';
 import { PrismaService } from '@/prisma/prisma.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -21,7 +21,10 @@ import {
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly staffPermissions: StaffPermissionsService,
+  ) {}
 
   async getAllUsers(query: UserQueryDto) {
     const { role, status, page = 1, limit = 20 } = query;
@@ -94,7 +97,12 @@ export class UserService {
 
   async getUserPermissions(id: string) {
     const user = await this.getUserById(id);
-    const permissions = ROLE_PERMISSIONS[user.role] || [];
+    // EFFECTIVE permissions: static role map for most roles; the computed
+    // designation/override set for staff members and operator team seats.
+    const permissions = await this.staffPermissions.getEffectivePermissions({
+      id: user.id,
+      role: user.role,
+    });
     return { permissions };
   }
 

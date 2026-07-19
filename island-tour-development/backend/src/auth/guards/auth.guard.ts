@@ -47,7 +47,16 @@ export class AuthGuard implements CanActivate {
 
     if (session) {
       // Cast is safe: role/status values at runtime are always valid enum members
-      request.user = session.user as unknown as TypedAuthUser;
+      const user = session.user as unknown as TypedAuthUser;
+
+      // A suspended/deleted account must not keep working on a live session
+      // cookie (suspension revokes sessions, but a token issued in the race
+      // window - or a bearer token - would otherwise still authenticate).
+      if (user.status === 'SUSPENDED' || user.status === 'DELETED') {
+        throw new UnauthorizedException('Account is suspended');
+      }
+
+      request.user = user;
       request.session = session.session;
     }
 

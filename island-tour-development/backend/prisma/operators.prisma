@@ -30,6 +30,10 @@ model Operator {
   stripeConfig OperatorStripeConfig?
   mollieConfig OperatorMollieConfig?
 
+  // Relations — team (staff.prisma)
+  staffMembers      StaffMember[]
+  staffDesignations StaffDesignation[]
+
   // Relations — platform
   tours                     Tour[]
   bookings                  Booking[]

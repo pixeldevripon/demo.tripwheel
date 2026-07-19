@@ -23,6 +23,8 @@ model User {
   // Relations
   sessions            Session[]
   operator            Operator?
+  staffMember         StaffMember?
+  staffInvitesSent    StaffMember[]  @relation("StaffInviter")
   accounts            Account[]
   media               MediaGallery[]
   bookings            Booking[]

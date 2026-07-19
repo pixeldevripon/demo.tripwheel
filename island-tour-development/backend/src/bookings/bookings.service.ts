@@ -27,6 +27,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
+import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
@@ -1209,7 +1210,7 @@ export class BookingsService {
         'The traveller');
     const shared = {
       emailIconBase: emailIconBase(),
-      siteLogoUrl: site?.logo ?? '',
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
       bookingRef: booking.displayRef,
       tourName,
       startTime: booking.startTime ?? '',
@@ -1635,7 +1636,7 @@ export class BookingsService {
     const locale = toLocale(latest.customerLocale);
     const ctx: EmailTemplateContext = {
       emailIconBase: emailIconBase(),
-      siteLogoUrl: site?.logo ?? '',
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
       bookingRef: latest.displayRef,
       tourName: latest.tour?.name ?? 'Your tour',
       startTime: latest.startTime ?? '',

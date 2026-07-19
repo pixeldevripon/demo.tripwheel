@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="x-apple-disable-message-reformatting">
   <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
   <title>You're booked: {tourName} on {dateShort}</title>
   <!-- Plus Jakarta Sans, exactly as the wireframe loads it. Which clients render
        it is a CLIENT capability, not something any sender can change:
@@ -18,6 +20,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    /* Lock the palette to the light design. Clients that honor color-scheme
+       (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
+       ignores it - the logo itself ships with a baked-in white chip for that. */
+    :root { color-scheme: light; supported-color-schemes: light; }
 
     /* Founder-approved mobile refinement: tighten the outer gutter and cell
        padding on phones so the card gets breathing space. Clients that ignore
@@ -43,7 +50,7 @@
 
         <!-- Brand bar -->
         <tr><td class="it-cell" style="padding:18px 28px;border-bottom:1px solid #E8EAED">
-          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="40" alt="Island Tours" style="display:block;border:0;height:40px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
+          [IF siteLogoUrl]<img src="{siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">[ELSE]<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>[/IF]
         </td></tr>
 
         <!-- Block 1: confirmation -->

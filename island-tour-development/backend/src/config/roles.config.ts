@@ -36,6 +36,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.CREATE_USER,
     Permission.UPDATE_USER,
     Permission.DELETE_USER,
+    // Staff & teams: platform staff/designations (admin-only by ceiling) and
+    // any operator's team (admin bypass in the staff service).
+    Permission.MANAGE_STAFF,
+    Permission.MANAGE_TEAM,
     Permission.CREATE_TRIP,
     Permission.VIEW_TRIPS,
     Permission.EDIT_TRIP,
@@ -194,6 +198,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_OPERATOR_PROFILE,
     Permission.EDIT_OPERATOR_PROFILE,
     Permission.MANAGE_OPERATOR_PAYMENTS,
+    // Team seats: held by the full role set (= owners). Non-owner seats never
+    // receive it - it sits outside the seat grant ceiling (staff.config.ts).
+    Permission.MANAGE_TEAM,
     Permission.VIEW_USERS,
     Permission.CREATE_TRIP,
     Permission.EDIT_TRIP,

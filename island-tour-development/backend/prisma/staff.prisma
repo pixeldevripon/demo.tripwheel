@@ -1,0 +1,71 @@
+// ── Staff & Teams ─────────────────────────────────────────────────────────────
+// Login doc Phase 2 (operator seats, E.11) extended with fine-grained
+// permissions. ONE unified table covers both sides:
+//
+//   operatorId = NULL → platform (admin-side) staff — user role STAFF
+//   operatorId set    → operator team seat          — user role TOUR_OPERATOR
+//
+// The platform Role stays the coarse guard gate. The fine-grained effective
+// permission set is computed per request (staff/staff-permissions.service.ts):
+//
+//   (designation.permissions ∪ extraPermissions) − revokedPermissions
+//
+// capped to the scope ceiling (config/staff.config.ts). OWNER seats and users
+// who ARE the Operator.userId keep the full TOUR_OPERATOR set; ADMIN users are
+// never staff-managed.
+
+// A named permission template ("Designation") — e.g. Operations Manager,
+// Content Editor. Platform designations (operatorId NULL) are admin-managed;
+// operator-scoped ones belong to that operator's team. Platform-scope name
+// uniqueness is enforced in the service (Postgres treats NULLs as distinct, so
+// the compound unique below only covers operator-scoped rows).
+model StaffDesignation {
+  id          String       @id @default(uuid())
+  operatorId  String? // NULL = platform designation
+  name        String
+  description String?
+  permissions Permission[]
+  isSystem    Boolean      @default(false) // seeded defaults — delete/rename blocked
+  createdById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  operator Operator?     @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  members  StaffMember[]
+
+  @@unique([operatorId, name])
+  @@index([operatorId])
+  @@map("staff_designations")
+}
+
+model StaffMember {
+  id         String  @id @default(uuid())
+  userId     String  @unique
+  operatorId String? // NULL = platform (admin-side) staff
+
+  seatRole      StaffSeatRole @default(STAFF)
+  designationId String?
+
+  // Per-member overrides on top of the designation template
+  extraPermissions   Permission[]
+  revokedPermissions Permission[]
+
+  status      StaffStatus @default(INVITED)
+  invitedById String?
+  invitedAt   DateTime    @default(now())
+  activatedAt DateTime? // first successful login after the invite
+  lastLoginAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operator    Operator?         @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  designation StaffDesignation? @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  invitedBy   User?             @relation("StaffInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([operatorId])
+  @@index([status])
+  @@index([designationId])
+  @@map("staff_members")
+}

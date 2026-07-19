@@ -1,28 +1,99 @@
 #!/usr/bin/env sh
 # ──────────────────────────────────────────────────────────────────────────────
-# Pre-push guard: mirror the CI pipeline (lint + tests + build) locally so a
-# push never fails GitHub Actions after the fact.
+# Pre-push guard: mirror the CI pipeline locally so a push never fails GitHub
+# Actions after the fact.
 #
-# Order matches .github/workflows/ci.yml (cheapest checks first, fail fast):
-#   1. prisma generate  - backend lint/build/test need the generated client types
-#   2. lint             - backend + frontend (concurrently; fails if either fails)
-#   3. backend tests    - mocked unit specs, no DB/Redis required
-#   4. build            - backend (nest) + frontend (next)
+# Cheapest checks first (fail fast), then the strict stack sequence. The
+# frontend depends on a LIVE backend (strict loaders fetch from :5050 during
+# `next build`), so the four stack steps are strictly ordered - never
+# concurrent:
+#
+#   backend build -> backend start -> frontend build -> frontend start
+#
+#   1. prisma generate   - backend lint/build/test need the generated client
+#   2. lint              - backend + frontend (concurrently; no server needed)
+#   3. backend tests     - mocked unit specs, no DB/Redis required
+#   4. backend build     - nest compile
+#   5. backend start     - run the freshly built dist until :5050/health answers
+#                          (an already-running dev backend is reused, not killed)
+#   6. frontend build    - next build, prerendering against the live API
+#   7. frontend start    - boot the production bundle on :3100 as a smoke test
+#
+# Everything the hook started is stopped again on exit (success or failure).
 #
 # Skip in a genuine emergency:  git push --no-verify
 # ──────────────────────────────────────────────────────────────────────────────
 set -e
 
-echo "==> [1/4] Prisma client (backend types)..."
+HEALTH_URL="http://localhost:5050/api/v1/health"
+FRONTEND_PORT=3100
+FRONTEND_URL="http://localhost:$FRONTEND_PORT"
+BACKEND_LOG="/tmp/island-tours-prepush-backend.log"
+FRONTEND_LOG="/tmp/island-tours-prepush-frontend.log"
+BACKEND_PID=""
+FRONTEND_PID=""
+
+# Stop only what THIS hook started - never kill a dev server the user had up.
+cleanup() {
+  if [ -n "$FRONTEND_PID" ]; then
+    echo "==> Stopping hook-started frontend (pid $FRONTEND_PID)..."
+    kill "$FRONTEND_PID" 2>/dev/null || true
+  fi
+  if [ -n "$BACKEND_PID" ]; then
+    echo "==> Stopping hook-started backend (pid $BACKEND_PID)..."
+    kill "$BACKEND_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT INT TERM
+
+# wait_for <url> <label> <logfile> <pid>  - poll until the URL answers (60s cap)
+wait_for() {
+  _i=0
+  until curl -sf -o /dev/null --max-time 2 "$1"; do
+    _i=$((_i + 1))
+    if [ "$_i" -ge 60 ]; then
+      echo "==> $2 failed to answer $1 within 60s. Log tail:"
+      tail -20 "$3"
+      exit 1
+    fi
+    if ! kill -0 "$4" 2>/dev/null; then
+      echo "==> $2 process died during startup. Log tail:"
+      tail -20 "$3"
+      exit 1
+    fi
+    sleep 1
+  done
+}
+
+echo "==> [1/7] Prisma client (backend types)..."
 pnpm prisma:generate
 
-echo "==> [2/4] Lint (backend + frontend)..."
+echo "==> [2/7] Lint (backend + frontend)..."
 pnpm lint
 
-echo "==> [3/4] Backend unit tests..."
+echo "==> [3/7] Backend unit tests..."
 pnpm test:backend
 
-echo "==> [4/4] Build (backend + frontend)..."
-pnpm build
+echo "==> [4/7] Backend build (nest)..."
+pnpm build:backend
+
+echo "==> [5/7] Backend start..."
+if curl -sf -o /dev/null --max-time 2 "$HEALTH_URL"; then
+  echo "    backend already answering on :5050 - reusing it."
+else
+  (cd backend && exec node dist/src/main.js) > "$BACKEND_LOG" 2>&1 &
+  BACKEND_PID=$!
+  wait_for "$HEALTH_URL" "Backend" "$BACKEND_LOG" "$BACKEND_PID"
+  echo "    backend up on :5050."
+fi
+
+echo "==> [6/7] Frontend build (next, against the live API)..."
+pnpm build:frontend
+
+echo "==> [7/7] Frontend start (production bundle smoke test on :$FRONTEND_PORT)..."
+(cd frontend && exec npx next start -p "$FRONTEND_PORT") > "$FRONTEND_LOG" 2>&1 &
+FRONTEND_PID=$!
+wait_for "$FRONTEND_URL" "Frontend" "$FRONTEND_LOG" "$FRONTEND_PID"
+echo "    frontend production bundle answers on :$FRONTEND_PORT."
 
 echo "==> All pre-push checks passed. Pushing."

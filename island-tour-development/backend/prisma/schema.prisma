@@ -11,6 +11,7 @@ datasource db {
 //   enums.prisma          ← all enums
 //   user.prisma           ← User, Session, Account, Verification (Better Auth)
 //   operators.prisma      ← Operator (+ OCTO supplier contact + eligibility) + company/social/payment configs
+//   staff.prisma          ← StaffMember (platform staff + operator team seats) + StaffDesignation
 //   destinations.prisma   ← Destination, Hub, HubAllowedCategory, HubOurPick, HubComparisonGroup, FeaturedExperience
 //   categories.prisma     ← Category
 //   collections.prisma    ← Collection (+ translation, page content)

@@ -7,15 +7,21 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Permission } from '@prisma/client';
 import { PERMISSIONS_KEY } from '@/auth/decorators/require-permissions.decorator';
-import { ROLE_PERMISSIONS } from '@/config/roles.config';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import type { AuthenticatedRequest } from '@/auth/auth.types';
 
 /**
- * Checks that the authenticated user's role grants all required permissions.
+ * Checks that the authenticated user's EFFECTIVE permissions grant all
+ * required permissions.
  *
  * Registered as APP_GUARD in AuthModule - runs after RolesGuard on every route.
  * If no @RequirePermissions() are declared on the handler or class, all pass.
- * Permissions are looked up from ROLE_PERMISSIONS in roles.config.ts.
+ *
+ * Effective permissions come from StaffPermissionsService: the static
+ * ROLE_PERMISSIONS map for ADMIN/EDITOR/GUIDE/USER (no DB hit), and the
+ * computed designation + per-member override set (capped to the scope
+ * ceiling, briefly cached) for STAFF users and operator team seats. See
+ * staff-permissions.service.ts for the full policy.
  *
  * Usage:
  *   Require a specific permission:
@@ -30,9 +36,12 @@ import type { AuthenticatedRequest } from '@/auth/auth.types';
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private readonly staffPermissions: StaffPermissionsService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const required = this.reflector.getAllAndOverride<Permission[]>(
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
@@ -47,11 +56,12 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const userPermissions: Permission[] =
-      ROLE_PERMISSIONS[request.user.role] ?? [];
-    const missing = required.filter((p) => !userPermissions.includes(p));
+    const { granted, missing } = await this.staffPermissions.hasPermissions(
+      request.user,
+      required,
+    );
 
-    if (missing.length > 0) {
+    if (!granted) {
       throw new ForbiddenException(
         `Missing permissions: ${missing.join(', ')}`,
       );

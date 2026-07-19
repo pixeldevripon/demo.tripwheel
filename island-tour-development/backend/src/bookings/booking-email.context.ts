@@ -1,6 +1,7 @@
 import { Locale, OnArrivalPayment, PaymentModel } from '@prisma/client';
 import type { Currency } from '@prisma/client';
 import { buildWhatsappUrl } from '@/common/utils/whatsapp.util';
+import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import type { EmailTemplateContext } from '@/mail/templates/email-template.renderer';
 
 /**
@@ -325,7 +326,7 @@ export function buildConfirmationEmailContext(
     // Chrome + brand
     locale: urlLocale,
     emailIconBase: config.emailIconBase,
-    siteLogoUrl: site.logoUrl ?? '',
+    siteLogoUrl: emailSafeLogoUrl(site.logoUrl) ?? '',
 
     // Headline + summary
     firstName: booking.contactFirstName ?? 'there',

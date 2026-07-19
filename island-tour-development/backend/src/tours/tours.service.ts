@@ -7,6 +7,7 @@ import {
   slugRowBlocks,
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { resolveOperatorId } from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
@@ -360,27 +361,8 @@ export class ToursService {
     userId: string,
     role?: Role,
   ): Promise<string> {
-    const operator = await this.prisma.operator.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    if (operator) return operator.id;
-
-    if (role === Role.ADMIN) {
-      // Auto-provision an operator record for admin users on first use
-      const created = await this.prisma.operator.create({
-        data: { userId },
-        select: { id: true },
-      });
-      this.logger.log(
-        `Auto-provisioned operator profile for admin user ${userId}`,
-      );
-      return created.id;
-    }
-
-    throw new BadRequestException(
-      'No operator profile found. Please complete your operator registration first.',
-    );
+    // Shared util: owner account, ACTIVE team seat, or admin auto-provision.
+    return resolveOperatorId(this.prisma, userId, role);
   }
 
   async assertOwnership(
