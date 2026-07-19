@@ -7,24 +7,37 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { mediaApi } from '@/lib/api/media';
-import type { MediaItem, MediaListResponse } from '@/types/media';
+import type { MediaItem, MediaListResponse, MediaSort, MediaTypeFilter } from '@/types/media';
+import { DEFAULT_MEDIA_SORT } from '@/types/media';
 import { toast } from 'sonner';
 
 export const mediaKeys = {
   all: ['media'] as const,
-  infinite: () => [...mediaKeys.all, 'infinite'] as const,
+  // No-arg form is the PREFIX of every sorted/filtered variant - the cache
+  // helpers below rely on that to hit all of them via setQueriesData.
+  infinite: (sort?: MediaSort, type?: MediaTypeFilter) =>
+    sort
+      ? ([
+          ...mediaKeys.all,
+          'infinite',
+          `${sort.sortBy}-${sort.sortOrder}-${type ?? 'all'}`,
+        ] as const)
+      : ([...mediaKeys.all, 'infinite'] as const),
 };
 
-export const MEDIA_PAGE_SIZE = 50;
+export const MEDIA_PAGE_SIZE = 30;
 
 /**
  * Pages through the entire media library (the old useMediaList capped the
  * gallery at the first 100 items and silently hid the rest).
  */
-export function useMediaInfinite() {
+export function useMediaInfinite(
+  sort: MediaSort = DEFAULT_MEDIA_SORT,
+  type: MediaTypeFilter = 'all',
+) {
   return useInfiniteQuery({
-    queryKey: mediaKeys.infinite(),
-    queryFn: ({ pageParam }) => mediaApi.getPage(pageParam, MEDIA_PAGE_SIZE),
+    queryKey: mediaKeys.infinite(sort, type),
+    queryFn: ({ pageParam }) => mediaApi.getPage(pageParam, MEDIA_PAGE_SIZE, sort, type),
     initialPageParam: 1,
     getNextPageParam: (last) =>
       last.page * last.limit < last.total ? last.page + 1 : undefined,
@@ -65,13 +78,14 @@ export function useBulkDeleteMedia() {
   });
 }
 
-/** Insert freshly uploaded items at the top of the gallery without a refetch. */
+/** Insert freshly uploaded items at the top of the gallery without a refetch.
+ *  Prefix-matches every sort/filter variant of the infinite query. */
 export function prependMediaToCache(
   queryClient: ReturnType<typeof useQueryClient>,
   items: MediaItem[]
 ) {
-  queryClient.setQueryData<InfiniteData<MediaListResponse>>(
-    mediaKeys.infinite(),
+  queryClient.setQueriesData<InfiniteData<MediaListResponse>>(
+    { queryKey: mediaKeys.infinite() },
     (old) => {
       if (!old?.pages.length) return old;
       const [first, ...rest] = old.pages;
@@ -86,13 +100,13 @@ export function prependMediaToCache(
   );
 }
 
-/** Optimistically remove items from every loaded gallery page. */
+/** Optimistically remove items from every loaded gallery page (all variants). */
 export function removeMediaFromCache(
   queryClient: ReturnType<typeof useQueryClient>,
   ids: string[]
 ) {
-  queryClient.setQueryData<InfiniteData<MediaListResponse>>(
-    mediaKeys.infinite(),
+  queryClient.setQueriesData<InfiniteData<MediaListResponse>>(
+    { queryKey: mediaKeys.infinite() },
     (old) => {
       if (!old?.pages.length) return old;
       return {

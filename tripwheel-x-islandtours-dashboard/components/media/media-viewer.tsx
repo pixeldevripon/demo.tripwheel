@@ -2,12 +2,13 @@
 
 import { Button } from '@/components/ui/button';
 import { formatFileSize } from '@/lib/utils';
-import { ArrowLeft01Icon, File02Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, File02Icon, MusicNote01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { MediaItem } from '@/types/media';
+import { getMediaKind } from './media-kind';
 
 interface MediaViewerProps {
     item: MediaItem;
@@ -39,7 +40,7 @@ function DetailRow({
  * file specs) on the right. Stacks vertically on small screens.
  */
 export default function MediaViewer({ item, onClose }: MediaViewerProps) {
-    const isImage = item.resourceType === 'image';
+    const kind = getMediaKind(item);
     const displayName = item.originalName || item.fileName || item.publicId;
 
     const filenameForDownload = (
@@ -118,7 +119,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
             <div className='flex-1 min-h-0 flex flex-col md:flex-row'>
                 {/* Image pane */}
                 <div className='relative flex-1 min-h-0 bg-muted/40 flex items-center justify-center p-4 md:p-8'>
-                    {isImage ? (
+                    {kind === 'image' ? (
                         <div className='relative w-full h-full'>
                             <Image
                                 fill
@@ -127,6 +128,42 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                                 className='object-contain'
                                 priority
                                 sizes='(min-width: 768px) 75vw, 100vw'
+                            />
+                        </div>
+                    ) : kind === 'svg' ? (
+                        <div className='relative w-full h-full flex items-center justify-center'>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={item.url}
+                                alt={item.altText || displayName}
+                                className='max-w-full max-h-full object-contain'
+                            />
+                        </div>
+                    ) : kind === 'video' ? (
+                        <video
+                            src={item.url}
+                            controls
+                            playsInline
+                            preload='metadata'
+                            aria-label={displayName}
+                            className='max-w-full max-h-full rounded-lg shadow'
+                        />
+                    ) : kind === 'audio' ? (
+                        <div className='flex flex-col items-center justify-center gap-6 p-8 md:p-12 bg-card rounded-xl shadow border border-border max-w-md w-full'>
+                            <HugeiconsIcon
+                                icon={MusicNote01Icon}
+                                size={64}
+                                className='text-primary'
+                            />
+                            <h3 className='m-0 text-sm md:text-base font-semibold text-foreground text-center break-all'>
+                                {displayName}
+                            </h3>
+                            <audio
+                                src={item.url}
+                                controls
+                                preload='metadata'
+                                aria-label={displayName}
+                                className='w-full'
                             />
                         </div>
                     ) : (
@@ -180,7 +217,9 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                             <DetailRow
                                 label='File size'
                                 value={
-                                    item.size ? formatFileSize(item.size) : null
+                                    (item.size ?? item.bytes)
+                                        ? formatFileSize((item.size ?? item.bytes)!)
+                                        : null
                                 }
                             />
                             <DetailRow label='Uploaded' value={uploadedAt} />

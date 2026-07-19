@@ -99,7 +99,7 @@ const MediaGridUi = ({
                     </motion.div>
                 ))}
 
-                {filteredItems.map(item => {
+                {filteredItems.map((item, index) => {
                     const isSelected = bulkSelectedItems.some(s => s.id === item.id || s.url === item.url);
                     const isBeingDeleted =
                         (itemToDelete === 'bulk' && isDeleting && isSelected) ||
@@ -143,6 +143,7 @@ const MediaGridUi = ({
                                 onCopyUrl={!isDeleting ? handleCopyUrl : () => {}}
                                 viewMode='grid'
                                 selectMode={selectMode}
+                                priority={index < 8}
                                 className={`h-full w-full rounded-lg overflow-hidden transition-all duration-300 ${!isDeleting ? 'hover:shadow-md hover:scale-[1.02]' : ''} ${isSelected && showSelectionUI ? 'border-2 border-primary shadow-md' : ''}`}
                                 selector={selector}
                             />

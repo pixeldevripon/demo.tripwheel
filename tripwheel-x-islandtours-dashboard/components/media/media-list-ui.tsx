@@ -3,11 +3,62 @@
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatFileSize } from '@/lib/utils';
-import { CloudUploadIcon, Copy01Icon, Delete01Icon, LinkSquare01Icon, Loading03Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { CloudUploadIcon, Copy01Icon, Delete01Icon, File02Icon, LinkSquare01Icon, Loading03Icon, MusicNote01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import type { MediaItem } from '@/types/media';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getMediaKind } from './media-kind';
+
+/** 64px thumbnail that adapts to the media kind. */
+function ListThumb({ item }: { item: MediaItem }) {
+    const kind = getMediaKind(item);
+    if (kind === 'video') {
+        return (
+            <video
+                src={item.url}
+                muted
+                playsInline
+                preload='metadata'
+                aria-label={item.originalName || item.fileName || 'video'}
+                className='w-full h-full object-cover rounded-md'
+            />
+        );
+    }
+    if (kind === 'audio') {
+        return (
+            <div className='w-full h-full bg-muted rounded-md flex items-center justify-center'>
+                <HugeiconsIcon icon={MusicNote01Icon} size={24} className='text-primary' />
+            </div>
+        );
+    }
+    if (kind === 'svg') {
+        return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+                src={item.url}
+                alt={item.fileName || item.originalName || 'svg'}
+                className='w-full h-full object-contain rounded-md bg-muted p-1'
+            />
+        );
+    }
+    if (kind === 'file') {
+        return (
+            <div className='w-full h-full bg-muted rounded-md flex items-center justify-center'>
+                <HugeiconsIcon icon={File02Icon} size={24} className='text-primary' />
+            </div>
+        );
+    }
+    return (
+        <Image
+            height={200}
+            width={200}
+            src={item.thumbnail || item.url}
+            alt={item.fileName || item.originalName || 'media'}
+            className='w-full h-full object-cover rounded-md'
+        />
+    );
+}
 
 interface MediaListUiProps {
     filteredItems: MediaItem[];
@@ -140,13 +191,7 @@ const MediaListUi = ({
                             <div
                                 className='shrink-0 w-16 h-16 mr-4 cursor-pointer'
                                 onClick={e => { e.stopPropagation(); if (!isDeleting) handleItemClick(item); }}>
-                                <Image
-                                    height={200}
-                                    width={200}
-                                    src={item.thumbnail || item.url}
-                                    alt={item.fileName || item.originalName || 'media'}
-                                    className='w-full h-full object-cover rounded-md'
-                                />
+                                <ListThumb item={item} />
                             </div>
 
                             <div className='flex-grow min-w-0'>
@@ -154,7 +199,7 @@ const MediaListUi = ({
                                     {item.fileName || item.originalName || item.publicId}
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>
-                                    {item.size ? formatFileSize(item.size) + ' • ' : ''}
+                                    {(item.size ?? item.bytes) ? formatFileSize((item.size ?? item.bytes)!) + ' • ' : ''}
                                     {formatDate(item.uploadedAt, 'medium')}
                                 </p>
                             </div>

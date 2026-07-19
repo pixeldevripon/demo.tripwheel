@@ -2,9 +2,34 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { CloudUploadFreeIcons, GridIcon, Menu05Icon, Search01Icon, SquareIcon, TickDouble01Icon, UndoIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import type { MediaItem } from '@/types/media';
+import type { MediaItem, MediaSort, MediaSortBy, MediaSortOrder, MediaTypeFilter } from '@/types/media';
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+    { value: 'uploadedAt-desc', label: 'Newest first' },
+    { value: 'uploadedAt-asc', label: 'Oldest first' },
+    { value: 'name-asc', label: 'Name A-Z' },
+    { value: 'name-desc', label: 'Name Z-A' },
+    { value: 'size-desc', label: 'Largest first' },
+    { value: 'size-asc', label: 'Smallest first' },
+    { value: 'type-asc', label: 'Type' },
+];
+
+const TYPE_OPTIONS: { value: MediaTypeFilter; label: string }[] = [
+    { value: 'all', label: 'All types' },
+    { value: 'image', label: 'Images' },
+    { value: 'video', label: 'Videos' },
+    { value: 'audio', label: 'Audio' },
+    { value: 'svg', label: 'SVG' },
+];
 
 interface MediaSearchControlsProps {
     searchTerm: string;
@@ -20,6 +45,10 @@ interface MediaSearchControlsProps {
     bulkSelectedItems?: MediaItem[];
     selector?: boolean;
     loading?: boolean;
+    sort?: MediaSort;
+    setSort?: (sort: MediaSort) => void;
+    typeFilter?: MediaTypeFilter;
+    setTypeFilter?: (type: MediaTypeFilter) => void;
 }
 
 const MediaSearchControls = ({
@@ -36,6 +65,10 @@ const MediaSearchControls = ({
     bulkSelectedItems = [],
     selector,
     loading,
+    sort,
+    setSort,
+    typeFilter = 'all',
+    setTypeFilter,
 }: MediaSearchControlsProps) => {
     return (
         <div className='flex justify-between items-start'>
@@ -54,6 +87,45 @@ const MediaSearchControls = ({
                         className='w-full h-9 rounded-md border border-input !bg-background pl-8 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
                     />
                 </div>
+
+                {/* Type filter */}
+                {setTypeFilter && (
+                    <Select
+                        value={typeFilter}
+                        onValueChange={v => setTypeFilter(v as MediaTypeFilter)}>
+                        <SelectTrigger className='w-32 h-9'>
+                            <SelectValue placeholder='All types' />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {TYPE_OPTIONS.map(o => (
+                                <SelectItem key={o.value} value={o.value}>
+                                    {o.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+
+                {/* Sort */}
+                {sort && setSort && (
+                    <Select
+                        value={`${sort.sortBy}-${sort.sortOrder}`}
+                        onValueChange={v => {
+                            const [sortBy, sortOrder] = v.split('-') as [MediaSortBy, MediaSortOrder];
+                            setSort({ sortBy, sortOrder });
+                        }}>
+                        <SelectTrigger className='w-36 h-9'>
+                            <SelectValue placeholder='Sort' />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {SORT_OPTIONS.map(o => (
+                                <SelectItem key={o.value} value={o.value}>
+                                    {o.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
 
                 {/* View & Selection controls - hidden in selector mode */}
                 {!selector && (

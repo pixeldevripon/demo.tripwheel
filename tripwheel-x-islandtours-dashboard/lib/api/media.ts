@@ -1,12 +1,23 @@
-import type { MediaItem, MediaListResponse } from '@/types/media';
+import type { MediaItem, MediaListResponse, MediaSort, MediaTypeFilter } from '@/types/media';
 
 import { apiFetch } from './fetch';
 
 export const mediaApi = {
   // Returns the full pagination envelope (total/page/limit) so the gallery can
   // page through the whole library instead of capping at the first 100 items.
-  getPage(page: number, limit: number): Promise<MediaListResponse> {
-    return apiFetch<MediaListResponse>(`/media-gallery?limit=${limit}&page=${page}`);
+  getPage(
+    page: number,
+    limit: number,
+    sort?: MediaSort,
+    type?: MediaTypeFilter,
+  ): Promise<MediaListResponse> {
+    const params = new URLSearchParams({ limit: String(limit), page: String(page) });
+    if (sort) {
+      params.set('sortBy', sort.sortBy);
+      params.set('sortOrder', sort.sortOrder);
+    }
+    if (type && type !== 'all') params.set('type', type);
+    return apiFetch<MediaListResponse>(`/media-gallery?${params.toString()}`);
   },
 
   delete(id: string): Promise<void> {

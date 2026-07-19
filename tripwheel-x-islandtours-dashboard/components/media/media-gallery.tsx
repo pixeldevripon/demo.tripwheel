@@ -70,16 +70,18 @@ export default function MediaGallery({
     const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
     // Upload state comes from Zustand - persists across tab switches
-    const { uploadingFiles, uploadProgress, previewUrls } = useUploadStore();
+    const { uploadingFiles } = useUploadStore();
 
     // TanStack Query delete mutations
     const deleteMutation = useDeleteMedia();
     const bulkDeleteMutation = useBulkDeleteMedia();
     const isDeleting = deleteMutation.isPending || bulkDeleteMutation.isPending;
 
-    // Infinite scroll: fetch the next page when the sentinel at the bottom of
-    // the scroll container becomes visible.
+    // Infinite scroll only in selector mode (fixed-height dialog). The full
+    // media page has no inner scroll container - paging is via the Load more
+    // button so the page grows naturally.
     useEffect(() => {
+        if (!selector) return;
         const sentinel = loadMoreRef.current;
         if (!sentinel || !hasNextPage || !onLoadMore) return;
         const observer = new IntersectionObserver(
@@ -90,7 +92,7 @@ export default function MediaGallery({
         );
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [hasNextPage, onLoadMore]);
+    }, [hasNextPage, onLoadMore, selector]);
 
     const filteredItems = useMemo(() => {
         if (!mediaItems?.length) return [];
@@ -245,7 +247,15 @@ export default function MediaGallery({
             )}
 
             <div className='border border-border rounded-lg shadow-sm relative'>
-                <div className={`min-h-[60vh] ${bulkSelectedItems.length > 0 ? 'max-h-[70vh]' : 'max-h-[75vh]'} overflow-y-auto mx-auto p-6`}>
+                {/* Selector dialog scrolls internally (fixed-height modal);
+                    the media page grows with its content and scrolls with the
+                    document - no inner scrollbar. */}
+                <div
+                    className={
+                        selector
+                            ? `min-h-[60vh] ${bulkSelectedItems.length > 0 ? 'max-h-[70vh]' : 'max-h-[75vh]'} overflow-y-auto mx-auto p-6`
+                            : 'min-h-[60vh] mx-auto p-6'
+                    }>
                     {itemToDelete === 'bulk' && isDeleting ? (
                         <BulkActionSpinner
                             bulkSelectedItems={bulkSelectedItems.length}

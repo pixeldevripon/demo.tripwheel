@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import MediaGallery from './media-gallery';
-import type { MediaItem } from '@/types/media';
+import type { MediaItem, MediaSort, MediaTypeFilter } from '@/types/media';
+import { DEFAULT_MEDIA_SORT } from '@/types/media';
 import MediaSearchControls from './media-search-controls';
 
 interface MediaGalleryManagerProps {
@@ -30,6 +31,8 @@ const MediaGalleryManager = ({
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectMode, setSelectMode] = useState(false);
     const [bulkSelectedItems, setBulkSelectedItems] = useState<MediaItem[]>([]);
+    const [sort, setSort] = useState<MediaSort>(DEFAULT_MEDIA_SORT);
+    const [typeFilter, setTypeFilter] = useState<MediaTypeFilter>('all');
 
     // ── TanStack Query - pages through the whole library ────────────────────
     // refetchOnWindowFocus: true (set in QueryClient defaults + hook) means
@@ -40,11 +43,17 @@ const MediaGalleryManager = ({
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-    } = useMediaInfinite();
-    const mediaItems = useMemo(
-        () => data?.pages.flatMap(page => page.data) ?? [],
-        [data],
-    );
+    } = useMediaInfinite(sort, typeFilter);
+    // Dedupe across pages: offset pagination overlaps when uploads/deletes
+    // shift rows between fetches (the last item of server-page 1 slides onto
+    // page 2), which would produce duplicate React keys in the grid.
+    const mediaItems = useMemo(() => {
+        const all = data?.pages.flatMap(page => page.data) ?? [];
+        const seen = new Set<string>();
+        return all.filter(item =>
+            seen.has(item.id) ? false : (seen.add(item.id), true),
+        );
+    }, [data]);
     const totalCount = data?.pages[0]?.total ?? mediaItems.length;
 
     const isUploading = useUploadStore(s => s.uploadingFiles.length > 0);
@@ -116,6 +125,10 @@ const MediaGalleryManager = ({
                     bulkSelectedItems={bulkSelectedItems}
                     selector={selector}
                     loading={isLoading}
+                    sort={sort}
+                    setSort={setSort}
+                    typeFilter={typeFilter}
+                    setTypeFilter={setTypeFilter}
                 />
             </div>
 

@@ -26,7 +26,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:505
 export const MediaUploader = ({
     multiple = true,
     maxFiles = 50,
-    maxFileSize = 10 * 1024 * 1024,
+    maxFileSize = 100 * 1024 * 1024,
     selector = false,
     setbulkSelectedItems,
     setIsFormOpen,
@@ -85,7 +85,11 @@ export const MediaUploader = ({
         Array.from(files).forEach(f => {
             if (f.size > maxFileSize) {
                 invalid.push({ file: f, error: `Too large (max ${formatSize(maxFileSize)})` });
-            } else if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
+            } else if (
+                !f.type.startsWith('image/') &&
+                !f.type.startsWith('video/') &&
+                !f.type.startsWith('audio/')
+            ) {
                 invalid.push({ file: f, error: 'Unsupported format' });
             } else {
                 valid.push(f);
@@ -226,7 +230,7 @@ export const MediaUploader = ({
             <input
                 type='file'
                 aria-label='Upload media files'
-                accept='image/*,video/mp4,video/quicktime'
+                accept='image/*,video/*,audio/*'
                 multiple={multiple}
                 ref={inputRef}
                 onChange={e => {
