@@ -424,6 +424,8 @@
         "sellOutSubtitle": "Book today to secure your spot",
         "selectDate": "Select date",
         "checkAvailability": "Check Availability",
+        "errorSelectDate": "Select a date to continue",
+        "errorSelectSlot": "Select a departure time to continue",
         "bookingUnavailable": "This tour isn't bookable online right now.",
         "apply": "Apply",
         "perPersonShort": "/per person",

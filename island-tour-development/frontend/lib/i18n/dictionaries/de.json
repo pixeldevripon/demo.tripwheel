@@ -424,6 +424,8 @@
         "sellOutSubtitle": "Buche heute und sichere dir deinen Platz",
         "selectDate": "Datum wählen",
         "checkAvailability": "Verfügbarkeit prüfen",
+        "errorSelectDate": "Wähle ein Datum, um fortzufahren",
+        "errorSelectSlot": "Wähle eine Startzeit, um fortzufahren",
         "bookingUnavailable": "Diese Tour ist derzeit nicht online buchbar.",
         "apply": "Übernehmen",
         "perPersonShort": "/pro Person",

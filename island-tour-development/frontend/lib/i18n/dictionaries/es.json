@@ -424,6 +424,8 @@
         "sellOutSubtitle": "Reserva hoy para asegurar tu lugar",
         "selectDate": "Selecciona la fecha",
         "checkAvailability": "Comprobar disponibilidad",
+        "errorSelectDate": "Selecciona una fecha para continuar",
+        "errorSelectSlot": "Selecciona una hora de salida para continuar",
         "bookingUnavailable": "Este tour no se puede reservar en línea ahora mismo.",
         "apply": "Aplicar",
         "perPersonShort": "/por persona",

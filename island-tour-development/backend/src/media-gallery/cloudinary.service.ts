@@ -7,6 +7,8 @@ export interface CloudinaryUploadResult {
   resourceType: string;
   bytes?: number;
   format?: string;
+  width?: number;
+  height?: number;
 }
 
 /** Optional asset facts that drive the delivery-URL decision. */
@@ -109,6 +111,8 @@ export class CloudinaryService {
       resourceType: result.resource_type,
       bytes: result.bytes,
       format: result.format,
+      width: result.width,
+      height: result.height,
     };
   }
 
@@ -244,6 +248,7 @@ export class CloudinaryService {
     secure_url: string;
     bytes: number;
     width?: number;
+    height?: number;
     format?: string;
   }> {
     // Cloudinary throws if the resource is not found
@@ -260,6 +265,7 @@ export class CloudinaryService {
       secure_url: resource.secure_url,
       bytes: resource.bytes,
       width: resource.width,
+      height: resource.height,
       format: resource.format,
     };
   }

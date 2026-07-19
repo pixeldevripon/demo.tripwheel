@@ -109,6 +109,10 @@ export interface BookingState {
     /** True when the last quote attempt failed - the card falls back to the
      *  optimistic client estimate rather than blocking. */
     quoteError: boolean;
+    /** Which required selection blocked the last CTA click (null = none). Drives
+     *  the inline note above the CTA and the highlight on the missing field;
+     *  cleared as soon as that selection is made. */
+    ctaError: 'date' | 'slot' | null;
 }
 
 /** Everything the sections can trigger. */
@@ -200,7 +204,9 @@ export function deriveBooking(s: BookingStore) {
         ? (selectedSlot.seatsLeft ?? selectedSlot.remaining ?? null)
         : null;
     const capacityReason: 'slot' | 'booking' =
-        slotSeatsLeft != null && slotSeatsLeft < s.maxParty ? 'slot' : 'booking';
+        slotSeatsLeft != null && slotSeatsLeft < s.maxParty
+            ? 'slot'
+            : 'booking';
 
     // Live availability: real per-date slots + month calendar when a tour id is
     // set; otherwise the static demo slots and an always-open calendar.
@@ -303,8 +309,7 @@ export function deriveBooking(s: BookingStore) {
     // summary + breakdown (its amounts are already in the shopper currency, rounded
     // 2dp). During a refetch (`quoteLoading`) or on error the card keeps the
     // optimistic client estimate above, so it stays responsive and never blocks.
-    const useQuote =
-        s.quote != null && !s.quoteLoading && !s.quoteError;
+    const useQuote = s.quote != null && !s.quoteLoading && !s.quoteError;
     if (useQuote && s.quote) {
         const q = s.quote;
         total = Number(q.totalRetail);
@@ -468,6 +473,7 @@ export function createBookingStore(init: BookingInit) {
         quote: null,
         quoteLoading: false,
         quoteError: false,
+        ctaError: null,
     };
 
     return createStore<BookingStore>()((set, get) => ({
@@ -517,6 +523,7 @@ export function createBookingStore(init: BookingInit) {
                 selectedTime: null,
                 availabilityChecked: false,
                 calendarOpen: false,
+                ctaError: null,
                 // Drop the previous date's slots and show loading (live only) until
                 // the sync fetches this date's departures.
                 daySlots: null,
@@ -524,16 +531,27 @@ export function createBookingStore(init: BookingInit) {
             })),
 
         selectTime: time =>
-            set({ selectedTime: time, availabilityChecked: false }),
+            set({
+                selectedTime: time,
+                availabilityChecked: false,
+                ctaError: null,
+            }),
 
         handleCtaClick: () => {
             const s = get();
             if (s.availabilityChecked) return; // Continue -> checkout (booking module).
+            // An incomplete selection must never swallow the click (silent
+            // no-op = "the button is broken"): say WHAT is missing above the
+            // CTA and highlight that field, on top of the existing affordance
+            // (missing date also pops the calendar open).
             if (!s.selectedDate) {
-                set({ calendarOpen: true });
+                set({ calendarOpen: true, ctaError: 'date' });
                 return;
             }
-            if (s.selectedTime == null || travelerCountOf(s) < 1) return;
+            if (s.selectedTime == null || travelerCountOf(s) < 1) {
+                set({ ctaError: 'slot' });
+                return;
+            }
             // Party won't fit this slot: keep the selectors open (capped at
             // capacity) so the counts can be brought down to fit.
             if (
@@ -547,6 +565,7 @@ export function createBookingStore(init: BookingInit) {
                 partyOpen: false,
                 calendarOpen: false,
                 availabilityChecked: true,
+                ctaError: null,
             });
         },
 
@@ -558,8 +577,7 @@ export function createBookingStore(init: BookingInit) {
         setQuote: quote =>
             set({ quote, quoteLoading: false, quoteError: false }),
         setQuoteLoading: loading => set({ quoteLoading: loading }),
-        setQuoteError: error =>
-            set({ quoteError: error, quoteLoading: false }),
+        setQuoteError: error => set({ quoteError: error, quoteLoading: false }),
     }));
 }
 

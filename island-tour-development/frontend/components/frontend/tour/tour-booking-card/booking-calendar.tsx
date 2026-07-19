@@ -46,6 +46,7 @@ export function BookingCalendar() {
         isLive,
         calendarDays,
         calendarLoading,
+        ctaError,
     } = useBooking();
 
     // `today` is only read once the calendar opens (post-mount) so it never
@@ -148,8 +149,13 @@ export function BookingCalendar() {
                 type='button'
                 onClick={() => toggleCalendar()}
                 aria-expanded={calendarOpen}
+                aria-invalid={ctaError === 'date' || undefined}
                 transition={springPop}
-                className='flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[8px] bg-it-white px-4 py-4 text-left'>
+                // Blocked CTA click with no date: ring the field so the note
+                // above the button points somewhere concrete.
+                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[8px] bg-it-white px-4 py-4 text-left transition-shadow duration-300 ${
+                    ctaError === 'date' ? 'ring-1 ring-it-primary' : ''
+                }`}>
                 <span
                     className={`text-[16px] leading-[1.6] tracking-[-0.012em] ${
                         selectedDate

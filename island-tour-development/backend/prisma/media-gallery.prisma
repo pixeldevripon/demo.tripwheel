@@ -1,21 +1,32 @@
 model MediaGallery {
-  id           String   @id @default(uuid())
-  url          String
-  publicId     String   @unique
-  resourceType String
+  id                  String   @id @default(uuid())
+  url                 String
+  publicId            String   @unique
+  resourceType        String
   /// Original client filename - null for rows uploaded before this column existed
-  originalName String?
+  originalName        String?
   /// MIME type as received at upload (e.g. image/svg+xml, audio/mpeg)
-  mimeType     String?
+  mimeType            String?
   /// Stored size in bytes (from Cloudinary)
-  bytes        Int?
+  bytes               Int?
   /// Cloudinary format (jpg, svg, mp4, mp3, ...)
-  format       String?
-  uploadedAt   DateTime @default(now())
-  userId       String
-  uploadedBy   User     @relation(fields: [userId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  format              String?
+  /// Pixel dimensions (images/videos; null for audio)
+  width               Int?
+  height              Int?
+  /// Editable attachment metadata (dashboard single-media panel)
+  title               String?
+  description         String?
+  altText             String?
+  /// Editable display filename (originalName keeps the as-uploaded name)
+  fileName            String?
+  /// When true the public site excludes this asset from indexing/sitemaps
+  excludeFromIndexing Boolean  @default(false)
+  uploadedAt          DateTime @default(now())
+  userId              String
+  uploadedBy          User     @relation(fields: [userId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([id])
   @@index([publicId])

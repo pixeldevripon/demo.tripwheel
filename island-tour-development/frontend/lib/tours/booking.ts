@@ -87,6 +87,10 @@ export type TourBookingDict = {
     // Booking Widget V2
     selectDate: string;
     checkAvailability: string;
+    /** Inline CTA note when Check Availability is clicked with no date picked. */
+    errorSelectDate: string;
+    /** Inline CTA note when a date is picked but no departure time is. */
+    errorSelectSlot: string;
     /** Shown in place of the CTA when the tour's payment model is not bookable in v1. */
     bookingUnavailable: string;
     apply: string;
@@ -200,11 +204,41 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
     wholeUnitType: null,
     bookingType: null,
     bands: [
-        { id: 'adult', kind: 'participant', label: 'Adult (age 13+)', price: 120, isDefault: true },
-        { id: 'child', kind: 'participant', label: 'Child (age 4-12)', price: 65, isDefault: false },
-        { id: 'infant', kind: 'participant', label: 'Infant (age 0-3)', price: 0, isDefault: false },
-        { id: 'spec-adult', kind: 'spectator', label: 'Adult (age 13+)', price: 20, isDefault: false },
-        { id: 'spec-kid', kind: 'spectator', label: 'Kid (age 4-12)', price: 10, isDefault: false },
+        {
+            id: 'adult',
+            kind: 'participant',
+            label: 'Adult (age 13+)',
+            price: 120,
+            isDefault: true,
+        },
+        {
+            id: 'child',
+            kind: 'participant',
+            label: 'Child (age 4-12)',
+            price: 65,
+            isDefault: false,
+        },
+        {
+            id: 'infant',
+            kind: 'participant',
+            label: 'Infant (age 0-3)',
+            price: 0,
+            isDefault: false,
+        },
+        {
+            id: 'spec-adult',
+            kind: 'spectator',
+            label: 'Adult (age 13+)',
+            price: 20,
+            isDefault: false,
+        },
+        {
+            id: 'spec-kid',
+            kind: 'spectator',
+            label: 'Kid (age 4-12)',
+            price: 10,
+            isDefault: false,
+        },
     ],
     slots: [
         { time: '08:00', status: 'available', remaining: 20 },
@@ -254,7 +288,9 @@ function mapBand(
  * from `basePrice` + surcharge in `deriveBooking`, not by summing bands, so the
  * synthetic guests band is priced 0 (Pattern A - inline stepper).
  */
-export function buildTourBookingData(detail: PublicTourDetail): TourBookingData {
+export function buildTourBookingData(
+    detail: PublicTourDetail
+): TourBookingData {
     // Currency-aware display (guide §21.5): when the detail was fetched with a
     // shopper currency the backend attaches a converted `money` object; the widget
     // then shows that currency and converts every amount by the same rate. This is
@@ -277,7 +313,9 @@ export function buildTourBookingData(detail: PublicTourDetail): TourBookingData 
     const basePrice = conv(detail.basePrice ?? detail.priceFrom);
     const extraPersonPrice = isGroupUnit ? conv(detail.extraPersonPrice) : 0;
     // Headline: group base for UNIT, per-person "from" for PER_PERSON.
-    const priceFrom = isUnit ? basePrice : conv(detail.priceFrom ?? detail.basePrice);
+    const priceFrom = isUnit
+        ? basePrice
+        : conv(detail.priceFrom ?? detail.basePrice);
 
     const ordered = [...detail.ageBands].sort(
         (a, b) => a.displayOrder - b.displayOrder

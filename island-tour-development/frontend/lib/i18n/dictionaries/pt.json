@@ -424,6 +424,8 @@
         "sellOutSubtitle": "Reserve hoje para garantir o seu lugar",
         "selectDate": "Selecionar data",
         "checkAvailability": "Verificar disponibilidade",
+        "errorSelectDate": "Selecione uma data para continuar",
+        "errorSelectSlot": "Selecione um horário de partida para continuar",
         "bookingUnavailable": "Este passeio não pode ser reservado online neste momento.",
         "apply": "Aplicar",
         "perPersonShort": "/por pessoa",

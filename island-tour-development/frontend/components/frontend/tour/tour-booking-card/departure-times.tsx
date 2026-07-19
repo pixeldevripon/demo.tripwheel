@@ -22,7 +22,13 @@ export function DepartureTimes() {
         selectedDate,
         selectedTime,
         selectTime,
+        ctaError,
     } = useBooking();
+
+    // The CTA was clicked without a time: tint the selectable chips and give
+    // the row a quick shake so the eye lands on what the note above the
+    // button is asking for (no wrapper box - it collided with the date field).
+    const missingSlot = ctaError === 'slot';
 
     return (
         <Collapse
@@ -50,8 +56,17 @@ export function DepartureTimes() {
                 <motion.div
                     key='slots'
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={swapFade}
+                    // A one-shot horizontal shake when the missing-slot error
+                    // fires; opacity keeps its own fade-in transition.
+                    animate={
+                        missingSlot
+                            ? { opacity: 1, x: [0, -5, 5, -3, 3, 0] }
+                            : { opacity: 1, x: 0 }
+                    }
+                    transition={{
+                        default: swapFade,
+                        x: { duration: 0.35, ease: 'easeInOut' },
+                    }}
                     className='grid grid-cols-3 gap-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
@@ -69,6 +84,14 @@ export function DepartureTimes() {
                                       String(slot.remaining)
                                   )
                                 : dict.available;
+                        // Missing-slot error: pickable chips carry a soft
+                        // primary border (a quieter cousin of the selected
+                        // state) that clears the moment a time is picked.
+                        const chipBorder = isSelected
+                            ? 'border-it-primary'
+                            : missingSlot && !soldOut
+                              ? 'border-it-primary/45'
+                              : 'border-transparent';
                         return (
                             <motion.button
                                 key={slot.time}
@@ -77,11 +100,7 @@ export function DepartureTimes() {
                                 onClick={() => selectTime(slot.time)}
                                 whileTap={soldOut ? undefined : { scale: 0.97 }}
                                 transition={springPop}
-                                className={`flex flex-col items-center gap-[3px] rounded-[8px] bg-it-white px-4 py-2 transition-colors duration-300 ${
-                                    isSelected
-                                        ? 'border border-it-primary'
-                                        : 'border border-transparent'
-                                } ${
+                                className={`flex flex-col items-center gap-[3px] rounded-[8px] border bg-it-white px-4 py-2 transition-colors duration-300 ${chipBorder} ${
                                     soldOut
                                         ? 'cursor-not-allowed opacity-60'
                                         : 'cursor-pointer'

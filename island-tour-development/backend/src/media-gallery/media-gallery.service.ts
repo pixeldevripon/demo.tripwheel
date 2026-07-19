@@ -7,6 +7,7 @@ import type { Multer } from 'multer';
 import type {
   ConfirmUploadDto,
   MediaGalleryQueryDto,
+  UpdateMediaDto,
 } from './dto/upload-media.dto';
 
 /**
@@ -54,6 +55,8 @@ export class MediaGalleryService {
       resourceType: string;
       bytes?: number;
       format?: string;
+      width?: number;
+      height?: number;
       originalName: string;
       mimeType: string;
     }[] = [];
@@ -92,6 +95,8 @@ export class MediaGalleryService {
               mimeType: r.mimeType,
               bytes: r.bytes,
               format: r.format,
+              width: r.width,
+              height: r.height,
               userId,
             },
           }),
@@ -148,6 +153,8 @@ export class MediaGalleryService {
         resourceType: dto.resourceType,
         bytes: asset.bytes,
         format: asset.format,
+        width: asset.width,
+        height: asset.height,
         userId,
       },
     });
@@ -241,6 +248,39 @@ export class MediaGalleryService {
     }
 
     return media;
+  }
+
+  /**
+   * Update editable attachment metadata (title, description, altText,
+   * fileName, excludeFromIndexing). Ownership-scoped; empty strings clear
+   * the field to null.
+   */
+  async updateMedia(
+    id: string,
+    userId: string,
+    dto: UpdateMediaDto,
+  ): Promise<MediaGallery> {
+    const existing = await this.prisma.mediaGallery.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Media ${id} not found`);
+    }
+
+    const clean = (v: string | undefined) =>
+      v === undefined ? undefined : v.trim() === '' ? null : v.trim();
+
+    return this.prisma.mediaGallery.update({
+      where: { id },
+      data: {
+        title: clean(dto.title),
+        description: clean(dto.description),
+        altText: clean(dto.altText),
+        fileName: clean(dto.fileName),
+        excludeFromIndexing: dto.excludeFromIndexing,
+      },
+    });
   }
 
   async deleteMedia(id: string, userId: string): Promise<{ message: string }> {

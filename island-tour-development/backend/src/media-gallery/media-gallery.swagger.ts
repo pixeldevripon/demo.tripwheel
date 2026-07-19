@@ -239,6 +239,34 @@ export function ApiGetMediaByIdDocs() {
 // ── Mutation endpoints ────────────────────────────────────────────────────────
 
 /**
+ * PATCH /media-gallery/:id
+ * Updates editable attachment metadata.
+ */
+export function ApiUpdateMediaDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update media metadata',
+      description:
+        'Updates the editable attachment fields (title, description, altText, ' +
+        'fileName, excludeFromIndexing). Ownership-scoped: 404 for records ' +
+        'not owned by the caller. Empty strings clear the field.',
+    }),
+    ApiParam({ name: 'id', description: 'Media record UUID' }),
+    ApiResponse({
+      status: 200,
+      description: 'Media metadata updated successfully',
+      type: MediaGalleryResponseDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Media item not found or not owned by the caller',
+      type: NotFoundErrorDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+/**
  * DELETE /media-gallery/:id
  * Deletes a media record from the DB and its asset from Cloudinary.
  */

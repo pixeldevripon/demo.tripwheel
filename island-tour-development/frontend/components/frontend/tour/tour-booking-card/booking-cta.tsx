@@ -3,10 +3,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useEffect, useTransition } from 'react';
 import { springPop, swapFade } from '@/lib/motion';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { buildCheckoutQuery, toDateParam } from '@/lib/checkout/checkout';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { Collapse } from './collapse';
 
 /**
  * The primary action block: an optional over-capacity note, the CTA ("Continue"
@@ -38,8 +40,25 @@ export function BookingCta() {
         selectedDepartureId,
         quote,
         currency,
+        ctaError,
     } = useBooking();
     const router = useRouter();
+    // Continue -> checkout is a full route push that can take a beat (dynamic
+    // page). useTransition keeps this screen interactive and drives a spinner
+    // in the button instead of a frozen click.
+    const [navigating, startTransition] = useTransition();
+
+    // Warm the checkout route so the Continue push is near-instant.
+    const checkoutBase =
+        destinationSlug && tourSlug
+            ? localizeHref(
+                  locale as Locale,
+                  `/${destinationSlug}/${tourSlug}/checkout`
+              )
+            : null;
+    useEffect(() => {
+        if (checkoutBase) router.prefetch(checkoutBase);
+    }, [router, checkoutBase]);
 
     // A payment-free reserve (operator_full) is not offered in v1: the card
     // shows a disabled notice in place of the CTA and trust lines.
@@ -55,7 +74,8 @@ export function BookingCta() {
     // checkout page via the query string. Without a destination/tour slug
     // (design/demo usage) it falls back to the in-card availability flow.
     function onCta() {
-        if (ready && destinationSlug && tourSlug) {
+        if (ready && checkoutBase) {
+            if (navigating) return;
             const query = buildCheckoutQuery({
                 date: selectedDate ? toDateParam(selectedDate) : null,
                 time: selectedTime,
@@ -64,11 +84,9 @@ export function BookingCta() {
                 quoteId: quote?.quoteId ?? null,
                 currency: currency ?? null,
             });
-            const base = localizeHref(
-                locale as Locale,
-                `/${destinationSlug}/${tourSlug}/checkout`
-            );
-            router.push(query ? `${base}?${query}` : base);
+            startTransition(() => {
+                router.push(query ? `${checkoutBase}?${query}` : checkoutBase);
+            });
             return;
         }
         handleCtaClick();
@@ -92,23 +110,57 @@ export function BookingCta() {
                     ).replace('{count}', String(effectiveMax))}
                 </span>
             )}
-            <motion.button
-                type='button'
-                onClick={onCta}
-                whileTap={{ scale: 0.98 }}
-                transition={springPop}
-                className='flex w-full cursor-pointer items-center justify-center rounded-it-full border-none bg-it-primary px-10 py-[19px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
-                <AnimatePresence mode='wait' initial={false}>
-                    <motion.span
-                        key={ready ? 'continue' : 'check'}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={swapFade}>
-                        {ready ? dict.continue : dict.checkAvailability}
-                    </motion.span>
-                </AnimatePresence>
-            </motion.button>
+            <div>
+                {/* What's missing (date / departure time) after a blocked CTA
+                    click - the button must never swallow a click silently. The
+                    note's gap lives INSIDE the collapse (pb) so it animates
+                    with the height tween. */}
+                <Collapse open={ctaError != null}>
+                    <p
+                        role='alert'
+                        className='m-0 pb-3 text-center text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
+                        {ctaError === 'date'
+                            ? dict.errorSelectDate
+                            : dict.errorSelectSlot}
+                    </p>
+                </Collapse>
+                <motion.button
+                    type='button'
+                    onClick={onCta}
+                    disabled={navigating}
+                    aria-busy={navigating || undefined}
+                    whileTap={navigating ? undefined : { scale: 0.98 }}
+                    transition={springPop}
+                    className={`flex w-full items-center justify-center rounded-it-full border-none bg-it-primary px-10 py-[19px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover ${
+                        navigating
+                            ? 'cursor-default opacity-80'
+                            : 'cursor-pointer'
+                    }`}>
+                    <AnimatePresence mode='wait' initial={false}>
+                        <motion.span
+                            key={
+                                navigating
+                                    ? 'navigating'
+                                    : ready
+                                      ? 'continue'
+                                      : 'check'
+                            }
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={swapFade}
+                            className='inline-flex items-center justify-center gap-2'>
+                            {navigating && (
+                                <span
+                                    aria-hidden
+                                    className='inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent'
+                                />
+                            )}
+                            {ready ? dict.continue : dict.checkAvailability}
+                        </motion.span>
+                    </AnimatePresence>
+                </motion.button>
+            </div>
             <div className='flex flex-col gap-2'>
                 {/* Free cancellation (always). */}
                 <TrustRow>

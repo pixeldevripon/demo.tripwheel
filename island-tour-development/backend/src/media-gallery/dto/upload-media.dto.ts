@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /** Sortable fields for GET /media-gallery. */
@@ -52,6 +61,42 @@ export class ConfirmUploadDto {
   })
   @IsString()
   resourceType!: string;
+}
+
+/**
+ * Body DTO for PATCH /media-gallery/:id - editable attachment metadata
+ * (dashboard single-media panel). All fields optional; empty strings are
+ * normalized to null in the service.
+ */
+export class UpdateMediaDto {
+  @ApiPropertyOptional({ example: 'Klein Curaçao beach' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'Aerial view of the west shore.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'Boats anchored off a white-sand beach' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  altText?: string;
+
+  @ApiPropertyOptional({ example: 'klein-curacao-beach.jpg' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  fileName?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  excludeFromIndexing?: boolean;
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
@@ -129,6 +174,27 @@ export class MediaGalleryResponseDto {
 
   @ApiPropertyOptional({ example: 'png', nullable: true })
   format?: string | null;
+
+  @ApiPropertyOptional({ example: 1920, nullable: true })
+  width?: number | null;
+
+  @ApiPropertyOptional({ example: 1080, nullable: true })
+  height?: number | null;
+
+  @ApiPropertyOptional({ example: 'Klein Curaçao beach', nullable: true })
+  title?: string | null;
+
+  @ApiPropertyOptional({ example: 'Aerial view.', nullable: true })
+  description?: string | null;
+
+  @ApiPropertyOptional({ example: 'Boats off a beach', nullable: true })
+  altText?: string | null;
+
+  @ApiPropertyOptional({ example: 'klein-curacao.jpg', nullable: true })
+  fileName?: string | null;
+
+  @ApiProperty({ example: false })
+  excludeFromIndexing!: boolean;
 
   @ApiProperty({ example: '2026-01-15T10:30:00.000Z' })
   uploadedAt!: Date;

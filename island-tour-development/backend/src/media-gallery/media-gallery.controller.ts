@@ -7,6 +7,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UploadedFiles,
@@ -22,6 +23,7 @@ import {
   BulkDeleteMediaDto,
   ConfirmUploadDto,
   MediaGalleryQueryDto,
+  UpdateMediaDto,
 } from './dto/upload-media.dto';
 import { MediaGalleryService } from './media-gallery.service';
 import type { MediaUploadJobPayload } from './media-upload.processor';
@@ -31,6 +33,7 @@ import {
   ApiGetMediaByIdDocs,
   ApiGetMyMediaDocs,
   ApiGetSignedParamsDocs,
+  ApiUpdateMediaDocs,
   ApiUploadMediaAsyncDocs,
   ApiUploadMediaDocs,
 } from './media-gallery.swagger';
@@ -263,6 +266,23 @@ export class MediaGalleryController {
   }
 
   // ─── Mutations ────────────────────────────────────────────────────────────────
+
+  /**
+   * PATCH /media-gallery/:id
+   *
+   * Updates editable attachment metadata (title, description, altText,
+   * fileName, excludeFromIndexing). Returns 404 if the record doesn't
+   * belong to the caller.
+   */
+  @Patch(':id')
+  @ApiUpdateMediaDocs()
+  updateMedia(
+    @Param('id') id: string,
+    @Body() dto: UpdateMediaDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.mediaGalleryService.updateMedia(id, user.id, dto);
+  }
 
   /**
    * DELETE /media-gallery/bulk

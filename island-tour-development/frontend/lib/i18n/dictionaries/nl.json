@@ -424,6 +424,8 @@
         "sellOutSubtitle": "Boek vandaag om je plek te verzekeren",
         "selectDate": "Kies datum",
         "checkAvailability": "Beschikbaarheid controleren",
+        "errorSelectDate": "Kies een datum om verder te gaan",
+        "errorSelectSlot": "Kies een vertrektijd om verder te gaan",
         "bookingUnavailable": "Deze tour is momenteel niet online te boeken.",
         "apply": "Toepassen",
         "perPersonShort": "/per persoon",
