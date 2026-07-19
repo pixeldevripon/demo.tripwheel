@@ -1,14 +1,19 @@
 'use client';
 
-import { getThankYouStatus } from '@/lib/api/bookings';
+import { getThankYouStatus, settleBooking } from '@/lib/api/bookings';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-/** Poll cadence + ceiling: ~2s x 24 ≈ 48s before we fall back to the manual link. */
-const POLL_INTERVAL_MS = 2000;
-const MAX_ATTEMPTS = 24;
+/**
+ * Poll cadence + ceiling. The synchronous settle below normally confirms on the
+ * FIRST tick, so this is only the backstop for the redirect-return methods
+ * (iDEAL/PayPal) whose intent settles a moment after the browser lands.
+ * ~1s x 20 ≈ 20s before the manual link appears.
+ */
+const POLL_INTERVAL_MS = 1000;
+const MAX_ATTEMPTS = 20;
 
 export interface ProcessingDict {
     title: string;
@@ -19,12 +24,15 @@ export interface ProcessingDict {
 
 /**
  * The /payment/processing hop (BOOKING-FLOW-DESIGN-GUIDE §21.6). After the Stripe
- * charge, the booking is confirmed asynchronously by the payment webhook
- * (`confirmFromPayment`). This screen polls `GET /bookings/typ/:publicRef` until
- * the booking reads `CONFIRMED`, then replaces the history entry with the TYP so
- * Back doesn't return to checkout. If confirmation is slow (webhook lag) it falls
- * back to a manual "View my booking" link - the TYP handles a not-yet-confirmed
- * booking too.
+ * charge, the booking is confirmed and redirected to the TYP.
+ *
+ * Fast path: `POST /payments/typ/:publicRef/settle` confirms the booking
+ * synchronously (the backend re-verifies the PaymentIntent with Stripe), so the
+ * redirect fires in ~1s instead of waiting for the async webhook. Polling
+ * `GET /bookings/typ/:publicRef` is the backstop (redirect-return methods, or a
+ * settle hiccup). Either way we `router.replace` to the TYP so Back doesn't
+ * return to checkout. The "View my booking" link only appears if BOTH stall for
+ * ~20s - it is never shown during normal loading.
  *
  * `typHref` is the locale-less TYP path (`/{destination}/thank-you/{publicRef}`),
  * served via the proxy rewrite.
@@ -46,15 +54,34 @@ export function CheckoutProcessing({
         let attempts = 0;
         let timer: ReturnType<typeof setTimeout> | undefined;
 
+        const goToTyp = () => {
+            if (!active) return;
+            // Mark the ONE-TIME "just booked" moment so the TYP shows the
+            // celebratory hero now, but the calmer management view on any later
+            // /bookings visit. ~15 min, publicRef-scoped, cleared naturally.
+            document.cookie = `it.justBooked=${encodeURIComponent(publicRef)};path=/;max-age=900;samesite=lax`;
+            router.replace(typHref);
+        };
+
+        // Fast path: confirm synchronously, then redirect the moment it reads
+        // CONFIRMED - no webhook wait. Falls through to polling on anything else.
+        const settleThenPoll = async () => {
+            try {
+                const settled = await settleBooking(publicRef);
+                if (!active) return;
+                if (settled.status === 'CONFIRMED') return goToTyp();
+            } catch {
+                // Settle unavailable (throttle/transient): the poll backstop covers it.
+            }
+            if (active) void poll();
+        };
+
         const poll = async () => {
             attempts += 1;
             try {
                 const booking = await getThankYouStatus(publicRef);
                 if (!active) return;
-                if (booking.status === 'CONFIRMED') {
-                    router.replace(typHref);
-                    return;
-                }
+                if (booking.status === 'CONFIRMED') return goToTyp();
             } catch {
                 // Transient (booking not visible yet / throttle): keep polling.
             }
@@ -66,7 +93,7 @@ export function CheckoutProcessing({
             timer = setTimeout(poll, POLL_INTERVAL_MS);
         };
 
-        poll();
+        void settleThenPoll();
         return () => {
             active = false;
             if (timer) clearTimeout(timer);

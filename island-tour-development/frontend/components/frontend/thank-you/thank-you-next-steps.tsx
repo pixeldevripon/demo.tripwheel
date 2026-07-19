@@ -12,9 +12,18 @@ type ThankYouDict = Dictionary['thankYou'];
 export function ThankYouNextSteps({
     booking,
     dict,
+    flushBottom = false,
 }: {
     booking: ThankYouBooking;
     dict: ThankYouDict;
+    /**
+     * Celebratory TYP: this section is followed by more white sections
+     * (related tours), so its bottom padding is dropped to sit flush. In the
+     * management view it is the LAST white section before the grey support
+     * band, so it keeps normal bottom padding (else the step labels crowd the
+     * boundary).
+     */
+    flushBottom?: boolean;
 }) {
     const steps: { title: string; sub?: string }[] = [
         { title: dict.step1Title, sub: dict.step1Sub },
@@ -33,7 +42,8 @@ export function ThankYouNextSteps({
     ];
 
     return (
-        <section className='it-section !pb-0 bg-it-white'>
+        <section
+            className={`it-section bg-it-white ${flushBottom ? '!pb-0' : ''}`}>
             <div className='it-container flex flex-col items-center gap-12'>
                 <Reveal>
                     <h2 className='m-0 text-center font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>

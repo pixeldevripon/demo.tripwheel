@@ -11,6 +11,7 @@ import { swapFade } from '@/lib/motion';
 import {
     readTravelerBooking,
     saveTravelerBooking,
+    storeTravelerSession,
     travelerBookingPath,
 } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -130,11 +131,29 @@ export function TravelerLogin({
             email,
             displayRef: result.displayRef,
         });
+        // Move the session token into the HttpOnly cookie BEFORE navigating,
+        // so the TYP's first server render is already verified (unmasked).
+        if (result.sessionToken) {
+            await storeTravelerSession(result.sessionToken);
+        }
         // Stay on 'redirecting' until the TYP page takes over - the router
         // keeps this screen mounted while the destination loads.
         setPhase('redirecting');
+        // A guarded surface (the /cancel page) may have sent us here to
+        // verify; send the traveller straight back. Same-app paths only -
+        // the strict shape check makes an open redirect impossible. Read at
+        // submit time (not useSearchParams) so the page stays prerenderable.
+        const returnTo = new URLSearchParams(window.location.search).get(
+            'returnTo'
+        );
+        const safeReturn =
+            returnTo &&
+            /^\/(?:[a-z0-9-]+\/thank-you|cancel)\/[A-Za-z0-9-]+$/.test(returnTo)
+                ? returnTo
+                : null;
         router.push(
-            travelerBookingPath(result.destinationSlug, result.publicRef)
+            safeReturn ??
+                travelerBookingPath(result.destinationSlug, result.publicRef)
         );
     }
 

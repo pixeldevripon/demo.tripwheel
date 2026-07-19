@@ -72,22 +72,37 @@ These exist today and are directly reusable:
 
 | Spec feature (v1) | As-built | Gap |
 |---|---|---|
-| Email + booking-reference pair login | **Not built.** Only `GET /bookings/typ/:publicRef` (`@Public`), a TYP lookup keyed on the unguessable uuid token - no email+reference verification | **Build** a new rate-limited pair-lookup endpoint + `/bookings` page |
+| Email + booking-reference pair login | **BUILT** - `POST /bookings/lookup` (throttled, enumeration-proof) + the `/bookings` page (`traveler-login.tsx`) | None |
+| Session after a successful pair match | **BUILT (2026-07-19)** - the lookup issues a 24h HMAC email-bound token (`traveler-session.util.ts`); the frontend parks it in a first-party **HttpOnly** cookie via `POST /api/traveler-session` and replays it as `X-Traveler-Session`. Checkout's contact PATCH issues the same token so the fresh booker lands verified | None |
+| TYP link possession =/= identity | **BUILT (2026-07-19)** - `GET /bookings/typ/:publicRef` returns a `verified` flag; without an owning session the payload is MASKED (email `d•••@g•••.com`, last-name initial, phone last-2, pickup address + card details withheld) and the page shows a "verify it's you" card into `/bookings` (`?returnTo=` deep-return supported, shape-validated) | None |
+| Cancellation is owner-only | **BUILT (2026-07-19)** - `POST .../cancellation-request` 401s without a session owning the booking's contact email; the `/cancel/{publicRef}` page routes unverified visitors through the pair login and back | None |
 | No passwords / no signup for travelers | Aligned - `USER` role exists, `disableSignUp: true`, bookings auto-create guest users | None |
 | Non-sequential `display_ref` | Partial - `displayRef` exists and is unique, but generation is `IT-2026-00042` (looks sequential); spec wants random within format, ambiguous chars excluded | **Change** the display_ref generator to random/non-sequential |
-| Enumeration-proof responses | Not built (no such endpoint yet) | Build into the new endpoint + DoD test |
-| Rate limits (5/email/15min, per-IP, per-ref) | Partial - infra exists (throttler + Better Auth limiter) but no traveler-lookup-specific rules | **Add** custom limits on the new endpoint, backed by shared store |
-| "Lost your reference?" email recovery | Not built | Build (reuses Resend infra) |
-| Recovery endpoint own limits | Not built | Build |
-| Email-code step-up for invoices / cross-booking | Not built | Build (6-digit email code via Resend + short-lived token) |
+| Enumeration-proof responses | **BUILT** - uniform 404 body on mismatch; uniform 429 on lockout | None |
+| Rate limits (5/email/15min, per-IP, per-ref) | **BUILT (2026-07-19)** - `lookup-rate-limiter.ts`: 5 fails/email/15min + 10 fails/reference/15min on top of the per-IP throttle; silent until lockout; audit log lines + lockout warn (ops smell). In-memory (single-process deploy) - move to Redis if the API scales out | None |
+| "Lost your reference?" email recovery | **BUILT** - `POST /bookings/lookup/recover-reference`, always acks `{sent:true}` | None |
+| Recovery endpoint own limits | **BUILT** - dedicated `@Throttle` tiers | None |
+| Email-code step-up for invoices / cross-booking | Not built - **deliberately deferred (founder decision 2026-07-19)**: v1 has no invoice download or cross-booking history surface, so the session covers everything that exists. Build with those features | Deferred |
 | Support-mediated email correction | Not built (admin can edit, no dedicated verified rebind flow) | Build later / procedural |
-| 7 locales, ref placeholder not localized | Frontend i18n exists (7 locales); page itself not built | Build page in i18n framework |
-| GA4 `login` (`method: booking_ref`) | Not built | Build with the page |
-| No "keep me logged in" | Aligned by omission | None |
+| 7 locales, ref placeholder not localized | **BUILT** - `/bookings` page + verify cards ship in all 7 locales | None |
+| GA4 `login` (`method: booking_ref`) | Not built | Build with the tracking module |
+| No "keep me logged in" | Aligned by omission (session token expires after 24h; HttpOnly cookie maxAge matches) | None |
 
-**Traveler verdict:** ~0% built. The reference *fields* exist; the login *flow* does not. This is a
-net-new rate-limited endpoint + a public page, and it does **not** need Better Auth sessions in v1
-(the spec says a thin endpoint over bookings, no auth user needed).
+**Traveler verdict (updated 2026-07-19):** core surface BUILT end to end - pair login, HttpOnly
+server session, masked-vs-verified TYP, owner-only cancellation, credential rate caps, audit lines.
+Remaining: non-sequential display_ref generation, GA4 login event, and the deferred email-code
+step-up. Still no Better Auth involvement for travelers, per the spec.
+
+**EXECUTED 2026-07-19 (traveler session hardening):** backend
+`src/bookings/traveler-session.util.ts` (HMAC v1 token, `TRAVELER_SESSION_SECRET` env with
+`BETTER_AUTH_SECRET` fallback, PII maskers), `lookup-rate-limiter.ts`, service/controller/DTO wiring
+(`sessionToken` on lookup + contact-PATCH responses, `verified` + masked fields on the TYP payload,
+401-gated cancellation, `X-Traveler-Session` in CORS allow-list); frontend
+`app/api/traveler-session/route.ts` (HttpOnly cookie set/clear), `lib/traveler-session.server.ts`,
+`storeTravelerSession` (login + checkout call sites), session-aware TYP/cancel pages,
+`ThankYouVerifyNotice` card, `returnTo` deep-return on `/bookings`, 7-locale strings. Verified: 159
+backend unit tests green, live smoke (masked bare link -> lookup token -> unmasked + 401/409
+cancellation gate).
 
 ---
 

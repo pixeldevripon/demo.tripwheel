@@ -17,6 +17,7 @@ import {
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
   BookingResponseDto,
+  UpdateBookingResponseDto,
   ListBookingsResponseDto,
   RecoverReferenceResponseDto,
   RequestCancellationResponseDto,
@@ -86,7 +87,7 @@ export const ApiExtendDocs = () =>
 export const ApiUpdateBookingDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'Update booking contact / notes / pickup' }),
-    ApiOkResponse({ type: BookingResponseDto }),
+    ApiOkResponse({ type: UpdateBookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
   );

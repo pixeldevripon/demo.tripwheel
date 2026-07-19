@@ -269,6 +269,58 @@ rough: S (1-2 days), M (3-5 days), L (1-2 weeks).
 6. **RBAC note**: all seats keep the `TOUR_OPERATOR` platform `Role`; `seatRole` is the *intra-operator*
    distinction and is checked in the service, not via a new platform role.
 
+> **EXECUTED 2026-07-19 (full phase, extended beyond the plan):** Phase 2 is built end to end,
+> with two deliberate deviations and one major extension.
+> - **Unified table, not operator-only:** the seats table is `staff_members` (+
+>   `staff_designations`), covering BOTH operator team seats (`operatorId` set, user role
+>   `TOUR_OPERATOR`) AND platform admin-side staff (`operatorId` NULL, user role `STAFF`).
+>   E.11's `operator_users` shape (seatRole owner/manager/staff, status invited/active/suspended,
+>   invitedBy, lastLoginAt) is preserved inside it. Schema: `backend/prisma/staff.prisma`;
+>   migration `20260719180644_staff_and_designations` backfills an ACTIVE OWNER seat per existing
+>   operator and seeds 3 system platform designations.
+> - **Fine-grained permissions (extension):** effective set = (designation.permissions ∪
+>   extraPermissions) − revokedPermissions, capped to a per-scope grant ceiling (platform ceiling
+>   = ADMIN set minus MANAGE_SYSTEM/MANAGE_STAFF/MANAGE_TEAM; seat ceiling = TOUR_OPERATOR set
+>   minus MANAGE_TEAM/MANAGE_OPERATOR_PAYMENTS) plus a non-revocable floor
+>   (VIEW_PROFILE/EDIT_PROFILE). Single policy source `src/config/staff.config.ts`; computed by
+>   the @Global `StaffPermissionsService` (60s cache, invalidated on every staff mutation) which
+>   `PermissionsGuard` and `GET /users/me/permissions` now consult. A STAFF-role user WITHOUT a
+>   staff record resolves to the floor only (closes the role-flip escalation path).
+> - Items 2-5 as planned: `resolveOperatorId` (shared util) resolves ACTIVE seats; owner-only
+>   gates kept for Stripe/Mollie payout config + seat management (`MANAGE_TEAM` sits outside the
+>   seat ceiling, so only owners/admins ever hold it); operator profile/company/social accept any
+>   active seat via `assertMemberOrAdmin` (still permission-gated). Seat management API:
+>   `/api/v1/staff/team[...]` + designations; platform staff API: `/api/v1/staff[...]`
+>   (MANAGE_STAFF, admin-only by ceiling). Invites reuse the operator invite flow (throwaway
+>   credential + server-initiated reset -> invite email); suspension deletes sessions, sets
+>   user.status SUSPENDED, and is enforced immediately (AuthGuard now calls getSession with
+>   `disableCookieCache` and rejects SUSPENDED/DELETED; a `session.create.before` hook blocks
+>   re-login with 403).
+> - **NOT in scope here (per founder direction):** 2FA (Phase 3), step-up (Phase 4), Google SSO
+>   (Phase 5), subdomain/cookie split (Phase 6). Staff/seat login is the existing email+password
+>   door.
+> - Dashboard (tripwheel-x-islandtours-dashboard): one `/team` route, role-branched (admin ->
+>   platform staff + designations; operator owner -> team seats + designations) with a grouped
+>   permission-matrix editor, per-member override sheet, invite dialog, suspend/resend/remove
+>   actions. `RoleProvider`/sidebar now distribute the backend-computed EFFECTIVE permission set
+>   (fetched in `getUserProfile`), so every existing `useRole().can()` gate honors fine-grained
+>   staff grants automatically.
+> - Also hardened while wiring: `GET /bookings` + `GET /bookings/:id` now require VIEW_BOOKINGS
+>   (they were auth-only), with platform-wide scope for STAFF/EDITOR holders; suspended accounts
+>   can no longer ride the 5-minute session cookie cache.
+> - **Security + code review round (same day, both fixed):** (1) closed the role-flip escalation -
+>   MANAGE_USERS/CREATE_USER/UPDATE_USER/DELETE_USER and MANAGE_OPERATOR_PAYMENTS are now outside
+>   the platform-staff grant ceiling, and `PATCH /users/:id/role` additionally requires a true
+>   ADMIN caller; (2) `GET /users/:id/permissions` is admin-or-self (was IDOR-readable by any
+>   VIEW_PERMISSIONS holder); (3) `PATCH /users/:id(/status)` now runs the same suspension side
+>   effects as the staff API (session kill + staff-row sync + cache invalidation); (4)
+>   `updateTeamMember` collapsed to one validated write (was two non-atomic writes); (5) invite
+>   provisioning extracted to the shared `provisionInvitedAccount` util (operators + staff use
+>   one implementation); (6) permission catalog gated by VIEW_PERMISSIONS; resend-invite endpoints
+>   throttled to human pace; (7) dashboard STAFF fallback is the profile floor, never the legacy
+>   static STAFF list. Known limit: the permission cache is in-process - add shared invalidation
+>   before any multi-instance deployment.
+
 > **Alternative (only if multi-operator management appears):** the Better Auth `organization` plugin -
 > Operator maps 1:1 to an organization, seats become members (`owner`/`admin`/`member` renamed to
 > `owner`/`manager`/`staff` via access-control), invitations built in. Trade-off: a parallel

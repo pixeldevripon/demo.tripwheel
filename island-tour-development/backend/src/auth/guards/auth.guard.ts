@@ -41,8 +41,13 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
+    // disableCookieCache: the signed cookie snapshot would otherwise keep a
+    // session "valid" for up to 5 minutes after it was revoked server-side
+    // (staff suspension, password change, sign-out-everywhere). Guarded API
+    // routes must always validate against the session store.
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
+      query: { disableCookieCache: true },
     });
 
     if (session) {

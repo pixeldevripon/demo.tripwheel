@@ -54,12 +54,18 @@ function PctChip({ tone, children }: { tone: 'paid' | 'unpaid'; children: ReactN
 export function ThankYouSummary({
     booking,
     dict,
+    cancelHref,
 }: {
     booking: ThankYouBooking;
     dict: ThankYouDict;
+    /** Management view only: renders a "Need to cancel?" link by the free-cancel row. */
+    cancelHref?: string;
 }) {
     const { payment } = booking;
     const money = (n: number) => `${payment.currencySymbol}${n}`;
+    // Identity rows (pickup, operator contact, guest lead) come back empty/null
+    // on the unverified payload; each is rendered only when it has a value, so
+    // the shared-link view shows non-identifying tour facts only.
 
     return (
         <section className='it-section bg-it-surface'>
@@ -90,44 +96,61 @@ export function ThankYouSummary({
                                     label={dict.duration}>
                                     {booking.durationLabel}
                                 </DetailRow>
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-location.svg'
-                                    label={dict.pickup}>
-                                    {booking.pickupLabel}
-                                </DetailRow>
+                                {booking.pickupLabel && (
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-location.svg'
+                                        label={dict.pickup}>
+                                        {booking.pickupLabel}
+                                    </DetailRow>
+                                )}
                                 <DetailRow
                                     icon='/icons/thank-you/detail-cancel.svg'
                                     label={dict.freeCancel}>
-                                    {dict.beforeDate.replace(
-                                        '{date}',
-                                        booking.freeCancelBeforeLabel,
-                                    )}
+                                    <span className='flex flex-col items-end gap-0.5'>
+                                        {dict.beforeDate.replace(
+                                            '{date}',
+                                            booking.freeCancelBeforeLabel,
+                                        )}
+                                        {cancelHref && (
+                                            <a
+                                                href={cancelHref}
+                                                className='text-[13px] leading-[1.4] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80'>
+                                                {dict.needToCancel}
+                                            </a>
+                                        )}
+                                    </span>
                                 </DetailRow>
                                 <DetailRow
                                     icon='/icons/thank-you/detail-trip.svg'
                                     label={dict.trip}>
                                     {booking.operatorName}
                                 </DetailRow>
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-sms.svg'
-                                    label={dict.email}>
-                                    {booking.operatorEmail}
-                                </DetailRow>
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-call.svg'
-                                    label={dict.phoneNumber}>
-                                    {booking.operatorPhone}
-                                </DetailRow>
+                                {booking.operatorEmail && (
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-sms.svg'
+                                        label={dict.email}>
+                                        {booking.operatorEmail}
+                                    </DetailRow>
+                                )}
+                                {booking.operatorPhone && (
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-call.svg'
+                                        label={dict.phoneNumber}>
+                                        {booking.operatorPhone}
+                                    </DetailRow>
+                                )}
                                 <DetailRow
                                     icon='/icons/thank-you/detail-travelers.svg'
                                     label={dict.traveler}>
                                     {booking.partyLabel}
                                 </DetailRow>
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-profile.svg'
-                                    label={dict.guestLead}>
-                                    {booking.guestLead}
-                                </DetailRow>
+                                {booking.guestLead && (
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-profile.svg'
+                                        label={dict.guestLead}>
+                                        {booking.guestLead}
+                                    </DetailRow>
+                                )}
                             </div>
                         </div>
                     </Reveal>
@@ -152,9 +175,12 @@ export function ThankYouSummary({
                                                     )}
                                                 </PctChip>
                                             </span>
-                                            <span className={rowValue}>
-                                                {payment.cardLabel}
-                                            </span>
+                                            {/* Withheld in masked mode (unverified viewer) - hide the row, no blank line. */}
+                                            {payment.cardLabel && (
+                                                <span className={rowValue}>
+                                                    {payment.cardLabel}
+                                                </span>
+                                            )}
                                         </span>
                                     </div>
                                 )}

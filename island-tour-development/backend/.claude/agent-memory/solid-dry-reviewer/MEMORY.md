@@ -10,3 +10,5 @@
 - [categories-module-review.md](categories-module-review.md) — Detailed review findings for the categories module (May 2026), including TOCTOU and locale validation gaps
 - [cross-module-patterns.md](cross-module-patterns.md) — Canonical list of project-wide DRY violations and good patterns to preserve
 - [hubs-module-review.md](hubs-module-review.md) — Code review findings for src/hubs/ (May 2026): locale param bypass, en-deletion gap, TOCTOU in remove(), dead catch block
+- [Staff & Teams module review](staff_team_module_review.md) — 2026-07-19: best-architected module yet (computeEffectivePermissions single source), but VIEW_PERMISSIONS IDOR gap, updateTeamMember non-atomic 2-write, invite-flow duplication vs OperatorsService
+- [Payments settle-on-return review](payments_settle_on_return.md) — 2026-07-19: sync-confirm-on-return is correct/industry-standard, reuses webhook's onIntentSucceeded; confirmFromPayment/finalizeConfirmation use correct mark-first atomic updateMany BUT that guard has zero test coverage; settle route throttle missing `long` tier sibling routes pin

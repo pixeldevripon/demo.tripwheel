@@ -1,8 +1,9 @@
 import { CancelRequestCard } from '@/components/frontend/cancel/cancel-request-card';
 import { MountReveal } from '@/components/frontend/mount-reveal';
-import { isLocale, type Locale } from '@/lib/constants/locales';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { DEMO_PUBLIC_REF, getThankYouBooking } from '@/lib/thank-you/thank-you';
+import { getTravelerSessionToken } from '@/lib/traveler-session.server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -35,14 +36,40 @@ async function CancelBody({
     locale: Locale;
 }) {
     await connection();
+    const sessionToken = await getTravelerSessionToken();
     const [dict, booking] = await Promise.all([
         getDictionary(locale),
-        getThankYouBooking(publicRef, locale),
+        getThankYouBooking(publicRef, locale, sessionToken),
     ]);
     if (!booking) notFound();
 
     const thankYouHref = `/${booking.destinationSlug}/thank-you/${booking.publicRef}`;
     const cd = dict.cancelBooking;
+
+    // Cancelling is a mutation, so link possession is not enough (master 6.4:
+    // wrong-party cancellation is exactly what the tokenized page prevents).
+    // No owning session -> route through the /bookings pair login, which sets
+    // the HttpOnly session and returns straight back here.
+    if (!booking.verified) {
+        const verifyHref = `${localizeHref(locale, '/bookings')}?returnTo=${encodeURIComponent(
+            `/cancel/${booking.publicRef}`,
+        )}`;
+        return (
+            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
+                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                    {cd.verifyTitle}
+                </span>
+                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    {cd.verifyBody}
+                </p>
+                <Link
+                    href={verifyHref}
+                    className='mt-4 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
+                    {cd.verifyCta}
+                </Link>
+            </div>
+        );
+    }
 
     // Master 6.4 page copy: "Cancel {tour}, {date}?"
     const title = cd.title
@@ -116,6 +143,7 @@ async function CancelBody({
                 displayRef={booking.displayRef}
                 refundLabel={refundLabel}
                 thankYouHref={thankYouHref}
+                sessionToken={sessionToken ?? ''}
             />
         </MountReveal>
     );

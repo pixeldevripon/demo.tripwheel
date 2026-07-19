@@ -18,8 +18,17 @@ metadata:
 | users/user.service.ts | users/user.service.spec.ts | |
 | settings/settings.service.ts | settings/settings.service.spec.ts | |
 | media-gallery/media-gallery.service.ts | media-gallery/media-gallery.service.spec.ts | |
+| config/staff.config.ts | config/staff.config.spec.ts | computeEffectivePermissions formula, ceiling capping, base floor (added 2026-07-19) |
+| staff/staff-permissions.service.ts | staff/staff-permissions.service.spec.ts | static-role short circuit, no-row fallbacks, 60s cache, invalidate/invalidateAll (added 2026-07-19) |
+| staff/staff.service.ts | staff/staff.service.spec.ts | invite flows + rollback, team operator resolution, status/removal guards, designation CRUD (added 2026-07-19) |
+| auth/guards/permissions.guard.ts | auth/guards/permissions.guard.spec.ts | no-metadata passthrough, missing-user 403, hasPermissions delegation (added 2026-07-19) |
 
 ## Total test counts (trips module, 2026-05-30)
 - trips.service.spec.ts: 80 tests
 - trips-children.service.spec.ts: 89 tests
 - Combined: 169 passing
+
+## Staff & Teams module (2026-07-19) - see unit-test-writer/project_staff_module_tests.md for detail
+- 66 tests across the 4 files above, all green; full suite 55 suites / 1150 tests (7
+  pre-existing unrelated failures in bookings.service.spec.ts, confirmed present without
+  the staff module changes too)

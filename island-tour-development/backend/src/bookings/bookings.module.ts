@@ -5,6 +5,7 @@ import { TiersModule } from '@/tiers/tiers.module';
 import { FxModule } from '@/fx/fx.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
+import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 
 /**
  * Bookings module - OCTO reserve→confirm lifecycle over the `departures` inventory.
@@ -16,7 +17,7 @@ import { BookingsService } from './bookings.service';
 @Module({
   imports: [TrackingModule, NotificationsModule, TiersModule, FxModule],
   controllers: [BookingsController],
-  providers: [BookingsService],
-  exports: [BookingsService],
+  providers: [BookingsService, LookupRateLimiter, TargetRateLimiter],
+  exports: [BookingsService, TargetRateLimiter],
 })
 export class BookingsModule {}

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
@@ -23,6 +24,7 @@ function mockPrisma() {
       updateMany: jest.fn(),
       count: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     operator: { findUnique: jest.fn() },
     stripeWebhookEvent: { create: jest.fn(), update: jest.fn() },
@@ -48,6 +50,7 @@ describe('PaymentsService', () => {
   let prisma: any;
   let stripe: any;
   let bookings: any;
+  let targetLimiter: any;
   let svc: PaymentsService;
 
   beforeEach(() => {
@@ -62,6 +65,7 @@ describe('PaymentsService', () => {
       paymentMethods: jest.fn().mockResolvedValue([]),
       publishableKey: jest.fn().mockResolvedValue('pk_test_123'),
       constructEvent: jest.fn(),
+      retrievePaymentIntent: jest.fn(),
       // Webhooks never expand nested objects, so the card/billing snapshot has to
       // fetch the charge behind `latest_charge`.
       retrieveCharge: jest.fn().mockResolvedValue({
@@ -76,7 +80,8 @@ describe('PaymentsService', () => {
       }),
     };
     bookings = { confirmFromPayment: jest.fn().mockResolvedValue(undefined) };
-    svc = new PaymentsService(prisma, stripe, bookings);
+    targetLimiter = { consume: jest.fn() };
+    svc = new PaymentsService(prisma, stripe, bookings, targetLimiter);
   });
 
   // Dashboard payments table (DASH2): scoping + row mapping.
@@ -392,6 +397,120 @@ describe('PaymentsService', () => {
       await expect(svc.handleMollieWebhook('')).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+  });
+
+  describe('settleFromReturn (synchronous confirm-on-return)', () => {
+    it('confirms immediately when Stripe reports the intent succeeded', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.CONFIRMED,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({ intentId: 'pi_1' });
+      stripe.retrievePaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        status: 'succeeded',
+        metadata: { bookingId: 'b1' },
+        latest_charge: 'ch_1',
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(stripe.retrievePaymentIntent).toHaveBeenCalledWith('pi_1');
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.objectContaining({ last4: '4242', brand: 'visa' }),
+      );
+      expect(res).toEqual({
+        status: BookingStatus.CONFIRMED,
+        publicRef: 'pub-1',
+      });
+    });
+
+    it('is a no-op once the booking is already CONFIRMED (webhook won the race)', async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: 'b1',
+        status: BookingStatus.CONFIRMED,
+        publicRef: 'pub-1',
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(stripe.retrievePaymentIntent).not.toHaveBeenCalled();
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+      expect(res.status).toBe(BookingStatus.CONFIRMED);
+    });
+
+    it('does NOT confirm when the intent has not succeeded yet', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({ intentId: 'pi_1' });
+      stripe.retrievePaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        status: 'processing',
+        metadata: { bookingId: 'b1' },
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+      expect(res.status).toBe(BookingStatus.ON_HOLD);
+    });
+
+    it('swallows a Stripe error and returns the unchanged status (webhook backstop)', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({ intentId: 'pi_1' });
+      stripe.retrievePaymentIntent.mockRejectedValue(new Error('stripe down'));
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(res.status).toBe(BookingStatus.ON_HOLD);
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+    });
+
+    it('404s an unknown publicRef', async () => {
+      prisma.booking.findUnique.mockResolvedValue(null);
+      await expect(svc.settleFromReturn('nope')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('applies the per-target rate limit before touching Stripe', async () => {
+      const limitErr = new Error('too many');
+      targetLimiter.consume.mockImplementation(() => {
+        throw limitErr;
+      });
+      await expect(svc.settleFromReturn('pub-1')).rejects.toBe(limitErr);
+      expect(targetLimiter.consume).toHaveBeenCalledWith(
+        'settle',
+        'pub-1',
+        expect.any(Array),
+      );
+      expect(prisma.booking.findUnique).not.toHaveBeenCalled();
+      expect(stripe.retrievePaymentIntent).not.toHaveBeenCalled();
     });
   });
 });

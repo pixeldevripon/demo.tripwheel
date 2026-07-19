@@ -44,35 +44,42 @@ export function ThankYouQuestion({
                                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                                     {booking.operatorName}
                                 </span>
+                                {/* Operator contact is withheld on the unverified
+                                    (masked) payload - render each link only when
+                                    present so the shared-link view stays clean. */}
                                 <div className='flex flex-col gap-1'>
-                                    <a
-                                        href={`mailto:${booking.operatorEmail}`}
-                                        className='flex w-fit items-center gap-2.5'>
-                                        <Image
-                                            src='/icons/thank-you/contact-sms.svg'
-                                            alt=''
-                                            width={24}
-                                            height={24}
-                                            className='size-6'
-                                        />
-                                        <span className={contactText}>
-                                            {booking.operatorEmail}
-                                        </span>
-                                    </a>
-                                    <a
-                                        href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
-                                        className='flex w-fit items-center gap-2.5'>
-                                        <Image
-                                            src='/icons/thank-you/contact-call.svg'
-                                            alt=''
-                                            width={24}
-                                            height={24}
-                                            className='size-6'
-                                        />
-                                        <span className={contactText}>
-                                            {booking.operatorPhone}
-                                        </span>
-                                    </a>
+                                    {booking.operatorEmail && (
+                                        <a
+                                            href={`mailto:${booking.operatorEmail}`}
+                                            className='flex w-fit items-center gap-2.5'>
+                                            <Image
+                                                src='/icons/thank-you/contact-sms.svg'
+                                                alt=''
+                                                width={24}
+                                                height={24}
+                                                className='size-6'
+                                            />
+                                            <span className={contactText}>
+                                                {booking.operatorEmail}
+                                            </span>
+                                        </a>
+                                    )}
+                                    {booking.operatorPhone && (
+                                        <a
+                                            href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
+                                            className='flex w-fit items-center gap-2.5'>
+                                            <Image
+                                                src='/icons/thank-you/contact-call.svg'
+                                                alt=''
+                                                width={24}
+                                                height={24}
+                                                className='size-6'
+                                            />
+                                            <span className={contactText}>
+                                                {booking.operatorPhone}
+                                            </span>
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                         </div>

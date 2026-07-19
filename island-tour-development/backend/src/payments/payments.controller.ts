@@ -12,7 +12,7 @@ import {
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Permission } from '@prisma/client';
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
@@ -24,6 +24,7 @@ import {
   ApiCreateIntentDocs,
   ApiListPaymentsDocs,
   ApiMollieWebhookDocs,
+  ApiSettleBookingDocs,
   ApiStripeWebhookDocs,
 } from './payments.swagger';
 
@@ -34,6 +35,10 @@ import {
  *   the unguessable booking id) and returns a client secret for Stripe.js.
  * - `POST /payments/webhook` is `@Public()` + `@SkipThrottle()` (master rule #15):
  *   Stripe signs it, we verify against the **raw** body, and it is idempotent.
+ * - `POST /payments/typ/:publicRef/settle` is `@Public()` (keyed on publicRef):
+ *   the synchronous "confirm on return" fast path; re-verifies the intent with
+ *   Stripe and is idempotent with the webhook (both funnel through the same
+ *   atomically-guarded `confirmFromPayment`).
  */
 @ApiTags('Payments')
 @Controller('payments')
@@ -55,6 +60,32 @@ export class PaymentsController {
   @ApiCreateIntentDocs()
   createIntent(@Param('id') id: string) {
     return this.payments.createIntentForBooking(id);
+  }
+
+  /**
+   * POST /payments/typ/:publicRef/settle
+   *
+   * Synchronous "confirm on return" (traveller checkout, keyed on the
+   * unguessable publicRef - same capability the TYP URL rides on, so nothing
+   * new is exposed). The browser calls this the instant Stripe.js reports the
+   * payment succeeded, so the booking confirms without waiting for the async
+   * webhook. The service re-verifies the PaymentIntent with Stripe (never
+   * trusts the client) and is idempotent with the webhook. Human-pace throttle
+   * - the processing page calls it once or twice, never in a loop.
+   */
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 10, ttl: 60_000 },
+    // Explicit hourly ceiling like the sibling publicRef routes - this is the
+    // one that costs a live Stripe API call per hit, so it must not silently
+    // inherit the loose global tier (3000/hr, sized for dashboard loads).
+    long: { limit: 20, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/settle')
+  @Public()
+  @ApiSettleBookingDocs()
+  settle(@Param('publicRef') publicRef: string) {
+    return this.payments.settleFromReturn(publicRef);
   }
 
   @Post('webhook')

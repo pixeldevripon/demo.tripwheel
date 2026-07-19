@@ -10,6 +10,7 @@
  */
 import 'server-only';
 import { publicGetStrict } from './fetch';
+import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
 /** Conversion payload (master booking_complete contract; value = EUR commission). */
 export interface TypConversion {
@@ -40,6 +41,12 @@ export interface TypPartyLine {
  * locale-formatted on the frontend (`lib/thank-you/thank-you.ts`).
  */
 export interface TypResponse {
+    /**
+     * True when the request carried a traveler session owning this booking.
+     * False = masked mode: guest last name/email/phone masked, pickup address
+     * and card details withheld (the bare publicRef link is view-only).
+     */
+    verified: boolean;
     publicRef: string;
     displayRef: string;
     status: string;
@@ -79,9 +86,18 @@ export interface TypResponse {
     conversion: TypConversion | null;
 }
 
-/** Fetch the real TYP payload by public ref, or null on a backend 404. */
-export function getTypByRef(publicRef: string): Promise<TypResponse | null> {
+/**
+ * Fetch the real TYP payload by public ref, or null on a backend 404.
+ * `sessionToken` (the HttpOnly traveler cookie, read server-side) unlocks the
+ * unmasked payload; without it the backend returns masked mode. Uncached, so
+ * the per-user header is safe here.
+ */
+export function getTypByRef(
+    publicRef: string,
+    sessionToken?: string | null
+): Promise<TypResponse | null> {
     return publicGetStrict<TypResponse>(
-        `/bookings/typ/${encodeURIComponent(publicRef)}`
+        `/bookings/typ/${encodeURIComponent(publicRef)}`,
+        sessionToken ? { [TRAVELER_SESSION_HEADER]: sessionToken } : undefined
     );
 }

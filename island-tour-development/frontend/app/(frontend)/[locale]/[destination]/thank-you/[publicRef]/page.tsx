@@ -4,6 +4,8 @@ import { ThankYouNextSteps } from '@/components/frontend/thank-you/thank-you-nex
 import { ThankYouQuestion } from '@/components/frontend/thank-you/thank-you-question';
 import { ThankYouRelatedTours } from '@/components/frontend/thank-you/thank-you-related-tours';
 import { ThankYouSummary } from '@/components/frontend/thank-you/thank-you-summary';
+import { ThankYouVerifyNotice } from '@/components/frontend/thank-you/thank-you-verify-notice';
+import { BookingManageHeader } from '@/components/frontend/thank-you/booking-manage-header';
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import {
@@ -18,6 +20,10 @@ import {
     getThankYouBooking,
     getThankYouRelatedTours,
 } from '@/lib/thank-you/thank-you';
+import {
+    getTravelerSessionToken,
+    isJustBooked,
+} from '@/lib/traveler-session.server';
 import { searchHitToListing } from '@/lib/tours/listing';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -88,41 +94,88 @@ async function ThankYouBody({
     dict: Dictionary;
 }) {
     await connection();
-    const booking = await getThankYouBooking(publicRef, locale);
+    // The HttpOnly traveler session (set by checkout or the /bookings login)
+    // unlocks the unmasked payload; a bare shared link renders masked with a
+    // "verify it's you" card instead of the manage actions.
+    const sessionToken = await getTravelerSessionToken();
+    const booking = await getThankYouBooking(publicRef, locale, sessionToken);
     if (!booking || booking.destinationSlug !== destination) notFound();
+
+    // Three presentations of the same booking:
+    //  - masked:       unverified shared link - non-identifying facts + verify card
+    //  - celebratory:  the ONE-TIME "you're booked!" moment right after checkout
+    //  - management:   a later verified visit (via /bookings) - calm "manage" view
+    const justBooked = await isJustBooked(publicRef);
+    const mode: 'masked' | 'celebratory' | 'management' = !booking.verified
+        ? 'masked'
+        : justBooked
+          ? 'celebratory'
+          : 'management';
+    // Cancel is the locale-less /cancel/{publicRef} (proxy rewrite), NOT under
+    // the destination segment like the TYP - the confirmation email links it too.
+    const cancelHref = `/cancel/${booking.publicRef}`;
 
     // Critical rule 22 (for the pending tracking module): conversion value is
     // `commission_amount` in EUR, never GMV, and only when status is CONFIRMED
     // with a non-null `commissionAmountEur` - a confirmed booking with null
     // commission is data corruption and must fire NO conversion.
 
-    // Cross-sell is cached/tagged content, unrelated to the booking - fetched
-    // after it so an empty/failed result just hides the section.
-    const relatedHits = await getThankYouRelatedTours({
-        destinationSlug: booking.destinationSlug,
-        excludeTourId: booking.tourId,
-        locale,
-    });
+    // Cross-sell + apartment upsell belong to the celebratory moment only; the
+    // management/masked views are utilitarian, so skip the fetch there entirely.
+    const relatedHits =
+        mode === 'celebratory'
+            ? await getThankYouRelatedTours({
+                  destinationSlug: booking.destinationSlug,
+                  excludeTourId: booking.tourId,
+                  locale,
+              })
+            : [];
 
     const { title, seeAll, seeAllCount, ...cardDict } = dict.destination.listings;
 
     return (
         <>
-            <ThankYouHero booking={booking} dict={dict.thankYou} />
-            <ThankYouSummary booking={booking} dict={dict.thankYou} />
-            <ThankYouNextSteps booking={booking} dict={dict.thankYou} />
-            <ThankYouRelatedTours
-                tours={relatedHits.map(hit =>
-                    searchHitToListing(hit, locale, dict.search),
-                )}
+            {mode === 'celebratory' && (
+                <ThankYouHero booking={booking} dict={dict.thankYou} />
+            )}
+            {mode === 'management' && (
+                <BookingManageHeader
+                    booking={booking}
+                    cancelHref={cancelHref}
+                    dict={dict.thankYou}
+                />
+            )}
+            {mode === 'masked' && (
+                <ThankYouVerifyNotice locale={locale} dict={dict.thankYou} />
+            )}
+            <ThankYouSummary
+                booking={booking}
                 dict={dict.thankYou}
-                cardDict={cardDict}
-                toursHref={toursHref}
+                cancelHref={mode === 'management' ? cancelHref : undefined}
             />
-            <ThankYouApartmentPromo
-                apartment={booking.apartment}
-                dict={dict.thankYou}
-            />
+            {mode !== 'masked' && (
+                <ThankYouNextSteps
+                    booking={booking}
+                    dict={dict.thankYou}
+                    flushBottom={mode === 'celebratory'}
+                />
+            )}
+            {mode === 'celebratory' && (
+                <>
+                    <ThankYouRelatedTours
+                        tours={relatedHits.map(hit =>
+                            searchHitToListing(hit, locale, dict.search),
+                        )}
+                        dict={dict.thankYou}
+                        cardDict={cardDict}
+                        toursHref={toursHref}
+                    />
+                    <ThankYouApartmentPromo
+                        apartment={booking.apartment}
+                        dict={dict.thankYou}
+                    />
+                </>
+            )}
             <ThankYouQuestion booking={booking} dict={dict.thankYou} />
         </>
     );

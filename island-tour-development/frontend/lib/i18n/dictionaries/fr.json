@@ -715,7 +715,10 @@
     "sentTitle": "Demande d'annulation envoyée.",
     "sentBody": "Nous nous en occupons. Vous recevrez un e-mail confirmant votre annulation et votre remboursement.",
     "notActive": "Cette réservation n'est plus active, il n'y a donc rien à annuler.",
-    "error": "Cela n'a pas fonctionné. Réessayez ou écrivez-nous sur WhatsApp."
+    "error": "Cela n'a pas fonctionné. Réessayez ou écrivez-nous sur WhatsApp.",
+    "verifyTitle": "Vérifiez d'abord votre identité",
+    "verifyBody": "Pour annuler cette réservation, nous devons nous assurer qu'elle est bien la vôtre. Connectez-vous avec votre e-mail et votre référence, puis vous reviendrez directement ici.",
+    "verifyCta": "Vérifier avec e-mail + référence"
   },
   "thankYou": {
     "title": "C'est réservé, {name} ! 🌴",
@@ -767,7 +770,15 @@
     "talkLocals": "Parlez aux locaux qui l'organisent, ils le connaissent mieux que personne :",
     "issueTitle": "Problème de réservation ou de paiement ?",
     "issueBody": "Écrivez à {email} en indiquant votre réf. ({ref})",
-    "replyTime": "Nous répondons généralement sous 12 heures"
+    "replyTime": "Nous répondons généralement sous 12 heures",
+    "verifyTitle": "Certains détails sont masqués",
+    "verifyBody": "Vous consultez un lien partagé, les informations personnelles sont donc masquées. C'est votre réservation ? Vérifiez avec votre e-mail et votre référence de réservation pour tout voir.",
+    "verifyCta": "Vérifiez votre identité",
+    "manageTitle": "Votre réservation",
+    "manageSubtitle": "{tour} le {date} à {time}.",
+    "statusConfirmed": "Confirmée",
+    "cancelBooking": "Annuler la réservation",
+    "needToCancel": "Besoin d'annuler ?"
   },
   "travelerLogin": {
     "title": "Vos réservations",

@@ -715,7 +715,10 @@
     "sentTitle": "Cancellation request sent.",
     "sentBody": "We're on it. You'll get an email from us confirming your cancellation and refund.",
     "notActive": "This booking is no longer active, so there is nothing to cancel.",
-    "error": "That didn't go through. Please try again, or message us on WhatsApp."
+    "error": "That didn't go through. Please try again, or message us on WhatsApp.",
+    "verifyTitle": "Verify it's you first",
+    "verifyBody": "To cancel this booking we need to be sure it's yours. Log in with your email and booking reference and you'll come straight back here.",
+    "verifyCta": "Verify with email + reference"
   },
   "thankYou": {
     "title": "You're booked, {name}! 🌴",
@@ -767,7 +770,15 @@
     "talkLocals": "Talk to the locals running it, they know it best:",
     "issueTitle": "Booking or payment issue?",
     "issueBody": "Email {email} and include your ref ({ref})",
-    "replyTime": "We usually reply within 12 hours"
+    "replyTime": "We usually reply within 12 hours",
+    "verifyTitle": "Some details are hidden",
+    "verifyBody": "You're viewing a shared link, so personal details are masked. If this is your booking, verify with your email and booking reference to see everything.",
+    "verifyCta": "Verify it's you",
+    "manageTitle": "Your booking",
+    "manageSubtitle": "{tour} on {date} at {time}.",
+    "statusConfirmed": "Confirmed",
+    "cancelBooking": "Cancel booking",
+    "needToCancel": "Need to cancel?"
   },
   "travelerLogin": {
     "title": "Your bookings",

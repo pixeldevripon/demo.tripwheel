@@ -1,1 +1,2 @@
 - [Auth Module Review](auth_module_review.md) — first review session: auth module patterns, violations found, and good patterns
+- [Staff & Teams cross-repo review](staff_teams_cross_repo_review.md) — 2026-07-19: dashboard side clean/reference-quality; backend findings detailed in backend repo's own memory (IDOR gap, non-atomic write)

@@ -105,6 +105,19 @@ export class StripeService {
     return client.charges.retrieve(chargeId);
   }
 
+  /**
+   * A PaymentIntent by id, with its charge expanded. Used by the synchronous
+   * "settle on return" path (the client just confirmed and we verify the real
+   * status with Stripe rather than trusting the browser) - the expanded charge
+   * gives the card/billing snapshot in one round-trip.
+   */
+  async retrievePaymentIntent(intentId: string): Promise<Stripe.PaymentIntent> {
+    const client = await this.requireClient();
+    return client.paymentIntents.retrieve(intentId, {
+      expand: ['latest_charge'],
+    });
+  }
+
   /** Verify the Stripe-Signature header against the raw request body. */
   async constructEvent(
     rawBody: Buffer,

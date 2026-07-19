@@ -10,6 +10,7 @@
  */
 import type { Currency } from '@/lib/constants/locales';
 import { apiFetch } from './fetch';
+import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
 /** One priced row of a quote breakdown (age-band participant or add-on). */
 export interface QuoteLine {
@@ -131,6 +132,12 @@ export interface ReservedBooking {
     depositAmount: string;
     balanceAmount: string;
     paymentModel: string;
+    /**
+     * Present on the contact PATCH response only (the patch that sets the
+     * email): 24h traveler session for `storeTravelerSession`, so the fresh
+     * booker's TYP renders verified (unmasked).
+     */
+    sessionToken?: string;
 }
 
 /** Response of `POST /payments/bookings/:id/intent` (backend `PaymentIntentResponseDto`). */
@@ -231,6 +238,25 @@ export async function getThankYouStatus(
     );
 }
 
+export interface SettleResult {
+    status: string;
+    publicRef: string;
+}
+
+/**
+ * Confirm the booking synchronously from the browser's return, instead of
+ * waiting for the async Stripe webhook. The backend re-verifies the
+ * PaymentIntent with Stripe and is idempotent with the webhook, so this only
+ * speeds up the redirect - it never double-charges or double-confirms. Keyed
+ * on the unguessable publicRef (same capability the TYP URL rides on).
+ */
+export async function settleBooking(publicRef: string): Promise<SettleResult> {
+    return apiFetch<SettleResult>(
+        `/payments/typ/${encodeURIComponent(publicRef)}/settle`,
+        { method: 'POST' }
+    );
+}
+
 /**
  * Resend the confirmation email for a booking (TYP "Resend email").
  *
@@ -263,12 +289,19 @@ export async function resendConfirmationEmail(
  */
 export async function requestBookingCancellation(
     publicRef: string,
-    reason?: string
+    reason?: string,
+    sessionToken?: string | null
 ): Promise<{ requested: boolean }> {
     return apiFetch<{ requested: boolean }>(
         `/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request`,
         {
             method: 'POST',
+            // The backend requires a traveler session owning the booking - a
+            // leaked TYP link alone must never cancel a trip. The cancel page
+            // reads the HttpOnly cookie server-side and hands the token down.
+            headers: sessionToken
+                ? { [TRAVELER_SESSION_HEADER]: sessionToken }
+                : undefined,
             body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}),
         }
     );

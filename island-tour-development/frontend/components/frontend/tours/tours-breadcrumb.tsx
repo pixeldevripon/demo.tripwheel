@@ -37,8 +37,10 @@ export function ToursBreadcrumb({
     anchor?: BreadcrumbAnchor | null;
     dict: BreadcrumbDict;
 }) {
+    // shrink-0 + the nav's nowrap/overflow: crumbs must never wrap into
+    // multi-line stacks on mobile - the row stays one line and scrolls.
     const linkClass =
-        'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors duration-300 hover:text-it-primary';
+        'shrink-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors duration-300 hover:text-it-primary';
 
     const separator = (
         <Image
@@ -55,7 +57,7 @@ export function ToursBreadcrumb({
             <div className='mx-auto w-full max-w-[1440px]'>
                 <nav
                     aria-label='Breadcrumb'
-                    className='flex items-center gap-2 px-4 py-5 md:px-8 xl:px-30'>
+                    className='flex items-center gap-2 overflow-x-auto px-4 py-5 whitespace-nowrap [scrollbar-width:none] md:overflow-visible md:px-8 md:whitespace-normal xl:px-30 [&::-webkit-scrollbar]:hidden'>
                     <Link
                         href={localizeHref(locale, '/')}
                         className={linkClass}>
@@ -78,9 +80,11 @@ export function ToursBreadcrumb({
                         </>
                     )}
                     {separator}
+                    {/* Truncated on mobile: the full name is the H1 directly
+                        below, so the crumb only needs to identify the page. */}
                     <span
                         aria-current='page'
-                        className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        className='max-w-[55vw] truncate text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:max-w-none'>
                         {dict.current}
                     </span>
                 </nav>

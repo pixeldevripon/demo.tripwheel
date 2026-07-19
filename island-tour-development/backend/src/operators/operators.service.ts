@@ -1,15 +1,18 @@
 import { auth } from '@/auth/auth.instance';
 import { decrypt, encrypt } from '@/common/utils/crypto.util';
+import {
+  getPortalUrl,
+  provisionInvitedAccount,
+} from '@/common/utils/invite-provisioning.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
-  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Role, StaffSeatRole, StaffStatus } from '@prisma/client';
-import { randomBytes } from 'crypto';
+
 import {
   CreateOperatorDto,
   OnboardOperatorDto,
@@ -24,14 +27,7 @@ import {
 @Injectable()
 export class OperatorsService {
   private readonly logger = new Logger(OperatorsService.name);
-  // Operator portal (the separated dashboard app), including the /portal path.
-  // Trimmed and stripped of trailing junk defensively: this value is embedded
-  // verbatim in emailed links, where a stray "/", ".", or space breaks them.
-  private readonly portalUrl = (
-    process.env.PORTAL_URL ?? 'http://localhost:3001/portal'
-  )
-    .trim()
-    .replace(/[/.\s]+$/, '');
+  private readonly portalUrl = getPortalUrl();
 
   // Shared projection for operator detail responses - never return raw rows.
   private readonly operatorSelect = {
@@ -150,40 +146,15 @@ export class OperatorsService {
    * onboarding. There is no public sign-up - this is the only operator-creation path.
    */
   async create(dto: CreateOperatorDto) {
-    const email = dto.email.toLowerCase().trim();
-
-    const existing = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-    if (existing) {
-      throw new ConflictException(`A user with email ${email} already exists`);
-    }
-
-    const authCtx = await auth.$context;
-
-    // A credential account must exist so the invite's reset flow can set the
-    // real password. This throwaway secret is never transmitted anywhere.
-    const throwawayPassword = randomBytes(24).toString('base64url');
-    const hashedPassword = await authCtx.password.hash(throwawayPassword);
-
-    const user = await authCtx.internalAdapter.createUser({
-      email,
-      name: dto.name,
-      role: Role.TOUR_OPERATOR,
-      // Admin-vouched; ownership is re-proven when the operator uses the invite link.
-      emailVerified: true,
-    });
+    // Shared invite util: unique email + user row + throwaway credential so
+    // the invite's reset flow can set the real password.
+    const { email, user, authCtx } = await provisionInvitedAccount(
+      this.prisma,
+      { email: dto.email, name: dto.name, role: Role.TOUR_OPERATOR },
+    );
 
     let operatorId: string | undefined;
     try {
-      await authCtx.internalAdapter.linkAccount({
-        userId: user.id,
-        providerId: 'credential',
-        accountId: user.id,
-        password: hashedPassword,
-      });
-
       const operator = await this.prisma.operator.create({
         data: {
           userId: user.id,

@@ -25,6 +25,7 @@ export function CancelRequestCard({
     displayRef,
     refundLabel,
     thankYouHref,
+    sessionToken,
 }: {
     dict: CancelDict;
     publicRef: string;
@@ -35,6 +36,11 @@ export function CancelRequestCard({
     refundLabel: string | null;
     /** "Keep my booking" returns the traveller to their TYP. */
     thankYouHref: string;
+    /**
+     * Traveler session proving booking ownership (read from the HttpOnly
+     * cookie by the server page; the backend 401s the request without it).
+     */
+    sessionToken: string;
 }) {
     const [state, setState] = useState<SubmitState>('idle');
     const [reason, setReason] = useState('');
@@ -43,7 +49,7 @@ export function CancelRequestCard({
         if (state === 'sending') return;
         setState('sending');
         try {
-            await requestBookingCancellation(publicRef, reason);
+            await requestBookingCancellation(publicRef, reason, sessionToken);
             setState('sent');
         } catch {
             // Covers the hard throttle (429) and transport errors alike - the

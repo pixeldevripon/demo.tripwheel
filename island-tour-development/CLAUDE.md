@@ -26,7 +26,8 @@
 > `technical-doc/03-implementation/BOOKING-CHECKLIST.md`** · Booking widget (dynamic/conditional card
 > + payment/processing page checklist): `technical-doc/03-implementation/BOOKING-WIDGET-CHECKLIST.md`
 > Multilingual: `technical-doc/04-multilingual/MULTILINGUAL-CONTENT.md` · Access:
-> `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md`
+> `technical-doc/05-access-management/ROLES-AND-ACCESS-MANAGEMENT.md` · Staff & teams (seats,
+> designations, effective-permission engine): `technical-doc/05-access-management/STAFF-AND-TEAMS.md`
 > Frontend/widget reference: `CLAUDE-reference.md`
 > **Single checklist (every master point as a task + status + migration order):
 > `technical-doc/MASTER-CHECKLIST.md`** · Superseded docs: `technical-doc/obsolete/`

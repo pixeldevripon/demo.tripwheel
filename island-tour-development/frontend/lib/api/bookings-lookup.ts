@@ -12,6 +12,11 @@ export interface BookingLookupResult {
     publicRef: string;
     displayRef: string;
     destinationSlug: string | null;
+    /**
+     * Backend-issued 24h traveler session (email-bound HMAC). Hand it to
+     * `storeTravelerSession` so the HttpOnly cookie unlocks the full TYP.
+     */
+    sessionToken: string;
 }
 
 /**

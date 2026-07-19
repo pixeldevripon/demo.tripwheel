@@ -29,11 +29,23 @@ export const STAFF_BASE_PERMISSIONS: readonly Permission[] = [
  * - MANAGE_STAFF: staff must never manage staff - otherwise a staff member
  *   could grant an accomplice (or a second account) arbitrary permissions.
  * - MANAGE_TEAM: operator-side concern; meaningless for platform staff.
+ * - MANAGE_USERS / CREATE_USER / UPDATE_USER / DELETE_USER: identity
+ *   mutations are an escalation surface (role flips hand out un-ceilinged
+ *   static permission sets; an email change redirects password resets), so
+ *   they stay with real ADMIN accounts. VIEW_USERS remains grantable.
+ * - MANAGE_OPERATOR_PAYMENTS: operator payout config is owner-only in the
+ *   operators service regardless - listing it here keeps the grant catalog
+ *   honest instead of offering a permission that always 403s.
  */
 const PLATFORM_STAFF_EXCLUDED: readonly Permission[] = [
   Permission.MANAGE_SYSTEM,
   Permission.MANAGE_STAFF,
   Permission.MANAGE_TEAM,
+  Permission.MANAGE_USERS,
+  Permission.CREATE_USER,
+  Permission.UPDATE_USER,
+  Permission.DELETE_USER,
+  Permission.MANAGE_OPERATOR_PAYMENTS,
 ];
 
 /**

@@ -8,6 +8,8 @@ import {
   emailVerificationTemplate,
   operatorInviteTemplate,
   passwordResetTemplate,
+  staffInviteTemplate,
+  type StaffInviteTemplateProps,
 } from './templates';
 import {
   escapeHtml,
@@ -156,6 +158,33 @@ export class MailService {
       html,
       text,
     });
+  }
+
+  // ── Staff / team-seat invite (set-password link) ─────────────────────────────
+
+  /**
+   * Dynamic invite for platform staff and operator team seats: the copy names
+   * who is inviting (Island Tours vs the operator's company) and what the
+   * person was invited as (designation or seat role). The auth hook picks
+   * this over the operator invite by inspecting the staff_members row
+   * (see auth.instance.ts sendResetPassword).
+   */
+  async sendStaffInviteEmail(
+    to: string,
+    inviteUrl: string,
+    params: Omit<StaffInviteTemplateProps, 'inviteUrl' | 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = staffInviteTemplate({
+      inviteUrl,
+      siteLogoUrl,
+      ...params,
+    });
+    const subject =
+      params.variant === 'platform'
+        ? `You're invited to the Island Tours team${params.roleLabel ? ` as ${params.roleLabel}` : ''} - set your password`
+        : `${params.companyName ?? 'Your team'} invited you to Island Tours${params.roleLabel ? ` as ${params.roleLabel}` : ''} - set your password`;
+    await this.sendMail({ to, subject, html, text });
   }
 
   // ── Email verification ────────────────────────────────────────────────────────

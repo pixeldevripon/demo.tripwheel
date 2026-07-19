@@ -715,7 +715,10 @@
     "sentTitle": "Annuleringsverzoek verzonden.",
     "sentBody": "We gaan ermee aan de slag. Je ontvangt een e-mail ter bevestiging van je annulering en terugbetaling.",
     "notActive": "Deze boeking is niet meer actief, dus er valt niets te annuleren.",
-    "error": "Dat is niet gelukt. Probeer het opnieuw of stuur ons een bericht via WhatsApp."
+    "error": "Dat is niet gelukt. Probeer het opnieuw of stuur ons een bericht via WhatsApp.",
+    "verifyTitle": "Eerst even verifiëren",
+    "verifyBody": "Om deze boeking te annuleren moeten we zeker weten dat die van jou is. Log in met je e-mail en boekingsreferentie en je komt direct hier terug.",
+    "verifyCta": "Verifieer met e-mail + referentie"
   },
   "thankYou": {
     "title": "Je bent geboekt, {name}! 🌴",
@@ -767,7 +770,15 @@
     "talkLocals": "Praat met de locals die hem runnen, zij weten het best:",
     "issueTitle": "Probleem met boeking of betaling?",
     "issueBody": "Mail {email} en vermeld je ref ({ref})",
-    "replyTime": "We reageren meestal binnen 12 uur"
+    "replyTime": "We reageren meestal binnen 12 uur",
+    "verifyTitle": "Sommige gegevens zijn verborgen",
+    "verifyBody": "Je bekijkt een gedeelde link, dus persoonlijke gegevens zijn gemaskeerd. Is dit jouw boeking? Verifieer met je e-mail en boekingsreferentie om alles te zien.",
+    "verifyCta": "Verifieer dat jij het bent",
+    "manageTitle": "Jouw boeking",
+    "manageSubtitle": "{tour} op {date} om {time}.",
+    "statusConfirmed": "Bevestigd",
+    "cancelBooking": "Boeking annuleren",
+    "needToCancel": "Annuleren?"
   },
   "travelerLogin": {
     "title": "Jouw boekingen",

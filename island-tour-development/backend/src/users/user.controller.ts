@@ -104,7 +104,10 @@ export class UserController {
   @Get('me/permissions')
   @ApiGetCurrentUserPermissionsDocs()
   getCurrentUserPermissions(@AuthenticatedUser() user: TypedAuthUser) {
-    return this.userService.getUserPermissions(user.id);
+    return this.userService.getUserPermissions(user.id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   // ─── Admin / privileged reads ────────────────────────────────────────────
@@ -141,18 +144,24 @@ export class UserController {
   /**
    * GET /users/:id/permissions
    *
-   * Returns the resolved permission set for any user by id.
+   * Returns the resolved permission set for a user by id.
    * Intended for admin audit / debugging workflows.
    *
-   * Security: requires `VIEW_PERMISSIONS` - granted to ADMIN and TOUR_OPERATOR.
-   * Note: for a user to view their *own* permissions use GET /users/me/permissions,
-   * which is ungated and avoids the IDOR risk of an arbitrary :id param.
+   * Security: requires `VIEW_PERMISSIONS`, and the service additionally
+   * enforces admin-or-self - VIEW_PERMISSIONS alone (held by every operator)
+   * must not let one account enumerate another's access by iterating :id.
    */
-  @RequirePermissions(Permission.VIEW_PERMISSIONS)
   @Get(':id/permissions')
+  @RequirePermissions(Permission.VIEW_PERMISSIONS)
   @ApiGetUserPermissionsDocs()
-  getUserPermissions(@Param('id') id: string) {
-    return this.userService.getUserPermissions(id);
+  getUserPermissions(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.userService.getUserPermissions(id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   // ─── Self-service mutations ──────────────────────────────────────────────
@@ -206,7 +215,9 @@ export class UserController {
    * The caller's id (`user.id`) is forwarded to the service so it can
    * audit-log who performed the change and prevent self-demotion.
    *
-   * Security: requires `MANAGE_USERS` - granted to ADMIN only.
+   * Security: requires `MANAGE_USERS`, and the service additionally requires
+   * the caller's role to be ADMIN - a role change hands out an entire static
+   * permission set, which must never be reachable via a delegated grant.
    */
   @Patch(':id/role')
   @RequirePermissions(Permission.MANAGE_USERS)
@@ -216,7 +227,10 @@ export class UserController {
     @Body() dto: UpdateUserRoleDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.userService.updateUserRole(id, dto, user.id);
+    return this.userService.updateUserRole(id, dto, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   /**

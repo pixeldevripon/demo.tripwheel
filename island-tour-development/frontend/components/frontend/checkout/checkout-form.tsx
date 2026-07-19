@@ -15,6 +15,7 @@ import {
 } from '@/lib/checkout/countries';
 import { localizeHref, type Currency, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { storeTravelerSession } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -215,7 +216,7 @@ export function CheckoutForm({
             });
 
             const { firstName, lastName } = splitName(contact.fullName);
-            await updateBookingContact(
+            const withContact = await updateBookingContact(
                 booking.id,
                 {
                     firstName,
@@ -229,6 +230,12 @@ export function CheckoutForm({
                 },
                 contact.special.trim() || undefined
             );
+            // The contact patch issues a traveler session for the booker's
+            // email - park it in the HttpOnly cookie now so the TYP (and the
+            // cancel page) render verified from the very first load.
+            if (withContact.sessionToken) {
+                await storeTravelerSession(withContact.sessionToken);
+            }
 
             const pi = await createPaymentIntent(booking.id);
             if (!pi.paymentRequired) {

@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BookingsService } from '@/bookings/bookings.service';
+import { TargetRateLimiter } from '@/bookings/lookup-rate-limiter';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { dateKey } from '@/common/utils/timezone.util';
@@ -46,6 +47,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly bookings: BookingsService,
+    private readonly targetLimiter: TargetRateLimiter,
   ) {}
 
   // ── Dashboard payments list ──────────────────────────────────────────────────
@@ -344,6 +346,73 @@ export class PaymentsService {
     this.logger.log(
       `Mollie webhook recorded for payment ${paymentId} (reconciliation pending)`,
     );
+  }
+
+  // ── Synchronous settle-on-return (webhook stays the backstop) ────────────────
+
+  /**
+   * Confirm a booking straight away from the browser's return, instead of
+   * waiting for the async `payment_intent.succeeded` webhook (which can lag
+   * seconds-to-minutes, especially in dev). Keyed on the unguessable booking
+   * id; NEVER trusts the client's word - it re-reads the PaymentIntent from
+   * Stripe and only settles when Stripe itself reports `succeeded`. Idempotent
+   * and safe to race the webhook: both funnel through the same
+   * `onIntentSucceeded` -> `confirmFromPayment`, which no-ops once confirmed.
+   *
+   * Returns the current booking status so the processing page can redirect the
+   * instant it reads CONFIRMED, with the card/billing snapshot already saved.
+   */
+  async settleFromReturn(
+    publicRef: string,
+  ): Promise<{ status: BookingStatus; publicRef: string }> {
+    // Per-TARGET cap (mirrors resendConfirmation / requestCancellation): the
+    // per-IP throttle alone can't stop a multi-IP caller hammering ONE booking's
+    // settle, which would spray the shared Stripe API. 5 per publicRef / minute.
+    this.targetLimiter.consume('settle', publicRef, [
+      { max: 5, windowMs: 60_000 },
+    ]);
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: { id: true, status: true, publicRef: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    // Already settled (webhook won the race, or a repeat call) - nothing to do.
+    if (booking.status !== BookingStatus.ON_HOLD) {
+      return { status: booking.status, publicRef: booking.publicRef };
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: { bookingId: booking.id },
+      orderBy: { createdAt: 'desc' },
+      select: { intentId: true },
+    });
+    if (payment?.intentId) {
+      try {
+        const intent = await this.stripe.retrievePaymentIntent(
+          payment.intentId,
+        );
+        if (intent.status === 'succeeded') {
+          await this.onIntentSucceeded(intent);
+        }
+      } catch (err) {
+        // Best-effort: a Stripe hiccup here just falls back to the webhook +
+        // the processing page's polling. Never surface a 500 to the traveller.
+        this.logger.warn(
+          `settleFromReturn: could not settle ${booking.id} now - ${(err as Error).message}`,
+        );
+      }
+    }
+
+    const fresh = await this.prisma.booking.findUnique({
+      where: { id: booking.id },
+      select: { status: true, publicRef: true },
+    });
+    return {
+      status: fresh?.status ?? booking.status,
+      publicRef: fresh?.publicRef ?? booking.publicRef,
+    };
   }
 
   // ── internals ──────────────────────────────────────────────────────────────

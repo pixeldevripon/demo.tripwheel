@@ -46,3 +46,17 @@ Review completed 2026-04-26. Auth module (Phase 3) added: auth.instance.ts, auth
 
 **Why:** These carry forward to all future phase reviews. The role:input:true issue MUST be fixed before Phase 4 adds any user-facing sign-up flow.
 **How to apply:** In Phase 4+ reviews, verify role:input:true has been fixed. Flag any new endpoint that handles role assignment without @Roles(Role.ADMIN) guard. In DTO reviews, remember enableImplicitConversion risk from Phase 1.
+
+**UPDATE (2026-07-19, Staff & Teams module review) — confirmed fixed:**
+- `role:input:true` is now `input: false` with `defaultValue: Role.TOUR_OPERATOR` in
+  `auth.instance.ts`. The #1 Phase 3 critical is resolved.
+- The `IS_SEEDING` env-var bypass pattern no longer exists anywhere in `src/` (grep confirms).
+- ADMIN's `ROLE_PERMISSIONS` now includes `CREATE_CONTENT`/`VIEW_CONTENT`/`EDIT_CONTENT`/
+  `DELETE_CONTENT` — no longer missing relative to lower roles.
+- `RolesGuard` and `PermissionsGuard` both null-check `request.user` before use.
+- However, a NEW and more severe role-assignment escalation was found in the same area: see
+  [[project_staff_teams_module_security]] — `PATCH /users/:id/role` (gated only by `MANAGE_USERS`,
+  which is NOT excluded from the platform staff ceiling) can flip any non-admin account to `EDITOR`,
+  which carries a broad static permission set with zero staff-system oversight. This is the
+  successor critical finding to `role:input:true` and must be checked in every future review of
+  `users/`, `staff/`, or `roles.config.ts`.

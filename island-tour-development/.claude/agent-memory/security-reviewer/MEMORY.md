@@ -1,2 +1,3 @@
 - [Bootstrap Phase Security Findings](project_bootstrap_security.md) — Phase 1 audit: confirmed secure patterns + known gaps to watch in future phases (exception filter, Swagger gate, implicit conversion, source maps)
-- [Auth Module Phase 3 Security Findings](project_auth_phase3_security.md) — role:input:true privilege escalation, IS_SEEDING bypass, missing ADMIN permissions, guard null-safety, weak password policy
+- [Auth Module Phase 3 Security Findings](project_auth_phase3_security.md) — role:input:true (FIXED), IS_SEEDING bypass (FIXED), guard null-safety (FIXED); see staff module memory for successor finding
+- [Staff & Teams Module Security Findings](project_staff_teams_module_security.md) — CRITICAL: MANAGE_USERS + role-flip-to-EDITOR bypasses the entire staff permission ceiling; also cache/suspension-path notes + confirmed tenant-isolation patterns

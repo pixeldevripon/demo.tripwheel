@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
+  Ip,
   Param,
   Patch,
   Post,
@@ -12,8 +14,11 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
+import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
+import { Permission } from '@prisma/client';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { BookingsService } from './bookings.service';
+import { TRAVELER_SESSION_HEADER } from './traveler-session.util';
 import {
   CancelBookingDto,
   ConfirmBookingDto,
@@ -129,8 +134,8 @@ export class BookingsController {
   @Post('lookup')
   @Public()
   @ApiLookupBookingDocs()
-  lookup(@Body() dto: LookupBookingDto) {
-    return this.bookings.lookupBooking(dto);
+  lookup(@Body() dto: LookupBookingDto, @Ip() ip?: string) {
+    return this.bookings.lookupBooking(dto, ip);
   }
 
   /**
@@ -158,8 +163,11 @@ export class BookingsController {
   @Get('typ/:publicRef')
   @Public()
   @ApiThankYouDocs()
-  thankYou(@Param('publicRef') publicRef: string) {
-    return this.bookings.getThankYou(publicRef);
+  thankYou(
+    @Param('publicRef') publicRef: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.getThankYou(publicRef, sessionToken);
   }
 
   /**
@@ -196,10 +204,12 @@ export class BookingsController {
    * POST /bookings/typ/:publicRef/cancellation-request
    *
    * The tokenized cancel form (master 6.4/C1). Never cancels on click - it
-   * emails the admin, who processes the refund and confirms by email. Same
-   * security shape as resend: @Public, keyed on the unguessable publicRef,
-   * throttled to a human pace, and MUST be called from the browser (the
-   * internal-key SSR bypass would skip every limit).
+   * emails the admin, who processes the refund and confirms by email. Unlike
+   * resend, this is a MUTATION, so link possession is not enough: the service
+   * requires a traveler session (X-Traveler-Session) owning the booking's
+   * contact email - a leaked TYP URL can't cancel someone's trip. Still
+   * @Public (no Better Auth), throttled to a human pace, and MUST be called
+   * from the browser (the internal-key SSR bypass would skip every limit).
    */
   @Throttle({
     short: { limit: 1, ttl: 10_000 },
@@ -212,8 +222,13 @@ export class BookingsController {
   requestCancellation(
     @Param('publicRef') publicRef: string,
     @Body() dto: RequestCancellationDto,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
   ) {
-    return this.bookings.requestCancellation(publicRef, dto.reason);
+    return this.bookings.requestCancellation(
+      publicRef,
+      dto.reason,
+      sessionToken,
+    );
   }
 
   /**
@@ -238,7 +253,12 @@ export class BookingsController {
     return this.bookings.getCalendar(publicRef);
   }
 
+  // Dashboard reads. VIEW_BOOKINGS gates WHO may look at bookings at all
+  // (admins, operators, and staff/seats granted it); the service then scopes
+  // WHICH rows (operators to their own tours; platform staff see all).
+  // Travelers never call these - their surface is the public TYP routes.
   @Get()
+  @RequirePermissions(Permission.VIEW_BOOKINGS)
   @ApiListBookingsDocs()
   list(
     @AuthenticatedUser() user: TypedAuthUser,
@@ -248,6 +268,7 @@ export class BookingsController {
   }
 
   @Get(':id')
+  @RequirePermissions(Permission.VIEW_BOOKINGS)
   @ApiGetBookingDocs()
   get(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.bookings.getById(id, { id: user.id, role: user.role });

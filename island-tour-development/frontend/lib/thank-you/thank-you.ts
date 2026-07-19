@@ -54,6 +54,14 @@ export interface ThankYouApartment {
 }
 
 export interface ThankYouBooking {
+    /**
+     * True when the request carried the traveler session cookie for this
+     * booking (fresh booker from checkout, or the /bookings pair login).
+     * False = the bare-link masked view: identity fields arrive pre-masked
+     * from the backend and the page swaps its manage actions for a
+     * "verify it's you" card.
+     */
+    verified: boolean;
     publicRef: string;
     displayRef: string;
     /** Real booking status; the TYP is normally reached only once CONFIRMED. */
@@ -235,8 +243,9 @@ function pctOf(part: number, total: number): number {
 export async function getThankYouBooking(
     publicRef: string,
     locale: Locale = 'en',
+    sessionToken?: string | null,
 ): Promise<ThankYouBooking | null> {
-    const typ = await getTypByRef(publicRef);
+    const typ = await getTypByRef(publicRef, sessionToken);
     if (!typ) return null;
 
     const start = localDateTime(typ.localDate, typ.startTime);
@@ -256,6 +265,7 @@ export async function getThankYouBooking(
     const operatorName = typ.operator.name ?? '';
 
     return {
+        verified: typ.verified,
         publicRef: typ.publicRef,
         displayRef: typ.displayRef,
         status: typ.status,
@@ -272,8 +282,11 @@ export async function getThankYouBooking(
         durationLabel: fmtDuration(typ.durationMinutes),
         // Snapshot of the chosen pickup point; "other location" reserves carry no
         // address yet (the operator confirms it), hence the requested fallback.
+        // Unverified: the backend withholds the address, so this stays empty and
+        // the summary hides the row (non-identifying facts only on a shared link).
         pickupLabel:
-            typ.pickupAddress ?? (typ.pickupRequested ? 'To be confirmed' : ''),
+            typ.pickupAddress ??
+            (typ.verified && typ.pickupRequested ? 'To be confirmed' : ''),
         freeCancelBeforeLabel: deadline ? fmtDayMonth(deadline, locale) : '',
         freeCancelDeadlineUtc: typ.freeCancellationDeadlineUtc,
         cancellationHours: typ.cancellationHours,

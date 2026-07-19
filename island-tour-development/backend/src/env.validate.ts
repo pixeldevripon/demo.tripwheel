@@ -12,6 +12,16 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
       return 'placeholder detected - generate a real secret: openssl rand -base64 32';
     return null;
   },
+  // Signs traveler session tokens (email + booking-reference login, full TYP,
+  // cancellation request). REQUIRED and independent - no fallback to
+  // BETTER_AUTH_SECRET - so the two token systems have separate keys and
+  // rotating one never invalidates the other.
+  TRAVELER_SESSION_SECRET: (v) => {
+    if (v.length < 32) return 'must be at least 32 characters';
+    if (v.includes('change-me') || v.includes('CHANGE_ME'))
+      return 'placeholder detected - generate a real secret: openssl rand -base64 32';
+    return null;
+  },
   BETTER_AUTH_URL: () => null,
   FRONTEND_URL: () => null,
   CORS_ORIGINS: (v) =>

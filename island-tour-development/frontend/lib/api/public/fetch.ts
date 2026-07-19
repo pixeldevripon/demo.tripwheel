@@ -41,9 +41,17 @@ const sleep = (ms: number) =>
  * (rate-limited) or 503 (unavailable) a couple of times with fixed backoff, so a
  * transient burst during prerendering does not fail or blank a page. Returns the
  * raw Response - callers decide how to interpret each status code.
+ *
+ * `extraHeaders` is for PER-REQUEST data (the traveler session header on the
+ * uncached TYP read). NEVER pass per-user headers from inside a `'use cache'`
+ * scope - the response would be cached under a shared key and leak across users.
  */
-export async function publicFetch(path: string): Promise<Response> {
-  let res = await fetch(`${BASE_URL}${path}`, { headers: serverHeaders() });
+export async function publicFetch(
+  path: string,
+  extraHeaders?: Record<string, string>,
+): Promise<Response> {
+  const headers = { ...serverHeaders(), ...extraHeaders };
+  let res = await fetch(`${BASE_URL}${path}`, { headers });
   for (
     let attempt = 0;
     (res.status === 429 || res.status === 503) &&
@@ -51,7 +59,7 @@ export async function publicFetch(path: string): Promise<Response> {
     attempt++
   ) {
     await sleep(RETRY_BACKOFF_MS[attempt]);
-    res = await fetch(`${BASE_URL}${path}`, { headers: serverHeaders() });
+    res = await fetch(`${BASE_URL}${path}`, { headers });
   }
   return res;
 }
@@ -104,10 +112,13 @@ export class BackendUnavailableError extends Error {
  * backend to be up during `next build`, and is still better than silently baking
  * 404s for every prerendered route.
  */
-export async function publicGetStrict<T>(path: string): Promise<T | null> {
+export async function publicGetStrict<T>(
+  path: string,
+  extraHeaders?: Record<string, string>,
+): Promise<T | null> {
   let res: Response;
   try {
-    res = await publicFetch(path);
+    res = await publicFetch(path, extraHeaders);
   } catch (err) {
     throw new BackendUnavailableError(
       path,

@@ -33,21 +33,14 @@ Resend absence is soft-warn-only.
   `sendCancellationRequestNotices`), explicitly documented as "money already captured, a dead
   mailbox must never fail the booking." That's the pattern to point auth.instance.ts toward.
 
-## Confirmed: unescaped HTML injection in the cancellation-request admin email
+## FIXED (confirmed 2026-07-19, re-checked during traveler-session-flow review): HTML injection in the cancellation-request admin email
 
-`MailService.sendCancellationRequestEmail` (mail.service.ts ~line 243-292) is the **one** email
-builder in the module that assembles HTML via raw template-literal string concatenation instead of
-going through `renderEmailTemplate()` (`templates/email-template.renderer.ts`), which HTML-escapes
-every substituted value (`escapeHtml` in `substitute()` and in `[EACH]` item expansion). The
-traveller-supplied `reason` field (from the public, unauthenticated
-`POST /bookings/typ/:publicRef/cancellation-request`, `RequestCancellationDto.reason`, max 500
-chars, no escaping) is interpolated straight into an HTML `<td>` via the `row()` helper — HTML/link
-injection into the internal admin notification email. Pre-existing, not introduced by this
-migration (unchanged in the diff), but flagged since it's the mail module's one exception to an
-otherwise-secure escaping pattern.
-- **Fix pattern:** either route this email through `renderEmailTemplate` with a proper template, or
-  HTML-escape every interpolated field (`details.reason`, `details.guestName`, `details.tourName`,
-  etc.) before building the string.
+Was: `MailService.sendCancellationRequestEmail` interpolated `RequestCancellationDto.reason`
+(traveller-supplied, public + unauthenticated route) straight into an HTML `<td>` with no escaping.
+Re-read the current file during the traveler-session-flow review (same day) — every interpolated
+value now goes through `escapeHtml()`, including `details.reason` via the `row()` helper and
+`details.displayRef`/`details.dashboardUrl` inline. No longer an open issue; do not re-flag unless
+a future diff touches `sendCancellationRequestEmail` and removes the escaping again.
 
 ## Secure patterns confirmed (reuse/don't re-flag)
 

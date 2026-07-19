@@ -715,7 +715,10 @@
     "sentTitle": "Stornierungsanfrage gesendet.",
     "sentBody": "Wir kümmern uns darum. Du erhältst eine E-Mail zur Bestätigung deiner Stornierung und Rückerstattung.",
     "notActive": "Diese Buchung ist nicht mehr aktiv, es gibt also nichts zu stornieren.",
-    "error": "Das hat nicht geklappt. Versuche es erneut oder schreib uns auf WhatsApp."
+    "error": "Das hat nicht geklappt. Versuche es erneut oder schreib uns auf WhatsApp.",
+    "verifyTitle": "Bitte zuerst bestätigen",
+    "verifyBody": "Um diese Buchung zu stornieren, müssen wir sicher sein, dass sie dir gehört. Melde dich mit E-Mail und Buchungsreferenz an und du kommst direkt hierher zurück.",
+    "verifyCta": "Mit E-Mail + Referenz bestätigen"
   },
   "thankYou": {
     "title": "Du bist gebucht, {name}! 🌴",
@@ -767,7 +770,15 @@
     "talkLocals": "Sprich mit den Locals, die sie durchführen - sie kennen sie am besten:",
     "issueTitle": "Problem mit Buchung oder Zahlung?",
     "issueBody": "Schreib an {email} und gib deine Ref. an ({ref})",
-    "replyTime": "Wir antworten meist innerhalb von 12 Stunden"
+    "replyTime": "Wir antworten meist innerhalb von 12 Stunden",
+    "verifyTitle": "Einige Angaben sind ausgeblendet",
+    "verifyBody": "Du siehst einen geteilten Link, daher sind persönliche Angaben maskiert. Ist das deine Buchung? Bestätige dich mit E-Mail und Buchungsreferenz, um alles zu sehen.",
+    "verifyCta": "Bestätige, dass du es bist",
+    "manageTitle": "Deine Buchung",
+    "manageSubtitle": "{tour} am {date} um {time}.",
+    "statusConfirmed": "Bestätigt",
+    "cancelBooking": "Buchung stornieren",
+    "needToCancel": "Stornieren?"
   },
   "travelerLogin": {
     "title": "Deine Buchungen",

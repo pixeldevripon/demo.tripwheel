@@ -38,6 +38,9 @@ import { ToursService } from './tours.service';
 function createMockPrismaService() {
   const mock = {
     operator: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn() },
+    // Seat-aware operator resolution (common/utils/operator.util.ts) checks
+    // team seats when no direct Operator.userId row matches.
+    staffMember: { findUnique: jest.fn() },
     destination: { findUnique: jest.fn(), findMany: jest.fn() },
     category: { findUnique: jest.fn(), findMany: jest.fn() },
     hub: { findUnique: jest.fn() },

@@ -161,10 +161,29 @@ export class BookingLookupResponseDto {
   @ApiProperty({ example: 'curacao', nullable: true }) destinationSlug!:
     | string
     | null;
+
+  @ApiProperty({
+    description:
+      '24h traveler session (HMAC, email-bound). The verified pair IS the ' +
+      'login (master 6.4): store HttpOnly and replay via X-Traveler-Session ' +
+      'to unlock the full TYP and the cancellation request.',
+  })
+  sessionToken!: string;
 }
 
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
 export class ThankYouResponseDto {
+  @ApiProperty({
+    description:
+      'True when a valid X-Traveler-Session for this booking was presented. ' +
+      'False = unverified mode: only non-identifying tour facts are returned ' +
+      '(date, duration, trip name, free-cancel, party count). Guest name, ' +
+      'guest email/phone, the operator email/phone, pickup address, and card ' +
+      'details are all null - the bare publicRef link is a viewing capability, ' +
+      'not identity.',
+  })
+  verified!: boolean;
+
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
@@ -286,7 +305,9 @@ export class ThankYouResponseDto {
     type: BookingConversionDto,
     nullable: true,
     description:
-      'Present only for a confirmed booking with a valid EUR commission; null otherwise.',
+      'Present only for a confirmed booking with a valid EUR commission AND ' +
+      'a verified session (the take-rate is business-sensitive; a bare link ' +
+      'must not see it or re-fire pixels); null otherwise.',
   })
   conversion!: BookingConversionDto | null;
 }
@@ -319,6 +340,23 @@ export class BookingResponseDto {
   cancellationRefund!: CancellationRefund | null;
   @ApiProperty({ type: [BookingUnitItemResponseDto] })
   unitItems!: BookingUnitItemResponseDto[];
+}
+
+/**
+ * PATCH /bookings/:id response. When the patch sets the contact email
+ * (checkout's contact step), it also returns a traveler session token so the
+ * fresh booker lands on the TYP verified - see traveler-session.util.ts.
+ */
+export class UpdateBookingResponseDto extends BookingResponseDto {
+  @ApiPropertyOptional({
+    description:
+      '24h traveler session (HMAC), BOOKING-scoped: unlocks only this ' +
+      'booking (the contact email is caller-supplied and unproven here, so ' +
+      'no email-wide token is ever minted from this endpoint). Present only ' +
+      'when the patch set contact.email. Store HttpOnly, replay via ' +
+      'X-Traveler-Session.',
+  })
+  sessionToken?: string;
 }
 
 /**

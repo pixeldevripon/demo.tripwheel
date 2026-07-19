@@ -10,6 +10,7 @@ import { ApiNotFoundResponse } from '@nestjs/swagger';
 import {
   ListPaymentsResponseDto,
   PaymentIntentResponseDto,
+  SettleBookingResponseDto,
   WebhookAckDto,
 } from './dto/payment.dto';
 
@@ -37,6 +38,20 @@ export const ApiCreateIntentDocs = () =>
     ApiServiceUnavailableResponse({
       description: 'Payments are not configured.',
     }),
+  );
+
+export const ApiSettleBookingDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Settle a booking synchronously from the browser return',
+      description:
+        'Confirms the booking immediately after Stripe.js reports success, ' +
+        'instead of waiting for the async webhook. Re-verifies the ' +
+        'PaymentIntent with Stripe (never trusts the client) and is ' +
+        'idempotent with the webhook. Returns the current status + publicRef.',
+    }),
+    ApiOkResponse({ type: SettleBookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 
 export const ApiStripeWebhookDocs = () =>

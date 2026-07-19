@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
@@ -28,6 +29,13 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
+import {
+  issueBookingSession,
+  issueTravelerSession,
+  sessionOwnsBooking,
+  verifyTravelerSession,
+} from './traveler-session.util';
+import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
@@ -96,6 +104,17 @@ const DEFAULT_HOLD_MINUTES = 30;
 const QUOTE_TTL_MINUTES = 15;
 
 /**
+ * Roles whose booking READS are platform-wide rather than operator/self
+ * scoped. They only reach the read routes through the VIEW_BOOKINGS gate
+ * (bookings.controller), so a STAFF/EDITOR caller was explicitly granted
+ * booking visibility. Used by both `list` and `assertCanView` - one
+ * definition so the two scopes can never drift.
+ */
+function isPlatformWideBookingRole(role: Role): boolean {
+  return role === Role.ADMIN || role === Role.STAFF || role === Role.EDITOR;
+}
+
+/**
  * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
  * Shared by the authoritative `reserve` write and the read-only `quote` preview.
  */
@@ -144,6 +163,8 @@ export class BookingsService {
     private readonly notifications: NotificationsService,
     private readonly tiers: TiersService,
     private readonly fx: FxRatesService,
+    private readonly lookupLimiter: LookupRateLimiter,
+    private readonly targetLimiter: TargetRateLimiter,
   ) {}
 
   /**
@@ -605,44 +626,53 @@ export class BookingsService {
       brand?: string | null;
     },
   ): Promise<void> {
-    const booking = await this.prisma.booking.findUnique({
+    // `?? undefined` so Prisma SKIPS a field rather than nulling an existing
+    // value - a late webhook backfilling the card must not wipe what settle set.
+    const billingData = billing
+      ? {
+          billingCountry: billing.country ?? undefined,
+          billingPostalCode: billing.postalCode ?? undefined,
+          billingCity: billing.city ?? undefined,
+          paymentMethodLast4: billing.last4 ?? undefined,
+          paymentMethodBrand: billing.brand ?? undefined,
+        }
+      : {};
+
+    // ATOMIC transition: `settle` (browser return) and the Stripe webhook can
+    // both reach here within the same second. A read-then-write would let both
+    // observe ON_HOLD and both send emails / fire the conversion. The guarded
+    // `updateMany` lets exactly ONE caller flip the row; `count` tells the
+    // winner apart from the loser (mirrors the reserve-step seat-claim guard).
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: bookingId, status: BookingStatus.ON_HOLD },
+      data: {
+        status: BookingStatus.CONFIRMED,
+        utcConfirmedAt: new Date(),
+        ...billingData,
+      },
+    });
+    const transitioned = count === 1;
+
+    // Loser (or a webhook arriving after settle already confirmed): still
+    // backfill the card/billing snapshot onto the confirmed booking, but fire
+    // no side effects - the winner owns those.
+    if (!transitioned && billing) {
+      await this.prisma.booking.updateMany({
+        where: { id: bookingId },
+        data: billingData,
+      });
+    }
+
+    const current = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { unitItems: true },
     });
-    if (!booking) {
+    if (!current) {
       this.logger.error(`confirmFromPayment: booking ${bookingId} not found`);
       return;
     }
-
-    let current = booking;
-    const transitioned = booking.status === BookingStatus.ON_HOLD;
-    if (booking.status === BookingStatus.ON_HOLD) {
-      current = await this.prisma.booking.update({
-        where: { id: booking.id },
-        data: {
-          status: BookingStatus.CONFIRMED,
-          utcConfirmedAt: booking.utcConfirmedAt ?? new Date(),
-          billingCountry: billing?.country ?? booking.billingCountry,
-          billingPostalCode: billing?.postalCode ?? booking.billingPostalCode,
-          billingCity: billing?.city ?? booking.billingCity,
-          paymentMethodLast4: billing?.last4 ?? booking.paymentMethodLast4,
-          paymentMethodBrand: billing?.brand ?? booking.paymentMethodBrand,
-        },
-        include: { unitItems: true },
-      });
+    if (transitioned) {
       this.logger.log(`Booking ${current.displayRef} confirmed via payment`);
-    } else if (billing) {
-      current = await this.prisma.booking.update({
-        where: { id: booking.id },
-        data: {
-          billingCountry: billing.country ?? booking.billingCountry,
-          billingPostalCode: billing.postalCode ?? booking.billingPostalCode,
-          billingCity: billing.city ?? booking.billingCity,
-          paymentMethodLast4: billing.last4 ?? booking.paymentMethodLast4,
-          paymentMethodBrand: billing.brand ?? booking.paymentMethodBrand,
-        },
-        include: { unitItems: true },
-      });
     }
 
     const finalized = await this.finalizeConfirmation(current);
@@ -665,7 +695,7 @@ export class BookingsService {
   private async finalizeConfirmation(
     booking: BookingWithItems,
   ): Promise<BookingWithItems> {
-    if (booking.conversionFiredAt) return booking; // already fired - idempotent
+    if (booking.conversionFiredAt) return booking; // fast path - already fired
 
     // EUR-normalize the commission snapshot (rule #22 / master G3).
     const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
@@ -682,16 +712,32 @@ export class BookingsService {
             .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
         : null);
 
-    const updated = await this.prisma.booking.update({
-      where: { id: booking.id },
+    // ATOMIC mark-first (rule #22 / master §5.1): the guarded `updateMany` on
+    // `conversionFiredAt IS NULL` lets exactly one caller win, even when settle
+    // and the webhook race. Only the winner (count === 1) sends emails + fires
+    // the conversion; the loser returns without side effects, so a booking
+    // never double-emails or double-counts a conversion.
+    const firedAt = new Date();
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, conversionFiredAt: null },
       data: {
         fxRateToEur: fxRate,
         totalEur,
         commissionAmount,
-        conversionFiredAt: new Date(),
+        conversionFiredAt: firedAt,
       },
-      include: { unitItems: true },
     });
+    if (count === 0) return booking; // another caller already finalized
+
+    // Merge the just-written fields in-memory (no re-read): downstream email +
+    // conversion + event emit need them and we hold the exact values we wrote.
+    const updated: BookingWithItems = {
+      ...booking,
+      fxRateToEur: fxRate,
+      totalEur,
+      commissionAmount,
+      conversionFiredAt: firedAt,
+    };
 
     // Conversion value MUST be a non-null EUR commission (rule #22). Otherwise it is
     // data corruption - log loudly and do NOT fire a conversion with a bad value.
@@ -1050,6 +1096,11 @@ export class BookingsService {
    * and a CANCELLED one must never re-emit "You're booked".
    */
   async resendConfirmation(publicRef: string): Promise<{ sent: boolean }> {
+    // Per-BOOKING cap on top of the per-IP throttle: a multi-IP caller must
+    // not be able to spam one traveler's inbox via their leaked TYP link.
+    this.targetLimiter.consume('resend', publicRef, [
+      { max: 10, windowMs: 60 * 60 * 1000 },
+    ]);
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
       include: { unitItems: true },
@@ -1090,6 +1141,7 @@ export class BookingsService {
   async requestCancellation(
     publicRef: string,
     reason?: string,
+    sessionToken?: string | null,
   ): Promise<{ requested: boolean }> {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
@@ -1116,6 +1168,25 @@ export class BookingsService {
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
+    // A cancellation request is a mutation, so link possession is not enough
+    // (a leaked TYP URL must never let a stranger cancel someone's trip): the
+    // caller must hold a traveler session for the booking's contact email -
+    // fresh from checkout or from the /bookings pair login (master 6.4).
+    if (
+      !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+        id: booking.id,
+        contactEmail: booking.contactEmail,
+      })
+    ) {
+      throw new UnauthorizedException(
+        'Verify with your email and booking reference to request a cancellation',
+      );
+    }
+    // Per-BOOKING cap (after the ownership gate - only the verified owner can
+    // even reach this): bounds admin-inbox noise from repeat submits.
+    this.targetLimiter.consume('cancel-req', publicRef, [
+      { max: 5, windowMs: 60 * 60 * 1000 },
+    ]);
     if (booking.status !== BookingStatus.CONFIRMED) {
       throw new ConflictException(
         'Only a confirmed booking can request cancellation',
@@ -1305,7 +1376,6 @@ export class BookingsService {
         tourStartDateTime: true,
         tourEndDateTime: true,
         tourTimeZone: true,
-        pickupAddress: true,
         tour: { select: { name: true } },
         operator: {
           select: { companyInfo: { select: { companyName: true } } },
@@ -1325,6 +1395,12 @@ export class BookingsService {
         ? localWallClockToUtc(local, booking.tourTimeZone)
         : null;
 
+    // No street address in the ICS: this endpoint is publicRef-keyed with no
+    // session (it opens straight from mail clients, which can never carry
+    // one), so anything in it is readable by any link-holder. The TYP masks
+    // the pickup address for exactly that audience - the calendar entry must
+    // not hand it back. The traveler finds pickup details on their (verified)
+    // booking page.
     const ics = buildBookingIcs({
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
@@ -1332,8 +1408,8 @@ export class BookingsService {
       operatorName: booking.operator?.companyInfo?.companyName ?? null,
       startUtc: toUtc(booking.tourStartDateTime),
       endUtc: toUtc(booking.tourEndDateTime),
-      location: booking.pickupAddress,
-      description: `Booking reference: ${booking.displayRef}`,
+      location: null,
+      description: `Booking reference: ${booking.displayRef}. Pickup and meeting details are on your booking page.`,
     });
     if (!ics) {
       throw new UnprocessableEntityException(
@@ -1484,7 +1560,17 @@ export class BookingsService {
       },
       include: { unitItems: true },
     });
-    return mapBooking(updated);
+    const mapped = mapBooking(updated);
+    // Checkout sets the contact here (reserve carries no contact fields): the
+    // booker who authored the booking gets a traveler session back, so the TYP
+    // renders unmasked without a separate /bookings login. BOOKING-scoped, not
+    // email-scoped: the email is CALLER-SUPPLIED and unproven here, so the
+    // token must unlock only this one booking - an email-bound token minted
+    // from this endpoint would let anyone reserve a throwaway booking, type a
+    // victim's email, and unlock the victim's real bookings.
+    return dto.contact?.email
+      ? { ...mapped, sessionToken: issueBookingSession(updated.id) }
+      : mapped;
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1566,7 +1652,12 @@ export class BookingsService {
    */
   async lookupBooking(
     dto: LookupBookingDto,
+    ip?: string,
   ): Promise<BookingLookupResponseDto> {
+    // Per-credential failure caps (login spec) on top of the per-IP throttle;
+    // throws 429 with a uniform message when locked out.
+    this.lookupLimiter.assertAllowed(dto.email, dto.reference, ip);
+
     const booking = await this.prisma.booking.findFirst({
       where: {
         displayRef: { equals: dto.reference.trim(), mode: 'insensitive' },
@@ -1579,15 +1670,20 @@ export class BookingsService {
       },
     });
     if (!booking) {
+      this.lookupLimiter.recordFailure(dto.email, dto.reference, ip);
       throw new NotFoundException(
         'No booking matches that email and reference',
       );
     }
 
+    this.lookupLimiter.recordSuccess(dto.email, ip);
     return {
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
       destinationSlug: booking.tour.destination?.slug ?? null,
+      // The verified pair IS the login (master 6.4): hand back a 24h session
+      // the frontend stores HttpOnly and replays via X-Traveler-Session.
+      sessionToken: issueTravelerSession(dto.email),
     };
   }
 
@@ -1603,6 +1699,12 @@ export class BookingsService {
     dto: RecoverReferenceDto,
   ): Promise<RecoverReferenceResponseDto> {
     const email = dto.email.trim();
+    // Login-spec recovery limits per TARGET email (1/min, 5/day) - the per-IP
+    // throttle alone cannot stop a distributed mail-bomb of one inbox.
+    this.targetLimiter.consume('recover', email, [
+      { max: 1, windowMs: 60 * 1000 },
+      { max: 5, windowMs: 24 * 60 * 60 * 1000 },
+    ]);
     const bookings = await this.prisma.booking.findMany({
       where: { contactEmail: { equals: email, mode: 'insensitive' } },
       orderBy: { createdAt: 'desc' },
@@ -1689,7 +1791,7 @@ export class BookingsService {
    * confirmed booking with a non-null EUR commission - otherwise `conversion: null`
    * so the frontend renders an error and fires nothing (rule #22).
    */
-  async getThankYou(publicRef: string) {
+  async getThankYou(publicRef: string, sessionToken?: string | null) {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
       include: {
@@ -1767,23 +1869,38 @@ export class BookingsService {
         )
       : null;
 
+    // The bare publicRef link is a permanent VIEWING capability (master 8.2),
+    // but it is NOT identity: an unverified viewer sees only non-identifying
+    // tour facts (date, duration, trip name, free-cancel, party count). Every
+    // identifying field - guest name, guest email/phone, the operator's direct
+    // support contact, pickup address, card details - is withheld until the
+    // session proves ownership (fresh booker via checkout, or the /bookings
+    // pair login). Founder decision 2026-07-19.
+    const verified = sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+      id: booking.id,
+      contactEmail: booking.contactEmail,
+    });
+    const fullName =
+      booking.contactFullName ??
+      ([booking.contactFirstName, booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        null);
+
     return {
-      guestFirstName: booking.contactFirstName,
-      guestLastName: booking.contactLastName,
-      guestFullName:
-        booking.contactFullName ??
-        ([booking.contactFirstName, booking.contactLastName]
-          .filter(Boolean)
-          .join(' ') ||
-          null),
-      contactPhone: booking.contactPhone,
+      verified,
+      // Guest identity: present only when verified, else null (row hidden).
+      guestFirstName: verified ? booking.contactFirstName : null,
+      guestLastName: verified ? booking.contactLastName : null,
+      guestFullName: verified ? fullName : null,
+      contactPhone: verified ? booking.contactPhone : null,
       pickupRequested: booking.pickupRequested,
       party,
       depositAmount: booking.depositAmount.toString(),
       balanceAmount: booking.balanceAmount.toString(),
       paymentModel: booking.paymentModel,
-      paymentMethodBrand: booking.paymentMethodBrand,
-      paymentMethodLast4: booking.paymentMethodLast4,
+      paymentMethodBrand: verified ? booking.paymentMethodBrand : null,
+      paymentMethodLast4: verified ? booking.paymentMethodLast4 : null,
       durationMinutes: booking.tour?.durationMinutesFrom ?? null,
       cancellationHours,
       freeCancellationDeadlineLocal: deadlineLocal
@@ -1796,17 +1913,22 @@ export class BookingsService {
               booking.tourTimeZone,
             ).toISOString()
           : null,
-      // OCTO supplier contact wins; the company profile is the fallback.
+      // OCTO supplier contact wins; the company profile is the fallback. The
+      // operator NAME is a public business name (shown even unverified); the
+      // direct email/phone are withheld until verified - a shared link must not
+      // hand out the operator's support line.
       operator: {
         name: booking.operator?.companyInfo?.companyName ?? null,
-        email:
-          booking.operator?.contactEmail ??
-          booking.operator?.companyInfo?.companyEmail ??
-          null,
-        phone:
-          booking.operator?.contactPhone ??
-          booking.operator?.companyInfo?.companyPhone ??
-          null,
+        email: verified
+          ? (booking.operator?.contactEmail ??
+            booking.operator?.companyInfo?.companyEmail ??
+            null)
+          : null,
+        phone: verified
+          ? (booking.operator?.contactPhone ??
+            booking.operator?.companyInfo?.companyPhone ??
+            null)
+          : null,
       },
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
@@ -1836,12 +1958,18 @@ export class BookingsService {
               booking.tourTimeZone,
             ).toISOString()
           : null,
-      pickupAddress: booking.pickupAddress,
+      // The pickup address says where the traveler will physically be - hidden
+      // outright for unverified viewers (masking a street address is theater).
+      pickupAddress: verified ? booking.pickupAddress : null,
       partySize: booking.unitItems.length,
       currency: booking.currency,
       totalRetail: booking.totalRetail.toString(),
-      contactEmail: booking.contactEmail,
-      conversion,
+      contactEmail: verified ? booking.contactEmail : null,
+      // Commission take-rate is business-sensitive: only the verified booker's
+      // page fires the conversion (they are always verified - checkout set the
+      // session before the redirect), so a shared link leaks nothing and
+      // cannot re-fire pixels.
+      conversion: verified ? conversion : null,
     };
   }
 
@@ -1851,8 +1979,9 @@ export class BookingsService {
     const limit = query.limit ?? 20;
     const where: Prisma.BookingWhereInput = {};
 
-    if (actor.role === Role.ADMIN) {
-      // no scope restriction
+    if (isPlatformWideBookingRole(actor.role)) {
+      // Platform-wide: the route requires VIEW_BOOKINGS, so a STAFF/EDITOR
+      // caller here has been explicitly granted booking visibility.
     } else if (actor.role === Role.TOUR_OPERATOR) {
       where.operatorId = await resolveOperatorId(
         this.prisma,
@@ -1920,7 +2049,10 @@ export class BookingsService {
     booking: Booking,
     actor: { id: string; role: Role },
   ): Promise<void> {
-    if (actor.role === Role.ADMIN) return;
+    // Platform staff/editors reach the read routes only through the
+    // VIEW_BOOKINGS permission gate (see bookings.controller) - platform-wide
+    // read, same as the list scope.
+    if (isPlatformWideBookingRole(actor.role)) return;
     if (actor.role === Role.TOUR_OPERATOR) {
       const operatorId = await resolveOperatorId(
         this.prisma,

@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role, StaffStatus, UserStatus } from '@prisma/client';
 import {
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
@@ -95,7 +95,12 @@ export class UserService {
     return this.getUserById(userId);
   }
 
-  async getUserPermissions(id: string) {
+  async getUserPermissions(id: string, requester: { id: string; role: Role }) {
+    // Admin-or-self only: VIEW_PERMISSIONS alone must not let one account
+    // enumerate another's resolved access (IDOR on the :id param).
+    if (requester.role !== Role.ADMIN && requester.id !== id) {
+      throw new ForbiddenException('You can only view your own permissions');
+    }
     const user = await this.getUserById(id);
     // EFFECTIVE permissions: static role map for most roles; the computed
     // designation/override set for staff members and operator team seats.
@@ -131,6 +136,32 @@ export class UserService {
     return updated;
   }
 
+  /**
+   * Keeps account-status changes made through the USERS module consistent
+   * with the staff module's suspension semantics: suspending kills every
+   * live session, mirrors the status onto any staff_members row, and drops
+   * the cached permission set - reactivating restores the staff row.
+   * Without this, PATCH /users/:id(/status) would flip user.status while the
+   * staff row and sessions drifted out of sync.
+   */
+  private async syncStatusSideEffects(userId: string, status: UserStatus) {
+    if (status === UserStatus.SUSPENDED || status === UserStatus.DELETED) {
+      await Promise.all([
+        this.prisma.session.deleteMany({ where: { userId } }),
+        this.prisma.staffMember.updateMany({
+          where: { userId },
+          data: { status: StaffStatus.SUSPENDED },
+        }),
+      ]);
+    } else if (status === UserStatus.ACTIVE) {
+      await this.prisma.staffMember.updateMany({
+        where: { userId, status: StaffStatus.SUSPENDED },
+        data: { status: StaffStatus.ACTIVE },
+      });
+    }
+    this.staffPermissions.invalidate(userId);
+  }
+
   async updateUserByAdmin(id: string, dto: UpdateUserByAdminDto) {
     await this.getUserById(id);
 
@@ -153,14 +184,25 @@ export class UserService {
       },
     });
 
+    if (dto.status !== undefined) {
+      await this.syncStatusSideEffects(id, dto.status);
+    }
+
     return updated;
   }
 
   async updateUserRole(
     id: string,
     dto: UpdateUserRoleDto,
-    requestingUserId: string,
+    requester: { id: string; role: Role },
   ) {
+    // Role changes hand out entire STATIC permission sets (EDITOR, STAFF, ...)
+    // that sit outside the staff grant ceiling - so only a real ADMIN account
+    // may perform them, never a staff member holding a delegated permission.
+    if (requester.role !== Role.ADMIN) {
+      throw new ForbiddenException('Only administrators can change user roles');
+    }
+    const requestingUserId = requester.id;
     if (id === requestingUserId) {
       throw new BadRequestException('You cannot change your own role');
     }
@@ -224,6 +266,8 @@ export class UserService {
         updatedAt: true,
       },
     });
+
+    await this.syncStatusSideEffects(id, dto.status);
 
     this.logger.log(
       `Admin ${requestingUserId} changed user ${id} status to ${dto.status}`,

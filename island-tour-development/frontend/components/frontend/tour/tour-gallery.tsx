@@ -136,37 +136,50 @@ export function TourGallery({
                                 className='rotate-180'
                             />
                         </motion.button>
-                        {/* Pagination dots - active dot widens (tour-card style). */}
-                        <div className='absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5'>
-                            {images.map((_, i) => (
-                                <motion.button
-                                    type='button'
-                                    key={i}
-                                    onClick={() => setSlide(i)}
-                                    aria-label={`Go to photo ${i + 1}`}
-                                    whileTap={{ scale: 0.9 }}
-                                    transition={springPop}
-                                    className={`h-2 cursor-pointer rounded-it-full border-none p-0 transition-all duration-300 ${
-                                        i === slide ? 'w-6 bg-it-white' : 'w-2 bg-it-white/60'
-                                    }`}
-                                />
-                            ))}
-                        </div>
+                        {/* Position indicator. Dots only for small sets - a
+                            22-photo tour would render a dot row wider than the
+                            phone screen, colliding with the "Show all photos"
+                            pill. Larger sets get a compact counter chip at the
+                            bottom-left instead (clear of arrows and the pill). */}
+                        {images.length <= 6 ? (
+                            <div className='absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5'>
+                                {images.map((_, i) => (
+                                    <motion.button
+                                        type='button'
+                                        key={i}
+                                        onClick={() => setSlide(i)}
+                                        aria-label={`Go to photo ${i + 1}`}
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={springPop}
+                                        className={`h-2 cursor-pointer rounded-it-full border-none p-0 transition-all duration-300 ${
+                                            i === slide ? 'w-6 bg-it-white' : 'w-2 bg-it-white/60'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <span className='absolute bottom-3 left-3 z-10 rounded-it-full bg-it-ink/60 px-2.5 py-1 text-[12px] leading-[1.4] tracking-[-0.012em] text-it-white tabular-nums'>
+                                {slide + 1} / {images.length}
+                            </span>
+                        )}
                     </>
                 )}
-                {/* "Show all photos" - bottom-right of the slider. */}
+                {/* "Show all photos" - bottom-right of the slider. Compact on
+                    the phone (smaller type/icon/padding than the desktop
+                    collage pill) so it reads as a chip over the photo instead
+                    of crowding the arrows and indicator. */}
                 <motion.button
                     type='button'
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-full border border-it-border bg-it-white px-3 py-1.75 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:bg-it-surface'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-full border border-it-border bg-it-white px-2.5 py-1.5 font-medium text-[13px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:bg-it-surface'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
                         width={24}
                         height={24}
-                        className='size-6 shrink-0'
+                        className='size-5 shrink-0'
                     />
                     {showAllPhotosLabel}
                 </motion.button>

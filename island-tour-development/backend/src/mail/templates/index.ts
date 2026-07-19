@@ -1,5 +1,9 @@
 export { passwordResetTemplate } from './password-reset.template';
 export { operatorInviteTemplate } from './operator-invite.template';
+export {
+  staffInviteTemplate,
+  type StaffInviteTemplateProps,
+} from './staff-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
 
 // The booking confirmation is NOT a TS template function: it is the design-owned

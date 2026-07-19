@@ -10,6 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import {
+  BookingStatus,
   Currency,
   PaymentKind,
   PaymentProvider,
@@ -70,6 +71,20 @@ export class PaymentIntentResponseDto {
 export class WebhookAckDto {
   @ApiProperty({ example: true })
   received!: boolean;
+}
+
+/** Result of the synchronous settle-on-return call. */
+export class SettleBookingResponseDto {
+  @ApiProperty({
+    enum: BookingStatus,
+    description:
+      'Current booking status after the synchronous settle attempt. ' +
+      'CONFIRMED = the processing page can redirect to the TYP immediately.',
+  })
+  status!: BookingStatus;
+
+  @ApiProperty({ description: 'TYP coordinate for the redirect.' })
+  publicRef!: string;
 }
 
 /** One row of the dashboard payments table: the payment + booking context. */

@@ -27,6 +27,7 @@ import {
   UpdateUserStatusDto,
   UserQueryDto,
 } from './dto/user.dto';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { UserService } from './user.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -40,6 +41,10 @@ function createMockPrismaService() {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    // Touched by syncStatusSideEffects (suspension kills sessions + syncs
+    // any staff_members row).
+    session: { deleteMany: jest.fn() },
+    staffMember: { updateMany: jest.fn() },
   };
 }
 
@@ -99,11 +104,22 @@ describe('UserService', () => {
   let service: UserService;
   let prisma: ReturnType<typeof createMockPrismaService>;
 
+  // Effective-permission resolver (staff/team engine) - not under test here.
+  const staffPermissions = {
+    getEffectivePermissions: jest.fn().mockResolvedValue([]),
+    invalidate: jest.fn(),
+    invalidateAll: jest.fn(),
+  };
+
   beforeEach(async () => {
     prisma = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        UserService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StaffPermissionsService, useValue: staffPermissions },
+      ],
     }).compile();
 
     service = module.get<UserService>(UserService);
@@ -387,9 +403,24 @@ describe('UserService', () => {
       const dto: UpdateUserRoleDto = { role: Role.USER };
 
       await expect(
-        service.updateUserRole('user-1', dto, 'user-1'),
+        service.updateUserRole('user-1', dto, {
+          id: 'user-1',
+          role: Role.ADMIN,
+        }),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when the requester is not a real ADMIN (delegated MANAGE_USERS)', async () => {
+      const dto: UpdateUserRoleDto = { role: Role.EDITOR };
+
+      await expect(
+        service.updateUserRole('user-9', dto, {
+          id: 'staff-1',
+          role: Role.STAFF,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when target is ADMIN and new role is not ADMIN', async () => {
@@ -399,7 +430,10 @@ describe('UserService', () => {
       const dto: UpdateUserRoleDto = { role: Role.USER };
 
       await expect(
-        service.updateUserRole('admin-1', dto, 'requester-2'),
+        service.updateUserRole('admin-1', dto, {
+          id: 'requester-2',
+          role: Role.ADMIN,
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
@@ -412,7 +446,10 @@ describe('UserService', () => {
       const dto: UpdateUserRoleDto = { role: Role.ADMIN };
 
       await expect(
-        service.updateUserRole('user-3', dto, 'requester-2'),
+        service.updateUserRole('user-3', dto, {
+          id: 'requester-2',
+          role: Role.ADMIN,
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
@@ -427,7 +464,10 @@ describe('UserService', () => {
       prisma.user.update.mockResolvedValue(updatedSummary);
 
       const dto: UpdateUserRoleDto = { role: Role.TOUR_OPERATOR };
-      const result = await service.updateUserRole('user-5', dto, 'admin-1');
+      const result = await service.updateUserRole('user-5', dto, {
+        id: 'admin-1',
+        role: Role.ADMIN,
+      });
 
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -444,7 +484,10 @@ describe('UserService', () => {
       const dto: UpdateUserRoleDto = { role: Role.USER };
 
       await expect(
-        service.updateUserRole('nonexistent', dto, 'admin-1'),
+        service.updateUserRole('nonexistent', dto, {
+          id: 'admin-1',
+          role: Role.ADMIN,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });

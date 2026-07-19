@@ -6,7 +6,8 @@
 > described below with sample data.
 >
 > Companion docs in this folder: `02-login-reconciliation.md` (spec vs as-built),
-> `03-login-implementation-plan.md` (phased build), `04-why-better-auth.md` (engine decision).
+> `03-login-implementation-plan.md` (phased build), `04-why-better-auth.md` (engine decision),
+> `../bookings/05-traveler-booking-session-story.md` (the as-built traveler-session flow, end to end).
 
 **Status:** Proposal v0.1, dated July 3, 2026. Not yet folded into the master doc. Where it
 disagrees with the master, the master wins.

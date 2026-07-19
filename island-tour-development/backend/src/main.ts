@@ -47,8 +47,11 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      // Allow requests with no origin (Postman, curl, server-to-server) and listed origins
-      if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+      // Allow requests with no Origin header (Postman, curl, server-to-server)
+      // and listed origins. The literal string 'null' is NOT allowed: that is
+      // what sandboxed iframes and data:/file: pages send, and combined with
+      // credentials:true it would let such a page make cookie-carrying calls.
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('CORS: origin not allowed'));
@@ -57,12 +60,14 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     // Octo-* + Accept-Language: OCTO capability negotiation and localization.
+    // X-Traveler-Session: the /bookings pair-login token (traveler-session.util).
     allowedHeaders: [
       'Content-Type',
       'Authorization',
       'Octo-Capabilities',
       'Octo-Env',
       'Accept-Language',
+      'X-Traveler-Session',
     ],
     // Let OTAs read the echoed capability set + negotiated content locale.
     exposedHeaders: ['Octo-Capabilities', 'Content-Language'],

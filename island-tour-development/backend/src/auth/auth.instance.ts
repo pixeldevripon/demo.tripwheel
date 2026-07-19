@@ -3,6 +3,7 @@ import { mailService } from '@/mail/mail.singleton';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Role, UserStatus } from '@prisma/client';
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { bearer, openAPI } from 'better-auth/plugins';
 import 'dotenv/config';
@@ -46,17 +47,58 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
 
     sendResetPassword: async ({ user, url }, request) => {
-      // A reset triggered without an HTTP request is server-initiated - the only
-      // such caller is the admin operator-invite flow. Genuine "forgot password"
-      // requests always carry the originating HTTP request.
+      // A reset triggered without an HTTP request is server-initiated - the
+      // invite flows (operator create, staff invite, team-seat invite,
+      // resend-invite). Genuine "forgot password" requests always carry the
+      // originating HTTP request.
       if (!request) {
+        // Every invite flow creates the staff_members row BEFORE firing this
+        // reset, so the row tells us WHO is being invited - the email copy
+        // must name the right role, never claim "tour operator" for staff.
         sendInBackground(
-          'operator-invite',
-          mailService.sendOperatorInviteEmail(
-            user.email,
-            url,
-            user.name ?? undefined,
-          ),
+          'invite',
+          (async () => {
+            const member = await authPrismaClient.staffMember.findUnique({
+              where: { userId: user.id },
+              select: {
+                operatorId: true,
+                seatRole: true,
+                designation: { select: { name: true } },
+                operator: {
+                  select: {
+                    companyInfo: { select: { companyName: true } },
+                    contactEmail: true,
+                  },
+                },
+              },
+            });
+
+            // OWNER seat (or no staff row at all, legacy) = the business
+            // operator invite - unchanged copy.
+            if (!member || (member.operatorId && member.seatRole === 'OWNER')) {
+              await mailService.sendOperatorInviteEmail(
+                user.email,
+                url,
+                user.name ?? undefined,
+              );
+              return;
+            }
+
+            const roleLabel =
+              member.designation?.name ??
+              (member.operatorId
+                ? member.seatRole === 'MANAGER'
+                  ? 'Manager'
+                  : 'Staff'
+                : null);
+
+            await mailService.sendStaffInviteEmail(user.email, url, {
+              name: user.name ?? undefined,
+              variant: member.operatorId ? 'team' : 'platform',
+              roleLabel,
+              companyName: member.operator?.companyInfo?.companyName ?? null,
+            });
+          })(),
         );
       } else {
         sendInBackground(
@@ -167,6 +209,22 @@ export const auth = betterAuth({
     },
     session: {
       create: {
+        before: async (session) => {
+          // A suspended/deleted account must not be able to sign in again -
+          // AuthGuard blocks API access, but refusing the session here stops
+          // the account at the door (staff suspension, banned users).
+          const user = await authPrismaClient.user.findUnique({
+            where: { id: session.userId },
+            select: { status: true },
+          });
+          // Runs only AFTER the password already verified, so naming the
+          // suspension leaks nothing to an attacker without the credential.
+          if (user?.status === 'SUSPENDED' || user?.status === 'DELETED') {
+            throw new APIError('FORBIDDEN', {
+              message: 'This account has been suspended.',
+            });
+          }
+        },
         after: async (session) => {
           // Staff bookkeeping on login: stamp lastLoginAt and flip an INVITED
           // member to ACTIVE on their first successful sign-in. Non-staff

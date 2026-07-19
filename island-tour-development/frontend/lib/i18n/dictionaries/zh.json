@@ -715,7 +715,10 @@
     "sentTitle": "取消申请已发送。",
     "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
     "notActive": "此预订已不再有效，无需取消。",
-    "error": "提交失败。请重试，或通过 WhatsApp 联系我们。"
+    "error": "提交失败。请重试，或通过 WhatsApp 联系我们。",
+    "verifyTitle": "请先验证身份",
+    "verifyBody": "取消预订前,我们需要确认这是您的预订。请使用邮箱和预订编号登录,完成后会直接返回此页。",
+    "verifyCta": "使用邮箱 + 预订编号验证"
   },
   "thankYou": {
     "title": "预订成功，{name}！🌴",
@@ -767,7 +770,15 @@
     "talkLocals": "联系运营的本地人，他们最了解：",
     "issueTitle": "预订或付款遇到问题？",
     "issueBody": "请发邮件至 {email} 并附上您的编号（{ref}）",
-    "replyTime": "我们通常会在 12 小时内回复"
+    "replyTime": "我们通常会在 12 小时内回复",
+    "verifyTitle": "部分信息已隐藏",
+    "verifyBody": "您正在通过共享链接查看,因此个人信息已被隐藏。如果这是您的预订,请使用邮箱和预订编号验证身份以查看全部信息。",
+    "verifyCta": "验证身份",
+    "manageTitle": "您的预订",
+    "manageSubtitle": "{tour},{date} {time}。",
+    "statusConfirmed": "已确认",
+    "cancelBooking": "取消预订",
+    "needToCancel": "需要取消?"
   },
   "travelerLogin": {
     "title": "我的预订",
