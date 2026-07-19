@@ -15,11 +15,18 @@ import {
 } from '@/lib/checkout/countries';
 import { localizeHref, type Currency, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { springPop } from '@/lib/motion';
 import { storeTravelerSession } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
+import {
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type ReactNode,
+} from 'react';
 import {
     cardClass,
     DarkButton,
@@ -96,11 +103,14 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
 }
 
 /**
- * Two-phase checkout form (master §5.8; Figma 47659:2424 Contact +
- * 47667:15365 Payment). Completing Contact reserves the booking (ON_HOLD),
- * attaches contact, and creates the Stripe PaymentIntent, then advances to the
- * Payment card (`CheckoutPayment`), which confirms the charge with styled Stripe
- * Card Elements. The persistent booking summary lives alongside (rendered by the
+ * Two-phase checkout ACCORDION (master §5.8; Figma 47659:2424 Contact +
+ * 47667:15365 Payment): both sections live in one card. Completing Contact
+ * reserves the booking (ON_HOLD), attaches contact, and creates the Stripe
+ * PaymentIntent - then Contact collapses to a done-summary row (green check +
+ * name/email + Edit) and Payment expands in place (`CheckoutPayment`, styled
+ * Stripe Card Elements). Edit re-expands Contact and collapses Payment - never
+ * a screen swap, and the collapsed sections stay mounted so entries survive an
+ * edit round. The persistent booking summary lives alongside (rendered by the
  * page). The charge webhook confirms the booking; the /payment/processing hop
  * polls for it before the thank-you page.
  */
@@ -273,43 +283,74 @@ export function CheckoutForm({
         { value: 'other', label: dict.pickupOther },
     ];
 
-    // Payment phase: the Stripe-wired methods (only once the intent is ready).
-    if (phase === 'payment' && intent) {
-        return (
-            <CheckoutPayment
-                dict={dict}
-                locale={locale}
-                publishableKey={intent.publishableKey}
-                clientSecret={intent.clientSecret}
-                contact={{
-                    fullName: contact.fullName,
-                    email: contact.email.trim(),
-                    country: contact.country,
-                }}
-                payToday={payToday}
-                currency={currency}
-                currencySymbol={currencySymbol}
-                eligibleMethods={intent.methodTypes}
-                processingHref={processingHref(intent.publicRef)}
-            />
-        );
-    }
-
     const hasPayment = payToday > 0;
+    // Accordion state: Contact is done (collapsed to its summary row) exactly
+    // while the Payment phase is active with a ready intent.
+    const contactDone = phase === 'payment' && intent !== null;
+
+    // Bring the section that just expanded into view (skip the initial render).
+    const cardRef = useRef<HTMLDivElement>(null);
+    const paymentHeaderRef = useRef<HTMLDivElement>(null);
+    const mountedRef = useRef(false);
+    useEffect(() => {
+        if (!mountedRef.current) {
+            mountedRef.current = true;
+            return;
+        }
+        const target = contactDone
+            ? paymentHeaderRef.current
+            : cardRef.current;
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [contactDone]);
 
     return (
-        <AnimatePresence mode='wait' initial={false}>
-            <motion.div
-                key='contact'
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                className={cardClass}>
-                <div className='flex flex-col gap-8'>
-                    <span className={titleClass}>{dict.contactDetails}</span>
+        <div ref={cardRef} className={`${cardClass} scroll-mt-24`}>
+            {/* ── Contact header - swaps to the done-summary row (green check +
+                name/email + Edit) once contact completes ── */}
+            <div className='flex min-w-0 items-center justify-between gap-4'>
+                <div className='flex min-w-0 items-center gap-3'>
+                    <SectionBadge
+                        number={1}
+                        state={contactDone ? 'done' : 'active'}
+                    />
+                    <span className={`${titleClass} shrink-0`}>
+                        {dict.contactDetails}
+                    </span>
+                    <AnimatePresence initial={false}>
+                        {contactDone && (
+                            <motion.span
+                                key='contact-summary'
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className='min-w-0 truncate text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
+                                {contact.fullName} · {contact.email.trim()}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </div>
+                <AnimatePresence initial={false}>
+                    {contactDone && (
+                        <motion.button
+                            key='contact-edit'
+                            type='button'
+                            onClick={() => onPhaseChange('contact')}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            whileTap={{ scale: 0.97 }}
+                            transition={{ duration: 0.2 }}
+                            className='shrink-0 cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors hover:text-it-primary'>
+                            {dict.edit}
+                        </motion.button>
+                    )}
+                </AnimatePresence>
+            </div>
 
-                    <div className='flex flex-col gap-12'>
+            {/* ── Contact form body (collapses once contact completes) ── */}
+            <Collapse open={!contactDone}>
+                    <div className='flex flex-col gap-12 pt-8'>
                         <div className='flex flex-col gap-4'>
                             {/* Full name */}
                             <Field
@@ -469,21 +510,147 @@ export function CheckoutForm({
                             </AnimatePresence>
                         </DarkButton>
                     </div>
-                </div>
+            </Collapse>
 
-                {/* Collapsed Payment section (Figma 47659:2424 footer). */}
-                {hasPayment && (
-                    <>
-                        <div className='-mx-6 mt-14 h-px bg-it-heading/10' />
-                        <div className='mt-10 flex items-center justify-between gap-4'>
+            {/* ── Payment section - expands in place once contact completes
+                (Figma 47659:2424 collapsed footer / 47667:15365 expanded) ── */}
+            {hasPayment && (
+                <>
+                    <div className='-mx-6 mt-8 h-px bg-it-heading/10' />
+                    <div
+                        ref={paymentHeaderRef}
+                        className='mt-8 flex scroll-mt-24 items-center justify-between gap-4'>
+                        <div className='flex items-center gap-3'>
+                            <SectionBadge
+                                number={2}
+                                state={contactDone ? 'active' : 'upcoming'}
+                            />
                             <span className={titleClass}>{dict.payment}</span>
-                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
-                                {dict.completeContactFirst}
-                            </span>
                         </div>
-                    </>
+                        <AnimatePresence initial={false}>
+                            {!contactDone && (
+                                <motion.span
+                                    key='complete-first'
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className='text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                                    {dict.completeContactFirst}
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                    <Collapse open={contactDone}>
+                        <div className='pt-8'>
+                            {/* Mounted from the first successful continue on -
+                                collapsing back to edit contact keeps the Stripe
+                                fields (and their entries) alive. */}
+                            {intent && (
+                                <CheckoutPayment
+                                    dict={dict}
+                                    locale={locale}
+                                    publishableKey={intent.publishableKey}
+                                    clientSecret={intent.clientSecret}
+                                    contact={{
+                                        fullName: contact.fullName,
+                                        email: contact.email.trim(),
+                                        country: contact.country,
+                                    }}
+                                    payToday={payToday}
+                                    currency={currency}
+                                    currencySymbol={currencySymbol}
+                                    eligibleMethods={intent.methodTypes}
+                                    processingHref={processingHref(
+                                        intent.publicRef
+                                    )}
+                                />
+                            )}
+                        </div>
+                    </Collapse>
+                </>
+            )}
+        </div>
+    );
+}
+
+/* ── Accordion primitives ──────────────────────────────────────────── */
+
+type SectionBadgeState = 'active' | 'done' | 'upcoming';
+
+/**
+ * 32px numbered circle for a section header: primary-filled while active,
+ * green with a white check once done, outlined while upcoming.
+ */
+function SectionBadge({
+    number,
+    state,
+}: {
+    number: number;
+    state: SectionBadgeState;
+}) {
+    return (
+        <span
+            className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors duration-300 ${
+                state === 'done'
+                    ? 'bg-it-green'
+                    : state === 'active'
+                      ? 'bg-it-primary'
+                      : 'border border-it-heading/20 bg-it-white'
+            }`}>
+            <AnimatePresence mode='wait' initial={false}>
+                {state === 'done' ? (
+                    <motion.span
+                        key='check'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        transition={springPop}
+                        className='grid place-items-center'>
+                        <Image
+                            src='/icons/filters/check-white.svg'
+                            alt=''
+                            width={16}
+                            height={16}
+                            className='size-4 shrink-0'
+                        />
+                    </motion.span>
+                ) : (
+                    <motion.span
+                        key='number'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        transition={springPop}
+                        className={`font-medium text-[15px] leading-none tracking-[-0.012em] ${
+                            state === 'active'
+                                ? 'text-it-white'
+                                : 'text-it-heading/50'
+                        }`}>
+                        {number}
+                    </motion.span>
                 )}
-            </motion.div>
-        </AnimatePresence>
+            </AnimatePresence>
+        </span>
+    );
+}
+
+/**
+ * Height-collapse section body. Spacing lives INSIDE (pt on the child) so the
+ * collapsed state closes fully tight; collapsed content stays mounted (form /
+ * Stripe entries survive an edit round) but is inert - no tab stops, no
+ * screen-reader exposure.
+ */
+function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+    return (
+        <motion.div
+            initial={false}
+            animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            inert={open ? undefined : true}
+            aria-hidden={!open}
+            className='overflow-hidden'>
+            {children}
+        </motion.div>
     );
 }

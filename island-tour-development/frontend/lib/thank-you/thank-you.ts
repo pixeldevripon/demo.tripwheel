@@ -70,6 +70,12 @@ export interface ThankYouBooking {
     tourId: string;
     guestFirstName: string;
     guestLead: string;
+    /**
+     * The booker's own confirmation address, ALWAYS masked for display
+     * (`d•••@g•••.com`) - it appears only in the "confirmation email sent to X"
+     * reassurance line, and booking screens get screenshotted/shared, so the
+     * full address is never rendered. Empty on the unverified payload.
+     */
     guestEmail: string;
     tourTitle: string;
     destinationSlug: string;
@@ -78,6 +84,12 @@ export interface ThankYouBooking {
     timeRangeLabel: string;
     durationLabel: string;
     pickupLabel: string;
+    /**
+     * Raw meeting-point address for a maps link, or null when there is no
+     * concrete address yet (unverified, no pickup, or "to be confirmed"). The
+     * summary renders `pickupLabel` as a map link only when this is present.
+     */
+    pickupMapQuery: string | null;
     freeCancelBeforeLabel: string;
     /** Real UTC deadline instant - the /cancel page's in-window check. */
     freeCancelDeadlineUtc: string | null;
@@ -221,6 +233,22 @@ function pluralise(base: string): string {
     return `${base}s`;
 }
 
+/**
+ * Mask an email for display: `devripon.io@gmail.com` -> `d•••@g•••.com` (first
+ * local char + first domain char + TLD only). Mirrors the backend `maskEmail`
+ * (traveler-session.util.ts) so masked mode and the confirmation line match.
+ */
+function maskEmail(email: string | null | undefined): string {
+    if (!email) return '';
+    const at = email.lastIndexOf('@');
+    if (at < 1) return '•••';
+    const local = email.slice(0, at);
+    const domain = email.slice(at + 1);
+    const dot = domain.lastIndexOf('.');
+    const tld = dot > 0 ? domain.slice(dot) : '';
+    return `${local.slice(0, 1)}•••@${domain.slice(0, 1)}•••${tld}`;
+}
+
 /** "Mastercard *****4242"; empty when nothing was charged online. */
 function fmtCard(brand: string | null, last4: string | null): string {
     if (!brand && !last4) return '';
@@ -272,7 +300,8 @@ export async function getThankYouBooking(
         tourId: typ.tourId,
         guestFirstName: typ.guestFirstName ?? '',
         guestLead: typ.guestFullName ?? typ.guestFirstName ?? '',
-        guestEmail: typ.contactEmail ?? '',
+        // Always masked for display - the raw address never reaches the client.
+        guestEmail: maskEmail(typ.contactEmail),
         tourTitle: typ.tourName,
         destinationSlug: typ.island ?? '',
         dateLabel: start ? fmtDate(start, locale) : typ.localDate,
@@ -287,6 +316,9 @@ export async function getThankYouBooking(
         pickupLabel:
             typ.pickupAddress ??
             (typ.verified && typ.pickupRequested ? 'To be confirmed' : ''),
+        // Only a concrete snapshotted address is map-linkable; "to be confirmed"
+        // and the withheld/empty cases carry no query.
+        pickupMapQuery: typ.pickupAddress ?? null,
         freeCancelBeforeLabel: deadline ? fmtDayMonth(deadline, locale) : '',
         freeCancelDeadlineUtc: typ.freeCancellationDeadlineUtc,
         cancellationHours: typ.cancellationHours,

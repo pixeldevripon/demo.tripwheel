@@ -32,6 +32,7 @@ import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import {
   issueBookingSession,
   issueTravelerSession,
+  maskEmail,
   sessionOwnsBooking,
   verifyTravelerSession,
 } from './traveler-session.util';
@@ -1964,7 +1965,11 @@ export class BookingsService {
       partySize: booking.unitItems.length,
       currency: booking.currency,
       totalRetail: booking.totalRetail.toString(),
-      contactEmail: verified ? booking.contactEmail : null,
+      // The TYP only ever shows the booker's own address masked ("sent to
+      // d•••@g•••.com"), and nothing on the page needs it raw, so it is masked
+      // HERE - the full guest email never leaves the backend, even to the
+      // verified owner's own page (booking screens get screenshotted/shared).
+      contactEmail: verified ? maskEmail(booking.contactEmail) : null,
       // Commission take-rate is business-sensitive: only the verified booker's
       // page fires the conversion (they are always verified - checkout set the
       // session before the redirect), so a shared link leaks nothing and

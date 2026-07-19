@@ -27,7 +27,6 @@ import {
     FieldShell,
     labelClass,
     Radio,
-    titleClass,
 } from './checkout-fields';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -68,7 +67,9 @@ interface CheckoutPaymentProps {
 }
 
 /**
- * Payment card (Figma 47667:15365) wired to Stripe. Card is collected INLINE via
+ * Payment section content (Figma 47667:15365) wired to Stripe - rendered inside
+ * the checkout accordion card (the section header/badge and the expand/collapse
+ * shell live in `checkout-form`). Card is collected INLINE via
  * styled Stripe Card Elements (transparent iframes, no Stripe-hosted UI) and
  * confirmed with confirmCardPayment. PayPal + iDEAL confirm client-side and
  * REDIRECT to the provider (return_url -> /payment/processing) - those methods have
@@ -218,16 +219,7 @@ function PaymentInner({
     }
 
     return (
-        <motion.div
-            key='payment'
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className='flex flex-col gap-8 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
-            <span className={titleClass}>{dict.paymentDetails}</span>
-
-            <div className='flex flex-col gap-12'>
+        <div className='flex flex-col gap-12'>
                 <div className='flex flex-col gap-6'>
                     <div className='flex flex-col gap-2.5'>
                         <span className={labelClass}>
@@ -531,8 +523,7 @@ function PaymentInner({
                             return <span key={i}>{part}</span>;
                         })}
                 </p>
-            </div>
-        </motion.div>
+        </div>
     );
 }
 

@@ -5,8 +5,9 @@ import Image from 'next/image';
 
 type ThankYouDict = Dictionary['thankYou'];
 
+/** Highlighted, tappable contact value (mailto/tel) - Figma 47745-12375. */
 const contactText =
-    'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
+    'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80';
 
 /**
  * "Got a question about tour?" support card (Figma 47745-12375): operator
@@ -90,7 +91,9 @@ export function ThankYouQuestion({
                             <div className='flex flex-col gap-2'>
                                 <p className='m-0 max-w-[488px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
                                     {issueBefore}
-                                    <a href={`mailto:${booking.supportEmail}`}>
+                                    <a
+                                        href={`mailto:${booking.supportEmail}`}
+                                        className='text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80'>
                                         {booking.supportEmail}
                                     </a>
                                     {issueAfter}

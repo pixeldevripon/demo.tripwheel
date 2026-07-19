@@ -56,8 +56,13 @@ describe('issueTravelerSession / verifyTravelerSession', () => {
 
   it('rejects a tampered signature (single character flip)', () => {
     const token = issueTravelerSession('guest@example.test');
-    const flipped = token.slice(0, -1) + (token.endsWith('A') ? 'B' : 'A');
-    expect(verifyTravelerSession(flipped)).toBeNull();
+    const [v, payload, sig] = token.split('.');
+    // Flip the FIRST signature char (a fully-significant base64url position).
+    // NOT the last char: a 32-byte HMAC base64url-encodes to 43 chars whose
+    // final char carries only 4 significant bits, so flipping it can decode to
+    // the SAME signature bytes and legitimately still verify - a flaky tamper.
+    const flippedSig = (sig[0] === 'A' ? 'B' : 'A') + sig.slice(1);
+    expect(verifyTravelerSession(`${v}.${payload}.${flippedSig}`)).toBeNull();
   });
 
   it('rejects a wrong-length signature without throwing', () => {

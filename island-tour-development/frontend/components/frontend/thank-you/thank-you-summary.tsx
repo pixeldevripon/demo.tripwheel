@@ -10,6 +10,13 @@ const rowValue =
     'text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
 const rowLabel =
     'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
+/** Highlighted, tappable contact value (mailto/tel/map) - Figma 47744-9211. */
+const rowLink =
+    'text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80';
+
+/** Google Maps search link for a meeting-point address. */
+const mapUrl = (query: string) =>
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
 /** Icon + muted label | right-aligned value (TOUR DETAILS rows). */
 function DetailRow({
@@ -100,7 +107,17 @@ export function ThankYouSummary({
                                     <DetailRow
                                         icon='/icons/thank-you/detail-location.svg'
                                         label={dict.pickup}>
-                                        {booking.pickupLabel}
+                                        {booking.pickupMapQuery ? (
+                                            <a
+                                                href={mapUrl(booking.pickupMapQuery)}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className={rowLink}>
+                                                {booking.pickupLabel}
+                                            </a>
+                                        ) : (
+                                            booking.pickupLabel
+                                        )}
                                     </DetailRow>
                                 )}
                                 <DetailRow
@@ -129,14 +146,22 @@ export function ThankYouSummary({
                                     <DetailRow
                                         icon='/icons/thank-you/detail-sms.svg'
                                         label={dict.email}>
-                                        {booking.operatorEmail}
+                                        <a
+                                            href={`mailto:${booking.operatorEmail}`}
+                                            className={rowLink}>
+                                            {booking.operatorEmail}
+                                        </a>
                                     </DetailRow>
                                 )}
                                 {booking.operatorPhone && (
                                     <DetailRow
                                         icon='/icons/thank-you/detail-call.svg'
                                         label={dict.phoneNumber}>
-                                        {booking.operatorPhone}
+                                        <a
+                                            href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
+                                            className={rowLink}>
+                                            {booking.operatorPhone}
+                                        </a>
                                     </DetailRow>
                                 )}
                                 <DetailRow

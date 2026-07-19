@@ -1061,7 +1061,8 @@ describe('BookingsService', () => {
       );
 
       expect(res.verified).toBe(true);
-      expect(res.contactEmail).toBe('guest@example.test');
+      // Guest's own email is masked even for the verified owner (screenshots).
+      expect(res.contactEmail).toBe('g•••@e•••.test');
       expect(res.contactPhone).toBe('+599 9 123 4567');
       expect(res.guestFirstName).toBe('Ripon');
       expect(res.guestLastName).toBe('Mia');

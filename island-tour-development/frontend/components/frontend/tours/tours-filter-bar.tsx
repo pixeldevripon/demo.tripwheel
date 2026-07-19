@@ -111,15 +111,19 @@ interface ToursFilterBarProps {
 
 /* ── Shared atom styles ────────────────────────────────────────────── */
 
+// Text colour intentionally NOT in the base - the category pills swap it for
+// primary in their active state, which would otherwise fight the base class.
 const PILL_BASE =
-    'flex h-9.5 md:h-12.5 shrink-0 items-center gap-2 rounded-it-full px-3 md:px-6 py-2 md:py-3 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors';
+    'flex h-9.5 md:h-12.5 shrink-0 items-center gap-2 rounded-it-full px-3 md:px-6 py-2 md:py-3 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors';
 
 /**
  * Tours filter & sort toolbar - matches Figma node 47167:4032.
  *
- * Row 1: date / guests / filters control pills + a divider + scrollable
- * category quick-filter pills. Row 2: result counter + applied-filter chips +
- * "Clear all" on the left, sort dropdown on the right.
+ * Row 1: pinned date / guests / filters control pills + a divider, then the
+ * category quick-filters as text labels (pill surface on hover, neutral pill
+ * when active) - a compact two-line wrap on desktop, a scrolling strip on
+ * mobile. Row 2: result counter + applied-filter chips (primary) + "Clear all"
+ * on the left, sort dropdown pinned to the row's top-right.
  */
 export function ToursFilterBar({
     dict,
@@ -142,9 +146,10 @@ export function ToursFilterBar({
     const pathname = usePathname();
     const { startNav } = useToursNav();
 
-    // Grab-to-slide the horizontally-overflowing rows with a plain mouse (same
-    // affordance as the tab bars); no-ops on touch and when the content fits.
-    const controlsRowRef = useDragScroll<HTMLDivElement>();
+    // Grab-to-slide the horizontally-overflowing strips with a plain mouse
+    // (same affordance as the tab bars); no-ops on touch and when the content
+    // fits. Only the category strip scrolls - the control pills stay pinned.
+    const categoriesRowRef = useDragScroll<HTMLDivElement>();
     const metaRowRef = useDragScroll<HTMLDivElement>();
 
     // Categories render optimistically: a chip toggle flips its own state on
@@ -197,6 +202,16 @@ export function ToursFilterBar({
 
     // Selected categories rendered as removable chips in row 2 (multi-select).
     const chips = categories.filter(c => optimisticCategories.includes(c.slug));
+
+    // Category quick-filters render as two stacked rows that scroll
+    // horizontally together, so every category stays reachable however many
+    // exist. Short lists (fits one line) stay a single row. The split favours
+    // the bottom row on odd counts (matches the design reference).
+    const half = Math.floor(categories.length / 2);
+    const categoryRows =
+        categories.length > 4
+            ? [categories.slice(0, half), categories.slice(half)]
+            : [categories];
 
     // Date - URL-backed. Parse the anchor to a Date for the calendar; selecting a
     // day navigates immediately (single action).
@@ -298,11 +313,10 @@ export function ToursFilterBar({
 
     return (
         <div className='flex flex-col gap-6'>
-            {/* ── Row 1 - controls + category pills (scrolls horizontally) ── */}
-            <div
-                ref={controlsRowRef}
-                className='flex items-center gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                {/* Left group - control pills + vertical divider */}
+            {/* ── Row 1 - pinned control pills · category quick-filters
+                (mobile: scrolling strip; desktop: compact two-line wrap) ── */}
+            <div className='flex items-center gap-4'>
+                {/* Left group - control pills + vertical divider (pinned) */}
                 <div className='flex shrink-0 items-center gap-4'>
                     <div className='flex items-center gap-2'>
                         {/* Date - calendar popover */}
@@ -311,7 +325,7 @@ export function ToursFilterBar({
                                 <motion.button
                                     type='button'
                                     transition={springPop}
-                                    className={`${PILL_BASE} max-md:hidden border ${
+                                    className={`${PILL_BASE} max-md:hidden border text-it-heading ${
                                         date
                                             ? 'border-it-heading-subtle bg-it-surface'
                                             : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
@@ -358,7 +372,7 @@ export function ToursFilterBar({
                                 <motion.button
                                     type='button'
                                     transition={springPop}
-                                    className={`${PILL_BASE} border border-it-heading-subtle bg-it-surface`}>
+                                    className={`${PILL_BASE} border border-it-heading-subtle bg-it-surface text-it-heading`}>
                                     <Image
                                         src='/icons/filters/profile.svg'
                                         alt=''
@@ -458,7 +472,7 @@ export function ToursFilterBar({
                             type='button'
                             onClick={() => setFilterOpen(true)}
                             transition={springPop}
-                            className={`${PILL_BASE} border ${
+                            className={`${PILL_BASE} border text-it-heading ${
                                 activeFilterCount > 0
                                     ? 'border-it-heading bg-it-surface'
                                     : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
@@ -507,55 +521,70 @@ export function ToursFilterBar({
                     )}
                 </div>
 
-                {/* Category quick-filter pills - hidden on the category page (route
-                    fixes the category). */}
+                {/* Category quick-filter pills - two stacked rows that scroll
+                    horizontally as one block (every category reachable however
+                    many exist). Hidden on the category page (route fixes the
+                    category). */}
                 {!lockCategory && (
-                    <div className='flex shrink-0 items-center gap-2'>
-                        {categories.map(cat => {
-                            const active = optimisticCategories.includes(
-                                cat.slug
-                            );
-                            // Prefetch the toggled-on result (the common intent).
-                            const prefetch = () =>
-                                !active &&
-                                prefetchState({
-                                    categories: [
-                                        ...optimisticCategories,
-                                        cat.slug,
-                                    ],
-                                });
-                            return (
-                                <motion.button
-                                    key={cat.slug}
-                                    type='button'
-                                    aria-pressed={active}
-                                    onClick={() => toggleCategory(cat)}
-                                    onPointerEnter={prefetch}
-                                    onFocus={prefetch}
-                                    whileTap={{ scale: 0.99 }}
-                                    transition={springPop}
-                                    className={`${PILL_BASE} ${
-                                        active
-                                            ? 'bg-it-heading/10'
-                                            : 'border border-it-heading/10 bg-it-white hover:bg-it-surface'
-                                    }`}>
-                                    {cat.label}
-                                </motion.button>
-                            );
-                        })}
+                    <div
+                        ref={categoriesRowRef}
+                        className='flex min-w-0 flex-1 flex-col gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        {categoryRows.map((row, rowIndex) => (
+                            <div
+                                key={rowIndex}
+                                className='flex w-max items-center gap-2'>
+                                {row.map(cat => {
+                                    const active =
+                                        optimisticCategories.includes(cat.slug);
+                                    // Prefetch the toggled-on result (the common intent).
+                                    const prefetch = () =>
+                                        !active &&
+                                        prefetchState({
+                                            categories: [
+                                                ...optimisticCategories,
+                                                cat.slug,
+                                            ],
+                                        });
+                                    return (
+                                        <motion.button
+                                            key={cat.slug}
+                                            type='button'
+                                            aria-pressed={active}
+                                            onClick={() => toggleCategory(cat)}
+                                            onPointerEnter={prefetch}
+                                            onFocus={prefetch}
+                                            whileTap={{ scale: 0.99 }}
+                                            transition={springPop}
+                                            className={`flex h-9.5 md:h-10.5 shrink-0 items-center whitespace-nowrap rounded-it-full px-3 md:px-4 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
+                                                active
+                                                    ? 'bg-it-heading/10'
+                                                    : 'hover:bg-it-surface'
+                                            }`}>
+                                            {cat.label}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
 
             {/* ── Row 2 - counter + chips + clear all · sort ──────────────────
-                Mobile: counter/chips/clear-all scroll horizontally (clear-all sits
-                off-screen, reachable by scroll); sort stays pinned right. */}
-            <div className='flex items-center gap-3 md:flex-wrap md:justify-between md:gap-x-8 md:gap-y-4 '>
-                {/* Left - counter, applied chips, clear all */}
+                Mobile: counter/chips/clear-all scroll horizontally (clear-all
+                sits off-screen, reachable by scroll). Desktop: only the LEFT
+                column wraps - the row itself never does, so the sort dropdown
+                stays pinned to the top-right no matter how many chips there
+                are. */}
+            <div className='flex items-center gap-3 md:items-start md:gap-x-8'>
+                {/* Counter, applied chips, clear all */}
                 <div
                     ref={metaRowRef}
                     className='flex min-w-0 flex-1 items-center gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:flex-auto md:flex-wrap md:overflow-visible md:gap-x-8 md:gap-y-3 md:pb-0 [&::-webkit-scrollbar]:hidden'>
-                    <div className='flex shrink-0 items-center gap-2 md:flex-wrap md:gap-x-4 md:gap-y-2'>
+                    {/* Counter + chip block share one line on desktop: the
+                        counter is pinned, the chip block shrinks and wraps
+                        internally beside it. */}
+                    <div className='flex shrink-0 items-center gap-2 md:min-w-0 md:shrink md:gap-x-4'>
                         <p className='m-0 shrink-0 whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em]'>
                             <span className='font-medium text-it-heading'>
                                 {counterLabel}
@@ -572,8 +601,8 @@ export function ToursFilterBar({
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.15 }}
-                                    className='flex shrink-0 items-center gap-2 md:flex-wrap max-w-275'>
+                                    transition={{ duration: 0.002 }}
+                                    className='flex shrink-0 items-center gap-2 md:min-w-0 md:shrink md:flex-wrap md:gap-y-2'>
                                     <AnimatePresence initial={false}>
                                         {chips.map(chip => (
                                             <motion.button
@@ -594,13 +623,15 @@ export function ToursFilterBar({
                                                 exit={{
                                                     opacity: 0,
                                                     scale: 0.9,
+                                                    transition: {
+                                                        duration: 0.1,
+                                                    },
                                                 }}
                                                 whileTap={{ scale: 0.95 }}
-                                                transition={springPop}
-                                                className='inline-flex shrink-0 items-center gap-0.75 whitespace-nowrap rounded-it-full border border-it-heading/10 bg-it-surface py-1 pl-3 pr-2.5 text-[14px] md:py-1.25 md:pl-5 md:pr-3.5 md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted transition-colors hover:text-it-heading'>
+                                                className='inline-flex shrink-0 items-center gap-0.75 whitespace-nowrap rounded-it-full bg-it-primary-subtle py-1 pl-3 pr-2.5 text-[14px] md:py-1.25 md:pl-5 md:pr-3.5 md:text-[16px] leading-[1.6] tracking-[-0.012em] font-medium text-it-primary transition-colors hover:text-it-primary-hover'>
                                                 {chip.label}
                                                 <Image
-                                                    src='/icons/filters/close-circle.svg'
+                                                    src='/icons/filters/close-circle-primary.svg'
                                                     alt=''
                                                     width={24}
                                                     height={24}
@@ -632,8 +663,9 @@ export function ToursFilterBar({
                     </AnimatePresence>
                 </div>
 
-                {/* Right - sort dropdown (responsive text/spacing on mobile) */}
-                <div className='flex max-md:hidden shrink-0 items-center gap-2 md:gap-3.5'>
+                {/* Right - sort dropdown (desktop; pinned to the row's end,
+                    nudged to align with the first chip line) */}
+                <div className='flex max-md:hidden shrink-0 items-center gap-2 md:gap-3.5 md:pt-1.25'>
                     <span className='whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
                         {dict.sortBy}
                     </span>
