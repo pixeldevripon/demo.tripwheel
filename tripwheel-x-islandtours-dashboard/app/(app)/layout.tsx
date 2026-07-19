@@ -39,11 +39,18 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
         redirect('/onboarding');
     }
 
+    // Effective permission set computed by the backend (designation +
+    // per-member overrides for staff/team seats). Undefined on a transient
+    // fetch failure - the shell then falls back to the static role map.
+    const userPermissions = (user as unknown as { permissions?: string[] })
+        .permissions;
+
     return (
         <DashboardShell
             userName={user.name}
             userEmail={user.email}
             userRole={userRole}
+            userPermissions={userPermissions}
             userImage={user.image}>
             {children}
         </DashboardShell>

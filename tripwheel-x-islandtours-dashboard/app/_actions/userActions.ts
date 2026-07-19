@@ -50,15 +50,24 @@ export const getUserProfile = cache(async (cookie: string) => {
     if (!cookie) return null;
 
     try {
-        const [sessionRes, userRes] = await Promise.all([
+        const [sessionRes, userRes, permissionsRes] = await Promise.all([
             authClient.getSession({ fetchOptions: { headers: serverAuthHeaders(cookie) } }),
             fetch(`${BACKEND_URL}/api/v1/users/me`, { headers: serverAuthHeaders(cookie) }),
+            fetch(`${BACKEND_URL}/api/v1/users/me/permissions`, { headers: serverAuthHeaders(cookie) }),
         ]);
 
         if (!sessionRes.data?.user || !userRes.ok) return null;
 
         const userData = await safeJson(userRes);
         if (!userData) return null;
+
+        // EFFECTIVE permission set (staff/team fine-grained grants included).
+        // On a transient failure leave it undefined - RoleProvider then falls
+        // back to the static role map, and the backend guards still enforce.
+        const permissionsData = permissionsRes.ok ? await safeJson(permissionsRes) : null;
+        if (Array.isArray(permissionsData?.permissions)) {
+            userData.permissions = permissionsData.permissions;
+        }
 
         const userRole = (sessionRes.data.user as any).role;
         const opId = userData.operator?.id;

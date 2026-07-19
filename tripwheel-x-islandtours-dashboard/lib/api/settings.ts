@@ -7,7 +7,6 @@ import type {
   MollieConfiguration,
   SiteInfo,
   SiteSEO,
-  SmtpConfiguration,
   SocialMediaSettings,
   StripeConfiguration,
   UpdateCompanyInformationsPayload,
@@ -15,7 +14,6 @@ import type {
   UpdateMollieConfigurationPayload,
   UpdateSiteInfoPayload,
   UpdateSiteSEOPayload,
-  UpdateSmtpConfigurationPayload,
   UpdateSocialMediaPayload,
   UpdateStripeConfigurationPayload,
 } from '@/types/settings';
@@ -102,17 +100,6 @@ export const settingsApi = {
   },
   updateMollie(payload: UpdateMollieConfigurationPayload): Promise<MollieConfiguration> {
     return apiFetch<MollieConfiguration>('/settings/payment/mollie', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  // ── SMTP ───────────────────────────────────────────────────────────────────
-  getSmtp(): Promise<SmtpConfiguration> {
-    return apiFetch<SmtpConfiguration>('/settings/smtp');
-  },
-  updateSmtp(payload: UpdateSmtpConfigurationPayload): Promise<SmtpConfiguration> {
-    return apiFetch<SmtpConfiguration>('/settings/smtp', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

@@ -16,6 +16,7 @@ import {
     Tag01Icon,
     TranslateIcon,
     UserCircleIcon,
+    UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 
 import { Permission } from '@/lib/config/rbac';
@@ -169,6 +170,16 @@ const dashboardNav: NavGroup[] = [
         // permissions.
         label: 'Account',
         items: [
+            {
+                // One route, two audiences: admins manage PLATFORM staff +
+                // designations (MANAGE_STAFF); operator owners manage their
+                // own team seats (MANAGE_TEAM). Non-owner seats hold neither,
+                // so the item disappears for them.
+                title: 'Team',
+                url: 'team',
+                icon: UserGroupIcon,
+                permissions: [Permission.MANAGE_STAFF, Permission.MANAGE_TEAM],
+            },
             {
                 title: 'Settings',
                 url: 'settings',

@@ -136,51 +136,64 @@ export default function MediaViewer({
           })
         : null;
 
+    // Deliberately NOT portaled: the dashboard layout wrapper is a transformed
+    // container, so `fixed` anchors to the CONTENT AREA - the viewer fills it
+    // while the sidebar and navbar stay visible. Portaling to <body> would
+    // cover the whole viewport and hide the dashboard chrome.
     return (
-        <div className='fixed inset-0 z-99999 h-screen flex flex-col bg-background overflow-hidden animate-in fade-in duration-200'>
-            {/* Header - Fixed height */}
-            <div className='flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-border bg-card shrink-0 z-50'>
-                <Button
-                    variant='ghost'
-                    size='icon'
-                    onClick={onClose}
-                    className='text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 md:h-9 md:w-9'>
-                    <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
-                </Button>
-
-                <div className='flex items-center gap-2 shrink-0 ml-2'>
-                    <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={onPrev}
-                        disabled={!onPrev}
-                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs'>
-                        Previous
-                    </Button>
-
-                    <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={onNext}
-                        disabled={!onNext}
-                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs'>
-                        Next
-                    </Button>
-
+        <div className='fixed inset-0 z-99999 h-dvh max-w-full flex flex-col bg-background overflow-hidden animate-in fade-in duration-200'>
+            {/* Header - mirrors the body's split so the nav buttons sit at
+                the right edge of the IMAGE pane, not above the sidebar */}
+            <div className='flex items-center px-4 py-3 md:px-6 md:py-4 border-b border-border bg-card shrink-0 z-50'>
+                <div className='flex-1 flex items-center justify-between min-w-0'>
                     <Button
                         variant='ghost'
-                        size='sm'
+                        size='icon'
                         onClick={onClose}
-                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs font-semibold'>
-                        CLOSE
+                        className='text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 md:h-9 md:w-9'>
+                        <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
                     </Button>
+
+                    <div className='flex items-center gap-2 shrink-0 ml-2'>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={onPrev}
+                            disabled={!onPrev}
+                            className='h-9 px-4 md:px-6 text-xs md:text-sm'>
+                            Previous
+                        </Button>
+
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={onNext}
+                            disabled={!onNext}
+                            className='h-9 px-4 md:px-6 text-xs md:text-sm'>
+                            Next
+                        </Button>
+
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={onClose}
+                            className='h-9 px-4 md:px-6 text-xs md:text-sm font-semibold'>
+                            CLOSE
+                        </Button>
+                    </div>
                 </div>
+
+                {/* Spacer matching the sidebar column (w-80) */}
+                <div aria-hidden className='hidden md:block w-80 shrink-0' />
             </div>
 
-            {/* Body - image pane + details sidebar */}
-            <div className='flex-1 min-h-0 flex flex-col md:flex-row'>
+            {/* Body - image pane + details sidebar. Mobile: one scrolling
+                column with a fixed-height preview (the long form was squeezing
+                the image to a thumbnail). Desktop: side-by-side, sidebar
+                scrolls internally. */}
+            <div className='flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden'>
                 {/* Image pane */}
-                <div className='relative flex-1 min-h-0 bg-muted/40 flex items-center justify-center p-4 md:p-8'>
+                <div className='relative shrink-0 h-[45dvh] md:h-auto md:shrink md:flex-1 md:min-h-0 bg-muted/40 flex items-center justify-center p-4 md:p-8'>
                     {kind === 'image' ? (
                         <div className='relative w-full h-full'>
                             <Image
@@ -251,8 +264,9 @@ export default function MediaViewer({
                     )}
                 </div>
 
-                {/* Details sidebar */}
-                <aside className='w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto'>
+                {/* Details sidebar - scrolls with the page on mobile,
+                    internally on desktop */}
+                <aside className='w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border bg-card md:overflow-y-auto'>
                     <div className='p-4 md:p-6 space-y-6'>
                         <div>
                             <h3 className='m-0 text-sm font-semibold text-foreground break-words'>

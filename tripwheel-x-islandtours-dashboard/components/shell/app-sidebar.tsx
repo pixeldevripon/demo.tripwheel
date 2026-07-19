@@ -24,6 +24,8 @@ import { NavMain } from './nav-main';
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     userRole?: string;
+    /** Effective permission set from the backend (staff/team grants included). */
+    userPermissions?: string[];
     userName?: string;
     userImage?: string | null;
 }
@@ -36,6 +38,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
  */
 export function AppSidebar({
     userRole,
+    userPermissions,
     userName,
     userImage,
     ...props
@@ -46,11 +49,19 @@ export function AppSidebar({
     const { setOpenMobile } = useSidebar();
 
     const filteredNav = useMemo(() => {
-        const userPermissions: string[] =
-            (ROLE_PERMISSIONS as Record<string, string[]>)[userRole ?? ''] ??
-            [];
-        return filterNavGroups(navData.dashboard, userPermissions);
-    }, [userRole, navData.dashboard]);
+        // Effective set from the backend when available (fine-grained staff
+        // grants); static role map as the transient-failure fallback - except
+        // STAFF, whose fallback is empty rather than the broad legacy list
+        // (mirrors RoleProvider; backend guards enforce regardless).
+        const permissions: string[] =
+            userPermissions ??
+            (userRole === 'STAFF'
+                ? []
+                : ((ROLE_PERMISSIONS as Record<string, string[]>)[
+                      userRole ?? ''
+                  ] ?? []));
+        return filterNavGroups(navData.dashboard, permissions);
+    }, [userRole, userPermissions, navData.dashboard]);
 
     return (
         <Sidebar collapsible='icon' {...props}>

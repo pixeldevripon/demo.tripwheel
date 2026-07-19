@@ -14,6 +14,8 @@ interface DashboardShellProps {
     userName?: string;
     userEmail?: string;
     userRole?: string;
+    /** Effective permission set from the backend (staff/team grants included). */
+    userPermissions?: string[];
     userImage?: string | null;
 }
 
@@ -37,6 +39,7 @@ export default function DashboardShell({
     userName,
     userEmail,
     userRole,
+    userPermissions,
     userImage,
 }: DashboardShellProps) {
     const pathname = usePathname();
@@ -48,13 +51,14 @@ export default function DashboardShell({
     useEffect(() => setReady(true), []);
 
     return (
-        <RoleProvider role={userRole}>
+        <RoleProvider role={userRole} permissions={userPermissions}>
             {/* [--sidebar-width]! must stay important: SidebarProvider sets its own
                 16rem default via inline style, which a plain class cannot beat. */}
             <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:calc(var(--spacing)*72)]! [--header-height:calc(var(--spacing)*17.5)]'>
                 <AppSidebar
                     variant='inset'
                     userRole={userRole}
+                    userPermissions={userPermissions}
                     userName={userName}
                     userImage={userImage}
                 />

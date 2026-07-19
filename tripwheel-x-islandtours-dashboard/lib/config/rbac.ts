@@ -25,6 +25,12 @@ export const Permission = {
   UPDATE_USER: 'UPDATE_USER',
   DELETE_USER: 'DELETE_USER',
 
+  // Staff & teams. MANAGE_STAFF = platform (admin-side) staff + designations;
+  // MANAGE_TEAM = an operator's own team seats. MANAGE_STAFF is never grantable
+  // to staff themselves (backend ceiling), so it is effectively admin-only.
+  MANAGE_STAFF: 'MANAGE_STAFF',
+  MANAGE_TEAM: 'MANAGE_TEAM',
+
   // Operators
   CREATE_OPERATOR: 'CREATE_OPERATOR',
   VIEW_OPERATOR_PROFILE: 'VIEW_OPERATOR_PROFILE',
@@ -159,6 +165,8 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'CREATE_USER',
     'UPDATE_USER',
     'DELETE_USER',
+    'MANAGE_STAFF',
+    'MANAGE_TEAM',
     'CREATE_TRIP',
     'VIEW_TRIPS',
     'EDIT_TRIP',
@@ -313,6 +321,9 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_OPERATOR_PROFILE',
     'EDIT_OPERATOR_PROFILE',
     'MANAGE_OPERATOR_PAYMENTS',
+    // Held by owners via the full role set; non-owner seats never receive it
+    // (the backend seat ceiling excludes it from every grant).
+    'MANAGE_TEAM',
     'VIEW_USERS',
     'CREATE_TRIP',
     'EDIT_TRIP',

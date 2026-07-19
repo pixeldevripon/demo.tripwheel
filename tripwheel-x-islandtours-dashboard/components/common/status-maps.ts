@@ -77,3 +77,13 @@ export const ACTIVE_STATUS: Record<'active' | 'inactive', StatusMeta> = {
     active: { label: 'Active', variant: 'success' },
     inactive: { label: 'Inactive', variant: 'neutral' },
 };
+
+/** Staff members / team seats (types/staff.ts StaffStatus). */
+export const STAFF_MEMBER_STATUS: Record<
+    'INVITED' | 'ACTIVE' | 'SUSPENDED',
+    StatusMeta
+> = {
+    INVITED: { label: 'Invited', variant: 'info' },
+    ACTIVE: { label: 'Active', variant: 'success' },
+    SUSPENDED: { label: 'Suspended', variant: 'danger' },
+};

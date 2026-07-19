@@ -42,14 +42,6 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             buttonText: 'Set Up Payment',
             linkTo: `/settings?tab=payments`,
         },
-        {
-            number: 4,
-            title: 'Set Up Your Email Settings',
-            description:
-                'Configure your SMTP in Island Tours to ensure emails are sent from your own domain.',
-            buttonText: 'Email Configuration',
-            linkTo: `/settings?tab=integrations`,
-        },
     ];
 
     return (
