@@ -75,22 +75,6 @@ model SocialMedia {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SMTP configuration (singleton)
-// ─────────────────────────────────────────────────────────────────────────────
-
-model SMTP {
-  id String @id @default("default")
-
-  smtpHost     String?  @default("")
-  smtpPort     String?  @default("")
-  smtpUsername String?  @default("")
-  smtpPassword String?  @default("")
-  smtpSecure   Boolean? @default(true)
-
-  @@map("smtp_configuration")
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Mailchimp configuration (singleton)
 // ─────────────────────────────────────────────────────────────────────────────
 

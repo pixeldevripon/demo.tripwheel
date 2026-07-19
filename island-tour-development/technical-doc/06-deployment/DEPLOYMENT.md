@@ -113,7 +113,7 @@ Fill both files in:
   leave `RUN_SEED=true` **for this first deploy only**.
 - `backend/.env.production` - `BETTER_AUTH_SECRET` (`openssl rand -base64 32`),
   `ENCRYPTION_KEY` (`openssl rand -hex 32`), `BETTER_AUTH_URL=https://api.your-domain.com`,
-  `FRONTEND_URL` / `CORS_ORIGINS` = your Vercel domain(s), Cloudinary, SMTP,
+  `FRONTEND_URL` / `CORS_ORIGINS` = your Vercel domain(s), Cloudinary, Resend,
   `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 These two files are gitignored and live only on the VPS; `git reset --hard`

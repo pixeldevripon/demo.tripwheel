@@ -16,7 +16,6 @@ import {
   PublicSocialMediaResponseDto,
   SiteInfoResponseDto,
   SiteSEOResponseDto,
-  SMTPResponseDto,
   SocialMediaResponseDto,
   StripeConfigurationResponseDto,
 } from './dto/settings.dto';
@@ -69,7 +68,7 @@ export function ApiGetPublicSiteInfoDocs() {
       description:
         'Public-safe subset of SiteInfo for the marketing site: logo, favicon, ' +
         'tagline, and the WhatsApp/Instagram feature flags. `whatsappNumber` is ' +
-        'null whenever `enableWhatsappChat` is false. Never returns SMTP, ' +
+        'null whenever `enableWhatsappChat` is false. Never returns ' +
         'Stripe, Mollie, or Mailchimp configuration.',
     }),
     ApiResponse({
@@ -208,32 +207,6 @@ export function ApiUpdateSocialMediaDocs() {
       status: 200,
       description: 'Social media links updated successfully',
       type: SocialMediaResponseDto,
-    }),
-    ...adminErrors,
-  );
-}
-
-// ── SMTP ─────────────────────────────────────────────────────────────────────
-
-export function ApiGetSMTPDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Get SMTP configuration (Admin only)' }),
-    ApiResponse({
-      status: 200,
-      description: 'SMTP configuration retrieved successfully',
-      type: SMTPResponseDto,
-    }),
-    ...adminErrors,
-  );
-}
-
-export function ApiUpdateSMTPDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Update SMTP configuration (Admin only)' }),
-    ApiResponse({
-      status: 200,
-      description: 'SMTP configuration updated successfully',
-      type: SMTPResponseDto,
     }),
     ...adminErrors,
   );

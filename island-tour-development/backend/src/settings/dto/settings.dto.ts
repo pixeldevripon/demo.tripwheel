@@ -69,7 +69,7 @@ export class SiteInfoResponseDto {
  * Deliberately a separate class rather than a Pick<> of SiteInfoResponseDto:
  * this shape is served to anyone on the internet, so every field is an explicit
  * decision. Never widen it to spread the SiteInfo row - the settings table also
- * backs SMTP, Stripe, and Mollie config.
+ * backs Stripe and Mollie config.
  */
 export class PublicSiteInfoResponseDto {
   @ApiProperty({ example: 'Island Tours', nullable: true })
@@ -320,26 +320,6 @@ export class SocialMediaResponseDto {
 
   @ApiProperty({ example: 'https://tiktok.com/@islandtour', nullable: true })
   tiktokUrl!: string | null;
-}
-
-export class SMTPResponseDto {
-  @ApiProperty({ example: 'default' })
-  id!: string;
-
-  @ApiProperty({ example: 'smtp.example.com', nullable: true })
-  smtpHost!: string | null;
-
-  @ApiProperty({ example: '587', nullable: true })
-  smtpPort!: string | null;
-
-  @ApiProperty({ example: 'user@example.com', nullable: true })
-  smtpUsername!: string | null;
-
-  @ApiPropertyOptional({ example: '••••••••cret', nullable: true })
-  smtpPassword?: string | null;
-
-  @ApiProperty({ example: true })
-  smtpSecure!: boolean;
 }
 
 export class MailchimpResponseDto {
@@ -630,33 +610,6 @@ export class UpdateSocialMediaDto {
   @IsOptional()
   @IsString()
   tiktokUrl?: string;
-}
-
-export class UpdateSMTPDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  smtpHost?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  smtpPort?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  smtpUsername?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  smtpPassword?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  smtpSecure?: boolean;
 }
 
 export class UpdateMailchimpDto {

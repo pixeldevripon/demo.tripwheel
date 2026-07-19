@@ -559,8 +559,8 @@ Until unblocked, both show an honest empty state naming what is coming. **Do not
 **The UX Solution**
 1. **Routed sections** (`/settings/general`), deep-linkable - matters because these are the URLs people paste into support threads.
 2. **Rename to end the collision:** admin `General` -> **Site**, admin `Company` -> **Legal Entity**, operator `Company` -> **Your Business**.
-3. **Search within settings**, fed by the command palette. "Where do I set SMTP?" should not require knowing it is under Integrations.
-4. **Connection status** on Stripe/Mollie/SMTP/Mailchimp - connected/error/not configured, with a test action. Currently a form with no feedback that it works.
+3. **Search within settings**, fed by the command palette. "Where do I set Mailchimp?" should not require knowing it is under Integrations.
+4. **Connection status** on Stripe/Mollie/Mailchimp - connected/error/not configured, with a test action. (Email is Resend, env-configured - not a dashboard integration.) Currently a form with no feedback that it works.
 5. Fold `settings-fields.tsx` into the shared form primitives.
 6. Preserve: `PATCH /settings/site` is the one settings write backing a public read - and **the reason B-1 matters** (02B §5.2).
 

@@ -11,7 +11,6 @@ import {
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
-  UpdateSMTPDto,
   UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
@@ -32,8 +31,6 @@ import {
   ApiUpdateCompanyInformationsDocs,
   ApiGetSocialMediaDocs,
   ApiUpdateSocialMediaDocs,
-  ApiGetSMTPDocs,
-  ApiUpdateSMTPDocs,
   ApiGetMailchimpDocs,
   ApiUpdateMailchimpDocs,
 } from './settings.swagger';
@@ -78,7 +75,7 @@ export class SettingsController {
    * footer/NeedHelp WhatsApp links have no number to point at (master 6.6).
    *
    * Security: @Public, so the service hand-picks the response fields. This
-   * controller also serves SMTP/Stripe/Mollie config - never widen this to the
+   * controller also serves Stripe/Mollie config - never widen this to the
    * full row. Registered above `site/:x`-style routes is not a concern here, but
    * it must stay a sibling of the guarded routes so the contrast is obvious.
    */
@@ -325,35 +322,6 @@ export class SettingsController {
   @ApiUpdateSocialMediaDocs()
   updateSocialMedia(@Body() dto: UpdateSocialMediaDto) {
     return this.settingsService.updateSocialMedia(dto);
-  }
-
-  // ── SMTP Configuration ───────────────────────────────────────────────────--
-
-  /**
-   * GET /settings/smtp
-   *
-   * Retrieves SMTP configuration (password masked).
-   * Security: requires MANAGE_SETTINGS (Admin only).
-   */
-  @Get('smtp')
-  @RequirePermissions(Permission.MANAGE_SETTINGS)
-  @ApiGetSMTPDocs()
-  getSMTP() {
-    return this.settingsService.getSMTP();
-  }
-
-  /**
-   * PATCH /settings/smtp
-   *
-   * Updates SMTP configuration. The password is encrypted at rest.
-   * Security: requires MANAGE_SETTINGS.
-   */
-  @Throttle({ medium: { limit: 5, ttl: 60000 } })
-  @Patch('smtp')
-  @RequirePermissions(Permission.MANAGE_SETTINGS)
-  @ApiUpdateSMTPDocs()
-  updateSMTP(@Body() dto: UpdateSMTPDto) {
-    return this.settingsService.updateSMTP(dto);
   }
 
   // ── Mailchimp Configuration ────────────────────────────────────────────────

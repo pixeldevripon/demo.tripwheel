@@ -40,14 +40,6 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
             buttonText: 'Set Up Payment',
             linkTo: `/dashboard/payments`,
         },
-        {
-            number: 4,
-            title: 'Set Up Your Email Settings',
-            description:
-                'Configure your SMTP in Island Tours to ensure emails are sent from your own domain.',
-            buttonText: 'Email Configuration',
-            linkTo: `/dashboard/settings/email`,
-        },
     ];
 
     const stagingUrl = process.env.NEXT_PUBLIC_STAGING_APP_URL || '#';

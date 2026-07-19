@@ -11,7 +11,6 @@ import {
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
-  UpdateSMTPDto,
   UpdateSocialMediaDto,
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
@@ -329,36 +328,6 @@ export class SettingsService {
       update: dto,
       create: { id: 'default', ...dto },
     });
-  }
-
-  // ── SMTP Configuration ───────────────────────────────────────────────────--
-
-  async getSMTP() {
-    const config = await this.prisma.sMTP.upsert({
-      where: { id: 'default' },
-      update: {},
-      create: { id: 'default' },
-    });
-    return {
-      ...config,
-      smtpPassword: this.maskSecret(config.smtpPassword),
-    };
-  }
-
-  async updateSMTP(dto: UpdateSMTPDto) {
-    const data = {
-      ...dto,
-      ...(dto.smtpPassword && { smtpPassword: encrypt(dto.smtpPassword) }),
-    };
-    const result = await this.prisma.sMTP.upsert({
-      where: { id: 'default' },
-      update: { ...data },
-      create: { id: 'default', ...data },
-    });
-    return {
-      ...result,
-      smtpPassword: this.maskSecret(result.smtpPassword),
-    };
   }
 
   // ── Mailchimp Configuration ────────────────────────────────────────────────

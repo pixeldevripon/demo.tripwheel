@@ -9,7 +9,6 @@ import type {
   UpdateMollieConfigurationPayload,
   UpdateSiteInfoPayload,
   UpdateSiteSEOPayload,
-  UpdateSmtpConfigurationPayload,
   UpdateSocialMediaPayload,
   UpdateStripeConfigurationPayload,
 } from '@/types/settings';
@@ -22,7 +21,6 @@ export const settingsKeys = {
   company: () => [...settingsKeys.all, 'company'] as const,
   stripe: () => [...settingsKeys.all, 'stripe'] as const,
   mollie: () => [...settingsKeys.all, 'mollie'] as const,
-  smtp: () => [...settingsKeys.all, 'smtp'] as const,
   mailchimp: () => [...settingsKeys.all, 'mailchimp'] as const,
 };
 
@@ -119,22 +117,6 @@ export function useUpdateMollieConfig() {
     mutationFn: (payload: UpdateMollieConfigurationPayload) => settingsApi.updateMollie(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.mollie() });
-      saved();
-    },
-    onError,
-  });
-}
-
-// ── SMTP ───────────────────────────────────────────────────────────────────
-export function useSmtpConfig() {
-  return useQuery({ queryKey: settingsKeys.smtp(), queryFn: settingsApi.getSmtp });
-}
-export function useUpdateSmtpConfig() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: UpdateSmtpConfigurationPayload) => settingsApi.updateSmtp(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: settingsKeys.smtp() });
       saved();
     },
     onError,

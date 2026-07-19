@@ -119,18 +119,6 @@ export async function seedSettings(): Promise<void> {
       paymentMethods: ['creditcard', 'ideal'],
     },
   });
-  await prisma.sMTP.upsert({
-    where: { id: 'default' },
-    update: {},
-    create: {
-      id: 'default',
-      smtpHost: '',
-      smtpPort: '587',
-      smtpUsername: '',
-      smtpPassword: '',
-      smtpSecure: true,
-    },
-  });
   await prisma.mailchimp.upsert({
     where: { id: 'default' },
     update: {},

@@ -47,7 +47,7 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 |---|---|---|
 | Booking / reserve | 🟢 ~95% | attribution (utm/gclid) not captured at reserve; age-restriction validation partial |
 | Payment (card / PayPal / iDEAL) | 🟢 ~90% | Mollie webhook is a stub; payment-succeeds-after-hold-expired reconciliation |
-| Confirmation email | 🟡 ~60% | on SMTP/nodemailer not Resend; no invoice attachment; sent inline not queued |
+| Confirmation email | 🟡 ~75% | Resend transport live (2026-07-19); no invoice attachment; sent inline not queued |
 | Operator payment-link email | 🔴 not built | second `operator_link` balance email (names operator + secure link) |
 | Scheduled payout after cancel window | 🔴 not built | needs Settlement ledger + delayed payout job (RECORDED -> PAID_OUT, clawback-safe) |
 | Payout / settlement | 🔴 not built | no Settlement model, no rows at confirm, no net_position convention (Connect = v2) |
@@ -90,7 +90,7 @@ Checkboxes here mirror the two checklists. Tick both when a task lands.
 - [ ] C1 Operator-balance email on `operator_link` (names operator + secure balance link)
 - [ ] C2 Invoice attachment (from Stripe/Mollie) on confirmation
 - [ ] C3 Pre-tour reminder (24h before; no payment links)
-- [ ] C4 Switch provider SMTP -> Resend (Postmark fallback)
+- [x] C4 Switch provider SMTP -> Resend - EXECUTED 2026-07-19 (env-only config: `RESEND_API_KEY` + `MAIL_FROM`; SMTP settings API + table removed; Postmark fallback still open)
 - [ ] C5 Verify template never names/spotlights operator before payment
 - [x] **C6 Confirmation email follows the locked wireframe** (`technical-doc/island-tours-booking-confirmation-email-wireframe.html`
   -> `backend/src/mail/templates/booking-confirmation-email.template.html`). **WIRED 2026-07-16** -
@@ -450,8 +450,8 @@ only differences. 1038 tests / 48 suites green.
 - **MUST stay a browser call.** `skipIf: isTrustedInternalOrigin` in AuthModule exempts the internal
   API secret from throttling, so routing this through SSR/`publicFetch` would silently strip every
   limit above. Documented at both call sites.
-- Confirm-time sends still **swallow** email failures (the money is already captured - a dead SMTP
-  host must never fail a paid booking); the resend path **rethrows**, because the traveler asked and
+- Confirm-time sends still **swallow** email failures (the money is already captured - an email-provider
+  outage must never fail a paid booking); the resend path **rethrows**, because the traveler asked and
   a silent success would be a lie. One `rethrow` flag, both behaviours tested.
 - [ ] **KNOWN + EXPECTED: resend still sends the OLD template.** It reuses
   `mail.service.sendBookingConfirmationEmail` -> `booking-confirmation.template.ts`. Swapping onto
@@ -469,7 +469,7 @@ only differences. 1038 tests / 48 suites green.
 - [x] **`GET /settings/public/site`** (`@Public`) - the public site had **no way to read settings**
   (`GET /settings/site` needs VIEW_SETTINGS), which is why `faq-section.tsx` shipped a dead
   `href='#'` WhatsApp button. Returns a hand-picked 8-field projection via explicit `select:`; the
-  same controller also serves SMTP/Stripe/Mollie, so this must never be widened to the row.
+  same controller also serves Stripe/Mollie, so this must never be widened to the row.
   `whatsappNumber` is nulled when `enableWhatsappChat` is false. Read-only (`findFirst`, not the
   dashboard's `upsert`) - an anonymous GET must never write.
 - [x] **`site-info` cache tag** + `settings/site` mutation mapping, so a Settings > General save busts

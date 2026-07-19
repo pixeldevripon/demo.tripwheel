@@ -164,7 +164,7 @@ These are ranked. Each is expanded in its section below.
 - [ ] **Operator-balance email on `operator_link`** (names operator, secure balance link). `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · no such template
 - [ ] **Invoice attachment (from Stripe/Mollie) on confirmation.** `Ref:` [Guide §4 step 22](./BOOKING-FLOW-DESIGN-GUIDE.md#4-end-to-end-booking-flow) · not implemented
 - [ ] **Pre-tour reminder (24h before; "today/tomorrow" variant; no payment links).** `Ref:` [Guide §13 sequence](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · not built
-- [~] **Provider is Resend (Postmark fallback).** Currently nodemailer/SMTP. `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · `Code:` `mail.service.ts` (SMTP)
+- [x] **Provider is Resend (Postmark fallback pending).** EXECUTED 2026-07-19: nodemailer/SMTP removed; `mail.service.ts` sends via the Resend SDK, env-configured only (`RESEND_API_KEY` + `MAIL_FROM`; `/settings/smtp` API and `smtp_configuration` table dropped). `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · `Code:` `mail.service.ts` (Resend)
 - [ ] **Never name/spotlight operator before payment; name deliberately post-booking on operator_link.** `Ref:` [Guide §13](./BOOKING-FLOW-DESIGN-GUIDE.md#13-confirmation-email-rules) · verify in template copy
 
 ---

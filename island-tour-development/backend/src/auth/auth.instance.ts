@@ -13,6 +13,16 @@ export { authPrismaClient };
 
 const trustedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
 
+/**
+ * Fire-and-forget email send for auth hooks. The hooks deliberately do not
+ * await (a slow provider must not block sign-in), but a bare `void` on a
+ * rejecting promise is an unhandled rejection - which crashes the whole
+ * process on modern Node. Log and move on instead.
+ */
+const sendInBackground = (kind: string, p: Promise<void>): void => {
+  p.catch((err) => console.error(`[auth] ${kind} email failed to send:`, err));
+};
+
 export const auth = betterAuth({
   appName: 'Island Tours',
 
@@ -40,13 +50,19 @@ export const auth = betterAuth({
       // such caller is the admin operator-invite flow. Genuine "forgot password"
       // requests always carry the originating HTTP request.
       if (!request) {
-        void mailService.sendOperatorInviteEmail(
-          user.email,
-          url,
-          user.name ?? undefined,
+        sendInBackground(
+          'operator-invite',
+          mailService.sendOperatorInviteEmail(
+            user.email,
+            url,
+            user.name ?? undefined,
+          ),
         );
       } else {
-        void mailService.sendPasswordResetEmail(user.email, url);
+        sendInBackground(
+          'password-reset',
+          mailService.sendPasswordResetEmail(user.email, url),
+        );
       }
     },
   },
@@ -54,10 +70,13 @@ export const auth = betterAuth({
   // ── Email Verification ─────────────────────────────────────────────────────
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      void mailService.sendVerificationEmail(
-        user.email,
-        url,
-        user.name ?? undefined,
+      sendInBackground(
+        'verification',
+        mailService.sendVerificationEmail(
+          user.email,
+          url,
+          user.name ?? undefined,
+        ),
       );
     },
   },

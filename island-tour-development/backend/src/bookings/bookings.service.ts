@@ -715,7 +715,7 @@ export class BookingsService {
 
   /**
    * @param rethrow  Confirm-time sends swallow failures on purpose: the money is
-   *   already captured, so a dead SMTP host must never fail the booking (the
+   *   already captured, so an email-provider outage must never fail the booking (the
    *   traveler can resend from the TYP). A traveler-initiated resend passes true
    *   - they asked, so tell them the truth instead of showing a false success.
    */

@@ -41,7 +41,7 @@ Two files, read at `docker compose up`:
 | File | What it holds | Notes |
 |---|---|---|
 | **`.env`** (repo root, on the VPS) | Infra vars that compose interpolates: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `REDIS_PASSWORD`, `BACKEND_PORT`, `BACKEND_IMAGE_TAG`, `RUN_SEED` | Template: `.env.example`. This is the **source of truth for DB + Redis passwords.** |
-| **`backend/.env.production`** | App secrets only: `BETTER_AUTH_SECRET`, `CLOUDINARY_*`, `SMTP_*`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`, `CORS_ORIGINS`, etc. | Template: `backend/.env.production.example` |
+| **`backend/.env.production`** | App secrets only: `BETTER_AUTH_SECRET`, `CLOUDINARY_*`, `RESEND_API_KEY`/`MAIL_FROM`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`, `CORS_ORIGINS`, etc. | Template: `backend/.env.production.example` |
 
 **Critical detail** — `DATABASE_URL`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`,
 `NODE_ENV`, `PORT`, `RUN_SEED` are **NOT** set in `backend/.env.production`. The

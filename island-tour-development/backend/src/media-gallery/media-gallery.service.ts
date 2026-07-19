@@ -166,6 +166,19 @@ export class MediaGalleryService {
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Platform-wide list of media URLs flagged excludeFromIndexing. Public -
+   * consumed by the public site's SEO layer (og:image / structured data /
+   * image sitemap filtering). URL-only payload; no owner data leaks.
+   */
+  async getExcludedUrls(): Promise<string[]> {
+    const rows = await this.prisma.mediaGallery.findMany({
+      where: { excludeFromIndexing: true },
+      select: { url: true },
+    });
+    return rows.map((r) => r.url);
+  }
+
   async getMyMedia(userId: string, query: MediaGalleryQueryDto) {
     const {
       page = 1,

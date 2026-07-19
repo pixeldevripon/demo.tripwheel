@@ -27,5 +27,5 @@ datasource db {
 //   faq.prisma            ← Faq (polymorphic)
 //   wishlist.prisma       ← Wishlist
 //   media-gallery.prisma  ← MediaGallery
-//   settings.prisma       ← SiteInfo, SiteSEO, SocialMedia, SMTP, Mailchimp, StripeConfiguration, etc.
+//   settings.prisma       ← SiteInfo, SiteSEO, SocialMedia, Mailchimp, StripeConfiguration, etc. (email = Resend via env)
 //   webhooks.prisma       ← Webhooks, WebhookPoint (internal Zapier/n8n lead catches — distinct from OCTO notifications)

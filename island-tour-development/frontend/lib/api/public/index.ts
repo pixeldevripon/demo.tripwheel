@@ -10,5 +10,6 @@ export * from './collections';
 export * from './destinations';
 export * from './filters';
 export * from './hubs';
+export * from './media';
 export * from './search';
 export * from './tours';

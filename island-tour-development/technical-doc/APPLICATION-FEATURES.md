@@ -26,11 +26,11 @@
 | Reviews (booking-gated, moderation, operator response, aggregates) | ⬜ | Thin `Review` model only; no service |
 | Wishlist | ✅ | Schema + relation built |
 | Tracking & analytics (`booking_complete`, TYP, GTM, Meta CAPI, Consent Mode v2) | ⬜ | |
-| Transactional email (Resend; confirmation + pre-tour reminder) | ⬜ | SMTP/Mailchimp settings exist only |
+| Transactional email (Resend; confirmation + pre-tour reminder) | ✅ | Resend transport live (env-configured: `RESEND_API_KEY` + `MAIL_FROM`); pre-tour reminder still TODO |
 | Affiliate program (Trackdesk, 8% of GMV) | ⬜ | |
 | Search | ⚠️ | Basic name search; faceted/two-stage ranking ⬜ |
 | Media gallery (Cloudinary) | ✅ | |
-| Settings (SiteInfo, SiteSEO, Social, SMTP, Mailchimp, Stripe, Mollie, Company) | ✅ | |
+| Settings (SiteInfo, SiteSEO, Social, Mailchimp, Stripe, Mollie, Company) | ✅ | SMTP settings removed 2026-07-19 (email = Resend via env, no settings API) |
 | SEO rendering layer (meta, canonical/hreflang, JSON-LD, sitemaps, breadcrumbs) | ⬜ | Backend data ready; frontend emission missing |
 | Public site (Homepage, Destination, All Tours, Category, Hub, Collection, Tour detail, Checkout, TYP) | ⬜ | Frontend build |
 | Background workers (BullMQ: nightly jobs, email, materialization, AI translation) | ⬜ | |

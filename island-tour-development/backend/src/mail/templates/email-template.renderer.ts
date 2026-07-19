@@ -236,7 +236,7 @@ function substitute(src: string, ctx: EmailTemplateContext): string {
 }
 
 /** Escape for HTML text/attribute context (templates interpolate into both). */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

@@ -89,11 +89,10 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   // when the API is fronted by a different hostname.
   PUBLIC_API_URL: (v) =>
     /^https?:\/\//.test(v) ? null : 'must be an absolute http(s) URL',
-  SMTP_HOST: () => null,
-  SMTP_PORT: (v) =>
-    isNaN(parseInt(v, 10)) ? 'must be a valid port number' : null,
-  SMTP_USER: () => null,
-  SMTP_PASS: () => null,
+  // Transactional email (Resend) - env-configured only, no dashboard surface.
+  // MAIL_FROM must be an address on a domain verified in the Resend account.
+  RESEND_API_KEY: (v) =>
+    v.startsWith('re_') ? null : 'must be a Resend API key (starts with re_)',
   MAIL_FROM: () => null,
   // Payments & tracking (Phase 6). Stripe keys live in the DB, not here.
   FX_USD_TO_EUR: (v) => {
@@ -111,9 +110,6 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   META_CAPI_TOKEN: () => null,
   META_CAPI_TEST_CODE: () => null,
 };
-
-// SMTP vars that must all be present together or all absent
-const SMTP_GROUP = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'] as const;
 
 export function validateEnv(): void {
   const errors: string[] = [];
@@ -136,22 +132,12 @@ export function validateEnv(): void {
     }
   }
 
-  // ── SMTP group check ────────────────────────────────────────────────────────
-  // All core SMTP vars must be set together - partial config will cause
-  // silent send failures at runtime
-  const smtpPresent = SMTP_GROUP.filter((k) => !!process.env[k]);
-  const smtpMissing = SMTP_GROUP.filter((k) => !process.env[k]);
-
-  if (smtpPresent.length > 0 && smtpMissing.length > 0) {
-    errors.push(
-      `Incomplete SMTP config - if any SMTP var is set, all are required. Missing: ${smtpMissing.join(', ')}`,
-    );
-  }
-
-  if (smtpPresent.length === 0) {
-    // Warn but don't fail - email features will be disabled
+  // ── Email check ─────────────────────────────────────────────────────────────
+  // Warn but don't fail - the app boots without email, every send just fails
+  // loudly until RESEND_API_KEY is provided.
+  if (!process.env.RESEND_API_KEY) {
     console.warn(
-      '⚠  No SMTP config found - email sending (verification, password reset) will be disabled.',
+      '⚠  No RESEND_API_KEY found - email sending (verification, password reset, booking emails) will be disabled.',
     );
   }
 

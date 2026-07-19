@@ -124,25 +124,6 @@ export interface UpdateMollieConfigurationPayload {
   paymentMethods?: string[];
 }
 
-/** GET response - smtpPassword is masked by the backend or null. */
-export interface SmtpConfiguration {
-  id: string;
-  smtpHost: string | null;
-  smtpPort: string | null;
-  smtpUsername: string | null;
-  smtpPassword: string | null;
-  smtpSecure: boolean;
-}
-
-export interface UpdateSmtpConfigurationPayload {
-  smtpHost?: string;
-  smtpPort?: string;
-  smtpUsername?: string;
-  /** Omit to keep the existing password; only send when a new value is entered. */
-  smtpPassword?: string;
-  smtpSecure?: boolean;
-}
-
 /** GET response - apiKey is masked by the backend or null. */
 export interface MailchimpConfiguration {
   id: string;

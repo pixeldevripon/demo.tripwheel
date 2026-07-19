@@ -3,6 +3,7 @@ import { CollectionPage } from '@/components/frontend/collection/collection-page
 import { HubPage } from '@/components/frontend/hub/hub-page';
 import { TourPage } from '@/components/frontend/tour/tour-page';
 import {
+    filterIndexableImages,
     getActiveCollectionsForDestination,
     getActiveDestinations,
     getCategoryBySlugForDestination,
@@ -15,6 +16,7 @@ import {
     getDestinationTours,
     getHubPageContent,
     getHubRender,
+    getTourBySlug,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
 import {
@@ -244,6 +246,43 @@ export async function generateMetadata({
                 render.editorialLead ??
                 undefined,
             alternates,
+        };
+    }
+
+    if (resolution.entityType === 'TOUR') {
+        const tour = await getTourBySlug({
+            slug,
+            destinationSlug: destination,
+            locale: locale as Locale,
+        }).catch(() => null);
+        if (!tour) return { alternates };
+
+        // og:image respects the media library's "exclude from indexing" flag:
+        // hero first, then gallery order, excluded URLs filtered out.
+        const orderedImages = [...tour.images].sort(
+            (a, b) =>
+                Number(b.isHero) - Number(a.isHero) ||
+                a.displayOrder - b.displayOrder
+        );
+        const indexable = await filterIndexableImages(
+            orderedImages.map(img => img.url)
+        );
+        const tourTitle = tour.translation?.title ?? tour.name;
+        const ogImages = indexable.slice(0, 3).map(url => {
+            const img = orderedImages.find(i => i.url === url);
+            return {
+                url,
+                alt: img?.altText ?? tourTitle,
+                width: img?.width,
+                height: img?.height,
+            };
+        });
+
+        return {
+            title: `${tourTitle} | Island Tours`,
+            description: tour.translation?.shortDescription ?? undefined,
+            alternates,
+            openGraph: ogImages.length ? { images: ogImages } : undefined,
         };
     }
 

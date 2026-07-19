@@ -1,5 +1,6 @@
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
+import { Public } from '@/auth/decorators/public.decorator';
 import {
   BadRequestException,
   Body,
@@ -32,6 +33,7 @@ import {
   ApiDeleteMediaDocs,
   ApiGetMediaByIdDocs,
   ApiGetMyMediaDocs,
+  ApiGetExcludedUrlsDocs,
   ApiGetSignedParamsDocs,
   ApiUpdateMediaDocs,
   ApiUploadMediaAsyncDocs,
@@ -248,6 +250,20 @@ export class MediaGalleryController {
     @Query() query: MediaGalleryQueryDto,
   ) {
     return this.mediaGalleryService.getMyMedia(user.id, query);
+  }
+
+  /**
+   * GET /media-gallery/excluded-urls
+   *
+   * Public, platform-wide list of media URLs flagged "exclude from indexing".
+   * The public site's SEO layer filters og:image / structured data / image
+   * sitemaps against this list. Static route - MUST stay above ':id'.
+   */
+  @Public()
+  @Get('excluded-urls')
+  @ApiGetExcludedUrlsDocs()
+  getExcludedUrls() {
+    return this.mediaGalleryService.getExcludedUrls();
   }
 
   /**

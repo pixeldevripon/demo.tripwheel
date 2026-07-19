@@ -21,7 +21,7 @@ real values.
 | Hostinger VPS | Ubuntu 22.04/24.04, root or sudo SSH access |
 | GitHub repo | This codebase pushed to GitHub |
 | Vercel account | For the frontend |
-| Cloudinary, SMTP creds | For media + transactional email |
+| Cloudinary, Resend API key | For media + transactional email |
 
 Decide your two hostnames now:
 
@@ -204,10 +204,7 @@ BETTER_AUTH_URL=https://api.your-domain.com
 ENCRYPTION_KEY=<paste generated hex key>
 ADMIN_EMAIL=admin@your-domain.com
 ADMIN_PASSWORD=<a strong password, 12+ chars>
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_USER=<your smtp user>
-SMTP_PASS=<your smtp app password>
+RESEND_API_KEY=<your Resend API key (re_...)>
 MAIL_FROM="Island Tours <noreply@your-domain.com>"
 CLOUDINARY_CLOUD_NAME=<...>
 CLOUDINARY_API_KEY=<...>

@@ -236,6 +236,27 @@ export function ApiGetMediaByIdDocs() {
   );
 }
 
+/**
+ * GET /media-gallery/excluded-urls
+ * Public list of URLs excluded from indexing.
+ */
+export function ApiGetExcludedUrlsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'List media URLs excluded from indexing (public)',
+      description:
+        'Platform-wide list of media URLs flagged excludeFromIndexing, ' +
+        'consumed by the public site SEO layer to filter og:image, ' +
+        'structured data and image sitemaps.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Excluded URLs',
+      type: [String],
+    }),
+  );
+}
+
 // ── Mutation endpoints ────────────────────────────────────────────────────────
 
 /**

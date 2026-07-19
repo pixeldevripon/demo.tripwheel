@@ -55,7 +55,7 @@ services:
       dockerfile: Dockerfile
     image: island-tours-backend:${BACKEND_IMAGE_TAG:-latest}
     restart: unless-stopped
-    # App secrets (Better Auth, Cloudinary, SMTP, Stripe-not-here, etc.).
+    # App secrets (Better Auth, Cloudinary, Resend, Stripe-not-here, etc.).
     env_file:
       - ./backend/.env.production
     # Infra-coupled vars OVERRIDE anything in env_file - they always point at the

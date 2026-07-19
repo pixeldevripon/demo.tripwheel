@@ -143,7 +143,7 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // On top of that, site/seo/social-media/company writes back public reads on
     // the marketing site (the `settings/public/*` projections: logo + WhatsApp,
     // meta/OG tags, footer social links, footer legal block), all cached under
-    // the coarse `site-info` tag with `cacheLife('days')`. SMTP/Stripe/Mollie
+    // the coarse `site-info` tag with `cacheLife('days')`. Stripe/Mollie
     // stay out - no cached public page reads them.
     //
     // Both live in ONE case on purpose: a second `case 'settings'` below this one

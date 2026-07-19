@@ -77,7 +77,7 @@ tier engine, transactions, availability, tracking, and the public site are the o
 - [x] Better Auth backend-only — `auth/`
 - [ ] next-intl wired end-to-end on the public site — frontend
 - [x] Stripe payments integration — `payments/` (intent per booking, signature-verified idempotent webhook); keys from `stripe_configuration`
-- [ ] Resend transactional email (SPF/DKIM/DMARC), Postmark fallback — booking-confirmation email wired over existing SMTP/nodemailer; Resend provider swap still TODO
+- [x] Resend transactional email (SPF/DKIM/DMARC) — provider swap EXECUTED 2026-07-19: nodemailer/SMTP removed, MailService sends via the Resend SDK, configured ONLY by `RESEND_API_KEY` + `MAIL_FROM` env vars (no dashboard surface; `/settings/smtp` API + `smtp_configuration` table dropped, migration `20260719105425_resend_replaces_smtp`). Postmark fallback still TODO
 - [ ] GTM / Google Ads / GA4 / Meta Pixel + server-side Meta CAPI — server-side Meta CAPI done (`tracking/`); GTM/Pixel/Ads/GA4 are frontend
 
 ---

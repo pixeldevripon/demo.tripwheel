@@ -1,14 +1,15 @@
 import { authPrismaClient } from '@/auth/auth-prisma.client';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import * as nodemailer from 'nodemailer';
 import * as path from 'path';
+import { Resend } from 'resend';
 import {
   emailVerificationTemplate,
   operatorInviteTemplate,
   passwordResetTemplate,
 } from './templates';
 import {
+  escapeHtml,
   findUnresolvedTokens,
   renderEmailTemplate,
   type EmailTemplateContext,
@@ -47,35 +48,18 @@ export interface SendMailOptions {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: nodemailer.Transporter;
+  /** Null when RESEND_API_KEY is absent - every send then fails loudly. */
+  private readonly resend: Resend | null;
   private readonly from: string;
 
   constructor() {
-    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = process.env.SMTP_PORT
-      ? parseInt(process.env.SMTP_PORT, 10)
-      : 465;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-
-    if (!smtpUser || !smtpPass) {
-      this.logger.warn(
-        'SMTP_USER or SMTP_PASS is missing. Email sending will fail.',
-      );
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY is missing. Email sending will fail.');
     }
-
-    this.transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-
+    this.resend = apiKey ? new Resend(apiKey) : null;
     this.from =
-      process.env.MAIL_FROM ?? '"Island Tours" <noreply@islandtours.com>';
+      process.env.MAIL_FROM ?? 'Island Tours <noreply@islandtours.com>';
   }
 
   /** Redacts a recipient for logs: keeps first char + domain (e.g. j***@host.com). */
@@ -87,22 +71,33 @@ export class MailService {
 
   // ── Core send method ──────────────────────────────────────────────────────────
   async sendMail(opts: SendMailOptions): Promise<void> {
-    try {
-      const info = await this.transporter.sendMail({
-        from: this.from,
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text ?? opts.html.replace(/<[^>]*>/g, ''),
-      });
-
-      this.logger.log(
-        `Email sent to ${this.redact(opts.to)} | messageId: ${info?.messageId ?? 'n/a'}`,
+    if (!this.resend) {
+      this.logger.error(
+        `Email to ${this.redact(opts.to)} dropped - RESEND_API_KEY is not configured.`,
       );
-    } catch (err) {
-      this.logger.error(`Failed to send email to ${this.redact(opts.to)}`, err);
-      throw err;
+      throw new Error('Email service is not configured');
     }
+
+    const { data, error } = await this.resend.emails.send({
+      from: this.from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text ?? opts.html.replace(/<[^>]*>/g, ''),
+    });
+
+    if (error) {
+      // Log the provider error name/message (they never contain the API key),
+      // but throw only the name so callers cannot surface provider internals.
+      this.logger.error(
+        `Failed to send email to ${this.redact(opts.to)} | ${error.name}: ${error.message}`,
+      );
+      throw new Error(`Email send failed: ${error.name}`);
+    }
+
+    this.logger.log(
+      `Email sent to ${this.redact(opts.to)} | resend id: ${data?.id ?? 'n/a'}`,
+    );
   }
 
   // ── Dashboard-managed logo (auth-email brand bars) ─────────────────────────
@@ -260,22 +255,26 @@ export class MailService {
       dashboardUrl: string;
     },
   ): Promise<void> {
+    // Every interpolated value is escaped: `reason` (and in principle the guest
+    // fields) is traveller-supplied via the public cancellation-request form,
+    // and this is the one email built by string concatenation rather than
+    // renderEmailTemplate (which escapes for us).
     const row = (label: string, value: string) =>
-      `<tr><td style="padding:6px 12px 6px 0;color:#6B7280;font-size:14px;">${label}</td><td style="padding:6px 0;color:#1F2937;font-size:14px;font-weight:600;">${value}</td></tr>`;
+      `<tr><td style="padding:6px 12px 6px 0;color:#6B7280;font-size:14px;">${label}</td><td style="padding:6px 0;color:#1F2937;font-size:14px;font-weight:600;">${escapeHtml(value)}</td></tr>`;
     const html = `
 <div style="font-family:Arial,sans-serif;max-width:560px;">
-  <h2 style="font-size:18px;color:#1F2937;">Cancellation request: ${details.displayRef}</h2>
+  <h2 style="font-size:18px;color:#1F2937;">Cancellation request: ${escapeHtml(details.displayRef)}</h2>
   <p style="font-size:14px;color:#374151;">A traveller asked to cancel. Process the refund and confirm to them by email.</p>
   <table cellpadding="0" cellspacing="0">
     ${row('Booking', details.displayRef)}
     ${row('Tour', details.tourName)}
     ${row('Date', details.dateLabel)}
-    ${row('Guest', `${details.guestName} &lt;${details.guestEmail}&gt;`)}
+    ${row('Guest', `${details.guestName} <${details.guestEmail}>`)}
     ${row('Total', details.totalAmount)}
     ${row('Payment model', details.paymentModel)}
     ${details.reason ? row('Traveller note', details.reason) : ''}
   </table>
-  <p style="font-size:14px;"><a href="${details.dashboardUrl}">Open in the dashboard</a></p>
+  <p style="font-size:14px;"><a href="${escapeHtml(details.dashboardUrl)}">Open in the dashboard</a></p>
 </div>`;
     const text = [
       `Cancellation request: ${details.displayRef}`,
