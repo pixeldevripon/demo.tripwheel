@@ -174,9 +174,10 @@ const dashboardNav: NavGroup[] = [
                 // One route, two audiences: admins manage PLATFORM staff +
                 // designations (MANAGE_STAFF); operator owners manage their
                 // own team seats (MANAGE_TEAM). Non-owner seats hold neither,
-                // so the item disappears for them.
-                title: 'Team',
-                url: 'team',
+                // so the item disappears for them. Labeled "Users" for now
+                // (owner decision) - the module is still Staff & Teams.
+                title: 'Users',
+                url: 'users',
                 icon: UserGroupIcon,
                 permissions: [Permission.MANAGE_STAFF, Permission.MANAGE_TEAM],
             },
@@ -201,8 +202,8 @@ const dashboardNav: NavGroup[] = [
     },
 
     // Enquiries and Leads stay deleted: the master doc's model is "book
-    // instantly, no enquiry model". Users and Reviews return with their
-    // modules (blocked on A3/A2).
+    // instantly, no enquiry model". Reviews returns with its module (blocked
+    // on A2). "Users" above is the Staff & Teams module.
 ];
 
 export interface NavigationMap {
