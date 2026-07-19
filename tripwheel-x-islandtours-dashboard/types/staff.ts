@@ -4,6 +4,11 @@
 //   platform -> /staff, /staff/designations        (MANAGE_STAFF, admin)
 //   team     -> /staff/team, /staff/team/designations (MANAGE_TEAM, owner/admin)
 
+// Type-only import of the Permission union (no runtime coupling); duplicating
+// the ~80-key union here would add a third hand-maintained mirror. rbac.ts is
+// slated to move into types/ in extraction Stage D, which retires this
+// exception.
+// eslint-disable-next-line import/no-restricted-paths
 import type { PermissionKey } from '@/lib/config/rbac';
 
 export const STAFF_SEAT_ROLE_VALUES = ['OWNER', 'MANAGER', 'STAFF'] as const;
@@ -97,7 +102,10 @@ export interface InviteStaffPayload {
     name: string;
     designationId?: string;
     extraPermissions?: PermissionKey[];
-    /** Team scope only. */
+    /**
+     * Team scope only. An organizational label (shown on the team list);
+     * permissions always come from the designation/overrides.
+     */
     seatRole?: Exclude<StaffSeatRole, 'OWNER'>;
     /** ADMIN ONLY on team scope. */
     operatorId?: string;
@@ -107,7 +115,7 @@ export interface UpdateStaffPayload {
     designationId?: string | null;
     extraPermissions?: PermissionKey[];
     revokedPermissions?: PermissionKey[];
-    /** Team scope only. */
+    /** Team scope only - see InviteStaffPayload.seatRole. */
     seatRole?: Exclude<StaffSeatRole, 'OWNER'>;
     /** ADMIN ONLY on team scope. */
     operatorId?: string;

@@ -30,8 +30,29 @@ const inviteSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.email('Enter a valid email address'),
     designationId: z.string().optional(),
-    seatRole: z.enum(['MANAGER', 'STAFF']).optional(),
 });
+
+/**
+ * Honest per-role copy: MANAGER/STAFF is an organizational label - the
+ * permission set always comes from the designation/overrides, and payouts +
+ * team management stay with the owner regardless.
+ */
+const SEAT_ROLE_OPTIONS: {
+    value: 'STAFF' | 'MANAGER';
+    label: string;
+    description: string;
+}[] = [
+    {
+        value: 'STAFF',
+        label: 'Staff',
+        description: 'Day-to-day team member.',
+    },
+    {
+        value: 'MANAGER',
+        label: 'Manager',
+        description: 'Senior label on the team list.',
+    },
+];
 
 type InviteValues = z.infer<typeof inviteSchema>;
 
@@ -147,15 +168,23 @@ export function StaffInviteDialog({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value='STAFF'>Staff</SelectItem>
-                                    <SelectItem value='MANAGER'>
-                                        Manager
-                                    </SelectItem>
+                                    {SEAT_ROLE_OPTIONS.map((option) => (
+                                        <SelectItem
+                                            key={option.value}
+                                            value={option.value}>
+                                            <span>{option.label}</span>
+                                            <span className='text-muted-foreground'>
+                                                - {option.description}
+                                            </span>
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <FieldDescription>
-                                Payouts, bank details and team management always
-                                stay with the owner account.
+                                A label shown on the team list - what this
+                                member can DO is set by the designation below.
+                                Payouts, bank details and team management
+                                always stay with the owner account.
                             </FieldDescription>
                         </Field>
                     )}

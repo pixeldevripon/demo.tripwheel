@@ -181,6 +181,10 @@ export function StaffMemberSheet({
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <p className='text-xs text-muted-foreground'>
+                                    A team-list label - access is set by the
+                                    designation and permissions below.
+                                </p>
                             </div>
                         )}
                     </div>

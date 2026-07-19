@@ -1,7 +1,11 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { UserAdd02Icon, UserGroupIcon } from '@hugeicons/core-free-icons';
+import {
+    Alert02Icon,
+    UserAdd02Icon,
+    UserGroupIcon,
+} from '@hugeicons/core-free-icons';
 
 import { useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/data-table';
@@ -36,7 +40,7 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
         useTableState();
     const statusFilter = filters.status ?? 'all';
 
-    const { data, isLoading } = useStaffMembers(scope, {
+    const { data, isLoading, isError, refetch } = useStaffMembers(scope, {
         page,
         limit,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -71,16 +75,33 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
                     onPageChange: setPage,
                     onLimitChange: setLimit,
                 }}
-                empty={{
-                    icon: UserGroupIcon,
-                    title:
-                        scope === 'platform'
-                            ? 'No staff members yet.'
-                            : 'No team members yet.',
-                    description:
-                        'Invite your first member - they get a set-password email and sign in with their own account.',
-                    action: inviteButton,
-                }}
+                // A failed fetch must never masquerade as an empty team - an
+                // outage while the Suspended filter is active would otherwise
+                // read as "no suspended members".
+                empty={
+                    isError
+                        ? {
+                              icon: Alert02Icon,
+                              title: "Couldn't load members.",
+                              description:
+                                  'The server did not respond. Check that the backend is running, then retry.',
+                              action: (
+                                  <Button size='sm' onClick={() => refetch()}>
+                                      Retry
+                                  </Button>
+                              ),
+                          }
+                        : {
+                              icon: UserGroupIcon,
+                              title:
+                                  scope === 'platform'
+                                      ? 'No staff members yet.'
+                                      : 'No team members yet.',
+                              description:
+                                  'Invite your first member - they get a set-password email and sign in with their own account.',
+                              action: inviteButton,
+                          }
+                }
                 toolbar={() => (
                     <>
                         <DataTableSearch

@@ -8,15 +8,30 @@ import {
     inputClass,
     primaryBtn,
     quietLink,
+    staffBtn,
 } from './login-ui';
 
-export default function AuthForm() {
+interface AuthFormProps {
+    /**
+     * Which door renders the form. Same sign-in logic either way; the variant
+     * only pins the surface's own forgot route, button style and placeholder
+     * so the staff door never links into (or looks like) the operator portal.
+     */
+    variant?: 'portal' | 'staff';
+}
+
+export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const isStaff = variant === 'staff';
+    const idPrefix = isStaff ? 's' : 'o';
+    const forgotHref = isStaff ? '/staff/forgot' : '/portal/forgot';
+    const submitClass = isStaff ? staffBtn : primaryBtn;
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -46,15 +61,17 @@ export default function AuthForm() {
     }
     return (
         <form onSubmit={handleSubmit}>
-            <Field label='Email' htmlFor='o-email'>
+            <Field label='Email' htmlFor={`${idPrefix}-email`}>
                 <input
-                    id='o-email'
+                    id={`${idPrefix}-email`}
                     aria-label='Email'
                     type='email'
                     name='email'
                     autoComplete='username'
                     inputMode='email'
-                    placeholder='you@yourcompany.com'
+                    placeholder={
+                        isStaff ? 'you@islandtours.com' : 'you@yourcompany.com'
+                    }
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
@@ -62,10 +79,10 @@ export default function AuthForm() {
                 />
             </Field>
 
-            <Field label='Password' htmlFor='o-pw'>
+            <Field label='Password' htmlFor={`${idPrefix}-pw`}>
                 <div className='relative'>
                     <input
-                        id='o-pw'
+                        id={`${idPrefix}-pw`}
                         aria-label='Password'
                         type={showPw ? 'text' : 'password'}
                         name='password'
@@ -86,7 +103,7 @@ export default function AuthForm() {
             </Field>
 
             <div className='mb-4 mt-0.5 flex items-center justify-end'>
-                <Link href='/portal/forgot' className={quietLink}>
+                <Link href={forgotHref} className={quietLink}>
                     Forgot your password?
                 </Link>
             </div>
@@ -96,10 +113,9 @@ export default function AuthForm() {
             <button
                 type='submit'
                 disabled={loading}
-                className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-60`}>
-                {loading ? 'Signing in…' : 'Log in'}
+                className={`${submitClass} disabled:cursor-not-allowed disabled:opacity-60`}>
+                {loading ? 'Signing in…' : isStaff ? 'Sign in' : 'Log in'}
             </button>
         </form>
     );
 }
-

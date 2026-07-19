@@ -18,6 +18,13 @@ export const inputClass =
 export const primaryBtn =
     'flex w-full items-center justify-center gap-2 rounded-full bg-it-primary px-4 py-3 text-base font-semibold text-it-primary-fg transition-[filter] hover:brightness-95';
 
+/**
+ * Staff-surface button: monochrome ink, squared corners - deliberately NOT the
+ * operator portal's orange pill, so the two doors never feel like one surface.
+ */
+export const staffBtn =
+    'flex w-full items-center justify-center gap-2 rounded-[10px] bg-it-ink px-4 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90';
+
 export const quietLink =
     'text-sm font-semibold text-it-text-muted transition-colors hover:text-it-primary';
 
