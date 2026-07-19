@@ -1,12 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
-import { Readable } from 'stream';
-import type { Multer } from 'multer';
 
 export interface CloudinaryUploadResult {
   publicId: string;
   url: string;
   resourceType: string;
+  bytes?: number;
+  format?: string;
+}
+
+/** Optional asset facts that drive the delivery-URL decision. */
+export interface CloudinaryAssetMeta {
+  bytes?: number;
+  width?: number;
+  format?: string;
 }
 
 /**
@@ -18,13 +25,37 @@ export interface CloudinaryUploadResult {
 export const CLOUDINARY_ROOT_FOLDER = 'islandtours';
 
 /**
- * Size-aware delivery policy (images only):
+ * Size-aware delivery policy (raster images only):
  *  - above COMPRESS_ABOVE_BYTES  → q_auto/f_auto compression
- *  - below UPSCALE_BELOW_BYTES   → 2x scale-up (no quality reduction)
- *  - in between                  → original served untouched
+ *  - below UPSCALE_BELOW_BYTES AND source width ≤ UPSCALE_MAX_SOURCE_WIDTH
+ *    → 2x scale-up (no quality reduction)
+ *  - everything else             → original served untouched
+ *
+ * The width gate matters: a byte-small but pixel-large image (e.g. a well
+ * compressed 4000px photo) must NOT be upscaled - rendering the huge
+ * intermediate is so slow that downstream image optimizers time out.
+ * With the gate, 2x output is naturally capped at 4096px.
  */
 export const COMPRESS_ABOVE_BYTES = 5 * 1024 * 1024; // 5 MB
 export const UPSCALE_BELOW_BYTES = 1 * 1024 * 1024; // 1 MB
+export const UPSCALE_MAX_SOURCE_WIDTH = 2048;
+
+/** Audio containers - Cloudinary stores audio under resource_type 'video'. */
+const AUDIO_FORMATS = new Set([
+  'mp3',
+  'wav',
+  'ogg',
+  'aac',
+  'm4a',
+  'flac',
+  'opus',
+  'weba',
+  'aiff',
+  'amr',
+]);
+
+/** Vector / icon formats - never resized or recompressed. */
+const VECTOR_FORMATS = new Set(['svg', 'ico']);
 
 /**
  * CloudinaryService - thin wrapper around the Cloudinary v2 SDK.
@@ -70,64 +101,79 @@ export class CloudinaryService {
 
     return {
       publicId: result.public_id,
-      url: this.getOptimizedUrl(
-        result.public_id,
-        result.resource_type,
-        result.bytes,
-      ),
+      url: this.getOptimizedUrl(result.public_id, result.resource_type, {
+        bytes: result.bytes,
+        width: result.width,
+        format: result.format,
+      }),
       resourceType: result.resource_type,
+      bytes: result.bytes,
+      format: result.format,
     };
   }
 
   /**
-   * Generate the delivery URL for an asset, applying transformations based on
-   * the stored file size (images only - videos always get f_auto/q_auto):
-   *  - > 5 MB       → f_auto + q_auto so Cloudinary compresses it
-   *  - < 1 MB       → 2x upscale (c_scale,w_2.0) with f_auto, quality untouched
-   *  - 1-5 MB       → plain secure URL, no transformation at all
-   * When bytes is unknown the original is served untouched.
+   * Generate the delivery URL for an asset.
+   *
+   * Raster images (size policy - see constants above):
+   *  - svg/ico              → plain URL (transforming a vector rasterizes it)
+   *  - > 5 MB               → f_auto + q_auto so Cloudinary compresses it
+   *  - < 1 MB and ≤ 2048px  → 2x upscale (c_scale,w_2.0), quality untouched
+   *  - everything else      → plain secure URL, no transformation
+   *
+   * resource_type 'video':
+   *  - audio formats        → plain URL (no visual transformations apply)
+   *  - real video           → f_auto + q_auto
+   *
+   * Anything else (raw) is served plain. Unknown meta → plain.
    */
   getOptimizedUrl(
     publicId: string,
     resourceType: string = 'image',
-    bytes?: number,
+    meta: CloudinaryAssetMeta = {},
   ): string {
+    const { bytes, width, format } = meta;
+    const plain = { resource_type: resourceType, secure: true };
+    const compressed = {
+      ...plain,
+      fetch_format: 'auto',
+      quality: 'auto',
+    };
+
+    if (resourceType === 'video') {
+      const isAudio = format !== undefined && AUDIO_FORMATS.has(format);
+      return cloudinary.url(publicId, isAudio ? plain : compressed);
+    }
+
     if (resourceType !== 'image') {
-      return cloudinary.url(publicId, {
-        resource_type: resourceType,
-        secure: true,
-        fetch_format: 'auto',
-        quality: 'auto',
-      });
+      return cloudinary.url(publicId, plain);
+    }
+
+    if (format !== undefined && VECTOR_FORMATS.has(format)) {
+      return cloudinary.url(publicId, plain);
     }
 
     if (typeof bytes === 'number' && bytes > COMPRESS_ABOVE_BYTES) {
-      return cloudinary.url(publicId, {
-        resource_type: resourceType,
-        secure: true,
-        fetch_format: 'auto',
-        quality: 'auto',
-      });
+      return cloudinary.url(publicId, compressed);
     }
 
-    if (typeof bytes === 'number' && bytes < UPSCALE_BELOW_BYTES) {
-      // 4x upscale, then cap at 4096px so the output can never exceed
-      // Cloudinary's megapixel processing limit (c_limit only shrinks).
+    if (
+      typeof bytes === 'number' &&
+      bytes < UPSCALE_BELOW_BYTES &&
+      typeof width === 'number' &&
+      width > 0 &&
+      width <= UPSCALE_MAX_SOURCE_WIDTH
+    ) {
       return cloudinary.url(publicId, {
-        resource_type: resourceType,
-        secure: true,
+        ...plain,
         transformation: [
-          { crop: 'scale', width: '4.0' },
-          { crop: 'limit', width: 4096, height: 4096 },
+          { crop: 'scale', width: '2.0' },
           { fetch_format: 'auto' },
         ],
       });
     }
 
-    return cloudinary.url(publicId, {
-      resource_type: resourceType,
-      secure: true,
-    });
+    return cloudinary.url(publicId, plain);
   }
 
   /**
@@ -197,6 +243,8 @@ export class CloudinaryService {
     resource_type: string;
     secure_url: string;
     bytes: number;
+    width?: number;
+    format?: string;
   }> {
     // Cloudinary throws if the resource is not found
     const resource = await cloudinary.api
@@ -211,6 +259,8 @@ export class CloudinaryService {
       resource_type: resource.resource_type,
       secure_url: resource.secure_url,
       bytes: resource.bytes,
+      width: resource.width,
+      format: resource.format,
     };
   }
 }

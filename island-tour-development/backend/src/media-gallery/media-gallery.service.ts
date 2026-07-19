@@ -1,6 +1,6 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { MediaGallery } from '@prisma/client';
+import type { MediaGallery, Prisma } from '@prisma/client';
 import { CloudinaryService } from './cloudinary.service';
 import type { Multer } from 'multer';
 
@@ -48,14 +48,25 @@ export class MediaGalleryService {
       files.map((file) => this.cloudinaryService.uploadFile(file, userId)),
     );
 
-    const succeeded: { publicId: string; url: string; resourceType: string }[] =
-      [];
+    const succeeded: {
+      publicId: string;
+      url: string;
+      resourceType: string;
+      bytes?: number;
+      format?: string;
+      originalName: string;
+      mimeType: string;
+    }[] = [];
     const failed: string[] = [];
 
     for (let i = 0; i < cloudResults.length; i++) {
       const r = cloudResults[i];
       if (r.status === 'fulfilled') {
-        succeeded.push(r.value);
+        succeeded.push({
+          ...r.value,
+          originalName: files[i].originalname,
+          mimeType: files[i].mimetype,
+        });
       } else {
         this.logger.error(
           `Cloudinary upload failed for ${files[i].originalname}: ${r.reason}`,
@@ -77,6 +88,10 @@ export class MediaGalleryService {
               url: r.url,
               publicId: r.publicId,
               resourceType: r.resourceType,
+              originalName: r.originalName,
+              mimeType: r.mimeType,
+              bytes: r.bytes,
+              format: r.format,
               userId,
             },
           }),
@@ -111,7 +126,9 @@ export class MediaGalleryService {
     userId: string,
   ): Promise<MediaGallery> {
     // Verify the asset actually exists on Cloudinary (prevents spoofed publicIds)
-    let asset: { resource_type: string; secure_url: string; bytes: number };
+    let asset: Awaited<
+      ReturnType<typeof this.cloudinaryService.verifyAssetExists>
+    >;
     try {
       asset = await this.cloudinaryService.verifyAssetExists(dto.publicId);
     } catch {
@@ -125,10 +142,12 @@ export class MediaGalleryService {
         url: this.cloudinaryService.getOptimizedUrl(
           dto.publicId,
           dto.resourceType,
-          asset.bytes,
+          { bytes: asset.bytes, width: asset.width, format: asset.format },
         ),
         publicId: dto.publicId,
         resourceType: dto.resourceType,
+        bytes: asset.bytes,
+        format: asset.format,
         userId,
       },
     });
@@ -141,14 +160,69 @@ export class MediaGalleryService {
   // ─── Queries ─────────────────────────────────────────────────────────────────
 
   async getMyMedia(userId: string, query: MediaGalleryQueryDto) {
-    const { page = 1, limit = 20 } = query;
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = 'uploadedAt',
+      sortOrder = 'desc',
+      type = 'all',
+    } = query;
     const skip = (page - 1) * limit;
 
+    // mimeType is the precise signal; rows uploaded before that column
+    // existed (null) fall back to Cloudinary's resourceType. Audio lives
+    // under resourceType 'video' on Cloudinary, so no legacy fallback there.
+    const typeWhere: Prisma.MediaGalleryWhereInput = (() => {
+      switch (type) {
+        case 'image':
+          return {
+            OR: [
+              {
+                mimeType: { startsWith: 'image/' },
+                NOT: { mimeType: 'image/svg+xml' },
+              },
+              { mimeType: null, resourceType: 'image' },
+            ],
+          };
+        case 'video':
+          return {
+            OR: [
+              { mimeType: { startsWith: 'video/' } },
+              { mimeType: null, resourceType: 'video' },
+            ],
+          };
+        case 'audio':
+          return { mimeType: { startsWith: 'audio/' } };
+        case 'svg':
+          return { mimeType: 'image/svg+xml' };
+        default:
+          return {};
+      }
+    })();
+    const where: Prisma.MediaGalleryWhereInput = { userId, ...typeWhere };
+
+    // Rows uploaded before the metadata columns existed have null
+    // originalName/bytes - keep them at the end regardless of direction.
+    const orderBy: Prisma.MediaGalleryOrderByWithRelationInput[] = (() => {
+      switch (sortBy) {
+        case 'name':
+          return [{ originalName: { sort: sortOrder, nulls: 'last' } }];
+        case 'size':
+          return [{ bytes: { sort: sortOrder, nulls: 'last' } }];
+        case 'type':
+          return [{ mimeType: { sort: sortOrder, nulls: 'last' } }];
+        default:
+          return [{ uploadedAt: sortOrder }];
+      }
+    })();
+    // Stable tiebreak so pagination never duplicates/skips rows
+    orderBy.push({ id: 'asc' });
+
     const [total, data] = await Promise.all([
-      this.prisma.mediaGallery.count({ where: { userId } }),
+      this.prisma.mediaGallery.count({ where }),
       this.prisma.mediaGallery.findMany({
-        where: { userId },
-        orderBy: { uploadedAt: 'desc' },
+        where,
+        orderBy,
         skip,
         take: limit,
       }),

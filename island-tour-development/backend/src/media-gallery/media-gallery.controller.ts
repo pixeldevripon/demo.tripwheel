@@ -35,17 +35,69 @@ import {
   ApiUploadMediaDocs,
 } from './media-gallery.swagger';
 
-/** Allowed MIME types for upload */
+/**
+ * Allowed MIME types for upload - every media type a web page can use.
+ * Grouped: raster images, vector/icon, video, audio.
+ */
 const ALLOWED_MIMETYPES = new Set([
+  // Images (raster)
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/gif',
+  'image/avif',
+  'image/bmp',
+  'image/tiff',
+  'image/heic',
+  'image/heif',
+  // Images (vector / icon)
+  'image/svg+xml',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+  // Video
   'video/mp4',
+  'video/webm',
+  'video/ogg',
   'video/quicktime',
+  'video/x-m4v',
+  'video/x-matroska',
+  // Audio
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/ogg',
+  'audio/webm',
+  'audio/aac',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/flac',
+  'audio/x-flac',
+  'audio/opus',
 ]);
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+// Cloudinary's own per-plan limits still apply on top of this (e.g. 10 MB
+// images / 100 MB video on the free plan) - those surface as upload errors.
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
+/** Shared Multer fileFilter for both upload routes. */
+const mediaFileFilter = (
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) => {
+  if (!ALLOWED_MIMETYPES.has(file.mimetype)) {
+    return callback(
+      new BadRequestException(
+        `File type not allowed: ${file.mimetype}. Allowed: web image, video and audio formats (jpeg, png, webp, gif, avif, svg, ico, mp4, webm, mov, mp3, wav, ogg, aac, m4a, flac, ...)`,
+      ),
+      false,
+    );
+  }
+  callback(null, true);
+};
 
 @ApiTags('Media Gallery')
 @Controller('media-gallery')
@@ -88,17 +140,7 @@ export class MediaGalleryController {
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       limits: { fileSize: MAX_FILE_SIZE },
-      fileFilter: (_req, file, callback) => {
-        if (!ALLOWED_MIMETYPES.has(file.mimetype)) {
-          return callback(
-            new BadRequestException(
-              `File type not allowed: ${file.mimetype}. Allowed: jpeg, png, webp, gif, mp4, quicktime`,
-            ),
-            false,
-          );
-        }
-        callback(null, true);
-      },
+      fileFilter: mediaFileFilter,
     }),
   )
   async upload(
@@ -125,17 +167,7 @@ export class MediaGalleryController {
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       limits: { fileSize: MAX_FILE_SIZE },
-      fileFilter: (_req, file, callback) => {
-        if (!ALLOWED_MIMETYPES.has(file.mimetype)) {
-          return callback(
-            new BadRequestException(
-              `File type not allowed: ${file.mimetype}. Allowed: jpeg, png, webp, gif, mp4, quicktime`,
-            ),
-            false,
-          );
-        }
-        callback(null, true);
-      },
+      fileFilter: mediaFileFilter,
     }),
   )
   async uploadAsync(

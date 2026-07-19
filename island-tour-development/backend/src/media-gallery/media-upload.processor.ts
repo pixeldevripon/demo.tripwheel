@@ -56,6 +56,8 @@ export class MediaUploadProcessor extends WorkerHost {
       publicId: string;
       url: string;
       resourceType: string;
+      bytes?: number;
+      format?: string;
     } | null = null;
 
     try {
@@ -68,6 +70,10 @@ export class MediaUploadProcessor extends WorkerHost {
           url: cloudResult.url,
           publicId: cloudResult.publicId,
           resourceType: cloudResult.resourceType,
+          originalName: originalname,
+          mimeType: mimetype,
+          bytes: cloudResult.bytes,
+          format: cloudResult.format,
           userId,
         },
       });

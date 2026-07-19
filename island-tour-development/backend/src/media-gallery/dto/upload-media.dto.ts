@@ -1,6 +1,28 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+
+/** Sortable fields for GET /media-gallery. */
+export const MEDIA_SORT_FIELDS = [
+  'uploadedAt',
+  'name',
+  'size',
+  'type',
+] as const;
+export type MediaSortField = (typeof MEDIA_SORT_FIELDS)[number];
+
+export const MEDIA_SORT_ORDERS = ['asc', 'desc'] as const;
+export type MediaSortOrder = (typeof MEDIA_SORT_ORDERS)[number];
+
+/** Media-type filter for GET /media-gallery. */
+export const MEDIA_TYPE_FILTERS = [
+  'all',
+  'image',
+  'video',
+  'audio',
+  'svg',
+] as const;
+export type MediaTypeFilter = (typeof MEDIA_TYPE_FILTERS)[number];
 
 // ── Upload DTOs ───────────────────────────────────────────────────────────────
 
@@ -49,6 +71,33 @@ export class MediaGalleryQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  @ApiPropertyOptional({
+    description: 'Sort field',
+    enum: MEDIA_SORT_FIELDS,
+    default: 'uploadedAt',
+  })
+  @IsOptional()
+  @IsIn(MEDIA_SORT_FIELDS)
+  sortBy?: MediaSortField = 'uploadedAt';
+
+  @ApiPropertyOptional({
+    description: 'Sort direction',
+    enum: MEDIA_SORT_ORDERS,
+    default: 'desc',
+  })
+  @IsOptional()
+  @IsIn(MEDIA_SORT_ORDERS)
+  sortOrder?: MediaSortOrder = 'desc';
+
+  @ApiPropertyOptional({
+    description: 'Filter by media type',
+    enum: MEDIA_TYPE_FILTERS,
+    default: 'all',
+  })
+  @IsOptional()
+  @IsIn(MEDIA_TYPE_FILTERS)
+  type?: MediaTypeFilter = 'all';
 }
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
@@ -68,6 +117,18 @@ export class MediaGalleryResponseDto {
 
   @ApiProperty({ example: 'image' })
   resourceType!: string;
+
+  @ApiPropertyOptional({ example: 'sunset-cruise.png', nullable: true })
+  originalName?: string | null;
+
+  @ApiPropertyOptional({ example: 'image/png', nullable: true })
+  mimeType?: string | null;
+
+  @ApiPropertyOptional({ example: 245760, nullable: true })
+  bytes?: number | null;
+
+  @ApiPropertyOptional({ example: 'png', nullable: true })
+  format?: string | null;
 
   @ApiProperty({ example: '2026-01-15T10:30:00.000Z' })
   uploadedAt!: Date;

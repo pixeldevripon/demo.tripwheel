@@ -5,6 +5,7 @@ import {
     lookupBookingClient,
     recoverReferenceClient,
 } from '@/lib/api/bookings-lookup';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { swapFade } from '@/lib/motion';
 import {
@@ -53,7 +54,7 @@ export function TravelerLogin({
     logo?: string | null;
     siteName?: string | null;
     /** Path locale - keys the card swap so locale changes animate smoothly. */
-    locale: string;
+    locale: Locale;
     /** `travelerLogin` dictionary slice, locale-resolved by the page. */
     dict: Dictionary['travelerLogin'];
     /** wa.me deep link (buildWhatsappUrl); null hides the button entirely. */
@@ -142,7 +143,7 @@ export function TravelerLogin({
             {/* ── Takeover top bar ─────────────────────────────────────────── */}
             <header className='flex items-center justify-between px-7 py-5'>
                 <Link
-                    href='/'
+                    href={localizeHref(locale, '/')}
                     aria-label='Island Tours home'
                     className='shrink-0'>
                     <Image
@@ -191,9 +192,17 @@ export function TravelerLogin({
                                 {failed && (
                                     <ErrorNote>
                                         {dict.errorBefore}{' '}
-                                        <a href='#' className='underline'>
-                                            {dict.errorLink}
-                                        </a>{' '}
+                                        {whatsappHref ? (
+                                            <a
+                                                href={whatsappHref}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='underline'>
+                                                {dict.errorLink}
+                                            </a>
+                                        ) : (
+                                            dict.errorLink
+                                        )}{' '}
                                         {dict.errorAfter}
                                     </ErrorNote>
                                 )}
@@ -345,21 +354,19 @@ export function TravelerLogin({
                     {dict.tagline}
                 </div>
                 <div className='flex gap-3.5'>
-                    <a
-                        href='#'
+                    <Link
+                        href={localizeHref(locale, '/terms')}
                         className='transition-colors hover:text-it-primary'>
                         {dict.terms}
-                    </a>
-                    <a
-                        href='#'
+                    </Link>
+                    <Link
+                        href={localizeHref(locale, '/privacy-policy')}
                         className='transition-colors hover:text-it-primary'>
                         {dict.privacy}
-                    </a>
-                    <a
-                        href='#'
-                        className='transition-colors hover:text-it-primary'>
-                        {dict.help}
-                    </a>
+                    </Link>
+                    {/* Help page doesn't exist yet - deactivated like the main
+                        footer (plain text, no 404) until it's built. */}
+                    <span className='cursor-default'>{dict.help}</span>
                 </div>
             </footer>
         </div>
