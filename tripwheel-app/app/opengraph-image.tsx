@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 /**
  * Social share card, generated at request time by next/og. Mirrors the hero:
- * deep indigo gradient, wordmark, tagline. Referenced automatically as
+ * deep teal-blue gradient, wordmark, tagline. Referenced automatically as
  * og:image (and explicitly as the twitter image in app/layout.tsx).
  */
 
@@ -22,7 +22,7 @@ export default function OpengraphImage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background:
-                        'linear-gradient(180deg, #16123c 0%, #2f2a9b 55%, #4f49d8 100%)',
+                        'linear-gradient(180deg, #0e2537 0%, #114d70 55%, #1f79a6 100%)',
                     color: '#ffffff',
                     fontSize: 72,
                     fontWeight: 600,

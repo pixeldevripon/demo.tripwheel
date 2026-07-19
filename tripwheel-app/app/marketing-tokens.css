@@ -15,46 +15,52 @@
  * they do not switch with `.dark`.
  */
 
-/* ── Palette + scale extensions ─────────────────────────────────────────── */
+/* ── Palette + scale extensions ─────────────────────────────────────────────
+ * Aligned to the dashboard's "Vega" system (tripwheel-x-islandtours-dashboard/
+ * app/globals.css): lavender-tinted neutral ramp (hue ~265-275) + the teal-blue
+ * brand at hue 214. The old indigo/purple accents are gone - every saturated
+ * value below (and the bespoke gradients further down) now sits on hue 214, so
+ * the landing reads as the same brand as the dashboard. */
 :root {
-    /* Ink & copy on light surfaces */
-    --mk-ink: #16152e;
-    --mk-body: #55546e;
-    --mk-faint: #8b8aa3;
+    /* Ink & copy on light surfaces (dashboard n-900 / n-600 / n-400). */
+    --mk-ink: oklch(0.21 0.012 268);
+    --mk-body: oklch(0.47 0.015 265);
+    --mk-faint: oklch(0.62 0.015 265);
 
-    /* Surfaces */
+    /* Surfaces (dashboard n-0 / n-50 / n-25). */
     --mk-paper: #ffffff;
-    --mk-canvas: #f5f4fb; /* lavender section field */
-    --mk-shell: #fafafd; /* page behind the boxed frame */
+    --mk-canvas: oklch(0.9555 0.0125 271); /* tinted section field */
+    --mk-shell: oklch(0.9793 0.0083 271); /* page behind the boxed frame */
 
-    /* Hairlines */
-    --mk-line: #e7e6f1;
-    --mk-line-strong: #d9d8e8;
+    /* Hairlines (dashboard n-200 / n-300). */
+    --mk-line: oklch(0.9142 0.0208 274);
+    --mk-line-strong: oklch(0.8893 0.0169 262);
 
-    /* Brand indigo */
-    --mk-accent: #5b55e8;
-    --mk-accent-hover: #4a44d6;
-    --mk-accent-soft: #eeedfd;
-    --mk-accent-soft-fg: #4a44d6;
+    /* Brand: teal-blue hue 214 (dashboard brand-600 / -700 / -50). */
+    --mk-accent: oklch(0.52 0.11 214);
+    --mk-accent-hover: oklch(0.45 0.1 214);
+    --mk-accent-soft: oklch(0.97 0.018 214);
+    --mk-accent-soft-fg: oklch(0.45 0.1 214);
 
-    /* Dark chrome (navbar, black buttons) */
-    --mk-nav: #0c0b20;
+    /* Dark chrome (navbar, black buttons) - deep teal-blue ink, not indigo. */
+    --mk-nav: oklch(0.16 0.025 235);
     --mk-nav-fg: rgba(255, 255, 255, 0.72);
     --mk-nav-line: rgba(255, 255, 255, 0.08);
-    --mk-dark-btn: #131322;
-    --mk-dark-btn-hover: #26253a;
+    --mk-dark-btn: oklch(0.21 0.03 235);
+    --mk-dark-btn-hover: oklch(0.29 0.035 235);
 
     /* On-gradient (hero) translucent chrome */
     --mk-ghost: rgba(255, 255, 255, 0.14);
     --mk-ghost-hover: rgba(255, 255, 255, 0.22);
     --mk-ghost-line: rgba(255, 255, 255, 0.28);
-    --mk-hero-copy: rgba(235, 234, 252, 0.85);
+    --mk-hero-copy: rgba(232, 240, 245, 0.85);
 
-    /* Success tick in pricing lists */
-    --mk-tick: #8f8ea6;
+    /* Success tick in pricing lists (neutral, dashboard n-500). */
+    --mk-tick: oklch(0.55 0.015 265);
 
-    --mk-shadow-card: 0 1px 2px rgba(22, 21, 46, 0.05), 0 12px 32px -16px rgba(22, 21, 46, 0.18);
-    --mk-shadow-float: 0 24px 64px -24px rgba(37, 31, 121, 0.35);
+    --mk-shadow-card: 0 1px 2px oklch(0.21 0.03 265 / 0.05),
+        0 12px 32px -16px oklch(0.21 0.03 265 / 0.18);
+    --mk-shadow-float: 0 24px 64px -24px oklch(0.4 0.12 220 / 0.35);
 }
 
 @theme inline {
@@ -114,8 +120,8 @@
         background-color: var(--mk-shell);
         /* Graph-paper canvas behind the boxed frame (boundary reference). */
         background-image:
-            linear-gradient(rgba(22, 21, 46, 0.035) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(22, 21, 46, 0.035) 1px, transparent 1px);
+            linear-gradient(oklch(0.21 0.03 265 / 0.035) 1px, transparent 1px),
+            linear-gradient(90deg, oklch(0.21 0.03 265 / 0.035) 1px, transparent 1px);
         background-size: 44px 44px;
         color: var(--mk-ink);
         -webkit-font-smoothing: antialiased;
@@ -141,16 +147,16 @@
 
 /* ── Bespoke surfaces ───────────────────────────────────────────────────── */
 
-/* Hero: deep indigo falling into the lavender canvas (Clarasight ref). */
+/* Hero: deep teal-blue falling into the tinted canvas (brand hue 214). */
 .mk-hero-bg {
     background: linear-gradient(
         180deg,
-        #16123c 0%,
-        #2f2a9b 20%,
-        #4f49d8 45%,
-        #7f7aef 68%,
-        #c7c4f7 88%,
-        #f5f4fb 100%
+        oklch(0.22 0.06 232) 0%,
+        oklch(0.38 0.11 220) 20%,
+        oklch(0.52 0.13 216) 45%,
+        oklch(0.68 0.11 214) 68%,
+        oklch(0.86 0.06 214) 88%,
+        oklch(0.9555 0.0125 271) 100%
     );
 }
 
@@ -163,33 +169,48 @@
     mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 72%, transparent 100%);
 }
 
-/* Network CTA card: the saturated indigo panel. */
+/* Network CTA card: the saturated teal-blue panel (brand hue 214-216). */
 .mk-cta-bg {
-    background: linear-gradient(135deg, #7d75f3 0%, #5d55e8 60%, #4f47dd 100%);
+    background: linear-gradient(
+        135deg,
+        oklch(0.66 0.13 216) 0%,
+        oklch(0.55 0.14 214) 60%,
+        oklch(0.5 0.14 217) 100%
+    );
 }
 
-/* Photo stand-in inside the CTA card: layered aurora. */
+/* Photo stand-in inside the CTA card: layered aurora (teal-blue base + warm). */
 .mk-cta-visual {
     background:
         radial-gradient(120% 90% at 18% 12%, rgba(255, 214, 165, 0.9) 0%, transparent 45%),
         radial-gradient(110% 90% at 85% 20%, rgba(255, 255, 255, 0.55) 0%, transparent 42%),
-        radial-gradient(130% 110% at 70% 95%, #241d6b 0%, transparent 60%),
-        linear-gradient(160deg, #8b84f6 0%, #4038b8 55%, #221b60 100%);
+        radial-gradient(130% 110% at 70% 95%, oklch(0.3 0.08 226) 0%, transparent 60%),
+        linear-gradient(
+            160deg,
+            oklch(0.7 0.12 216) 0%,
+            oklch(0.45 0.13 219) 55%,
+            oklch(0.28 0.08 228) 100%
+        );
 }
 
-/* Footer field: lavender wash rising from the watermark. */
+/* Footer field: tinted wash rising from the watermark (dashboard neutrals). */
 .mk-footer-bg {
-    background: linear-gradient(180deg, #f5f4fb 0%, #eeecf9 55%, #e7e4f7 100%);
+    background: linear-gradient(
+        180deg,
+        oklch(0.9555 0.0125 271) 0%,
+        oklch(0.945 0.02 240) 55%,
+        oklch(0.93 0.03 232) 100%
+    );
 }
 
 /* Giant translucent wordmark pinned to the very bottom (Clarasight ref).
- * The white-fill lockup SVG is used as an alpha mask and tinted indigo. */
+ * The white-fill lockup SVG is used as an alpha mask and tinted teal-blue. */
 .mk-watermark {
     mask-image: url('/logo/logo-dark.svg');
     mask-repeat: no-repeat;
     mask-position: center bottom;
     mask-size: contain;
-    background-color: color-mix(in oklch, #5b55e8 18%, transparent);
+    background-color: color-mix(in oklch, oklch(0.55 0.13 214) 18%, transparent);
 }
 
 /* Soft-hover lift shared by cards and pricing columns. */
@@ -239,7 +260,7 @@
 .mk-textarea:focus-visible {
     outline: none;
     border-color: var(--mk-accent);
-    box-shadow: 0 0 0 3px color-mix(in oklch, #5b55e8 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--mk-accent) 22%, transparent);
 }
 
 .mk-textarea {
@@ -272,7 +293,7 @@
 .mk-cursor-ring {
     width: 36px;
     height: 36px;
-    border: 1.5px solid color-mix(in oklch, #5b55e8 55%, transparent);
+    border: 1.5px solid color-mix(in oklch, var(--mk-accent) 55%, transparent);
     transition:
         opacity 200ms ease,
         width 250ms cubic-bezier(0.25, 1, 0.5, 1),
@@ -290,8 +311,8 @@
 .mk-cursor-ring.is-active {
     width: 56px;
     height: 56px;
-    border-color: color-mix(in oklch, #5b55e8 35%, transparent);
-    background-color: color-mix(in oklch, #5b55e8 10%, transparent);
+    border-color: color-mix(in oklch, var(--mk-accent) 35%, transparent);
+    background-color: color-mix(in oklch, var(--mk-accent) 10%, transparent);
 }
 
 .mk-cursor-dot.is-active {

@@ -9,7 +9,7 @@ import Link from 'next/link';
 const EASE = [0.21, 0.47, 0.32, 0.98] as const;
 
 /**
- * Hero (Clarasight ref): deep indigo gradient dissolving into the lavender
+ * Hero (Clarasight ref): deep teal-blue gradient dissolving into the tinted
  * canvas, faint white grid, centred headline + twin pill CTAs, trust line at
  * the fold. Entrance is a staggered mount animation - the hero is above the
  * fold, so a scroll trigger could never fire.

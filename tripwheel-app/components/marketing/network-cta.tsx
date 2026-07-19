@@ -1,7 +1,7 @@
 import { Reveal } from '@/components/marketing/reveal';
 
 /**
- * Community CTA (Clarasight ref): saturated indigo rounded card on the
+ * Community CTA (Clarasight ref): saturated teal-blue rounded card on the
  * lavender field - copy + white pill left, visual panel right.
  */
 export function MarketingNetworkCta() {
