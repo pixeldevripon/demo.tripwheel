@@ -51,6 +51,17 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
     /^https?:\/\/\S+[^\s./]$/.test(v.trim())
       ? null
       : 'must be an http(s) URL with no trailing slash, dot, or whitespace',
+  // Shared secret sent as `x-revalidate-secret` to the public site's
+  // `POST /api/revalidate` so backend-originated writes (nightly re-rank jobs)
+  // bust its `'use cache'` tags. Must be ONE of the values in the frontend's
+  // comma-separated REVALIDATE_SECRET list. Needs ISLAND_TOURS_URL to be set
+  // too; when either is missing the PublicCacheService no-ops with a warning.
+  REVALIDATE_SECRET: (v) => {
+    if (v.length < 32) return 'must be at least 32 characters';
+    if (v.includes('change-me') || v === 'secret')
+      return 'placeholder detected - generate a real secret: openssl rand -base64 32';
+    return null;
+  },
   // Shared secret the trusted SSR/build server sends as `x-internal-api-key` to
   // bypass the per-IP throttle (see AuthModule). Must match the frontend's
   // server-only INTERNAL_API_SECRET. Server-only - never expose as NEXT_PUBLIC_.

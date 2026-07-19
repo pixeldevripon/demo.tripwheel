@@ -19,7 +19,8 @@ import { buildQuery, publicGet } from './fetch';
  * Approved reviews for a tour (by id), newest first by default. Returns
  * `{ total: 0, page: 1, limit, data: [] }` if the backend is unreachable.
  *
- * Cached hourly and tagged `reviews`; every param is part of the cache key.
+ * Cached daily (review moderation busts the tags); every param is part of the
+ * cache key.
  */
 export async function getTourReviews(params: {
   tourId: string;
@@ -29,7 +30,7 @@ export async function getTourReviews(params: {
   limit?: number;
 }): Promise<PublicReviewList> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   // Granular `tour:<id>` too, so approving/removing a review for one tour (or
   // editing that tour) refreshes only its reviews, not every tour's.
   cacheTag('reviews', `tour:${params.tourId}`);

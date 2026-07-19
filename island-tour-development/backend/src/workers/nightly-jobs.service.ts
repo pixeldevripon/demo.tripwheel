@@ -5,6 +5,8 @@ import { AvailabilityService } from '@/availability/availability.service';
 import { TiersService } from '@/tiers/tiers.service';
 import { ToursService } from '@/tours/tours.service';
 
+import { PublicCacheService } from './public-cache.service';
+
 /**
  * Nightly platform jobs (master §7 / §3.7). In-process scheduler via
  * `@nestjs/schedule` - these are idempotent recomputes, not retry/concurrency
@@ -28,6 +30,7 @@ export class NightlyJobsService {
     private readonly tours: ToursService,
     private readonly tiers: TiersService,
     private readonly availability: AvailabilityService,
+    private readonly publicCache: PublicCacheService,
   ) {}
 
   // 03:00 UTC daily. "Evaluated daily" is the master's cadence for both the
@@ -66,6 +69,12 @@ export class NightlyJobsService {
     const quality = await this.tours.recomputeQualityScores();
     // §7.2 eligibility: provisional window -> flat bar -> 30d grace -> demotion.
     const eligibility = await this.tiers.runEligibilityLifecycle();
+    // Everything above re-ranks/re-flags LIVE tours without a dashboard write,
+    // so the public site's `'use cache'` layer never hears about it - bust the
+    // coarse listing tags so hub/collection renders, listings, and search pick
+    // up the new ordering on the next visit instead of waiting out the daily
+    // cacheLife timer. Best-effort: never fails the job.
+    await this.publicCache.revalidateTags(['tours', 'search']);
     this.logger.log(
       `Nightly jobs: spotlight(activated=${spotlight.activated}, expired=${spotlight.expired}) ` +
         `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged}) ` +

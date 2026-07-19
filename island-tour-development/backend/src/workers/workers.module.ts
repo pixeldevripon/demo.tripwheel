@@ -5,6 +5,7 @@ import { TiersModule } from '@/tiers/tiers.module';
 import { ToursModule } from '@/tours/tours.module';
 
 import { NightlyJobsService } from './nightly-jobs.service';
+import { PublicCacheService } from './public-cache.service';
 
 /**
  * Scheduled background jobs (master §7 / §3.7). `ScheduleModule.forRoot()` is
@@ -13,6 +14,6 @@ import { NightlyJobsService } from './nightly-jobs.service';
  */
 @Module({
   imports: [TiersModule, ToursModule, AvailabilityModule],
-  providers: [NightlyJobsService],
+  providers: [NightlyJobsService, PublicCacheService],
 })
 export class WorkersModule {}

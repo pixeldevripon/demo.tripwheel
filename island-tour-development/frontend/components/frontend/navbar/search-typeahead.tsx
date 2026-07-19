@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronRight, LayoutGrid, MapPin, Search } from 'lucide-react';
+import { ChevronRight, Folder, LayoutGrid, MapPin, Search } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -77,6 +77,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 function TourRow({
     hit,
     contextLabel,
+    contextKind = 'category',
     locale,
     currency,
     dict,
@@ -86,6 +87,8 @@ function TourRow({
     hit: SearchHit;
     /** Small muted line above the title (category or destination name). */
     contextLabel: string | null;
+    /** What the context line names - picks the icon (folder vs map pin). */
+    contextKind?: 'category' | 'destination';
     locale: Locale;
     currency: Currency;
     dict: SearchDict;
@@ -136,11 +139,19 @@ function TourRow({
                 <span className='min-w-0 flex-1'>
                     {contextLabel && (
                         <span className='flex items-center gap-1 text-xs text-it-ink-muted'>
-                            <MapPin
-                                size={11}
-                                strokeWidth={1.5}
-                                className='shrink-0'
-                            />
+                            {contextKind === 'category' ? (
+                                <Folder
+                                    size={11}
+                                    strokeWidth={1.5}
+                                    className='shrink-0'
+                                />
+                            ) : (
+                                <MapPin
+                                    size={11}
+                                    strokeWidth={1.5}
+                                    className='shrink-0'
+                                />
+                            )}
                             <span className='truncate'>{contextLabel}</span>
                         </span>
                     )}
@@ -218,6 +229,8 @@ export function SearchTypeahead({
     tourHref,
     categoryHref,
     hubHref,
+    destinations,
+    destinationHref,
     onSelect,
 }: {
     suggest: SearchSuggest | null;
@@ -234,14 +247,19 @@ export function SearchTypeahead({
     /** Null when no island is active (category pages are destination-scoped). */
     categoryHref: ((slug: string) => string) | null;
     hubHref: (destinationSlug: string, slug: string) => string;
+    /** Matched destinations - rendered before every other bucket (homepage hero). */
+    destinations?: { name: string; slug: string }[];
+    destinationHref?: (slug: string) => string;
     onSelect: () => void;
 }) {
+    const destinationMatches = destinationHref ? (destinations ?? []) : [];
     const hasAnything =
-        !!suggest &&
-        (suggest.tours.length > 0 ||
-            suggest.beyondTours.length > 0 ||
-            suggest.categories.length > 0 ||
-            suggest.hubs.length > 0);
+        destinationMatches.length > 0 ||
+        (!!suggest &&
+            (suggest.tours.length > 0 ||
+                suggest.beyondTours.length > 0 ||
+                suggest.categories.length > 0 ||
+                suggest.hubs.length > 0));
 
     return (
         <motion.div
@@ -259,15 +277,28 @@ export function SearchTypeahead({
                 <div className='max-h-[70vh] overflow-y-auto overscroll-contain'>
                     {/* ── Entity shortcuts ── */}
                     <ul className='m-0 list-none p-0 py-1.5'>
-                        <EntityRow
-                            href={searchHref(query)}
-                            onSelect={onSelect}
-                            icon={<Search size={18} strokeWidth={1.5} />}
-                            label={<>&ldquo;{query}&rdquo;</>}
-                            subtitle={dict.seeAllTours}
-                        />
+                        {/* Destinations always outrank every other bucket. */}
+                        {destinationHref &&
+                            destinationMatches.map(d => (
+                                <EntityRow
+                                    key={d.slug}
+                                    href={destinationHref(d.slug)}
+                                    onSelect={onSelect}
+                                    icon={<MapPin size={18} strokeWidth={1.5} />}
+                                    label={d.name}
+                                />
+                            ))}
+                        {query.trim().length >= 2 && (
+                            <EntityRow
+                                href={searchHref(query)}
+                                onSelect={onSelect}
+                                icon={<Search size={18} strokeWidth={1.5} />}
+                                label={<>&ldquo;{query}&rdquo;</>}
+                                subtitle={dict.seeAllTours}
+                            />
+                        )}
                         {categoryHref &&
-                            suggest.categories.map(cat => (
+                            (suggest?.categories ?? []).map(cat => (
                                 <EntityRow
                                     key={cat.id}
                                     href={categoryHref(cat.slug)}
@@ -289,7 +320,7 @@ export function SearchTypeahead({
                                     }
                                 />
                             ))}
-                        {suggest.hubs.map(hub => (
+                        {(suggest?.hubs ?? []).map(hub => (
                             <EntityRow
                                 key={hub.id}
                                 href={hubHref(hub.destinationSlug, hub.slug)}
@@ -302,7 +333,7 @@ export function SearchTypeahead({
                     </ul>
 
                     {/* ── Tours in the active island ── */}
-                    {suggest.tours.length > 0 && (
+                    {!!suggest && suggest.tours.length > 0 && (
                         <>
                             {islandName && (
                                 <SectionHeader>
@@ -330,7 +361,7 @@ export function SearchTypeahead({
                     )}
 
                     {/* ── Beyond the active island ── */}
-                    {islandName && suggest.beyondTours.length > 0 && (
+                    {islandName && !!suggest && suggest.beyondTours.length > 0 && (
                         <>
                             <SectionHeader>
                                 {dict.beyond.replace('{name}', islandName)}
@@ -343,6 +374,7 @@ export function SearchTypeahead({
                                         contextLabel={
                                             hit.destinationName ?? null
                                         }
+                                        contextKind='destination'
                                         locale={locale}
                                         currency={currency}
                                         dict={dict}
@@ -354,7 +386,7 @@ export function SearchTypeahead({
                         </>
                     )}
 
-                    {suggest.total > 0 && (
+                    {!!suggest && suggest.total > 0 && (
                         <Link
                             href={searchHref(query)}
                             onClick={onSelect}

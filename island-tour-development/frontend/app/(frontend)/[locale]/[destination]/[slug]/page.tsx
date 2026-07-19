@@ -3,6 +3,7 @@ import { CollectionPage } from '@/components/frontend/collection/collection-page
 import { HubPage } from '@/components/frontend/hub/hub-page';
 import { TourPage } from '@/components/frontend/tour/tour-page';
 import {
+    getActiveCollectionsForDestination,
     getActiveDestinations,
     getCategoryBySlugForDestination,
     getCategoryPageContent,
@@ -10,6 +11,8 @@ import {
     getCollectionRender,
     getDestinationBySlug,
     getDestinationCategories,
+    getDestinationHubs,
+    getDestinationTours,
     getHubPageContent,
     getHubRender,
 } from '@/lib/api/public';
@@ -52,6 +55,24 @@ const LAUNCH_DESTINATION_SLUGS = [
     'bahamas',
 ];
 
+/**
+ * All LIVE tour slugs for a destination, paginated - the public listing DTO caps
+ * `limit` at 100, so a single oversized request would 400 (and the soft loader
+ * would silently turn that into ZERO prerendered tours). Page cap bounds the
+ * build if a destination ever grows past 1000 tours; later tours just render on
+ * demand.
+ */
+async function getAllTourSlugs(destinationId: string): Promise<string[]> {
+    const slugs: string[] = [];
+    const limit = 100;
+    for (let page = 1; page <= 10; page++) {
+        const res = await getDestinationTours({ destinationId, limit, page });
+        slugs.push(...res.data.map(t => t.slug));
+        if (slugs.length >= res.total || res.data.length < limit) break;
+    }
+    return slugs;
+}
+
 const LAUNCH_CATEGORY_SLUGS = [
     'boat-tours',
     'snorkeling',
@@ -75,11 +96,14 @@ const LAUNCH_CATEGORY_SLUGS = [
 ];
 
 /**
- * Prerender the destination × category combos from the backend (gating-consistent
- * with the public category loader, so every prerendered path actually renders).
- * Tours and other slugs (hubs, etc.) render on demand via the default
- * `dynamicParams`; if the backend is unreachable at build this returns `[]` and
- * those paths render on demand too (covered by the route's `loading.tsx`).
+ * Prerender EVERY known slug under this route - categories, hubs, collections,
+ * and tours - not just categories. On Vercel, only prerendered paths serve the
+ * proper RSC flight payload to client navigations; on-demand paths were served
+ * the cached HTML document instead, which forced the router into a full browser
+ * reload on every tour-card click. Entities created after a deploy still render
+ * on demand via the default `dynamicParams` (and get prerendered by the next
+ * build). If the backend is unreachable at build this falls back to the static
+ * launch list below.
  */
 export async function generateStaticParams() {
     try {
@@ -87,13 +111,25 @@ export async function generateStaticParams() {
         if (destinations && destinations.length > 0) {
             const combos = await Promise.all(
                 destinations.map(async d => {
-                    const cats = await getDestinationCategories(
-                        d.slug,
-                        DEFAULT_LOCALE
-                    );
-                    return cats.map(c => ({
+                    const [cats, hubs, collections, tourSlugs] =
+                        await Promise.all([
+                            getDestinationCategories(d.slug, DEFAULT_LOCALE),
+                            getDestinationHubs(d.slug, DEFAULT_LOCALE),
+                            getActiveCollectionsForDestination(
+                                d.slug,
+                                DEFAULT_LOCALE
+                            ),
+                            getAllTourSlugs(d.id),
+                        ]);
+                    const slugs = [
+                        ...cats.map(c => c.slug),
+                        ...hubs.map(h => h.slug),
+                        ...collections.map(c => c.slug),
+                        ...tourSlugs,
+                    ];
+                    return slugs.map(slug => ({
                         destination: d.slug,
-                        slug: c.slug,
+                        slug,
                     }));
                 })
             );
@@ -204,8 +240,7 @@ export async function generateMetadata({
         if (!render) return { alternates };
 
         return {
-            title:
-                pageContent?.metaTitle ?? `${render.hero.h1} | Island Tours`,
+            title: pageContent?.metaTitle ?? `${render.hero.h1} | Island Tours`,
             description:
                 pageContent?.metaDescription ??
                 render.editorialLead ??

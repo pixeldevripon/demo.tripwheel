@@ -43,6 +43,15 @@ export default async function HomePage({
                 dict={home.hero}
                 locale={locale as Locale}
                 destinations={islands}
+                search={{
+                    ...dict.search,
+                    // Card meta labels live in the shared listings dictionary
+                    // (same composition as the navbar search in the layout).
+                    pickupAvailable: dict.destination.listings.pickupAvailable,
+                    freeCancellation:
+                        dict.destination.listings.freeCancellation,
+                    from: dict.destination.listings.from,
+                }}
             />
             <TrustStrip items={home.trust} />
             <TopExperiences dict={home.experiences} />

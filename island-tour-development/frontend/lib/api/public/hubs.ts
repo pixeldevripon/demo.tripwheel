@@ -17,14 +17,14 @@ import { buildQuery, publicGet, publicGetStrict } from './fetch';
  * Tour-gated, published hubs for a destination (localized names, ordered by name,
  * each with `publishedTourCount`). Returns `[]` if the backend is unreachable.
  *
- * Cached hourly and tagged `hubs`; `destinationSlug` + `locale` are the cache key.
+ * Cached daily (tag-busted on writes) and tagged `hubs`; `destinationSlug` + `locale` are the cache key.
  */
 export async function getDestinationHubs(
   destinationSlug: string,
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<HubByDestination[]> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   // `tours` too: each hub carries `publishedTourCount`, which changes when a tour
   // is published/unpublished.
   cacheTag('hubs', 'tours');
@@ -42,7 +42,7 @@ export async function getDestinationHubs(
  * `notFound()` on null. When the backend is unreachable it throws
  * (`publicGetStrict`) so revalidation fails and the last good page keeps serving.
  *
- * Cached hourly; `slug` + `destinationId` + `locale` are the key. Tagged
+ * Cached daily (tag-busted on writes); `slug` + `destinationId` + `locale` are the key. Tagged
  * granularly `hub:<id>` (editing this hub regenerates only this page) plus coarse
  * `tours` because the render embeds tour cards (price/rating), which must refresh
  * when any embedded tour changes. Falls back to coarse `hubs` when not found.
@@ -54,7 +54,7 @@ export async function getHubRender(
   currency?: Currency,
 ): Promise<HubRender | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
 
   const data = await publicGetStrict<HubRender>(
     `/hubs/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
@@ -66,7 +66,7 @@ export async function getHubRender(
 /**
  * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a hub by
  * id - authored in the dashboard SEO tab, used by `generateMetadata`. Returns
- * `null` when unset or the backend is unreachable. Cached hourly; tagged
+ * `null` when unset or the backend is unreachable. Cached daily (tag-busted on writes); tagged
  * granularly `hub:<id>` (id is the arg) so a hub's SEO edit refreshes only it.
  */
 export async function getHubPageContent(
@@ -74,7 +74,7 @@ export async function getHubPageContent(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<HubPageContent | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag(`hub:${hubId}`);
 
   return publicGet<HubPageContent>(

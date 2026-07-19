@@ -13,24 +13,24 @@ import { cacheLife, cacheTag } from 'next/cache';
 import type { TourFacets } from '@/types/facets';
 import { publicGet } from './fetch';
 
-/** Destination-wide facets (no category). Cached hourly. */
+/** Destination-wide facets (no category). Cached daily (tag-busted on writes). */
 export async function getDestinationFacets(
   destinationSlug: string,
 ): Promise<TourFacets | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag('tours', 'categories');
 
   return publicGet<TourFacets>(`/filters/${destinationSlug}`);
 }
 
-/** Category-scoped facets. Cached hourly. */
+/** Category-scoped facets. Cached daily (tag-busted on writes). */
 export async function getCategoryFacets(
   destinationSlug: string,
   categorySlug: string,
 ): Promise<TourFacets | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag('tours', 'categories');
 
   return publicGet<TourFacets>(`/filters/${destinationSlug}/${categorySlug}`);

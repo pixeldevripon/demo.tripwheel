@@ -28,6 +28,13 @@ export interface TourListResult {
  * backend is unreachable.
  *
  * Cached hourly and tagged `tours`; every param is part of the cache key.
+ * Deliberately SHORT (not 'days' like the entity loaders): the nightly re-rank
+ * DOES bust `tours`/`search` now (backend `NightlyJobsService` ->
+ * `PublicCacheService` -> POST /api/revalidate), but date-anchored results
+ * (`date`/`guests`/`timeOfDay`) also shift intraday as TRAVELER bookings eat
+ * capacity, and bookings emit no tag bust - the hourly window is what keeps a
+ * selling-out departure from showing as available all day. Move to 'days' only
+ * if booking confirmation starts busting `tours` too.
  */
 export async function getDestinationTours(params: {
   destinationId: string;
@@ -137,7 +144,8 @@ export async function getDestinationTours(params: {
  * the backend is unreachable it throws (`publicGetStrict`) so revalidation fails
  * and the last good page keeps serving instead of caching a 404.
  *
- * Cached hourly; `slug` + `destinationSlug` + `locale` are the cache key. Tagged
+ * Cached daily (writes bust the tags below); `slug` + `destinationSlug` +
+ * `locale` are the cache key. Tagged
  * granularly `tour:<id>` (from the response) so editing ONE tour regenerates only
  * this page - not every tour page. Falls back to coarse `tours` when not found so
  * a later publish (which busts `tours`) clears the cached 404.
@@ -150,7 +158,7 @@ export async function getTourBySlug(params: {
   currency?: Currency;
 }): Promise<PublicTourDetail | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
 
   const { slug, destinationSlug, locale = DEFAULT_LOCALE, currency } = params;
   const data = await publicGetStrict<PublicTourDetail>(

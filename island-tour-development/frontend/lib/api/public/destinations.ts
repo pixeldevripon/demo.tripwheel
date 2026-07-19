@@ -15,7 +15,7 @@ import { buildQuery, publicGet, publicGetStrict } from './fetch';
  * Active destinations for the given locale (name already localized server-side),
  * ordered alphabetically. Returns `[]` if the backend is unreachable.
  *
- * Cached hourly and tagged `destinations`; bust on demand via `updateTag`
+ * Cached daily (tag-busted on writes) and tagged `destinations`; bust on demand via `updateTag`
  * (fired from the dashboard-write revalidation hook) after an admin edit. `locale`
  * is part of the cache key.
  */
@@ -23,7 +23,7 @@ export async function getActiveDestinations(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<DestinationActive[]> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag('destinations');
 
   const data = await publicGet<DestinationActive[]>(
@@ -39,7 +39,7 @@ export async function getActiveDestinations(
  * background revalidation fails and keeps serving the last good page instead of
  * caching a 404 over every destination page.
  *
- * Cached hourly; `slug` + `locale` are the cache key. Tagged granularly
+ * Cached daily (tag-busted on writes); `slug` + `locale` are the cache key. Tagged granularly
  * `destination:<id>` (from the response) so editing one destination regenerates
  * only its page; falls back to coarse `destinations` when not found.
  */
@@ -48,7 +48,7 @@ export async function getDestinationBySlug(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<DestinationDetail | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
 
   const data = await publicGetStrict<DestinationDetail>(
     `/destinations/slug/${slug}${buildQuery({ locale })}`,

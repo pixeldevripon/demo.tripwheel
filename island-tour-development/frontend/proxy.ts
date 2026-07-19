@@ -211,7 +211,18 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    // Run on everything except Next internals and files with an extension.
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+    // Run on everything EXCEPT Next internals, files with an extension, and
+    // already-localized paths (/en, /en/..., one alternative per locale - keep in
+    // sync with ALL_LOCALES; matcher values must be static so the list is spelled
+    // out). Localized paths only ever hit the `hasLocalePrefix -> next()`
+    // pass-through, so excluding them here is behavior-identical - and it keeps
+    // middleware out of the request path on Vercel, where its presence made
+    // client-navigation (RSC) requests to on-demand pages get served the cached
+    // HTML document instead of the flight payload (= stuck click, then a full
+    // browser reload). The `(?:/|$)` guard stops `/enrique-tours` style paths
+    // from being mistaken for the `en` locale.
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|(?:en|nl|de|fr|es|pt|zh)(?:/|$)|.*\\..*).*)',
+    ],
 };
 
