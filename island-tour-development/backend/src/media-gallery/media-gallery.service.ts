@@ -111,8 +111,9 @@ export class MediaGalleryService {
     userId: string,
   ): Promise<MediaGallery> {
     // Verify the asset actually exists on Cloudinary (prevents spoofed publicIds)
+    let asset: { resource_type: string; secure_url: string; bytes: number };
     try {
-      await this.cloudinaryService.verifyAssetExists(dto.publicId);
+      asset = await this.cloudinaryService.verifyAssetExists(dto.publicId);
     } catch {
       throw new NotFoundException(
         `Cloudinary asset not found for publicId: ${dto.publicId}`,
@@ -124,6 +125,7 @@ export class MediaGalleryService {
         url: this.cloudinaryService.getOptimizedUrl(
           dto.publicId,
           dto.resourceType,
+          asset.bytes,
         ),
         publicId: dto.publicId,
         resourceType: dto.resourceType,

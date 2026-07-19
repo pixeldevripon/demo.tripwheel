@@ -18,6 +18,15 @@ export interface CloudinaryUploadResult {
 export const CLOUDINARY_ROOT_FOLDER = 'islandtours';
 
 /**
+ * Size-aware delivery policy (images only):
+ *  - above COMPRESS_ABOVE_BYTES  → q_auto/f_auto compression
+ *  - below UPSCALE_BELOW_BYTES   → 2x scale-up (no quality reduction)
+ *  - in between                  → original served untouched
+ */
+export const COMPRESS_ABOVE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const UPSCALE_BELOW_BYTES = 1 * 1024 * 1024; // 1 MB
+
+/**
  * CloudinaryService - thin wrapper around the Cloudinary v2 SDK.
  *
  * Configured by CloudinaryProvider (cloudinary.provider.ts) which calls
@@ -61,20 +70,63 @@ export class CloudinaryService {
 
     return {
       publicId: result.public_id,
-      url: this.getOptimizedUrl(result.public_id, result.resource_type),
+      url: this.getOptimizedUrl(
+        result.public_id,
+        result.resource_type,
+        result.bytes,
+      ),
       resourceType: result.resource_type,
     };
   }
 
   /**
-   * Helper to generate a Cloudinary URL with f_auto and q_auto transformations.
+   * Generate the delivery URL for an asset, applying transformations based on
+   * the stored file size (images only - videos always get f_auto/q_auto):
+   *  - > 5 MB       → f_auto + q_auto so Cloudinary compresses it
+   *  - < 1 MB       → 2x upscale (c_scale,w_2.0) with f_auto, quality untouched
+   *  - 1-5 MB       → plain secure URL, no transformation at all
+   * When bytes is unknown the original is served untouched.
    */
-  getOptimizedUrl(publicId: string, resourceType: string = 'image'): string {
+  getOptimizedUrl(
+    publicId: string,
+    resourceType: string = 'image',
+    bytes?: number,
+  ): string {
+    if (resourceType !== 'image') {
+      return cloudinary.url(publicId, {
+        resource_type: resourceType,
+        secure: true,
+        fetch_format: 'auto',
+        quality: 'auto',
+      });
+    }
+
+    if (typeof bytes === 'number' && bytes > COMPRESS_ABOVE_BYTES) {
+      return cloudinary.url(publicId, {
+        resource_type: resourceType,
+        secure: true,
+        fetch_format: 'auto',
+        quality: 'auto',
+      });
+    }
+
+    if (typeof bytes === 'number' && bytes < UPSCALE_BELOW_BYTES) {
+      // 4x upscale, then cap at 4096px so the output can never exceed
+      // Cloudinary's megapixel processing limit (c_limit only shrinks).
+      return cloudinary.url(publicId, {
+        resource_type: resourceType,
+        secure: true,
+        transformation: [
+          { crop: 'scale', width: '4.0' },
+          { crop: 'limit', width: 4096, height: 4096 },
+          { fetch_format: 'auto' },
+        ],
+      });
+    }
+
     return cloudinary.url(publicId, {
       resource_type: resourceType,
       secure: true,
-      fetch_format: 'auto',
-      quality: 'auto',
     });
   }
 
@@ -144,6 +196,7 @@ export class CloudinaryService {
   async verifyAssetExists(publicId: string): Promise<{
     resource_type: string;
     secure_url: string;
+    bytes: number;
   }> {
     // Cloudinary throws if the resource is not found
     const resource = await cloudinary.api
@@ -157,6 +210,7 @@ export class CloudinaryService {
     return {
       resource_type: resource.resource_type,
       secure_url: resource.secure_url,
+      bytes: resource.bytes,
     };
   }
 }
