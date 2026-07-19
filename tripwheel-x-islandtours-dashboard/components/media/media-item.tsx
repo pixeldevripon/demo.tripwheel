@@ -134,13 +134,13 @@ export default function MediaItemCard({
                     className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                 />
 
-                {/* Delete - always visible, small solid icon (no hover reveal) */}
+                {/* Delete - revealed on card hover (and keyboard focus) */}
                 {!selectMode && !selector && (
                     <button
                         type='button'
                         aria-label='Delete media'
                         onClick={handleDelete}
-                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer'>
+                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100'>
                         <HugeiconsIcon icon={Delete02Icon} size={14} />
                     </button>
                 )}
