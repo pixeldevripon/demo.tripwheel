@@ -158,6 +158,43 @@ all rely on defaults (`dynamicParams = true`) plus per-loader `cacheLife`/`cache
 
 ## 3. Cached-loader ledger
 
+> **EXECUTED 2026-07-19 - ISR-cost pass (Vercel ISR reads/writes reduction).** All
+> event-covered entity/meta loaders moved from `hours` (revalidate 1 h, expire 1 d)
+> to the built-in `days` profile (stale 300 s, revalidate 1 d, expire 1 w); the
+> slug-registry's inline `{300,300,3600}` moved to `days` too (it was revalidating
+> every 5 minutes). Rationale: every one of these loaders is already invalidated
+> on-demand by the dashboard write bridge (`lib/api/cache-revalidation.ts` ->
+> `updateTag`), so short timers only burned ISR writes/regenerations per Vercel's
+> guidance ("event-driven data -> on-demand revalidation + long timers").
+> Deliberately NOT switched: `getDestinationTours` and `searchTours` (nightly
+> quality-score/eligibility re-rank has no tag-bust event; hourly/minutes windows
+> are the freshness mechanism there) and `getPlatformReviews` (external provider
+> aggregate, no change event, single cache entry). Follow-up that would unlock
+> `days` everywhere: backend nightly jobs + booking confirmation POST
+> `/api/revalidate` with the `tours` tag when they finish. Build-verified: 525
+> pages, entity routes now `1d/1w`, tours listing route stays `1h/1d`.
+
+> **EXECUTED 2026-07-19 (same day, follow-ups):**
+> 1. **Nightly re-rank now busts tags** - backend `NightlyJobsService.run()` ends by
+>    calling `PublicCacheService.revalidateTags(['tours','search'])`, which POSTs the
+>    frontend `POST /api/revalidate` (header `x-revalidate-secret`, new backend env
+>    `REVALIDATE_SECRET` + existing `ISLAND_TOURS_URL`; no-ops with a warning when
+>    unset). So hub/collection renders and listings pick up the 03:00 UTC re-rank on
+>    the next visit instead of waiting out the daily timer. `getDestinationTours`
+>    stays `hours` anyway: traveler bookings change date-anchored availability with
+>    no tag bust.
+> 2. **Vercel client-nav fix** - on Vercel (NOT locally), RSC navigation requests to
+>    NON-prerendered `[slug]` paths were served the cached HTML document
+>    (`text/html`, `x-vercel-cache: HIT`) instead of the flight payload, so every
+>    tour-card click aborted client nav and hard-reloaded the browser. Two changes:
+>    `generateStaticParams` now prerenders ALL known slugs (categories + hubs +
+>    collections + tours, tours via paginated `getAllTourSlugs` - the listing DTO
+>    caps `limit` at 100 and a 400 would silently prerender zero tours), and
+>    `proxy.ts`'s matcher now EXCLUDES locale-prefixed paths (they only ever hit the
+>    pass-through; middleware presence on the request path triggered the wrong-variant
+>    serve). Verified: 868 pages, locale redirect / TYP + cancel rewrites / dashboard
+>    guard all intact, tour RSC requests return `text/x-component`.
+
 Every loader used at page top-level is a `'use cache'` function. The only request-time
 inputs anywhere are `searchParams` and `await connection()` (inside some section
 components). No `cookies()`/`headers()` in any server route file. Per-user data
@@ -167,46 +204,46 @@ components). No `cookies()`/`headers()` in any server route file. Per-user data
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getDestinationCategories` (`:29`) | yes (`:33`) | `hours` | `categories`, `tours` (`:37`) |
-| `getCategoryBySlugForDestination` (`:52`) | yes (`:57`) | `hours` | `tours` + `category:${data.id}` when found, else `categories` (`:63`) |
-| `getCategoryPageContent` (`:73`) | yes (`:77`) | `hours` | `category:${categoryId}` (`:79`) |
-| `getCategoryFaqs` (`:91`) | yes (`:95`) | `hours` | `category:${categoryId}` (`:97`) |
+| `getDestinationCategories` (`:29`) | yes (`:33`) | `days` | `categories`, `tours` (`:37`) |
+| `getCategoryBySlugForDestination` (`:52`) | yes (`:57`) | `days` | `tours` + `category:${data.id}` when found, else `categories` (`:63`) |
+| `getCategoryPageContent` (`:73`) | yes (`:77`) | `days` | `category:${categoryId}` (`:79`) |
+| `getCategoryFaqs` (`:91`) | yes (`:95`) | `days` | `category:${categoryId}` (`:97`) |
 
 ### lib/api/public/collections.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getActiveCollectionsForDestination` (`:29`) | yes (`:33`) | `hours` | `collections` (`:35`) |
-| `getCollectionRender` (`:53`) | yes (`:59`) | `hours` | `tours` + `collection:${data.id}` when found, else `collections` (`:64`) |
-| `getCollectionPageContent` (`:74`) | yes (`:78`) | `hours` | `collection:${collectionId}` (`:80`) |
+| `getActiveCollectionsForDestination` (`:29`) | yes (`:33`) | `days` | `collections` (`:35`) |
+| `getCollectionRender` (`:53`) | yes (`:59`) | `days` | `tours` + `collection:${data.id}` when found, else `collections` (`:64`) |
+| `getCollectionPageContent` (`:74`) | yes (`:78`) | `days` | `collection:${collectionId}` (`:80`) |
 
 ### lib/api/public/destinations.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getActiveDestinations` (`:22`) | yes (`:26`) | `hours` | `destinations` (`:27`) |
-| `getDestinationBySlug` (`:44`) | yes (`:48`) | `hours` | `destination:${data.id}` when found, else `destinations` (`:54`) |
+| `getActiveDestinations` (`:22`) | yes (`:26`) | `days` | `destinations` (`:27`) |
+| `getDestinationBySlug` (`:44`) | yes (`:48`) | `days` | `destination:${data.id}` when found, else `destinations` (`:54`) |
 
 ### lib/api/public/filters.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getDestinationFacets` (`:17`) | yes (`:20`) | `hours` | `tours`, `categories` (`:22`) |
-| `getCategoryFacets` (`:28`) | yes (`:31`) | `hours` | `tours`, `categories` (`:34`) |
+| `getDestinationFacets` (`:17`) | yes (`:20`) | `days` | `tours`, `categories` (`:22`) |
+| `getCategoryFacets` (`:28`) | yes (`:31`) | `days` | `tours`, `categories` (`:34`) |
 
 ### lib/api/public/hubs.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getDestinationHubs` (`:22`) | yes (`:26`) | `hours` | `hubs`, `tours` (`:30`) |
-| `getHubRender` (`:49`) | yes (`:54`) | `hours` | `tours` + `hub:${data.id}` when found, else `hubs` (`:60`) |
-| `getHubPageContent` (`:70`) | yes (`:74`) | `hours` | `hub:${hubId}` (`:76`) |
+| `getDestinationHubs` (`:22`) | yes (`:26`) | `days` | `hubs`, `tours` (`:30`) |
+| `getHubRender` (`:49`) | yes (`:54`) | `days` | `tours` + `hub:${data.id}` when found, else `hubs` (`:60`) |
+| `getHubPageContent` (`:70`) | yes (`:74`) | `days` | `hub:${hubId}` (`:76`) |
 
 ### lib/api/public/reviews.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getTourReviews` (`:24`) | yes (`:31`) | `hours` | `reviews`, `tour:${params.tourId}` (`:35`) |
+| `getTourReviews` (`:24`) | yes (`:31`) | `days` | `reviews`, `tour:${params.tourId}` (`:35`) |
 
 ### lib/api/public/search.ts
 
@@ -218,14 +255,14 @@ components). No `cookies()`/`headers()` in any server route file. Per-user data
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `getDestinationTours` (`:31`) | yes (`:68`) | `hours` | `tours` (`:70`) |
-| `getTourBySlug` (`:139`) | yes (`:144`) | `hours` | `tour:${data.id}`, `operator:${data.operatorId}` when found, else `tours` (`:156-157`) |
+| `getDestinationTours` (`:31`) | yes (`:68`) | `hours` (kept short: nightly quality-score/eligibility jobs re-rank without busting a tag) | `tours` (`:70`) |
+| `getTourBySlug` (`:139`) | yes (`:144`) | `days` | `tour:${data.id}`, `operator:${data.operatorId}` when found, else `tours` (`:156-157`) |
 
 ### lib/api/slug-registry.ts
 
 | Function (file:line) | use cache | cacheLife | cacheTag(s) |
 |---|---|---|---|
-| `resolveSlug` (`:26`) | yes (`:35`) | inline `{ stale: 300, revalidate: 300, expire: 3600 }` (`:36`) | `slug:${destinationSlug}:${slug}`, `slug-registry` (`:37`) |
+| `resolveSlug` (`:26`) | yes (`:35`) | `days` (was inline `{300,300,3600}`) | `slug:${destinationSlug}:${slug}`, `slug-registry` (`:37`) |
 
 ### lib/i18n/dictionaries.ts
 

@@ -22,7 +22,7 @@ import { buildQuery, publicGet, publicGetStrict } from './fetch';
 /**
  * Active (published) collections for a destination, localized - backs the
  * destination page's "Collections" shelf. Returns `[]` if the backend is
- * unreachable. Cached hourly and tagged coarse `collections` (the cards show only
+ * unreachable. Cached daily (tag-busted on writes) and tagged coarse `collections` (the cards show only
  * each collection's own name/image, so any collection create/edit/status change
  * at this destination should refresh the shelf; no tour dependency).
  */
@@ -31,7 +31,7 @@ export async function getActiveCollectionsForDestination(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<CollectionLocalized[]> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag('collections');
 
   const data = await publicGet<CollectionLocalized[]>(
@@ -47,7 +47,7 @@ export async function getActiveCollectionsForDestination(
  * on null. When the backend is unreachable it throws (`publicGetStrict`) so
  * revalidation fails and the last good page keeps serving.
  *
- * Cached hourly; `slug` + `destinationId` + `locale` are the cache key. Tagged
+ * Cached daily (tag-busted on writes); `slug` + `destinationId` + `locale` are the cache key. Tagged
  * granularly `collection:<id>` (editing this collection regenerates only this
  * page) plus coarse `tours` because the render embeds tour cards (price/rating),
  * which must refresh when any embedded tour changes. Falls back to coarse
@@ -60,7 +60,7 @@ export async function getCollectionRender(
   currency?: Currency,
 ): Promise<CollectionRender | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
 
   const data = await publicGetStrict<CollectionRender>(
     `/collections/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
@@ -72,7 +72,7 @@ export async function getCollectionRender(
 /**
  * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a
  * collection by id — authored in the dashboard SEO tab. Returns `null` when unset
- * or the backend is unreachable. Cached hourly; tagged granularly
+ * or the backend is unreachable. Cached daily (tag-busted on writes); tagged granularly
  * `collection:<id>` (id is the arg) so a collection's SEO edit refreshes only it.
  */
 export async function getCollectionPageContent(
@@ -80,7 +80,7 @@ export async function getCollectionPageContent(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<CollectionPageContent | null> {
   'use cache';
-  cacheLife('hours');
+  cacheLife('days');
   cacheTag(`collection:${collectionId}`);
 
   return publicGet<CollectionPageContent>(

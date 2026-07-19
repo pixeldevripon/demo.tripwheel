@@ -33,9 +33,11 @@ export async function resolveSlug(
     // not the legacy fetch cache). Two tags: the granular `slug:dest:slug` for
     // targeted busting, and the coarse `slug-registry` busted by any entity
     // create / delete / rename / (de)activate (see lib/api/cache-revalidation.ts),
-    // since those change what a slug resolves to.
+    // since those change what a slug resolves to. Every resolution-changing write
+    // goes through that bridge, so the long 'days' profile is a backstop, not the
+    // freshness mechanism (ISR-cost lever: this lookup runs on every entity page).
     'use cache';
-    cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+    cacheLife('days');
     cacheTag(`slug:${destinationSlug}:${slug}`, 'slug-registry');
 
     const query = new URLSearchParams({ destinationSlug, slug }).toString();
