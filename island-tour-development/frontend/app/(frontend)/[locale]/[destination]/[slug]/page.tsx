@@ -25,8 +25,10 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 /**
  * Localized destination display name from the public cached loader. On a backend
@@ -181,20 +183,16 @@ export async function generateMetadata({
     const alternates = { canonical: `/${locale}${path}`, languages };
 
     if (resolution.entityType === 'CATEGORY' && resolution.entityId) {
-        const [category, pageContent] = await Promise.all([
+        const [category, pageContent, destinationName] = await Promise.all([
             getCategoryBySlugForDestination(
                 destination,
                 slug,
                 locale as Locale
             ),
             getCategoryPageContent(resolution.entityId, locale as Locale),
+            resolveDestinationName(destination, locale as Locale),
         ]);
         if (!category) return { alternates };
-
-        const destinationName = await resolveDestinationName(
-            destination,
-            locale as Locale
-        );
         return {
             title:
                 pageContent?.metaTitle ??
@@ -259,12 +257,38 @@ export async function generateMetadata({
  * reserved). It is resolved via the slug registry, then dispatched to the
  * matching page component (ROUTING-AND-RESOLUTION.md §5.2).
  *
- * CATEGORY / HUB / TOUR branches are implemented; COLLECTION is tracked as
- * not-yet-built (ROUTING-AND-RESOLUTION.md §11) and 404s until then. RESERVED
- * `tours` is normally served by the static `tours/` route; the redirect here is
- * a defensive fallback.
+ * STREAMING SHAPE: the page itself awaits nothing but `params` and returns the
+ * `<Suspense>` shell immediately - `<EntityDispatch>` does the slug resolution
+ * behind the boundary. This keeps the resolver awaits out of the first paint:
+ * on a cold path (new entity, expired cache entry) the visitor gets the
+ * `EntityPageSkeleton` instantly and the content streams in, instead of the
+ * click blocking until the backend answers. On prerendered paths the boundary
+ * resolves at build time, so the baked page is unchanged.
  */
-export default async function EntityPage({
+export default function EntityPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<PageParams>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+    return (
+        <Suspense fallback={<EntityPageSkeleton />}>
+            <EntityDispatch params={params} searchParams={searchParams} />
+        </Suspense>
+    );
+}
+
+/**
+ * Resolves the ambiguous slug and renders the matching entity page. Runs behind
+ * the page's `<Suspense>` boundary; the three lookups are independent
+ * (registry, dictionary, destination name), so they run in parallel.
+ *
+ * CATEGORY / HUB / TOUR / COLLECTION branches are implemented. RESERVED `tours`
+ * is normally served by the static `tours/` route; the redirect here is a
+ * defensive fallback.
+ */
+async function EntityDispatch({
     params,
     searchParams,
 }: {
@@ -274,10 +298,11 @@ export default async function EntityPage({
     const { locale, destination, slug } = await params;
     if (!isLocale(locale)) notFound();
 
-    const resolution = await resolveSlug(destination, slug);
-
-    const dict = await getDictionary(locale);
-    const destinationName = await resolveDestinationName(destination, locale);
+    const [resolution, dict, destinationName] = await Promise.all([
+        resolveSlug(destination, slug),
+        getDictionary(locale),
+        resolveDestinationName(destination, locale),
+    ]);
 
     // Tours are the flat catch-all entity: a slug the registry can't resolve is
     // treated as a TOUR, and `TourPage` fetches it by slug (`getTourBySlug`) and

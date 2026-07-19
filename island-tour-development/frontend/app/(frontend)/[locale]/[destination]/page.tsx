@@ -6,10 +6,12 @@ import {
     DestinationLocalFavourites,
 } from '@/components/frontend/destination/destination-page-sections';
 import { FaqSection } from '@/components/frontend/faq-section';
+import { DestinationPageSkeleton } from '@/components/frontend/skeletons/destination-page-skeleton';
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 const LAUNCH_DESTINATION_SLUGS = [
     'curacao',
@@ -43,7 +45,24 @@ export async function generateStaticParams() {
  * `loading.tsx` covers client navigation and a cold island's first on-demand
  * render.
  */
-export default async function DestinationPage({
+export default function DestinationPage({
+    params,
+}: {
+    params: Promise<{ locale: string; destination: string }>;
+}) {
+    // STREAMING SHAPE: return the <Suspense> shell without awaiting anything, so
+    // a cold path (newly-activated island, expired cache entry) paints the
+    // skeleton instantly and streams, instead of blocking the click until the
+    // backend answers. Prerendered destinations resolve the boundary at build -
+    // their baked page is unchanged (no skeleton flash).
+    return (
+        <Suspense fallback={<DestinationPageSkeleton />}>
+            <DestinationContent params={params} />
+        </Suspense>
+    );
+}
+
+async function DestinationContent({
     params,
 }: {
     params: Promise<{ locale: string; destination: string }>;

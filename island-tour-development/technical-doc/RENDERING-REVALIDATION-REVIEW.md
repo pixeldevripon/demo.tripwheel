@@ -194,6 +194,17 @@ all rely on defaults (`dynamicParams = true`) plus per-loader `cacheLife`/`cache
 >    pass-through; middleware presence on the request path triggered the wrong-variant
 >    serve). Verified: 868 pages, locale redirect / TYP + cancel rewrites / dashboard
 >    guard all intact, tour RSC requests return `text/x-component`.
+> 3. **Streaming entity/destination shells** - `[slug]/page.tsx` and
+>    `[destination]/page.tsx` no longer await anything before returning JSX: the
+>    page returns `<Suspense fallback={<EntityPageSkeleton|DestinationPageSkeleton>}>`
+>    around an async dispatch component (`EntityDispatch` / `DestinationContent`)
+>    that does the resolves (now parallel via `Promise.all` - registry, dictionary,
+>    destination name). Cold paths (new entity, expired cache entry) paint the
+>    skeleton instantly and stream, instead of the first click blocking until the
+>    backend answers. Prerendered paths resolve the boundary at build - baked
+>    output verified byte-comparable to the pre-change baseline (43KB -> 59KB
+>    shell, same content occurrence counts). Cold-path TTFB 0.27s vs blocking
+>    full-render before.
 
 Every loader used at page top-level is a `'use cache'` function. The only request-time
 inputs anywhere are `searchParams` and `await connection()` (inside some section
