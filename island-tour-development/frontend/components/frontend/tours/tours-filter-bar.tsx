@@ -120,8 +120,8 @@ const PILL_BASE =
  * Tours filter & sort toolbar - matches Figma node 47167:4032.
  *
  * Row 1: pinned date / guests / filters control pills + a divider, then the
- * category quick-filters as text labels (pill surface on hover, neutral pill
- * when active) in one horizontally scrolling row. Row 2: result counter +
+ * category quick-filters as bordered rounded chips (neutral surface when
+ * active) in one horizontally scrolling row. Row 2: result counter +
  * applied-filter chips (primary) + "Clear all" on the left, sort dropdown
  * pinned to the row's top-right.
  */
@@ -548,10 +548,10 @@ export function ToursFilterBar({
                                     onFocus={prefetch}
                                     whileTap={{ scale: 0.99 }}
                                     transition={springPop}
-                                    className={`flex h-9.5 md:h-10.5 shrink-0 items-center whitespace-nowrap rounded-it-full px-3 md:px-4 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
+                                    className={`flex h-9.5 md:h-10.5 shrink-0 items-center whitespace-nowrap rounded-it-full border px-3 md:px-4 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
                                         active
-                                            ? 'bg-it-heading/10'
-                                            : 'hover:bg-it-surface'
+                                            ? 'border-it-heading-subtle bg-it-surface'
+                                            : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
                                     }`}>
                                     {cat.label}
                                 </motion.button>
