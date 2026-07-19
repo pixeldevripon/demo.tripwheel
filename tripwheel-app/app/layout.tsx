@@ -93,7 +93,7 @@ export default function RootLayout({
             lang='en'
             className={`${dmSans.variable} ${geist.variable} ${plexMono.variable} antialiased`}>
             <body className='marketing-root min-h-screen font-sans'>
-                <MarketingCursor />
+               {/*  <MarketingCursor /> */}
                 {children}
                 <Toaster richColors position='bottom-right' />
             </body>
