@@ -9,6 +9,7 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { swapFade } from '@/lib/motion';
 import {
+    clearJustBooked,
     readTravelerBooking,
     saveTravelerBooking,
     storeTravelerSession,
@@ -131,6 +132,11 @@ export function TravelerLogin({
             email,
             displayRef: result.displayRef,
         });
+        // Reaching the TYP through the login door is a deliberate "manage my
+        // booking" visit - retire the one-time celebratory signal so the page
+        // renders the management view, not the "you're booked!" hero left over
+        // from a checkout in the last 15 min.
+        clearJustBooked();
         // Move the session token into the HttpOnly cookie BEFORE navigating,
         // so the TYP's first server render is already verified (unmasked).
         if (result.sessionToken) {

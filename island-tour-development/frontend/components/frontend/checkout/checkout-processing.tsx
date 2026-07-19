@@ -1,6 +1,7 @@
 'use client';
 
 import { getThankYouStatus, settleBooking } from '@/lib/api/bookings';
+import { markJustBooked } from '@/lib/traveler-booking';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -58,8 +59,9 @@ export function CheckoutProcessing({
             if (!active) return;
             // Mark the ONE-TIME "just booked" moment so the TYP shows the
             // celebratory hero now, but the calmer management view on any later
-            // /bookings visit. ~15 min, publicRef-scoped, cleared naturally.
-            document.cookie = `it.justBooked=${encodeURIComponent(publicRef)};path=/;max-age=900;samesite=lax`;
+            // /bookings visit. ~15 min, publicRef-scoped, cleared naturally (or
+            // eagerly retired when the traveller logs in via /bookings).
+            markJustBooked(publicRef);
             router.replace(typHref);
         };
 

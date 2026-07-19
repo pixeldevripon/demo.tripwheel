@@ -488,11 +488,14 @@ The staff door has its **own three screens**, never shared with the operator por
   token/expiry/success state machines once, with `operator-*`/`staff-*` components as thin
   copy/route wrappers.
 
-### 9.3 The `/team` route
+### 9.3 The `/users` route (labeled "Users" - owner decision)
 
-`navigations/navigations.ts` adds **Team** (UserGroupIcon, Account group) gated by
+The management page lives at **`/users`** and is presented as **Users** in the nav and page
+header (it replaced the old placeholder stub on that route; the short-lived `/team` route was
+removed). `navigations/navigations.ts` adds **Users** (UserGroupIcon, Account group) gated by
 `[MANAGE_STAFF, MANAGE_TEAM]` (any-of). Non-owner seats hold neither → the item never renders;
-`components/staff/team-view.tsx` re-checks as the belt for hand-typed URLs.
+`components/staff/team-view.tsx` re-checks as the belt for hand-typed URLs. The module and its
+components keep their Staff & Teams names - only the user-facing label says "Users" for now.
 
 Role branch: `ADMIN` + `can(MANAGE_STAFF)` → **platform scope**; otherwise `can(MANAGE_TEAM)` →
 **team scope**. Both render the same two tabs.
@@ -597,7 +600,7 @@ for non-holders, cross-user permissions read 403, self read 200, admin intact at
   compute time, full audit fields.
 - **Three latent platform issues found and fixed** by building this: the session cookie-cache
   revocation bypass, permissionless bookings reads, and no login block for suspended accounts.
-- **Complete management UX** on one role-branched `/team` page with a ceiling-aware permission
+- **Complete management UX** on one role-branched `/users` page with a ceiling-aware permission
   matrix - and the whole dashboard now runs on backend-computed effective permissions.
 - **Proof, not promises:** 1197 unit tests green, both repos build, and every security property
   additionally demonstrated against the live API with real logins.

@@ -87,6 +87,36 @@ export function clearTravelerBooking(): void {
 }
 
 /**
+ * One-time post-checkout "you're booked!" signal. Set by the
+ * /payment/processing hop right after a fresh checkout so the TYP can show the
+ * celebratory hero; mirrors the server-side `JUST_BOOKED_COOKIE`
+ * (traveler-session.server.ts, read there via `isJustBooked`).
+ */
+export const JUST_BOOKED_COOKIE = 'it.justBooked';
+
+/** 15 minutes - the celebratory hero lingers only for the immediate return. */
+const JUST_BOOKED_MAX_AGE = 15 * 60;
+
+/**
+ * Flag the ONE-TIME celebratory moment (publicRef-scoped). The TYP shows the
+ * "you're booked!" hero while this is set and falls back to the calmer
+ * management view once it clears.
+ */
+export function markJustBooked(publicRef: string): void {
+    document.cookie = `${JUST_BOOKED_COOKIE}=${encodeURIComponent(publicRef)};path=/;max-age=${JUST_BOOKED_MAX_AGE};samesite=lax`;
+}
+
+/**
+ * Clear the celebratory signal. An explicit `/bookings` login is a deliberate
+ * "manage my booking" visit, so the one-time "you're booked!" hero is over -
+ * without this the TYP would keep rendering celebratory for up to 15 min after
+ * a checkout even when the traveller came back through the login door.
+ */
+export function clearJustBooked(): void {
+    document.cookie = `${JUST_BOOKED_COOKIE}=;path=/;max-age=0;samesite=lax`;
+}
+
+/**
  * Store the backend-issued traveler session token in the HttpOnly cookie.
  * Await it before navigating to the TYP so the very first server render is
  * already verified (unmasked).
