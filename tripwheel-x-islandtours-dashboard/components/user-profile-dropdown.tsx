@@ -4,9 +4,7 @@ import { signOut } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
     ArrowDown01Icon,
-    CursorInWindowIcon,
-    Logout05Icon,
-    UserListIcon,
+    ArrowRight01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -128,23 +126,9 @@ export default function ProfileDropdown({
                         {/* Tail pointing to avatar */}
                         <div className='absolute -top-2 right-6 w-4 h-4 bg-surface-overlay border-l border-t border-line rotate-45 z-[-1]'></div>
 
-                        <div className='p-4'>
-                            <p className='font-semibold text-content'>
-                                {loggedInUser?.name ? loggedInUser.name : 'You'}
-                            </p>
-                            <p className='text-content-muted text-xs'>
-                                {loggedInUser?.email}
-                            </p>
-                        </div>
                         <div className='divide-y divide-line'>
                             <div className='py-1'>
                                 <DropdownItem
-                                    icon={
-                                        <HugeiconsIcon
-                                            icon={UserListIcon}
-                                            size={16}
-                                        />
-                                    }
                                     label='View Profile'
                                     linkTo={
                                         !pathname.includes(`/profile`) &&
@@ -162,23 +146,15 @@ export default function ProfileDropdown({
                                             .NEXT_PUBLIC_FACING_APP_URL || 'https://islandtours.tripwheel.app'
                                     }
                                     target='_blank'>
-                                    <div className='flex items-center gap-2'>
-                                        <HugeiconsIcon
-                                            icon={CursorInWindowIcon}
-                                            size={16}
-                                        />
-                                        Go to Site
-                                    </div>
+                                    <span>Go to Site</span>
+                                    <HugeiconsIcon
+                                        icon={ArrowRight01Icon}
+                                        size={16}
+                                    />
                                 </Link>
                             </div>
                             <div className='py-1'>
                                 <DropdownItem
-                                    icon={
-                                        <HugeiconsIcon
-                                            icon={Logout05Icon}
-                                            size={16}
-                                        />
-                                    }
                                     label='Sign Out'
                                     red
                                     onClick={() => handleItemClick('signOut')}
@@ -193,9 +169,7 @@ export default function ProfileDropdown({
 }
 
 interface DropdownItemProps {
-    icon: React.ReactNode;
     label: string;
-    shortcut?: string;
     active?: boolean;
     red?: boolean;
     onClick?: () => void;
@@ -203,9 +177,7 @@ interface DropdownItemProps {
 }
 
 function DropdownItem({
-    icon,
     label,
-    shortcut,
     active = false,
     red = false,
     onClick,
@@ -222,15 +194,8 @@ function DropdownItem({
 
     const content = (
         <div className={className} onClick={onClick}>
-            <div className='flex items-center gap-2'>
-                {icon}
-                <span>{label}</span>
-            </div>
-            {shortcut && (
-                <span className='text-xs text-content-subtle font-mono'>
-                    {shortcut}
-                </span>
-            )}
+            <span>{label}</span>
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
         </div>
     );
 

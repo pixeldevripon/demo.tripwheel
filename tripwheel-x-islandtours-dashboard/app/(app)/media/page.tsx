@@ -7,19 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function MediaPage() {
-    return (
-        <div>
-            <div className='flex items-center justify-between mb-6'>
-                <div>
-                    <h1 className='text-2xl font-semibold'>
-                        Media &amp; Files
-                    </h1>
-                    <p className='text-sm text-muted-foreground mt-1'>
-                        Organize and manage your uploaded media and files
-                    </p>
-                </div>
-            </div>
-            <MediaGalleryManager />
-        </div>
-    );
+    return <MediaGalleryManager />;
 }

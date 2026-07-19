@@ -18,6 +18,18 @@ export interface MediaItem {
   mimeType?: string | null;
   bytes?: number | null;
   format?: string | null;
+  title?: string | null;
+  description?: string | null;
+  excludeFromIndexing?: boolean;
+}
+
+/** PATCH /media-gallery/:id body - editable attachment metadata. */
+export interface UpdateMediaInput {
+  title?: string;
+  description?: string;
+  altText?: string;
+  fileName?: string;
+  excludeFromIndexing?: boolean;
 }
 
 /** Mirrors the backend MediaGalleryQueryDto sort params. */

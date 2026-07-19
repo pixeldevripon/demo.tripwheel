@@ -1,4 +1,10 @@
-import type { MediaItem, MediaListResponse, MediaSort, MediaTypeFilter } from '@/types/media';
+import type {
+  MediaItem,
+  MediaListResponse,
+  MediaSort,
+  MediaTypeFilter,
+  UpdateMediaInput,
+} from '@/types/media';
 
 import { apiFetch } from './fetch';
 
@@ -18,6 +24,13 @@ export const mediaApi = {
     }
     if (type && type !== 'all') params.set('type', type);
     return apiFetch<MediaListResponse>(`/media-gallery?${params.toString()}`);
+  },
+
+  update(id: string, dto: UpdateMediaInput): Promise<MediaItem> {
+    return apiFetch<MediaItem>(`/media-gallery/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
   },
 
   delete(id: string): Promise<void> {

@@ -200,7 +200,33 @@ export default function MediaGallery({
     }
 
     if (selectedItem) {
-        return <MediaViewer item={selectedItem} onClose={() => setSelectedItem(null)} />;
+        const viewerIndex = filteredItems.findIndex(i => i.id === selectedItem.id);
+        // Read the item fresh from the cache-backed list so metadata saves
+        // flow straight back into the open viewer (selectedItem is a
+        // snapshot from click time).
+        const viewerItem =
+            viewerIndex >= 0 ? filteredItems[viewerIndex] : selectedItem;
+        return (
+            <MediaViewer
+                item={viewerItem}
+                onClose={() => setSelectedItem(null)}
+                onPrev={
+                    viewerIndex > 0
+                        ? () => setSelectedItem(filteredItems[viewerIndex - 1])
+                        : undefined
+                }
+                onNext={
+                    viewerIndex >= 0 && viewerIndex < filteredItems.length - 1
+                        ? () => setSelectedItem(filteredItems[viewerIndex + 1])
+                        : undefined
+                }
+                onDelete={() => {
+                    const id = selectedItem.id;
+                    setSelectedItem(null);
+                    handleDeleteItem(id);
+                }}
+            />
+        );
     }
 
     return (
@@ -279,7 +305,6 @@ export default function MediaGallery({
                             handleItemClick={handleItemClick}
                             handleDeleteItem={handleDeleteItem}
                             selectMode={selectMode}
-                            handleCopyUrl={handleCopyUrl}
                         />
                     ) : (
                         <MediaGridUi

@@ -1,18 +1,39 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useUpdateMedia } from '@/hooks/media/use-media';
 import { formatFileSize } from '@/lib/utils';
-import { ArrowLeft01Icon, File02Icon, MusicNote01Icon } from '@hugeicons/core-free-icons';
+import {
+    ArrowLeft01Icon,
+    File02Icon,
+    InformationCircleIcon,
+    MusicNote01Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { toast } from 'sonner';
-import type { MediaItem } from '@/types/media';
+import { useEffect, useState } from 'react';
+import type { MediaItem, UpdateMediaInput } from '@/types/media';
 import { getMediaKind } from './media-kind';
 
 interface MediaViewerProps {
     item: MediaItem;
     onClose: () => void;
+    /** Navigate to the previous gallery item; undefined at the start. */
+    onPrev?: () => void;
+    /** Navigate to the next gallery item; undefined at the end. */
+    onNext?: () => void;
+    /** Delete this item (parent closes the viewer and runs its confirm flow). */
+    onDelete?: () => void;
 }
 
 /** One label/value row in the details sidebar; hidden when the value is empty. */
@@ -39,27 +60,71 @@ function DetailRow({
  * the image contained in the left pane, a details sidebar (alt text, caption,
  * file specs) on the right. Stacks vertically on small screens.
  */
-export default function MediaViewer({ item, onClose }: MediaViewerProps) {
+export default function MediaViewer({
+    item,
+    onClose,
+    onPrev,
+    onNext,
+    onDelete,
+}: MediaViewerProps) {
     const kind = getMediaKind(item);
-    const displayName = item.originalName || item.fileName || item.publicId;
+    const displayName =
+        item.title || item.fileName || item.originalName || item.publicId;
+    const updateMutation = useUpdateMedia();
 
-    const filenameForDownload = (
-        item.originalName ||
-        item.fileName ||
-        'download'
-    )
-        .split('.')
-        .slice(0, -1)
-        .join('.');
+    // Editable form state - seeded from the item, reseeded on prev/next
+    const seedForm = (it: MediaItem) => ({
+        title: it.title ?? '',
+        description: it.description ?? '',
+        altText: it.altText ?? '',
+        fileName: it.fileName ?? it.originalName ?? '',
+        excludeFromIndexing: it.excludeFromIndexing ?? false,
+    });
+    const [form, setForm] = useState(() => seedForm(item));
+    useEffect(() => {
+        setForm(seedForm(item));
+    }, [item.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleCopyUrl = async () => {
-        try {
-            await navigator.clipboard.writeText(item.url);
-            toast.success('URL copied to clipboard');
-        } catch {
-            toast.error('Failed to copy URL');
-        }
-    };
+    // No auto-save: while the form differs from the stored item the Download
+    // button becomes Save; after a successful save the cache-refreshed item
+    // matches the form again and the button reverts to Download.
+    const saved = seedForm(item);
+    const isDirty =
+        form.title.trim() !== saved.title.trim() ||
+        form.description.trim() !== saved.description.trim() ||
+        form.altText.trim() !== saved.altText.trim() ||
+        form.fileName.trim() !== saved.fileName.trim() ||
+        form.excludeFromIndexing !== saved.excludeFromIndexing;
+
+    function handleSave() {
+        const dto: UpdateMediaInput = {
+            title: form.title.trim(),
+            description: form.description.trim(),
+            altText: form.altText.trim(),
+            fileName: form.fileName.trim(),
+            excludeFromIndexing: form.excludeFromIndexing,
+        };
+        // Keep local state trimmed so it matches the server-normalized item
+        setForm(f => ({
+            ...f,
+            title: dto.title!,
+            description: dto.description!,
+            altText: dto.altText!,
+            fileName: dto.fileName!,
+        }));
+        updateMutation.mutate({ id: item.id, dto });
+    }
+
+    // Keyboard navigation: arrows step through the gallery, Escape closes
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') onPrev?.();
+            if (e.key === 'ArrowRight') onNext?.();
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onPrev, onNext, onClose]);
 
     const dimensions =
         item.width && item.height ? `${item.width} × ${item.height}px` : null;
@@ -87,23 +152,20 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                     <Button
                         variant='outline'
                         size='sm'
-                        onClick={handleCopyUrl}
+                        onClick={onPrev}
+                        disabled={!onPrev}
                         className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs'>
-                        <span className='hidden sm:inline'>COPY URL</span>
-                        <span className='sm:hidden'>URL</span>
+                        Previous
                     </Button>
 
-                    <Link
-                        href={item.url.replace(
-                            '/upload/',
-                            `/upload/fl_attachment:${filenameForDownload}/`
-                        )}
-                        download={
-                            item.originalName || item.fileName || 'media-file'
-                        }
-                        className='inline-flex items-center h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs font-medium border border-border rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-colors'>
-                        Download
-                    </Link>
+                    <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={onNext}
+                        disabled={!onNext}
+                        className='h-7 md:h-8 px-2 md:px-3 text-2xs md:text-xs'>
+                        Next
+                    </Button>
 
                     <Button
                         variant='ghost'
@@ -193,7 +255,7 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                 <aside className='w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto'>
                     <div className='p-4 md:p-6 space-y-6'>
                         <div>
-                            <h3 className='m-0 text-sm font-semibold text-foreground'>
+                            <h3 className='m-0 text-sm font-semibold text-foreground break-words'>
                                 {displayName}
                             </h3>
                             {item.caption && (
@@ -204,7 +266,6 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                         </div>
 
                         <dl className='m-0 space-y-4'>
-                            <DetailRow label='Alt text' value={item.altText} />
                             <DetailRow
                                 label='Type'
                                 value={
@@ -213,18 +274,178 @@ export default function MediaViewer({ item, onClose }: MediaViewerProps) {
                                         : item.resourceType
                                 }
                             />
-                            <DetailRow label='Dimensions' value={dimensions} />
-                            <DetailRow
-                                label='File size'
-                                value={
-                                    (item.size ?? item.bytes)
-                                        ? formatFileSize((item.size ?? item.bytes)!)
-                                        : null
-                                }
-                            />
-                            <DetailRow label='Uploaded' value={uploadedAt} />
-                            <DetailRow label='Public ID' value={item.publicId} />
                         </dl>
+
+                        {/* Uploaded line + (i) hover with the file facts */}
+                        {uploadedAt && (
+                            <div className='flex items-center gap-1.5'>
+                                <p className='m-0 text-xs font-semibold text-foreground'>
+                                    Uploaded on {uploadedAt}
+                                </p>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className='inline-flex text-muted-foreground cursor-help'>
+                                            <HugeiconsIcon
+                                                icon={InformationCircleIcon}
+                                                size={14}
+                                            />
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side='left' className='max-w-60'>
+                                        <div className='space-y-0.5 text-xs'>
+                                            <p className='m-0'>Uploaded by you</p>
+                                            {(item.originalName || item.fileName) && (
+                                                <p className='m-0'>
+                                                    Filename: {item.originalName || item.fileName}
+                                                </p>
+                                            )}
+                                            {(item.format || item.mimeType) && (
+                                                <p className='m-0'>
+                                                    File type: {item.format || item.mimeType}
+                                                </p>
+                                            )}
+                                            {(item.size ?? item.bytes) != null && (
+                                                <p className='m-0'>
+                                                    File size: {formatFileSize((item.size ?? item.bytes)!)}
+                                                </p>
+                                            )}
+                                            {dimensions && (
+                                                <p className='m-0'>Dimensions: {dimensions}</p>
+                                            )}
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        )}
+
+                        {/* Editable attachment details - saved on blur */}
+                        <div className='space-y-4'>
+                            <div className='space-y-1.5'>
+                                <Label htmlFor='media-title' className='text-xs'>
+                                    Title
+                                </Label>
+                                <Input
+                                    id='media-title'
+                                    value={form.title}
+                                    onChange={e =>
+                                        setForm(f => ({ ...f, title: e.target.value }))
+                                    }
+                                    className='h-8 text-xs'
+                                />
+                            </div>
+                            <div className='space-y-1.5'>
+                                <Label htmlFor='media-description' className='text-xs'>
+                                    Description
+                                </Label>
+                                <Textarea
+                                    id='media-description'
+                                    value={form.description}
+                                    onChange={e =>
+                                        setForm(f => ({ ...f, description: e.target.value }))
+                                    }
+                                    rows={3}
+                                    className='text-xs'
+                                />
+                            </div>
+                            <div className='space-y-1.5'>
+                                <Label htmlFor='media-alt' className='text-xs'>
+                                    Alt Text
+                                </Label>
+                                <Input
+                                    id='media-alt'
+                                    value={form.altText}
+                                    onChange={e =>
+                                        setForm(f => ({ ...f, altText: e.target.value }))
+                                    }
+                                    className='h-8 text-xs'
+                                />
+                            </div>
+                            <div className='space-y-1.5'>
+                                <div className='flex items-center gap-1.5'>
+                                    <Label htmlFor='media-filename' className='text-xs'>
+                                        Filename
+                                    </Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className='inline-flex text-muted-foreground cursor-help'>
+                                                <HugeiconsIcon
+                                                    icon={InformationCircleIcon}
+                                                    size={12}
+                                                />
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side='left' className='max-w-56'>
+                                            Display name used in the library and as
+                                            the download filename. The original
+                                            upload name is kept separately.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                                <Input
+                                    id='media-filename'
+                                    value={form.fileName}
+                                    onChange={e =>
+                                        setForm(f => ({ ...f, fileName: e.target.value }))
+                                    }
+                                    className='h-8 text-xs'
+                                />
+                            </div>
+
+                            <label className='flex items-center gap-2 cursor-pointer'>
+                                <Checkbox
+                                    checked={form.excludeFromIndexing}
+                                    onCheckedChange={checked =>
+                                        setForm(f => ({
+                                            ...f,
+                                            excludeFromIndexing: checked === true,
+                                        }))
+                                    }
+                                />
+                                <span className='text-xs text-foreground'>
+                                    Exclude this attachment from indexing
+                                </span>
+                            </label>
+
+                            {/* Unsaved changes turn Download into Save; a
+                                successful save reverts it to Download. */}
+                            <div className='flex items-center gap-2 pt-1'>
+                                {isDirty ? (
+                                    <Button
+                                        size='sm'
+                                        onClick={handleSave}
+                                        disabled={updateMutation.isPending}
+                                        className='h-8 px-3 text-xs'>
+                                        {updateMutation.isPending
+                                            ? 'Saving...'
+                                            : 'Save'}
+                                    </Button>
+                                ) : (
+                                    <Link
+                                        href={item.url.replace(
+                                            '/upload/',
+                                            `/upload/fl_attachment:${encodeURIComponent(
+                                                (form.fileName || displayName)
+                                                    .split('.')
+                                                    .slice(0, 1)
+                                                    .join('') || 'download',
+                                            )}/`,
+                                        )}
+                                        download={form.fileName || displayName}
+                                        className='inline-flex items-center h-8 px-3 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-colors'>
+                                        Download
+                                    </Link>
+                                )}
+                                {onDelete && (
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={onDelete}
+                                        className='h-8 px-3 text-xs text-destructive hover:text-destructive'>
+                                        Delete
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </aside>
             </div>

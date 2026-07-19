@@ -3,7 +3,7 @@
 import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatFileSize } from '@/lib/utils';
-import { CloudUploadIcon, Copy01Icon, Delete01Icon, File02Icon, LinkSquare01Icon, Loading03Icon, MusicNote01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { CloudUploadIcon, Delete01Icon, File02Icon, LinkSquare01Icon, Loading03Icon, MusicNote01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import type { MediaItem } from '@/types/media';
@@ -69,7 +69,6 @@ interface MediaListUiProps {
     handleEditItem: (item: MediaItem) => void;
     handleItemClick: (item: MediaItem) => void;
     handleDeleteItem: (id: string) => void;
-    handleCopyUrl: (item: MediaItem) => void;
     selectMode?: boolean;
 }
 
@@ -82,7 +81,6 @@ const MediaListUi = ({
     handleEditItem,
     handleItemClick,
     handleDeleteItem,
-    handleCopyUrl,
     selectMode,
 }: MediaListUiProps) => {
     // Read upload state directly from Zustand - no prop drilling needed
@@ -206,14 +204,6 @@ const MediaListUi = ({
 
                             {!selectMode && !isDeleting && (
                                 <div className='flex items-center gap-2 ml-4 shrink-0'>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        onClick={e => { e.stopPropagation(); handleCopyUrl(item); }}
-                                        className='h-8 px-2.5 text-xs'>
-                                        <HugeiconsIcon icon={Copy01Icon} />
-                                        Copy URL
-                                    </Button>
                                     <Button
                                         variant='outline'
                                         size='sm'

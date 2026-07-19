@@ -1,9 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
-    Copy01Icon,
     Delete02Icon,
     File02Icon,
     Image02Icon,
@@ -21,7 +19,8 @@ interface MediaItemProps {
     className?: string;
     onClick: (item: MediaItem) => void;
     onDelete: (id: string) => void;
-    onCopyUrl: (item: MediaItem) => void;
+    /** Kept for API compatibility - the tile no longer renders a copy button. */
+    onCopyUrl?: (item: MediaItem) => void;
     viewMode?: 'grid' | 'list';
     selectMode?: boolean;
     selector?: boolean;
@@ -34,7 +33,6 @@ export default function MediaItemCard({
     className = '',
     onClick,
     onDelete,
-    onCopyUrl,
     viewMode = 'grid',
     selectMode,
     selector,
@@ -133,31 +131,19 @@ export default function MediaItemCard({
 
                 {/* Hover Overlay */}
                 <div
-                    className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                    {/* Action Buttons */}
-                    {!selectMode && !selector && (
-                        <div
-                            className={`absolute top-3 right-3 z-[99] flex gap-2 transition-all duration-300 transform ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-                            <Button
-                                variant='default'
-                                size='sm'
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    onCopyUrl(item);
-                                }}
-                                className='bg-accent flex items-center text-foreground'>
-                                <HugeiconsIcon icon={Copy01Icon} size={16} />
-                            </Button>
-                            <Button
-                                variant='default'
-                                size='sm'
-                                onClick={handleDelete}
-                                className='bg-accent flex items-center text-destructive hover:bg-destructive/10'>
-                                <HugeiconsIcon icon={Delete02Icon} size={16} />
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                    className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                />
+
+                {/* Delete - always visible, small solid icon (no hover reveal) */}
+                {!selectMode && !selector && (
+                    <button
+                        type='button'
+                        aria-label='Delete media'
+                        onClick={handleDelete}
+                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer'>
+                        <HugeiconsIcon icon={Delete02Icon} size={14} />
+                    </button>
+                )}
 
                 {/* SEO Indicator */}
                 {(item?.altText || item?.caption) && (

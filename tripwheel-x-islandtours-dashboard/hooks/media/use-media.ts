@@ -7,7 +7,13 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { mediaApi } from '@/lib/api/media';
-import type { MediaItem, MediaListResponse, MediaSort, MediaTypeFilter } from '@/types/media';
+import type {
+  MediaItem,
+  MediaListResponse,
+  MediaSort,
+  MediaTypeFilter,
+  UpdateMediaInput,
+} from '@/types/media';
 import { DEFAULT_MEDIA_SORT } from '@/types/media';
 import { toast } from 'sonner';
 
@@ -44,6 +50,37 @@ export function useMediaInfinite(
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+  });
+}
+
+export function useUpdateMedia() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateMediaInput }) =>
+      mediaApi.update(id, dto),
+    onSuccess: (updated) => {
+      // Patch the item in place across every loaded sort/filter variant -
+      // no refetch, so the viewer stays open with fresh data.
+      queryClient.setQueriesData<InfiniteData<MediaListResponse>>(
+        { queryKey: mediaKeys.infinite() },
+        (old) => {
+          if (!old?.pages.length) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              data: page.data.map((item) =>
+                item.id === updated.id ? { ...item, ...updated } : item
+              ),
+            })),
+          };
+        }
+      );
+      toast.success('Media details saved');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to save media details');
+    },
   });
 }
 

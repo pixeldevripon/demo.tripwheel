@@ -9,7 +9,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CloudUploadFreeIcons, GridIcon, Menu05Icon, Search01Icon, SquareIcon, TickDouble01Icon, UndoIcon } from '@hugeicons/core-free-icons';
+import { GridIcon, Menu05Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { MediaItem, MediaSort, MediaSortBy, MediaSortOrder, MediaTypeFilter } from '@/types/media';
 
@@ -150,7 +150,6 @@ const MediaSearchControls = ({
                                 variant='outline'
                                 onClick={() => setSelectMode(true)}
                                 className='flex py-4 px-12 items-center'>
-                                <HugeiconsIcon icon={TickDouble01Icon} size={16} />
                                 Bulk Select
                             </Button>
                         )}
@@ -160,7 +159,6 @@ const MediaSearchControls = ({
                                 variant='outline'
                                 onClick={() => handleBulkSelection('all')}
                                 className='flex py-4 px-12 items-center'>
-                                <HugeiconsIcon icon={TickDouble01Icon} size={16} />
                                 Select All
                             </Button>
                         )}
@@ -170,7 +168,6 @@ const MediaSearchControls = ({
                                 variant='outline'
                                 onClick={() => handleBulkSelection('clear')}
                                 className='flex py-4 px-12 items-center'>
-                                <HugeiconsIcon icon={SquareIcon} size={16} className='mr-1' />
                                 Unselect All
                             </Button>
                         )}
@@ -182,7 +179,6 @@ const MediaSearchControls = ({
                                     handleCancelSelection();
                                 }}
                                 className='flex py-4 px-12 items-center'>
-                                <HugeiconsIcon icon={UndoIcon} size={16} />
                                 Cancel
                             </Button>
                         )}
@@ -191,10 +187,7 @@ const MediaSearchControls = ({
             </div>
 
             {/* Upload button */}
-            <Button onClick={() => setIsFormOpen(true)}>
-                <HugeiconsIcon icon={CloudUploadFreeIcons} size={16} />
-                Upload Media
-            </Button>
+            <Button onClick={() => setIsFormOpen(true)}>Upload Media</Button>
         </div>
     );
 };

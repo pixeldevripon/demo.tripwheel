@@ -154,7 +154,7 @@
     /* Chart palette: the Devripon preset's set (user decision 2026-07-17 -
      * the old chart-2 red made positive booking bars read as danger). */
     --chart-1: oklch(0.68 0.14 159.65);
-    --chart-2: oklch(0.37 0.18 325.25); /* preset 0.53, darkened for CVD separability vs chart-1 */
+    --chart-2: var(--color-brand-500); /* brand teal - keeps charts on the dashboard aesthetic */
     --chart-3: oklch(0.4 0.16 259.09);
     --chart-4: oklch(0.43 0.16 259.85);
     --chart-5: oklch(0.29 0.07 260.37);
@@ -264,7 +264,7 @@
     --info-solid: oklch(0.62 0.15 250);
 
     --chart-1: oklch(0.69 0.16 156.32);
-    --chart-2: oklch(0.44 0.13 252.86);
+    --chart-2: var(--color-brand-400); /* brand teal, lightened for dark surfaces */
     --chart-3: oklch(0.69 0.17 256);
     --chart-4: oklch(0.43 0.16 259.85);
     --chart-5: oklch(0.29 0.07 260.37);
