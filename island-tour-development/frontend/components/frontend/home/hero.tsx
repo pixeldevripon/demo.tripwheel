@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
 import { Reveal } from '../reveal';
@@ -23,30 +24,36 @@ export function Hero({
     dict,
     locale,
     destinations,
+    search,
 }: {
     dict: HeroDict;
     locale: Locale;
     destinations: HeroDestination[];
+    search: SearchDict;
 }) {
     const popular = destinations.slice(0, 4);
 
     return (
-        <section className='relative h-136.75 md:h-150 2xl:h-180 flex items-end justify-center overflow-hidden bg-it-hero-bg  pb-12 md:items-center md:pb-0'>
-            {/* Photo background (token bg above stays as the loading fallback).
-                Local 3840x2160 original; Next's optimizer serves responsive
-                AVIF/WebP variants, so quality stays hero-grade without the
-                2.7 MB source ever reaching a browser. */}
-            <Image
-                src='/images/kc-powerboat.jpg'
-                alt='Island tours hero image'
-                fill
-                quality={100}
-                priority
-                sizes='100vw'
-                className='object-cover scale-105  object-top md:object-[80%_40%]'
-            />
-            {/* Soft veil so the ink heading/subtitle stay legible on the photo */}
-            <div className='absolute inset-0 bg-black/40' />
+        <section className='relative h-136.75 md:h-150 2xl:h-180 flex items-end justify-center bg-it-hero-bg  pb-12 md:items-center md:pb-0'>
+            {/* Background clips inside its own wrapper (not the section) so the
+                search typeahead panel can drop below the hero without being cut. */}
+            <div className='absolute inset-0 overflow-hidden'>
+                {/* Photo background (token bg above stays as the loading fallback).
+                    Local 3840x2160 original; Next's optimizer serves responsive
+                    AVIF/WebP variants, so quality stays hero-grade without the
+                    2.7 MB source ever reaching a browser. */}
+                <Image
+                    src='/images/kc-powerboat.jpg'
+                    alt='Island tours hero image'
+                    fill
+                    quality={100}
+                    priority
+                    sizes='100vw'
+                    className='object-cover scale-105  object-top md:object-[80%_40%]'
+                />
+                {/* Soft veil so the ink heading/subtitle stay legible on the photo */}
+                <div className='absolute inset-0 bg-black/40' />
+            </div>
 
             {/* Centered content - 841px max */}
             <div className='it-container relative w-full flex justify-center'>
@@ -69,6 +76,7 @@ export function Hero({
                             destinations={destinations}
                             locale={locale}
                             placeholder={dict.searchPlaceholder}
+                            search={search}
                         />
 
                         {/* Popular - clickable destinations (live) */}
