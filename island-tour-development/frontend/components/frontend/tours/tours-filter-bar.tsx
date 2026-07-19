@@ -121,9 +121,9 @@ const PILL_BASE =
  *
  * Row 1: pinned date / guests / filters control pills + a divider, then the
  * category quick-filters as text labels (pill surface on hover, neutral pill
- * when active) - a compact two-line wrap on desktop, a scrolling strip on
- * mobile. Row 2: result counter + applied-filter chips (primary) + "Clear all"
- * on the left, sort dropdown pinned to the row's top-right.
+ * when active) in one horizontally scrolling row. Row 2: result counter +
+ * applied-filter chips (primary) + "Clear all" on the left, sort dropdown
+ * pinned to the row's top-right.
  */
 export function ToursFilterBar({
     dict,
@@ -148,7 +148,9 @@ export function ToursFilterBar({
 
     // Grab-to-slide the horizontally-overflowing strips with a plain mouse
     // (same affordance as the tab bars); no-ops on touch and when the content
-    // fits. Only the category strip scrolls - the control pills stay pinned.
+    // fits. Desktop: only the category strip scrolls (control pills pinned).
+    // Mobile: the whole row 1 scrolls as one strip (pills + categories).
+    const row1Ref = useDragScroll<HTMLDivElement>();
     const categoriesRowRef = useDragScroll<HTMLDivElement>();
     const metaRowRef = useDragScroll<HTMLDivElement>();
 
@@ -202,16 +204,6 @@ export function ToursFilterBar({
 
     // Selected categories rendered as removable chips in row 2 (multi-select).
     const chips = categories.filter(c => optimisticCategories.includes(c.slug));
-
-    // Category quick-filters render as two stacked rows that scroll
-    // horizontally together, so every category stays reachable however many
-    // exist. Short lists (fits one line) stay a single row. The split favours
-    // the bottom row on odd counts (matches the design reference).
-    const half = Math.floor(categories.length / 2);
-    const categoryRows =
-        categories.length > 4
-            ? [categories.slice(0, half), categories.slice(half)]
-            : [categories];
 
     // Date - URL-backed. Parse the anchor to a Date for the calendar; selecting a
     // day navigates immediately (single action).
@@ -313,9 +305,12 @@ export function ToursFilterBar({
 
     return (
         <div className='flex flex-col gap-6'>
-            {/* ── Row 1 - pinned control pills · category quick-filters
-                (mobile: scrolling strip; desktop: compact two-line wrap) ── */}
-            <div className='flex items-center gap-4'>
+            {/* ── Row 1 - control pills · category quick-filters. Desktop:
+                pills pinned, only the category strip scrolls. Mobile: the
+                whole row scrolls as one strip. ── */}
+            <div
+                ref={row1Ref}
+                className='flex items-center gap-4 max-md:overflow-x-auto max-md:pb-1 [scrollbar-width:none] md:overflow-visible [&::-webkit-scrollbar]:hidden'>
                 {/* Left group - control pills + vertical divider (pinned) */}
                 <div className='flex shrink-0 items-center gap-4'>
                     <div className='flex items-center gap-2'>
@@ -521,62 +516,58 @@ export function ToursFilterBar({
                     )}
                 </div>
 
-                {/* Category quick-filter pills - two stacked rows that scroll
-                    horizontally as one block (every category reachable however
-                    many exist). Hidden on the category page (route fixes the
-                    category). */}
+                {/* Category quick-filter pills - one horizontally scrolling
+                    row (every category reachable however many exist). On
+                    mobile the strip itself doesn't scroll - it extends at
+                    full width and rides the row-1 scroll instead. Hidden on
+                    the category page (route fixes the category). */}
                 {!lockCategory && (
                     <div
                         ref={categoriesRowRef}
-                        className='flex min-w-0 flex-1 flex-col gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                        {categoryRows.map((row, rowIndex) => (
-                            <div
-                                key={rowIndex}
-                                className='flex w-max items-center gap-2'>
-                                {row.map(cat => {
-                                    const active =
-                                        optimisticCategories.includes(cat.slug);
-                                    // Prefetch the toggled-on result (the common intent).
-                                    const prefetch = () =>
-                                        !active &&
-                                        prefetchState({
-                                            categories: [
-                                                ...optimisticCategories,
-                                                cat.slug,
-                                            ],
-                                        });
-                                    return (
-                                        <motion.button
-                                            key={cat.slug}
-                                            type='button'
-                                            aria-pressed={active}
-                                            onClick={() => toggleCategory(cat)}
-                                            onPointerEnter={prefetch}
-                                            onFocus={prefetch}
-                                            whileTap={{ scale: 0.99 }}
-                                            transition={springPop}
-                                            className={`flex h-9.5 md:h-10.5 shrink-0 items-center whitespace-nowrap rounded-it-full px-3 md:px-4 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
-                                                active
-                                                    ? 'bg-it-heading/10'
-                                                    : 'hover:bg-it-surface'
-                                            }`}>
-                                            {cat.label}
-                                        </motion.button>
-                                    );
-                                })}
-                            </div>
-                        ))}
+                        className='flex items-center gap-2 py-1 max-md:w-max md:min-w-0 md:flex-1 md:overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        {categories.map(cat => {
+                            const active = optimisticCategories.includes(
+                                cat.slug
+                            );
+                            // Prefetch the toggled-on result (the common intent).
+                            const prefetch = () =>
+                                !active &&
+                                prefetchState({
+                                    categories: [
+                                        ...optimisticCategories,
+                                        cat.slug,
+                                    ],
+                                });
+                            return (
+                                <motion.button
+                                    key={cat.slug}
+                                    type='button'
+                                    aria-pressed={active}
+                                    onClick={() => toggleCategory(cat)}
+                                    onPointerEnter={prefetch}
+                                    onFocus={prefetch}
+                                    whileTap={{ scale: 0.99 }}
+                                    transition={springPop}
+                                    className={`flex h-9.5 md:h-10.5 shrink-0 items-center whitespace-nowrap rounded-it-full px-3 md:px-4 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
+                                        active
+                                            ? 'bg-it-heading/10'
+                                            : 'hover:bg-it-surface'
+                                    }`}>
+                                    {cat.label}
+                                </motion.button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
             {/* ── Row 2 - counter + chips + clear all · sort ──────────────────
                 Mobile: counter/chips/clear-all scroll horizontally (clear-all
-                sits off-screen, reachable by scroll). Desktop: only the LEFT
-                column wraps - the row itself never does, so the sort dropdown
-                stays pinned to the top-right no matter how many chips there
-                are. */}
-            <div className='flex items-center gap-3 md:items-start md:gap-x-8'>
+                sits off-screen, reachable by scroll) with the sort on its own
+                line below. Desktop: one row - only the LEFT column wraps, the
+                row itself never does, so the sort dropdown stays pinned to
+                the top-right no matter how many chips there are. */}
+            <div className='flex flex-col gap-3 md:flex-row md:items-start md:gap-x-8'>
                 {/* Counter, applied chips, clear all */}
                 <div
                     ref={metaRowRef}
@@ -585,7 +576,7 @@ export function ToursFilterBar({
                         counter is pinned, the chip block shrinks and wraps
                         internally beside it. */}
                     <div className='flex shrink-0 items-center gap-2 md:min-w-0 md:shrink md:gap-x-4'>
-                        <p className='m-0 shrink-0 whitespace-nowrap text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                        <p className='m-0 shrink-0 whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] md:text-[16px]'>
                             <span className='font-medium text-it-heading'>
                                 {counterLabel}
                             </span>{' '}
@@ -663,9 +654,9 @@ export function ToursFilterBar({
                     </AnimatePresence>
                 </div>
 
-                {/* Right - sort dropdown (desktop; pinned to the row's end,
+                {/* Right - sort dropdown pinned to the row's end (on desktop
                     nudged to align with the first chip line) */}
-                <div className='flex max-md:hidden shrink-0 items-center gap-2 md:gap-3.5 md:pt-1.25'>
+                <div className='flex shrink-0 items-center gap-2 md:gap-3.5 md:pt-1.25'>
                     <span className='whitespace-nowrap text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
                         {dict.sortBy}
                     </span>
@@ -687,7 +678,7 @@ export function ToursFilterBar({
                         <PopoverContent
                             align='end'
                             sideOffset={12}
-                            className='w-57.25 overflow-hidden rounded-[10px] border-none bg-it-white p-0 text-it-heading shadow-[5px_10px_24px_-4px_rgba(0,0,0,0.16)] duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
+                            className='w-51 overflow-hidden rounded-[10px] border-none bg-it-white p-0 text-it-heading shadow-[5px_10px_24px_-4px_rgba(0,0,0,0.16)] duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)] md:w-57.25'>
                             {sortOptions.map((opt, i) => (
                                 <motion.button
                                     key={opt.value}
@@ -703,7 +694,7 @@ export function ToursFilterBar({
                                         ...springPop,
                                         delay: i * 0.03,
                                     }}
-                                    className={`flex w-full cursor-pointer items-center border-none bg-transparent px-4 py-2 text-left text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:bg-it-surface ${
+                                    className={`flex w-full cursor-pointer items-center border-none bg-transparent px-4 py-2 text-left text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:bg-it-surface md:text-[16px] ${
                                         opt.value === sort ? 'font-medium' : ''
                                     }`}>
                                     {opt.label}
