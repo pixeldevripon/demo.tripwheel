@@ -1,0 +1,31 @@
+// Customer relationships - one row per (user, operator) pair, created the
+// first time a booking links that user to that operator.
+//
+// Purpose: marks a USER-role account as a CUSTOMER of a tour operator and
+// carries denormalized aggregates for the future operator-facing "Customers"
+// page. The customer-facing dashboard never reads these snapshots - its
+// totals come live from the bookings/payments ledger (GET /bookings/me/summary).
+//
+// Aggregates are recomputed-on-write (groupBy over the user's CONFIRMED
+// bookings for the operator, then upsert) - idempotent and self-healing, no
+// increment drift. totalSpendEur is the confirmed-booking EUR value snapshot;
+// refunds do not adjust it (documented in technical-doc/customers/).
+
+model Customer {
+  id             String    @id @default(uuid())
+  userId         String
+  operatorId     String
+  firstBookingAt DateTime?
+  lastBookingAt  DateTime?
+  bookingsCount  Int       @default(0)
+  totalSpendEur  Decimal   @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, operatorId])
+  @@index([operatorId])
+  @@map("customers")
+}

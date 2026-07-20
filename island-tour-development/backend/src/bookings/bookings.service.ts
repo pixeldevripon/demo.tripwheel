@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -16,7 +18,9 @@ import {
   Currency,
   DepartureStatus,
   Locale,
+  PaymentKind,
   PaymentModel,
+  PaymentStatus,
   PricingModel,
   Prisma,
   Role,
@@ -36,6 +40,7 @@ import {
   sessionOwnsBooking,
   verifyTravelerSession,
 } from './traveler-session.util';
+import { CustomerProvisioningService } from '@/customers/customer-provisioning.service';
 import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
 import { NotificationsService } from '@/notifications/notifications.service';
@@ -43,7 +48,11 @@ import {
   dashboardAppBase,
   islandToursBase,
 } from '@/common/utils/app-urls.util';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import { ACTIVE_BOOKING_STATUSES } from '@/common/constants/booking-status';
+import {
+  isPlatformWideBookingRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import {
   combineDateTime,
   dateKey,
@@ -105,17 +114,6 @@ const DEFAULT_HOLD_MINUTES = 30;
 const QUOTE_TTL_MINUTES = 15;
 
 /**
- * Roles whose booking READS are platform-wide rather than operator/self
- * scoped. They only reach the read routes through the VIEW_BOOKINGS gate
- * (bookings.controller), so a STAFF/EDITOR caller was explicitly granted
- * booking visibility. Used by both `list` and `assertCanView` - one
- * definition so the two scopes can never drift.
- */
-function isPlatformWideBookingRole(role: Role): boolean {
-  return role === Role.ADMIN || role === Role.STAFF || role === Role.EDITOR;
-}
-
-/**
  * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
  * Shared by the authoritative `reserve` write and the read-only `quote` preview.
  */
@@ -146,6 +144,37 @@ type PickupSnapshot = {
 };
 
 /** No pickup selected: meet-on-site, so every pickup column stays null. */
+/**
+ * Field set every cancellation-request path loads - shared by the public
+ * traveler route (publicRef + HMAC session) and the customer dashboard route
+ * (booking id + account ownership).
+ */
+const CANCELLATION_REQUEST_SELECT = {
+  id: true,
+  displayRef: true,
+  publicRef: true,
+  status: true,
+  utcCancellationRequestedAt: true,
+  contactFullName: true,
+  contactFirstName: true,
+  contactLastName: true,
+  contactEmail: true,
+  customerLocale: true,
+  localDate: true,
+  startTime: true,
+  tourStartDateTime: true,
+  totalRetail: true,
+  currency: true,
+  paymentModel: true,
+  operatorId: true,
+  island: true,
+  tour: { select: { name: true } },
+} satisfies Prisma.BookingSelect;
+
+type CancellationRequestBooking = Prisma.BookingGetPayload<{
+  select: typeof CANCELLATION_REQUEST_SELECT;
+}>;
+
 const EMPTY_PICKUP: PickupSnapshot = {
   address: null,
   minutesPrior: null,
@@ -166,6 +195,7 @@ export class BookingsService {
     private readonly fx: FxRatesService,
     private readonly lookupLimiter: LookupRateLimiter,
     private readonly targetLimiter: TargetRateLimiter,
+    private readonly customerProvisioning: CustomerProvisioningService,
   ) {}
 
   /**
@@ -253,7 +283,7 @@ export class BookingsService {
       where: { id },
       include: { unitItems: true },
     });
-    if (prior) return mapBooking(prior);
+    if (prior) return mapBookingPublic(prior);
 
     const ctx = await this.loadContext(dto);
     this.validateRestrictions(ctx);
@@ -452,9 +482,9 @@ export class BookingsService {
     // OPERATOR_FULL is born CONFIRMED with no charge (rule #21) → fire conversion now.
     if (operatorFull) {
       const finalized = await this.finalizeConfirmation(created);
-      return mapBooking(finalized);
+      return mapBookingPublic(finalized);
     }
-    return mapBooking(created);
+    return mapBookingPublic(created);
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -568,12 +598,43 @@ export class BookingsService {
 
   async confirm(id: string, dto: ConfirmBookingDto) {
     const booking = await this.loadOr404(id);
-    if (booking.status === BookingStatus.CONFIRMED) return mapBooking(booking);
+    if (booking.status === BookingStatus.CONFIRMED) {
+      return mapBookingPublic(booking);
+    }
     if (booking.status !== BookingStatus.ON_HOLD) {
       throw new ConflictException(`Cannot confirm a ${booking.status} booking`);
     }
     if (booking.utcExpiresAt && booking.utcExpiresAt < new Date()) {
       throw new UnprocessableEntityException('Reservation hold has expired');
+    }
+
+    // Money before status (security review 2026-07-20): a booking may only
+    // flip to CONFIRMED once the platform has captured what is due at
+    // confirmation - the deposit for deposit models, the full total for
+    // PAID_IN_FULL. The webhook path (confirmFromPayment) proves this via the
+    // succeeded charge itself; this endpoint proves it from the payment
+    // ledger, so a raw booking id is no longer a free-confirmation
+    // capability. One indexed aggregate - refunds cannot race this into a
+    // false positive (a refund implies a prior success).
+    const dueNow =
+      booking.paymentModel === PaymentModel.PAID_IN_FULL
+        ? booking.totalRetail
+        : booking.depositAmount;
+    if (dueNow.gt(0)) {
+      const paid = await this.prisma.payment.aggregate({
+        where: {
+          bookingId: booking.id,
+          status: PaymentStatus.SUCCEEDED,
+          kind: { not: PaymentKind.REFUND },
+        },
+        _sum: { amount: true },
+      });
+      if ((paid._sum.amount ?? new Prisma.Decimal(0)).lt(dueNow)) {
+        throw new HttpException(
+          'Booking cannot be confirmed before its payment has succeeded',
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -604,7 +665,7 @@ export class BookingsService {
     const finalized = await this.finalizeConfirmation(updated);
     // Status changed; seats unchanged (already held at reserve).
     this.emitBookingEvents(finalized, { availability: false });
-    return mapBooking(finalized);
+    return mapBookingPublic(finalized);
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -758,6 +819,11 @@ export class BookingsService {
     if (commissionAmount != null) {
       await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
     }
+    // Customer account provisioning (welcome email + booking backfill-link).
+    // Winner branch only, so it fires once per booking; fire-and-forget - it
+    // must never fail or slow the confirmation. OPERATOR_FULL bookings have no
+    // contact yet here (provisioning no-ops) and are covered by update().
+    void this.customerProvisioning.provisionForBooking(updated);
     return updated;
   }
 
@@ -1146,27 +1212,7 @@ export class BookingsService {
   ): Promise<{ requested: boolean }> {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
-      select: {
-        id: true,
-        displayRef: true,
-        publicRef: true,
-        status: true,
-        utcCancellationRequestedAt: true,
-        contactFullName: true,
-        contactFirstName: true,
-        contactLastName: true,
-        contactEmail: true,
-        customerLocale: true,
-        localDate: true,
-        startTime: true,
-        tourStartDateTime: true,
-        totalRetail: true,
-        currency: true,
-        paymentModel: true,
-        operatorId: true,
-        island: true,
-        tour: { select: { name: true } },
-      },
+      select: CANCELLATION_REQUEST_SELECT,
     });
     if (!booking) throw new NotFoundException('Booking not found');
     // A cancellation request is a mutation, so link possession is not enough
@@ -1183,9 +1229,44 @@ export class BookingsService {
         'Verify with your email and booking reference to request a cancellation',
       );
     }
+    return this.submitCancellationRequest(booking, reason);
+  }
+
+  /**
+   * Cancellation request from a logged-in CUSTOMER (dashboard /account
+   * surface). Same downstream flow as the public traveler request; the gate is
+   * the Better Auth session + booking ownership (`booking.userId`) instead of
+   * the HMAC traveler session. 404 (not 403) on foreign bookings - do not
+   * confirm existence to non-owners.
+   */
+  async requestCancellationAsCustomer(
+    id: string,
+    actor: { id: string },
+    reason?: string,
+  ): Promise<{ requested: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      select: { ...CANCELLATION_REQUEST_SELECT, userId: true },
+    });
+    if (!booking || booking.userId !== actor.id) {
+      throw new NotFoundException('Booking not found');
+    }
+    return this.submitCancellationRequest(booking, reason);
+  }
+
+  /**
+   * The ownership-gate-free core of a cancellation request: per-booking cap,
+   * status check, first-request stamp, admin email, traveller/operator
+   * notices. Callers MUST have proven ownership already (traveler HMAC session
+   * or customer account ownership).
+   */
+  private async submitCancellationRequest(
+    booking: CancellationRequestBooking,
+    reason?: string,
+  ): Promise<{ requested: boolean }> {
     // Per-BOOKING cap (after the ownership gate - only the verified owner can
     // even reach this): bounds admin-inbox noise from repeat submits.
-    this.targetLimiter.consume('cancel-req', publicRef, [
+    this.targetLimiter.consume('cancel-req', booking.publicRef, [
       { max: 5, windowMs: 60 * 60 * 1000 },
     ]);
     if (booking.status !== BookingStatus.CONFIRMED) {
@@ -1453,7 +1534,41 @@ export class BookingsService {
     actor?: { id: string; role: Role },
   ) {
     const booking = await this.loadOr404(id);
-    if (booking.status === BookingStatus.CANCELLED) return mapBooking(booking);
+
+    // Authorization (security review 2026-07-20) runs BEFORE the idempotent
+    // early-return below - otherwise a raw id alone would both confirm a
+    // booking exists and hand back its full payload for anything already
+    // cancelled. A booking that never reached CONFIRMED was only ever a hold,
+    // so the checkout-abandon release - and its idempotent retry - stays open:
+    // the raw id is a short-lived secret held only by the reserving client,
+    // and releasing a hold just frees seats. Anything that confirmed moved
+    // money and inventory, so it demands an authenticated ops actor: a
+    // platform-wide booking role, or the operator who owns the booking.
+    // Customers/travelers never cancel directly - they use the
+    // cancellation-request flow (an admin processes it).
+    const heldOnly =
+      booking.status === BookingStatus.ON_HOLD ||
+      (booking.status === BookingStatus.CANCELLED &&
+        booking.utcConfirmedAt === null);
+    if (!heldOnly) {
+      if (!actor || actor.role === Role.USER) {
+        throw new UnauthorizedException(
+          'Sign in with an operator or admin account to cancel a confirmed booking',
+        );
+      }
+      if (
+        !isPlatformWideBookingRole(actor.role) &&
+        booking.operatorId !==
+          (await resolveOperatorId(this.prisma, actor.id, actor.role))
+      ) {
+        // 404, not 403: never confirm a foreign booking's existence.
+        throw new NotFoundException('Booking not found');
+      }
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      return mapBookingForActor(booking, actor);
+    }
     if (
       booking.status === BookingStatus.EXPIRED ||
       booking.status === BookingStatus.REDEEMED
@@ -1506,7 +1621,15 @@ export class BookingsService {
     );
     // Seats released back to inventory + booking status changed.
     this.emitBookingEvents(updated, { availability: !!booking.departureId });
-    return mapBooking(updated);
+    // Keep the customer aggregates honest - a cancelled booking leaves the
+    // CONFIRMED/REDEEMED set, so recompute the (user x operator) snapshot.
+    if (updated.userId) {
+      void this.customerProvisioning.recomputeAggregates(
+        updated.userId,
+        updated.operatorId,
+      );
+    }
+    return mapBookingForActor(updated, actor);
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1527,16 +1650,38 @@ export class BookingsService {
       },
       include: { unitItems: true },
     });
-    return mapBooking(updated);
+    return mapBookingPublic(updated);
   }
 
-  async update(id: string, dto: UpdateBookingDto) {
+  async update(
+    id: string,
+    dto: UpdateBookingDto,
+    sessionToken?: string | null,
+  ) {
     const booking = await this.loadOr404(id);
     if (
       booking.status !== BookingStatus.ON_HOLD &&
       booking.status !== BookingStatus.CONFIRMED
     ) {
       throw new ConflictException(`Cannot modify a ${booking.status} booking`);
+    }
+    // A CONFIRMED booking's contact is its identity: rewriting it re-routes
+    // every future email (and the customer-account link), so it demands
+    // ownership proof - a traveler session for this booking (from checkout or
+    // the /bookings pair login). ON_HOLD stays open: checkout sets the initial
+    // contact pre-payment, when the raw id is a short-lived secret held only
+    // by the reserving client (security review 2026-07-20).
+    if (
+      dto.contact &&
+      booking.status === BookingStatus.CONFIRMED &&
+      !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+        id: booking.id,
+        contactEmail: booking.contactEmail,
+      })
+    ) {
+      throw new UnauthorizedException(
+        'Verify with your email and booking reference to change contact details',
+      );
     }
     const updated = await this.prisma.booking.update({
       where: { id: booking.id },
@@ -1561,7 +1706,16 @@ export class BookingsService {
       },
       include: { unitItems: true },
     });
-    const mapped = mapBooking(updated);
+    const mapped: ReturnType<typeof mapBookingPublic> & {
+      sessionToken?: string;
+    } = mapBookingPublic(updated);
+    // A contact landing on an already-CONFIRMED booking (OPERATOR_FULL is born
+    // confirmed before checkout collects the contact) is the second customer-
+    // provisioning hook - finalizeConfirmation ran before the email existed.
+    // Fire-and-forget; provisioning is idempotent when both hooks run.
+    if (dto.contact?.email && updated.status === BookingStatus.CONFIRMED) {
+      void this.customerProvisioning.provisionForBooking(updated);
+    }
     // Checkout sets the contact here (reserve carries no contact fields): the
     // booker who authored the booking gets a traveler session back, so the TYP
     // renders unmasked without a separate /bookings login. BOOKING-scoped, not
@@ -1638,7 +1792,7 @@ export class BookingsService {
   async getById(id: string, actor: { id: string; role: Role }) {
     const booking = await this.loadOr404(id);
     await this.assertCanView(booking, actor);
-    return mapBooking(booking);
+    return stripCommissionForCustomer(mapBooking(booking), actor.role);
   }
 
   /**
@@ -2026,6 +2180,7 @@ export class BookingsService {
         include: {
           unitItems: true,
           tour: { select: { name: true, cancellationHours: true } },
+          payments: { select: { kind: true, status: true, amount: true } },
         },
         // Cancellation-request queues surface oldest-unprocessed first;
         // everything else reads newest bookings first.
@@ -2036,7 +2191,70 @@ export class BookingsService {
         take: limit,
       }),
     ]);
-    return { total, page, limit, data: rows.map(mapBookingListItem) };
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((row) =>
+        stripCommissionForCustomer(mapBookingListItem(row), actor.role),
+      ),
+    };
+  }
+
+  /**
+   * Customer dashboard stat row: how many trips (CONFIRMED + REDEEMED), how
+   * many still ahead, and net spend per currency - computed LIVE from the
+   * payment ledger (SUCCEEDED non-REFUND minus SUCCEEDED REFUND rows), never
+   * from the `customers` aggregate snapshots.
+   */
+  async getCustomerSummary(actor: { id: string }) {
+    const paymentScope = {
+      booking: { userId: actor.id },
+      status: PaymentStatus.SUCCEEDED,
+    };
+    const [bookingsCount, upcomingCount, paid, refunded] = await Promise.all([
+      this.prisma.booking.count({
+        where: {
+          userId: actor.id,
+          status: { in: [...ACTIVE_BOOKING_STATUSES] },
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          userId: actor.id,
+          status: BookingStatus.CONFIRMED,
+          tourStartDateTime: { gt: new Date() },
+        },
+      }),
+      this.prisma.payment.groupBy({
+        by: ['currency'],
+        where: { ...paymentScope, kind: { not: PaymentKind.REFUND } },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.groupBy({
+        by: ['currency'],
+        where: { ...paymentScope, kind: PaymentKind.REFUND },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const byCurrency = new Map<string, Prisma.Decimal>();
+    for (const row of paid) {
+      byCurrency.set(row.currency, row._sum.amount ?? new Prisma.Decimal(0));
+    }
+    for (const row of refunded) {
+      byCurrency.set(
+        row.currency,
+        (byCurrency.get(row.currency) ?? new Prisma.Decimal(0)).sub(
+          row._sum.amount ?? 0,
+        ),
+      );
+    }
+    const totalSpend = [...byCurrency.entries()]
+      .filter(([, amount]) => !amount.isZero())
+      .map(([currency, amount]) => ({ currency, amount: amount.toString() }));
+
+    return { bookingsCount, upcomingCount, totalSpend };
   }
 
   // ── internals ──────────────────────────────────────────────────────────────
@@ -2441,9 +2659,48 @@ function unitCharterLabel(type: WholeUnitType | null): string {
  * the in/out-of-window verdict is judged at the REQUEST instant (C23), so the
  * admin queue shows the refund entitlement without recomputing it client-side.
  */
+/**
+ * Net paid + a coarse payment state from the payment ledger: SUCCEEDED
+ * non-REFUND rows count in, SUCCEEDED REFUND rows count out. Coarse on
+ * purpose - the row badge for dashboards (operator AND customer), not an
+ * accounting figure.
+ */
+function derivePaymentState(
+  payments: {
+    kind: PaymentKind;
+    status: PaymentStatus;
+    amount: Prisma.Decimal;
+  }[],
+  totalRetail: Prisma.Decimal,
+): { paymentStatus: string; paidAmount: string } {
+  let paid = new Prisma.Decimal(0);
+  let refunded = new Prisma.Decimal(0);
+  for (const p of payments) {
+    if (p.status !== PaymentStatus.SUCCEEDED) continue;
+    if (p.kind === PaymentKind.REFUND) refunded = refunded.add(p.amount);
+    else paid = paid.add(p.amount);
+  }
+  const net = paid.sub(refunded);
+  let paymentStatus: string;
+  if (refunded.gt(0)) {
+    paymentStatus = net.lte(0) ? 'REFUNDED' : 'PARTIALLY_PAID';
+  } else if (totalRetail.lte(0) || net.gte(totalRetail)) {
+    // Zero-value bookings owe nothing - settled by definition.
+    paymentStatus = 'PAID';
+  } else {
+    paymentStatus = net.gt(0) ? 'PARTIALLY_PAID' : 'UNPAID';
+  }
+  return { paymentStatus, paidAmount: net.toString() };
+}
+
 function mapBookingListItem(
   b: BookingWithItems & {
     tour: { name: string; cancellationHours: number };
+    payments: {
+      kind: PaymentKind;
+      status: PaymentStatus;
+      amount: Prisma.Decimal;
+    }[];
   },
 ) {
   const deadline = b.tourStartDateTime
@@ -2453,6 +2710,7 @@ function mapBookingListItem(
     : null;
   return {
     ...mapBooking(b),
+    ...derivePaymentState(b.payments, b.totalRetail),
     tourName: b.tour.name,
     contactFullName: b.contactFullName,
     contactEmail: b.contactEmail,
@@ -2467,6 +2725,44 @@ function mapBookingListItem(
         ? b.utcCancellationRequestedAt.getTime() <= deadline.getTime()
         : null,
   };
+}
+
+/**
+ * Customers (Role.USER) never see the platform's take on their own purchase:
+ * the commission snapshot is operator/admin context (same withholding rule as
+ * the public TYP payload). Fields are nulled, not omitted, so the response
+ * shape stays DTO-stable for every role.
+ */
+function stripCommissionForCustomer<
+  T extends { commissionRate: string | null; commissionAmount: string | null },
+>(payload: T, role: Role): T {
+  if (role !== Role.USER) return payload;
+  return { ...payload, commissionRate: null, commissionAmount: null };
+}
+
+/**
+ * Traveler-facing booking payload. The commission snapshot is platform <->
+ * operator context: it must never ride a checkout response, where the caller
+ * is whoever holds the booking id (reserve/confirm/extend/update are @Public,
+ * as is releasing an on-hold booking). Same withholding rule as the TYP
+ * payload and the Role.USER reads - nulled, not omitted, so the response shape
+ * never varies by caller.
+ */
+function mapBookingPublic(b: BookingWithItems) {
+  return { ...mapBooking(b), commissionRate: null, commissionAmount: null };
+}
+
+/**
+ * Commission is visible only to an authenticated ops actor (operator/admin
+ * dashboards). Anonymous callers and customers get the traveler payload.
+ */
+function mapBookingForActor(
+  b: BookingWithItems,
+  actor?: { id: string; role: Role },
+) {
+  return !actor || actor.role === Role.USER
+    ? mapBookingPublic(b)
+    : mapBooking(b);
 }
 
 function mapBooking(b: BookingWithItems) {

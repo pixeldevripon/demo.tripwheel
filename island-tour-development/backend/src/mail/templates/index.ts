@@ -1,5 +1,6 @@
 export { passwordResetTemplate } from './password-reset.template';
 export { operatorInviteTemplate } from './operator-invite.template';
+export { customerWelcomeTemplate } from './customer-welcome.template';
 export {
   staffInviteTemplate,
   type StaffInviteTemplateProps,

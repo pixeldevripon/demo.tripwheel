@@ -12,6 +12,13 @@
 **Status:** Proposal v0.1, dated July 3, 2026. Not yet folded into the master doc. Where it
 disagrees with the master, the master wins.
 
+> **AMENDED 2026-07-20 - customer accounts (founder decision).** "No passwords for travelers"
+> and the three-doors model are RELAXED, not replaced: the passwordless pair-login stays the
+> primary traveler path, but every booking now auto-creates an optional `Role.USER` account
+> (welcome email + set-password link) and the dashboard app gains a FOURTH door, `/account`,
+> where customers see their own bookings, payments and profile. Full design + invariants:
+> `technical-doc/customers/CUSTOMER-ACCOUNTS.md`.
+
 - **Section 2 (traveler)** implements an already-locked master decision (6.4).
 - **Sections 3 & 4 (operator + admin)** fill a gap the master deliberately left out of scope (0.3).
 

@@ -35,6 +35,8 @@ import {
   ApiCalendarDocs,
   ApiCancelDocs,
   ApiConfirmDocs,
+  ApiCustomerCancellationRequestDocs,
+  ApiCustomerSummaryDocs,
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
@@ -112,8 +114,15 @@ export class BookingsController {
   @Patch(':id')
   @Public()
   @ApiUpdateBookingDocs()
-  update(@Param('id') id: string, @Body() dto: UpdateBookingDto) {
-    return this.bookings.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBookingDto,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    // The session is only REQUIRED when changing contact on a CONFIRMED
+    // booking (the service enforces it); checkout's pre-payment contact PATCH
+    // runs on ON_HOLD and needs none.
+    return this.bookings.update(id, dto, sessionToken);
   }
 
   /**
@@ -254,9 +263,9 @@ export class BookingsController {
   }
 
   // Dashboard reads. VIEW_BOOKINGS gates WHO may look at bookings at all
-  // (admins, operators, and staff/seats granted it); the service then scopes
-  // WHICH rows (operators to their own tours; platform staff see all).
-  // Travelers never call these - their surface is the public TYP routes.
+  // (admins, operators, staff/seats granted it, and USER customers); the
+  // service then scopes WHICH rows (operators to their own tours; platform
+  // staff see all; customers only their own bookings via userId).
   @Get()
   @RequirePermissions(Permission.VIEW_BOOKINGS)
   @ApiListBookingsDocs()
@@ -265,6 +274,44 @@ export class BookingsController {
     @Query() query: ListBookingsQueryDto,
   ) {
     return this.bookings.list(query, { id: user.id, role: user.role });
+  }
+
+  /**
+   * GET /bookings/me/summary - the customer dashboard's stat row: booking
+   * counts + net spend per currency, computed live from the payment ledger
+   * for the caller's OWN bookings. Static route: MUST stay above `:id`.
+   */
+  @Get('me/summary')
+  @RequirePermissions(Permission.VIEW_BOOKINGS)
+  @ApiCustomerSummaryDocs()
+  customerSummary(@AuthenticatedUser() user: TypedAuthUser) {
+    return this.bookings.getCustomerSummary({ id: user.id });
+  }
+
+  /**
+   * POST /bookings/:id/cancellation-request - cancellation request from a
+   * logged-in customer (dashboard /account surface). Ownership = the booking's
+   * userId; foreign ids 404. Same downstream flow (admin email + notices) as
+   * the public TYP route above.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post(':id/cancellation-request')
+  @RequirePermissions(Permission.VIEW_BOOKINGS)
+  @ApiCustomerCancellationRequestDocs()
+  requestCancellationAsCustomer(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: RequestCancellationDto,
+  ) {
+    return this.bookings.requestCancellationAsCustomer(
+      id,
+      { id: user.id },
+      dto.reason,
+    );
   }
 
   @Get(':id')

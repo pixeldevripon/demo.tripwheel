@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
+import { RateLimitModule } from '@/common/rate-limit.module';
+import { CustomersModule } from '@/customers/customers.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { FxModule } from '@/fx/fx.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
-import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
+import { LookupRateLimiter } from './lookup-rate-limiter';
 
 /**
  * Bookings module - OCTO reserve→confirm lifecycle over the `departures` inventory.
@@ -15,9 +17,18 @@ import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
  * supplies `AVAILABILITY_UPDATE` / `BOOKING_UPDATE` webhooks.
  */
 @Module({
-  imports: [TrackingModule, NotificationsModule, TiersModule, FxModule],
+  imports: [
+    TrackingModule,
+    NotificationsModule,
+    TiersModule,
+    FxModule,
+    CustomersModule,
+    RateLimitModule,
+  ],
   controllers: [BookingsController],
-  providers: [BookingsService, LookupRateLimiter, TargetRateLimiter],
-  exports: [BookingsService, TargetRateLimiter],
+  providers: [BookingsService, LookupRateLimiter],
+  // Re-export RateLimitModule so existing importers (PaymentsModule) keep
+  // injecting the shared TargetRateLimiter through this module.
+  exports: [BookingsService, RateLimitModule],
 })
 export class BookingsModule {}

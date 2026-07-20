@@ -27,6 +27,16 @@ export function getStaffUrl(): string {
 }
 
 /**
+ * The customer door of the same dashboard app (`/account/*`) - derived from
+ * PORTAL_URL exactly like getStaffUrl, so ONE env var keeps configuring the
+ * app's base. Customer welcome/set-password links must land on the account
+ * surface, never the operator portal or staff door.
+ */
+export function getAccountUrl(): string {
+  return getPortalUrl().replace(/\/portal$/, '/account');
+}
+
+/**
  * Provisions an invited auth account: normalized unique email, user row with
  * the given role, and a credential account holding a throwaway password (never
  * transmitted anywhere) so the invite's set-password reset flow can replace it.

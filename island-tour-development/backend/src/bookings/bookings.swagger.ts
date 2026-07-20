@@ -6,17 +6,22 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiResponse,
+  ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import {
   BadRequestErrorDto,
   ConflictErrorDto,
   NotFoundErrorDto,
+  PaymentRequiredErrorDto,
+  UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import {
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
   BookingResponseDto,
+  CustomerBookingSummaryDto,
   UpdateBookingResponseDto,
   ListBookingsResponseDto,
   RecoverReferenceResponseDto,
@@ -59,10 +64,21 @@ export const ApiReserveDocs = () =>
 
 export const ApiConfirmDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Confirm a booking (OCTO step 2)' }),
+    ApiOperation({
+      summary: 'Confirm a booking (OCTO step 2)',
+      description:
+        'Requires the amount due at confirmation (deposit, or the full total for ' +
+        'PAID_IN_FULL) to already be captured in the payment ledger - 402 otherwise. ' +
+        'The Stripe webhook/settle path proves payment via the charge itself.',
+    }),
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
+    ApiResponse({
+      status: 402,
+      type: PaymentRequiredErrorDto,
+      description: 'The amount due at confirmation has not been captured.',
+    }),
     ApiUnprocessableEntityResponse({ description: 'Hold expired.' }),
   );
 
@@ -70,8 +86,17 @@ export const ApiCancelDocs = () =>
   applyDecorators(
     ApiOperation({
       summary: 'Cancel a booking (releases seats, computes refund)',
+      description:
+        'ON_HOLD holds may be released with the booking id alone (checkout-abandon ' +
+        'path). Anything past ON_HOLD requires an authenticated ops session: a ' +
+        'platform role, or the operator who owns the booking (foreign ids 404). ' +
+        'Customers use POST /bookings/:id/cancellation-request instead.',
     }),
     ApiOkResponse({ type: BookingResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Cancelling past ON_HOLD requires an ops session.',
+    }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
   );
@@ -86,8 +111,19 @@ export const ApiExtendDocs = () =>
 
 export const ApiUpdateBookingDocs = () =>
   applyDecorators(
-    ApiOperation({ summary: 'Update booking contact / notes / pickup' }),
+    ApiOperation({
+      summary: 'Update booking contact / notes / pickup',
+      description:
+        'Contact changes on a CONFIRMED booking require an X-Traveler-Session ' +
+        'owning the booking (401 otherwise) - the ON_HOLD checkout contact PATCH ' +
+        'needs no session.',
+    }),
     ApiOkResponse({ type: UpdateBookingResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description:
+        'Contact rewrite on a CONFIRMED booking without an owning traveler session.',
+    }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
   );
@@ -199,6 +235,36 @@ export const ApiGetBookingDocs = () =>
     ApiOperation({ summary: 'Get a booking by uuid (auth-scoped)' }),
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
+  );
+
+export const ApiCustomerSummaryDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: "Customer booking summary (the caller's own bookings)",
+      description:
+        'Stat row for the customer dashboard: trip counts (CONFIRMED + REDEEMED), upcoming ' +
+        'trips, and net spend per currency computed live from the payment ledger ' +
+        '(SUCCEEDED payments minus refunds). Always scoped to the authenticated user.',
+    }),
+    ApiOkResponse({ type: CustomerBookingSummaryDto }),
+  );
+
+export const ApiCustomerCancellationRequestDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Request cancellation of an owned booking (customer account)',
+      description:
+        'Dashboard variant of the public TYP cancellation request: the gate is the Better Auth ' +
+        'session + booking ownership (userId) instead of the traveler HMAC session. Never ' +
+        'cancels on click - it emails the Island Tours admin. Foreign booking ids return 404. ' +
+        'Confirmed bookings only. Throttled to 1 per 10s / 3 per min / 10 per hour per IP.',
+    }),
+    ApiOkResponse({ type: RequestCancellationResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description: 'Booking is not CONFIRMED, so there is nothing to cancel',
+    }),
   );
 
 export const ApiListBookingsDocs = () =>
