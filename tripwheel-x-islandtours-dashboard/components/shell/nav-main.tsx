@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
@@ -78,6 +79,10 @@ export function NavMain({ groups }: NavMainProps) {
     // or it keeps covering the page the user just navigated to. No-op on
     // desktop (openMobile is only rendered under the mobile breakpoint).
     const { setOpenMobile } = useSidebar();
+    // Warms the destination table's query on hover/focus. The route itself is
+    // already instant; this closes the remaining gap, which is the table's own
+    // fetch-on-mount.
+    const prefetchNav = useNavPrefetch();
 
     const isPathActive = (url?: string) => {
         const target = toHref(url);
@@ -130,6 +135,12 @@ export function NavMain({ groups }: NavMainProps) {
                                                 )}>
                                                 <Link
                                                     href={toHref(item.url)}
+                                                    onMouseEnter={() =>
+                                                        prefetchNav(item.url)
+                                                    }
+                                                    onFocus={() =>
+                                                        prefetchNav(item.url)
+                                                    }
                                                     onClick={() =>
                                                         setOpenMobile(false)
                                                     }>

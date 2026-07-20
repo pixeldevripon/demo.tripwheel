@@ -9,7 +9,14 @@ import Statistics from './statistics';
 interface PageComponentsProps {
     /** Resolves to `null` when the analytics fetch failed - never to zeros. */
     statsPromise?: Promise<DashboardStats | null>;
-    loggedInUser: UserProfile;
+    /**
+     * Only `SetupGuide` (currently commented out below) ever read this, so the
+     * Overview page no longer fetches the full profile just to pass it - that
+     * fan-out was blocking the navigation. Re-enabling `SetupGuide` means
+     * fetching the profile again, ideally inside its own Suspense boundary so
+     * it streams rather than holding up the page.
+     */
+    loggedInUser?: UserProfile;
     /** The range the server fetched with, so the control renders selected. */
     rangePreset: RangePresetId;
     /** That range in words, resolved server-side so it cannot drift. */

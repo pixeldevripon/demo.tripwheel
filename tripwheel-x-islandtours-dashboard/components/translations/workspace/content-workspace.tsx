@@ -71,17 +71,22 @@ export interface ContentWorkspaceProps {
     source: Record<string, unknown> | undefined;
     /** Target-locale record. */
     target: Record<string, unknown> | undefined;
-    /** Page-content records (aboutText/metaTitle/metaDescription). */
-    pageSource: Record<string, unknown> | undefined;
-    pageTarget: Record<string, unknown> | undefined;
+    /**
+     * Page-content records (aboutText/metaTitle/metaDescription). Omit all
+     * three page-content props for an entity that has no page-content record -
+     * the homepage is content-only, with no About/SEO body of its own, and
+     * rendering empty fields that save nowhere would be worse than absent.
+     */
+    pageSource?: Record<string, unknown> | undefined;
+    pageTarget?: Record<string, unknown> | undefined;
     extraSections?: ExtraSection[];
     isLoading: boolean;
     isMachineTranslated?: boolean;
     isSaving: boolean;
     /** Upsert the core locale. Values trimmed; '' means clear (null). */
     onSave: (values: Record<string, string>) => Promise<unknown>;
-    /** Upsert the page-content locale record. */
-    onSavePageContent: (values: Record<string, string>) => Promise<unknown>;
+    /** Upsert the page-content locale record. Omit when there is none. */
+    onSavePageContent?: (values: Record<string, string>) => Promise<unknown>;
 }
 
 function toFormValue(v: unknown): string {
@@ -229,14 +234,17 @@ export function ContentWorkspace({
             return;
         }
 
-        // 2) Page content record.
-        const pc: Record<string, string> = {};
-        for (const f of PAGE_CONTENT_FIELDS) pc[f.name] = v[pcKey(f.name)] ?? '';
-        try {
-            await onSavePageContent(pc);
-            updates++;
-        } catch {
-            failures.push('Page content');
+        // 2) Page content record - skipped entirely for entities that have none.
+        if (onSavePageContent) {
+            const pc: Record<string, string> = {};
+            for (const f of PAGE_CONTENT_FIELDS)
+                pc[f.name] = v[pcKey(f.name)] ?? '';
+            try {
+                await onSavePageContent(pc);
+                updates++;
+            } catch {
+                failures.push('Page content');
+            }
         }
 
         // 3) FAQ upserts for changed groups (payload requires BOTH fields).
@@ -353,6 +361,7 @@ export function ContentWorkspace({
                     </div>
                 </CollapsibleCard>
 
+                {onSavePageContent ? (
                 <CollapsibleCard title='About & SEO (page content)' defaultOpen>
                     <div>
                         {PAGE_CONTENT_FIELDS.map(f => (
@@ -367,6 +376,7 @@ export function ContentWorkspace({
                         ))}
                     </div>
                 </CollapsibleCard>
+                ) : null}
 
                 {extraSections.map(sec =>
                     sec.rows.length === 0 ? null : (

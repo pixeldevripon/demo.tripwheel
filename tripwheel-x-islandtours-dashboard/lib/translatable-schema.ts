@@ -21,7 +21,8 @@ export type TranslatableEntityType =
     | 'destination'
     | 'category'
     | 'hub'
-    | 'collection';
+    | 'collection'
+    | 'homepage';
 
 export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     'tour',
@@ -29,6 +30,9 @@ export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     'hub',
     'category',
     'collection',
+    // Singleton: exactly one row, keyed 'default'. It has no entity list to
+    // page through and no page-content record - see HOMEPAGE_FIELDS.
+    'homepage',
 ];
 
 export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
@@ -37,6 +41,7 @@ export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
     hub: 'Hubs',
     category: 'Categories',
     collection: 'Collections',
+    homepage: 'Homepage',
 };
 
 export interface TranslatableFieldDef {
@@ -176,6 +181,75 @@ export const PAGE_CONTENT_FIELDS: TranslatableFieldDef[] = [
     },
 ];
 
+/**
+ * Homepage copy, in the order the sections appear on the page - a translator
+ * reading top to bottom is walking the homepage top to bottom. Descriptions say
+ * WHERE the text lands, because a translator has even less context than the
+ * admin who wrote it.
+ *
+ * Every field is optional on the public site: an empty value renders the copy
+ * the site ships with, so a partially translated homepage is coherent rather
+ * than broken.
+ */
+export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
+    {
+        name: 'heroTitle',
+        label: 'Hero headline',
+        kind: 'input',
+        description: 'The large text over the hero photo.',
+    },
+    {
+        name: 'heroSubtitle',
+        label: 'Hero subheading',
+        kind: 'input',
+        description: 'The line directly under the headline.',
+    },
+    {
+        name: 'experiencesTitle',
+        label: 'Experiences heading',
+        kind: 'input',
+        description: 'Above the "Top island experiences" carousel.',
+    },
+    {
+        name: 'editorialTitleLine1',
+        label: 'CTA headline, line 1',
+        kind: 'input',
+        description: 'Top line of the two-line heading on the orange card.',
+    },
+    {
+        name: 'editorialTitleLine2',
+        label: 'CTA headline, line 2',
+        kind: 'input',
+        description: 'Bottom line of that heading.',
+    },
+    {
+        name: 'editorialBody',
+        label: 'CTA body',
+        kind: 'textarea',
+        rows: 3,
+        description: 'The paragraph under the CTA heading.',
+    },
+    {
+        name: 'editorialCta',
+        label: 'CTA button',
+        kind: 'input',
+        description: 'The text inside the white button.',
+    },
+    {
+        name: 'faqTitle',
+        label: 'FAQ title',
+        kind: 'input',
+        description: 'The heading above the FAQ list.',
+    },
+    {
+        name: 'faqSubtitle',
+        label: 'FAQ intro',
+        kind: 'textarea',
+        rows: 3,
+        description: 'The paragraph beside the FAQ list.',
+    },
+];
+
 export const ENTITY_FIELDS: Record<
     TranslatableEntityType,
     TranslatableFieldDef[]
@@ -185,6 +259,7 @@ export const ENTITY_FIELDS: Record<
     category: CATEGORY_FIELDS,
     hub: HUB_FIELDS,
     collection: COLLECTION_FIELDS,
+    homepage: HOMEPAGE_FIELDS,
 };
 
 /**

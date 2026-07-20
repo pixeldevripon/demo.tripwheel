@@ -26,6 +26,8 @@ import {
 import { DataTableBulkBar } from './data-table-bulk-bar';
 import { DataTableEmpty, type DataTableEmptyProps } from './data-table-empty';
 import { DataTablePagination } from './data-table-pagination';
+import { contentSettle } from '@/lib/motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { DataTableSkeleton } from './data-table-skeleton';
 
 /**
@@ -81,6 +83,7 @@ export function DataTable<TData>({
     onRowClick,
     skeletonRows = 8,
 }: DataTableProps<TData>) {
+    const reduceMotion = useReducedMotion();
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({});
@@ -141,7 +144,19 @@ export function DataTable<TData>({
                     rows={skeletonRows}
                 />
             ) : (
-                <div className='overflow-hidden rounded-lg border border-line bg-surface-raised'>
+                /* Fades in rather than replacing the skeleton outright. This
+                   swap fires on EVERY list page the moment its query resolves,
+                   and as a bare ternary it was the most-seen hard cut in the
+                   dashboard. Fade-only and short on purpose: `DataTableSkeleton`
+                   already mirrors the real row height, so the rows land where
+                   the placeholder sat and there is nothing to slide into place
+                   - adding y travel here would read as a jump, not a settle.
+                   `initial={false}` under reduced motion so it appears at once. */
+                <motion.div
+                    initial={reduceMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={contentSettle}
+                    className='overflow-hidden rounded-lg border border-line bg-surface-raised'>
                     <Table>
                         <TableHeader>
                             {table.getHeaderGroups().map((headerGroup) => (
@@ -209,7 +224,7 @@ export function DataTable<TData>({
                             )}
                         </TableBody>
                     </Table>
-                </div>
+                </motion.div>
             )}
 
             <DataTablePagination

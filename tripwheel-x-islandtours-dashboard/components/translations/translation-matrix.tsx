@@ -36,7 +36,9 @@ import {
     useDestinations,
     useDestinationTranslations,
 } from '@/hooks/destinations/use-destinations';
+import { useHomePageTranslations } from '@/hooks/home-page/use-home-page';
 import { useHubs, useHubTranslations } from '@/hooks/hubs/use-hubs';
+import { HOME_ID } from '@/lib/api/home-page';
 import { useAdminTrips, useMyTrips, useTripTranslations } from '@/hooks/trips/use-trips';
 import { ALL_LOCALES, localeFlag, LOCALE_LABELS } from '@/lib/constants/locales';
 import {
@@ -104,6 +106,24 @@ function TourRow({ id, name, subtitle }: { id: string; name: string; subtitle?: 
             id={id}
             name={name}
             subtitle={subtitle}
+            records={data as never}
+            isLoading={isLoading}
+        />
+    );
+}
+
+/**
+ * The homepage singleton: one fixed row, so it needs no list query, no search
+ * and no pagination - just its completeness across locales.
+ */
+function HomepageRow() {
+    const { data, isLoading } = useHomePageTranslations();
+    return (
+        <MatrixRow
+            type='homepage'
+            id={HOME_ID}
+            name='Homepage'
+            subtitle='Hero, experiences heading, CTA card and FAQ intro'
             records={data as never}
             isLoading={isLoading}
         />
@@ -278,7 +298,8 @@ export function TranslationMatrix() {
         setSearch('');
     }
 
-    const paginated = type !== 'collection';
+    // Collections render every row; the homepage is a single fixed row.
+    const paginated = type !== 'collection' && type !== 'homepage';
 
     return (
         <div className='space-y-4'>
@@ -364,6 +385,7 @@ export function TranslationMatrix() {
                             {type === 'collection' && (
                                 <CollectionsBody destinationSlug={destinationSlug} />
                             )}
+                            {type === 'homepage' && <HomepageRow />}
                         </tbody>
                     </table>
                 </div>

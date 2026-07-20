@@ -5,6 +5,7 @@ import {
     DashboardSquare01Icon,
     FilterHorizontalIcon,
     Globe02Icon,
+    Home01Icon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -142,6 +143,21 @@ const dashboardNav: NavGroup[] = [
                 title: "Locals' Favourites",
                 url: 'locals-favourites',
                 icon: StarIcon,
+                permissions: [Permission.MANAGE_EDITORIAL],
+            },
+        ],
+    },
+    {
+        // Admin, rarely. SITE CHROME - the pages themselves rather than the
+        // marketplace entities on them. Deliberately not folded into Curate:
+        // Curate is "which tours/hubs/categories do we push", this is "what
+        // does the homepage say". Same permission, different question.
+        label: 'Content',
+        items: [
+            {
+                title: 'Homepage',
+                url: 'homepage',
+                icon: Home01Icon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
