@@ -222,6 +222,14 @@ tier engine, transactions, availability, tracking, and the public site are the o
 
 - [ ] Send 24h before start; "Today:" last-minute variant; payment-model blocks; no payment links ever
 
+### 6.8 Customer accounts (founder amendment 2026-07-20 - not in master v1.9)
+
+- [x] Booking auto-creates/links a `Role.USER` account (fire-and-forget, backfills past bookings by contactEmail; non-USER emails skipped) — `backend/src/customers/`
+- [x] Welcome email w/ secure set-password link (once per creation; unset-password resend capped 1/24h) — customer branch in `auth.instance.ts`
+- [x] `customers` table (user x operator + aggregates; operator-facing page deferred)
+- [x] Dashboard `/account` door + customer-shaped shell (My Bookings / Payments / Profile) + self-scoped reads (`me/summary`, ledger `paymentStatus`) + customer cancellation-request
+- [ ] Manual E2E pass — full spec + invariants: `technical-doc/customers/CUSTOMER-ACCOUNTS.md`
+
 ---
 
 ## §7 Commercial model
@@ -273,6 +281,23 @@ tier engine, transactions, availability, tracking, and the public site are the o
 ### 8.3 Data contract
 
 - [ ] `booking_complete` payload (booking_value EUR, currency, refs, tour/operator/island, items[], user_data hashes, click_ids) type-checked in CI
+
+### 8.4 Dashboard analytics (built 2026-07-20)
+
+> Full spec: [03-implementation/DASHBOARD-ANALYTICS.md](./03-implementation/DASHBOARD-ANALYTICS.md)
+
+- [x] `GET /analytics/dashboard` aggregate endpoint (`VIEW_ANALYTICS`), replaces the 22-request dashboard fan-out
+- [x] Role-shaped revenue: admin sees commission, operator sees retail minus commission (master 1.4/5.8)
+- [x] Revenue recognized on completion (`REDEEMED`); `pendingEur` reported separately, never summed into earned
+- [x] EUR normalization via each booking's snapshotted `fxRateToEur` (fixes mixed USD/EUR summing under a hardcoded `$`)
+- [x] Refund double-count trap handled (`kind = REFUND` rows only, never `status = REFUNDED`)
+- [x] Customers = distinct bookers `COALESCE(userId, lower(contactEmail))`, so guest checkout counts
+- [x] Real month/day trend series bucketed by recognition date (replaces the fabricated 0.6-1.0 ramp)
+- [x] Booking outcomes funnel + payment-model mix + top tours/operators/destinations/tier breakdowns
+- [x] Dual-currency display via one live `EUR -> USD` rate; EUR alone when no fresh rate
+- [x] `payoutDueEur` (PAID_IN_FULL liability) and `untrackedBalanceEur` (operator-rail balance, expected not received) surfaced with explicit caveats
+- [ ] Settlements ledger would turn `payoutDueEur` from *earned* into *unsettled*
+- [ ] Pre-booking funnel (views/add-to-cart) needs a tracking event store
 
 ### 8.4 Definition of Done
 

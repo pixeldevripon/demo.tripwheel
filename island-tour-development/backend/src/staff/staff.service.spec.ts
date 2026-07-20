@@ -42,7 +42,7 @@ import { StaffService } from './staff.service';
 
 function createMockPrismaService() {
   return {
-    user: { findUnique: jest.fn(), update: jest.fn() },
+    user: { findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
     staffMember: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -620,6 +620,118 @@ describe('StaffService', () => {
       expect(keys).not.toContain(Permission.MANAGE_OPERATOR_PAYMENTS);
       // Read-only user visibility stays grantable.
       expect(keys).toContain(Permission.VIEW_USERS);
+    });
+  });
+
+  describe('system administrator visibility', () => {
+    const adminUser = {
+      id: 'admin-1',
+      name: 'System Admin',
+      email: 'admin@islandtours.test',
+      image: null,
+      status: UserStatus.ACTIVE,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      sessions: [{ createdAt: new Date('2026-07-19T10:00:00Z') }],
+    };
+
+    beforeEach(() => {
+      prisma.user.findMany.mockResolvedValue([adminUser]);
+      prisma.staffMember.count.mockResolvedValue(0);
+      prisma.staffMember.findMany.mockResolvedValue([]);
+    });
+
+    it('lists the platform admin even though it has no staff_members row', async () => {
+      const res = await service.listPlatformStaff({});
+
+      expect(res.total).toBe(1);
+      expect(res.data).toHaveLength(1);
+      expect(res.data[0]).toMatchObject({
+        id: 'admin-1',
+        isSystemAdmin: true,
+        operatorId: null,
+        status: StaffStatus.ACTIVE,
+        designation: null,
+      });
+      // Real last-login comes from the newest session, not a placeholder.
+      expect(res.data[0].lastLoginAt).toEqual(new Date('2026-07-19T10:00:00Z'));
+      // Full admin permission set, so the UI can render "Full access".
+      expect(res.data[0].effectivePermissions).toContain(
+        Permission.MANAGE_SYSTEM,
+      );
+    });
+
+    it('sorts the admin ahead of real staff and counts it in the total', async () => {
+      prisma.staffMember.count.mockResolvedValue(1);
+      prisma.staffMember.findMany.mockResolvedValue([
+        {
+          id: 'staff-1',
+          operatorId: null,
+          seatRole: StaffSeatRole.STAFF,
+          status: StaffStatus.ACTIVE,
+          extraPermissions: [],
+          revokedPermissions: [],
+          invitedAt: new Date(),
+          activatedAt: new Date(),
+          lastLoginAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          user: {
+            id: 'u-staff',
+            name: 'Staffer',
+            email: 's@x.test',
+            image: null,
+            status: UserStatus.ACTIVE,
+          },
+          designation: null,
+          invitedBy: null,
+        },
+      ]);
+
+      const res = await service.listPlatformStaff({});
+
+      expect(res.total).toBe(2);
+      expect(res.data.map((m) => m.id)).toEqual(['admin-1', 'staff-1']);
+      expect(res.data[1].isSystemAdmin).toBe(false);
+    });
+
+    it('hides the admin when filtering for a status it can never hold', async () => {
+      const res = await service.listPlatformStaff({
+        status: StaffStatus.SUSPENDED,
+      });
+
+      // An admin is always active and never invited, so a SUSPENDED filter
+      // must not surface it as a phantom match.
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(res.data).toHaveLength(0);
+      expect(res.total).toBe(0);
+    });
+
+    it.each([
+      [
+        'removePlatformStaff',
+        () => service.removePlatformStaff('admin-1', makeActor()),
+      ],
+      [
+        'updatePlatformStaffStatus',
+        () =>
+          service.updatePlatformStaffStatus(
+            'admin-1',
+            { status: StaffStatus.SUSPENDED },
+            makeActor(),
+          ),
+      ],
+      [
+        'updatePlatformStaff',
+        () => service.updatePlatformStaff('admin-1', { extraPermissions: [] }),
+      ],
+      ['resendPlatformInvite', () => service.resendPlatformInvite('admin-1')],
+    ])('rejects %s on the system administrator', async (_name, call) => {
+      prisma.user.findUnique.mockResolvedValue({ role: Role.ADMIN });
+
+      await expect(call()).rejects.toThrow(ForbiddenException);
+      // The guard must fire BEFORE the staff lookup, so the refusal reads as
+      // "not allowed" rather than 404 "not found".
+      expect(prisma.staffMember.findUnique).not.toHaveBeenCalled();
     });
   });
 });
