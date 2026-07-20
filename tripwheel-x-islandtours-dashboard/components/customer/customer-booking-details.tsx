@@ -17,15 +17,38 @@ import {
     BOOKING_STATUS,
 } from '@/components/common/status-maps';
 import { useRequestCancellation } from '@/hooks/bookings/use-bookings';
-import { bookingMoney } from '@/lib/bookings/format';
+import {
+    bookingMoney,
+    isFreeWindowOpen,
+    partyPriceLines,
+    paymentModelLabel,
+    refundDue,
+} from '@/lib/bookings/format';
 import { formatDate } from '@/lib/utils';
-import type { BookingListItem } from '@/types/booking';
+import type { BookingListItem, BookingPaymentModel } from '@/types/booking';
 
 /**
- * Customer booking quick view - a side sheet with the trip essentials, the
- * ledger-derived payment state, and the cancellation-request flow. The
- * request NEVER cancels on click: it emails the Island Tours admin, who
- * processes the refund (master 6.4) - the sheet says so explicitly.
+ * What each payment model means to the TRAVELLER, in their words - the enum
+ * label alone ("Operator link") tells a customer nothing about whether they
+ * still owe money or to whom.
+ */
+const PAYMENT_MODEL_NOTE: Record<BookingPaymentModel, string> = {
+    OPERATOR_LINK:
+        'You paid a deposit to Island Tours. The balance is settled directly with the operator.',
+    ON_ARRIVAL: 'You pay the operator in full on the day of your trip.',
+    PAID_IN_FULL: 'You paid the full amount to Island Tours up front.',
+    OPERATOR_FULL: 'This booking is settled entirely with the operator.',
+};
+
+/**
+ * Customer booking detail sheet: the trip, what was paid and to whom, and the
+ * cancellation flow. Every value is a real field off the booking payload -
+ * nothing here is inferred or estimated.
+ *
+ * The cancellation request NEVER cancels on click (master 6.4): it emails the
+ * Island Tours admin, who processes the refund. The UI says so before the
+ * traveller commits, and asks for an explicit confirm so a mis-click on a row
+ * cannot fire a request.
  */
 export function CustomerBookingDetails({
     booking,
@@ -35,26 +58,34 @@ export function CustomerBookingDetails({
     onOpenChange: (open: boolean) => void;
 }) {
     const [reason, setReason] = useState('');
+    const [confirming, setConfirming] = useState(false);
     const requestCancellation = useRequestCancellation();
 
     // Fresh form per booking (the sheet is reused across rows).
-    useEffect(() => setReason(''), [booking?.id]);
+    useEffect(() => {
+        setReason('');
+        setConfirming(false);
+    }, [booking?.id]);
 
     if (!booking) return <Sheet open={false} onOpenChange={onOpenChange} />;
 
     const statusMeta = BOOKING_STATUS[booking.status];
     const payMeta = BOOKING_PAYMENT_STATE[booking.paymentStatus];
-    const alreadyRequested = booking.utcCancellationRequestedAt !== null;
-    const canRequest = booking.status === 'CONFIRMED' && !alreadyRequested;
+    const balance = Number(booking.balanceAmount);
+    const deposit = Number(booking.depositAmount);
+    const partyLines = partyPriceLines(booking);
 
     return (
         <Sheet open onOpenChange={onOpenChange}>
             <SheetContent className='overflow-y-auto sm:max-w-md'>
                 <SheetHeader>
-                    <SheetTitle className='flex items-center gap-2'>
+                    <SheetTitle className='flex flex-wrap items-center gap-2'>
                         <span className='font-mono'>{booking.displayRef}</span>
                         <StatusBadge variant={statusMeta.variant}>
                             {statusMeta.label}
+                        </StatusBadge>
+                        <StatusBadge variant={payMeta.variant}>
+                            {payMeta.label}
                         </StatusBadge>
                     </SheetTitle>
                     <SheetDescription>{booking.tourName}</SheetDescription>
@@ -67,88 +98,225 @@ export function CustomerBookingDetails({
                             {booking.startTime ? ` · ${booking.startTime}` : ''}
                         </Row>
                         <Row label='Travelers'>{booking.partySize}</Row>
+                        {partyLines.length ? (
+                            <Row label='Tickets'>
+                                <span className='block'>
+                                    {partyLines
+                                        .map(l => `${l.count} × ${l.each}`)
+                                        .join(', ')}
+                                </span>
+                            </Row>
+                        ) : null}
                         <Row label='Booked on'>
                             {formatDate(booking.createdAt)}
                         </Row>
+                        {booking.utcConfirmedAt ? (
+                            <Row label='Confirmed'>
+                                {formatDate(booking.utcConfirmedAt)}
+                            </Row>
+                        ) : null}
                     </Section>
 
                     <Section label='Payment'>
-                        <Row label='Total'>
+                        <Row label='Trip total'>
                             {bookingMoney(
                                 booking.totalRetail,
                                 booking.currency,
                             )}
                         </Row>
-                        <Row label='Paid'>
+                        {deposit > 0 ? (
+                            <Row label='Deposit'>
+                                {bookingMoney(
+                                    booking.depositAmount,
+                                    booking.currency,
+                                )}
+                            </Row>
+                        ) : null}
+                        <Row label='Paid so far'>
                             {bookingMoney(booking.paidAmount, booking.currency)}
                         </Row>
-                        <Row label='State'>
-                            <StatusBadge variant={payMeta.variant}>
-                                {payMeta.label}
-                            </StatusBadge>
+                        {balance > 0 ? (
+                            <Row label='Due to operator'>
+                                {bookingMoney(
+                                    booking.balanceAmount,
+                                    booking.currency,
+                                )}
+                            </Row>
+                        ) : null}
+                        <Row label='Method'>
+                            {paymentModelLabel[booking.paymentModel]}
                         </Row>
+                        <p className='m-0 pt-2 text-xs text-muted-foreground'>
+                            {PAYMENT_MODEL_NOTE[booking.paymentModel]}
+                        </p>
                     </Section>
 
                     <Section label='Cancellation'>
-                        {alreadyRequested ? (
-                            <div className='space-y-1'>
-                                <StatusBadge variant='info'>
-                                    Cancellation requested
-                                </StatusBadge>
-                                <p className='m-0 text-xs text-muted-foreground'>
-                                    Requested on{' '}
-                                    {formatDate(
-                                        booking.utcCancellationRequestedAt!,
-                                    )}
-                                    . We&apos;ll email you once it has been
-                                    processed.
-                                </p>
-                            </div>
-                        ) : canRequest ? (
-                            <div className='space-y-2'>
-                                <p className='m-0 text-xs text-muted-foreground'>
-                                    Requesting a cancellation notifies our team
-                                    - nothing is cancelled until we process it
-                                    and email you the outcome.
-                                </p>
-                                <Label
-                                    htmlFor='cancel-reason'
-                                    className='text-sm'>
-                                    Anything we should know? (optional)
-                                </Label>
-                                <Textarea
-                                    id='cancel-reason'
-                                    rows={2}
-                                    maxLength={500}
-                                    value={reason}
-                                    onChange={e => setReason(e.target.value)}
-                                />
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    disabled={requestCancellation.isPending}
-                                    onClick={() =>
-                                        requestCancellation.mutate({
-                                            id: booking.id,
-                                            reason: reason.trim() || undefined,
-                                        })
-                                    }
-                                    className='text-destructive hover:text-destructive'>
-                                    {requestCancellation.isPending
-                                        ? 'Sending request…'
-                                        : 'Request cancellation'}
-                                </Button>
-                            </div>
-                        ) : (
-                            <p className='m-0 text-xs text-muted-foreground'>
-                                Only confirmed bookings can request a
-                                cancellation.
-                            </p>
-                        )}
+                        <CancellationPanel
+                            booking={booking}
+                            reason={reason}
+                            onReasonChange={setReason}
+                            confirming={confirming}
+                            onConfirmingChange={setConfirming}
+                            isPending={requestCancellation.isPending}
+                            onSubmit={() =>
+                                requestCancellation.mutate(
+                                    {
+                                        id: booking.id,
+                                        reason: reason.trim() || undefined,
+                                    },
+                                    { onSuccess: () => setConfirming(false) },
+                                )
+                            }
+                        />
                     </Section>
                 </div>
             </SheetContent>
         </Sheet>
+    );
+}
+
+/**
+ * The cancellation flow, in the four states a traveller can actually be in:
+ * already requested, eligible, window closed, or not cancellable at all. Each
+ * state says what happens to their money - the single thing they came here to
+ * find out.
+ */
+function CancellationPanel({
+    booking,
+    reason,
+    onReasonChange,
+    confirming,
+    onConfirmingChange,
+    isPending,
+    onSubmit,
+}: {
+    booking: BookingListItem;
+    reason: string;
+    onReasonChange: (v: string) => void;
+    confirming: boolean;
+    onConfirmingChange: (v: boolean) => void;
+    isPending: boolean;
+    onSubmit: () => void;
+}) {
+    // The server decides eligibility (it holds the tour timezone, which the
+    // list payload does not); the UI only renders its verdict.
+    const blocked = booking.cancellationBlockedReason;
+    const windowOpen = isFreeWindowOpen(booking);
+
+    if (blocked === 'ALREADY_REQUESTED') {
+        const refund = refundDue(booking);
+        return (
+            <div className='space-y-2'>
+                <StatusBadge variant='info'>Cancellation requested</StatusBadge>
+                <p className='m-0 text-xs text-muted-foreground'>
+                    Requested on{' '}
+                    {formatDate(booking.utcCancellationRequestedAt)}. We&apos;ll
+                    email you once it has been processed.
+                </p>
+                {booking.requestedInFreeWindow === true ? (
+                    <p className='m-0 text-xs text-muted-foreground'>
+                        Your request arrived inside the free-cancellation
+                        window
+                        {refund ? `, so ${refund} is due back to you` : ''}.
+                    </p>
+                ) : booking.requestedInFreeWindow === false ? (
+                    <p className='m-0 text-xs text-muted-foreground'>
+                        Your request arrived after the free-cancellation
+                        deadline, so a refund is not guaranteed. Our team will
+                        confirm the outcome by email.
+                    </p>
+                ) : null}
+            </div>
+        );
+    }
+
+    if (blocked === 'DEPARTED') {
+        return (
+            <p className='m-0 text-xs text-muted-foreground'>
+                This trip has already departed, so it can no longer be
+                cancelled. If something went wrong on the day, contact us and
+                we&apos;ll look into it.
+            </p>
+        );
+    }
+
+    if (blocked === 'NOT_CONFIRMED') {
+        return (
+            <p className='m-0 text-xs text-muted-foreground'>
+                Only confirmed bookings can request a cancellation.
+            </p>
+        );
+    }
+
+    return (
+        <div className='space-y-2'>
+            {windowOpen ? (
+                <p className='m-0 text-xs text-muted-foreground'>
+                    Free cancellation until{' '}
+                    <span className='font-medium text-foreground'>
+                        {formatDate(booking.freeCancelDeadline)}
+                    </span>
+                    . Request before then and you are due a full refund of what
+                    you paid Island Tours.
+                </p>
+            ) : (
+                <p className='m-0 text-xs text-muted-foreground'>
+                    The free-cancellation deadline
+                    {booking.freeCancelDeadline
+                        ? ` (${formatDate(booking.freeCancelDeadline)})`
+                        : ''}{' '}
+                    has passed, so a refund is no longer guaranteed. You can
+                    still ask - our team reviews every request.
+                </p>
+            )}
+
+            {confirming ? (
+                <div className='space-y-2'>
+                    <Label htmlFor='cancel-reason' className='text-sm'>
+                        Anything we should know? (optional)
+                    </Label>
+                    <Textarea
+                        id='cancel-reason'
+                        rows={2}
+                        maxLength={500}
+                        value={reason}
+                        onChange={e => onReasonChange(e.target.value)}
+                    />
+                    <p className='m-0 text-xs text-muted-foreground'>
+                        This sends a request to our team. Nothing is cancelled
+                        and no money moves until we process it and email you the
+                        outcome.
+                    </p>
+                    <div className='flex flex-wrap gap-2'>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            disabled={isPending}
+                            onClick={onSubmit}
+                            className='text-destructive hover:text-destructive'>
+                            {isPending
+                                ? 'Sending request…'
+                                : 'Confirm cancellation request'}
+                        </Button>
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            disabled={isPending}
+                            onClick={() => onConfirmingChange(false)}>
+                            Keep my booking
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => onConfirmingChange(true)}>
+                    Request cancellation
+                </Button>
+            )}
+        </div>
     );
 }
 

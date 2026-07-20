@@ -56,7 +56,19 @@ export interface BookingListItem {
     paymentStatus: BookingPaymentStatus;
     /** Net amount paid (SUCCEEDED payments minus refunds), exact decimal string. */
     paidAmount: string;
+    /**
+     * Server verdict on cancellation. Never re-derive this client-side: the
+     * start time is a LOCAL wall clock and is meaningless without the tour
+     * timezone, which the list payload does not carry.
+     */
+    canRequestCancellation: boolean;
+    cancellationBlockedReason: CancellationBlockedReason | null;
 }
+
+export type CancellationBlockedReason =
+    | 'ALREADY_REQUESTED'
+    | 'NOT_CONFIRMED'
+    | 'DEPARTED';
 
 export type BookingPaymentStatus =
     | 'PAID'

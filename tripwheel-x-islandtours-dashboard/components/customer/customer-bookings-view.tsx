@@ -14,10 +14,11 @@ import {
     useBookings,
     useCustomerBookingSummary,
 } from '@/hooks/bookings/use-bookings';
-import { bookingMoney } from '@/lib/bookings/format';
+import { bookingMoney, freeCancellationNote } from '@/lib/bookings/format';
 import { formatDate } from '@/lib/utils';
 import type { BookingListItem } from '@/types/booking';
 import { CustomerBookingDetails } from './customer-booking-details';
+import { CustomerStatCard } from './customer-stat-card';
 
 /**
  * The customer's "My Bookings" view: a stat row (trips / upcoming / total
@@ -66,14 +67,30 @@ export function CustomerBookingsView() {
             ),
         },
         {
+            accessorKey: 'partySize',
+            header: 'Travelers',
+            cell: ({ row }) => (
+                <span className='text-sm'>{row.original.partySize}</span>
+            ),
+        },
+        {
             accessorKey: 'status',
             header: 'Status',
             cell: ({ row }) => {
-                const meta = BOOKING_STATUS[row.original.status];
+                const b = row.original;
+                const meta = BOOKING_STATUS[b.status];
+                const freeUntil = freeCancellationNote(b);
                 return (
-                    <StatusBadge variant={meta.variant}>
-                        {meta.label}
-                    </StatusBadge>
+                    <div className='min-w-0 space-y-1'>
+                        <StatusBadge variant={meta.variant}>
+                            {meta.label}
+                        </StatusBadge>
+                        {freeUntil ? (
+                            <span className='block text-xs text-muted-foreground'>
+                                {freeUntil}
+                            </span>
+                        ) : null}
+                    </div>
                 );
             },
         },
@@ -81,25 +98,40 @@ export function CustomerBookingsView() {
             accessorKey: 'paymentStatus',
             header: 'Payment',
             cell: ({ row }) => {
-                const meta = BOOKING_PAYMENT_STATE[row.original.paymentStatus];
+                const b = row.original;
+                const meta = BOOKING_PAYMENT_STATE[b.paymentStatus];
                 return (
-                    <StatusBadge variant={meta.variant}>
-                        {meta.label}
-                    </StatusBadge>
+                    <div className='min-w-0 space-y-1'>
+                        <StatusBadge variant={meta.variant}>
+                            {meta.label}
+                        </StatusBadge>
+                        <span className='block text-xs text-muted-foreground'>
+                            {bookingMoney(b.paidAmount, b.currency)} paid
+                        </span>
+                    </div>
                 );
             },
         },
         {
             accessorKey: 'totalRetail',
             header: 'Total',
-            cell: ({ row }) => (
-                <span className='text-sm font-medium'>
-                    {bookingMoney(
-                        row.original.totalRetail,
-                        row.original.currency,
-                    )}
-                </span>
-            ),
+            cell: ({ row }) => {
+                const b = row.original;
+                const balance = Number(b.balanceAmount);
+                return (
+                    <div className='min-w-0'>
+                        <span className='block text-sm font-medium'>
+                            {bookingMoney(b.totalRetail, b.currency)}
+                        </span>
+                        {balance > 0 ? (
+                            <span className='block text-xs text-muted-foreground'>
+                                {bookingMoney(b.balanceAmount, b.currency)} due
+                                to operator
+                            </span>
+                        ) : null}
+                    </div>
+                );
+            },
         },
     ];
 
@@ -107,15 +139,17 @@ export function CustomerBookingsView() {
         <div className='space-y-4'>
             {/* Stat row - live ledger numbers, never aggregate snapshots */}
             <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
-                <StatCard
+                <CustomerStatCard
                     label='Trips booked'
                     value={summary ? String(summary.bookingsCount) : '–'}
+                    hint='Confirmed and completed'
                 />
-                <StatCard
+                <CustomerStatCard
                     label='Upcoming'
                     value={summary ? String(summary.upcomingCount) : '–'}
+                    hint='Still to travel'
                 />
-                <StatCard
+                <CustomerStatCard
                     label='Total spent'
                     value={
                         summary
@@ -128,6 +162,7 @@ export function CustomerBookingsView() {
                                 : bookingMoney('0', 'EUR')
                             : '–'
                     }
+                    hint='Paid to Island Tours, net of refunds'
                 />
             </div>
 
@@ -158,17 +193,6 @@ export function CustomerBookingsView() {
                     if (!open) setSelected(null);
                 }}
             />
-        </div>
-    );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-    return (
-        <div className='rounded-lg border border-border bg-card p-4'>
-            <p className='m-0 text-xs text-muted-foreground'>{label}</p>
-            <p className='m-0 mt-1 text-xl font-semibold text-foreground'>
-                {value}
-            </p>
         </div>
     );
 }

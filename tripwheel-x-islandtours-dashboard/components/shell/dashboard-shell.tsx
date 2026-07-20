@@ -71,6 +71,7 @@ export default function DashboardShell({
                         userName={userName}
                         userEmail={userEmail}
                         userRole={userRole}
+                        userPermissions={userPermissions}
                         userImage={userImage}
                     />
                     <div className='flex flex-1 flex-col bg-shell-content p-4'>

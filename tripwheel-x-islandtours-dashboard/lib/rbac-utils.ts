@@ -44,6 +44,51 @@ export function filterNavGroups(
     .filter((group) => group.items.length > 0);
 }
 
+/**
+ * The permission set to gate UI with: the backend's EFFECTIVE grants when we
+ * have them (fine-grained staff seats), the static role map only as a
+ * transient-failure fallback - except STAFF, whose fallback is empty rather
+ * than the broad legacy list, since guessing wide for a staff seat shows them
+ * doors their seat may not open. Backend guards enforce regardless; this only
+ * decides what we render.
+ *
+ * Shared by the sidebar and the command palette so a staff member cannot see
+ * an entry in one surface that the other correctly hides.
+ */
+export function resolvePermissions(
+  role: string | undefined,
+  userPermissions: string[] | undefined,
+  roleMap: Record<string, string[]>
+): string[] {
+  if (userPermissions) return userPermissions;
+  if (role === 'STAFF') return [];
+  return roleMap[role ?? ''] ?? [];
+}
+
+/** Roles that get the customer surface instead of the operator/admin one. */
+export function isCustomerRole(role?: string): boolean {
+  return role === 'USER';
+}
+
+/**
+ * The navigation a role may actually see - the ONE place that decision lives.
+ *
+ * A customer gets the SEPARATE customer tree, never the operator tree filtered
+ * by permission. `Role.USER` holds `VIEW_TRIPS` (legacy) plus the self-scoped
+ * `VIEW_BOOKINGS`/`VIEW_PAYMENTS` grants, so permission-filtering the operator
+ * tree leaves Tours, Translations and Cancellations standing - which is
+ * exactly how they leaked into the command palette while the sidebar looked
+ * correct. Both surfaces resolve through here so they cannot disagree again.
+ */
+export function navGroupsForRole(
+  nav: { dashboard: NavGroup[]; customer: NavGroup[] },
+  role: string | undefined,
+  userPermissions: string[]
+): NavGroup[] {
+  const groups = isCustomerRole(role) ? nav.customer : nav.dashboard;
+  return filterNavGroups(groups, userPermissions);
+}
+
 export function filterNavigationByPermissions(
   items: NavItem[] | undefined,
   userPermissions: string[]
