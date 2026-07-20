@@ -114,6 +114,32 @@ export class RequestCancellationResponseDto {
   @ApiProperty({ example: true }) requested!: boolean;
 }
 
+/** One currency bucket of a customer's net spend (payments minus refunds). */
+export class CustomerSpendDto {
+  @ApiProperty({ example: 'USD' }) currency!: string;
+  @ApiProperty({
+    example: '248.00',
+    description: 'Net amount as an exact decimal string',
+  })
+  amount!: string;
+}
+
+/**
+ * Customer dashboard stat row (GET /bookings/me/summary): always scoped to
+ * the authenticated user's own bookings; spend is computed live from the
+ * payment ledger, per currency.
+ */
+export class CustomerBookingSummaryDto {
+  @ApiProperty({ example: 4, description: 'CONFIRMED + REDEEMED bookings' })
+  bookingsCount!: number;
+
+  @ApiProperty({ example: 1, description: 'Confirmed trips still ahead' })
+  upcomingCount!: number;
+
+  @ApiProperty({ type: [CustomerSpendDto] })
+  totalSpend!: CustomerSpendDto[];
+}
+
 /**
  * Traveller booking lookup (`/bookings` login surface, spec 2): the email the
  * booking was made with + the human display reference from the confirmation

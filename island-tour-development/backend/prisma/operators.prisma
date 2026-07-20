@@ -38,6 +38,7 @@ model Operator {
   tours                     Tour[]
   bookings                  Booking[]
   reviews                   Review[]
+  customers                 Customer[]
   spotlightRequests         SpotlightRequest[]
   notificationSubscriptions NotificationSubscription[]
 

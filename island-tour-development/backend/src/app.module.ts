@@ -26,12 +26,14 @@ import { AvailabilityModule } from '@/availability/availability.module';
 import { FxModule } from '@/fx/fx.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsModule } from '@/bookings/bookings.module';
+import { CustomersModule } from '@/customers/customers.module';
 import { PaymentsModule } from '@/payments/payments.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { WishlistModule } from '@/wishlist/wishlist.module';
 import { WorkersModule } from '@/workers/workers.module';
+import { AnalyticsModule } from '@/analytics/analytics.module';
 
 // NOTE: ThrottlerModule and ThrottlerGuard live in AuthModule so the rate-limit
 // guard fires before session validation on every request. See auth.module.ts.
@@ -65,12 +67,14 @@ import { WorkersModule } from '@/workers/workers.module';
     FxModule,
     TiersModule,
     BookingsModule,
+    CustomersModule,
     PaymentsModule,
     TrackingModule,
     ReviewsModule,
     NotificationsModule,
     WishlistModule,
     WorkersModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

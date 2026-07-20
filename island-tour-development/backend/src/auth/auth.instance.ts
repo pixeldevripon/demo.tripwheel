@@ -58,6 +58,27 @@ export const auth = betterAuth({
         sendInBackground(
           'invite',
           (async () => {
+            // Customers (Role.USER) are provisioned by bookings, never by the
+            // staff/operator invite flows - greet them with the customer
+            // welcome copy. `role` is a Better Auth additionalField; fall
+            // back to a lookup in case the hook payload omits it.
+            const role =
+              (user as { role?: Role }).role ??
+              (
+                await authPrismaClient.user.findUnique({
+                  where: { id: user.id },
+                  select: { role: true },
+                })
+              )?.role;
+            if (role === Role.USER) {
+              await mailService.sendCustomerWelcomeEmail(
+                user.email,
+                url,
+                user.name ?? undefined,
+              );
+              return;
+            }
+
             const member = await authPrismaClient.staffMember.findUnique({
               where: { userId: user.id },
               select: {

@@ -2,6 +2,23 @@
  * Unit tests for BookingsService. Prisma is mocked; `$transaction(cb)` runs the
  * callback against the same mock so atomic seat-claim/release paths are exercised.
  */
+// Mock the Better Auth singleton so the ESM `better-auth` package is never
+// loaded in the unit test (the service now imports CustomerProvisioningService,
+// which reaches auth.instance; same approach as staff/operators specs).
+jest.mock('@/auth/auth.instance', () => ({
+  auth: {
+    $context: Promise.resolve({
+      password: { hash: jest.fn() },
+      internalAdapter: {
+        createUser: jest.fn(),
+        linkAccount: jest.fn(),
+        deleteUser: jest.fn(),
+      },
+    }),
+    api: { requestPasswordReset: jest.fn() },
+  },
+}));
+
 import {
   ConflictException,
   ForbiddenException,
@@ -72,6 +89,14 @@ function mockPrisma() {
     bookingUnitItem: { updateMany: jest.fn() },
     pickupLocation: { findUnique: jest.fn() },
     operator: { findUnique: jest.fn() },
+    // Customer summary reads the payment ledger per currency; confirm()
+    // verifies the amount due was captured. Default = fully paid so the
+    // transition tests exercise the transition, not the payment gate (the
+    // gate has its own tests overriding this to unpaid).
+    payment: {
+      groupBy: jest.fn().mockResolvedValue([]),
+      aggregate: jest.fn().mockResolvedValue({ _sum: { amount: D('999999') } }),
+    },
   };
   p.$transaction = jest.fn((arg: unknown) =>
     typeof arg === 'function'
@@ -269,6 +294,7 @@ describe('BookingsService', () => {
   let fx: any;
   let lookupLimiter: any;
   let targetLimiter: any;
+  let customerProvisioning: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -307,6 +333,10 @@ describe('BookingsService', () => {
       recordSuccess: jest.fn(),
     };
     targetLimiter = { consume: jest.fn() };
+    customerProvisioning = {
+      provisionForBooking: jest.fn().mockResolvedValue(undefined),
+      recomputeAggregates: jest.fn().mockResolvedValue(undefined),
+    };
     svc = new BookingsService(
       prisma,
       mail,
@@ -316,6 +346,7 @@ describe('BookingsService', () => {
       fx,
       lookupLimiter,
       targetLimiter,
+      customerProvisioning,
     );
   });
 
@@ -698,7 +729,7 @@ describe('BookingsService', () => {
       m.booking.update.mockResolvedValue(
         fakeBooking({ status: BookingStatus.CANCELLED }),
       );
-      await svc.cancel('b1', {});
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
       // Release resets the fill to zero rather than counting down the headcount.
       expect(releaseCalls(m).some((c) => c.data.bookedCount === 0)).toBe(true);
     });
@@ -726,6 +757,28 @@ describe('BookingsService', () => {
           }),
         }),
       );
+    });
+
+    it('402s an unpaid confirm - a raw booking id is not a free-confirmation capability', async () => {
+      m.booking.findUnique.mockResolvedValue(fakeBooking());
+      m.payment.aggregate.mockResolvedValue({ _sum: { amount: null } });
+      await expect(
+        svc.confirm('b1', {
+          contact: { firstName: 'A', lastName: 'B', email: 'a@b.io' },
+        }),
+      ).rejects.toMatchObject({ status: 402 });
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('402s a deposit paid short of the amount due', async () => {
+      // Fixture: OPERATOR_LINK, depositAmount 31.99 - 10.00 captured is short.
+      m.booking.findUnique.mockResolvedValue(fakeBooking());
+      m.payment.aggregate.mockResolvedValue({ _sum: { amount: D('10.00') } });
+      await expect(
+        svc.confirm('b1', {
+          contact: { firstName: 'A', lastName: 'B', email: 'a@b.io' },
+        }),
+      ).rejects.toMatchObject({ status: 402 });
     });
 
     it('rejects confirming an expired hold', async () => {
@@ -773,7 +826,11 @@ describe('BookingsService', () => {
         }),
       );
 
-      const res = await svc.cancel('b1', {});
+      const res = await svc.cancel(
+        'b1',
+        {},
+        { id: 'admin-1', role: Role.ADMIN },
+      );
       // Seats are released via the clamped count-down (master §3).
       expect(m.departure.update).toHaveBeenCalled();
       expect(res.cancellationRefund).toBe('FULL');
@@ -806,16 +863,20 @@ describe('BookingsService', () => {
       // Requested ~73h before start → inside the free window → FULL, even though
       // the departure is only days away in local time.
       setup();
-      const early = await svc.cancel('b1', {
-        requestedAt: '2030-06-02T12:00:00.000Z',
-      });
+      const early = await svc.cancel(
+        'b1',
+        { requestedAt: '2030-06-02T12:00:00.000Z' },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
       expect(early.cancellationRefund).toBe('FULL');
 
       // Requested ~13h before start → past the 48h window → NONE.
       setup();
-      const late = await svc.cancel('b1', {
-        requestedAt: '2030-06-05T00:00:00.000Z',
-      });
+      const late = await svc.cancel(
+        'b1',
+        { requestedAt: '2030-06-05T00:00:00.000Z' },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
       expect(late.cancellationRefund).toBe('NONE');
     });
 
@@ -843,9 +904,78 @@ describe('BookingsService', () => {
       m.booking.findUnique.mockResolvedValue(
         fakeBooking({ status: BookingStatus.REDEEMED }),
       );
-      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(
-        ConflictException,
+      await expect(
+        svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    // Authorization outranks the status check: a 409 naming the status would
+    // tell an anonymous caller what state someone else's booking is in.
+    it('401s (not 409) an anonymous cancel of a redeemed booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.REDEEMED }),
       );
+      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('401s an anonymous (or customer) cancel of a CONFIRMED booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      await expect(
+        svc.cancel('b1', {}, { id: 'cust-1', role: Role.USER }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it("404s an operator cancelling ANOTHER operator's booking - no existence oracle", async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED, operatorId: 'op1' }),
+      );
+      m.operator.findUnique.mockResolvedValue({ id: 'op-other' });
+      await expect(
+        svc.cancel('b1', {}, { id: 'user-9', role: Role.TOUR_OPERATOR }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    // The idempotent CANCELLED early-return must sit BELOW the gate, or a raw
+    // id alone hands an anonymous caller the whole booking payload.
+    it('401s an anonymous re-cancel of a booking that was cancelled after confirming', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          utcConfirmedAt: new Date('2026-06-01T00:00:00Z'),
+        }),
+      );
+      await expect(svc.cancel('b1', {})).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('stays idempotent for an already-released hold (never confirmed)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          utcConfirmedAt: null,
+        }),
+      );
+      const res = await svc.cancel('b1', {});
+      expect(res.id).toBe('b1');
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('withholds commission from the traveler-facing cancel payload', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CANCELLED, utcConfirmedAt: null }),
+      );
+      const res = await svc.cancel('b1', {});
+      expect(res.commissionRate).toBeNull();
+      expect(res.commissionAmount).toBeNull();
     });
   });
 
@@ -1234,6 +1364,7 @@ describe('BookingsService', () => {
         contactFullName: 'Jane Doe',
         contactEmail: 'jane@example.test',
         tour: { name: 'Klein Curacao Day Trip', cancellationHours: 48 },
+        payments: [], // included by list() for the paymentStatus derivation
         ...over,
       });
 
@@ -1253,6 +1384,30 @@ describe('BookingsService', () => {
       expect(row.contactFullName).toBe('Jane Doe');
       expect(row.freeCancelDeadline).toBe('2030-06-03T09:00:00.000Z');
       expect(row.requestedInFreeWindow).toBe(true);
+    });
+
+    it('scopes USER (customer) to their OWN bookings, never operator resolution', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list({}, { id: 'cust-1', role: Role.USER });
+      const args = prisma.booking.findMany.mock.calls.at(-1)[0];
+      expect(args.where.userId).toBe('cust-1');
+      // A customer must never hit operator resolution (it would 4xx them).
+      expect(prisma.operator.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('nulls the commission snapshot on rows returned to a USER (customer)', async () => {
+      prisma.booking.count.mockResolvedValue(1);
+      prisma.booking.findMany.mockResolvedValue([
+        listRow({ userId: 'cust-1', commissionRate: D('0.20') }),
+      ]);
+      const res = await svc.list({}, { id: 'cust-1', role: Role.USER });
+      expect(res.data[0].commissionRate).toBeNull();
+      expect(res.data[0].commissionAmount).toBeNull();
+
+      // Operators/admins keep seeing it.
+      const adminRes = await svc.list({}, { id: 'admin-1', role: Role.ADMIN });
+      expect(adminRes.data[0].commissionRate).not.toBeNull();
     });
 
     it('judges an out-of-window request at the REQUEST instant (C23)', async () => {
@@ -1399,6 +1554,71 @@ describe('BookingsService', () => {
 
   // The tokenized /cancel/{publicRef} form (master 6.4/C1). It never cancels
   // anything itself: it emails the admin, who processes the refund.
+  describe('update (contact ownership gate)', () => {
+    const CONTACT = {
+      firstName: 'Ada',
+      lastName: 'Byron',
+      email: 'new@example.test',
+    };
+
+    beforeEach(() => {
+      m.booking.update.mockImplementation(({ data }: any) =>
+        Promise.resolve(fakeBooking({ ...data })),
+      );
+    });
+
+    it('sets the contact on an ON_HOLD booking with no session (checkout path)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD }),
+      );
+      const res = await svc.update('b1', { contact: CONTACT });
+      expect(res.sessionToken).toBeDefined();
+    });
+
+    it('401s a contact rewrite on a CONFIRMED booking without an owning session', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      await expect(
+        svc.update('b1', { contact: CONTACT }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(
+        svc.update(
+          'b1',
+          { contact: CONTACT },
+          issueTravelerSession('stranger@example.test'),
+        ),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('allows the owner (traveler session for the CURRENT contact) to update contact', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      await svc.update(
+        'b1',
+        { contact: CONTACT },
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(m.booking.update).toHaveBeenCalled();
+    });
+
+    it('leaves non-contact updates (notes/pickup) ungated on CONFIRMED', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      await svc.update('b1', { notes: 'gate 4' });
+      expect(m.booking.update).toHaveBeenCalled();
+    });
+  });
+
   describe('requestCancellation', () => {
     const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -1556,6 +1776,83 @@ describe('BookingsService', () => {
         svc.requestCancellation('p1', undefined, ownerToken()),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
       expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestCancellationAsCustomer (dashboard /account)', () => {
+    const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+
+    const owned = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        utcCancellationRequestedAt: null,
+        userId: 'u1',
+        tour: { name: 'Klein Curacao Day Trip' },
+        ...over,
+      });
+
+    beforeEach(() => {
+      process.env.ADMIN_EMAIL = 'admin@islandtours.test';
+      m.booking.update.mockResolvedValue({});
+    });
+
+    afterAll(() => {
+      process.env.ADMIN_EMAIL = ORIGINAL_ADMIN_EMAIL;
+    });
+
+    it('submits for the owning customer - same downstream flow as the TYP route', async () => {
+      m.booking.findUnique.mockResolvedValue(owned());
+      await expect(
+        svc.requestCancellationAsCustomer('b1', { id: 'u1' }, 'plans changed'),
+      ).resolves.toEqual({ requested: true });
+      expect(mail.sendCancellationRequestEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it('404s (never 403s) a booking owned by someone else - no existence oracle', async () => {
+      m.booking.findUnique.mockResolvedValue(owned({ userId: 'other-user' }));
+      await expect(
+        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+    });
+
+    it('404s an unlinked (guest) booking even for a logged-in customer', async () => {
+      m.booking.findUnique.mockResolvedValue(owned({ userId: null }));
+      await expect(
+        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('409s a non-confirmed booking through the shared core', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        owned({ status: BookingStatus.CANCELLED }),
+      );
+      await expect(
+        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('getCustomerSummary', () => {
+    it('nets refunds off per-currency spend and drops zeroed currencies', async () => {
+      m.booking.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
+      m.payment.groupBy
+        .mockResolvedValueOnce([
+          { currency: 'USD', _sum: { amount: D('300.00') } },
+          { currency: 'EUR', _sum: { amount: D('80.00') } },
+        ])
+        .mockResolvedValueOnce([
+          { currency: 'USD', _sum: { amount: D('50.00') } },
+          { currency: 'EUR', _sum: { amount: D('80.00') } },
+        ]);
+
+      const res = await svc.getCustomerSummary({ id: 'u1' });
+
+      expect(res.bookingsCount).toBe(3);
+      expect(res.upcomingCount).toBe(1);
+      // USD 300 paid - 50 refunded = 250; EUR nets to zero and disappears.
+      expect(res.totalSpend).toEqual([{ currency: 'USD', amount: '250' }]);
     });
   });
 });

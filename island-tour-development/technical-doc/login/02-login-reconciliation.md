@@ -8,6 +8,11 @@
 >
 > As-built facts verified against `backend/src/auth/`, `backend/prisma/`, `frontend/lib/auth-client.ts`,
 > and the dashboard/auth routes on July 5, 2026.
+>
+> **AMENDED 2026-07-20:** "bookings auto-create guest users" is now IMPLEMENTED - and upgraded to
+> full customer accounts (`Role.USER` + welcome/set-password email + the dashboard `/account`
+> door + self-scoped bookings/payments reads). Travelers-stay-passwordless is now
+> "passwordless-first, account optional." See `technical-doc/customers/CUSTOMER-ACCOUNTS.md`.
 
 ---
 

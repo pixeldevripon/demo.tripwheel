@@ -5,6 +5,7 @@ import * as path from 'path';
 import { Resend } from 'resend';
 import { emailSafeLogoUrl } from './email-logo.util';
 import {
+  customerWelcomeTemplate,
   emailVerificationTemplate,
   operatorInviteTemplate,
   passwordResetTemplate,
@@ -155,6 +156,33 @@ export class MailService {
     await this.sendMail({
       to,
       subject: "You've been invited to Island Tours - set your password",
+      html,
+      text,
+    });
+  }
+
+  // ── Customer welcome (set-password link) ────────────────────────────────────
+
+  /**
+   * Traveler welcome: their booking auto-created a Role.USER account and this
+   * carries the secure set-password link (Better Auth reset token, 1h). The
+   * auth hook picks this over the operator/staff invites when the invited
+   * user's role is USER (see auth.instance.ts sendResetPassword).
+   */
+  async sendCustomerWelcomeEmail(
+    to: string,
+    inviteUrl: string,
+    name?: string,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = customerWelcomeTemplate({
+      inviteUrl,
+      siteLogoUrl,
+      name,
+    });
+    await this.sendMail({
+      to,
+      subject: 'Welcome to Island Tours - set your password',
       html,
       text,
     });

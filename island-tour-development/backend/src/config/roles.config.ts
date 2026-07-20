@@ -237,5 +237,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_REVIEWS,
     Permission.VIEW_CONTENT,
     Permission.VIEW_ORDERS,
+    // Customer dashboard reads - the bookings/payments list services scope
+    // these to the caller's own rows (where userId/booking.userId = actor.id),
+    // never the operator/admin datasets.
+    Permission.VIEW_BOOKINGS,
+    Permission.VIEW_PAYMENTS,
   ],
 };

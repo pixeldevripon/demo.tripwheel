@@ -35,6 +35,8 @@ const MAX_FAILS_PER_REFERENCE = 10;
  * (insertion rate is already bounded by the per-IP throttle).
  */
 const MAX_TRACKED_KEYS = 50_000;
+/** Headroom freed per eviction pass, so we do not sort on every consume(). */
+const EVICTION_BATCH = 1_000;
 
 @Injectable()
 export class LookupRateLimiter implements OnModuleDestroy {
@@ -154,28 +156,63 @@ export interface TargetWindow {
 @Injectable()
 export class TargetRateLimiter implements OnModuleDestroy {
   private readonly logger = new Logger(TargetRateLimiter.name);
-  /** `${bucket}:${key}` -> event timestamps (kept up to the largest window). */
+  /** `${bucket}:${key}` -> event timestamps (kept up to the bucket's window). */
   private readonly events = new Map<string, number[]>();
   private readonly sweepTimer = setInterval(
     () => this.sweepStale(),
     60 * 60 * 1000,
   ).unref();
-  /** Largest window any consume() call has used; stale keys age out past it. */
-  private maxWindowMs = 60 * 60 * 1000;
+  /**
+   * Largest window seen PER BUCKET; a bucket's keys age out past its own
+   * window. Deliberately not one global maximum: this limiter is shared
+   * process-wide, and the customer-welcome bucket's 24h window would otherwise
+   * hold every short-window bucket's keys (resend/recover/cancel-req/settle)
+   * 24x longer than they are useful.
+   */
+  private readonly maxWindowByBucket = new Map<string, number>();
 
   onModuleDestroy(): void {
     clearInterval(this.sweepTimer);
+  }
+
+  private static bucketOf(mapKey: string): string {
+    return mapKey.slice(0, mapKey.indexOf(':'));
+  }
+
+  private windowFor(bucket: string): number {
+    return this.maxWindowByBucket.get(bucket) ?? 60 * 60 * 1000;
   }
 
   sweepStale(now: number = Date.now()): void {
     for (const [key, stamps] of this.events) {
       if (
         !stamps.length ||
-        now - stamps[stamps.length - 1] >= this.maxWindowMs
+        now - stamps[stamps.length - 1] >=
+          this.windowFor(TargetRateLimiter.bucketOf(key))
       ) {
         this.events.delete(key);
       }
     }
+  }
+
+  /**
+   * Hard bound on the map. sweepStale alone is not one: a flood of distinct
+   * fresh keys (attacker-chosen emails on the recover bucket) has nothing
+   * stale to drop. Evicting the least-recently-touched keys keeps memory
+   * bounded; the counters lost are the oldest ones, which are also the closest
+   * to expiring anyway. A single-process, in-memory trade-off - Redis when we
+   * scale out.
+   */
+  private evictOldest(now: number): void {
+    const overBy = this.events.size - MAX_TRACKED_KEYS + EVICTION_BATCH;
+    if (overBy <= 0) return;
+    const byAge = [...this.events.entries()].sort(
+      (a, b) => (a[1][a[1].length - 1] ?? 0) - (b[1][b[1].length - 1] ?? 0),
+    );
+    for (const [key] of byAge.slice(0, overBy)) this.events.delete(key);
+    this.logger.warn(
+      `Target limiter at capacity: evicted ${overBy} least-recent keys (${this.events.size} tracked, now=${now})`,
+    );
   }
 
   /**
@@ -186,14 +223,18 @@ export class TargetRateLimiter implements OnModuleDestroy {
   consume(bucket: string, key: string, windows: TargetWindow[]): void {
     const now = Date.now();
     const mapKey = `${bucket}:${key.trim().toLowerCase()}`;
-    this.maxWindowMs = Math.max(
-      this.maxWindowMs,
+    const bucketWindowMs = Math.max(
+      this.windowFor(bucket),
       ...windows.map((w) => w.windowMs),
     );
-    if (this.events.size >= MAX_TRACKED_KEYS) this.sweepStale(now);
+    this.maxWindowByBucket.set(bucket, bucketWindowMs);
+    if (this.events.size >= MAX_TRACKED_KEYS) {
+      this.sweepStale(now);
+      this.evictOldest(now);
+    }
 
     const stamps = (this.events.get(mapKey) ?? []).filter(
-      (t) => now - t < this.maxWindowMs,
+      (t) => now - t < bucketWindowMs,
     );
     for (const { max, windowMs } of windows) {
       const inWindow = stamps.filter((t) => now - t < windowMs).length;

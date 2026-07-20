@@ -17,7 +17,10 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { BookingsService } from '@/bookings/bookings.service';
 import { TargetRateLimiter } from '@/bookings/lookup-rate-limiter';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import {
+  isPlatformWideBookingRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { dateKey } from '@/common/utils/timezone.util';
 import { StripeService, toMinorUnits } from './stripe.service';
@@ -55,8 +58,9 @@ export class PaymentsService {
   /**
    * Paginated payments for the dashboard Payments table. ADMIN sees every
    * payment; TOUR_OPERATOR only payments on bookings of their own tours (scoped
-   * via `booking.operatorId`, mirroring `BookingsService.list`). The route is
-   * permission-gated (`VIEW_PAYMENTS`), so plain USERs never reach this.
+   * via `booking.operatorId`, mirroring `BookingsService.list`); USER
+   * (customers) only payments on their OWN bookings (`booking.userId`) - the
+   * customer dashboard's transactions view.
    */
   async list(query: ListPaymentsQueryDto, actor: { id: string; role: Role }) {
     assertDateRangeOrder(query.from, query.to);
@@ -64,7 +68,12 @@ export class PaymentsService {
     const limit = query.limit ?? 20;
 
     const where: Prisma.PaymentWhereInput = {};
-    if (actor.role !== Role.ADMIN) {
+    if (actor.role === Role.USER) {
+      where.booking = { userId: actor.id };
+    } else if (!isPlatformWideBookingRole(actor.role)) {
+      // Platform-wide roles (ADMIN/STAFF/EDITOR) have no operator record to
+      // resolve; routing them through resolution would 400 them out of data
+      // the VIEW_PAYMENTS grant already entitles them to.
       where.booking = {
         operatorId: await resolveOperatorId(this.prisma, actor.id, actor.role),
       };

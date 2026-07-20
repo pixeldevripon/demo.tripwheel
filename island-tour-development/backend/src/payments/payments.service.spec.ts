@@ -1,3 +1,20 @@
+// Mock the Better Auth singleton so the ESM `better-auth` package is never
+// loaded in the unit test (reached transitively via BookingsService ->
+// CustomerProvisioningService; same approach as staff/operators specs).
+jest.mock('@/auth/auth.instance', () => ({
+  auth: {
+    $context: Promise.resolve({
+      password: { hash: jest.fn() },
+      internalAdapter: {
+        createUser: jest.fn(),
+        linkAccount: jest.fn(),
+        deleteUser: jest.fn(),
+      },
+    }),
+    api: { requestPasswordReset: jest.fn() },
+  },
+}));
+
 import {
   BadRequestException,
   NotFoundException,
@@ -130,6 +147,16 @@ describe('PaymentsService', () => {
       await svc.list({}, { id: 'user-9', role: Role.TOUR_OPERATOR });
       const args = prisma.payment.findMany.mock.calls.at(-1)[0];
       expect(args.where.booking).toEqual({ operatorId: 'op-9' });
+    });
+
+    it('scopes USER (customer) to payments on their OWN bookings, never operator resolution', async () => {
+      prisma.payment.count.mockResolvedValue(0);
+      prisma.payment.findMany.mockResolvedValue([]);
+      await svc.list({}, { id: 'cust-1', role: Role.USER });
+      const args = prisma.payment.findMany.mock.calls.at(-1)[0];
+      expect(args.where.booking).toEqual({ userId: 'cust-1' });
+      // A customer must never hit resolveOperatorId (it would 4xx them).
+      expect(prisma.operator.findUnique).not.toHaveBeenCalled();
     });
 
     it('applies status/kind/search/date filters', async () => {

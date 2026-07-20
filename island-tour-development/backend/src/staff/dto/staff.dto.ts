@@ -87,6 +87,13 @@ export class StaffMemberResponseDto {
   })
   effectivePermissions!: Permission[];
 
+  @ApiProperty({
+    example: false,
+    description:
+      'True for the platform ADMIN account, which is listed for visibility but has no staff_members row. Such a row is read-only: edit, suspend, resend-invite and remove are all rejected with 403.',
+  })
+  isSystemAdmin!: boolean;
+
   @ApiProperty({ type: StaffUserSummaryDto, nullable: true })
   invitedBy!: Pick<StaffUserSummaryDto, 'id' | 'name'> | null;
 

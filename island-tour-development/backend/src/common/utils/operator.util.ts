@@ -3,6 +3,20 @@ import { Role, StaffStatus } from '@prisma/client';
 import type { PrismaService } from '@/prisma/prisma.service';
 
 /**
+ * Roles that read booking/payment rows platform-wide rather than through an
+ * operator scope. The permission guard decides IF a caller may read at all
+ * (`VIEW_BOOKINGS` / `VIEW_PAYMENTS`); this decides how the query is scoped.
+ *
+ * Lives here beside `resolveOperatorId` because it is the exact complement of
+ * it: a platform-wide role has no operator record to resolve, so routing one
+ * through resolution would 400 them out of data they are entitled to. Shared
+ * by `BookingsService` and `PaymentsService` so the two cannot drift.
+ */
+export function isPlatformWideBookingRole(role: Role): boolean {
+  return role === Role.ADMIN || role === Role.STAFF || role === Role.EDITOR;
+}
+
+/**
  * Resolves a user's `operator.id` (ownership key for tours, availability, bookings).
  *
  * Tour-domain ownership is keyed on `operators.id`, never `users.id` (master rule #19).

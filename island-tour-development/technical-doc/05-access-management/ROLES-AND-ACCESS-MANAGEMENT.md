@@ -8,7 +8,7 @@
 
 | Role | Created by | Key capability |
 |---|---|---|
-| `USER` | Auto on first booking | Browse, book, review, wishlist |
+| `USER` | Auto on first booking (customer account, 2026-07-20) | Browse, book, review, wishlist; customer dashboard at `/account` - OWN bookings + payments (`VIEW_BOOKINGS`/`VIEW_PAYMENTS`, self-scoped server-side), profile, cancellation requests. See `technical-doc/customers/CUSTOMER-ACCOUNTS.md` |
 | `TOUR_OPERATOR` | Self-registration (email verify) | Create/manage own tours, pick commission tier, manage availability, view own bookings |
 | `ADMIN` | Database seed only | Full platform: destinations, categories, hubs, collections, attributes dictionary, operator approval, Spotlight approval, force-majeure pardons, settings |
 | `EDITOR` | Admin (designed, not launch-active) | Content management; no system config, user management, or commercial approvals |

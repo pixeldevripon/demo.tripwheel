@@ -40,6 +40,7 @@ import {
   UpdateStaffStatusDto,
   UpdateTeamMemberDto,
 } from './dto/staff.dto';
+import { ROLE_PERMISSIONS } from '@/config/roles.config';
 
 /**
  * Staff & Teams management (login doc Phase 2, extended with fine-grained
@@ -106,6 +107,9 @@ export class StaffService {
     const { designation, ...rest } = member;
     return {
       ...rest,
+      // Real staff rows are never the system admin - that account has no
+      // staff_members row at all and is synthesized in listPlatformStaff.
+      isSystemAdmin: false,
       designation: designation
         ? { id: designation.id, name: designation.name }
         : null,
@@ -444,8 +448,123 @@ export class StaffService {
 
   // ── Platform staff (admin-side) ────────────────────────────────────────────
 
+  /**
+   * Platform members, with the system administrator(s) shown at the top.
+   *
+   * ADMIN accounts are deliberately NOT staff-managed (see staff.prisma): they
+   * have no `staff_members` row, so the plain member query cannot see them and
+   * the Users page used to render without the very account running it. They
+   * are synthesized into the list here as read-only entries flagged
+   * `isSystemAdmin`, so the page shows who holds the keys while every mutating
+   * path keeps rejecting them (`assertNotSystemAdmin`).
+   *
+   * The synthesized rows carry `seatRole: OWNER` so any surface that already
+   * hides destructive actions for owners does the right thing for admins
+   * without needing to know about the new flag.
+   */
   async listPlatformStaff(query: StaffQueryDto) {
-    return this.listMembers(null, query);
+    const { page = 1, limit = 20 } = query;
+    const admins = await this.findSystemAdmins(query);
+    const staff = await this.listMembers(null, query);
+
+    // One virtual list: [admins..., staff...]. Slice it per page so the pager
+    // total and the row count stay consistent across every page.
+    const offset = (page - 1) * limit;
+    const adminSlice = admins.slice(offset, offset + limit);
+    const remaining = limit - adminSlice.length;
+    const staffSkip = Math.max(0, offset - admins.length);
+
+    const staffSlice =
+      remaining > 0 ? staff.data.slice(staffSkip, staffSkip + remaining) : [];
+
+    return {
+      total: admins.length + staff.total,
+      page,
+      limit,
+      data: [...adminSlice, ...staffSlice],
+    };
+  }
+
+  /**
+   * ADMIN users rendered in the staff-member shape. Honours the same search
+   * filter as the real query; a `status` filter other than ACTIVE or any
+   * `designationId` filter excludes them, since an admin is always active and
+   * never carries a designation.
+   */
+  private async findSystemAdmins(query: StaffQueryDto) {
+    const { search, status, designationId } = query;
+    if (designationId) return [];
+    if (status && status !== StaffStatus.ACTIVE) return [];
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        role: Role.ADMIN,
+        ...(search && {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        status: true,
+        createdAt: true,
+        // No lastLoginAt on User - the newest session is the real signal.
+        sessions: {
+          select: { createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return admins.map((admin) => ({
+      id: admin.id,
+      operatorId: null,
+      seatRole: StaffSeatRole.OWNER,
+      status: StaffStatus.ACTIVE,
+      extraPermissions: [],
+      revokedPermissions: [],
+      invitedAt: null,
+      activatedAt: admin.createdAt,
+      lastLoginAt: admin.sessions[0]?.createdAt ?? null,
+      createdAt: admin.createdAt,
+      updatedAt: admin.createdAt,
+      user: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        image: admin.image,
+        status: admin.status,
+      },
+      designation: null,
+      invitedBy: null,
+      effectivePermissions: [...ROLE_PERMISSIONS[Role.ADMIN]],
+      isSystemAdmin: true,
+    }));
+  }
+
+  /**
+   * The system administrator cannot be edited, suspended or removed through
+   * the staff API. Without this the id would simply 404 (no staff row), which
+   * reads as "not found" rather than "not allowed" - and now that the account
+   * is VISIBLE in the list, the refusal has to be explicit.
+   */
+  private async assertNotSystemAdmin(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { role: true },
+    });
+    if (user?.role === Role.ADMIN) {
+      throw new ForbiddenException(
+        'The system administrator account cannot be modified or removed',
+      );
+    }
   }
 
   async invitePlatformStaff(dto: InviteStaffDto, actor: TypedAuthUser) {
@@ -471,6 +590,7 @@ export class StaffService {
   }
 
   async updatePlatformStaff(id: string, dto: UpdateStaffDto) {
+    await this.assertNotSystemAdmin(id);
     const member = await this.resolveMember(id, null);
     return this.applyMemberUpdate(member, dto);
   }
@@ -480,16 +600,19 @@ export class StaffService {
     dto: UpdateStaffStatusDto,
     actor: TypedAuthUser,
   ) {
+    await this.assertNotSystemAdmin(id);
     const member = await this.resolveMember(id, null);
     return this.applyStatusUpdate(member, dto, actor.id);
   }
 
   async removePlatformStaff(id: string, actor: TypedAuthUser) {
+    await this.assertNotSystemAdmin(id);
     const member = await this.resolveMember(id, null);
     return this.removeMember(member, actor.id);
   }
 
   async resendPlatformInvite(id: string) {
+    await this.assertNotSystemAdmin(id);
     const member = await this.resolveMember(id, null);
     return this.resendInviteFor(member);
   }

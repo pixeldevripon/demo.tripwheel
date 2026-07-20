@@ -54,6 +54,14 @@ export class ConflictErrorDto extends ErrorResponseDto {
   error: string = 'Conflict';
 }
 
+export class PaymentRequiredErrorDto extends ErrorResponseDto {
+  @ApiProperty({ example: 402 })
+  statusCode: number = 402;
+
+  @ApiProperty({ example: 'Payment Required' })
+  error: string = 'Payment Required';
+}
+
 export class InternalServerErrorDto extends ErrorResponseDto {
   @ApiProperty({ example: 500 })
   statusCode: number = 500;
