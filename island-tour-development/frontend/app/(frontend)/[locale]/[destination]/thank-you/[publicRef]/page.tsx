@@ -151,7 +151,15 @@ async function ThankYouBody({
             <ThankYouSummary
                 booking={booking}
                 dict={dict.thankYou}
-                cancelHref={mode === 'management' ? cancelHref : undefined}
+                // Same server verdict the header button uses. This link used
+                // to check only the mode, so it stayed visible on an already-
+                // requested or cancelled booking while the header button had
+                // correctly hidden itself.
+                cancelHref={
+                    mode === 'management' && booking.canCancel
+                        ? cancelHref
+                        : undefined
+                }
             />
             {mode !== 'masked' && (
                 <ThankYouNextSteps

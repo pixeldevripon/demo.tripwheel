@@ -777,6 +777,10 @@
     "manageTitle": "您的预订",
     "manageSubtitle": "{tour},{date} {time}。",
     "statusConfirmed": "已确认",
+    "statusCancelled": "已取消",
+    "statusCancellationPending": "取消处理中",
+    "cancellationPendingNote": "我们已收到您的取消申请并正在处理。完成后会立即发送邮件通知您。",
+    "cancelledNote": "此预订已取消。确认邮件已发送给您。",
     "cancelBooking": "取消预订",
     "needToCancel": "需要取消?"
   },

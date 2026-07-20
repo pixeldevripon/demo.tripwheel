@@ -50,6 +50,20 @@ export interface TypResponse {
     publicRef: string;
     displayRef: string;
     status: string;
+    /**
+     * Cancellation state, decided server-side. `canRequestCancellation` is the
+     * SAME predicate the submit endpoint enforces, so gate the cancel
+     * affordance on it - never on `status` alone, or the page will keep
+     * offering a request the API refuses (already requested, or departed).
+     */
+    cancellationRequestedAt: string | null;
+    cancelledAt: string | null;
+    canRequestCancellation: boolean;
+    cancellationBlockedReason:
+        | 'ALREADY_REQUESTED'
+        | 'NOT_CONFIRMED'
+        | 'DEPARTED'
+        | null;
     tourId: string;
     tourName: string;
     island: string | null;

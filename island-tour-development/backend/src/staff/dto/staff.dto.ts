@@ -97,8 +97,13 @@ export class StaffMemberResponseDto {
   @ApiProperty({ type: StaffUserSummaryDto, nullable: true })
   invitedBy!: Pick<StaffUserSummaryDto, 'id' | 'name'> | null;
 
-  @ApiProperty({ example: '2026-07-19T10:00:00.000Z' })
-  invitedAt!: Date;
+  @ApiProperty({
+    example: '2026-07-19T10:00:00.000Z',
+    nullable: true,
+    description:
+      'Null for the system administrator - that account was never invited.',
+  })
+  invitedAt!: Date | null;
 
   @ApiProperty({ example: null, nullable: true })
   activatedAt!: Date | null;

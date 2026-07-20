@@ -66,6 +66,16 @@ export interface ThankYouBooking {
     displayRef: string;
     /** Real booking status; the TYP is normally reached only once CONFIRMED. */
     status: string;
+    /**
+     * Server-decided cancellation state. `canCancel` is the same predicate the
+     * submit endpoint enforces - gate every cancel affordance on it, never on
+     * `status` alone, or the page offers a request the API will refuse.
+     */
+    canCancel: boolean;
+    /** Set once the traveller has asked; the page shows a pending notice. */
+    cancellationRequestedAt: string | null;
+    /** Set once an admin has actually processed it. */
+    cancelledAt: string | null;
     /** Booked tour - used to exclude it from the cross-sell grid. */
     tourId: string;
     guestFirstName: string;
@@ -297,6 +307,9 @@ export async function getThankYouBooking(
         publicRef: typ.publicRef,
         displayRef: typ.displayRef,
         status: typ.status,
+        canCancel: typ.canRequestCancellation,
+        cancellationRequestedAt: typ.cancellationRequestedAt,
+        cancelledAt: typ.cancelledAt,
         tourId: typ.tourId,
         guestFirstName: typ.guestFirstName ?? '',
         guestLead: typ.guestFullName ?? typ.guestFirstName ?? '',

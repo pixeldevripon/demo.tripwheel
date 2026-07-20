@@ -226,6 +226,21 @@ export type CancellationBlockedReason =
   | 'DEPARTED';
 
 /**
+ * Traveller-facing refusal copy, one per blocked reason. Kept beside the
+ * predicate so a new reason cannot be added without deciding what the person
+ * on the other end is told.
+ */
+const CANCELLATION_BLOCKED_MESSAGE: Record<CancellationBlockedReason, string> =
+  {
+    ALREADY_REQUESTED:
+      'We have already received your cancellation request and are processing it. We will email you once it is done.',
+    NOT_CONFIRMED:
+      'Only a confirmed booking can request cancellation - this one is no longer active.',
+    DEPARTED:
+      'This trip has already departed, so it can no longer be cancelled. Contact us if something went wrong.',
+  };
+
+/**
  * THE cancellation-eligibility rule. The server decides this, never the
  * client: the API response carries the verdict so every surface (customer
  * dashboard, TYP cancel page, ops tooling) shows the same answer, and the
@@ -1362,19 +1377,18 @@ export class BookingsService {
     this.targetLimiter.consume('cancel-req', booking.publicRef, [
       { max: 5, windowMs: 60 * 60 * 1000 },
     ]);
-    if (booking.status !== BookingStatus.CONFIRMED) {
+
+    // THE gate: the exact predicate the read paths advertise via
+    // `canRequestCancellation`, so a surface can never offer something this
+    // endpoint would refuse - and, more importantly, a traveller cannot
+    // re-submit past a UI that has hidden the button. A repeat submit used to
+    // be waved through as "idempotent", but it is not: every one of them
+    // re-sent the admin email, the traveller ack and the operator heads-up, so
+    // one booking could spam three mailboxes on a loop.
+    const { canRequest, reason: blocked } = cancellationEligibility(booking);
+    if (!canRequest) {
       throw new ConflictException(
-        'Only a confirmed booking can request cancellation',
-      );
-    }
-    // You cannot ask to cancel a trip you have already taken. Same predicate
-    // the list payload advertises via `canRequestCancellation`, so the UI and
-    // the endpoint can never disagree. Re-submits on an existing request stay
-    // allowed (they are idempotent and the stamp is already set) - this only
-    // blocks a FIRST request after departure.
-    if (!booking.utcCancellationRequestedAt && hasDeparted(booking)) {
-      throw new ConflictException(
-        'This trip has already departed, so it can no longer be cancelled. Contact us if something went wrong.',
+        CANCELLATION_BLOCKED_MESSAGE[blocked ?? 'NOT_CONFIRMED'],
       );
     }
 
@@ -1534,6 +1548,145 @@ export class BookingsService {
       } catch (err) {
         this.logger.error(
           `Cancellation notice to operator failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+  }
+
+  /**
+   * Traveller confirmation + operator "it's final" notice, sent once a
+   * cancellation has actually been processed. This is the other half of
+   * `sendCancellationRequestNotices`: that one promises both audiences a
+   * follow-up ("We'll email you to confirm once it's done" / "You'll be
+   * notified when it is final"), and this is what keeps the promise.
+   *
+   * Best-effort throughout: the booking IS cancelled and the seats ARE back in
+   * inventory by the time we get here, so a dead mailbox must never surface as
+   * a failed cancellation to the admin who processed it.
+   */
+  private async sendCancellationConfirmedNotices(
+    booking: {
+      id: string;
+      displayRef: string;
+      publicRef: string;
+      operatorId: string;
+      tourId: string;
+      island: string;
+      contactEmail: string | null;
+      contactFullName: string | null;
+      contactFirstName: string | null;
+      contactLastName: string | null;
+      customerLocale: string | null;
+      localDate: Date;
+      tourStartDateTime: Date | null;
+      startTime: string | null;
+      currency: string;
+      totalRetail: Prisma.Decimal;
+    },
+    refund: CancellationRefund,
+  ): Promise<void> {
+    const [operator, site, tour] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true, companyName: true } },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+      this.prisma.tour.findUnique({
+        where: { id: booking.tourId },
+        select: { name: true },
+      }),
+    ]);
+
+    const siteBase = islandToursBase();
+    const dashBase = dashboardAppBase();
+    const tourName = tour?.name ?? 'Your tour';
+    const guestName =
+      booking.contactFullName ??
+      ([booking.contactFirstName, booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        'The traveller');
+    const shared = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
+      bookingRef: booking.displayRef,
+      tourName,
+      startTime: booking.startTime ?? '',
+    };
+
+    // What the traveller is told about their money. `cancellationRefund` is
+    // the POLICY verdict, not proof a refund has settled, so the copy speaks
+    // to what happens next rather than claiming it is already back.
+    const refundLine =
+      refund === CancellationRefund.FULL
+        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} goes back to your original payment method. Card refunds usually land in 5-10 business days.`
+        : refund === CancellationRefund.PARTIAL
+          ? 'A partial refund applies under the cancellation terms for this trip. We will email you the exact amount as it is processed.'
+          : 'This cancellation falls outside the free-cancellation window for this trip, so no refund is due. If you think something went wrong, just reply to this email.';
+
+    if (booking.contactEmail) {
+      const locale = toLocale(booking.customerLocale);
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          locale,
+        ),
+        noticeTitle: 'Your booking is cancelled.',
+        noticeParagraphs: [
+          `We have processed your request and cancelled ${booking.displayRef} for ${tourName}. Your seats have been released.`,
+          refundLine,
+          'Nothing further is needed from you. Booked by mistake, or want to rebook for another date? Just reply to this email.',
+        ],
+        ctaUrl: `${siteBase}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaLabel: 'View your booking',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          booking.contactEmail,
+          `Your booking is cancelled - ${booking.displayRef}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation confirmation to traveller failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+
+    const operatorEmail =
+      operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+    if (operatorEmail) {
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          Locale.en,
+        ),
+        noticeTitle: 'Cancellation confirmed.',
+        noticeParagraphs: [
+          `${guestName}'s booking ${booking.displayRef} for ${tourName} has been cancelled and the seats are back in your availability.`,
+          'Island Tours handles the traveller refund - no action needed from you.',
+        ],
+        ctaUrl: `${dashBase}/bookings`,
+        ctaLabel: 'View booking in your dashboard',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          operatorEmail,
+          `Cancellation confirmed - ${booking.displayRef}: ${tourName}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Cancellation confirmation to operator failed for ${booking.displayRef}`,
           err as Error,
         );
       }
@@ -1722,6 +1875,14 @@ export class BookingsService {
     this.logger.log(
       `Booking ${updated.displayRef} cancelled (refund ${refund})`,
     );
+    // Close the loop the request ack opened ("We'll email you to confirm once
+    // it's done") - until now nothing was ever sent, so a traveller whose
+    // request an admin had processed heard nothing at all. Only for bookings
+    // that actually confirmed: releasing an abandoned checkout hold is
+    // inventory housekeeping, not something to email anyone about.
+    if (!heldOnly) {
+      await this.sendCancellationConfirmedNotices(updated, refund);
+    }
     // Seats released back to inventory + booking status changed.
     this.emitBookingEvents(updated, { availability: !!booking.departureId });
     // Keep the customer aggregates honest - a cancelled booking leaves the
@@ -2145,8 +2306,21 @@ export class BookingsService {
         .join(' ') ||
         null);
 
+    // The TYP used to be blind to cancellation entirely: it could not tell a
+    // pending request from a fresh booking, so it kept offering "Cancel
+    // booking" to someone who had already asked - and showed nothing at all
+    // once an admin had actually cancelled. Ship the same verdict the submit
+    // endpoint enforces so the page can never contradict it.
+    const { canRequest, reason: cancellationBlockedReason } =
+      cancellationEligibility(booking);
+
     return {
       verified,
+      cancellationRequestedAt:
+        booking.utcCancellationRequestedAt?.toISOString() ?? null,
+      cancelledAt: booking.utcCancelledAt?.toISOString() ?? null,
+      canRequestCancellation: canRequest,
+      cancellationBlockedReason,
       // Guest identity: present only when verified, else null (row hidden).
       guestFirstName: verified ? booking.contactFirstName : null,
       guestLastName: verified ? booking.contactLastName : null,

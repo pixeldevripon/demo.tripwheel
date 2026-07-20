@@ -10,6 +10,34 @@ Two related but deliberately separate systems:
 
 ---
 
+## PUBLIC HOMEPAGE IS REVERTED - do not re-wire it yet (user, 2026-07-20)
+
+`frontend/app/(frontend)/[locale]/page.tsx` was restored to its pre-CMS state
+(`ee2106f^`). The public homepage renders bundled dictionary copy and bundled
+images again, exactly as before Phase 1. **The public site is off-limits until the
+dashboard and backend work is signed off.**
+
+Everything else stayed: the backend modules, the migrations, the dashboard editor,
+and the frontend data layer (`lib/api/public/home-page.ts`,
+`featured-experiences.ts`, `lib/images/remote-hosts.ts`, the `homepage` cache tag).
+Those loaders are simply unreferenced for now.
+
+Re-wiring later is a ONE-FILE change, because the fallback contract was built to
+allow exactly this: `Hero`, `EditorialBanner`, `EditorialCardFan` and
+`TopExperiences` all take their CMS props as OPTIONAL with bundled fallbacks, so
+they render pre-CMS output when the page passes nothing. Nothing was stubbed or
+commented out. To restore, recover the page from `ee2106f` - do not rewrite it
+from memory:
+
+```bash
+git show ee2106f:'frontend/app/(frontend)/[locale]/page.tsx'
+```
+
+Verified after the revert: `tsc --noEmit` clean, eslint clean on the page and
+`components/frontend/home/`.
+
+---
+
 ## Why two systems and not one page builder
 
 The instinct is to make the homepage "just another page" in the Pages system. We
@@ -311,9 +339,13 @@ exist). Clearing the rows restored the bundled dictionary FAQs.
 **EXECUTED 2026-07-20** (dashboard repo). Pages joins this group in Phase 5; for
 now it holds Homepage alone.
 
-New **Content** nav group gated `MANAGE_EDITORIAL`, deliberately not folded into
-Curate: Curate answers "which tours/hubs/categories do we push", this answers
-"what does the homepage say". Same permission, different question.
+Nav: **a `Pages` group, placed immediately before `Account`**, holding Homepage
+and gated `MANAGE_EDITORIAL` (user decision 2026-07-20). Grouped by what the
+items ARE - pages you edit - rather than by permission, so the Phase-5 legal and
+marketing pages land beside the homepage rather than in Curate. The route stays
+root-level (`/homepage`), like every other route in the app, and the editor uses
+no `EntityDetailShell` because it is a top-level tabbed singleton, same as
+Settings.
 
 `app/(app)/homepage` -> `HomepageEditView` -> `EntityTabs`, tabs in the order the
 sections appear ON THE PAGE (Hero, Experiences, CTA Card, FAQs, then SEO), so
@@ -361,6 +393,62 @@ now excludes `homepage`.
 succeeds with `/homepage` in the route manifest. NOT verified: the rendered UI.
 Every dashboard route 307s to `/portal` without a session, and signing in is not
 something I do - so the editor needs a human pass before it is trusted.
+
+### Review fixes (Phase 4)
+
+Five points raised on the first cut; four were real defects.
+
+**1. The shared FaqManager pointed the homepage at a dead link.**
+`CONSOLE_TYPE_BY_BASE` had no `/home-page` entry and fell back to
+`?? 'destination'`, so every homepage FAQ linked to
+`/translations/destination/default/es` - a route that does not exist. Added the
+mapping, and removed the fallback: an unmapped basePath now renders NO pointer,
+because a wrong link is worse than a missing one. That silent default is what
+turned a missing entry into a broken link instead of a visible error.
+
+**2. The forms duplicated the shared settings kit.** `HomepageSectionCard` and
+`HomepageField` were re-implementations of `SettingsCard` / `TextField` /
+`TextareaField` / `ImageField` in `components/settings/settings-fields.tsx` -
+the kit every settings form already uses, and the closest match for a
+settings-shaped page. Both duplicates are deleted; the tabs now compose the
+shared kit. The label-by-consequence and show-the-fallback behaviour survived as
+`describeField(where, value, fallback)`, which builds the `description` string
+the shared field already accepts, so no new component was needed to keep it.
+
+**3. FAQs already used the shared manager** (`FaqManager basePath='/home-page'
+entityId='default'`) and the shared Translation Console - that part was correct.
+What was broken was the link it produced, which is finding 1.
+
+**4. Tabs already used the shared `EntityTabs`**, matching Settings (which also
+has no detail shell, being a top-level page rather than an entity). The
+divergence was the form internals, fixed in 2.
+
+**5. A media field asked for a pasted URL.** The featured-experience video was a
+raw `<Input>` - the one field in the dashboard not backed by the media library.
+There was no video picker to use, so one now exists:
+- `MediaGalleryManager` and `MediaSelector` take a `kind` restriction. It seeds
+  the type filter AND omits the setter, which hides the type dropdown entirely -
+  a field that can only accept a video should not offer "All types".
+- Selector toasts take their noun from the kind, so a video picker never says
+  "image".
+- `VideoSelectorField` + a `VideoField` in the shared kit render a real `<video>`
+  preview. Kind is tested with `getMediaKind`, never `resourceType === 'video'`,
+  because Cloudinary stores AUDIO under resourceType `video` - the raw check
+  would accept an mp3 for a video slot.
+
+**Nav placement - RESOLVED by the user: a `Pages` group, before `Account`.**
+(Two earlier attempts were rejected: a one-item "Content" group, then folding it
+into Account beside Settings.) The route stays root-level (`/homepage`).
+Worth recording for anyone revisiting this: `NavItem.items` is TYPED for nesting
+but `nav-main.tsx` renders exactly one flat level (`group.items.map`, no
+recursion), so a nested child silently disappears from the sidebar. Real
+sub-menus would mean building collapsible rendering - they are not a config
+change today.
+
+**Verification:** dashboard `tsc` clean, 0 lint errors across every touched file,
+`next build` succeeds. The remaining warnings are the pre-existing
+`react-hooks/incompatible-library` `watch()` notices that the settings forms
+already produce. Still unverified: the rendered UI (no session).
 
 ## Phase 5 - Pages system `[ ]`
 

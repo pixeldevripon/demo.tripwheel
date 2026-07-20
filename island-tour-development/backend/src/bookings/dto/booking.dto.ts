@@ -213,6 +213,39 @@ export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+
+  // ── Cancellation state ──────────────────────────────────────────────────
+  // The server owns this verdict. `canRequestCancellation` is the SAME
+  // predicate the submit endpoint enforces, so the page can never offer a
+  // request the API would refuse (and a traveller cannot re-submit past a
+  // hidden button).
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When the traveller asked to cancel. Non-null with status still CONFIRMED = request pending an admin decision.',
+    example: '2026-07-19T10:00:00.000Z',
+  })
+  cancellationRequestedAt!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'When the cancellation was actually processed.',
+    example: null,
+  })
+  cancelledAt!: string | null;
+
+  @ApiProperty({
+    description:
+      'Whether a cancellation request would be accepted right now. Gate the cancel affordance on this, never on status alone.',
+  })
+  canRequestCancellation!: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['ALREADY_REQUESTED', 'NOT_CONFIRMED', 'DEPARTED'],
+    description: 'Why not, when canRequestCancellation is false.',
+  })
+  cancellationBlockedReason!: string | null;
   @ApiProperty() tourId!: string;
   @ApiProperty({ example: 'Sunset Catamaran Cruise' }) tourName!: string;
   @ApiPropertyOptional({ nullable: true, example: 'curacao' }) island!:
