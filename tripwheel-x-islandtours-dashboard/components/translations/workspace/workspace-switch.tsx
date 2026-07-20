@@ -6,6 +6,7 @@ import {
     CategoryWorkspace,
     CollectionWorkspace,
     DestinationWorkspace,
+    HomepageWorkspace,
     HubWorkspace,
 } from './entity-workspaces';
 import { TourWorkspace } from './tour-workspace';
@@ -30,5 +31,8 @@ export function TranslationWorkspaceSwitch({
             return <HubWorkspace id={id} locale={locale} />;
         case 'collection':
             return <CollectionWorkspace id={id} locale={locale} />;
+        // Singleton - the id segment is always 'default' and carries no meaning.
+        case 'homepage':
+            return <HomepageWorkspace locale={locale} />;
     }
 }

@@ -36,6 +36,34 @@ export const pageEnter = {
 } as const;
 
 /**
+ * Page-enter for the DASHBOARD shell specifically. Same easing family as
+ * `pageEnter` so it reads as one system, but shorter and with less travel
+ * (pair with y 8, not 16).
+ *
+ * The public site's 0.5s / 16px is tuned for marketing pages a visitor lands
+ * on once. A dashboard is the opposite: an operator clicks between Bookings,
+ * Payments and Trips continuously, and a half-second slide on every click
+ * stops reading as polish and starts reading as lag. The longer travel also
+ * costs more on tall table pages, where 16px of transform on a full grid is
+ * the most expensive frame in the transition.
+ */
+export const dashboardPageEnter = {
+    duration: 0.32,
+    ease: [0.21, 0.47, 0.32, 0.98],
+} as const;
+
+/**
+ * Data arriving into an already-visible container - the skeleton-to-content
+ * swap in `DataTable`. Deliberately quick and fade-only: the skeleton mirrors
+ * the real layout's dimensions, so there is nothing to slide INTO place, and
+ * any y travel here would fight the row heights that just settled.
+ */
+export const contentSettle = {
+    duration: 0.22,
+    ease: [0.21, 0.47, 0.32, 0.98],
+} as const;
+
+/**
  * Dropdown/menu open-close (opens DOWNWARD). Variants-based: the panel springs
  * open and anything inside carrying `dropdownItemMotion` cascades in behind it;
  * closing is a fast clean fade so dismissal never feels laggy. Wrap the panel

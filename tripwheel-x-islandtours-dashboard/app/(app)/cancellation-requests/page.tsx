@@ -1,5 +1,6 @@
 import { BookingsListView } from '@/components/bookings/bookings-list-view';
 
+/** Deliberately not opted into `unstable_instant` - see `bookings/page.tsx`. */
 export default function CancellationRequestsPage() {
     return (
         <div className=''>

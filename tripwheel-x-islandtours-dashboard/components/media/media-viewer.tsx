@@ -25,6 +25,13 @@ import { useEffect, useState } from "react";
 import type { MediaItem, UpdateMediaInput } from "@/types/media";
 import { getMediaKind } from "./media-kind";
 
+/**
+ * Drops a trailing file extension ("hero-shot.jpg" -> "hero-shot") so the
+ * filename fallbacks read as names. Only strips a short alphanumeric tail, so
+ * a dotted name like "v1.2 hero" survives intact.
+ */
+const stripExtension = (name: string) => name.replace(/\.[a-z0-9]{1,5}$/i, "");
+
 interface MediaViewerProps {
   item: MediaItem;
   onClose: () => void;
@@ -34,17 +41,6 @@ interface MediaViewerProps {
   onNext?: () => void;
   /** Delete this item (parent closes the viewer and runs its confirm flow). */
   onDelete?: () => void;
-}
-
-/** One label/value row in the details sidebar; hidden when the value is empty. */
-function DetailRow({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="m-0 text-xs text-foreground break-words">{value}</dd>
-    </div>
-  );
 }
 
 /**
@@ -62,14 +58,15 @@ export default function MediaViewer({
   const kind = getMediaKind(item);
   const displayName =
     item.title || item.fileName || item.originalName || item.publicId;
-  // Sidebar heading - never the raw Cloudinary folder path; fall back to the
-  // final publicId segment when the item has no human-given name.
+  // Top-bar heading - a human-readable name only: the title as typed, or a
+  // filename with its extension stripped, falling back to "Untitled". The raw
+  // Cloudinary publicId is an internal storage key and never surfaces here;
+  // `displayName` keeps it only as the alt-text / download-filename fallback,
+  // where the extension is wanted.
   const sidebarName =
     item.title ||
-    item.fileName ||
-    item.originalName ||
-    item.publicId.split("/").pop() ||
-    item.publicId;
+    stripExtension(item.fileName || item.originalName || "") ||
+    "Untitled";
   const updateMutation = useUpdateMedia();
 
   // Editable form state - seeded from the item, reseeded on prev/next
@@ -148,7 +145,9 @@ export default function MediaViewer({
       {/* Header - media name on the left, prev/next/close pinned to the
                 far right edge of the screen */}
       <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-border bg-card shrink-0 z-50">
-        <h2 className="m-0 min-w-0 truncate text-sm font-semibold text-foreground">
+        {/* Always occupies the left half (even when unnamed) so the actions
+                    stay pinned right instead of sliding over */}
+        <h2 className="m-0 min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
           {sidebarName}
         </h2>
 
@@ -213,7 +212,7 @@ export default function MediaViewer({
             <img
               src={item.url}
               alt={item.altText || displayName}
-              className="max-h-[240px] max-w-[240px] object-contain md:max-h-[400px] md:max-w-[400px]"
+              className="max-h-60 max-w-60 object-contain md:max-h-100 md:max-w-100"
             />
           ) : kind === "video" ? (
             <video
@@ -270,32 +269,18 @@ export default function MediaViewer({
                     internally on desktop */}
         <aside className="w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border bg-card md:overflow-y-auto">
           <div className="p-4 space-y-4">
-            {/* Name + optional caption */}
-            <div>
-              <h3 className="m-0 text-sm font-semibold leading-snug text-foreground break-all line-clamp-2">
-                {sidebarName}
-              </h3>
-              {item.caption && (
-                <p className="mt-1.5 mb-0 text-xs leading-relaxed text-muted-foreground">
-                  {item.caption}
-                </p>
-              )}
-            </div>
+            {/* Optional caption only - the name already sits in the top bar,
+                            so repeating it here is dead weight */}
+            {item.caption && (
+              <p className="m-0 text-xs leading-relaxed text-muted-foreground">
+                {item.caption}
+              </p>
+            )}
 
-            {/* Type row + Uploaded line with the (i) hover holding
-                            the full file facts */}
+            {/* Uploaded line with the (i) hover holding the full file facts
+                            (type, size, dimensions) - kept out of the always-on
+                            sidebar so it reads as a name, not a storage record */}
             <div className="space-y-2">
-              <dl className="m-0">
-                <DetailRow
-                  label="Type"
-                  value={
-                    item.format
-                      ? `${item.resourceType} · ${item.format.toUpperCase()}`
-                      : item.resourceType
-                  }
-                />
-              </dl>
-
               {uploadedAt && (
                 <div className="flex items-center gap-1.5">
                   <p className="m-0 text-xs font-semibold text-foreground">

@@ -72,19 +72,43 @@ export const getUserProfile = cache(async (cookie: string) => {
         const userRole = (sessionRes.data.user as any).role;
         const opId = userData.operator?.id;
 
-        if ((userRole === 'TOUR_OPERATOR' || userRole === 'ADMIN') && opId) {
-            const [company, social] = await Promise.all([
-                safeJson(await fetch(`${BACKEND_URL}/api/v1/operators/${opId}/company-info`, { headers: serverAuthHeaders(cookie) })),
-                safeJson(await fetch(`${BACKEND_URL}/api/v1/operators/${opId}/social-media`, { headers: serverAuthHeaders(cookie) })),
-            ]);
-            userData.operator = { ...userData.operator, companyInfo: company, socialMedia: social };
-        }
+        const wantsOperatorExtras =
+            (userRole === 'TOUR_OPERATOR' || userRole === 'ADMIN') && opId;
+        const isAdmin = userRole === 'ADMIN';
 
-        if (userRole === 'ADMIN') {
-            const adminSocial = await safeJson(
-                await fetch(`${BACKEND_URL}/api/v1/settings/social-media`, { headers: serverAuthHeaders(cookie) })
-            );
-            userData.operator = { ...userData.operator, socialMedia: adminSocial };
+        if (wantsOperatorExtras || isAdmin) {
+            // Every request is STARTED before any of them is awaited. This was
+            // `Promise.all([safeJson(await fetch(A)), safeJson(await fetch(B))])`,
+            // which only looks parallel: `await fetch(A)` has to settle before
+            // the array's second element is even evaluated, so A and B ran
+            // strictly one after the other - and the admin call after both.
+            const [companyRes, socialRes, adminSocialRes] = await Promise.all([
+                wantsOperatorExtras
+                    ? fetch(`${BACKEND_URL}/api/v1/operators/${opId}/company-info`, { headers: serverAuthHeaders(cookie) })
+                    : null,
+                wantsOperatorExtras
+                    ? fetch(`${BACKEND_URL}/api/v1/operators/${opId}/social-media`, { headers: serverAuthHeaders(cookie) })
+                    : null,
+                isAdmin
+                    ? fetch(`${BACKEND_URL}/api/v1/settings/social-media`, { headers: serverAuthHeaders(cookie) })
+                    : null,
+            ]);
+
+            const [company, social, adminSocial] = await Promise.all([
+                companyRes ? safeJson(companyRes) : null,
+                socialRes ? safeJson(socialRes) : null,
+                adminSocialRes ? safeJson(adminSocialRes) : null,
+            ]);
+
+            if (wantsOperatorExtras) {
+                userData.operator = { ...userData.operator, companyInfo: company, socialMedia: social };
+            }
+
+            // Unchanged precedence: for an admin the platform-wide social
+            // settings deliberately overwrite the operator record's own links.
+            if (isAdmin) {
+                userData.operator = { ...userData.operator, socialMedia: adminSocial };
+            }
         }
 
         return userData;

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { ImageSelectorField } from '@/components/common/image-selector-field';
+import { VideoSelectorField } from '@/components/common/video-selector-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -224,6 +225,29 @@ export function ImageField({
       <Label>{label}</Label>
       {description && <FieldDescription>{description}</FieldDescription>}
       <ImageSelectorField value={value} onChange={onChange} disabled={disabled} />
+    </Field>
+  );
+}
+
+/** Single-video picker backed by the media gallery. Never a pasted URL. */
+export function VideoField({
+  label,
+  description,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description?: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Field>
+      <Label>{label}</Label>
+      {description && <FieldDescription>{description}</FieldDescription>}
+      <VideoSelectorField value={value} onChange={onChange} disabled={disabled} />
     </Field>
   );
 }

@@ -120,4 +120,17 @@ export const staffApi = {
             { method: 'DELETE' },
         );
     },
+
+    /**
+     * Renames the underlying auth account. Not a staff route: the display name
+     * lives on `user`, not on the seat, so this hits the admin user override
+     * (PATCH /users/:id, gated by UPDATE_USER). `userId` is `member.user.id`,
+     * NOT the staff-member id.
+     */
+    renameUser(userId: string, name: string): Promise<{ id: string; name: string }> {
+        return apiFetch<{ id: string; name: string }>(`/users/${userId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ name }),
+        });
+    },
 };

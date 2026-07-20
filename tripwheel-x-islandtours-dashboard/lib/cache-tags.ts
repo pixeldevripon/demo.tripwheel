@@ -85,6 +85,10 @@ export const COARSE_CACHE_TAGS = [
     'site-info',
     // Third-party platform reviews (Trustpilot/Google) - homepage testimonials.
     'platform-reviews',
+    // Admin-managed homepage content (hero copy/image, editorial CTA, section
+    // headings). Coarse rather than granular because there is exactly one
+    // homepage - a per-id tag would carry the constant 'default' forever.
+    'homepage',
     // VESTIGIAL, AND KNOWINGLY KEPT. Nothing calls `cacheTag('user-profile')` in
     // either repo: it belonged to the dashboard's `getUserProfile`, which was
     // deliberately moved off `'use cache'` onto React `cache()` (caching a

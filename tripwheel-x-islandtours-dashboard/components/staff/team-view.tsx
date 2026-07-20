@@ -1,8 +1,8 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useRole } from '@/contexts/role-context';
-import type { StaffScope } from '@/types/staff';
+import { useStaffScope } from '@/hooks/staff/use-staff-scope';
+import { StaffNoAccess } from './staff-no-access';
 import { DesignationsTab } from './designations-tab';
 import { StaffMembersTab } from './staff-members-tab';
 
@@ -14,23 +14,9 @@ import { StaffMembersTab } from './staff-members-tab';
  * guard is only the belt for a hand-typed URL.
  */
 export function TeamView() {
-    const { role, can } = useRole();
+    const scope = useStaffScope();
 
-    const isPlatform = role === 'ADMIN' && can('MANAGE_STAFF');
-    const isTeam = !isPlatform && can('MANAGE_TEAM');
-
-    if (!isPlatform && !isTeam) {
-        return (
-            <div className='flex h-64 flex-col items-center justify-center gap-1 text-center'>
-                <p className='font-medium'>User management is owner-only.</p>
-                <p className='text-sm text-muted-foreground'>
-                    Ask the account owner if you need access changed.
-                </p>
-            </div>
-        );
-    }
-
-    const scope: StaffScope = isPlatform ? 'platform' : 'team';
+    if (!scope) return <StaffNoAccess />;
 
     return (
         <div>

@@ -5,10 +5,11 @@ import { CustomerRouteGuard } from '@/components/shell/customer-route-guard';
 import { SiteHeader } from '@/components/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
-import { pageEnter } from '@/lib/motion';
+import { dashboardPageEnter } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface DashboardShellProps {
     children: React.ReactNode;
@@ -51,6 +52,18 @@ export default function DashboardShell({
     const [ready, setReady] = useState(false);
     useEffect(() => setReady(true), []);
 
+    // `will-change` promotes the pane to its own compositor layer. That helps
+    // DURING the transition and hurts after it: a permanent
+    // `will-change-transform` class (what this used to carry) keeps a full-page
+    // layer alive for the lifetime of the route, which on a long table costs
+    // memory and can soften text rendering. So arm it per navigation and drop
+    // it the moment the animation settles.
+    const [animating, setAnimating] = useState(false);
+    useEffect(() => {
+        setAnimating(true);
+    }, [pathname]);
+    const clearWillChange = useCallback(() => setAnimating(false), []);
+
     return (
         <RoleProvider role={userRole} permissions={userPermissions}>
             {/* Customers may only open bookings/payments/profile - typed URLs
@@ -81,12 +94,16 @@ export default function DashboardShell({
                                     key={pathname}
                                     initial={
                                         ready && !reduceMotion
-                                            ? { opacity: 0, y: 16 }
+                                            ? { opacity: 0, y: 8 }
                                             : false
                                     }
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={pageEnter}
-                                    className='lg:p-8 will-change-transform relative'>
+                                    transition={dashboardPageEnter}
+                                    onAnimationComplete={clearWillChange}
+                                    className={cn(
+                                        'lg:p-8 relative',
+                                        animating && 'will-change-transform',
+                                    )}>
                                     {children}
                                 </motion.div>
                             </div>

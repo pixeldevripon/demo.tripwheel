@@ -5,6 +5,7 @@ import {
     DashboardSquare01Icon,
     FilterHorizontalIcon,
     Globe02Icon,
+    Home01Icon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -161,6 +162,21 @@ const dashboardNav: NavGroup[] = [
                 url: 'tour-operators',
                 icon: Store01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
+            },
+        ],
+    },
+    {
+        // Admin, rarely. THE SITE'S OWN PAGES - the homepage plus, from Phase 5,
+        // the legal/marketing pages. Grouped by what they ARE (a page you edit)
+        // rather than by permission: Curate is "which marketplace entities do we
+        // push", this is "what does this page say".
+        label: 'Pages',
+        items: [
+            {
+                title: 'Homepage',
+                url: 'homepage',
+                icon: Home01Icon,
+                permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
     },

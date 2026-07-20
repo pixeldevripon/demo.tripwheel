@@ -49,11 +49,17 @@ import {
     useUpsertHubPageContent,
     useUpsertHubTranslation,
 } from '@/hooks/hubs/use-hubs';
+import {
+    useHomePageTranslations,
+    useUpsertHomePageTranslation,
+} from '@/hooks/home-page/use-home-page';
+import { HOME_ID } from '@/lib/api/home-page';
 import { type Locale } from '@/lib/constants/locales';
 import {
     CATEGORY_FIELDS,
     COLLECTION_FIELDS,
     DESTINATION_FIELDS,
+    HOMEPAGE_FIELDS,
     HUB_FIELDS,
 } from '@/lib/translatable-schema';
 import { ContentWorkspace, type ExtraSection } from './content-workspace';
@@ -72,6 +78,48 @@ function toPageContent(values: Record<string, string>) {
         metaTitle: values.metaTitle?.trim() || null,
         metaDescription: values.metaDescription?.trim() || null,
     };
+}
+
+/**
+ * The homepage singleton. Two differences from every other workspace:
+ * its records come from ONE list endpoint (there is one row, so per-locale
+ * fetches would be three calls for the same payload), and it passes no
+ * page-content props because the homepage has no About/SEO body of its own.
+ */
+export function HomepageWorkspace({ locale }: { locale: Locale }) {
+    const { data: translations, isLoading } = useHomePageTranslations();
+    const upsert = useUpsertHomePageTranslation();
+
+    const source = useMemo(
+        () => translations?.find(t => t.locale === 'en'),
+        [translations],
+    );
+    const target = useMemo(
+        () => translations?.find(t => t.locale === locale),
+        [translations, locale],
+    );
+
+    return (
+        <ContentWorkspace
+            type='homepage'
+            id={HOME_ID}
+            locale={locale}
+            faqBasePath='/home-page'
+            fields={HOMEPAGE_FIELDS}
+            entityName='Homepage'
+            source={source as never}
+            target={target as never}
+            isLoading={isLoading}
+            isMachineTranslated={target?.isMachineTranslated}
+            isSaving={upsert.isPending}
+            onSave={values =>
+                upsert.mutateAsync({
+                    locale,
+                    payload: { fields: toFields(values) },
+                })
+            }
+        />
+    );
 }
 
 export function DestinationWorkspace({ id, locale }: { id: string; locale: Locale }) {

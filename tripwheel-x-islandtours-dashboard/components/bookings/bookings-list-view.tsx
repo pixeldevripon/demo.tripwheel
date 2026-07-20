@@ -31,11 +31,37 @@ export function BookingsListView({
         setFilter,
     } = useTableState();
 
+    // Queue mode is a WORK LIST, so it defaults to what is still outstanding:
+    // a request is pending exactly while it has a stamp and the booking is
+    // still CONFIRMED; processing it flips the booking to CANCELLED. Without
+    // this the queue only ever grew, and because it sorts oldest-first the
+    // already-handled rows sat on top of the ones needing attention.
+    // Implemented as a filter default rather than a hard exclusion so the
+    // processed history stays one dropdown away.
+    //
+    // Caveat on Processed: the backend queue filter is just
+    // `utcCancellationRequestedAt != null`, and cancel() stamps that field on
+    // EVERY cancellation (defaulting to now when there was no prior request).
+    // So Processed reads as "cancellation history" and includes admin-initiated
+    // cancellations nobody ever requested. Pending is exact; only Processed is
+    // loose. Fixing it means not stamping absent a real request, which would
+    // change the refund-instant semantics - deliberately left alone.
+    const queueFilter = cancellationView ? (filters.queue ?? 'pending') : null;
+    const queueStatus =
+        queueFilter === 'pending'
+            ? 'CONFIRMED'
+            : queueFilter === 'processed'
+              ? 'CANCELLED'
+              : undefined;
+
     const params: BookingsQueryParams = {
         page,
         limit,
         ...(cancellationView ? { cancellationRequested: true } : {}),
-        ...(filters.status ? { status: filters.status as BookingStatus } : {}),
+        ...(queueStatus ? { status: queueStatus as BookingStatus } : {}),
+        ...(!cancellationView && filters.status
+            ? { status: filters.status as BookingStatus }
+            : {}),
         ...(filters.paymentModel
             ? { paymentModel: filters.paymentModel as BookingPaymentModel }
             : {}),

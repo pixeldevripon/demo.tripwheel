@@ -46,7 +46,8 @@ export interface StaffMember {
      */
     isSystemAdmin: boolean;
     invitedBy: { id: string; name: string } | null;
-    invitedAt: string;
+    /** Null for the system administrator - that account was never invited. */
+    invitedAt: string | null;
     activatedAt: string | null;
     lastLoginAt: string | null;
     createdAt: string;

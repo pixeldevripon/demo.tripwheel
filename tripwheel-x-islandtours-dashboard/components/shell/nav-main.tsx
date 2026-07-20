@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
@@ -32,9 +33,21 @@ function CountChip({ count }: { count: number }) {
     );
 }
 
-/** Open cancellation requests awaiting admin review. */
+/**
+ * Open cancellation requests awaiting admin review.
+ *
+ * `status: CONFIRMED` is what makes it "awaiting": the queue filter alone is
+ * `utcCancellationRequestedAt != null`, and cancel() stamps that on every
+ * cancellation, so without the status the badge counted every cancellation
+ * ever made and never went down. It must match the queue page's Pending
+ * default, or the badge promises work the page does not show.
+ */
 function CancellationsBadge() {
-    const { data } = useBookings({ limit: 1, cancellationRequested: true });
+    const { data } = useBookings({
+        limit: 1,
+        cancellationRequested: true,
+        status: 'CONFIRMED',
+    });
     return <CountChip count={data?.total ?? 0} />;
 }
 
@@ -78,6 +91,10 @@ export function NavMain({ groups }: NavMainProps) {
     // or it keeps covering the page the user just navigated to. No-op on
     // desktop (openMobile is only rendered under the mobile breakpoint).
     const { setOpenMobile } = useSidebar();
+    // Warms the destination table's query on hover/focus. The route itself is
+    // already instant; this closes the remaining gap, which is the table's own
+    // fetch-on-mount.
+    const prefetchNav = useNavPrefetch();
 
     const isPathActive = (url?: string) => {
         const target = toHref(url);
@@ -130,6 +147,12 @@ export function NavMain({ groups }: NavMainProps) {
                                                 )}>
                                                 <Link
                                                     href={toHref(item.url)}
+                                                    onMouseEnter={() =>
+                                                        prefetchNav(item.url)
+                                                    }
+                                                    onFocus={() =>
+                                                        prefetchNav(item.url)
+                                                    }
                                                     onClick={() =>
                                                         setOpenMobile(false)
                                                     }>

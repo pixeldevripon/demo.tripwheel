@@ -1,5 +1,4 @@
 import { getDashboardStats } from '@/app/_actions/dashboardActions';
-import { getUserProfile } from '@/app/_actions/userActions';
 import PageComponents from '@/components/page-components';
 import {
     formatRangeLabel,
@@ -7,6 +6,7 @@ import {
     RANGE_PARAM,
     resolveRange,
 } from '@/lib/analytics/range-presets';
+import { getSessionRole } from '@/lib/server/dashboard-session';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -18,17 +18,20 @@ export default async function DashboardPage({
     const cookie = (await headers()).get('cookie') ?? '';
     const params = await searchParams;
 
-    // `getUserProfile` is request-memoized (React `cache()`) and already resolved
-    // by the dashboard layout, so this reuses that result with no extra backend
-    // call - and it forwards the internal key to bypass the per-IP throttle.
-    const user = await getUserProfile(cookie);
-    if (!user) {
+    // Role only - ONE Better Auth call, not the 4-6 round trips `getUserProfile`
+    // makes. Its comment used to claim the layout had already resolved it, but
+    // layouts are preserved across sibling navigations, so on every click into
+    // the Overview the whole fan-out ran again and the router could not commit
+    // until it finished. Nothing on this page needs the rest of the profile:
+    // stats are scoped server-side from the session cookie.
+    const role = await getSessionRole(cookie);
+    if (!role) {
         redirect('/portal');
     }
     // Customers have no Overview - their landing page is My Bookings. The
     // server root owns role routing (login just pushes '/'), so deep links
     // and refreshes behave identically.
-    if (user.role === 'USER') {
+    if (role === 'USER') {
         redirect('/bookings');
     }
 
@@ -62,7 +65,6 @@ export default async function DashboardPage({
         <div className='flex flex-1 flex-col gap-4'>
             <PageComponents
                 statsPromise={statsPromise}
-                loggedInUser={user}
                 rangePreset={preset}
                 rangeLabel={rangeLabel}
             />
