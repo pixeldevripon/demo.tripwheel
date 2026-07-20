@@ -18,7 +18,7 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
-import { filterNavGroups } from '@/lib/rbac-utils';
+import { navGroupsForRole, resolvePermissions } from '@/lib/rbac-utils';
 import { getNavigations } from '@/navigations/navigations';
 import { NavMain } from './nav-main';
 
@@ -49,22 +49,15 @@ export function AppSidebar({
     const { setOpenMobile } = useSidebar();
 
     const filteredNav = useMemo(() => {
-        // Effective set from the backend when available (fine-grained staff
-        // grants); static role map as the transient-failure fallback - except
-        // STAFF, whose fallback is empty rather than the broad legacy list
-        // (mirrors RoleProvider; backend guards enforce regardless).
-        const permissions: string[] =
-            userPermissions ??
-            (userRole === 'STAFF'
-                ? []
-                : ((ROLE_PERMISSIONS as Record<string, string[]>)[
-                      userRole ?? ''
-                  ] ?? []));
+        const permissions = resolvePermissions(
+            userRole,
+            userPermissions,
+            ROLE_PERMISSIONS as Record<string, string[]>,
+        );
         // Customers get their own nav array - never a filtered operator nav.
-        const groups =
-            userRole === 'USER' ? navData.customer : navData.dashboard;
-        return filterNavGroups(groups, permissions);
-    }, [userRole, userPermissions, navData.dashboard, navData.customer]);
+        // Shared with the command palette so the two cannot drift.
+        return navGroupsForRole(navData, userRole, permissions);
+    }, [userRole, userPermissions, navData]);
 
     return (
         <Sidebar collapsible='icon' {...props}>

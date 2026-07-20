@@ -20,7 +20,11 @@ import { useBookings } from '@/hooks/bookings/use-bookings';
 import { useDestinations } from '@/hooks/destinations/use-destinations';
 import { useAdminTrips, useMyTrips } from '@/hooks/trips/use-trips';
 import { Permission, ROLE_PERMISSIONS } from '@/lib/config/rbac';
-import { filterNavGroups } from '@/lib/rbac-utils';
+import {
+    isCustomerRole,
+    navGroupsForRole,
+    resolvePermissions,
+} from '@/lib/rbac-utils';
 import { getNavigations } from '@/navigations/navigations';
 
 /**
@@ -45,26 +49,42 @@ function useDebounced<T>(value: T, ms: number): T {
     return debounced;
 }
 
-export function CommandPalette({ userRole }: { userRole?: string }) {
+export function CommandPalette({
+    userRole,
+    userPermissions,
+}: {
+    userRole?: string;
+    userPermissions?: string[];
+}) {
     const router = useRouter();
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState('');
     const debouncedQuery = useDebounced(query.trim(), 250);
 
+    // Same resolution as the sidebar: effective backend grants first, static
+    // role map only as a fallback. Using the role map unconditionally showed
+    // staff palette entries their seat does not actually grant.
     const permissions = React.useMemo(
         () =>
-            (ROLE_PERMISSIONS as Record<string, string[]>)[userRole ?? ''] ??
-            [],
-        [userRole],
+            resolvePermissions(
+                userRole,
+                userPermissions,
+                ROLE_PERMISSIONS as Record<string, string[]>,
+            ),
+        [userRole, userPermissions],
     );
     const can = React.useCallback(
         (p: string) => permissions.includes(p),
         [permissions],
     );
 
+    // Same resolver the sidebar uses: a customer gets the customer nav, not a
+    // permission-filtered operator nav (Role.USER holds VIEW_TRIPS and the
+    // self-scoped booking/payment reads, which would otherwise leave Tours,
+    // Translations and Cancellations standing in here).
     const navGroups = React.useMemo(
-        () => filterNavGroups(getNavigations().dashboard, permissions),
-        [permissions],
+        () => navGroupsForRole(getNavigations(), userRole, permissions),
+        [userRole, permissions],
     );
 
     // ⌘K / Ctrl+K
@@ -82,15 +102,22 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
     // Entity search - only while open, with a real query.
     const searching = open && debouncedQuery.length >= 2;
     const isAdmin = userRole === 'ADMIN';
+    // A customer must never be offered catalogue entities: those results link
+    // into operator screens (/trips/:id/edit, /destinations/:id) that they
+    // cannot open. Permission alone is not enough of a gate here - Role.USER
+    // carries VIEW_TRIPS.
+    const isCustomer = isCustomerRole(userRole);
 
     const myTrips = useMyTrips(
         { search: debouncedQuery, limit: 6 },
-        searching && !isAdmin && can(Permission.VIEW_TRIPS),
+        searching && !isAdmin && !isCustomer && can(Permission.VIEW_TRIPS),
     );
     const adminTrips = useAdminTrips(
         { search: debouncedQuery, limit: 6 },
         searching && isAdmin,
     );
+    // Bookings stay searchable for customers: the backend scopes USER callers
+    // to their OWN rows and the result links to their own bookings page.
     const bookings = useBookings(
         { search: debouncedQuery, limit: 6 },
         searching && can(Permission.VIEW_BOOKINGS),
@@ -99,7 +126,7 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
     // let cmdk filter them client-side.
     const destinations = useDestinations(
         { limit: 50 },
-        open && can(Permission.VIEW_DESTINATIONS),
+        open && !isCustomer && can(Permission.VIEW_DESTINATIONS),
     );
 
     const tours = (isAdmin ? adminTrips.data?.data : myTrips.data?.data) ?? [];
@@ -133,11 +160,19 @@ export function CommandPalette({ userRole }: { userRole?: string }) {
                     if (!o) setQuery('');
                 }}
                 title='Search the dashboard'
-                description='Jump to a page, tour, booking or destination'
+                description={
+                    isCustomer
+                        ? 'Jump to a page or one of your bookings'
+                        : 'Jump to a page, tour, booking or destination'
+                }
                 className='w-[92vw] max-w-2xl sm:max-w-2xl'>
                 <Command>
                     <CommandInput
-                        placeholder='Search pages, tours, bookings…'
+                        placeholder={
+                            isCustomer
+                                ? 'Search your bookings…'
+                                : 'Search pages, tours, bookings…'
+                        }
                         value={query}
                         onValueChange={setQuery}
                         className='h-12 text-base'

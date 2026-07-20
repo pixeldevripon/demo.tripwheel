@@ -7,9 +7,11 @@ import { useTableState } from '@/components/data-table/use-table-state';
 import { StatusBadge } from '@/components/common/status-badge';
 import { PAYMENT_STATUS } from '@/components/common/status-maps';
 import { usePayments } from '@/hooks/payments/use-payments';
+import { useCustomerBookingSummary } from '@/hooks/bookings/use-bookings';
 import { bookingMoney } from '@/lib/bookings/format';
 import { formatDate } from '@/lib/utils';
 import type { PaymentKind, PaymentListItem } from '@/types/booking';
+import { CustomerStatCard } from './customer-stat-card';
 
 const KIND_LABEL: Record<PaymentKind, string> = {
     DEPOSIT: 'Deposit',
@@ -27,6 +29,7 @@ const KIND_LABEL: Record<PaymentKind, string> = {
 export function CustomerPaymentsView() {
     const { page, limit, setPage, setLimit } = useTableState();
     const { data, isLoading } = usePayments({ page, limit });
+    const { data: summary } = useCustomerBookingSummary();
 
     const columns: ColumnDef<PaymentListItem>[] = [
         {
@@ -58,12 +61,26 @@ export function CustomerPaymentsView() {
             ),
         },
         {
+            accessorKey: 'bookingLocalDate',
+            header: 'Travel date',
+            cell: ({ row }) => (
+                <span className='text-sm'>
+                    {formatDate(row.original.bookingLocalDate)}
+                </span>
+            ),
+        },
+        {
             accessorKey: 'methodType',
             header: 'Method',
             cell: ({ row }) => (
-                <span className='text-sm capitalize'>
-                    {row.original.methodType ?? '–'}
-                </span>
+                <div className='min-w-0'>
+                    <span className='block text-sm capitalize'>
+                        {row.original.methodType ?? '–'}
+                    </span>
+                    <span className='block text-xs capitalize text-muted-foreground'>
+                        {row.original.provider.toLowerCase()}
+                    </span>
+                </div>
             ),
         },
         {
@@ -97,6 +114,33 @@ export function CustomerPaymentsView() {
 
     return (
         <div className='space-y-4'>
+            {/* Both figures come from real endpoints - the transaction count
+                from the paginated total, net spend from /bookings/me/summary.
+                Never sum the current page: that would silently mean "this page
+                only" while reading as a lifetime total. */}
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                <CustomerStatCard
+                    label='Transactions'
+                    value={data ? String(data.total) : '–'}
+                    hint='Charges and refunds on your bookings'
+                />
+                <CustomerStatCard
+                    label='Net paid'
+                    value={
+                        summary
+                            ? summary.totalSpend.length
+                                ? summary.totalSpend
+                                      .map(s =>
+                                          bookingMoney(s.amount, s.currency),
+                                      )
+                                      .join(' + ')
+                                : bookingMoney('0', 'EUR')
+                            : '–'
+                    }
+                    hint='Successful payments minus refunds'
+                />
+            </div>
+
             <DataTable
                 columns={columns}
                 data={data?.data ?? []}
