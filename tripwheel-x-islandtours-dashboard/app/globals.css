@@ -428,6 +428,16 @@
         @apply bg-surface text-content font-sans antialiased;
         line-height: 1.65;
     }
+    /* Radix (react-remove-scroll) locks the body whenever a dropdown, select
+     * or dialog opens, and pads it to make up for the scrollbar it just
+     * removed. `html` above already reserves that gutter permanently, so the
+     * compensation is a SECOND allowance for the same pixels and the page
+     * slides sideways every time a menu opens. Drop it and let the reserved
+     * gutter do the job alone. */
+    body[data-scroll-locked] {
+        padding-right: 0 !important;
+        margin-right: 0 !important;
+    }
 
     h1 {
         font-family: var(--font-heading);

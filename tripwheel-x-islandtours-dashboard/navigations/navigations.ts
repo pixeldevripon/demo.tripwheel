@@ -206,10 +206,44 @@ const dashboardNav: NavGroup[] = [
     // on A2). "Users" above is the Staff & Teams module.
 ];
 
+/**
+ * Customer (Role.USER) navigation - a deliberately SEPARATE array, never a
+ * filtered view of dashboardNav: the USER role now holds VIEW_BOOKINGS /
+ * VIEW_PAYMENTS (self-scoped on the backend), and reusing the operator nav
+ * would light up its operator-framed items (Cancellations queue, Overview)
+ * for customers. Three destinations, one group.
+ */
+const customerNav: NavGroup[] = [
+    {
+        label: 'My account',
+        items: [
+            {
+                title: 'My Bookings',
+                url: 'bookings',
+                icon: Calendar03Icon,
+                permissions: [Permission.VIEW_BOOKINGS],
+            },
+            {
+                title: 'Payments',
+                url: 'payments',
+                icon: CreditCardIcon,
+                permissions: [Permission.VIEW_PAYMENTS],
+            },
+            {
+                title: 'Profile',
+                url: 'profile',
+                icon: UserCircleIcon,
+                permissions: [Permission.VIEW_PROFILE],
+            },
+        ],
+    },
+];
+
 export interface NavigationMap {
     dashboard: NavGroup[];
+    customer: NavGroup[];
 }
 
 export function getNavigations(): NavigationMap {
-    return { dashboard: dashboardNav };
+    return { dashboard: dashboardNav, customer: customerNav };
 }

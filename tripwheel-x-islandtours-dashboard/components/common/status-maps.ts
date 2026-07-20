@@ -1,4 +1,8 @@
-import type { BookingStatus, PaymentStatus } from '@/types/booking';
+import type {
+    BookingPaymentStatus,
+    BookingStatus,
+    PaymentStatus,
+} from '@/types/booking';
 import type { OperatorVerificationStatus } from '@/types/operator';
 import type {
     AvailabilityScheduleStatus,
@@ -39,6 +43,18 @@ export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {
     REFUNDED: { label: 'Refunded', variant: 'neutral' },
     PARTIALLY_REFUNDED: { label: 'Partially refunded', variant: 'neutral' },
     CANCELLED: { label: 'Cancelled', variant: 'danger' },
+};
+
+/**
+ * Ledger-derived per-booking payment state (`BookingListItem.paymentStatus`,
+ * computed by the backend's derivePaymentState) - shared by the customer
+ * views and available to the operator bookings table.
+ */
+export const BOOKING_PAYMENT_STATE: Record<BookingPaymentStatus, StatusMeta> = {
+    PAID: { label: 'Paid', variant: 'success' },
+    PARTIALLY_PAID: { label: 'Partially paid', variant: 'warning' },
+    UNPAID: { label: 'Unpaid', variant: 'neutral' },
+    REFUNDED: { label: 'Refunded', variant: 'info' },
 };
 
 export const TRIP_STATUS: Record<TripStatus, StatusMeta> = {

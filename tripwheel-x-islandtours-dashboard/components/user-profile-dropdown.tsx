@@ -87,6 +87,8 @@ export default function ProfileDropdown({
                                     '/portal';
                             } else if (loggedInUser?.role === 'STAFF') {
                                 router.push('/staff');
+                            } else if (loggedInUser?.role === 'USER') {
+                                router.push('/account');
                             } else {
                                 router.push('/portal');
                             }

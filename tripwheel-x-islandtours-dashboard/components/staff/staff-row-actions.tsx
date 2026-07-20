@@ -38,6 +38,11 @@ interface StaffRowActionsProps {
  * Row actions for a staff member / team seat. OWNER seats get no actions at
  * all - the owner account is managed through the operator module, and the
  * backend rejects owner mutations here anyway.
+ *
+ * The system administrator is listed for visibility but is equally untouchable:
+ * it has no `staff_members` row, and every mutating staff endpoint rejects it
+ * with 403. Hiding the menu keeps the UI from offering an action it knows will
+ * fail - the backend guard remains the real enforcement.
  */
 export function StaffRowActions({ member, scope, onEdit }: StaffRowActionsProps) {
     const [removeOpen, setRemoveOpen] = useState(false);
@@ -48,7 +53,7 @@ export function StaffRowActions({ member, scope, onEdit }: StaffRowActionsProps)
     const { mutate: removeMember, isPending: removePending } =
         useRemoveStaff(scope);
 
-    if (member.seatRole === 'OWNER') return null;
+    if (member.isSystemAdmin || member.seatRole === 'OWNER') return null;
 
     const suspended = member.status === 'SUSPENDED';
 

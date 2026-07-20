@@ -60,8 +60,11 @@ export function AppSidebar({
                 : ((ROLE_PERMISSIONS as Record<string, string[]>)[
                       userRole ?? ''
                   ] ?? []));
-        return filterNavGroups(navData.dashboard, permissions);
-    }, [userRole, userPermissions, navData.dashboard]);
+        // Customers get their own nav array - never a filtered operator nav.
+        const groups =
+            userRole === 'USER' ? navData.customer : navData.dashboard;
+        return filterNavGroups(groups, permissions);
+    }, [userRole, userPermissions, navData.dashboard, navData.customer]);
 
     return (
         <Sidebar collapsible='icon' {...props}>

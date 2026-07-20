@@ -52,6 +52,23 @@ export interface BookingListItem {
     utcCancellationRequestedAt: string | null;
     freeCancelDeadline: string | null;
     requestedInFreeWindow: boolean | null;
+    /** Ledger-derived: net paid vs totalRetail (see backend derivePaymentState). */
+    paymentStatus: BookingPaymentStatus;
+    /** Net amount paid (SUCCEEDED payments minus refunds), exact decimal string. */
+    paidAmount: string;
+}
+
+export type BookingPaymentStatus =
+    | 'PAID'
+    | 'PARTIALLY_PAID'
+    | 'UNPAID'
+    | 'REFUNDED';
+
+/** GET /bookings/me/summary - the customer dashboard stat row. */
+export interface CustomerBookingSummary {
+    bookingsCount: number;
+    upcomingCount: number;
+    totalSpend: Array<{ currency: string; amount: string }>;
 }
 
 export interface PaginatedBookings {
