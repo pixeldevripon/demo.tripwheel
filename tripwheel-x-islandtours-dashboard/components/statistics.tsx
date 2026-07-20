@@ -47,10 +47,24 @@ import {
     Wallet01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
-import { Suspense, use, useState } from 'react';
+import { Suspense, use, useState, useTransition } from 'react';
 
 import { StatisticsSkeleton } from '@/components/skeletons/statistics-skeleton';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    formatRangeLabel,
+    RANGE_PARAM,
+    RANGE_PRESETS,
+    type RangePresetId,
+} from '@/lib/analytics/range-presets';
 import type { DashboardStats, FxDisplay } from '@/types/analytics';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     Area,
     Bar,
@@ -69,6 +83,10 @@ interface StatisticsProps {
     /** Resolves to `null` when the analytics fetch failed - never to zeros. */
     statsPromise?: Promise<DashboardStats | null>;
     visibleSections: Record<string, boolean>;
+    /** The window the server fetched with. Owned by the URL, not by state. */
+    rangePreset: RangePresetId;
+    /** That window in words, resolved server-side so it cannot drift. */
+    rangeLabel: string;
 }
 
 /** A single pie slice, already resolved to a display label and a fill colour. */
@@ -93,6 +111,73 @@ export default function Statistics(props: StatisticsProps) {
             }>
             <StatisticsContent {...props} />
         </Suspense>
+    );
+}
+
+/**
+ * THE reporting window for the page. One control, scoping every figure below
+ * it - never a per-card filter, which is how a dashboard ends up with two
+ * numbers on screen that quietly cover different periods.
+ *
+ * It writes to a URL search param rather than local state, so the SERVER
+ * refetches and re-renders. The range therefore lives in exactly one place and
+ * no client copy can disagree with the payload on screen. The push runs in a
+ * transition, which keeps the current figures on screen while the new ones load
+ * instead of dropping the whole section back to its skeleton.
+ */
+function RangeControl({
+    preset,
+    label,
+}: {
+    preset: RangePresetId;
+    label: string;
+}) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [isPending, startTransition] = useTransition();
+
+    const onChange = (value: string) => {
+        startTransition(() => {
+            // "All time" is the default, so it is expressed as the absence of
+            // the param and leaves a clean URL.
+            router.push(
+                value === 'all'
+                    ? pathname
+                    : `${pathname}?${RANGE_PARAM}=${value}`,
+            );
+        });
+    };
+
+    return (
+        <div
+            className={cn(
+                'flex items-center gap-2 transition-opacity',
+                isPending && 'opacity-60',
+            )}>
+            {/* The active window, stated. Without this a reader cannot tell
+                what period any figure on the page covers. */}
+            <span className='hidden text-2xs text-muted-foreground sm:inline'>
+                {label}
+            </span>
+            <Select value={preset} onValueChange={onChange}>
+                {/* Deliberately thinner than the form default: this is a view
+                    filter sitting on a metadata row, not a field being filled
+                    in, so it should not carry the weight of an input. */}
+                <SelectTrigger
+                    size='sm'
+                    className='h-8 w-32 gap-1.5 px-2 text-xs'
+                    aria-label='Reporting period'>
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent align='end'>
+                    {RANGE_PRESETS.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className='text-xs'>
+                            {p.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
     );
 }
 
@@ -244,51 +329,31 @@ interface MoneyProps {
     eur: number;
     fx: FxDisplay | null;
     currency: string;
-    /** `display` is KPI-headline scale, `inline` is row/table scale. */
-    variant?: 'display' | 'inline';
     className?: string;
 }
 
 /**
- * THE money renderer for this surface. Owner requirement: every figure shows
- * EUR and its converted equivalent.
+ * Row-scale money for tables and leaderboards. Owner requirement: every figure
+ * shows EUR and its converted equivalent.
  *
  * The conversion uses `fx.rate` and nothing else, so the two readings can never
  * disagree with one another. When `fx` is null the backend had no fresh rate,
  * and the only honest response is to show EUR alone - converting at a stale or
  * invented rate would publish a number the platform cannot stand behind.
  *
- * Typography: `display` carries NO `font-mono`. A monospaced face only earns
- * its keep where digits must line up column-wise; a single headline figure has
- * nothing to align against, and the mono face just makes it look like debug
- * output. `inline` sits in rows and keeps plain `tabular-nums` so stacked
- * amounts align without switching typeface.
+ * `tabular-nums` without `font-mono`: stacked amounts need their digits to line
+ * up, which is all the numeric variant does; switching typeface as well just
+ * makes the column look like debug output. KPI headline figures render inline
+ * in the card instead, since a single big number has nothing to align against.
  */
-function Money({
-    eur,
-    fx,
-    currency,
-    variant = 'inline',
-    className,
-}: MoneyProps) {
+function Money({ eur, fx, currency, className }: MoneyProps) {
     return (
         <span className={cn('flex flex-col', className)}>
-            <span
-                className={cn(
-                    variant === 'display'
-                        ? 'truncate text-2xl font-semibold tracking-tight'
-                        : 'text-sm font-medium tabular-nums',
-                )}>
+            <span className='text-sm font-medium tabular-nums'>
                 {formatMoney(eur, currency)}
             </span>
             {fx && (
-                <span
-                    className={cn(
-                        'text-muted-foreground',
-                        variant === 'display'
-                            ? 'text-xs'
-                            : 'text-2xs tabular-nums',
-                    )}>
+                <span className='text-2xs tabular-nums text-muted-foreground'>
                     ≈ {formatMoney(eur * fx.rate, fx.quote)}
                 </span>
             )}
@@ -317,50 +382,52 @@ function InfoNote({ text }: { text: string }) {
 }
 
 /**
- * The movement chip on a KPI card. A `new` growth gets neutral styling and no
- * arrow: there is no direction to point in when the previous period was empty.
+ * The movement indicator on a KPI card.
+ *
+ * A `new` growth renders NOTHING. Movement against a zero base is undefined,
+ * so the old "New" chip was carrying no information while drawing the eye
+ * harder than the figure it sat next to. Only a real percentage earns a mark,
+ * and it is stated quietly - colour and a small arrow, no filled pill, so the
+ * value stays the loudest thing on the card.
  */
 function TrendBadge({ growth }: { growth: Growth }) {
-    if (!growth) return null;
-
-    if (growth.kind === 'new') {
-        return (
-            <Badge
-                variant='outline'
-                className='px-1.5 py-0 text-2xs font-medium text-muted-foreground'>
-                New
-            </Badge>
-        );
-    }
+    if (!growth || growth.kind === 'new') return null;
 
     const isUp = growth.kind === 'up';
 
     return (
-        <Badge
-            variant='outline'
+        <span
             className={cn(
-                'flex items-center gap-1 px-1.5 py-0 text-2xs font-medium tabular-nums',
-                isUp
-                    ? 'border-success-border bg-success-subtle text-success-fg'
-                    : 'border-danger-border bg-danger-subtle text-danger-fg',
+                'flex shrink-0 items-center gap-0.5 text-2xs font-medium tabular-nums',
+                isUp ? 'text-success-fg' : 'text-danger-fg',
             )}>
             <HugeiconsIcon
                 icon={isUp ? TradeUpIcon : TradeDownIcon}
                 className='size-3'
             />
             {growth.label}
-        </Badge>
+        </span>
     );
 }
 
-/** The same movement, stated as a chart footnote rather than a chip. */
-function TrendFootnote({ growth }: { growth: Growth }) {
+/**
+ * The same movement as a chart footnote. `previousLabel` names what it is
+ * measured against, because with a range set the comparison is the equal-length
+ * period before it, not "last month".
+ */
+function TrendFootnote({
+    growth,
+    previousLabel,
+}: {
+    growth: Growth;
+    previousLabel: string;
+}) {
     if (!growth) return null;
 
     if (growth.kind === 'new') {
         return (
             <div className='text-sm leading-none font-medium text-muted-foreground'>
-                New this month, with nothing recorded last month
+                New, with nothing recorded in {previousLabel}
             </div>
         );
     }
@@ -373,7 +440,7 @@ function TrendFootnote({ growth }: { growth: Growth }) {
                 'flex gap-2 text-sm leading-none font-medium',
                 isUp ? 'text-success-fg' : 'text-danger-fg',
             )}>
-            {growth.label} from last month
+            {growth.label} from {previousLabel}
             <HugeiconsIcon
                 icon={isUp ? TradeUpIcon : TradeDownIcon}
                 className='size-4'
@@ -577,19 +644,31 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Card models ─────────────────────────────────────────────────────────────
 
+/**
+ * A KPI card is four things at most: what it is, the number, its converted
+ * equivalent, and ONE line of support. Anything beyond that competes with the
+ * figure the card exists to show.
+ */
 interface KpiCard {
     key: string;
     label: string;
-    /** Money cards carry an EUR amount and render through `<Money>`. */
+    /** Money cards carry an EUR amount; the USD line is derived from it. */
     eur?: number;
     /** Count cards (and "not tracked" states) carry a preformatted string. */
     value?: string;
     trend?: Growth;
-    description: string;
-    subtitle?: string;
+    /** The single supporting line under the value. */
+    support: string;
     /** Honesty caveat surfaced as an info icon beside the label. */
     note?: string;
+    /**
+     * True when the VALUE is current state rather than something that happened
+     * during the range. Marked on the card so it is obvious the figure does not
+     * move when the reporting period does.
+     */
+    stock?: boolean;
     icon: IconSvgElement;
+    /** Tile tint. Money cards, count cards and caveated cards read apart. */
     tile?: IconTileVariant;
 }
 
@@ -602,7 +681,12 @@ interface BreakdownRow {
     note?: string;
 }
 
-function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
+function StatisticsContent({
+    statsPromise,
+    visibleSections,
+    rangePreset,
+    rangeLabel,
+}: StatisticsProps) {
     const stats = statsPromise ? use(statsPromise) : null;
 
     const [showAllActivity, setShowAllActivity] = useState(false);
@@ -611,7 +695,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
     // an explicit error state instead of rendering a dashboard full of zeros.
     if (!stats) {
         return (
-            <div className='mx-auto w-full space-y-6'>
+            <div className='w-full'>
                 <Card>
                     <CardContent className='flex flex-col items-center justify-center py-12 text-center'>
                         <IconTile
@@ -644,9 +728,16 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
         breakdowns,
         recent,
         fx,
+        range,
     } = stats;
     const currency = stats.currency || 'EUR';
     const money = (amount: number) => formatMoney(amount, currency);
+
+    // What the growth figures are measured against, in words. With no range set
+    // the comparison is still month over month, so the copy has to say so.
+    const previousLabel = range.isAllTime ? 'last month' : 'the previous period';
+    /** Names the comparison window itself, for row labels like "New ...". */
+    const activeWindowLabel = range.isAllTime ? 'this month' : 'in range';
 
     // The payload is role-shaped: the traveler's deposit IS the platform
     // commission, so admin and operator hold opposite halves of one booking.
@@ -679,6 +770,11 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
 
     const bucketNoun = trend.granularity === 'month' ? 'months' : 'days';
     const bucketCount = trend.points.length;
+    // With a range set the series is sized to it, so naming the range is more
+    // accurate than "the last N months" counting back from today.
+    const seriesLabel = range.isAllTime
+        ? `the last ${bucketCount} ${bucketNoun}`
+        : formatRangeLabel(range);
 
     // The empty-state guards matter: without them a dataset of nothing but zero
     // buckets renders as a flat line pinned to the axis, which looks like real
@@ -860,26 +956,28 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
     const hasPaymentStatusData = paymentStatusData.some((d) => d.value > 0);
 
     // ─── Growth ──────────────────────────────────────────────────────────
-    // Earnings growth compares RECOGNIZED months against each other, which is
-    // why it reads off `earnedThisMonthEur` rather than anything booked.
+    // Every pair compares the selected window against the equal-length one
+    // immediately before it (this month against last month when no range is
+    // set). Earnings compare RECOGNIZED windows, which is why they read off
+    // `earnedInRangeEur` rather than anything merely booked.
     const earningsGrowth = calculateGrowth(
-        revenue.earnedThisMonthEur,
-        revenue.earnedLastMonthEur,
+        revenue.earnedInRangeEur,
+        revenue.earnedInPreviousRangeEur,
     );
 
     const bookingsGrowth = calculateGrowth(
-        bookings.thisMonth,
-        bookings.lastMonth,
+        bookings.inRange,
+        bookings.inPreviousRange,
     );
 
     const customerGrowth = calculateGrowth(
-        customers.newThisMonth,
-        customers.newLastMonth,
+        customers.newInRange,
+        customers.newInPreviousRange,
     );
 
     const tripsGrowth = calculateGrowth(
-        trips.createdThisMonth,
-        trips.createdLastMonth,
+        trips.createdInRange,
+        trips.createdInPreviousRange,
     );
 
     // ─── Shared caveats ──────────────────────────────────────────────────
@@ -895,28 +993,25 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
     const sharedTailCards: KpiCard[] = [
         {
             key: 'bookings',
-            label: 'Total bookings',
+            label: 'Bookings',
             value: bookings.total.toString(),
             trend: bookingsGrowth,
-            description:
-                bookings.upcoming > 0
-                    ? `${bookings.upcoming} upcoming`
-                    : 'No upcoming bookings',
-            subtitle: `${bookings.thisMonth} this month · ${formatRate(
-                bookings.cancellationRate,
-            )} cancelled`,
+            support: `${formatRate(bookings.cancellationRate)} cancelled`,
             icon: Calendar03Icon,
+            tile: 'primary',
         },
         {
             key: 'trips',
             // The card says "Active", so it counts LIVE tours only - drafts and
-            // archived tours are not active inventory.
+            // archived tours are not active inventory. A live count is current
+            // state, so it does not move with the reporting period.
             label: 'Active trips',
             value: trips.live.toString(),
             trend: tripsGrowth,
-            description: `${trips.createdThisMonth} created this month`,
-            subtitle: `${trips.withBookings} of ${trips.total} have bookings`,
+            support: `${trips.withBookings} of ${trips.total} booked`,
+            stock: true,
             icon: Airplane01Icon,
+            tile: 'info',
         },
         {
             key: 'customers',
@@ -924,17 +1019,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             label: 'Customers',
             value: customers.total.toString(),
             trend: customerGrowth,
-            description: `${customers.newThisMonth} new this month`,
-            // `registered` is null for an operator caller (they cannot see the
-            // platform account count), so the sub-line falls back to the repeat
-            // rate rather than showing a zero that is not a zero.
-            subtitle:
-                customers.registered !== null
-                    ? `${customers.registered} registered · ${formatRate(
-                          customers.repeatRate,
-                      )} repeat`
-                    : `${formatRate(customers.repeatRate)} repeat`,
+            support: `${formatRate(customers.repeatRate)} repeat`,
+            note: 'Distinct bookers acquired in this period, guests included, counted from their first booking.',
             icon: UserGroupIcon,
+            tile: 'success',
         },
     ];
 
@@ -944,17 +1032,16 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             label: 'Commission earned',
             eur: revenue.earnedEur,
             trend: earningsGrowth,
-            description: `${money(revenue.earnedThisMonthEur)} this month`,
-            subtitle: 'Recognized on tour completion',
+            support: 'On completed tours',
             note: 'Commission on completed (travelled) bookings only. Revenue is recognized on completion, never at booking.',
             icon: MoneyBagIcon,
+            tile: 'primary',
         },
         {
             key: 'pending',
             label: 'Pending commission',
             eur: revenue.pendingEur,
-            description: 'Awaiting completion',
-            subtitle: `${bookings.upcoming} upcoming departures`,
+            support: 'Awaiting completion',
             note: 'Commission on confirmed bookings that have not travelled yet. Real money, not yet earned - it is never added into earned.',
             icon: Wallet01Icon,
             tile: 'warning',
@@ -963,8 +1050,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             key: 'gmv',
             label: 'Gross merchandise value',
             eur: revenue.gmvEur,
-            description: 'Confirmed + completed bookings',
-            subtitle: `Across ${funnel.committed} committed bookings`,
+            support: `${funnel.committed} committed bookings`,
             icon: Analytics01Icon,
             tile: 'info',
         },
@@ -972,8 +1058,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             key: 'payout',
             label: 'Payouts due to operators',
             eur: revenue.payoutDueEur,
-            description: 'Earned, not yet settled',
-            subtitle: 'On completed paid-in-full bookings',
+            support: 'Paid in full, unsettled',
             note: PAYOUT_NOTE,
             icon: Coins01Icon,
             tile: 'warning',
@@ -987,14 +1072,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             eur: revenue.cashCollectedEur ?? undefined,
             value:
                 revenue.cashCollectedEur === null ? 'Not tracked' : undefined,
-            description:
-                revenue.cashCollectedEur === null
-                    ? 'Platform ledger only'
-                    : 'Actually received on platform rails',
-            subtitle:
+            support:
                 revenue.refundedEur !== null
-                    ? `${money(revenue.refundedEur)} refunded out`
-                    : undefined,
+                    ? `${money(revenue.refundedEur)} refunded`
+                    : 'Platform ledger only',
             icon: CreditCardIcon,
             tile: 'success',
         },
@@ -1006,8 +1087,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             label: 'Net earned',
             eur: revenue.earnedEur,
             trend: earningsGrowth,
-            description: `${money(revenue.earnedThisMonthEur)} this month`,
-            subtitle: 'Retail minus commission, on completed tours',
+            support: 'Retail minus commission, on completed tours',
             note: 'Your share of completed (travelled) bookings. Revenue is recognized on tour completion, never at booking.',
             icon: MoneyBagIcon,
         },
@@ -1015,40 +1095,32 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
             key: 'pending',
             label: 'Pending',
             eur: revenue.pendingEur,
-            description: 'Awaiting completion',
-            subtitle: `${bookings.upcoming} upcoming departures`,
+            support: 'Awaiting completion',
             note: 'Your share of confirmed bookings that have not travelled yet. Real money, not yet earned.',
             icon: Wallet01Icon,
-            tile: 'warning',
         },
         {
             key: 'payout',
             label: 'Payout due from Island Tours',
             eur: revenue.payoutDueEur,
-            description: 'Earned, not yet settled',
-            subtitle: 'On completed paid-in-full bookings',
+            support: 'On completed paid-in-full bookings',
             note: PAYOUT_NOTE,
             icon: Coins01Icon,
-            tile: 'info',
         },
         {
             key: 'untracked',
             label: 'Collected directly by you',
             eur: revenue.untrackedBalanceEur,
-            description: 'Expected, not confirmed',
-            subtitle: 'Operator link and on-arrival balances',
+            support: 'Expected, not confirmed',
             note: UNTRACKED_NOTE,
             icon: Building06Icon,
-            tile: 'neutral',
         },
         {
             key: 'commission',
             label: 'Commission paid to Island Tours',
             eur: revenue.commissionEur,
-            description: 'On completed bookings',
-            subtitle: 'The deposit travelers pay at checkout',
+            support: 'The deposit travelers pay at checkout',
             icon: PercentIcon,
-            tile: 'neutral',
         },
         ...sharedTailCards,
     ];
@@ -1168,62 +1240,89 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
         recentCustomers.length > 4;
 
     return (
-        <div className='mx-auto w-full space-y-8'>
+        <div className='w-full space-y-8'>
             {/* Stats grid + charts */}
             {visibleSections['statistics'] && (
                 <>
-                    <div className='grid grid-cols-1 gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                    {/* Two per row from the smallest viewport up: a KPI card is
+                        a short figure, and one per row turns eight of them into
+                        a long scroll of mostly empty space. */}
+                    <div className='grid grid-cols-2 gap-3 *:min-w-0 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4'>
                         {statCards.map((stat) => (
-                            /* Preset stat-card anatomy: tile top-left + trend
-                               top-right (never sharing a line with the label,
-                               so nothing wraps at any width), then the value,
-                               then the label, then the sub-lines. */
-                            <Card key={stat.key} size='sm' className='gap-4'>
-                                <CardHeader className='flex flex-row items-start justify-between space-y-0 p-0'>
+                            /*
+                             * Card anatomy, top to bottom: LABEL first (with
+                             * its caveat and any "current" qualifier), then the
+                             * value, its USD equivalent, and ONE supporting
+                             * line. Label-before-value because the reader needs
+                             * to know what a number is before reading it;
+                             * value-first reads backwards.
+                             *
+                             * The icon and the movement sit on the label row
+                             * rather than floating in a band of their own, so
+                             * the card has three levels instead of five.
+                             */
+                            <Card key={stat.key} size='sm' className='gap-3'>
+                                <CardHeader className='flex flex-row items-center justify-between gap-2 space-y-0 p-0'>
                                     <IconTile
                                         icon={stat.icon}
                                         variant={stat.tile ?? 'primary'}
+                                        size='sm'
                                     />
                                     <TrendBadge growth={stat.trend ?? null} />
                                 </CardHeader>
-                                <CardContent className='space-y-1.5 p-0'>
-                                    {stat.eur !== undefined ? (
-                                        <Money
-                                            eur={stat.eur}
-                                            fx={fx}
-                                            currency={currency}
-                                            variant='display'
-                                        />
-                                    ) : (
-                                        /* No `font-mono` on a headline figure:
-                                           it has nothing to align against. */
-                                        <CardTitle className='truncate text-2xl font-semibold tracking-tight'>
-                                            {stat.value}
-                                        </CardTitle>
+                                <CardContent className='p-0'>
+                                    {/* No `font-mono` on a headline figure: it
+                                        has nothing to align against. Steps down
+                                        a size at two-up on a phone, where a
+                                        full money figure would otherwise
+                                        truncate to nothing useful. */}
+                                    <CardTitle className='truncate text-xl font-semibold tracking-tight sm:text-2xl'>
+                                        {stat.eur !== undefined
+                                            ? money(stat.eur)
+                                            : stat.value}
+                                    </CardTitle>
+                                    {/* The USD slot is RESERVED whenever a rate
+                                        exists, even on count cards that have no
+                                        conversion. Without it the cards in a row
+                                        take different heights and their labels
+                                        stop lining up across the row. */}
+                                    {fx && (
+                                        <p className='mt-0.5 min-h-4 text-xs tabular-nums text-muted-foreground'>
+                                            {stat.eur !== undefined
+                                                ? `≈ ${formatMoney(stat.eur * fx.rate, fx.quote)}`
+                                                : ''}
+                                        </p>
                                     )}
-                                    <p className='flex items-center gap-1.5 text-sm text-content-muted'>
-                                        {stat.label}
+                                    <p className='mt-1 flex items-center gap-1.5 text-sm text-content-muted'>
+                                        <span className='truncate'>
+                                            {stat.label}
+                                        </span>
                                         {stat.note && (
                                             <InfoNote text={stat.note} />
                                         )}
+                                        {/* A stock ignores the reporting range.
+                                            Saying so is the whole point of the
+                                            range control. */}
+                                        {stat.stock && (
+                                            <span className='shrink-0 rounded-sm bg-surface-inset px-1 text-2xs text-content-muted'>
+                                                current
+                                            </span>
+                                        )}
                                     </p>
                                 </CardContent>
-                                <CardFooter className='flex-col items-start gap-1.5 p-0'>
-                                    <div className='flex items-center gap-1.5 text-xs font-medium text-foreground'>
-                                        {stat.description}
-                                    </div>
-                                    {stat.subtitle && (
-                                        <p className='text-2xs text-muted-foreground'>
-                                            {stat.subtitle}
-                                        </p>
-                                    )}
+                                <CardFooter className='p-0'>
+                                    <p className='truncate text-2xs text-muted-foreground'>
+                                        {stat.support}
+                                    </p>
                                 </CardFooter>
                             </Card>
                         ))}
                     </div>
 
-                    {/* Charts. The scope + FX provenance rides on the tab row
-                        rather than owning a tall band of its own. */}
+                    {/* Charts. The tab row doubles as the section toolbar: the
+                        reporting range and the scope + FX provenance both ride
+                        alongside the tabs rather than each claiming a band of
+                        its own. */}
                     <Tabs defaultValue='revenue' className='space-y-6'>
                         <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
                             <TabsList className='grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4'>
@@ -1240,7 +1339,7 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     Breakdowns
                                 </TabsTrigger>
                             </TabsList>
-                            <div className='flex shrink-0 items-center gap-2 text-2xs text-muted-foreground'>
+                            <div className='flex shrink-0 flex-wrap items-center gap-2 text-2xs text-muted-foreground'>
                                 <Badge
                                     variant='outline'
                                     className='px-1.5 py-0 text-2xs font-medium'>
@@ -1266,6 +1365,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                               }.`
                                             : `No fresh FX rate is available, so amounts are shown in ${currency} alone rather than converted at a stale rate.`
                                     }
+                                />
+                                <RangeControl
+                                    preset={rangePreset}
+                                    label={rangeLabel}
                                 />
                             </div>
                         </div>
@@ -1419,10 +1522,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <CardFooter className='flex-col items-start gap-2 text-sm'>
                                         <TrendFootnote
                                             growth={earningsGrowth}
+                                            previousLabel={previousLabel}
                                         />
                                         <div className='text-xs leading-none text-muted-foreground'>
-                                            Showing the last {bucketCount}{' '}
-                                            {bucketNoun}
+                                            Showing {seriesLabel}
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -1481,10 +1584,10 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                     <CardFooter className='flex-col items-start gap-2 text-sm'>
                                         <TrendFootnote
                                             growth={bookingsGrowth}
+                                            previousLabel={previousLabel}
                                         />
                                         <div className='text-xs leading-none text-muted-foreground'>
-                                            Showing bookings for the last{' '}
-                                            {bucketCount} {bucketNoun}
+                                            Showing bookings for {seriesLabel}
                                         </div>
                                     </CardFooter>
                                 </Card>
@@ -1729,8 +1832,11 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                         <CardTitle>
                                             Trip status distribution
                                         </CardTitle>
+                                        {/* A catalogue snapshot, not a flow -
+                                            it does not move with the range. */}
                                         <CardDescription>
-                                            Your {trips.total} trips breakdown
+                                            All {trips.total} trips as they
+                                            stand now
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className='flex items-center justify-center'>
@@ -1868,18 +1974,18 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                         </div>
                                         <div className='flex items-center justify-between'>
                                             <span className='text-sm text-muted-foreground'>
-                                                Active this month
+                                                Active {activeWindowLabel}
                                             </span>
                                             <span className='font-semibold tabular-nums'>
-                                                {customers.activeThisMonth}
+                                                {customers.activeInRange}
                                             </span>
                                         </div>
                                         <div className='flex items-center justify-between'>
                                             <span className='text-sm text-muted-foreground'>
-                                                New this month
+                                                New {activeWindowLabel}
                                             </span>
                                             <span className='font-semibold tabular-nums'>
-                                                {customers.newThisMonth}
+                                                {customers.newInRange}
                                             </span>
                                         </div>
                                         <div className='flex items-center justify-between'>
@@ -1897,8 +2003,11 @@ function StatisticsContent({ statsPromise, visibleSections }: StatisticsProps) {
                                             shown as a zero. */}
                                         {customers.registered !== null && (
                                             <div className='flex items-center justify-between'>
-                                                <span className='text-sm text-muted-foreground'>
+                                                <span className='flex items-center gap-1.5 text-sm text-muted-foreground'>
                                                     Registered accounts
+                                                    <span className='rounded-sm bg-surface-inset px-1 text-2xs text-content-muted'>
+                                                        current
+                                                    </span>
                                                 </span>
                                                 <span className='font-semibold tabular-nums'>
                                                     {customers.registered}

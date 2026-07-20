@@ -34,10 +34,13 @@ export interface RevenueStats {
      * money, not yet earned - never add it into `earnedEur`.
      */
     pendingEur: number;
-    /** `earnedEur` recognized within the current calendar month. */
-    earnedThisMonthEur: number;
-    /** `earnedEur` recognized within the previous calendar month. */
-    earnedLastMonthEur: number;
+    /**
+     * `earnedEur` recognized inside the comparison window: the selected range,
+     * or the current month when no range is set.
+     */
+    earnedInRangeEur: number;
+    /** The same over the equal-length window immediately before it. */
+    earnedInPreviousRangeEur: number;
     /** Gross merchandise value across CONFIRMED + REDEEMED bookings. */
     gmvEur: number;
     /**
@@ -95,9 +98,11 @@ export interface BookingFunnel {
 }
 
 export interface BookingStats {
+    /** FLOW: bookings CREATED in the selected range. */
     total: number;
-    thisMonth: number;
-    lastMonth: number;
+    inRange: number;
+    inPreviousRange: number;
+    /** STOCK: forward-looking, never range-filtered. */
     upcoming: number;
     /** Keyed by the real BookingStatus enum values - never relabel the keys. */
     byStatus: Record<string, number>;
@@ -113,26 +118,31 @@ export interface BookingStats {
     funnel: BookingFunnel;
 }
 
+/** Everything here is a STOCK except the two `created*` flows. */
 export interface TripStats {
     total: number;
     live: number;
-    createdThisMonth: number;
-    createdLastMonth: number;
+    createdInRange: number;
+    createdInPreviousRange: number;
     withBookings: number;
     /** Keyed by the real TourStatus enum values. */
     byStatus: Record<string, number>;
 }
 
 export interface CustomerStats {
-    /** Distinct bookers, keyed by user id or contact email so guests count. */
+    /**
+     * FLOW: distinct bookers ACQUIRED in the range (keyed by user id or contact
+     * email so guests count), measured on their first booking.
+     */
     total: number;
-    newThisMonth: number;
-    newLastMonth: number;
+    newInRange: number;
+    newInPreviousRange: number;
     repeat: number;
     /** `repeat` as a percentage of `total`. */
     repeatRate: number;
-    activeThisMonth: number;
-    /** USER-role accounts. Null for an operator caller. */
+    /** FLOW measured on the LAST booking: bookers active in the window. */
+    activeInRange: number;
+    /** STOCK: USER-role accounts. Null for an operator caller. */
     registered: number | null;
 }
 
@@ -244,6 +254,20 @@ export interface RecentActivity {
     customers: RecentCustomer[];
 }
 
+/**
+ * The window the backend actually applied, so the UI can state it in plain
+ * words instead of leaving every figure's period ambiguous. Dates are inclusive
+ * `YYYY-MM-DD`; null means unbounded on that side.
+ */
+export interface DashboardRange {
+    from: string | null;
+    to: string | null;
+    /** No range supplied: flows are unfiltered, growth is month over month. */
+    isAllTime: boolean;
+    previousFrom: string | null;
+    previousTo: string | null;
+}
+
 export interface DashboardStats {
     /** Which slice the caller sees. Drives what every money label MEANS. */
     scope: 'platform' | 'operator';
@@ -256,6 +280,8 @@ export interface DashboardStats {
      */
     fx: FxDisplay | null;
     generatedAt: string;
+    /** The window applied to every FLOW in this payload. */
+    range: DashboardRange;
     revenue: RevenueStats;
     bookings: BookingStats;
     trips: TripStats;

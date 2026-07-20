@@ -24,17 +24,35 @@ const API = `${BACKEND_URL}/api/v1`;
  *
  * Scope follows the session cookie: admins get platform-wide numbers,
  * operators only their own tours, bookings and payments.
+ *
+ * `from`/`to` (inclusive `YYYY-MM-DD`) narrow the reporting window. They filter
+ * FLOWS only - stocks such as the live trip count come back as current state
+ * either way - and omitting both means all time. The backend echoes the window
+ * it used back on `stats.range`, which is what the UI states on screen.
  */
 export async function getDashboardStats(
     cookie: string,
-    granularity: 'month' | 'day' = 'month',
-    buckets = 6,
+    options: {
+        granularity?: 'month' | 'day';
+        buckets?: number;
+        from?: string;
+        to?: string;
+    } = {},
 ): Promise<DashboardStats | null> {
+    const { granularity = 'month', buckets = 6, from, to } = options;
+
+    const params = new URLSearchParams({
+        granularity,
+        buckets: String(buckets),
+    });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+
     try {
-        const res = await fetch(
-            `${API}/analytics/dashboard?granularity=${granularity}&buckets=${buckets}`,
-            { headers: serverAuthHeaders(cookie), cache: 'no-store' },
-        );
+        const res = await fetch(`${API}/analytics/dashboard?${params}`, {
+            headers: serverAuthHeaders(cookie),
+            cache: 'no-store',
+        });
         if (!res.ok) return null;
         const text = await res.text();
         return text ? (JSON.parse(text) as DashboardStats) : null;

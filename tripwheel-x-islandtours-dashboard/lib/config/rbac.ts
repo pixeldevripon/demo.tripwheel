@@ -359,6 +359,11 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_REVIEWS',
     'VIEW_CONTENT',
     'VIEW_ORDERS',
+    // Customer dashboard reads (mirrors backend roles.config.ts): the backend
+    // scopes both lists to the caller's OWN rows for USER - these light up the
+    // customerNav items, never the operator/admin nav (separate nav array).
+    'VIEW_BOOKINGS',
+    'VIEW_PAYMENTS',
   ],
 };
 

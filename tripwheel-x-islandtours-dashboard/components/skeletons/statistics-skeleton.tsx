@@ -30,28 +30,29 @@ export function StatisticsSkeleton({
     visibleSections: Record<string, boolean>;
 }) {
     return (
-        <div className='mx-auto w-full space-y-8'>
+        <div className='w-full space-y-8'>
             {/* KPI cards + tabbed charts. */}
             {visibleSections['statistics'] && (
                 <>
-                    {/* Eight role-shaped KPI cards, each carrying a EUR value
-                        plus its converted sub-line. */}
-                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                    {/* Eight role-shaped KPI cards. Mirrors the real anatomy:
+                        tile + movement, then value, reserved USD slot, label,
+                        and one supporting line. */}
+                    <div className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4'>
                         {Array.from({ length: 8 }).map((_, i) => (
-                            <Card key={i} size='sm' className='gap-4'>
-                                <CardHeader className='flex flex-row items-start justify-between space-y-0 p-0'>
-                                    <Shimmer className='size-9 rounded-lg' />
+                            <Card key={i} size='sm' className='gap-3'>
+                                <CardHeader className='flex flex-row items-center justify-between space-y-0 p-0'>
+                                    <Shimmer className='size-8 rounded-md' />
                                     <CardAction>
-                                        <Shimmer className='h-4 w-12 rounded-full' />
+                                        <Shimmer className='h-3.5 w-10' />
                                     </CardAction>
                                 </CardHeader>
-                                <CardContent className='space-y-1.5 p-0'>
+                                <CardContent className='p-0'>
                                     <Shimmer className='h-8 w-28' />
-                                    <Shimmer className='h-4 w-24' />
+                                    <Shimmer className='mt-1 h-3 w-20' />
+                                    <Shimmer className='mt-2 h-4 w-24' />
                                 </CardContent>
-                                <CardFooter className='flex-col items-start gap-1.5 p-0'>
-                                    <Shimmer className='h-3.5 w-32' />
-                                    <Shimmer className='h-2.5 w-20' />
+                                <CardFooter className='p-0'>
+                                    <Shimmer className='h-2.5 w-32' />
                                 </CardFooter>
                             </Card>
                         ))}

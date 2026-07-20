@@ -1,5 +1,6 @@
 'use client';
 
+import type { RangePresetId } from '@/lib/analytics/range-presets';
 import { useVisibleSections } from '@/hooks/use-visible-section';
 import type { DashboardStats } from '@/types/analytics';
 import type { UserProfile } from '@/types/profile';
@@ -9,11 +10,17 @@ interface PageComponentsProps {
     /** Resolves to `null` when the analytics fetch failed - never to zeros. */
     statsPromise?: Promise<DashboardStats | null>;
     loggedInUser: UserProfile;
+    /** The range the server fetched with, so the control renders selected. */
+    rangePreset: RangePresetId;
+    /** That range in words, resolved server-side so it cannot drift. */
+    rangeLabel: string;
 }
 
 export default function PageComponents({
     statsPromise,
     loggedInUser,
+    rangePreset,
+    rangeLabel,
 }: PageComponentsProps) {
     const [visibleSections, setVisibleSections] = useVisibleSections();
 
@@ -30,6 +37,8 @@ export default function PageComponents({
             <Statistics
                 visibleSections={visibleSections}
                 statsPromise={statsPromise}
+                rangePreset={rangePreset}
+                rangeLabel={rangeLabel}
             />
         </div>
     );

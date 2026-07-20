@@ -13,12 +13,31 @@ import {
 
 interface AuthFormProps {
     /**
-     * Which door renders the form. Same sign-in logic either way; the variant
-     * only pins the surface's own forgot route, button style and placeholder
-     * so the staff door never links into (or looks like) the operator portal.
+     * Which door renders the form. Same sign-in logic on every door; the
+     * variant only pins the surface's own forgot route, button style and
+     * placeholder so the doors never link into (or look like) each other.
+     * `account` is the customer/traveler door.
      */
-    variant?: 'portal' | 'staff';
+    variant?: 'portal' | 'staff' | 'account';
 }
+
+const FORGOT_HREF: Record<'portal' | 'staff' | 'account', string> = {
+    portal: '/portal/forgot',
+    staff: '/staff/forgot',
+    account: '/account/forgot',
+};
+
+const ID_PREFIX: Record<'portal' | 'staff' | 'account', string> = {
+    portal: 'o',
+    staff: 's',
+    account: 'a',
+};
+
+const SUBMIT_CLASS: Record<'portal' | 'staff' | 'account', string> = {
+    portal: primaryBtn,
+    staff: staffBtn,
+    account: primaryBtn,
+};
 
 export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
     const router = useRouter();
@@ -29,9 +48,9 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
     const [loading, setLoading] = useState(false);
 
     const isStaff = variant === 'staff';
-    const idPrefix = isStaff ? 's' : 'o';
-    const forgotHref = isStaff ? '/staff/forgot' : '/portal/forgot';
-    const submitClass = isStaff ? staffBtn : primaryBtn;
+    const idPrefix = ID_PREFIX[variant];
+    const forgotHref = FORGOT_HREF[variant];
+    const submitClass = SUBMIT_CLASS[variant];
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -70,7 +89,11 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
                     autoComplete='username'
                     inputMode='email'
                     placeholder={
-                        isStaff ? 'you@islandtours.com' : 'you@yourcompany.com'
+                        isStaff
+                            ? 'you@islandtours.com'
+                            : variant === 'account'
+                              ? 'you@example.com'
+                              : 'you@yourcompany.com'
                     }
                     value={email}
                     onChange={e => setEmail(e.target.value)}
