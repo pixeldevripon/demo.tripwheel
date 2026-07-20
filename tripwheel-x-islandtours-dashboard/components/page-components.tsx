@@ -1,11 +1,14 @@
 'use client';
 
 import { useVisibleSections } from '@/hooks/use-visible-section';
+import type { DashboardStats } from '@/types/analytics';
+import type { UserProfile } from '@/types/profile';
 import Statistics from './statistics';
 
 interface PageComponentsProps {
-    statsPromise?: Promise<any>;
-    loggedInUser: any;
+    /** Resolves to `null` when the analytics fetch failed - never to zeros. */
+    statsPromise?: Promise<DashboardStats | null>;
+    loggedInUser: UserProfile;
 }
 
 export default function PageComponents({

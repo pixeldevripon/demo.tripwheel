@@ -38,6 +38,13 @@ export interface StaffMember {
     revokedPermissions: PermissionKey[];
     /** The computed set the backend guards actually enforce. */
     effectivePermissions: PermissionKey[];
+    /**
+     * The platform ADMIN account. It has no `staff_members` row and is
+     * synthesized into the list purely so the Users page shows who holds the
+     * keys. Read-only: the backend rejects edit/suspend/resend/remove on it
+     * with 403, and the UI hides those actions entirely.
+     */
+    isSystemAdmin: boolean;
     invitedBy: { id: string; name: string } | null;
     invitedAt: string;
     activatedAt: string | null;

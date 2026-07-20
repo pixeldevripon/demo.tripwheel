@@ -64,6 +64,16 @@ export function buildStaffColumns({
             header: 'Designation',
             cell: ({ row }) => {
                 const member = row.original;
+                // The platform admin is not a designation holder and not an
+                // operator owner - name it for what it is so the row is not
+                // mistaken for a normal seat.
+                if (member.isSystemAdmin) {
+                    return (
+                        <span className='text-sm font-medium'>
+                            System Administrator
+                        </span>
+                    );
+                }
                 if (member.seatRole === 'OWNER') {
                     return (
                         <span className='text-sm font-medium'>

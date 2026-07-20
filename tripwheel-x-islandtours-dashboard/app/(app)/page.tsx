@@ -14,11 +14,18 @@ export default async function DashboardPage() {
     if (!user) {
         redirect('/portal');
     }
+    // Customers have no Overview - their landing page is My Bookings. The
+    // server root owns role routing (login just pushes '/'), so deep links
+    // and refreshes behave identically.
+    if (user.role === 'USER') {
+        redirect('/bookings');
+    }
 
     // Real stats, scoped by the forwarded session cookie (admin: platform-wide,
-    // operator: own tours). Not awaited - the stats area streams in behind its
-    // Suspense skeleton while the rest of the page renders.
-    const statsPromise = getDashboardStats(cookie, user.role);
+    // operator: own tours). Scoping is decided server-side from the session, so
+    // the role is deliberately not passed in. Not awaited - the stats area
+    // streams in behind its Suspense skeleton while the rest of the page renders.
+    const statsPromise = getDashboardStats(cookie);
 
     return (
         <div className='flex flex-1 flex-col gap-4'>
