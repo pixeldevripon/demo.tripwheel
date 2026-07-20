@@ -74,11 +74,17 @@ export class CustomerProvisioningService {
         this.resendSetPasswordLink(email);
       }
 
-      // Backfill-link this + every past guest booking with the same email.
+      // Backfill-link this + every past booking with the same contact email.
+      // The contact email is what identifies the customer, so we claim both
+      // unowned bookings AND ones mis-stamped with a non-USER account: an
+      // admin or operator logged into the browser at checkout used to be
+      // recorded as the traveller (fixed at source in BookingsService.reserve,
+      // but historical rows still carry it). Bookings already owned by a
+      // different CUSTOMER account are never touched.
       const linked = await this.prisma.booking.updateMany({
         where: {
           contactEmail: { equals: email, mode: 'insensitive' },
-          userId: null,
+          OR: [{ userId: null }, { user: { role: { not: Role.USER } } }],
         },
         data: { userId: user.id },
       });

@@ -78,11 +78,13 @@ describe('CustomerProvisioningService', () => {
         redirectTo: 'http://localhost:3001/account/reset',
       },
     });
-    // Backfill links THIS + every past guest booking with the same email.
+    // Backfill claims THIS + every past booking with the same contact email:
+    // unowned ones, and ones mis-stamped with an ops account at checkout.
+    // A booking already owned by another CUSTOMER is never stolen.
     expect(prisma.booking.updateMany).toHaveBeenCalledWith({
       where: {
         contactEmail: { equals: 'jane@example.com', mode: 'insensitive' },
-        userId: null,
+        OR: [{ userId: null }, { user: { role: { not: Role.USER } } }],
       },
       data: { userId: 'u1' },
     });

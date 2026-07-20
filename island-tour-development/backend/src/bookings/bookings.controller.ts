@@ -82,7 +82,7 @@ export class BookingsController {
     @Body() dto: ReserveBookingDto,
     @AuthenticatedUser() user?: TypedAuthUser,
   ) {
-    return this.bookings.reserve(dto, user?.id);
+    return this.bookings.reserve(dto, user);
   }
 
   @Post(':id/confirm')
