@@ -43,8 +43,15 @@ const FRONT_SLOT = 2;
  */
 export function EditorialCardFan({
     labels,
+    images,
 }: {
     labels: Record<CategoryKey, string>;
+    /**
+     * Admin-chosen card photos, in fan order. Matched to cards by index, so a
+     * short array (or an empty slot) leaves the remaining cards on their bundled
+     * images - the deck always renders three cards, whatever is configured.
+     */
+    images?: string[];
 }) {
     // How many slots the deck has advanced; card i sits in slot (i + shift) % 3.
     const [shift, setShift] = useState(0);
@@ -98,7 +105,7 @@ export function EditorialCardFan({
                         className={`absolute h-71 w-50 overflow-hidden rounded-[8px] border-none bg-it-border p-0 shadow-it-md cursor-pointer lg:h-100 lg:w-71.25 lg:rounded-[15px] ${slot.position}`}
                     >
                         <Image
-                            src={card.image}
+                            src={images?.[i] || card.image}
                             alt={title}
                             fill
                             sizes='(max-width: 1024px) 200px, 285px'

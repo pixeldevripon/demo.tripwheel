@@ -37,6 +37,10 @@ model Destination {
   pageContents        DestinationPageContent[]
   spotlightRequests   SpotlightRequest[]
   forceMajeurePardons ForceMajeurePardon[]
+  // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
+  homePages           HomePage[]
+  // Featured experiences pinned to this destination (onDelete: Cascade).
+  featuredExperiences FeaturedExperience[]
 
   @@index([slug])
   @@index([isActive])
@@ -269,11 +273,30 @@ model HubContentSection {
 
 // "Top Island Experiences" section — categories and hubs only, never individual tours.
 // Admin manually curates + attaches video clips.
+//
+// TITLE AND IMAGE ARE NOT STORED HERE. They are read from the referenced Category
+// or Hub at resolve time, so the card inherits that entity's translations for free
+// and can never drift from the page it links to.
+//
+// `entityId` HAS NO FOREIGN KEY, and cannot have one: it points at either a
+// Category or a Hub depending on `entityType`, and a relational FK targets exactly
+// one table. The consequences are handled deliberately rather than pretended away:
+//   - the resolver skips any row it cannot resolve, so an orphan is inert (it can
+//     never render as a dead link);
+//   - the only hard-delete path (`categories.forceDelete`) clears its rows in the
+//     same transaction;
+//   - soft-deactivation needs no cleanup - the resolver's isActive gate covers it.
+// The same polymorphic-without-FK shape is used by `Faq` (pageType + entityId).
 model FeaturedExperience {
   id            String             @id @default(uuid())
   entityType    FeaturedEntityType // CATEGORY | HUB only
-  entityId      String // id of the Category or Hub
-  destinationId String? // null = show everywhere; set = show for that destination only
+  entityId      String // id of the Category or Hub — polymorphic, see above
+  // null = show everywhere. NOTE for CATEGORY rows: a category page only exists
+  // per-destination (`/{destination}/{category-slug}`), so a null here means the
+  // resolver picks the destination where that category is strongest rather than
+  // that the card is destination-free. Hubs always resolve their own destination.
+  destinationId String?
+  destination   Destination?       @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   videoUrl      String?
   displayOrder  Int                @default(0)
   isActive      Boolean            @default(true)

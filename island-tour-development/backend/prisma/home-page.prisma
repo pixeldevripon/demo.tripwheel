@@ -1,0 +1,77 @@
+// Homepage editorial content — admin-managed copy and imagery for the public
+// homepage (`/{locale}/`).
+//
+// This is deliberately NOT a page builder. The homepage sections are pixel-locked
+// Figma layouts (a fanned card deck, a fixed-width Embla carousel, a specific dot
+// count), so an admin edits WHAT IS IN a section, never WHETHER a section exists.
+// Section order and structure live in code; only content lives here.
+//
+// EVERY field is nullable and means "fall back to the i18n dictionary". That is
+// what makes this shippable incrementally and un-blankable: an empty table renders
+// exactly the pre-CMS homepage, and clearing a field restores its built-in default.
+//
+// Singleton, following the settings.prisma convention (`id @default("default")`),
+// because there is one homepage per platform — islands are data inside it, not
+// variants of it.
+
+model HomePage {
+  id String @id @default("default")
+
+  // Hero background photo. Null → the bundled /images/kc-powerboat.jpg.
+  heroImage String?
+
+  // The three fanned category cards in the editorial CTA banner, in fan order.
+  // Fewer than three entries falls back to the bundled images for the remainder.
+  editorialImages String[] @default([])
+
+  // Destination the editorial CTA links to. Null → the frontend's existing
+  // "launch island, else first active destination, else /search" resolution.
+  // SetNull (not Cascade): deleting the island must not delete the homepage row.
+  editorialDestinationId String?
+  editorialDestination   Destination? @relation(fields: [editorialDestinationId], references: [id], onDelete: SetNull)
+
+  ogImage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations HomePageTranslation[]
+
+  @@map("home_page")
+}
+
+// Per-locale homepage copy. Mirrors the *Translation pattern used by every other
+// entity (locale column + compound unique + isMachineTranslated), so the existing
+// Translation Console picks this up by registering it in translatable-schema.ts
+// rather than needing bespoke UI.
+model HomePageTranslation {
+  id     String   @id @default(uuid())
+  homeId String
+  home   HomePage @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  locale Locale
+
+  // Hero
+  heroTitle    String?
+  heroSubtitle String?
+
+  // "Top island experiences" section heading
+  experiencesTitle String?
+
+  // Editorial CTA banner — the design renders the title as two stacked lines,
+  // so they are two fields rather than one string with a newline convention.
+  editorialTitleLine1 String?
+  editorialTitleLine2 String?
+  editorialBody       String?
+  editorialCta        String?
+
+  // FAQ section chrome (the questions themselves are Faq rows, pageType=homepage)
+  faqTitle    String?
+  faqSubtitle String?
+
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  @@unique([homeId, locale])
+  @@index([homeId, locale])
+  @@map("home_page_translations")
+}
