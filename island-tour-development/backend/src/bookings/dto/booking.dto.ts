@@ -416,6 +416,26 @@ export class BookingListItemDto extends BookingResponseDto {
       '(judged at the request instant - C23). Null when never requested.',
   })
   requestedInFreeWindow!: boolean | null;
+  @ApiProperty({
+    example: true,
+    description:
+      'Server verdict on whether a cancellation request may be submitted. ' +
+      'Clients render off this instead of re-deriving it - the start time is ' +
+      'a local wall clock and means nothing without the tour timezone.',
+  })
+  canRequestCancellation!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['ALREADY_REQUESTED', 'NOT_CONFIRMED', 'DEPARTED'],
+    description:
+      'Why a request cannot be submitted; null when it can. DEPARTED means ' +
+      'the trip has already started.',
+  })
+  cancellationBlockedReason!:
+    | 'ALREADY_REQUESTED'
+    | 'NOT_CONFIRMED'
+    | 'DEPARTED'
+    | null;
 }
 
 export class ListBookingsResponseDto {

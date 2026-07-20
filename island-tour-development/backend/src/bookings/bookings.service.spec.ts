@@ -361,6 +361,33 @@ describe('BookingsService', () => {
       expect(res.status).toBe(BookingStatus.ON_HOLD);
     });
 
+    // reserve is @Public but AuthGuard still attaches a session, so whoever is
+    // logged into the browser reaches this. Only a customer session may own a
+    // booking - an admin/operator testing checkout is not the traveller, and
+    // stamping them hides the booking from the real customer's dashboard.
+    it('records a Role.USER session as the booking owner', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve(reserveDto, { id: 'cust-1', role: Role.USER });
+      expect(m.booking.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: 'cust-1' }),
+        }),
+      );
+    });
+
+    it.each([Role.ADMIN, Role.TOUR_OPERATOR, Role.STAFF])(
+      'never stamps a %s session as the booking owner',
+      async (role) => {
+        setupReserveContext(prisma);
+        await svc.reserve(reserveDto, { id: 'ops-1', role });
+        expect(m.booking.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ userId: null }),
+          }),
+        );
+      },
+    );
+
     it('is idempotent - a prior booking with the same id is returned', async () => {
       setupReserveContext(prisma);
       m.booking.findUnique.mockResolvedValue(fakeBooking());
@@ -1831,6 +1858,82 @@ describe('BookingsService', () => {
       await expect(
         svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    // You cannot ask to cancel a trip you have already taken. The start time
+    // is a LOCAL wall clock, so these cases turn on the timezone snapshot.
+    describe('departed trips', () => {
+      const PAST = new Date('2020-01-01T10:00:00');
+      const FUTURE = new Date('2999-01-01T10:00:00');
+
+      it('409s a first request once the trip has started', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          owned({
+            tourStartDateTime: PAST,
+            tourTimeZone: 'America/Curacao',
+          }),
+        );
+        await expect(
+          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+      });
+
+      it('allows a request for a trip still in the future', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          owned({
+            tourStartDateTime: FUTURE,
+            tourTimeZone: 'America/Curacao',
+          }),
+        );
+        await expect(
+          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        ).resolves.toEqual({ requested: true });
+      });
+
+      // Legacy rows: a wall clock with no zone is not an instant, so we fall
+      // back to the travel DAY and only block once it has ended everywhere.
+      it('allows a request when the start has no timezone and the day is not long past', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          owned({
+            tourStartDateTime: PAST,
+            tourTimeZone: null,
+            localDate: new Date(Date.now() - 2 * 3_600_000),
+          }),
+        );
+        await expect(
+          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        ).resolves.toEqual({ requested: true });
+      });
+
+      it('409s a zoneless booking whose travel day ended everywhere', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          owned({
+            tourStartDateTime: null,
+            tourTimeZone: null,
+            localDate: new Date(Date.now() - 5 * 24 * 3_600_000),
+          }),
+        );
+        await expect(
+          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      // A departed trip that ALREADY has a request keeps working: the stamp is
+      // set, re-submitting is idempotent, and refusing it would strand a
+      // traveller mid-flow if their trip started while they waited on us.
+      it('still accepts a re-submit on a departed trip already requested', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          owned({
+            tourStartDateTime: PAST,
+            tourTimeZone: 'America/Curacao',
+            utcCancellationRequestedAt: new Date('2020-01-01T00:00:00Z'),
+          }),
+        );
+        await expect(
+          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        ).resolves.toEqual({ requested: true });
+      });
     });
   });
 

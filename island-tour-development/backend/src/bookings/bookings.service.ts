@@ -163,6 +163,7 @@ const CANCELLATION_REQUEST_SELECT = {
   localDate: true,
   startTime: true,
   tourStartDateTime: true,
+  tourTimeZone: true,
   totalRetail: true,
   currency: true,
   paymentModel: true,
@@ -174,6 +175,87 @@ const CANCELLATION_REQUEST_SELECT = {
 type CancellationRequestBooking = Prisma.BookingGetPayload<{
   select: typeof CANCELLATION_REQUEST_SELECT;
 }>;
+
+/**
+ * Widest real UTC offset on earth (UTC+14, Kiritimati). A calendar day D has
+ * ended everywhere once `D + 1 day` has passed even in the LAST zone to reach
+ * it (UTC-12), i.e. 36h after D 00:00 UTC. Used only for the legacy fallback
+ * below, where we know the travel date but not the zone.
+ */
+const DAY_ENDED_EVERYWHERE_MS = 36 * 3_600_000;
+
+/**
+ * Has the trip already started? Answers the one question the cancellation
+ * flow turns on - you cannot ask to cancel a trip you have already taken.
+ *
+ * `tourStartDateTime` is a LOCAL wall-clock snapshot, so it means nothing
+ * without `tourTimeZone`; only the pair yields a real instant. Two cases:
+ *
+ * 1. Start + zone (every booking since the snapshot landed) - exact instant.
+ * 2. Travel date only (legacy rows predating the zone snapshot) - deliberately
+ *    conservative: the trip counts as departed only once that calendar day has
+ *    ended in EVERY timezone. We would rather let a late request through for a
+ *    human to judge than refuse a traveller whose trip has not happened yet.
+ *
+ * `localDate` is NOT NULL in the schema, so there is always a floor to fall
+ * back to - no booking is dateless.
+ */
+function hasDeparted(
+  booking: {
+    tourStartDateTime: Date | null;
+    tourTimeZone: string | null;
+    localDate: Date;
+  },
+  now: Date = new Date(),
+): boolean {
+  if (booking.tourStartDateTime && booking.tourTimeZone) {
+    return (
+      localWallClockToUtc(
+        booking.tourStartDateTime,
+        booking.tourTimeZone,
+      ).getTime() <= now.getTime()
+    );
+  }
+  return now.getTime() >= booking.localDate.getTime() + DAY_ENDED_EVERYWHERE_MS;
+}
+
+/** Why a booking cannot be put up for cancellation (null = it can). */
+export type CancellationBlockedReason =
+  | 'ALREADY_REQUESTED'
+  | 'NOT_CONFIRMED'
+  | 'DEPARTED';
+
+/**
+ * THE cancellation-eligibility rule. The server decides this, never the
+ * client: the API response carries the verdict so every surface (customer
+ * dashboard, TYP cancel page, ops tooling) shows the same answer, and the
+ * enforcement in `submitCancellationRequest` is the same predicate - a UI can
+ * never offer something the endpoint would then refuse.
+ *
+ * Order matters: an existing request is the most specific state to report,
+ * then an ineligible status, then a departed trip.
+ */
+function cancellationEligibility(
+  booking: {
+    status: BookingStatus;
+    utcCancellationRequestedAt: Date | null;
+    tourStartDateTime: Date | null;
+    tourTimeZone: string | null;
+    localDate: Date;
+  },
+  now: Date = new Date(),
+): { canRequest: boolean; reason: CancellationBlockedReason | null } {
+  if (booking.utcCancellationRequestedAt) {
+    return { canRequest: false, reason: 'ALREADY_REQUESTED' };
+  }
+  if (booking.status !== BookingStatus.CONFIRMED) {
+    return { canRequest: false, reason: 'NOT_CONFIRMED' };
+  }
+  if (hasDeparted(booking, now)) {
+    return { canRequest: false, reason: 'DEPARTED' };
+  }
+  return { canRequest: true, reason: null };
+}
 
 const EMPTY_PICKUP: PickupSnapshot = {
   address: null,
@@ -275,7 +357,18 @@ export class BookingsService {
   // Reserve (OCTO step 1) - atomic seat claim → ON_HOLD (or CONFIRMED for OPERATOR_FULL)
   // ════════════════════════════════════════════════════════════════════════
 
-  async reserve(dto: ReserveBookingDto, userId?: string) {
+  /**
+   * `actor` is the browser's session user, if any - `reserve` is @Public but
+   * AuthGuard still attaches a session when one exists. Only a `Role.USER`
+   * session may be stamped as the booking's owner: `booking.userId` means
+   * "the customer this booking belongs to" (it drives the customer dashboard,
+   * the ownership check on getById, and the cancellation-request gate). An
+   * admin or operator who happens to be logged in while testing checkout is
+   * NOT the traveller, and recording them as one both hides the booking from
+   * the real customer and attributes a stranger's trip to a staff account.
+   */
+  async reserve(dto: ReserveBookingDto, actor?: { id: string; role: Role }) {
+    const userId = actor?.role === Role.USER ? actor.id : undefined;
     const id = dto.id ?? randomUUID();
 
     // Idempotency: a retried create with the same id returns the existing booking.
@@ -1272,6 +1365,16 @@ export class BookingsService {
     if (booking.status !== BookingStatus.CONFIRMED) {
       throw new ConflictException(
         'Only a confirmed booking can request cancellation',
+      );
+    }
+    // You cannot ask to cancel a trip you have already taken. Same predicate
+    // the list payload advertises via `canRequestCancellation`, so the UI and
+    // the endpoint can never disagree. Re-submits on an existing request stay
+    // allowed (they are idempotent and the stamp is already set) - this only
+    // blocks a FIRST request after departure.
+    if (!booking.utcCancellationRequestedAt && hasDeparted(booking)) {
+      throw new ConflictException(
+        'This trip has already departed, so it can no longer be cancelled. Contact us if something went wrong.',
       );
     }
 
@@ -2708,6 +2811,7 @@ function mapBookingListItem(
         b.tourStartDateTime.getTime() - b.tour.cancellationHours * 3_600_000,
       )
     : null;
+  const cancellation = cancellationEligibility(b);
   return {
     ...mapBooking(b),
     ...derivePaymentState(b.payments, b.totalRetail),
@@ -2724,6 +2828,11 @@ function mapBookingListItem(
       b.utcCancellationRequestedAt && deadline
         ? b.utcCancellationRequestedAt.getTime() <= deadline.getTime()
         : null,
+    // Server-decided so no client has to re-derive it (and get it wrong on a
+    // wall-clock start time with no zone). Same predicate the endpoint
+    // enforces.
+    canRequestCancellation: cancellation.canRequest,
+    cancellationBlockedReason: cancellation.reason,
   };
 }
 

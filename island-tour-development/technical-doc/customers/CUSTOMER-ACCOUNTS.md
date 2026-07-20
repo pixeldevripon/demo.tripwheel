@@ -263,6 +263,104 @@ from both the suite run and this pass.)
 Deferred (cosmetic, logged not done): the identical `@Throttle` block on the
 three human-pace mail routes could become one shared decorator.
 
+## E2E finding 2026-07-20: empty customer dashboard - FIXED
+
+First real end-to-end run (book -> welcome email -> set password -> log in)
+produced a dashboard with no bookings and no payments. Root cause was two
+bugs, not configuration:
+
+1. **`reserve()` stamped `booking.userId` with whoever was logged into the
+   browser.** The route is `@Public`, but AuthGuard still attaches a session,
+   and the controller passed `user?.id` straight through. Testing checkout
+   while signed in as ADMIN made the admin account the booking's "traveller" -
+   16 of 18 test bookings for one contact email were owned by
+   `admin@islandtours.com` or a demo operator. `booking.userId` means *the
+   customer this booking belongs to*: it drives the customer dashboard, the
+   `getById` ownership check, and the cancellation-request gate. `reserve` now
+   accepts the actor and stamps the owner **only for a `Role.USER` session**.
+2. **The backfill only claimed `userId IS NULL` bookings**, so those
+   mis-stamped rows were invisible to it. The customer's identity is the
+   contact email, so the backfill now also reclaims bookings owned by a
+   **non-USER** account. Bookings owned by a different CUSTOMER are never
+   stolen.
+
+Payments needed no separate fix: a payment has no owner column, it is scoped
+through `booking.userId`, so re-linking the booking restores the payments view
+and the spend summary at the same time.
+
+**Historical rows** carrying an ops `userId` are repaired either by the next
+confirmed booking for that email (provisioning re-runs the corrected backfill)
+or by the one-off re-link script, which dry-runs by default and writes a
+JSON backup of prior ownership before applying.
+
+## Customer UI pass 2026-07-20 (dashboard repo) - EXECUTED
+
+Richer tables and a rebuilt detail/cancellation surface. Every value added is
+a field the API already returns - no new endpoints, no estimated numbers.
+
+- **Bookings table**: new Travelers column; the payment cell carries the amount
+  paid under its badge; the total carries the balance still due to the
+  operator; confirmed bookings inside their free window show
+  "Free cancellation until <date>" under the status badge.
+- **Payments table**: stat row (transaction count from the paginated total, net
+  paid from `/bookings/me/summary`) plus Travel date and the provider under the
+  method. Page-local sums are deliberately NOT used - a figure that reads as a
+  lifetime total must not silently mean "this page".
+- **Details sheet**: ticket lines grouped by unit price (age-band names are not
+  on the list payload, so we group by what we have), confirmed timestamp,
+  deposit / paid / balance split, and a plain-language note per payment model
+  explaining whether the traveller still owes anything and to whom.
+- **Cancellation**: four explicit states (already requested / eligible / window
+  closed / not cancellable), each stating what happens to the money. The
+  request is now two-step - a mis-click on a table row cannot fire it - and the
+  already-requested state reports whether the request landed inside the free
+  window and what refund follows.
+- New shared helpers in `lib/bookings/format.ts`: `isFreeWindowOpen`,
+  `freeCancellationNote`, `partyPriceLines` (beside the existing `refundDue`);
+  `CustomerStatCard` extracted so both views share one stat header.
+
+## Command-palette gating + departed-trip cancellation (2026-07-20) - EXECUTED
+
+**Palette leaked operator entries to customers.** The sidebar picked the
+separate `customerNav`, but the command palette still permission-filtered the
+OPERATOR nav - and `Role.USER` holds `VIEW_TRIPS` (legacy) plus the self-scoped
+`VIEW_BOOKINGS`/`VIEW_PAYMENTS`, so Bookings, Cancellations, Payments, Tours
+and Translations all survived the filter. Fixes:
+
+- `navGroupsForRole(nav, role, permissions)` in `lib/rbac-utils.ts` is now the
+  ONE place the role -> nav decision lives; the sidebar and the palette both
+  resolve through it, so they cannot drift again.
+- Catalogue entity search (tours, destinations) is off for customers - those
+  results link into operator screens (`/trips/:id/edit`) they cannot open, and
+  permission alone does not gate it because USER carries `VIEW_TRIPS`. Booking
+  search stays on (backend scopes USER to their own rows).
+- `resolvePermissions(role, userPermissions, roleMap)` shared too: the palette
+  used the STATIC role map while the sidebar preferred the backend's effective
+  grants, so a narrowed STAFF seat saw palette entries the sidebar hid.
+  `userPermissions` now threads shell -> header -> palette.
+
+**Departed trips can no longer be put up for cancellation.** The verdict is
+computed SERVER-side and shipped on the payload - clients must not re-derive
+it, because `tourStartDateTime` is a LOCAL wall clock and is meaningless
+without `tourTimeZone` (which the list payload does not carry).
+
+- `cancellationEligibility()` returns `{ canRequest, reason }` with reason
+  `ALREADY_REQUESTED | NOT_CONFIRMED | DEPARTED`; surfaced as
+  `canRequestCancellation` + `cancellationBlockedReason` on the booking list
+  item, and enforced by the same predicate inside
+  `submitCancellationRequest` (409). One rule, so the UI can never offer
+  something the endpoint refuses.
+- `hasDeparted()` edge cases: start + zone gives an exact instant; a legacy row
+  with no zone falls back to the travel DAY and counts as departed only once
+  that day has ended in EVERY timezone (36h), deliberately lenient rather than
+  refusing a trip that has not happened; `localDate` is NOT NULL so there is
+  always a floor. A re-submit on an already-requested booking still works even
+  after departure - the stamp exists and refusing would strand a traveller
+  whose trip started while waiting on us.
+- Dashboard renders the reason (departed / not confirmed / already requested);
+  `freeCancellationNote` keys off `canRequestCancellation` so no "free
+  cancellation until" is ever promised on a booking the endpoint would refuse.
+
 ## Invariants (do not break)
 
 1. Provisioning is fire-and-forget and must NEVER fail or slow a booking,
@@ -282,3 +380,14 @@ three human-pace mail routes could become one shared decorator.
 8. In `cancel()`, authorization runs before both the idempotent early-return
    and the status check - neither a payload nor a status may reach an
    unauthenticated caller holding only a booking id.
+9. `booking.userId` is the CUSTOMER who owns the booking - never "whoever was
+   logged in". Only a `Role.USER` session may be stamped as the owner; an ops
+   session browsing checkout must leave it null.
+10. Role -> navigation is decided ONLY by `navGroupsForRole`. Never
+    permission-filter the operator nav for a customer: `Role.USER` holds grants
+    (`VIEW_TRIPS`, self-scoped `VIEW_BOOKINGS`/`VIEW_PAYMENTS`) that leave
+    operator items standing.
+11. Cancellation eligibility is computed server-side and shipped as
+    `canRequestCancellation`. Clients render it, never re-derive it -
+    `tourStartDateTime` is a local wall clock and needs `tourTimeZone` to mean
+    anything.
