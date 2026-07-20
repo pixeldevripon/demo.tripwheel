@@ -1,3 +1,4 @@
 - [Bootstrap Phase Security Findings](project_bootstrap_security.md) — Phase 1 audit: confirmed secure patterns + known gaps to watch in future phases (exception filter, Swagger gate, implicit conversion, source maps)
 - [Auth Module Phase 3 Security Findings](project_auth_phase3_security.md) — role:input:true (FIXED), IS_SEEDING bypass (FIXED), guard null-safety (FIXED); see staff module memory for successor finding
 - [Staff & Teams Module Security Findings](project_staff_teams_module_security.md) — CRITICAL: MANAGE_USERS + role-flip-to-EDITOR bypasses the entire staff permission ceiling; also cache/suspension-path notes + confirmed tenant-isolation patterns
+- [Homepage CMS + Featured Experiences Security Findings](project_homepage_cms_featured_experiences_security.md) — HIGH: unchecked heroImage host on the singleton HomePage row can outage the whole site (next/image throws); everything else (IDOR, injection, SSRF, cache contract, orphan cleanup) checked and clean

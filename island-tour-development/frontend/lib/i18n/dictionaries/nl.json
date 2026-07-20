@@ -777,6 +777,10 @@
     "manageTitle": "Jouw boeking",
     "manageSubtitle": "{tour} op {date} om {time}.",
     "statusConfirmed": "Bevestigd",
+    "statusCancelled": "Geannuleerd",
+    "statusCancellationPending": "Annulering in behandeling",
+    "cancellationPendingNote": "We hebben je annuleringsverzoek ontvangen en verwerken het. Je krijgt een e-mail zodra het klaar is.",
+    "cancelledNote": "Deze boeking is geannuleerd. We hebben je de bevestiging gemaild.",
     "cancelBooking": "Boeking annuleren",
     "needToCancel": "Annuleren?"
   },

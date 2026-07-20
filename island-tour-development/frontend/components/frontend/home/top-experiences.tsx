@@ -5,7 +5,8 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Reveal } from '../reveal';
 
 type CardKey =
@@ -15,9 +16,40 @@ type CardKey =
     | 'snorkeling'
     | 'dolphin';
 
-type Card = { key: CardKey; image: string | null; video: string | null };
+/**
+ * A slide. `href` is null for the bundled fallback cards (they are decorative
+ * placeholders with nowhere real to point); curated cards always carry one.
+ */
+type Card = {
+    key: string;
+    title: string;
+    image: string | null;
+    video: string | null;
+    href: string | null;
+};
+
+/** An admin-curated card, already resolved and localized by the page. */
+export type ExperienceCard = {
+    id: string;
+    title: string;
+    image: string | null;
+    videoUrl: string | null;
+    href: string;
+};
 
 type ExperiencesDict = { title: string; cards: Record<CardKey, string> };
+
+/**
+ * Below this, the curated set is not worth showing: the reel loops three copies
+ * of the card list, and one or two real cards would read as an obvious repeat.
+ * Fewer than this falls back to the bundled cards - the same "never blank"
+ * contract the rest of the homepage content follows.
+ */
+const MIN_CURATED_CARDS = 3;
+
+/** How far a pointer may travel between press and release and still count as a
+ *  click rather than a carousel drag. */
+const DRAG_SLOP_PX = 8;
 
 /**
  * Cloudinary delivery transformations, injected right after `/upload/`.
@@ -32,7 +64,13 @@ const CLD_VIDEO_TX = 'q_auto,vc_auto,w_640,c_limit';
 const cld = (url: string, transform: string) =>
     url.replace('/upload/', `/upload/${transform}/`);
 
-const RAW_CARDS: Card[] = [
+/**
+ * Bundled fallback deck, used until an admin curates at least
+ * MIN_CURATED_CARDS experiences (and if the backend is unreachable). Labels come
+ * from the i18n dictionary; these cards have no href because they name generic
+ * activities rather than a real category or hub page.
+ */
+const RAW_CARDS: { key: CardKey; image: string | null; video: string | null }[] = [
     {
         key: 'sunsetCruise',
         image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
@@ -61,17 +99,6 @@ const RAW_CARDS: Card[] = [
         video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4',
     },
 ];
-
-const cards: Card[] = RAW_CARDS.map(card => ({
-    ...card,
-    image: card.image && cld(card.image, CLD_IMAGE_TX),
-    video: card.video && cld(card.video, CLD_VIDEO_TX),
-}));
-
-const REAL = cards.length;
-// Repeat the set so the track overflows the viewport - required for a seamless infinite loop
-const SLIDES = [...cards, ...cards, ...cards];
-const START = REAL + 2; // centre the middle card (Buggy) of the middle set
 
 // Size arc (reference: Fever-style reel) - the centre card renders at full
 // 250x440, neighbours at ~0.85x, outer cards at ~0.7x. Cards scale
@@ -102,7 +129,43 @@ const arcShift = (d: number) =>
  */
 const VIEWPORT_W = Math.round(SLIDE_W * (1 + 2 * 0.85 + 2 * 0.7) + 4 * GAP);
 
-export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
+export function TopExperiences({
+    dict,
+    experiences,
+}: {
+    dict: ExperiencesDict;
+    /** Curated cards, resolved + localized by the page. */
+    experiences?: ExperienceCard[];
+}) {
+    // Curated content wins; too few (or none) falls back to the bundled deck so
+    // the section is never empty and never a one-card "carousel".
+    const cards = useMemo<Card[]>(() => {
+        if (experiences && experiences.length >= MIN_CURATED_CARDS) {
+            return experiences.map(e => ({
+                key: e.id,
+                title: e.title,
+                // cld() only rewrites Cloudinary URLs (it keys off `/upload/`),
+                // so non-Cloudinary admin images pass through untouched.
+                image: e.image && cld(e.image, CLD_IMAGE_TX),
+                video: e.videoUrl && cld(e.videoUrl, CLD_VIDEO_TX),
+                href: e.href,
+            }));
+        }
+        return RAW_CARDS.map(card => ({
+            key: card.key,
+            title: dict.cards[card.key],
+            image: card.image && cld(card.image, CLD_IMAGE_TX),
+            video: card.video && cld(card.video, CLD_VIDEO_TX),
+            href: null,
+        }));
+    }, [experiences, dict]);
+
+    const REAL = cards.length;
+    // Repeat the set so the track overflows the viewport - required for a seamless infinite loop
+    const SLIDES = useMemo(() => [...cards, ...cards, ...cards], [cards]);
+    // Centre the middle card of the middle set.
+    const START = REAL + Math.floor(REAL / 2);
+
     // No timer-driven autoplay: the reel is video-driven. The CENTRE card's
     // video always plays; when it ends, `onEnded` advances the carousel and
     // the next centred card takes over.
@@ -122,6 +185,10 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
     // browser blocks it; the first explicit play click unlocks sound.
     const [soundOn, setSoundOn] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
+    // Where the pointer went down on a card link, so a swipe across the reel is
+    // not delivered as a click. Embla 8 exposes no `clickAllowed()`, so the
+    // distance test lives here rather than leaning on carousel internals.
+    const pressOrigin = useRef<{ x: number; y: number } | null>(null);
 
     // Size arc: each card scales (and shifts inward) by its live distance from
     // the carousel centre, re-applied on every scroll frame so the arc morphs
@@ -194,6 +261,29 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
         }
     };
 
+    /**
+     * A card link behaves like the rest of the reel: a card that is not centred
+     * pulls into the centre instead of navigating (the same affordance the play
+     * button gives), and only the centred card follows its href. A press that
+     * travelled more than the drag slop was a swipe, so it never navigates.
+     */
+    const handleCardClick = (
+        e: React.MouseEvent<HTMLAnchorElement>,
+        index: number,
+    ) => {
+        const origin = pressOrigin.current;
+        pressOrigin.current = null;
+        const dragged =
+            origin &&
+            Math.hypot(e.clientX - origin.x, e.clientY - origin.y) >
+                DRAG_SLOP_PX;
+
+        if (dragged || selected !== index) {
+            e.preventDefault();
+            if (!dragged) emblaApi?.scrollTo(index);
+        }
+    };
+
     // One dot per real card; clicking a dot centres (and thereby plays) it.
     const realIndex = ((selected % REAL) + REAL) % REAL;
     const goToDot = (dot: number) => {
@@ -227,7 +317,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                 // playing - side cards only show their poster.
                                 const isPlaying =
                                     selected === i && Boolean(card.video);
-                                const title = dict.cards[card.key];
+                                const title = card.title;
                                 return (
                                     <div
                                         key={`${card.key}-${i}`}
@@ -319,6 +409,30 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                 />
                                             )}
 
+                                            {/* Stretched link covering the card. A sibling
+                                                overlay rather than a wrapper: the play control
+                                                is a <button>, and a button nested inside an
+                                                anchor is invalid HTML. Sits above the artwork
+                                                and caption (z-10) but below that button (z-20),
+                                                so each press hits exactly one control. */}
+                                            {card.href && (
+                                                <Link
+                                                    href={card.href}
+                                                    aria-label={title}
+                                                    draggable={false}
+                                                    onPointerDown={e => {
+                                                        pressOrigin.current = {
+                                                            x: e.clientX,
+                                                            y: e.clientY,
+                                                        };
+                                                    }}
+                                                    onClick={e =>
+                                                        handleCardClick(e, i)
+                                                    }
+                                                    className='absolute inset-0 z-10'
+                                                />
+                                            )}
+
                                             {/* One control - play, then pause/resume in place; the
                                                 icon springs between states like the TYP copy chip. */}
                                             {card.video ? (
@@ -343,7 +457,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     }
                                                     whileTap={{ scale: 0.9 }}
                                                     transition={springPop}
-                                                    className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'>
+                                                    className='absolute top-4 right-4 z-20 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'>
                                                     <AnimatePresence
                                                         mode='wait'
                                                         initial={false}>
@@ -375,7 +489,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                                                     </AnimatePresence>
                                                 </motion.button>
                                             ) : (
-                                                <span className='absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-it-white/40'>
+                                                <span className='absolute top-4 right-4 z-20 flex size-9 items-center justify-center rounded-full bg-it-white/40'>
                                                     <Play className='size-3.5 fill-it-ink-muted text-it-ink-muted' />
                                                 </span>
                                             )}
@@ -410,7 +524,7 @@ export function TopExperiences({ dict }: { dict: ExperiencesDict }) {
                             <motion.button
                                 key={card.key}
                                 type='button'
-                                aria-label={`Go to ${dict.cards[card.key]}`}
+                                aria-label={`Go to ${card.title}`}
                                 onClick={() => goToDot(dot)}
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}

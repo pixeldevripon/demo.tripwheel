@@ -559,6 +559,9 @@ enum FaqPageType {
   destination
   tour
   collection
+  // The homepage FAQ block. Unlike the others this owns no entity table, so its
+  // entityId is the HomePage singleton key ('default') - see src/home-page.
+  homepage
 }
 
 // ── Operator ──────────────────────────────────────────────────────────────────

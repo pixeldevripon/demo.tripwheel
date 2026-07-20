@@ -777,6 +777,10 @@
     "manageTitle": "Votre réservation",
     "manageSubtitle": "{tour} le {date} à {time}.",
     "statusConfirmed": "Confirmée",
+    "statusCancelled": "Annulée",
+    "statusCancellationPending": "Annulation en cours",
+    "cancellationPendingNote": "Nous avons bien reçu votre demande d'annulation et la traitons. Vous recevrez un e-mail dès qu'elle sera finalisée.",
+    "cancelledNote": "Cette réservation a été annulée. Nous vous avons envoyé la confirmation par e-mail.",
     "cancelBooking": "Annuler la réservation",
     "needToCancel": "Besoin d'annuler ?"
   },

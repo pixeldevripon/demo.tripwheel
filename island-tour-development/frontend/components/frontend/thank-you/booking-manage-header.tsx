@@ -27,16 +27,54 @@ export function BookingManageHeader({
     cancelHref: string;
     dict: ThankYouDict;
 }) {
-    const canCancel = booking.status === 'CONFIRMED';
+    // The server owns the verdict (already requested? departed? not
+    // confirmed?), so the button can never be offered for a request the API
+    // would refuse.
+    const canCancel = booking.canCancel;
+    const cancelled = booking.status === 'CANCELLED';
+    // Requested but not yet processed by an admin.
+    const cancellationPending = !cancelled && !!booking.cancellationRequestedAt;
+
+    // The chip used to be a hardcoded green "Confirmed" - it stayed green even
+    // on a booking that had been cancelled.
+    const statusChip = cancelled
+        ? {
+              label: dict.statusCancelled,
+              dot: 'bg-it-error',
+              text: 'text-it-error',
+              bg: 'bg-it-error-subtle',
+          }
+        : cancellationPending
+          ? {
+                label: dict.statusCancellationPending,
+                dot: 'bg-it-warning',
+                text: 'text-it-warning',
+                bg: 'bg-it-warning-subtle',
+            }
+          : {
+                label: dict.statusConfirmed,
+                dot: 'bg-it-green',
+                text: 'text-it-green',
+                bg: 'bg-it-green/8',
+            };
+    const stateNote = cancelled
+        ? dict.cancelledNote
+        : cancellationPending
+          ? dict.cancellationPendingNote
+          : null;
 
     return (
         <section className='bg-it-white pt-12 pb-12 md:pt-[64px] md:pb-[72px]'>
             <div className='it-container flex flex-col gap-8'>
                 <MountReveal className='flex flex-col gap-4'>
-                    <span className='inline-flex w-fit items-center gap-2 rounded-full bg-it-green/8 px-3 py-1'>
-                        <span className='size-1.5 shrink-0 rounded-full bg-it-green' />
-                        <span className='text-[13px] font-medium leading-[1.2] tracking-[-0.012em] text-it-green'>
-                            {dict.statusConfirmed}
+                    <span
+                        className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 ${statusChip.bg}`}>
+                        <span
+                            className={`size-1.5 shrink-0 rounded-full ${statusChip.dot}`}
+                        />
+                        <span
+                            className={`text-[13px] font-medium leading-[1.2] tracking-[-0.012em] ${statusChip.text}`}>
+                            {statusChip.label}
                         </span>
                     </span>
                     <div className='flex flex-col gap-1'>
@@ -59,6 +97,14 @@ export function BookingManageHeader({
                             ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
                         />
                     </div>
+                    {/* Says what is happening, so a traveller whose request is
+                        pending is not left guessing whether it registered -
+                        the reason the cancel form kept getting re-submitted. */}
+                    {stateNote && (
+                        <p className='m-0 max-w-[640px] text-[15px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                            {stateNote}
+                        </p>
+                    )}
                 </MountReveal>
 
                 <MountReveal

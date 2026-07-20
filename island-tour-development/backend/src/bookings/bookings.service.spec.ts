@@ -863,6 +863,120 @@ describe('BookingsService', () => {
       expect(res.cancellationRefund).toBe('FULL');
     });
 
+    // The request ack promises "We'll email you to confirm once it's done".
+    // Nothing used to send it, so a processed request reached the traveller as
+    // silence.
+    it('emails the traveller and the operator once the cancellation is processed', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          utcConfirmedAt: new Date('2026-07-01T00:00:00Z'),
+          contactEmail: 'guest@example.test',
+          publicRef: 'p1',
+          island: 'curacao',
+          operatorId: 'op1',
+          customerLocale: 'en',
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        name: 'Sunset Cruise',
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.operator.findUnique.mockResolvedValue({
+        contactEmail: 'supplier@op.test',
+        companyInfo: {
+          companyEmail: 'office@op.test',
+          companyName: 'Miss Ann',
+        },
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+          contactEmail: 'guest@example.test',
+          publicRef: 'p1',
+          island: 'curacao',
+          operatorId: 'op1',
+          customerLocale: 'en',
+        }),
+      );
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(mail.sendBookingNoticeEmail).toHaveBeenCalledTimes(2);
+      const [travellerCall, operatorCall] =
+        mail.sendBookingNoticeEmail.mock.calls;
+      expect(travellerCall[0]).toBe('guest@example.test');
+      expect(travellerCall[2].noticeTitle).toContain(
+        'Your booking is cancelled',
+      );
+      // Company inbox first, same precedence as the request-time heads-up.
+      expect(operatorCall[0]).toBe('office@op.test');
+      expect(operatorCall[2].noticeTitle).toContain('Cancellation confirmed');
+    });
+
+    // Releasing an abandoned checkout hold is inventory housekeeping - nobody
+    // ever confirmed anything, so nobody should get mail about it.
+    it('sends nothing when releasing a hold that never confirmed', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.ON_HOLD,
+          utcConfirmedAt: null,
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 0,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CANCELLED }),
+      );
+
+      await svc.cancel('b1', {});
+
+      expect(mail.sendBookingNoticeEmail).not.toHaveBeenCalled();
+    });
+
+    // The seats are already back in inventory by the time we mail anyone - a
+    // dead mailbox must not surface to the admin as a failed cancellation.
+    it('still cancels when the confirmation emails fail', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          utcConfirmedAt: new Date('2026-07-01T00:00:00Z'),
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CANCELLED }),
+      );
+      mail.sendBookingNoticeEmail.mockRejectedValue(new Error('smtp down'));
+
+      await expect(
+        svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN }),
+      ).resolves.toBeDefined();
+    });
+
     it('judges the refund window at the request instant, not the admin action time', async () => {
       // Tour departs 2030-06-05 09:00 Curaçao; free-cancel window is 48h before.
       const setup = () => {
@@ -1228,6 +1342,73 @@ describe('BookingsService', () => {
       expect(res.operator.phone).toBe('+100000000');
       expect(res.pickupAddress).toBe('Marriott Beach Resort, Piscadera Bay');
       expect(res.paymentMethodLast4).toBe('4242');
+    });
+  });
+
+  // The TYP used to ship no cancellation state at all, so it kept offering
+  // "Cancel booking" to someone whose request was already pending, and showed
+  // a green Confirmed chip on a booking an admin had already cancelled.
+  describe('getThankYou cancellation state', () => {
+    const typBooking = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        tour: { name: 'T', ageBands: [], cancellationHours: 48 },
+        // Far-future start so DEPARTED never colours these cases.
+        tourStartDateTime: new Date('2035-01-01T09:00:00Z'),
+        tourTimeZone: 'America/Curacao',
+        localDate: new Date('2035-01-01T00:00:00Z'),
+        operator: null,
+        ...over,
+      });
+
+    it('advertises a cancellable booking as requestable', async () => {
+      m.booking.findUnique.mockResolvedValue(typBooking());
+      const res = await svc.getThankYou('p1');
+      expect(res.canRequestCancellation).toBe(true);
+      expect(res.cancellationBlockedReason).toBeNull();
+      expect(res.cancellationRequestedAt).toBeNull();
+      expect(res.cancelledAt).toBeNull();
+    });
+
+    it('reports a pending request so the page stops offering the button', async () => {
+      const requestedAt = new Date('2026-07-19T10:00:00Z');
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({ utcCancellationRequestedAt: requestedAt }),
+      );
+      const res = await svc.getThankYou('p1');
+      expect(res.canRequestCancellation).toBe(false);
+      expect(res.cancellationBlockedReason).toBe('ALREADY_REQUESTED');
+      expect(res.cancellationRequestedAt).toBe(requestedAt.toISOString());
+    });
+
+    it('reports a processed cancellation', async () => {
+      const cancelledAt = new Date('2026-07-20T10:00:00Z');
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({
+          status: BookingStatus.CANCELLED,
+          utcCancelledAt: cancelledAt,
+          utcCancellationRequestedAt: new Date('2026-07-19T10:00:00Z'),
+        }),
+      );
+      const res = await svc.getThankYou('p1');
+      expect(res.status).toBe(BookingStatus.CANCELLED);
+      expect(res.cancelledAt).toBe(cancelledAt.toISOString());
+      expect(res.canRequestCancellation).toBe(false);
+    });
+
+    // A trip you have already taken cannot be cancelled - the page must not
+    // offer it, and the endpoint refuses it.
+    it('blocks a departed trip', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        typBooking({
+          tourStartDateTime: new Date('2020-01-01T09:00:00Z'),
+          localDate: new Date('2020-01-01T00:00:00Z'),
+        }),
+      );
+      const res = await svc.getThankYou('p1');
+      expect(res.canRequestCancellation).toBe(false);
+      expect(res.cancellationBlockedReason).toBe('DEPARTED');
     });
   });
 
@@ -1686,7 +1867,7 @@ describe('BookingsService', () => {
       expect(details.guestEmail).toBe('guest@example.test');
     });
 
-    it('stamps utcCancellationRequestedAt on the FIRST request only', async () => {
+    it('stamps utcCancellationRequestedAt on the FIRST request, then refuses repeats', async () => {
       m.booking.findUnique.mockResolvedValue(confirmed());
       await svc.requestCancellation('p1', undefined, ownerToken());
       // Refund eligibility is judged at the instant the traveller asked (gap #16).
@@ -1697,13 +1878,18 @@ describe('BookingsService', () => {
       );
 
       m.booking.update.mockClear();
+      mail.sendCancellationRequestEmail.mockClear();
       m.booking.findUnique.mockResolvedValue(
         confirmed({ utcCancellationRequestedAt: new Date('2026-07-01') }),
       );
-      await svc.requestCancellation('p1', undefined, ownerToken());
-      // A repeat submit re-notifies the admin but never moves the instant.
+      // A repeat submit is REFUSED, not waved through as idempotent: each one
+      // used to re-send the admin email, the traveller ack and the operator
+      // heads-up, so a single booking could spam three mailboxes on a loop.
+      await expect(
+        svc.requestCancellation('p1', undefined, ownerToken()),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(m.booking.update).not.toHaveBeenCalled();
-      expect(mail.sendCancellationRequestEmail).toHaveBeenCalledTimes(2);
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
     });
 
     it('401s without a traveler session - link possession alone cannot cancel', async () => {
@@ -1919,10 +2105,11 @@ describe('BookingsService', () => {
         ).rejects.toBeInstanceOf(ConflictException);
       });
 
-      // A departed trip that ALREADY has a request keeps working: the stamp is
-      // set, re-submitting is idempotent, and refusing it would strand a
-      // traveller mid-flow if their trip started while they waited on us.
-      it('still accepts a re-submit on a departed trip already requested', async () => {
+      // A departed trip that ALREADY has a request is refused like any other
+      // repeat: the stamp is set, so the request is safely on file and an
+      // admin is working it. Re-submitting achieves nothing except re-sending
+      // three emails, and the traveller is told exactly that.
+      it('409s a re-submit on a departed trip already requested', async () => {
         m.booking.findUnique.mockResolvedValue(
           owned({
             tourStartDateTime: PAST,
@@ -1932,7 +2119,8 @@ describe('BookingsService', () => {
         );
         await expect(
           svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).resolves.toEqual({ requested: true });
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
       });
     });
   });

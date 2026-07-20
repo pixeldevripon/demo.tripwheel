@@ -76,6 +76,28 @@ async function CancelBody({
         .replace('{tour}', booking.tourTitle)
         .replace('{date}', booking.dateLabel);
 
+    // A request already on file - show its state instead of a second form.
+    // Re-submitting achieves nothing (the backend 409s it) except re-sending
+    // the admin, traveller and operator emails, which is exactly how this page
+    // used to be used as a resend button.
+    if (booking.cancellationRequestedAt && booking.status === 'CONFIRMED') {
+        return (
+            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
+                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                    {dict.thankYou.statusCancellationPending}
+                </span>
+                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    {dict.thankYou.cancellationPendingNote}
+                </p>
+                <Link
+                    href={thankYouHref}
+                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                    {cd.keep}
+                </Link>
+            </div>
+        );
+    }
+
     // A cancelled/expired booking has nothing to cancel - say so instead of
     // rendering a form whose submit can only 409.
     if (booking.status !== 'CONFIRMED') {

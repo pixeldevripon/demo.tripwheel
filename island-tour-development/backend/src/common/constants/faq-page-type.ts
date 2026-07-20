@@ -9,6 +9,7 @@ export const FAQ_PAGE_TYPE = {
   HUB: FaqPageType.hub,
   TOUR: FaqPageType.tour,
   COLLECTION: FaqPageType.collection,
+  HOMEPAGE: FaqPageType.homepage,
 } as const;
 
 export type { FaqPageType };

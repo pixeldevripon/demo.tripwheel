@@ -777,6 +777,10 @@
     "manageTitle": "Your booking",
     "manageSubtitle": "{tour} on {date} at {time}.",
     "statusConfirmed": "Confirmed",
+    "statusCancelled": "Cancelled",
+    "statusCancellationPending": "Cancellation pending",
+    "cancellationPendingNote": "We got your cancellation request and are processing it. We'll email you as soon as it's done.",
+    "cancelledNote": "This booking has been cancelled. We've emailed you the confirmation.",
     "cancelBooking": "Cancel booking",
     "needToCancel": "Need to cancel?"
   },

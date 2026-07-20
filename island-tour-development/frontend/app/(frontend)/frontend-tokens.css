@@ -18,6 +18,13 @@
     --it-green-subtle:     color-mix(in oklch, #00c950, white 88%);
     --it-green-fg:         #ffffff;
 
+    /* Red / amber — the other two booking states (cancelled, pending).
+       Green alone could only ever say "confirmed". */
+    --it-error:            #c8102e;
+    --it-error-subtle:     color-mix(in oklch, #c8102e, white 92%);
+    --it-warning:          #a35200;
+    --it-warning-subtle:   color-mix(in oklch, #a35200, white 92%);
+
     /* Ink — text & strokes */
     --it-ink:              #1a1a1a;
     --it-ink-secondary:    #444444;
@@ -252,6 +259,10 @@
     --color-it-green:           var(--it-green);
     --color-it-green-subtle:    var(--it-green-subtle);
     --color-it-green-fg:        var(--it-green-fg);
+    --color-it-error:           var(--it-error);
+    --color-it-error-subtle:    var(--it-error-subtle);
+    --color-it-warning:         var(--it-warning);
+    --color-it-warning-subtle:  var(--it-warning-subtle);
     --color-it-ink:             var(--it-ink);
     --color-it-ink-secondary:   var(--it-ink-secondary);
     --color-it-ink-muted:       var(--it-ink-muted);

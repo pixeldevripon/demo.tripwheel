@@ -27,7 +27,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType, TourStatus } from '@prisma/client';
+import { FeaturedEntityType, SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
@@ -647,7 +647,18 @@ export class CategoryService {
       // Master slug-registry rule: hard delete starts the 90-day reuse cooldown (keep rows,
       // isActive=false + deletedAt=now) across every destination the category was seeded into.
       await markSlugsDeleted(tx, SlugEntityType.CATEGORY, id);
-      // Cascade via Prisma schema handles: translations, FAQs, page content
+
+      // Prisma cascade covers the rows that actually have a FK to Category:
+      // translations and page content. It does NOT cover the polymorphic tables
+      // (Faq, FeaturedExperience) - they key off (discriminator, entityId) with
+      // no relation, so nothing deletes them for us and they leak silently.
+      await tx.faq.deleteMany({
+        where: { pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
+      });
+      await tx.featuredExperience.deleteMany({
+        where: { entityType: FeaturedEntityType.CATEGORY, entityId: id },
+      });
+
       await tx.category.delete({ where: { id } });
     });
 

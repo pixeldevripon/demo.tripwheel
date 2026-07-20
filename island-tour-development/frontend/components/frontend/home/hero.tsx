@@ -16,6 +16,14 @@ type HeroDict = {
 };
 
 /**
+ * Shipped with the app, used whenever an admin has not chosen a hero photo.
+ * Local 3840x2160 original; Next's optimizer serves responsive AVIF/WebP
+ * variants, so quality stays hero-grade without the 2.7 MB source ever
+ * reaching a browser.
+ */
+const FALLBACK_HERO_IMAGE = '/images/kc-powerboat.jpg';
+
+/**
  * Homepage hero. Server-rendered shell (heading + subtitle + the Popular island
  * links, both driven by the live destinations); the interactive island search is
  * the lone client island (`HeroSearch`).
@@ -25,11 +33,14 @@ export function Hero({
     locale,
     destinations,
     search,
+    image,
 }: {
     dict: HeroDict;
     locale: Locale;
     destinations: HeroDestination[];
     search: SearchDict;
+    /** Admin-chosen hero photo; null/absent keeps the bundled default. */
+    image?: string | null;
 }) {
     const popular = destinations.slice(0, 4);
 
@@ -38,12 +49,9 @@ export function Hero({
             {/* Background clips inside its own wrapper (not the section) so the
                 search typeahead panel can drop below the hero without being cut. */}
             <div className='absolute inset-0 overflow-hidden'>
-                {/* Photo background (token bg above stays as the loading fallback).
-                    Local 3840x2160 original; Next's optimizer serves responsive
-                    AVIF/WebP variants, so quality stays hero-grade without the
-                    2.7 MB source ever reaching a browser. */}
+                {/* Photo background (token bg above stays as the loading fallback). */}
                 <Image
-                    src='/images/kc-powerboat.jpg'
+                    src={image || FALLBACK_HERO_IMAGE}
                     alt='Island tours hero image'
                     fill
                     quality={100}

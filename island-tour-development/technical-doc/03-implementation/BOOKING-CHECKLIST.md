@@ -135,7 +135,34 @@ These are ranked. Each is expanded in its section below.
 - [x] **`ON_HOLD` cancellation = no refund** (nothing paid). `Ref:` [Guide §17 cancellation](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` `bookings.service.ts:computeRefund`
 - [x] **Operator-forced cancellation -> full refund / free reschedule (`force`).** `Ref:` [Guide §14](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · `Code:` `bookings.service.ts:cancel`
 - [ ] **Actual Stripe REFUND execution + `REFUND` Payment row** on cancellation (compute + issue refund, not just categorize). `Ref:` [Guide §14](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · not implemented (refund is a category only)
+- [x] **Cancellation-confirmed emails once an admin processes the request** (traveller + operator).
+  EXECUTED 2026-07-20. `cancel()` previously sent NOTHING, so the request ack's promise ("We'll
+  email you to confirm once it's done") and the operator's ("you'll be notified when it is final")
+  were both silently broken - a processed request reached the traveller as silence. Now
+  `sendCancellationConfirmedNotices` sends both, with refund-verdict-aware copy (FULL names the
+  amount and the 5-10 day card timing; NONE explains the window). Best-effort (the seats are already
+  released by then, so a dead mailbox must never surface as a failed cancellation), and skipped
+  entirely for `heldOnly` releases - an abandoned checkout hold is inventory housekeeping, not news.
+  `Code:` `bookings.service.ts:cancel/sendCancellationConfirmedNotices`
 - [~] **Tokenized cancel confirmation page (no raw-click cancel) + account fallback.** PAGE BUILT 2026-07-16 per master 6.4: locale-less `/cancel/{publicRef}` (proxy rewrite, noindex), "Cancel {tour}, {date}?" + refund chip only when paid > 0 (C23) + after-window locked copy; `POST /bookings/typ/:publicRef/cancellation-request` stamps `utcCancellationRequestedAt` on FIRST request and emails admin + traveller ack + operator notice. REMAINING: the email+display_ref booking-lookup login (B.34 account fallback). `Ref:` [Guide §14 flow](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · `Code:` `bookings.service.ts:requestCancellation`, `frontend app/(frontend)/[locale]/cancel/`
+- [x] **Repeat cancellation requests refused server-side + cancellation state on the TYP.**
+  EXECUTED 2026-07-20. Two halves of one hole: (1) `submitCancellationRequest` waved re-submits
+  through as "idempotent", but each one re-sent the admin email, the traveller ack AND the operator
+  heads-up - one booking could spam three mailboxes on a loop (only per-IP throttle + a 5/hr
+  per-booking cap stood in the way). It now enforces `cancellationEligibility` - the SAME predicate
+  the read paths advertise - so ALREADY_REQUESTED / NOT_CONFIRMED / DEPARTED all 409 with
+  traveller-facing copy. Note this also closes departure: a booking with an existing stamp could
+  previously re-submit after the trip had departed. (2) `GET /bookings/typ/:publicRef` shipped NO
+  cancellation state, so the TYP could not tell a pending request from a fresh booking and rendered
+  a hardcoded green "Confirmed" chip even on a cancelled booking. It now returns
+  `cancellationRequestedAt` / `cancelledAt` / `canRequestCancellation` / `cancellationBlockedReason`;
+  the TYP renders a three-way status chip (Confirmed / Cancellation pending / Cancelled) with an
+  explanatory note, and both cancel affordances (header button + summary link) gate on the server
+  verdict rather than on `status` alone. `/cancel` shows the pending state instead of a second form.
+  New `--it-error` / `--it-warning` tokens (the frontend set had green only). 7-locale copy added.
+  `Code:` `bookings.service.ts:submitCancellationRequest/getThankYou`, `booking-manage-header.tsx`,
+  `frontend app/(frontend)/[locale]/cancel/[publicRef]/page.tsx`
+  · The customer `/account` bookings sheet already gated on the same server reasons - unchanged.
 
 ---
 
@@ -232,6 +259,23 @@ comprehensive filters, search, date-range) and permission-gated per master RBAC 
   the row action (refund STILL manual until CP6 wires real Stripe refunds). Operator role granted
   `VIEW_BOOKINGS` in BOTH role configs (master roles doc: operators "view own bookings"; scoping
   server-side). Nav: new "Cancellation Requests" item gated on `VIEW_BOOKINGS`.
+  UPDATED 2026-07-20 - queue defaults to OUTSTANDING work. The page filtered only on
+  `cancellationRequested=true`, which never excluded processed rows, so the queue grew forever and
+  (sorting oldest-first) buried the requests still needing attention under the handled ones. A
+  Pending / Processed / All requests control now sits where the status filter is suppressed in queue
+  mode, defaulting to Pending -> `status=CONFIRMED` (a request is outstanding exactly while it has a
+  stamp and the booking is still confirmed). Frontend-only, via the existing status param; a filter
+  default rather than a hard exclusion, so history stays reachable. Empty state distinguishes
+  "Nothing pending" from "No cancellation requests". KNOWN LOOSENESS: Processed reads as
+  cancellation history, because `cancel()` stamps `utcCancellationRequestedAt` on every
+  cancellation - so admin-initiated cancels with no traveller request appear there too. Pending is
+  exact; tightening Processed would change refund-instant semantics, so it was left alone.
+  The nav badge had the SAME bug and is fixed with it: its comment said "awaiting admin review" but
+  the query never filtered status, so it counted every cancellation ever and never decremented (it
+  read 3 against a 1-row Pending queue). It now pins `status=CONFIRMED`, as does the hover-prefetch
+  key - which must match the list view's mount-time params exactly or the warmed cache is dead.
+  `Code:` `components/bookings/bookings-list-view.tsx`, `bookings-table.tsx`,
+  `components/shell/nav-main.tsx`, `use-nav-prefetch.ts` (dashboard repo)
 
 ---
 

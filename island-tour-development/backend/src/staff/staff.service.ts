@@ -124,6 +124,56 @@ export class StaffService {
     };
   }
 
+  /**
+   * The `user` columns needed to render an ADMIN account in the staff-member
+   * shape. Kept next to its mapper so the list and the single-member lookup
+   * cannot drift apart.
+   */
+  private readonly systemAdminSelect = {
+    id: true,
+    name: true,
+    email: true,
+    image: true,
+    status: true,
+    createdAt: true,
+    // No lastLoginAt on User - the newest session is the real signal.
+    sessions: {
+      select: { createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    },
+  } satisfies Prisma.UserSelect;
+
+  /** An ADMIN user rendered as a read-only staff member (see findSystemAdmins). */
+  private toSystemAdminResponse(
+    admin: Prisma.UserGetPayload<{ select: StaffService['systemAdminSelect'] }>,
+  ) {
+    return {
+      id: admin.id,
+      operatorId: null,
+      seatRole: StaffSeatRole.OWNER,
+      status: StaffStatus.ACTIVE,
+      extraPermissions: [],
+      revokedPermissions: [],
+      invitedAt: null,
+      activatedAt: admin.createdAt,
+      lastLoginAt: admin.sessions[0]?.createdAt ?? null,
+      createdAt: admin.createdAt,
+      updatedAt: admin.createdAt,
+      user: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        image: admin.image,
+        status: admin.status,
+      },
+      designation: null,
+      invitedBy: null,
+      effectivePermissions: [...ROLE_PERMISSIONS[Role.ADMIN]],
+      isSystemAdmin: true,
+    };
+  }
+
   /** Rejects grants outside the scope ceiling with an explicit 400. */
   private assertWithinCeiling(
     permissions: Permission[] | undefined,
@@ -506,47 +556,11 @@ export class StaffService {
           ],
         }),
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        status: true,
-        createdAt: true,
-        // No lastLoginAt on User - the newest session is the real signal.
-        sessions: {
-          select: { createdAt: true },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
+      select: this.systemAdminSelect,
       orderBy: { createdAt: 'asc' },
     });
 
-    return admins.map((admin) => ({
-      id: admin.id,
-      operatorId: null,
-      seatRole: StaffSeatRole.OWNER,
-      status: StaffStatus.ACTIVE,
-      extraPermissions: [],
-      revokedPermissions: [],
-      invitedAt: null,
-      activatedAt: admin.createdAt,
-      lastLoginAt: admin.sessions[0]?.createdAt ?? null,
-      createdAt: admin.createdAt,
-      updatedAt: admin.createdAt,
-      user: {
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        image: admin.image,
-        status: admin.status,
-      },
-      designation: null,
-      invitedBy: null,
-      effectivePermissions: [...ROLE_PERMISSIONS[Role.ADMIN]],
-      isSystemAdmin: true,
-    }));
+    return admins.map((admin) => this.toSystemAdminResponse(admin));
   }
 
   /**
@@ -584,7 +598,19 @@ export class StaffService {
     });
   }
 
+  /**
+   * A single platform member. The system administrator is visible in the list
+   * but has no `staff_members` row, so a plain lookup would 404 on the very
+   * account running the page - synthesize the same read-only shape the list
+   * uses instead. Mutating paths keep rejecting it via `assertNotSystemAdmin`.
+   */
   async getPlatformStaff(id: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { id, role: Role.ADMIN },
+      select: this.systemAdminSelect,
+    });
+    if (admin) return this.toSystemAdminResponse(admin);
+
     const member = await this.resolveMember(id, null);
     return this.toMemberResponse(member);
   }

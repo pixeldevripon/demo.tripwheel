@@ -585,6 +585,36 @@ describe('ToursService', () => {
   // ── findAll - join filters ─────────────────────────────────────────────────────
 
   describe('findAll', () => {
+    /**
+     * Pins "now" for the date-anchored tests below.
+     *
+     * `findAll`'s date filter runs the real live-bookability rule, which drops
+     * departures already past their booking cutoff - measured against the
+     * actual clock. The fixtures use a FIXED calendar date, so each of these
+     * tests silently rots the moment that date slides into the past: the
+     * 09:00 case started failing on 2026-07-20 (its departure went by at 13:00
+     * UTC) and the 18:00 case was hours from doing the same. Freezing the
+     * clock is what makes them assert the capacity/bucket logic they are
+     * actually about, rather than the calendar.
+     */
+    const freezeClock = () =>
+      jest.useFakeTimers({
+        now: new Date('2026-07-19T12:00:00.000Z'),
+        // Only Date is faked: the suite awaits real promises, and faking the
+        // timer queue would stall them.
+        doNotFake: [
+          'setTimeout',
+          'setInterval',
+          'setImmediate',
+          'nextTick',
+          'queueMicrotask',
+        ],
+      });
+
+    // Unconditional, so a frozen clock never leaks into a later test even if
+    // the one that froze it threw.
+    afterEach(() => jest.useRealTimers());
+
     it('filters category/hub via the join relations and flattens results', async () => {
       prisma.tour.count.mockResolvedValue(1);
       prisma.tour.findMany.mockResolvedValue([
@@ -738,6 +768,7 @@ describe('ToursService', () => {
     // ── Phase 3: date-anchored availability ───────────────────────────────────
 
     it('date filter keeps only tours with a fitting OPEN departure (capacity math)', async () => {
+      freezeClock();
       prisma.tour.count.mockResolvedValue(0);
       prisma.tour.findMany.mockResolvedValue([]);
       // t-ok has 3 seats left (>= 2); t-full has 1 seat left (< 2) -> excluded.
@@ -783,6 +814,7 @@ describe('ToursService', () => {
     });
 
     it('date filter narrows by time-of-day bucket (evening excludes a morning departure)', async () => {
+      freezeClock();
       prisma.tour.count.mockResolvedValue(0);
       prisma.tour.findMany.mockResolvedValue([]);
       prisma.departure.findMany.mockResolvedValue([

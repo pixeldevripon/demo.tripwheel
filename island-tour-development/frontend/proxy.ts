@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 
 /**
  * Path prefixes that are NOT part of the localized public site - they must
- * never receive a `/{locale}` prefix (admin panel, auth flows, API, onboarding).
+ * never receive a `/{locale}` prefix (admin panel, auth flows, API).
  *
  * The login-surfaces group (app/(login)/*) is intentionally locale-free: the
  * traveler surface resolves locale via Accept-Language/cookie without a prefix
@@ -18,9 +18,10 @@ import { NextResponse } from 'next/server';
  */
 // `/bookings` moved UNDER the locale segment (`/{locale}/bookings`) - the bare
 // path now goes through the standard locale redirect like any public page.
+// `/onboarding` dropped with the dashboard extraction - the operator onboarding
+// route now lives in the dashboard repo, so there is nothing here to exempt.
 const NON_LOCALIZED_PREFIXES = [
     '/dashboard',
-    '/onboarding',
     '/portal',
     '/staff',
     '/apply',

@@ -777,6 +777,10 @@
     "manageTitle": "Deine Buchung",
     "manageSubtitle": "{tour} am {date} um {time}.",
     "statusConfirmed": "Bestätigt",
+    "statusCancelled": "Storniert",
+    "statusCancellationPending": "Stornierung in Bearbeitung",
+    "cancellationPendingNote": "Wir haben deine Stornierungsanfrage erhalten und bearbeiten sie. Du bekommst eine E-Mail, sobald sie erledigt ist.",
+    "cancelledNote": "Diese Buchung wurde storniert. Wir haben dir die Bestätigung per E-Mail geschickt.",
     "cancelBooking": "Buchung stornieren",
     "needToCancel": "Stornieren?"
   },
