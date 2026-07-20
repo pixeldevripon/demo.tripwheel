@@ -162,6 +162,21 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       }
       break;
 
+    // Homepage editorial content (hero copy/image, editorial CTA, section
+    // headings) and its per-locale copy at `/home-page/translations/:locale`.
+    // One coarse tag covers both: there is a single homepage, and every locale's
+    // read is cached under the same tag.
+    case 'home-page':
+      tags.push('homepage');
+      break;
+
+    // "Top Island Experiences" curation. Same coarse tag as the rest of the
+    // homepage - the public loader carries both `homepage` and `tours`, and this
+    // is the curation half.
+    case 'featured-experiences':
+      tags.push('homepage');
+      break;
+
     // Reviews integration (Settings > Reviews): config saves and manual
     // refreshes both change the public testimonials band.
     case 'platform-reviews':
