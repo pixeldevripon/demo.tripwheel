@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Mail01Icon } from '@hugeicons/core-free-icons';
 
 import { type ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
@@ -41,9 +42,11 @@ export function buildStaffColumns({
                             )}
                         </span>
                         <div className='min-w-0'>
-                            <span className='block max-w-50 truncate font-medium'>
+                            <Link
+                                href={`/users/${member.id}`}
+                                className='block max-w-50 truncate font-medium hover:underline'>
                                 {member.user.name}
-                            </span>
+                            </Link>
                             <span className='flex items-center gap-1 text-xs text-muted-foreground'>
                                 <HugeiconsIcon
                                     icon={Mail01Icon}

@@ -121,10 +121,17 @@ export function BookingsTable({
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
         icon: Ticket01Icon,
-        title: cancellationView
-          ? 'No cancellation requests.'
-          : 'No bookings found.',
-        description: 'Nothing matches the current filters.',
+        // An empty PENDING queue is the good case ("all caught up"), not the
+        // same thing as having no requests at all - say which.
+        title: !cancellationView
+          ? 'No bookings found.'
+          : (filters.queue ?? 'pending') === 'pending'
+            ? 'Nothing pending.'
+            : 'No cancellation requests.',
+        description:
+          cancellationView && (filters.queue ?? 'pending') === 'pending'
+            ? 'Every cancellation request has been processed.'
+            : 'Nothing matches the current filters.',
       }}
       toolbar={(table) => (
         <>
@@ -133,7 +140,24 @@ export function BookingsTable({
             onChange={onSearchChange}
             placeholder='Search ref, guest, email or tour...'
           />
-          {!cancellationView && (
+          {cancellationView ? (
+            /* Queue state, not raw booking status - an admin working this page
+               thinks in outstanding vs done. Defaults to Pending so the list
+               is a real to-do list; Processed keeps the history reachable. */
+            <Select
+              value={filters.queue ?? 'pending'}
+              onValueChange={(v) => onFilterChange('queue', v)}
+            >
+              <SelectTrigger className='w-36 shrink-0'>
+                <SelectValue placeholder='Queue' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='pending'>Pending</SelectItem>
+                <SelectItem value='processed'>Processed</SelectItem>
+                <SelectItem value='all'>All requests</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
             <Select
               value={filters.status ?? 'all'}
               onValueChange={(v) =>

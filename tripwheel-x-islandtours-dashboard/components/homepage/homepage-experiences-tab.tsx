@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { HomepageField } from '@/components/homepage/homepage-field';
-import { HomepageSectionCard } from '@/components/homepage/homepage-section-card';
 import { StatusBadge } from '@/components/common/status-badge';
+import { VideoSelectorField } from '@/components/common/video-selector-field';
+import { TranslationPointer } from '@/components/homepage/translation-pointer';
+import {
+  SettingsCard,
+  TextField,
+} from '@/components/settings/settings-fields';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -39,6 +44,7 @@ import {
 } from '@/hooks/home-page/use-home-page';
 import { useHubs } from '@/hooks/hubs/use-hubs';
 import {
+  describeField,
   HOMEPAGE_DEFAULTS,
   MIN_CURATED_EXPERIENCES,
   RECOMMENDED_MAX_EXPERIENCES,
@@ -64,7 +70,7 @@ export function HomepageExperiencesTab({
   );
 }
 
-/** The section heading copy - separate save from the curated list below it. */
+/** Section heading copy - saved separately from the curated list below it. */
 function ExperiencesHeadingCard({ content }: { content: HomePageContent }) {
   const { save, isPending } = useSaveHomepageSection();
   const english = content.translations.find(t => t.locale === 'en');
@@ -80,44 +86,47 @@ function ExperiencesHeadingCard({ content }: { content: HomePageContent }) {
   const values = watch();
 
   return (
-    <HomepageSectionCard
+    <SettingsCard
       title='Section heading'
-      translatable
-      isPending={isPending}
-      onSave={handleSubmit(v => {
+      description='Saving publishes straight to the live site.'
+      isSaving={isPending}
+      saveLabel='Save and publish'
+      onSubmit={handleSubmit(v => {
         void save({ fields: { experiencesTitle: orNull(v.experiencesTitle) } })
           .then(() => toast.success('Heading published.'))
           .catch(err =>
-            toast.error(
-              err instanceof Error ? err.message : 'Failed to save.',
-            ),
+            toast.error(err instanceof Error ? err.message : 'Failed to save.'),
           );
-      })}>
-      <HomepageField
+      })}
+    >
+      <TextField
         label='Title'
-        where='The heading above the experiences carousel.'
-        value={values.experiencesTitle}
-        fallback={HOMEPAGE_DEFAULTS.experiencesTitle}
-        maxLength={120}
-        register={register('experiencesTitle')}
+        registration={register('experiencesTitle')}
+        placeholder={HOMEPAGE_DEFAULTS.experiencesTitle}
+        description={describeField(
+          'The heading above the experiences carousel.',
+          values.experiencesTitle,
+          HOMEPAGE_DEFAULTS.experiencesTitle,
+        )}
       />
-    </HomepageSectionCard>
+
+      <TranslationPointer />
+    </SettingsCard>
   );
 }
 
 /**
  * The curated cards.
  *
- * Two things this UI exists to prevent, both of which are otherwise silent:
+ * Two things this UI exists to prevent, both otherwise silent:
  *
- * 1. A curated row can be dropped by the public site without any error - the
- *    backend refuses to feature anything with no live tour, so the card simply
- *    never appears. For hubs that bar is HIGHER than the hub page's own (a hub
- *    with no tours still renders a valid page), which is exactly the case an
- *    admin cannot deduce. Every row therefore states whether it is live.
- * 2. Fewer than MIN_CURATED_EXPERIENCES resolved cards and the site ignores
- *    curation entirely, falling back to its bundled deck. An admin who adds two
- *    cards and sees no change on the homepage has hit this.
+ * 1. A curated row can be dropped by the public site with no error - nothing
+ *    is featured unless its target has a live tour. For hubs that bar is
+ *    HIGHER than the hub page's own (a hub with no tours still renders a valid
+ *    page), which is exactly the case an admin cannot deduce.
+ * 2. Below MIN_CURATED_EXPERIENCES live cards the site ignores curation
+ *    entirely and keeps its bundled deck, so adding one or two changes nothing
+ *    on the homepage.
  */
 function ExperiencesCurationCard() {
   const { data: experiences = [], isLoading } = useFeaturedExperiences();
@@ -133,16 +142,16 @@ function ExperiencesCurationCard() {
 
   return (
     <Card>
-      <CardHeader className='border-b pb-8'>
+      <CardHeader className='border-b pb-6'>
         <CardTitle>Featured cards</CardTitle>
-        <p className='m-0 mt-2 text-sm text-content-muted'>
+        <p className='mt-1 text-sm font-normal normal-case tracking-normal text-muted-foreground'>
           Categories and hubs only - individual tours are never featured here.
-          Each card links to that page, and the photo and title come from it, so
-          they always match.
+          Each card links to that page, and takes its title and photo from it,
+          so the two can never disagree.
         </p>
       </CardHeader>
 
-      <CardContent className='space-y-4 pt-8'>
+      <CardContent className='space-y-6 pt-8'>
         {isLoading ? (
           <div className='space-y-3'>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -154,12 +163,12 @@ function ExperiencesCurationCard() {
             <CurationNotice count={activeCount} />
 
             {experiences.length === 0 ? (
-              <p className='m-0 text-sm text-content-muted'>
+              <p className='text-sm text-muted-foreground'>
                 Nothing featured yet - the homepage is showing its built-in
                 cards.
               </p>
             ) : (
-              <ul className='m-0 list-none space-y-2 p-0'>
+              <ul className='m-0 list-none space-y-3 p-0'>
                 {experiences.map(exp => (
                   <ExperienceRow
                     key={exp.id}
@@ -175,10 +184,7 @@ function ExperiencesCurationCard() {
                       update.mutate({ id: exp.id, payload: { displayOrder } })
                     }
                     onVideo={videoUrl =>
-                      update.mutate({
-                        id: exp.id,
-                        payload: { videoUrl: videoUrl || null },
-                      })
+                      update.mutate({ id: exp.id, payload: { videoUrl } })
                     }
                     onDelete={() => setPendingDelete(exp)}
                   />
@@ -190,17 +196,12 @@ function ExperiencesCurationCard() {
               isPending={create.isPending}
               onAdd={(entityType, entityId) =>
                 create.mutate(
-                  {
-                    entityType,
-                    entityId,
-                    displayOrder: experiences.length,
-                  },
+                  { entityType, entityId, displayOrder: experiences.length },
                   {
                     onSuccess: () => toast.success('Added to the homepage.'),
                     onError: err =>
-                      // The backend returns 409 when this entity is already
-                      // featured at the same scope - surface it rather than
-                      // letting a double-submit create a duplicate card.
+                      // 409 when this entity is already featured at the same
+                      // scope - surfaced rather than silently duplicating.
                       toast.error(
                         err instanceof Error
                           ? err.message
@@ -216,7 +217,8 @@ function ExperiencesCurationCard() {
 
       <AlertDialog
         open={Boolean(pendingDelete)}
-        onOpenChange={open => !open && setPendingDelete(null)}>
+        onOpenChange={open => !open && setPendingDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this card?</AlertDialogTitle>
@@ -231,7 +233,8 @@ function ExperiencesCurationCard() {
               onClick={() => {
                 if (pendingDelete) remove.mutate(pendingDelete.id);
                 setPendingDelete(null);
-              }}>
+              }}
+            >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -241,13 +244,13 @@ function ExperiencesCurationCard() {
   );
 }
 
-/** Says plainly what the current card count means for the live homepage. */
+/** States plainly what the current card count means for the live homepage. */
 function CurationNotice({ count }: { count: number }) {
   if (count === 0) return null;
 
   if (count < MIN_CURATED_EXPERIENCES) {
     return (
-      <p className='m-0 rounded-md bg-muted p-3 text-xs text-content-muted'>
+      <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
         The homepage needs at least {MIN_CURATED_EXPERIENCES} live cards before
         it uses your selection - below that it keeps its built-in deck, so these{' '}
         {count} are not showing yet.
@@ -257,10 +260,10 @@ function CurationNotice({ count }: { count: number }) {
 
   if (count > RECOMMENDED_MAX_EXPERIENCES) {
     return (
-      <p className='m-0 rounded-md bg-muted p-3 text-xs text-content-muted'>
+      <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
         {count} active cards. The carousel is designed around{' '}
-        {RECOMMENDED_MAX_EXPERIENCES} - beyond that the row of dots crowds and
-        only the first eight ever render.
+        {RECOMMENDED_MAX_EXPERIENCES} - beyond that the dot row crowds and only
+        the first eight ever render.
       </p>
     );
   }
@@ -280,16 +283,15 @@ function ExperienceRow({
   disabled: boolean;
   onToggle: () => void;
   onOrder: (order: number) => void;
-  onVideo: (url: string) => void;
+  onVideo: (url: string | null) => void;
   onDelete: () => void;
 }) {
-  const [video, setVideo] = useState(experience.videoUrl ?? '');
   const missing = experience.entityName === null;
 
   return (
     <li className='rounded-md border p-4'>
       <div className='flex flex-wrap items-center gap-3'>
-        <span className='font-medium'>
+        <span className='text-sm font-medium'>
           {experience.entityName ?? 'Deleted item'}
         </span>
         <StatusBadge variant='neutral'>
@@ -309,7 +311,8 @@ function ExperienceRow({
             variant='outline'
             size='sm'
             disabled={disabled}
-            onClick={onToggle}>
+            onClick={onToggle}
+          >
             {experience.isActive ? 'Hide' : 'Show'}
           </Button>
           <Button
@@ -317,25 +320,30 @@ function ExperienceRow({
             variant='ghost'
             size='sm'
             className='text-destructive hover:text-destructive'
-            onClick={onDelete}>
+            onClick={onDelete}
+          >
             Remove
           </Button>
         </div>
       </div>
 
-      {missing ? (
-        <p className='m-0 mt-2 text-xs text-content-muted'>
+      {missing && (
+        <p className='mt-2 text-xs text-content-muted'>
           The category or hub this pointed at no longer exists, so the homepage
           skips it. Remove this row.
         </p>
-      ) : null}
+      )}
 
-      <div className='mt-3 flex flex-wrap items-end gap-4'>
-        <div className='w-24'>
-          <Label className='text-xs'>Position</Label>
+      <div className='mt-4 grid gap-6 sm:grid-cols-2'>
+        <Field>
+          <Label>Position</Label>
+          <FieldDescription>
+            Lower numbers sit earlier in the carousel.
+          </FieldDescription>
           <Input
             type='number'
             min={0}
+            className='w-24'
             defaultValue={experience.displayOrder}
             disabled={disabled}
             onBlur={e => {
@@ -343,20 +351,20 @@ function ExperienceRow({
               if (next !== experience.displayOrder) onOrder(next);
             }}
           />
-        </div>
+        </Field>
 
-        <div className='min-w-60 flex-1'>
-          <Label className='text-xs'>Video (optional)</Label>
-          <Input
-            value={video}
-            placeholder='https://...'
+        <Field>
+          <Label>Video</Label>
+          <FieldDescription>
+            Plays when this card is centred. Optional - without one the card
+            shows its photo.
+          </FieldDescription>
+          <VideoSelectorField
+            value={experience.videoUrl}
+            onChange={onVideo}
             disabled={disabled}
-            onChange={e => setVideo(e.target.value)}
-            onBlur={() => {
-              if (video !== (experience.videoUrl ?? '')) onVideo(video);
-            }}
           />
-        </div>
+        </Field>
       </div>
     </li>
   );
@@ -383,59 +391,62 @@ function AddExperienceForm({
       : hubs.map(h => ({ id: h.id, name: h.name }));
 
   return (
-    <div className='flex flex-wrap items-end gap-3 border-t pt-6'>
-      <div className='w-40'>
-        <Label className='text-xs'>Type</Label>
-        <Select
-          value={entityType}
-          onValueChange={v => {
-            setEntityType(v as FeaturedEntityType);
-            setEntityId('');
-          }}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='CATEGORY'>Category</SelectItem>
-            <SelectItem value='HUB'>Hub</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className='space-y-4 border-t pt-6'>
+      <div className='grid gap-6 sm:grid-cols-2'>
+        <Field>
+          <Label>Type</Label>
+          <Select
+            value={entityType}
+            onValueChange={v => {
+              setEntityType(v as FeaturedEntityType);
+              setEntityId('');
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='CATEGORY'>Category</SelectItem>
+              <SelectItem value='HUB'>Hub</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field>
+          <Label>{entityType === 'CATEGORY' ? 'Category' : 'Hub'}</Label>
+          <Select value={entityId} onValueChange={setEntityId}>
+            <SelectTrigger>
+              <SelectValue placeholder='Choose one' />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map(o => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
       </div>
 
-      <div className='min-w-60 flex-1'>
-        <Label className='text-xs'>
-          {entityType === 'CATEGORY' ? 'Category' : 'Hub'}
-        </Label>
-        <Select value={entityId} onValueChange={setEntityId}>
-          <SelectTrigger>
-            <SelectValue placeholder='Choose one' />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map(o => (
-              <SelectItem key={o.id} value={o.id}>
-                {o.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Button
-        type='button'
-        size='sm'
-        disabled={!entityId || isPending}
-        onClick={() => {
-          onAdd(entityType, entityId);
-          setEntityId('');
-        }}>
-        {isPending ? 'Adding...' : 'Add card'}
-      </Button>
-
-      <p className='m-0 w-full text-xs text-content-muted'>
+      <p className='text-xs text-content-muted'>
         A card only appears once its target has at least one live tour. Hubs are
         held to that too, even though a hub page itself opens without one - a
         featured experience with nothing bookable is a dead end.
       </p>
+
+      <div className='flex justify-end'>
+        <Button
+          type='button'
+          disabled={!entityId || isPending}
+          onClick={() => {
+            onAdd(entityType, entityId);
+            setEntityId('');
+          }}
+        >
+          {isPending ? 'Adding...' : 'Add card'}
+        </Button>
+      </div>
     </div>
   );
 }

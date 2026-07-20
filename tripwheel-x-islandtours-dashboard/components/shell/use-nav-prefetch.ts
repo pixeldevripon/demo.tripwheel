@@ -32,8 +32,16 @@ import { useCallback } from 'react';
  */
 const DEFAULT_LIST = { page: 1, limit: 20 } as const;
 
-/** Cancellation Requests pins this filter on top of the defaults. */
-const CANCELLATION_LIST = { ...DEFAULT_LIST, cancellationRequested: true };
+/**
+ * Cancellation Requests pins these on top of the defaults. `status: CONFIRMED`
+ * mirrors the page's Pending queue default - the prefetch key must match the
+ * list view's mount-time params exactly or the warmed cache is never read.
+ */
+const CANCELLATION_LIST = {
+    ...DEFAULT_LIST,
+    cancellationRequested: true,
+    status: 'CONFIRMED',
+} as const;
 
 export function useNavPrefetch() {
     const queryClient = useQueryClient();

@@ -16,7 +16,22 @@ interface MediaGalleryManagerProps {
   currentSelection?: MediaItem[];
   multiple?: boolean;
   maxFiles?: number;
+  /**
+   * Restrict the picker to one asset kind. Seeds the type filter and locks it,
+   * so a field that can only accept a video never shows images to choose from.
+   * Omit for the full library (the /media page).
+   */
+  kind?: MediaTypeFilter;
 }
+
+/** Noun used in selector toasts, so a video picker never says "image". */
+const KIND_NOUN: Record<MediaTypeFilter, { one: string; many: string }> = {
+  all: { one: 'file', many: 'files' },
+  image: { one: 'image', many: 'images' },
+  video: { one: 'video', many: 'videos' },
+  audio: { one: 'audio file', many: 'audio files' },
+  svg: { one: 'SVG', many: 'SVGs' },
+};
 
 const MediaGalleryManager = ({
   selector = false,
@@ -24,6 +39,7 @@ const MediaGalleryManager = ({
   currentSelection,
   multiple,
   maxFiles,
+  kind,
 }: MediaGalleryManagerProps) => {
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -32,7 +48,9 @@ const MediaGalleryManager = ({
   const [selectMode, setSelectMode] = useState(false);
   const [bulkSelectedItems, setBulkSelectedItems] = useState<MediaItem[]>([]);
   const [sort, setSort] = useState<MediaSort>(DEFAULT_MEDIA_SORT);
-  const [typeFilter, setTypeFilter] = useState<MediaTypeFilter>("all");
+  // A kind-restricted picker starts (and stays) on that kind - see the locked
+  // control in MediaSearchControls.
+  const [typeFilter, setTypeFilter] = useState<MediaTypeFilter>(kind ?? "all");
   // While the single-item viewer is open the gallery IS the page - hide the
   // search-controls bar so nothing sits above (or scrolls behind) it.
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -69,16 +87,17 @@ const MediaGalleryManager = ({
 
   /* ── Insert selected items into parent form ──────────────────────── */
   function handleInsertToForm() {
+    const noun = KIND_NOUN[kind ?? 'image'];
     if (bulkSelectedItems.length === 0) {
-      toast.warning("Please select at least one image");
+      toast.warning(`Please select at least one ${noun.one}`);
       return;
     }
     if (!multiple && bulkSelectedItems.length > 1) {
-      toast.warning("Only one image can be selected");
+      toast.warning(`Only one ${noun.one} can be selected`);
       return;
     }
     if (multiple && maxFiles && bulkSelectedItems.length > maxFiles) {
-      toast.warning(`Maximum ${maxFiles} images allowed`);
+      toast.warning(`Maximum ${maxFiles} ${noun.many} allowed`);
       return;
     }
     onMediaSelect?.(bulkSelectedItems);
@@ -127,7 +146,11 @@ const MediaGalleryManager = ({
             sort={sort}
             setSort={setSort}
             typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
+            // Omitting the setter hides the type dropdown entirely, which is
+            // how a kind-restricted picker stays restricted - the field asked
+            // for a video, so offering "All types" would only invite a
+            // selection the field cannot accept.
+            setTypeFilter={kind ? undefined : setTypeFilter}
           />
         </div>
       )}

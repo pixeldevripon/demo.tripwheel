@@ -49,6 +49,15 @@ export function useStaffMembers(scope: StaffScope, params: StaffQueryParams = {}
     });
 }
 
+/** One member's profile. `id` empty/undefined keeps the query idle. */
+export function useStaffMember(scope: StaffScope, id: string) {
+    return useQuery({
+        queryKey: staffKeys.memberDetail(scope, id),
+        queryFn: () => staffApi.getMember(scope, id),
+        enabled: Boolean(id),
+    });
+}
+
 export function useInviteStaff(scope: StaffScope) {
     const qc = useQueryClient();
     return useMutation({
@@ -70,6 +79,23 @@ export function useUpdateStaff(scope: StaffScope) {
             qc.invalidateQueries({ queryKey: staffKeys.members(scope) });
             qc.invalidateQueries({ queryKey: staffKeys.memberDetail(scope, member.id) });
             toast.success('Member updated');
+        },
+        onError,
+    });
+}
+
+/**
+ * Renames a member's auth account (UPDATE_USER, admin-only). Invalidates the
+ * whole scope: the name shows on the list row, the profile and the sheet.
+ */
+export function useRenameStaffUser(scope: StaffScope) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, name }: { userId: string; name: string }) =>
+            staffApi.renameUser(userId, name),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: staffKeys.members(scope) });
+            toast.success('Name updated');
         },
         onError,
     });

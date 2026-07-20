@@ -148,21 +148,6 @@ const dashboardNav: NavGroup[] = [
         ],
     },
     {
-        // Admin, rarely. SITE CHROME - the pages themselves rather than the
-        // marketplace entities on them. Deliberately not folded into Curate:
-        // Curate is "which tours/hubs/categories do we push", this is "what
-        // does the homepage say". Same permission, different question.
-        label: 'Content',
-        items: [
-            {
-                title: 'Homepage',
-                url: 'homepage',
-                icon: Home01Icon,
-                permissions: [Permission.MANAGE_EDITORIAL],
-            },
-        ],
-    },
-    {
         // Admin, rarely. Platform configuration.
         label: 'Configure',
         items: [
@@ -177,6 +162,21 @@ const dashboardNav: NavGroup[] = [
                 url: 'tour-operators',
                 icon: Store01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
+            },
+        ],
+    },
+    {
+        // Admin, rarely. THE SITE'S OWN PAGES - the homepage plus, from Phase 5,
+        // the legal/marketing pages. Grouped by what they ARE (a page you edit)
+        // rather than by permission: Curate is "which marketplace entities do we
+        // push", this is "what does this page say".
+        label: 'Pages',
+        items: [
+            {
+                title: 'Homepage',
+                url: 'homepage',
+                icon: Home01Icon,
+                permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
     },

@@ -32,6 +32,23 @@ export const HOMEPAGE_DEFAULTS = {
 export type HomepageDefaultKey = keyof typeof HOMEPAGE_DEFAULTS;
 
 /**
+ * The description under a homepage field: where the text appears, plus - while
+ * the field is empty - the fact that the site is still rendering shipped copy
+ * rather than nothing. Without the second half, an empty input on a
+ * fallback-based CMS reads as a missing section.
+ */
+export function describeField(
+  where: string,
+  value: string,
+  fallback?: string,
+): string {
+  const usingDefault = !value.trim() && Boolean(fallback);
+  return usingDefault
+    ? `${where} Currently showing the built-in default.`
+    : where;
+}
+
+/**
  * The bundled hero photo, shipped in the public site's `public/images/`. Shown
  * as a caption under an empty hero-image picker so an admin knows the homepage
  * is not missing an image.

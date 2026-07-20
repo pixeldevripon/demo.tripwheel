@@ -4,16 +4,19 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { ImageSelectorField } from '@/components/common/image-selector-field';
-import { HomepageField } from '@/components/homepage/homepage-field';
-import { HomepageSectionCard } from '@/components/homepage/homepage-section-card';
-import { Field, FieldDescription } from '@/components/ui/field';
-import { Label } from '@/components/ui/label';
+import { TranslationPointer } from '@/components/homepage/translation-pointer';
+import {
+  ImageField,
+  SettingsCard,
+  TextField,
+  TextareaField,
+} from '@/components/settings/settings-fields';
+import { useSaveHomepageSection } from '@/hooks/home-page/use-home-page';
 import {
   DEFAULT_HERO_IMAGE_LABEL,
+  describeField,
   HOMEPAGE_DEFAULTS,
 } from '@/lib/home-page/defaults';
-import { useSaveHomepageSection } from '@/hooks/home-page/use-home-page';
 import type { HomePageContent } from '@/types/home-page';
 
 interface HeroValues {
@@ -22,7 +25,7 @@ interface HeroValues {
   heroSubtitle: string;
 }
 
-/** Blank string clears the field back to its built-in default. */
+/** Blank clears the field back to the copy the site ships with. */
 const orNull = (v: string) => (v.trim() ? v.trim() : null);
 
 export function HomepageHeroTab({ content }: { content: HomePageContent }) {
@@ -61,50 +64,47 @@ export function HomepageHeroTab({ content }: { content: HomePageContent }) {
   }
 
   return (
-    <HomepageSectionCard
+    <SettingsCard
       title='Hero'
-      description='The full-width photo and headline at the very top of the homepage.'
-      translatable
-      isPending={isPending}
-      onSave={handleSubmit(onSubmit)}>
-      <Field>
-        <Label>Background photo</Label>
-        <ImageSelectorField
-          value={values.heroImage || null}
-          onChange={url => setValue('heroImage', url ?? '')}
-        />
-        <FieldDescription>
-          Fills the top of the homepage behind the headline. Landscape, at least
-          1920px wide.
-          {!values.heroImage ? (
-            <>
-              {' '}
-              <span className='text-content-muted'>
-                Currently showing the built-in default:{' '}
-                {DEFAULT_HERO_IMAGE_LABEL}.
-              </span>
-            </>
-          ) : null}
-        </FieldDescription>
-      </Field>
+      description='The full-width photo and headline at the very top of the homepage. Saving publishes straight to the live site.'
+      isSaving={isPending}
+      saveLabel='Save and publish'
+      onSubmit={handleSubmit(onSubmit)}
+    >
+      <ImageField
+        label='Background photo'
+        description={
+          values.heroImage
+            ? 'Fills the top of the homepage behind the headline. Landscape, at least 1920px wide.'
+            : `Fills the top of the homepage behind the headline. Landscape, at least 1920px wide. Currently showing the built-in default: ${DEFAULT_HERO_IMAGE_LABEL}.`
+        }
+        value={values.heroImage || null}
+        onChange={url => setValue('heroImage', url ?? '')}
+      />
 
-      <HomepageField
+      <TextField
         label='Headline'
-        where='The large text over the hero photo.'
-        value={values.heroTitle}
-        fallback={HOMEPAGE_DEFAULTS.heroTitle}
-        maxLength={120}
-        register={register('heroTitle')}
+        registration={register('heroTitle')}
+        placeholder={HOMEPAGE_DEFAULTS.heroTitle}
+        description={describeField(
+          'The large text over the hero photo.',
+          values.heroTitle,
+          HOMEPAGE_DEFAULTS.heroTitle,
+        )}
       />
 
-      <HomepageField
+      <TextareaField
         label='Subheading'
-        where='The smaller line directly under the headline.'
-        value={values.heroSubtitle}
-        fallback={HOMEPAGE_DEFAULTS.heroSubtitle}
-        maxLength={160}
-        register={register('heroSubtitle')}
+        registration={register('heroSubtitle')}
+        placeholder={HOMEPAGE_DEFAULTS.heroSubtitle}
+        description={describeField(
+          'The smaller line directly under the headline.',
+          values.heroSubtitle,
+          HOMEPAGE_DEFAULTS.heroSubtitle,
+        )}
       />
-    </HomepageSectionCard>
+
+      <TranslationPointer />
+    </SettingsCard>
   );
 }

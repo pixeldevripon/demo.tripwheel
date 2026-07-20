@@ -48,6 +48,7 @@ const CONSOLE_TYPE_BY_BASE: Record<string, string> = {
   '/categories': 'category',
   '/hubs': 'hub',
   '/collections': 'collection',
+  '/home-page': 'homepage',
 };
 import type { FaqGroup } from '@/types/faq';
 
@@ -264,16 +265,23 @@ function FaqGroupCard({ basePath, entityId, group }: FaqGroupCardProps) {
               return t ? { question: t.question, answer: t.answer } : undefined;
             })()}
           />
-          <p className="text-xs text-content-muted">
-            Translate this FAQ into the other languages in the{' '}
-            <Link
-              href={`/translations/${CONSOLE_TYPE_BY_BASE[basePath] ?? 'destination'}/${entityId}/es`}
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Translation Console
-            </Link>
-            .
-          </p>
+          {/* No link at all beats a wrong one: an unmapped basePath used to
+              fall back to 'destination', silently pointing every FAQ at
+              /translations/destination/<id> - a dead route for any other
+              entity. Anything missing from CONSOLE_TYPE_BY_BASE now simply
+              renders no pointer. */}
+          {CONSOLE_TYPE_BY_BASE[basePath] && (
+            <p className="text-xs text-content-muted">
+              Translate this FAQ into the other languages in the{' '}
+              <Link
+                href={`/translations/${CONSOLE_TYPE_BY_BASE[basePath]}/${entityId}/es`}
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Translation Console
+              </Link>
+              .
+            </p>
+          )}
         </div>
       </CollapsibleCard>
 

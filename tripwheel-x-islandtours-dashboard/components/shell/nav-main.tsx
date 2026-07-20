@@ -33,9 +33,21 @@ function CountChip({ count }: { count: number }) {
     );
 }
 
-/** Open cancellation requests awaiting admin review. */
+/**
+ * Open cancellation requests awaiting admin review.
+ *
+ * `status: CONFIRMED` is what makes it "awaiting": the queue filter alone is
+ * `utcCancellationRequestedAt != null`, and cancel() stamps that on every
+ * cancellation, so without the status the badge counted every cancellation
+ * ever made and never went down. It must match the queue page's Pending
+ * default, or the badge promises work the page does not show.
+ */
 function CancellationsBadge() {
-    const { data } = useBookings({ limit: 1, cancellationRequested: true });
+    const { data } = useBookings({
+        limit: 1,
+        cancellationRequested: true,
+        status: 'CONFIRMED',
+    });
     return <CountChip count={data?.total ?? 0} />;
 }
 
