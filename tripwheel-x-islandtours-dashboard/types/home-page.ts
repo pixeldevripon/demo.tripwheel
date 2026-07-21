@@ -32,21 +32,46 @@ export interface HomePageTranslation {
   isMachineTranslated: boolean;
 }
 
+/**
+ * One fanned CTA card, as stored.
+ *
+ * The caption is NOT here on purpose: it is the linked island's own translated
+ * name, so all 7 locales come for free and the card can never disagree with the
+ * page it opens. A card with no island keeps the bundled label.
+ */
+export interface EditorialCard {
+  id: string;
+  imageUrl: string;
+  destinationId: string | null;
+  /** Whether the card is clickable. Off = the island is named but not linked. */
+  isLink: boolean;
+  /** 0, 1, 2 - left, middle, front in fan order. */
+  displayOrder: number;
+}
+
 /** The admin view: locale-agnostic fields plus every stored locale. */
 export interface HomePageContent {
   heroImage: string | null;
-  /** Up to three fanned CTA card images, in fan order. */
-  editorialImages: string[];
+  /** Up to three fanned CTA cards, in fan order. */
+  editorialCards: EditorialCard[];
   /** Island the editorial CTA links to; null = let the site resolve it. */
   editorialDestinationId: string | null;
   ogImage: string | null;
   translations: HomePageTranslation[];
 }
 
+/** One card on the way out. Its slot is its index in the array. */
+export interface EditorialCardInput {
+  imageUrl: string;
+  destinationId?: string | null;
+  isLink?: boolean;
+}
+
 /** PATCH /home-page - only the named fields are touched; null clears one. */
 export interface UpdateHomePagePayload {
   heroImage?: string | null;
-  editorialImages?: string[];
+  /** WHOLESALE REPLACE of the deck; [] clears it to the bundled photos. */
+  editorialCards?: EditorialCardInput[];
   editorialDestinationId?: string | null;
   ogImage?: string | null;
 }
@@ -73,6 +98,12 @@ export interface FeaturedExperience {
   /** Null = show everywhere. */
   destinationId: string | null;
   videoUrl: string | null;
+  /**
+   * Card poster override. Null = the card shows `entityImage`. The carousel
+   * slot is a portrait crop that neither an entity hero nor an og image fits,
+   * which is why a per-card poster exists at all.
+   */
+  posterUrl: string | null;
   displayOrder: number;
   isActive: boolean;
   /**
@@ -81,6 +112,8 @@ export interface FeaturedExperience {
    * to show it or the card just vanishes with no explanation.
    */
   entityName: string | null;
+  /** The target's own photo - what the card falls back to with no poster. */
+  entityImage: string | null;
 }
 
 export interface CreateFeaturedExperiencePayload {
@@ -88,6 +121,7 @@ export interface CreateFeaturedExperiencePayload {
   entityId: string;
   destinationId?: string | null;
   videoUrl?: string | null;
+  posterUrl?: string | null;
   displayOrder?: number;
   isActive?: boolean;
 }

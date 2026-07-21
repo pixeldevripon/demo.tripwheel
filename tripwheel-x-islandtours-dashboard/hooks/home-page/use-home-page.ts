@@ -6,6 +6,7 @@ import { featuredExperiencesApi, homePageApi } from '@/lib/api/home-page';
 import type { Locale } from '@/lib/constants/locales';
 import type {
   CreateFeaturedExperiencePayload,
+  FeaturedExperience,
   UpdateFeaturedExperiencePayload,
   UpdateHomePagePayload,
   UpsertHomePageTranslationPayload,
@@ -89,6 +90,39 @@ export function useUpdateFeaturedExperience() {
       payload: UpdateFeaturedExperiencePayload;
     }) => featuredExperiencesApi.update(id, payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: homePageKeys.featured() });
+    },
+  });
+}
+
+/**
+ * Move a card and renumber the deck in one action.
+ *
+ * Swapping two neighbours' `displayOrder` is the obvious implementation and it
+ * silently does nothing on a deck where several rows share an order (every
+ * seeded row is 0, and nothing has ever forced them apart). So this writes
+ * POSITIONS instead: the caller passes the list in its intended final order and
+ * every row whose index moved is patched to that index. The first move
+ * normalises the deck; later ones touch two rows.
+ *
+ * One invalidation at the end, not one per row - otherwise the grid reshuffles
+ * under the cursor mid-reorder.
+ */
+export function useReorderFeaturedExperiences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordered: FeaturedExperience[]) => {
+      const moved = ordered
+        .map((exp, index) => ({ exp, index }))
+        .filter(({ exp, index }) => exp.displayOrder !== index);
+
+      await Promise.all(
+        moved.map(({ exp, index }) =>
+          featuredExperiencesApi.update(exp.id, { displayOrder: index }),
+        ),
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: homePageKeys.featured() });
     },
   });
