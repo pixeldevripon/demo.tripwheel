@@ -7,3 +7,4 @@ import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
 export default function SettingsLoading() {
   return <EntityEditSkeleton />;
 }
+

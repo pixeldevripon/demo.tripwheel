@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
+  Alert02Icon,
   Delete02Icon,
   LayoutTable01Icon,
   PlusSignIcon,
@@ -453,7 +454,10 @@ interface ContentSectionManagerProps {
 }
 
 export function ContentSectionManager({ basePath, entityId }: ContentSectionManagerProps) {
-  const { data: groups, isLoading } = usePageContentSections(basePath, entityId);
+  const { data: groups, isLoading, isError, error } = usePageContentSections(
+    basePath,
+    entityId,
+  );
   const list = groups ?? [];
   const nextOrder = list.length;
 
@@ -464,6 +468,20 @@ export function ContentSectionManager({ basePath, entityId }: ContentSectionMana
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-none" />
           ))}
+        </div>
+      ) : isError ? (
+        /* A failed load must NOT look like an empty list. `data` is undefined
+           on error, so the old `groups ?? []` rendered "No sections yet" over a
+           500 - which reads as "this island has none", the opposite of the
+           truth, and invites an admin to re-type copy that already exists. */
+        <div className="flex flex-col items-center gap-2 rounded-md border border-danger-fg/20 bg-danger-subtle/40 py-12 text-center">
+          <HugeiconsIcon icon={Alert02Icon} className="size-8 text-danger-fg" />
+          <p className="text-sm font-medium text-danger-fg">
+            Could not load the sections.
+          </p>
+          <p className="max-w-md text-xs text-content-muted">
+            {error instanceof Error ? error.message : 'The server did not respond.'}
+          </p>
         </div>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
@@ -486,7 +504,13 @@ export function ContentSectionManager({ basePath, entityId }: ContentSectionMana
         </div>
       )}
 
-      <AddSectionForm basePath={basePath} entityId={entityId} nextOrder={nextOrder} />
+      {!isError && (
+        <AddSectionForm
+          basePath={basePath}
+          entityId={entityId}
+          nextOrder={nextOrder}
+        />
+      )}
     </div>
   );
 }
