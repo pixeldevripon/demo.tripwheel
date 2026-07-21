@@ -2,17 +2,11 @@
 
 import { Card } from '@/components/ui/card';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
     Delete02Icon,
     File02Icon,
     Image02Icon,
     MusicNote01Icon,
     PlayIcon,
-    SeoIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
@@ -153,32 +147,6 @@ export default function MediaItemCard({
                     </button>
                 )}
 
-                {/* SEO indicator: this item has alt text and/or a caption.
-                    Icon-only, because the old "SEO Optimized" pill was wider
-                    than a third of the tile and truncated against the neighbour.
-
-                    z-30 is load-bearing: the image sits at z-10, so the old
-                    unlayered wrapper rendered BEHIND the photo and only showed
-                    on tiles the image did not fill (the "badge slides behind
-                    the image" bug).
-
-                    Bottom-left, not top-left: bulk-select mode puts its
-                    checkbox at top-2/left-2 (media-grid-ui) and delete owns
-                    top-right, so the top row is spoken for. The type badge
-                    (MP4/SVG) holds bottom-right. */}
-                {(item?.altText || item?.caption) && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <span className='absolute bottom-2 left-2 z-30 flex size-6 items-center justify-center rounded-full bg-success-solid text-success-foreground shadow-sm ring-1 ring-black/10'>
-                                <HugeiconsIcon icon={SeoIcon} size={14} />
-                                <span className='sr-only'>SEO optimized</span>
-                            </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            SEO optimized - alt text or caption set
-                        </TooltipContent>
-                    </Tooltip>
-                )}
             </div>
         </Card>
     );

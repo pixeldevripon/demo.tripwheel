@@ -122,7 +122,17 @@ function ExperiencesCurationCard() {
   const ordered = [...experiences].sort(
     (a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id),
   );
-  const activeCount = ordered.filter(e => e.isActive).length;
+  /*
+   * Cards that can actually REACH the homepage, not just rows switched on.
+   * The site drops a card whose target was deleted or that has no photo at
+   * all, and the "needs 3 to count" rule is applied to what survives - so
+   * counting raw active rows would report 3 live while the site quietly showed
+   * its bundled deck. The one gate this cannot see is "has a live tour", which
+   * only the backend knows; the picker copy says so.
+   */
+  const showingCount = ordered.filter(
+    e => e.isActive && e.entityName !== null && (e.posterUrl || e.entityImage),
+  ).length;
   const isBusy = update.isPending || reorder.isPending;
 
   function handleMove(index: number, direction: 'up' | 'down') {
@@ -185,7 +195,7 @@ function ExperiencesCurationCard() {
               </CardTitle>
               {!isLoading && ordered.length > 0 && (
                 <Badge variant='secondary'>
-                  {activeCount} live of {ordered.length}
+                  {showingCount} showing of {ordered.length}
                 </Badge>
               )}
             </div>
@@ -214,7 +224,7 @@ function ExperiencesCurationCard() {
           </div>
         ) : (
           <>
-            <CurationNotice count={activeCount} />
+            <CurationNotice count={showingCount} />
 
             {ordered.length === 0 ? (
               <div className='flex flex-col items-center gap-2 rounded-md border border-dashed border-line py-16 text-content-muted'>
@@ -411,10 +421,15 @@ function ExperienceCard({
               <span className='text-xs font-semibold'>
                 Add poster and video
               </span>
-              <span className='text-xs text-content-muted'>
+              <span
+                className={
+                  experience.entityImage
+                    ? 'text-xs text-content-muted'
+                    : 'text-xs font-medium text-danger-fg'
+                }>
                 {experience.entityImage
                   ? 'Using the linked page’s photo for now'
-                  : 'The site is using its bundled card art'}
+                  : 'Not showing - this page has no photo either'}
               </span>
             </span>
           )}
