@@ -699,6 +699,40 @@ the bundled poster. Edited in Settings > General beside the logo and favicon.
 **Verified on the running site** after busting the `site-info` tag: `/en` and
 `/en/curacao` both serve the Cloudinary avatar and poster.
 
+### Fallback audit - "no section, no content, no video can be empty"
+
+Every section was walked for a path that renders blank. Nine of ten guard
+correctly; one did not.
+
+| Section | Guard |
+|---|---|
+| Hero | photo falls back to the bundled original; title/subtitle to the dictionary |
+| Trust strip | dictionary-only, always present |
+| Top experiences | under 3 resolvable cards the whole bundled deck renders instead |
+| Testimonials | returns null when disabled - the section is ABSENT, never empty |
+| Explore islands | returns null on zero islands - same |
+| Editorial CTA | copy to the dictionary; each fan slot to its own bundled photo and label; the button to `/search` |
+| FAQ | copy to the dictionary; an empty list renders the bundled questions; the host avatar to the bundled pair |
+
+**The one real hole: a featured card with no photo anywhere.** The gates all
+asked "does the target still resolve", never "is there anything to show" - so a
+category with no hero AND no og image, featured with no poster, reached the
+carousel and rendered as a grey rectangle between two real slides. The slide is a
+full-bleed image with the title over it, so a null image has nowhere to degrade
+to. `resolvePublic` now drops such a card and logs it, which is what every other
+gate here already does; if too few survive, the bundled deck takes over.
+
+That made two dashboard messages false, so both were corrected: a card with no
+photo now reads "Not showing - this page has no photo either" in the danger
+colour, and the header counts cards that can actually REACH the homepage rather
+than rows that are merely switched on (it was reporting "3 live" while the site
+quietly showed its bundled deck). The one gate the editor cannot evaluate is
+"has a live tour" - only the backend knows that, and the picker says so.
+
+Not guarded, and deliberately: an image URL that is well-formed, on an allowed
+host, and simply 404s at the CDN. Detecting that means fetching every image at
+render time.
+
 ### UI defects found on a live pass (fixed)
 
 - A featured card with no poster previewed the LINKED PAGE's photo, which reads

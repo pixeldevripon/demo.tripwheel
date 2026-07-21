@@ -142,7 +142,22 @@ export class FeaturedExperiencesService {
               categoryById.get(row.entityId),
               countsByCategory.get(row.entityId),
             );
-      if (card) resolved.push(card);
+      if (!card) continue;
+
+      // A card with no photo is not a card. The slide is a full-bleed image
+      // with the title over it, so a null here renders as a grey rectangle in
+      // the middle of the carousel - the one failure mode the gates above
+      // exist to prevent, arrived at from the other direction. Dropping it is
+      // consistent with every other gate here, and the frontend falls back to
+      // its bundled deck entirely if too few cards survive.
+      if (!card.image) {
+        this.logger.warn(
+          `Featured ${row.entityType} ${row.entityId} has no poster and its target has no hero or og image - dropped`,
+        );
+        continue;
+      }
+
+      resolved.push(card);
     }
 
     if (resolved.length > MAX_PUBLIC_EXPERIENCES) {

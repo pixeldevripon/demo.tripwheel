@@ -49,7 +49,7 @@ function categoryRow(over: Partial<Record<string, unknown>> = {}) {
     id: 'cat-1',
     name: 'Snorkeling',
     slug: 'snorkeling',
-    heroImage: null,
+    heroImage: 'https://cdn/cat-hero.jpg',
     ogImage: null,
     isActive: true,
     translations: [],
@@ -62,7 +62,7 @@ function hubRow(over: Partial<Record<string, unknown>> = {}) {
     id: 'hub-1',
     name: 'Klein Curacao',
     slug: 'klein-curacao',
-    heroImage: null,
+    heroImage: 'https://cdn/hub-hero.jpg',
     ogImage: null,
     isActive: true,
     status: HubStatus.PUBLISHED,
@@ -189,7 +189,7 @@ describe('FeaturedExperiencesService', () => {
     it('falls back to the OG image when there is no hero image', async () => {
       prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
       prisma.category.findMany.mockResolvedValue([
-        categoryRow({ ogImage: 'https://cdn/og.jpg' }),
+        categoryRow({ heroImage: null, ogImage: 'https://cdn/og.jpg' }),
       ]);
       prisma.tourCategory.findMany.mockResolvedValue(
         tourLinks('cat-1', CURACAO.id, 1),
@@ -198,6 +198,37 @@ describe('FeaturedExperiencesService', () => {
       const [card] = await service.resolvePublic(Locale.en);
 
       expect(card.image).toBe('https://cdn/og.jpg');
+    });
+
+    it('drops a card with no photo anywhere - the slide would be a grey box', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      // No poster, and the category has neither a hero nor an og image.
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: null, ogImage: null }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const cards = await service.resolvePublic(Locale.en);
+
+      expect(cards).toEqual([]);
+    });
+
+    it('keeps a photoless card once it has a poster of its own', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: null, ogImage: null }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const [card] = await service.resolvePublic(Locale.en);
+
+      expect(card.image).toBe('https://cdn/poster.jpg');
     });
 
     it("the card poster beats the entity's own images", async () => {
