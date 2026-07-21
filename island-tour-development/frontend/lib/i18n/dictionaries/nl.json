@@ -159,7 +159,7 @@
       "heading": {
         "title": "Alle {destination} tours & activiteiten in {year}",
         "categoryTitle": "{category} in {destination}",
-        "subtitle": "Van dagtrips naar Klein Curaçao tot buggy-avonturen. Elke tour die we op het eiland aanbieden.",
+        "subtitle": "Alle tours die we op {destination} aanbieden, bij elkaar.",
         "availableCount": "{count} tours",
         "availableLabel": "beschikbaar"
       },
@@ -263,46 +263,6 @@
       "whyTitle": "Waarom {hub}",
       "firstTimersTitle": "Wat we eerstebezoekers vertellen over {hub}",
       "alsoWorthTitle": "Ook de moeite waard op {destination}",
-      "faq": {
-        "items": [
-          {
-            "q": "Is Klein Curaçao de moeite waard?",
-            "a": "Ja. De meeste bezoekers vinden de dagtrip zeer de moeite waard, een van de langste en mooiste witte zandstranden van het Caribisch gebied. Een hele dag op het strand en in het water, perfect voor zonnen, zwemmen en snorkelen, met een beschermd rif en zeeschildpadden in het ondiepe water. Het eiland is volledig onbebouwd, zonder drukte buiten de dagboten. We hebben nog niemand ontmoet die er spijt van had."
-          },
-          {
-            "q": "Wat is er te doen op Klein Curaçao?",
-            "a": "Zwemmen en snorkelen op het beschermde rif aan de zuidkust, zonnen op meer dan een kilometer wit zand, de roze vuurtoren uit 1877 beklimmen en langs de noordkust langs drie scheepswrakken wandelen. Kijk uit naar de karet-, onechte karet- en groene zeeschildpadden die hier nestelen. Er zijn geen winkels of attracties, het eiland zelf is de ervaring."
-          },
-          {
-            "q": "Hoeveel kost een trip naar Klein Curaçao?",
-            "a": "Dagtrips beginnen rond $120 per persoon en variëren per boot en wat inbegrepen is, ontbijt, lunch, een open bar en snorkeluitrusting zijn per aanbieder anders samengesteld. Privécharters worden per groep berekend. De prijs op elke aanbieding is het volledige tarief per persoon."
-          },
-          {
-            "q": "Hoe lang duurt de boottocht naar Klein Curaçao?",
-            "a": "De oversteek duurt ongeveer 1 tot 2 uur per kant, afhankelijk van de boot, zeilcatamarans en jachten zijn langzamer dan de speedboten en RIB's. Je vaart heen tegen de passaatwinden in en terug met de wind mee, dus de terugweg is meestal rustiger en sneller."
-          },
-          {
-            "q": "Word ik zeeziek op weg naar Klein Curaçao?",
-            "a": "Op de heenweg de passaatwinden in kan het schommelen, dus het kan. Ga achterin en in het midden van de boot zitten, houd je blik op de horizon en neem voor vertrek iets in als je er gevoelig voor bent. De meeste magen komen tot rust zodra je vaart."
-          },
-          {
-            "q": "Wat moet ik meenemen naar Klein Curaçao?",
-            "a": "Waterschoenen, rifvriendelijke zonnebrand, een pet en zonnebril, een handdoek en wat contant geld. De zon is fel en weerkaatst op het zand en water, dus smeer vaak opnieuw in. Er is nauwelijks telefoonbereik, dus download alles wat je nodig hebt voordat je gaat."
-          },
-          {
-            "q": "Zijn er toiletten op Klein Curaçao?",
-            "a": "Ja. De meeste boten hebben een toilet aan boord, en meerdere aanbieders hebben een strandhuis op het eiland met toiletten en douches. De voorzieningen zijn eenvoudig, het eiland is verder onbebouwd."
-          },
-          {
-            "q": "Is Klein Curaçao geschikt voor gezinnen met jonge kinderen?",
-            "a": "Ja. De rustige, ondiepe, door het rif beschermde zuidkust is ideaal voor kinderen, en de stabielere motorboten en gezinsboten maken de oversteek makkelijker. Neem waterschoenen en zonbescherming mee, en let op dat er geen schaduw is buiten de palapa's en strandhuizen."
-          },
-          {
-            "q": "Wat gebeurt er als het weer slecht is tijdens mijn trip?",
-            "a": "Als een aanbieder annuleert vanwege weer of ruwe zee, word je omgeboekt naar een andere dag of volledig terugbetaald. Elke aanbieding heeft ook een gratis annuleringsvenster, zodat je je plannen daarbinnen kosteloos kunt wijzigen."
-          }
-        ]
-      },
       "titlePattern": "Dagtochten naar {hub}",
       "tripsHeading": "{count} dagtochten naar {hub}. Maak je keuze.",
       "tripsSubtitle": "Selecteer een datum of vergelijk eerst hieronder",
@@ -334,13 +294,13 @@
       "checkAvailability": "Beschikbaarheid bekijken",
       "comparison": {
         "title": "Welke trip past bij jou?",
-        "subtitle": "Alle zes de boten varen naar Klein Curaçao. Frisdrank en een BBQ-lunch inbegrepen. Dit is wat er anders is zodra je er bent.",
+        "subtitle": "Dit is wat deze trips echt van elkaar onderscheidt, naast elkaar.",
         "whatStandsOut": "Wat opvalt",
         "book": "Boek"
       },
       "discover": {
         "titlePattern": "Ontdek {hub}",
-        "subtitle": "Een vlak, onbewoond eiland van 1,7 km², 10 km voor de zuidoostkust van Curaçao. Geen winkels, geen bereik, alleen zand, rif en geschiedenis.",
+        "subtitle": "Wat je moet weten voordat je gaat.",
         "bookTrip": "Boek je trip"
       },
       "frequencyDaily": "Dagelijks",
@@ -527,6 +487,7 @@
       }
     },
     "categoryAboutTitle": "Over {category} in {destination}",
+    "categorySubtitle": "Gratis annuleren bij elke tour, met directe bevestiging bij het boeken.",
     "faqTitle": "Veelgestelde vragen",
     "categoryTrust": {
       "builtByLocals": "Gemaakt door locals die hier opgroeiden",
@@ -557,7 +518,7 @@
     },
     "about": {
       "title": "Over tours in {destination}",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
+      "description": "Elke tour op {destination} die je hier vindt, is uitgekozen door mensen die er zelf wonen. We gaan zelf mee, schrijven elke beschrijving vanuit ervaring en tonen de volledige prijs vooraf, zonder verrassingen bij het afrekenen. Bij de meeste tours reserveer je je plek met een kleine aanbetaling in plaats van het hele bedrag, en ze zijn allemaal gratis te annuleren binnen de termijn die op de pagina staat. Je boeking is direct bevestigd, en als er vooraf iets onduidelijk is, beantwoorden we je vraag via WhatsApp tussen 08:00 en 20:00.",
       "learnMore": "Meer informatie",
       "readLess": "Lees minder",
       "topThings": "Top dingen om te doen",
@@ -601,32 +562,6 @@
         "guarantees": [
           "Gratis annuleren bij de meeste tours, geen formulieren",
           "Betaal vandaag al vanaf 20%, de rest later"
-        ],
-        "items": [
-          {
-            "q": "Wat zijn de leukste dingen om te doen op Curaçao?",
-            "a": "De leukste dingen om te doen op Curaçao zijn dagtochten naar Klein Curaçao, zwemmen met dolfijnen, Westcoast Tours, zonsondergangcruises en off-road buggytochten. Dit zijn de kenmerkende belevenissen van het eiland - een mix van avonturen op zee en ontdekkingen op het eiland die alles omvat waar Curaçao om bekendstaat."
-          },
-          {
-            "q": "Hoe ver van tevoren moet ik deze tours boeken?",
-            "a": "Voor populaire tours zoals Klein Curaçao en het zwemmen met dolfijnen raden we aan om 3 tot 5 dagen van tevoren te boeken, zeker in het hoogseizoen. Veel tours kunnen bij beschikbaarheid nog voor de volgende dag worden gereserveerd."
-          },
-          {
-            "q": "Wat is de beste tijd om Curaçao te bezoeken?",
-            "a": "Curaçao is een bestemming voor het hele jaar en ligt onder de orkaangordel, dus de dagen zijn warm en droog met een verkoelende passaatwind. De rustigste maanden met de beste prijzen zijn mei, juni en september."
-          },
-          {
-            "q": "Is hotelophaalservice bij deze tours inbegrepen?",
-            "a": "De meeste tours bieden gratis ophaalservice bij hotels en verhuuraccommodaties op het hele eiland. Op elke tourpagina staat of ophaalservice is inbegrepen en wordt het verzamelpunt vermeld wanneer dat niet zo is."
-          },
-          {
-            "q": "Kan ik meerdere tours in één reis combineren?",
-            "a": "Zeker. Veel reizigers combineren een dagtocht op zee met een tour op het eiland. Voeg elke tour toe aan je boeking en we helpen je ze comfortabel over je verblijf te spreiden."
-          },
-          {
-            "q": "Hoe kiest Island Tours welke tours worden uitgelicht?",
-            "a": "We rangschikken tours op basis van echte reizigersbeoordelingen, de betrouwbaarheid van de aanbieder en wat ons lokale team zelf zou boeken. De volgorde weerspiegelt echte kwaliteit, nooit betaalde plaatsing."
-          }
         ]
       }
     }

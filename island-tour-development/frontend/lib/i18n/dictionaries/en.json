@@ -159,7 +159,7 @@
       "heading": {
         "title": "All {destination} tours & activities in {year}",
         "categoryTitle": "{category} in {destination}",
-        "subtitle": "From Klein Curaçao day trips to buggy adventures. Every tour we offer on the island.",
+        "subtitle": "Every tour we offer on {destination}, in one place.",
         "availableCount": "{count} tours",
         "availableLabel": "available"
       },
@@ -263,46 +263,6 @@
       "whyTitle": "Why {hub}",
       "firstTimersTitle": "What we tell first-timers about {hub}",
       "alsoWorthTitle": "Also worth your time on {destination}",
-      "faq": {
-        "items": [
-          {
-            "q": "Is Klein Curaçao worth it?",
-            "a": "Yes. Most visitors find the day trip well worth it for one of the longest, most beautiful white-sand beaches in the Caribbean. It's a full day on the sand and in the water, perfect for sunbathing, swimming and snorkeling, with a protected reef and sea turtles in the shallows. The island is completely undeveloped, with no crowds beyond the day boats. We've yet to meet anyone who regretted going."
-          },
-          {
-            "q": "What is there to do on Klein Curaçao?",
-            "a": "Swim and snorkel the protected south-shore reef, sunbathe on over a kilometre of white sand, climb the 1877 pink lighthouse, and walk the north shore past three shipwrecks. Look for the hawksbill, loggerhead and green turtles that nest here. There are no shops or attractions, the island itself is the experience."
-          },
-          {
-            "q": "How much does a Klein Curaçao trip cost?",
-            "a": "Day trips start from around $120 per person and vary by boat and what's included, breakfast, lunch, an open bar and snorkel gear are bundled differently across operators. Private charters are priced per group. The price on each listing is the full per-person fare."
-          },
-          {
-            "q": "How long is the boat trip to Klein Curaçao?",
-            "a": "The crossing takes roughly 1 to 2 hours each way depending on the boat, sailing catamarans and yachts are slower than the powerboats and RIBs. You sail out against the trade winds and return with them, so the way back is usually smoother and quicker."
-          },
-          {
-            "q": "Will I get seasick on the way to Klein Curaçao?",
-            "a": "It can be choppy heading out into the trade winds, so it's possible. Sit toward the back and centre of the boat, keep your eyes on the horizon, and take a remedy before you sail if you're prone to it. Most stomachs settle once you're moving."
-          },
-          {
-            "q": "What should I bring to Klein Curaçao?",
-            "a": "Water shoes, reef-safe sunscreen, a hat and sunglasses, a towel and some cash. The sun is fierce and bounces off the sand and water, so reapply often. There's barely any phone signal, so download anything you need before you go."
-          },
-          {
-            "q": "Are there toilets on Klein Curaçao?",
-            "a": "Yes. Most boats have a toilet on board, and several operators have a beach house on the island with toilets and showers. Facilities are basic, the island is otherwise undeveloped."
-          },
-          {
-            "q": "Is Klein Curaçao suitable for families with young children?",
-            "a": "Yes. The calm, shallow, reef-protected south shore is ideal for children, and the steadier motorboats and family boats make for an easier crossing. Bring water shoes and sun protection, and note there's no shade beyond the palapas and beach houses."
-          },
-          {
-            "q": "What happens if the weather is bad on my Klein Curaçao trip?",
-            "a": "If an operator cancels for weather or rough seas, you're rebooked for another day or refunded in full. Every listing also carries a free-cancellation window, so you can change your plans within it at no cost."
-          }
-        ]
-      },
       "titlePattern": "{hub} day trips",
       "tripsHeading": "{count} {hub} day trips. Pick yours.",
       "tripsSubtitle": "Select a date, or compare below first",
@@ -334,13 +294,13 @@
       "checkAvailability": "Check Availability",
       "comparison": {
         "title": "Which trip is right for you?",
-        "subtitle": "All six boats go to Klein Curaçao. Soft drinks and a BBQ lunch included. Here's what's different once you're there.",
+        "subtitle": "Here's what actually differs between these trips, side by side.",
         "whatStandsOut": "What stands out",
         "book": "Book"
       },
       "discover": {
         "titlePattern": "Discover {hub}",
-        "subtitle": "A 1.7 km² flat, uninhabited island 10km off the southeast coast of Curaçao. No shops, no signal, just sand, reef, and history.",
+        "subtitle": "What to know before you go.",
         "bookTrip": "Book your trip"
       },
       "frequencyDaily": "Daily",
@@ -527,6 +487,7 @@
       }
     },
     "categoryAboutTitle": "About {category} in {destination}",
+    "categorySubtitle": "Free cancellation on every tour, with instant confirmation when you book.",
     "faqTitle": "Frequently asked questions",
     "categoryTrust": {
       "builtByLocals": "Built by locals who grew up here",
@@ -557,7 +518,7 @@
     },
     "about": {
       "title": "About tours in {destination}",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
+      "description": "Every {destination} tour on Island Tours is picked by people who live here. We ride the tours ourselves, write each description from experience, and show the full price up front, with no surprise fees at checkout. Most tours hold your spot with a small deposit rather than the whole amount, and every one of them can be cancelled free within the window shown on its page. Booking is instant, so your confirmation arrives straight away, and if anything is unclear before you travel we answer on WhatsApp from 08:00 to 20:00.",
       "learnMore": "Learn More",
       "readLess": "Read Less",
       "topThings": "Top things to do",
@@ -601,32 +562,6 @@
         "guarantees": [
           "Free cancellation, no questions asked",
           "Pay as little as 20% today, the rest later"
-        ],
-        "items": [
-          {
-            "q": "What are the best things to do in Curaçao?",
-            "a": "The best things to do in Curaçao include Klein Curaçao day trips, swimming with dolphins, Westcoast Tours, sunset cruises, and off-road buggy tours. These are the island's signature experiences - a mix of offshore adventures and on-island exploration that covers everything Curaçao is known for."
-          },
-          {
-            "q": "How far in advance should I book these tours?",
-            "a": "For popular tours like Klein Curaçao and the dolphin swim we recommend booking 3 to 5 days ahead, especially in high season. Many tours can still be reserved for the next day when space allows."
-          },
-          {
-            "q": "When is the best time to visit Curaçao?",
-            "a": "Curaçao is a year-round destination that sits below the hurricane belt, so days are warm and dry with a cooling trade wind. The quietest, best-value months are May, June, and September."
-          },
-          {
-            "q": "Do these tours include hotel pickup?",
-            "a": "Most tours offer complimentary pickup from hotels and rentals across the island. Each tour page states whether pickup is included and lists the meeting point when it is not."
-          },
-          {
-            "q": "Can I combine multiple tours in one trip?",
-            "a": "Absolutely. Many travellers pair an offshore day trip with an on-island tour. Add each tour to your booking and we'll help you space them comfortably across your stay."
-          },
-          {
-            "q": "How does Island Tours choose which tours to feature?",
-            "a": "We rank tours by genuine traveller reviews, operator reliability, and what our local team would book themselves. The featured order reflects real quality, never paid placement."
-          }
         ]
       }
     }

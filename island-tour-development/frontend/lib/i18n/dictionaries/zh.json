@@ -159,7 +159,7 @@
       "heading": {
         "title": "{year}年{destination}的所有行程与活动",
         "categoryTitle": "{destination}的{category}",
-        "subtitle": "从克莱因库拉索的一日游到沙滩车冒险，我们在岛上提供的每一个行程。",
+        "subtitle": "我们在{destination}提供的所有行程，尽在于此。",
         "availableCount": "{count} 个行程",
         "availableLabel": "可预订"
       },
@@ -263,46 +263,6 @@
       "whyTitle": "为什么选择{hub}",
       "firstTimersTitle": "我们给初次到访者关于{hub}的建议",
       "alsoWorthTitle": "在{destination}也值得一游",
-      "faq": {
-        "items": [
-          {
-            "q": "克莱因库拉索值得去吗？",
-            "a": "值得。大多数游客认为这趟一日游非常值得，这里拥有加勒比海最长、最美的白沙滩之一。一整天在沙滩和海水中度过，非常适合晒太阳、游泳和浮潜，还有受保护的珊瑚礁和浅水区的海龟。岛上完全未经开发，除了一日游船只外没有人群。我们还没遇到过后悔来这里的人。"
-          },
-          {
-            "q": "在克莱因库拉索有什么可做的？",
-            "a": "在南岸受保护的珊瑚礁游泳和浮潜，在一公里多长的白沙滩上晒太阳，登上1877年的粉色灯塔，沿北岸走过三处沉船。留意在这里筑巢的玳瑁龟、蠵龟和绿海龟。这里没有商店或景点，岛屿本身就是体验。"
-          },
-          {
-            "q": "去克莱因库拉索的行程要多少钱？",
-            "a": "一日游每人约120美元起，价格因船只和包含内容而异，早餐、午餐、开放式酒吧和浮潜装备在各运营商之间的搭配不同。包船按团队计价。每个列表上显示的价格为每人全额票价。"
-          },
-          {
-            "q": "乘船到克莱因库拉索要多久？",
-            "a": "视船只而定，单程约1到2小时，帆船双体船和游艇比快艇和橡皮艇慢。去程逆信风而行，回程顺风，因此返程通常更平稳、更快。"
-          },
-          {
-            "q": "去克莱因库拉索的途中会晕船吗？",
-            "a": "去程逆信风时海面可能颠簸，所以有可能。坐在船的后部中间，目视地平线，如果你容易晕船，出发前先服用晕船药。大多数人一旦船开动后就会缓解。"
-          },
-          {
-            "q": "去克莱因库拉索应该带什么？",
-            "a": "水鞋、护礁防晒霜、帽子和墨镜、毛巾和一些现金。阳光强烈，并会从沙滩和海面反射，所以要经常补涂。手机信号几乎没有，所以出发前先下载好需要的内容。"
-          },
-          {
-            "q": "克莱因库拉索有洗手间吗？",
-            "a": "有。大多数船只船上配有洗手间，多家运营商在岛上设有带洗手间和淋浴的海滩屋。设施较为简单，岛上其余部分未经开发。"
-          },
-          {
-            "q": "克莱因库拉索适合带小孩的家庭吗？",
-            "a": "适合。南岸平静、水浅、有珊瑚礁保护，非常适合儿童，更平稳的机动船和家庭船让航行更轻松。请带上水鞋和防晒用品，并注意除了凉棚和海滩屋外没有遮荫。"
-          },
-          {
-            "q": "如果我行程当天天气不好怎么办？",
-            "a": "如果运营商因天气或风浪取消，你会被改期到其他日期或获得全额退款。每个列表还设有免费取消时段，因此你可以在此期间免费更改计划。"
-          }
-        ]
-      },
       "titlePattern": "{hub}一日游",
       "tripsHeading": "{count}个{hub}一日游。挑选您的行程。",
       "tripsSubtitle": "选择日期，或先在下方比较",
@@ -334,13 +294,13 @@
       "checkAvailability": "查看可用性",
       "comparison": {
         "title": "哪一趟行程适合你？",
-        "subtitle": "六艘船都前往小库拉索岛。含软饮料和烧烤午餐。以下是抵达后的不同之处。",
+        "subtitle": "这些行程之间的真正差别，一目了然。",
         "whatStandsOut": "亮点",
         "book": "预订"
       },
       "discover": {
         "titlePattern": "探索 {hub}",
-        "subtitle": "一座面积 1.7 平方公里的平坦无人岛，位于库拉索东南海岸外 10 公里处。没有商店，没有信号，只有沙滩、珊瑚礁和历史。",
+        "subtitle": "出发前需要了解的事。",
         "bookTrip": "预订行程"
       },
       "frequencyDaily": "每日",
@@ -527,6 +487,7 @@
       }
     },
     "categoryAboutTitle": "关于{destination}的{category}",
+    "categorySubtitle": "所有行程均可免费取消，预订后即时确认。",
     "faqTitle": "常见问题",
     "categoryTrust": {
       "builtByLocals": "由在此长大的当地人打造",
@@ -557,7 +518,7 @@
     },
     "about": {
       "title": "关于{destination}的旅行",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
+      "description": "我们在{destination}提供的每一个行程，都由生活在当地的人挑选。我们亲自体验每条线路，凭亲身经历撰写介绍，并在一开始就标明全额价格，结账时不会有额外费用。大多数行程只需支付少量订金即可锁定名额，无需全额付款；每个行程都可在其页面标示的时限内免费取消。预订即时确认，确认信息会立即送达；出发前如有任何疑问，我们每天 08:00 至 20:00 通过 WhatsApp 为您解答。",
       "learnMore": "了解更多",
       "readLess": "收起",
       "topThings": "最热门的活动",
@@ -601,32 +562,6 @@
         "guarantees": [
           "大多数行程免费取消，无需填写表格",
           "今天最低只需支付20%，余款稍后再付"
-        ],
-        "items": [
-          {
-            "q": "在Curaçao最值得做的事情有哪些？",
-            "a": "在Curaçao最值得做的事情包括Klein Curaçao一日游、与海豚同游、Westcoast Tours、日落巡航以及越野沙滩车之旅。这些都是岛上的标志性体验 - 融合了海上探险与岛内游览，涵盖了Curaçao闻名遐迩的一切。"
-          },
-          {
-            "q": "我应该提前多久预订这些游览？",
-            "a": "对于像Klein Curaçao和与海豚同游这样的热门游览，我们建议提前3到5天预订，尤其是在旺季。许多游览在有名额时仍可预订次日的行程。"
-          },
-          {
-            "q": "什么时候是游览Curaçao的最佳时间？",
-            "a": "Curaçao是一个全年皆宜的目的地，位于飓风带以南，因此白天温暖干燥，还有清凉的信风。最安静、性价比最高的月份是五月、六月和九月。"
-          },
-          {
-            "q": "这些游览包含酒店接送吗？",
-            "a": "大多数游览提供从全岛酒店和民宿出发的免费接送。每个游览页面都会注明是否包含接送，若不包含则会列出集合地点。"
-          },
-          {
-            "q": "我可以在一次行程中组合多个游览吗？",
-            "a": "当然可以。许多旅客会将海上一日游与岛内游览搭配在一起。将每个游览加入您的预订，我们会帮您在整个行程中舒适地安排时间。"
-          },
-          {
-            "q": "Island Tours如何选择要重点推荐的游览？",
-            "a": "我们根据真实的旅客评价、运营商的可靠性以及本地团队自己会预订的项目来对游览进行排名。推荐顺序反映的是真实的品质，绝非付费排位。"
-          }
         ]
       }
     }

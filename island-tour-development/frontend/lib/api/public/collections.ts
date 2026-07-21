@@ -12,7 +12,6 @@ import { cacheLife, cacheTag } from 'next/cache';
 
 import type {
   CollectionLocalized,
-  CollectionPageContent,
   CollectionRender,
 } from '@/types/collection';
 import type { Currency, Locale } from '@/lib/constants/locales';
@@ -69,21 +68,8 @@ export async function getCollectionRender(
   return data;
 }
 
-/**
- * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a
- * collection by id — authored in the dashboard SEO tab. Returns `null` when unset
- * or the backend is unreachable. Cached daily (tag-busted on writes); tagged granularly
- * `collection:<id>` (id is the arg) so a collection's SEO edit refreshes only it.
- */
-export async function getCollectionPageContent(
-  collectionId: string,
-  locale: Locale = DEFAULT_LOCALE,
-): Promise<CollectionPageContent | null> {
-  'use cache';
-  cacheLife('days');
-  cacheTag(`collection:${collectionId}`);
-
-  return publicGet<CollectionPageContent>(
-    `/collections/${collectionId}/page-content${buildQuery({ locale })}`,
-  );
-}
+// The collection's authored meta + About copy is no longer fetched separately:
+// it arrives on `getCollectionRender` as `pageContent`, already resolved
+// locale → English. `/collections/:id/page-content` returns a single locale's
+// row with no fallback, which is what the dashboard editor wants and what a
+// public page must not use.

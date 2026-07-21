@@ -6,6 +6,7 @@ export type AboutDict = {
     title: string;
     description: string;
     learnMore: string;
+    readLess: string;
     topThings: string;
     planning: string;
     whyBook: string;
@@ -13,9 +14,16 @@ export type AboutDict = {
 
 export function DestinationAbout({
     destinationName,
+    description,
     dict,
 }: {
     destinationName: string;
+    /**
+     * The island's authored About copy. The caller resolves it (CMS value, else
+     * the bundled `dict.description`), so this component never decides which
+     * source wins.
+     */
+    description: string;
     dict: AboutDict;
 }) {
     return (
@@ -31,10 +39,10 @@ export function DestinationAbout({
                             )}
                         </h2>
 
-<AboutExpander
-                            description={dict.description}
+                        <AboutExpander
+                            description={description}
                             moreLabel={dict.learnMore}
-                            lessLabel='Read Less'
+                            lessLabel={dict.readLess}
                             className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-text-muted'
                             buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary'
                         />

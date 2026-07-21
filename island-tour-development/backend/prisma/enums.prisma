@@ -581,6 +581,16 @@ enum InstagramMediaType {
   CAROUSEL_ALBUM
 }
 
+// How the public section renders the same tiles.
+//   GRID    - the curated band: 2/3 columns, rounded 384x337 cards, generous
+//             gaps. Reads as part of the page.
+//   GALLERY - the Instagram profile look: 3/6 columns of 4:5 portraits, hairline
+//             gaps, square corners, type badges in the corner. Reads as a feed.
+enum InstagramLayout {
+  GRID
+  GALLERY
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

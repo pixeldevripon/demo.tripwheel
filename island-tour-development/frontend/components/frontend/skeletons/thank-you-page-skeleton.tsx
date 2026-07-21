@@ -21,6 +21,40 @@ function SummaryRowSkeleton() {
     );
 }
 
+/**
+ * The "Your booking summary" band on its own - the section heading plus the two
+ * side-by-side detail cards on the surface strip.
+ *
+ * Split out because the payment-processing hop holds this exact placeholder
+ * while it polls for CONFIRMED. The TYP it then redirects to renders the very
+ * same markup as its own fallback, so the band survives the navigation without
+ * re-laying out - only the block above it swaps (spinner -> hero). Keep it 1:1
+ * with `ThankYouSummary`; a drift here shows up as a jump mid-redirect.
+ */
+export function ThankYouSummarySkeleton() {
+    return (
+        <div className='it-section bg-it-surface'>
+            <div className='it-container flex flex-col gap-6'>
+                <Bar className='h-[34px] w-72 md:h-12 md:w-[420px]' />
+                <div className='grid gap-6 lg:grid-cols-2'>
+                    {[9, 6].map((rows, card) => (
+                        <div
+                            key={card}
+                            className='flex flex-col gap-8 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
+                            <Bar className='h-8 w-40' />
+                            <div className='flex flex-col gap-3.5'>
+                                {Array.from({ length: rows }, (_, i) => (
+                                    <SummaryRowSkeleton key={i} />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function ThankYouPageSkeleton() {
     return (
         <>
@@ -50,25 +84,7 @@ export function ThankYouPageSkeleton() {
                 </div>
             </div>
             {/* Booking summary */}
-            <div className='it-section bg-it-surface'>
-                <div className='it-container flex flex-col gap-6'>
-                    <Bar className='h-[34px] w-72 md:h-12 md:w-[420px]' />
-                    <div className='grid gap-6 lg:grid-cols-2'>
-                        {[9, 6].map((rows, card) => (
-                            <div
-                                key={card}
-                                className='flex flex-col gap-8 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
-                                <Bar className='h-8 w-40' />
-                                <div className='flex flex-col gap-3.5'>
-                                    {Array.from({ length: rows }, (_, i) => (
-                                        <SummaryRowSkeleton key={i} />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+            <ThankYouSummarySkeleton />
             {/* What happens next */}
             <div className='it-section !pb-0 bg-it-white'>
                 <div className='it-container flex flex-col items-center gap-12'>

@@ -98,6 +98,11 @@ export async function CategoryPage({
             .replace('{destination}', destinationName);
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
 
+    // Subtitle: the category's own localized overview when authored, else the
+    // generic promise. It used to be a hardcoded English sentence about boat
+    // tours, which was untranslated everywhere and untrue for most categories.
+    const subtitle = category.overview || dict.destination.categorySubtitle;
+
     // "You might also like" - sibling categories at this destination (current one
     // excluded), up to 3. Real data only: a category with no `heroImage` renders
     // without an image (no placeholder), and an empty set hides the whole section.
@@ -114,10 +119,15 @@ export async function CategoryPage({
     const aboutTitle = dict.destination.categoryAboutTitle
         .replace('{category}', category.name)
         .replace('{destination}', destinationName);
-    // Body copy from the backend; falls back to the localized placeholder until
-    // category page-content is authored (mirrors the MOCK_TOURS convention).
+    // Body copy from the backend; falls back to the shared island-level template
+    // until this category's page content is authored. `||` so a cleared field
+    // falls back too, and the substitution applies only to the bundled string.
     const aboutDescription =
-        pageContent?.aboutText ?? dict.destination.about.description;
+        pageContent?.aboutText ||
+        dict.destination.about.description.replaceAll(
+            '{destination}',
+            destinationName
+        );
 
     // FAQs come from the backend (per locale); reuse the FAQ accordion chrome and
     // swap in the localized items + the "Frequently asked questions" title. Falls
@@ -154,7 +164,7 @@ export async function CategoryPage({
                             total={total}
                             selectDateLabel={t.toolbar.selectDate}
                             title={heading}
-                            subtitle='Most boat tours offer free cancellation up to 48h before'
+                            subtitle={subtitle}
                         />
 
                         <div
@@ -200,7 +210,7 @@ export async function CategoryPage({
                 title={aboutTitle}
                 description={aboutDescription}
                 learnMoreLabel={dict.destination.about.learnMore}
-                readLessLabel='Read Less'
+                readLessLabel={dict.destination.about.readLess}
             />
 
             {/* Category FAQs - title + accordion only (Figma 47070:2456). */}

@@ -1,6 +1,7 @@
 import type { Locale } from '@/lib/constants/locales';
 import type { Money } from '@/types/money';
 import type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
+import type { ResolvedPageContent } from '@/types/page-content';
 export type { Locale } from '@/lib/constants/locales';
 export type { CollectionDisplayStyle, CollectionStatus, CollectionType } from '@/types/enums';
 
@@ -99,6 +100,15 @@ export interface CollectionRender extends CollectionLocalized {
   breadcrumbLabel: string | null;
   curationNote: string | null;
   eyebrowLabel: string | null;
+  /**
+   * Authored About + SEO copy, already resolved locale → English by the backend.
+   *
+   * Optional because this payload is cached for days: during a rollout the cache
+   * still holds entries written by a backend that predates the field, and a
+   * non-optional read would throw inside `generateMetadata` for every one of
+   * them. Guard it until those entries have aged out.
+   */
+  pageContent?: ResolvedPageContent;
   tours: CollectionRenderTour[];
   fastStats: { tourCount: number; fromPrice: number | null };
   faqs: CollectionFaq[];

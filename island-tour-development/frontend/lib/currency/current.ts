@@ -16,15 +16,14 @@ import {
 } from '@/lib/constants/locales';
 
 /**
- * Resolve the shopper's display currency from a raw `Cookie` header string. Falls
- * back to the locale's default currency (EUR everywhere except ZH -> USD), then EUR.
- * Pure + testable: pass `document.cookie` on the client or the request cookie header
- * on the server (or use `getServerCurrency` which reads `cookies()` for you).
+ * The currency the visitor already has stored, or `undefined` when there is no
+ * cookie yet. The distinction matters: "no cookie" is what tells the geo
+ * auto-detect it may pick one, so this must NOT fold in a default. Callers that
+ * just want a currency to render with should use `currencyFromCookie`.
  */
-export function currencyFromCookie(
+export function storedCurrency(
     cookieHeader?: string | null,
-    locale?: Locale,
-): Currency {
+): Currency | undefined {
     const raw = cookieHeader
         ? cookieHeader
               .split(';')
@@ -33,9 +32,49 @@ export function currencyFromCookie(
               ?.slice(CURRENCY_COOKIE.length + 1)
         : undefined;
     const value = raw ? decodeURIComponent(raw) : undefined;
-    if (isCurrency(value)) return value;
-    return (locale && LOCALE_CURRENCY[locale]) ?? 'EUR';
+    return isCurrency(value) ? value : undefined;
 }
+
+/**
+ * Resolve the shopper's display currency from a raw `Cookie` header string. Falls
+ * back to the locale's default currency (EN/ZH -> USD, the rest EUR), then EUR.
+ * Pure + testable: pass `document.cookie` on the client or the request cookie header
+ * on the server (or use `getServerCurrency` which reads `cookies()` for you).
+ */
+export function currencyFromCookie(
+    cookieHeader?: string | null,
+    locale?: Locale,
+): Currency {
+    return (
+        storedCurrency(cookieHeader) ??
+        (locale && LOCALE_CURRENCY[locale]) ??
+        'EUR'
+    );
+}
+
+/**
+ * Persist the shopper's display currency for a year. The single writer of this
+ * cookie in the browser - the footer selector (an explicit choice) and the geo
+ * auto-detect (a first-visit guess) both go through here, so the two can never
+ * disagree on cookie attributes and silently write two competing cookies.
+ *
+ * Deliberately readable by JS: `getServerCurrency` reads it server-side, but the
+ * navbar/hero search widgets and the footer pill read it from `document.cookie`.
+ */
+export function persistCurrency(next: Currency): void {
+    document.cookie = `${CURRENCY_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+}
+
+/**
+ * Always print the bare symbol - `$1,750`, never `US$ 1.750`.
+ *
+ * Left to itself, `Intl` disambiguates the dollar in every locale that has its
+ * own: pt/nl render USD as `US$`, fr as `$US`, es as `US$`, zh as `US$`. On a
+ * Caribbean tour card that disambiguation is noise - there is only one dollar in
+ * play, the shopper picked it, and the prefix reads like part of the number.
+ * `narrowSymbol` collapses all of them to `$` and leaves `€` untouched.
+ */
+const CURRENCY_DISPLAY = 'narrowSymbol' as const;
 
 /**
  * Format an already-converted amount as localized currency (guide §21.1). Use for
@@ -51,6 +90,7 @@ export function formatMoney(
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        currencyDisplay: CURRENCY_DISPLAY,
     }).format(Number.isFinite(n) ? n : 0);
 }
 
@@ -69,6 +109,7 @@ export function formatPriceFrom(
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        currencyDisplay: CURRENCY_DISPLAY,
         minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
         maximumFractionDigits: 2,
     }).format(n);

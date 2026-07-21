@@ -159,7 +159,7 @@
       "heading": {
         "title": "Alle {destination} Touren & Aktivitäten in {year}",
         "categoryTitle": "{category} in {destination}",
-        "subtitle": "Von Tagesausflügen nach Klein Curaçao bis zu Buggy-Abenteuern. Jede Tour, die wir auf der Insel anbieten.",
+        "subtitle": "Alle Touren, die wir auf {destination} anbieten, an einem Ort.",
         "availableCount": "{count} Touren",
         "availableLabel": "verfügbar"
       },
@@ -263,46 +263,6 @@
       "whyTitle": "Warum {hub}",
       "firstTimersTitle": "Was wir Erstbesuchern über {hub} sagen",
       "alsoWorthTitle": "Ebenfalls einen Besuch wert auf {destination}",
-      "faq": {
-        "items": [
-          {
-            "q": "Lohnt sich Klein Curaçao?",
-            "a": "Ja. Die meisten Besucher finden den Tagesausflug absolut lohnenswert, einer der längsten und schönsten weißen Sandstrände der Karibik. Ein ganzer Tag am Strand und im Wasser, perfekt zum Sonnenbaden, Schwimmen und Schnorcheln, mit einem geschützten Riff und Meeresschildkröten im flachen Wasser. Die Insel ist völlig unbebaut, ohne Menschenmengen außer den Tagesbooten. Wir haben noch niemanden getroffen, der es bereut hat."
-          },
-          {
-            "q": "Was kann man auf Klein Curaçao unternehmen?",
-            "a": "Schwimmen und Schnorcheln am geschützten Riff der Südküste, Sonnenbaden auf über einem Kilometer weißem Sand, den rosa Leuchtturm von 1877 erklimmen und an der Nordküste an drei Schiffswracks vorbeispazieren. Halte Ausschau nach den Karett-, Unechten und Grünen Meeresschildkröten, die hier nisten. Es gibt keine Geschäfte oder Attraktionen, die Insel selbst ist das Erlebnis."
-          },
-          {
-            "q": "Was kostet ein Ausflug nach Klein Curaçao?",
-            "a": "Tagesausflüge beginnen bei etwa 120 $ pro Person und variieren je nach Boot und Leistungen, Frühstück, Mittagessen, eine Open Bar und Schnorchelausrüstung sind bei den Anbietern unterschiedlich enthalten. Private Charter werden pro Gruppe berechnet. Der Preis auf jeder Anzeige ist der vollständige Preis pro Person."
-          },
-          {
-            "q": "Wie lange dauert die Bootsfahrt nach Klein Curaçao?",
-            "a": "Die Überfahrt dauert je nach Boot etwa 1 bis 2 Stunden pro Strecke, Segelkatamarane und Yachten sind langsamer als die Powerboote und RIBs. Auf dem Hinweg fährt man gegen die Passatwinde und kommt mit ihnen zurück, daher ist die Rückfahrt meist ruhiger und schneller."
-          },
-          {
-            "q": "Werde ich auf dem Weg nach Klein Curaçao seekrank?",
-            "a": "Auf dem Hinweg in die Passatwinde kann es ruppig werden, also ist es möglich. Setze dich nach hinten in die Mitte des Boots, halte den Blick auf den Horizont und nimm vor der Fahrt ein Mittel ein, wenn du anfällig bist. Die meisten Mägen beruhigen sich, sobald es losgeht."
-          },
-          {
-            "q": "Was sollte ich nach Klein Curaçao mitbringen?",
-            "a": "Wasserschuhe, rifffreundliche Sonnencreme, Hut und Sonnenbrille, ein Handtuch und etwas Bargeld. Die Sonne ist intensiv und reflektiert von Sand und Wasser, also häufig nachcremen. Es gibt kaum Handyempfang, lade also alles vorher herunter, was du brauchst."
-          },
-          {
-            "q": "Gibt es Toiletten auf Klein Curaçao?",
-            "a": "Ja. Die meisten Boote haben eine Toilette an Bord, und mehrere Anbieter haben ein Strandhaus auf der Insel mit Toiletten und Duschen. Die Einrichtungen sind einfach, die Insel ist ansonsten unbebaut."
-          },
-          {
-            "q": "Ist Klein Curaçao für Familien mit kleinen Kindern geeignet?",
-            "a": "Ja. Die ruhige, flache, riffgeschützte Südküste ist ideal für Kinder, und die stabileren Motorboote und Familienboote machen die Überfahrt einfacher. Bring Wasserschuhe und Sonnenschutz mit und beachte, dass es außer den Palapas und Strandhäusern keinen Schatten gibt."
-          },
-          {
-            "q": "Was passiert, wenn das Wetter bei meinem Ausflug schlecht ist?",
-            "a": "Wenn ein Anbieter wegen Wetter oder rauer See absagt, wirst du auf einen anderen Tag umgebucht oder vollständig erstattet. Jede Anzeige hat außerdem ein kostenloses Stornofenster, sodass du deine Pläne darin kostenlos ändern kannst."
-          }
-        ]
-      },
       "titlePattern": "Tagesausflüge nach {hub}",
       "tripsHeading": "{count} Tagesausflüge nach {hub}. Triff deine Wahl.",
       "tripsSubtitle": "Wähle ein Datum oder vergleiche zuerst unten",
@@ -334,13 +294,13 @@
       "checkAvailability": "Verfügbarkeit prüfen",
       "comparison": {
         "title": "Welcher Ausflug passt zu dir?",
-        "subtitle": "Alle sechs Boote fahren nach Klein Curaçao. Softdrinks und ein BBQ-Mittagessen inklusive. Das ist der Unterschied, sobald du dort bist.",
+        "subtitle": "Das sind die tatsächlichen Unterschiede zwischen diesen Touren, direkt nebeneinander.",
         "whatStandsOut": "Was heraussticht",
         "book": "Buchen"
       },
       "discover": {
         "titlePattern": "Entdecke {hub}",
-        "subtitle": "Eine flache, unbewohnte Insel von 1,7 km², 10 km vor der Südostküste von Curaçao. Keine Geschäfte, kein Empfang, nur Sand, Riff und Geschichte.",
+        "subtitle": "Was Sie vorher wissen sollten.",
         "bookTrip": "Buche deinen Trip"
       },
       "frequencyDaily": "Täglich",
@@ -527,6 +487,7 @@
       }
     },
     "categoryAboutTitle": "Über {category} in {destination}",
+    "categorySubtitle": "Kostenlose Stornierung bei jeder Tour, mit sofortiger Bestätigung bei der Buchung.",
     "faqTitle": "Häufig gestellte Fragen",
     "categoryTrust": {
       "builtByLocals": "Von Einheimischen erstellt, die hier aufgewachsen sind",
@@ -557,7 +518,7 @@
     },
     "about": {
       "title": "Über Touren in {destination}",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
+      "description": "Jede Tour auf {destination} bei Island Tours wird von Menschen ausgewählt, die hier leben. Wir fahren die Touren selbst mit, schreiben jede Beschreibung aus eigener Erfahrung und zeigen den vollen Preis von Anfang an, ohne überraschende Gebühren beim Bezahlen. Bei den meisten Touren sichern Sie sich Ihren Platz mit einer kleinen Anzahlung statt des gesamten Betrags, und jede lässt sich innerhalb des auf der Seite angegebenen Zeitraums kostenlos stornieren. Die Buchung ist sofort bestätigt, und wenn vorab etwas unklar ist, antworten wir per WhatsApp von 08:00 bis 20:00 Uhr.",
       "learnMore": "Mehr erfahren",
       "readLess": "Weniger anzeigen",
       "topThings": "Top-Aktivitäten",
@@ -601,32 +562,6 @@
         "guarantees": [
           "Kostenlose Stornierung bei den meisten Touren, keine Formulare",
           "Zahle heute schon ab 20%, den Rest später"
-        ],
-        "items": [
-          {
-            "q": "Was sind die besten Aktivitäten auf Curaçao?",
-            "a": "Zu den besten Aktivitäten auf Curaçao gehören Tagesausflüge nach Klein Curaçao, das Schwimmen mit Delfinen, Westcoast Tours, Sunset-Cruises und Offroad-Buggy-Touren. Das sind die charakteristischen Erlebnisse der Insel - eine Mischung aus Abenteuern auf dem Meer und Entdeckungen an Land, die alles abdeckt, wofür Curaçao bekannt ist."
-          },
-          {
-            "q": "Wie weit im Voraus sollte ich diese Touren buchen?",
-            "a": "Bei beliebten Touren wie Klein Curaçao und dem Schwimmen mit Delfinen empfehlen wir, 3 bis 5 Tage im Voraus zu buchen, besonders in der Hochsaison. Viele Touren lassen sich bei freien Plätzen noch für den nächsten Tag reservieren."
-          },
-          {
-            "q": "Wann ist die beste Reisezeit für Curaçao?",
-            "a": "Curaçao ist ein Ganzjahresziel und liegt unterhalb des Hurrikangürtels, daher sind die Tage warm und trocken mit einem kühlenden Passatwind. Die ruhigsten und preiswertesten Monate sind Mai, Juni und September."
-          },
-          {
-            "q": "Ist bei diesen Touren die Hotelabholung inklusive?",
-            "a": "Die meisten Touren bieten eine kostenlose Abholung von Hotels und Unterkünften auf der ganzen Insel. Auf jeder Tourseite steht, ob die Abholung inklusive ist, und wird der Treffpunkt angegeben, wenn das nicht der Fall ist."
-          },
-          {
-            "q": "Kann ich mehrere Touren auf einer Reise kombinieren?",
-            "a": "Auf jeden Fall. Viele Reisende verbinden einen Tagesausflug auf dem Meer mit einer Tour an Land. Füge jede Tour deiner Buchung hinzu und wir helfen dir, sie angenehm über deinen Aufenthalt zu verteilen."
-          },
-          {
-            "q": "Wie wählt Island Tours aus, welche Touren hervorgehoben werden?",
-            "a": "Wir ordnen Touren nach echten Reisebewertungen, der Zuverlässigkeit des Anbieters und dem, was unser lokales Team selbst buchen würde. Die Reihenfolge spiegelt echte Qualität wider, niemals bezahlte Platzierung."
-          }
         ]
       }
     }

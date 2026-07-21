@@ -8,25 +8,23 @@ import {
     getActiveDestinations,
     getCategoryBySlugForDestination,
     getCategoryPageContent,
-    getCollectionPageContent,
     getCollectionRender,
     getDestinationBySlug,
     getDestinationCategories,
     getDestinationHubs,
     getDestinationTours,
-    getHubPageContent,
     getHubRender,
     getTourBySlug,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
 import {
-    ALL_LOCALES,
     DEFAULT_LOCALE,
     isLocale,
     localizeHref,
     type Locale,
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { buildAlternates } from '@/lib/seo/alternates';
 import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -177,12 +175,7 @@ export async function generateMetadata({
     const resolution = await resolveSlug(destination, slug);
     if (!resolution) return {};
 
-    const path = `/${destination}/${slug}`;
-    const languages: Record<string, string> = {};
-    for (const loc of ALL_LOCALES) languages[loc] = `/${loc}${path}`;
-    languages['x-default'] = `/${DEFAULT_LOCALE}${path}`;
-
-    const alternates = { canonical: `/${locale}${path}`, languages };
+    const alternates = buildAlternates(locale, `/${destination}/${slug}`);
 
     if (resolution.entityType === 'CATEGORY' && resolution.entityId) {
         const [category, pageContent, destinationName] = await Promise.all([
@@ -209,20 +202,23 @@ export async function generateMetadata({
         const dest = await getDestinationBySlug(destination, locale as Locale);
         if (!dest) return { alternates };
 
-        const [render, pageContent] = await Promise.all([
-            getCollectionRender(slug, dest.id, locale as Locale),
-            getCollectionPageContent(resolution.entityId, locale as Locale),
-        ]);
+        const render = await getCollectionRender(
+            slug,
+            dest.id,
+            locale as Locale
+        );
         // Only PUBLISHED collections render; a null render (draft/404) emits just
         // the alternates so the page's own notFound() still governs the response.
         if (!render) return { alternates };
 
         return {
             title:
-                pageContent?.metaTitle ??
+                render.pageContent?.metaTitle ??
                 `${render.h1Override ?? render.name} | Island Tours`,
             description:
-                pageContent?.metaDescription ?? render.overview ?? undefined,
+                render.pageContent?.metaDescription ??
+                render.overview ??
+                undefined,
             alternates,
         };
     }
@@ -231,20 +227,22 @@ export async function generateMetadata({
         const dest = await getDestinationBySlug(destination, locale as Locale);
         if (!dest) return { alternates };
 
-        const [render, pageContent] = await Promise.all([
-            getHubRender(slug, dest.id, locale as Locale),
-            getHubPageContent(resolution.entityId, locale as Locale),
-        ]);
+        const render = await getHubRender(slug, dest.id, locale as Locale);
         // Only PUBLISHED hubs render; a null render (draft/404) emits just the
         // alternates so the page's own notFound() still governs the response.
         if (!render) return { alternates };
 
         return {
-            title: pageContent?.metaTitle ?? `${render.hero.h1} | Island Tours`,
+            title:
+                render.pageContent?.metaTitle ??
+                `${render.hero.h1} | Island Tours`,
             description:
-                pageContent?.metaDescription ??
+                render.pageContent?.metaDescription ??
                 render.editorialLead ??
                 undefined,
+            ...(render.ogImage && {
+                openGraph: { images: [{ url: render.ogImage }] },
+            }),
             alternates,
         };
     }

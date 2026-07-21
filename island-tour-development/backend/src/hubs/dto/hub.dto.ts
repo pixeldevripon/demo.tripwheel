@@ -137,6 +137,17 @@ export class HubPageContentResponseDto {
   @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
 }
 
+/**
+ * Page content as it appears inside the render payload: already resolved to the
+ * requested locale with English fallback, so there is no `locale` field to
+ * report - each value may have come from a different row than its neighbours.
+ */
+export class HubRenderPageContentDto {
+  @ApiPropertyOptional({ nullable: true }) aboutText!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaTitle!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
+}
+
 export class FaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
@@ -374,6 +385,14 @@ export class HubRenderResponseDto {
   @ApiPropertyOptional({ enum: HubType, nullable: true })
   hubType!: HubType | null;
   @ApiPropertyOptional({ nullable: true }) breadcrumbLabel!: string | null;
+  @ApiPropertyOptional({ nullable: true }) description!: string | null;
+  @ApiPropertyOptional({ nullable: true }) ogImage!: string | null;
+  @ApiProperty({
+    type: HubRenderPageContentDto,
+    description:
+      'Authored About + SEO copy, locale with English fallback. Folded in here so the page needs one request, not a second call to /hubs/:id/page-content.',
+  })
+  pageContent!: HubRenderPageContentDto;
   @ApiProperty({ type: HubRenderHeroDto }) hero!: HubRenderHeroDto;
   @ApiPropertyOptional({
     nullable: true,

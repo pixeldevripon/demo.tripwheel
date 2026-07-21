@@ -297,7 +297,7 @@
 - [~] **Only `StaticFxProvider` is implemented and it is bound in every environment.** It derives USD⇄EUR from `FX_USD_TO_EUR` (default 0.92) with no network call; its own docblock says "never ship this static rate to production". The consequence is that production does not genuinely fail closed on cross-currency — it silently leans on a hardcoded constant, so every converted price and every EUR commission is computed off a stale invented rate
 - [ ] Implement a real `FxProvider` (Stripe FX Quotes recommended, so the displayed converted amount and the charged PaymentIntent share one locked quote) and rebind `FX_PROVIDER` in `FxModule` — one class plus one line, the seam is ready
 - [ ] Make `FX_PROVIDER` / `FX_PROVIDER_API_KEY` actually select the provider (both are documented but consumed by nothing; the binding is hardcoded)
-- [ ] Wire locale→display-currency defaults (EN/ZH → USD, others → EUR)
+- [x] Wire locale→display-currency defaults (EN/ZH → USD, others → EUR) — `LOCALE_CURRENCY` had `en: 'EUR'`; corrected 2026-07-21 in both the frontend and dashboard copies
 
 ### Settlement & payouts
 
@@ -913,9 +913,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Currency-aware backend fetches (tour repriced in the shopper currency at checkout)
 - [x] Exact-decimal money rendering sitewide
 - [x] Live widget resync on currency change
-- [~] Currency scope is **EUR/USD only**; `LOCALE_CURRENCY` maps zh→USD and every other locale→EUR, which contradicts the locked map (EN + ZH → USD; NL/DE/FR/ES/PT → EUR) `(docs claim: MULTILINGUAL A2.2)`
+- [x] Currency scope is **EUR/USD only**; `LOCALE_CURRENCY` now matches the locked map (EN + ZH → USD; NL/DE/FR/ES/PT → EUR) `(docs claim: MULTILINGUAL A2.2)` — it had mapped `en→EUR`, fixed 2026-07-21 in the frontend and dashboard copies
 - [ ] Locale-aware money formatting (`$1,234.56` vs `€1.234,56`) verified per locale
-- [ ] IP-based currency localization (explicitly roadmap, not built)
+- [x] IP-based currency localization (was roadmap; brought forward 2026-07-21) — geo picks the OPENING currency only, by writing the `NEXT_CURRENCY` cookie: `proxy.ts` from the edge country header on the locale redirect, `CurrencyAutoDetect` from the browser time zone for deep landings. `getServerCurrency` still reads only the cookie, so prices keep one resolution path; a stored choice is never overwritten
 
 ## Multilingual (7 locales)
 

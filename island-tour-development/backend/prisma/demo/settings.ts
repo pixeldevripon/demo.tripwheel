@@ -2,7 +2,7 @@
 // lead-webhook points, payment-config placeholders (no real secrets), and a few
 // media-gallery rows. All keyed by the fixed 'default' id where applicable.
 
-import { Prisma, Role } from '@prisma/client';
+import { InstagramMediaType, Prisma, Role } from '@prisma/client';
 import { DEMO_WEBHOOK_HOST, log, photo, prisma, section } from './_shared';
 
 export async function seedSettings(): Promise<void> {
@@ -190,21 +190,27 @@ export async function seedSettings(): Promise<void> {
     },
   });
 
+  // The last tile carries a video, so the demo grid exercises the reel path
+  // (poster painted first, muted loop over it) and not just stills.
+  const DEMO_REEL =
+    'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4';
+
   const igTiles: [
     slot: string,
     photoName: Parameters<typeof photo>[0],
     caption: string,
+    videoUrl?: string,
   ][] = [
     ['01', 'willemstad', 'Sunrise over the Handelskade, Willemstad'],
     ['02', 'catamaranDeck', 'Deck days on the west-coast catamaran run'],
     ['03', 'turtleReef', 'Playa Piskado regulars #turtles'],
     ['04', 'jeepTrail', 'Dust, cactus and coastline on the buggy trail'],
     ['05', 'beachChairs', 'Slow afternoon at Cas Abao'],
-    ['06', 'sunsetSea', 'Last light off the south shore'],
+    ['06', 'sunsetSea', 'Last light off the south shore', DEMO_REEL],
   ];
 
   let igCount = 0;
-  for (const [slot, photoName, caption] of igTiles) {
+  for (const [slot, photoName, caption, videoUrl] of igTiles) {
     const imagePublicId = `demo/ig-${slot}`;
     const existing = await prisma.instagramPost.findFirst({
       where: { imagePublicId },
@@ -214,6 +220,10 @@ export async function seedSettings(): Promise<void> {
     await prisma.instagramPost.create({
       data: {
         imageUrl: photo(photoName, 768, 674), // the grid tile is 384x337 at 2x
+        ...(videoUrl && {
+          videoUrl,
+          mediaType: InstagramMediaType.VIDEO,
+        }),
         imagePublicId,
         // No permalink: demo tiles fall back to the profile link, which is the
         // same path a real tile takes when an admin leaves the field empty.

@@ -1,4 +1,5 @@
 import { CheckoutProcessing } from '@/components/frontend/checkout/checkout-processing';
+import { ThankYouSummarySkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { isLocale } from '@/lib/constants/locales';
 import { getActiveDestinations } from '@/lib/api/public';
 import { getDestinationTours } from '@/lib/api/public/tours';
@@ -100,20 +101,31 @@ export default async function ProcessingPage({
     const dict = await getDictionary(locale);
 
     return (
-        <section className='it-section bg-white'>
-            <Suspense
-                fallback={
-                    <div className='flex min-h-[60vh] items-center justify-center'>
-                        <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
-                    </div>
-                }>
-                <ProcessingBody
-                    locale={locale}
-                    destination={destination}
-                    searchParams={searchParams}
-                    dict={dict.checkout}
-                />
-            </Suspense>
-        </section>
+        <>
+            <section className='it-section bg-it-white'>
+                <Suspense
+                    fallback={
+                        // Same height as the resolved poller block, so the ref
+                        // streaming in doesn't nudge the summary band below.
+                        <div className='flex min-h-[136px] items-center justify-center'>
+                            <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
+                        </div>
+                    }>
+                    <ProcessingBody
+                        locale={locale}
+                        destination={destination}
+                        searchParams={searchParams}
+                        dict={dict.checkout}
+                    />
+                </Suspense>
+            </section>
+            {/* The summary the TYP is about to render, held as a shimmer while
+                we poll - so the wait shows the shape of what's coming instead of
+                empty white. It is the TYP skeleton's own band, byte for byte, and
+                the TYP shows that band again as its Suspense fallback: across the
+                redirect the strip simply stays put while the block above it swaps
+                from spinner to hero, then fills with the real booking. */}
+            <ThankYouSummarySkeleton />
+        </>
     );
 }

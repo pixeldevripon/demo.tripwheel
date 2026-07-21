@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  InstagramLayout,
   InstagramMediaType,
   InstagramSource,
   type Prisma,
@@ -23,8 +24,18 @@ import {
 
 const ACCOUNT_ID = 'default';
 
-/** The Figma grid is 2 x 3. Anything past this is a curation mistake. */
-const DEFAULT_PUBLIC_LIMIT = 6;
+/**
+ * How many tiles each layout asks for when the caller does not say. The curated
+ * band is a 2 x 3 Figma grid. The gallery is five columns on desktop and three
+ * on phones, so 15 is the smallest count that fills the last row at BOTH widths
+ * (3 rows of 5, 5 rows of 3) - and a ragged final row reads as a half-loaded
+ * page in a layout whose job is to look like a solid wall. Keep this in step
+ * with the column counts in `instagram-gallery.tsx`.
+ */
+const DEFAULT_LIMIT_BY_LAYOUT: Record<InstagramLayout, number> = {
+  [InstagramLayout.GRID]: 6,
+  [InstagramLayout.GALLERY]: 15,
+};
 
 /** Caption-derived alt text past this reads as noise in a screen reader. */
 const MAX_DERIVED_ALT = 120;
@@ -36,13 +47,14 @@ const POST_SELECT = {
   permalink: true,
   imageUrl: true,
   imagePublicId: true,
-  thumbnailUrl: true,
+  videoUrl: true,
   caption: true,
   altText: true,
   width: true,
   height: true,
   displayOrder: true,
   isActive: true,
+  isPinned: true,
   destinationId: true,
   postedAt: true,
   syncedAt: true,
@@ -80,7 +92,7 @@ export class InstagramService {
    */
   async getPublicFeed(
     destinationSlug?: string,
-    limit = DEFAULT_PUBLIC_LIMIT,
+    limit?: number,
   ): Promise<PublicInstagramFeedResponseDto> {
     const [siteInfo, account] = await Promise.all([
       this.prisma.siteInfo.findFirst({
@@ -89,15 +101,16 @@ export class InstagramService {
       }),
       this.prisma.instagramAccount.findUnique({
         where: { id: ACCOUNT_ID },
-        select: { username: true, profileUrl: true },
+        select: { username: true, profileUrl: true, layout: true },
       }),
     ]);
 
     const username = account?.username?.trim() || null;
     const profileUrl = resolveProfileUrl(account?.profileUrl, username);
+    const layout = account?.layout ?? InstagramLayout.GRID;
 
     if (!siteInfo?.enableInstagram) {
-      return { enabled: false, username, profileUrl, posts: [] };
+      return { enabled: false, username, profileUrl, layout, posts: [] };
     }
 
     // An inactive destination must not widen the feed: fall back to brand-wide
@@ -121,9 +134,10 @@ export class InstagramService {
         mediaType: true,
         permalink: true,
         imageUrl: true,
-        thumbnailUrl: true,
+        videoUrl: true,
         caption: true,
         altText: true,
+        isPinned: true,
         width: true,
         height: true,
       },
@@ -135,16 +149,21 @@ export class InstagramService {
         { postedAt: { sort: 'desc', nulls: 'last' } },
         { id: 'asc' },
       ],
-      take: limit,
+      // The layout decides how many tiles read as complete when the caller
+      // does not ask for a count.
+      take: limit ?? DEFAULT_LIMIT_BY_LAYOUT[layout],
     });
 
     const posts: PublicInstagramPostDto[] = rows.map((row) => ({
       id: row.id,
-      // A video tile shows its poster; nothing autoplays in the grid.
-      imageUrl: row.thumbnailUrl || row.imageUrl,
+      // Always the still. On a video tile it is the poster the grid paints
+      // first (and all a reduced-motion visitor ever sees).
+      imageUrl: row.imageUrl,
+      videoUrl: row.videoUrl,
       href: row.permalink?.trim() || profileUrl || INSTAGRAM_HOME,
       alt: resolveAlt(row.altText, row.caption),
       mediaType: row.mediaType,
+      isPinned: row.isPinned,
       width: row.width,
       height: row.height,
     }));
@@ -153,6 +172,7 @@ export class InstagramService {
       enabled: posts.length > 0,
       username,
       profileUrl,
+      layout,
       posts,
     };
   }
@@ -162,7 +182,7 @@ export class InstagramService {
   async getAccount(): Promise<InstagramAccountResponseDto> {
     const account = await this.prisma.instagramAccount.findUnique({
       where: { id: ACCOUNT_ID },
-      select: { id: true, username: true, profileUrl: true },
+      select: { id: true, username: true, profileUrl: true, layout: true },
     });
 
     // Read-only endpoint: never upsert on GET, just describe the empty state.
@@ -170,6 +190,7 @@ export class InstagramService {
       id: ACCOUNT_ID,
       username: account?.username || null,
       profileUrl: account?.profileUrl || null,
+      layout: account?.layout ?? InstagramLayout.GRID,
     };
   }
 
@@ -184,13 +205,14 @@ export class InstagramService {
       ...(dto.profileUrl !== undefined && {
         profileUrl: dto.profileUrl.trim(),
       }),
+      ...(dto.layout !== undefined && { layout: dto.layout }),
     };
 
     const account = await this.prisma.instagramAccount.upsert({
       where: { id: ACCOUNT_ID },
       update: data,
       create: { id: ACCOUNT_ID, ...data },
-      select: { id: true, username: true, profileUrl: true },
+      select: { id: true, username: true, profileUrl: true, layout: true },
     });
 
     this.logger.log(`Admin ${adminId} updated the Instagram account settings`);
@@ -198,6 +220,7 @@ export class InstagramService {
       id: account.id,
       username: account.username || null,
       profileUrl: account.profileUrl || null,
+      layout: account.layout,
     };
   }
 
@@ -230,11 +253,14 @@ export class InstagramService {
       orderBy: { displayOrder: 'desc' },
     });
 
+    const videoUrl = dto.videoUrl?.trim() || null;
+
     const row = await this.prisma.instagramPost.create({
       data: {
         source: InstagramSource.MANUAL,
-        mediaType: dto.mediaType ?? InstagramMediaType.IMAGE,
+        mediaType: resolveMediaType(videoUrl, dto.mediaType),
         imageUrl: dto.imageUrl.trim(),
+        videoUrl,
         imagePublicId: dto.imagePublicId?.trim() || null,
         permalink: dto.permalink?.trim() || '',
         caption: dto.caption?.trim() || null,
@@ -243,6 +269,7 @@ export class InstagramService {
         height: dto.height ?? null,
         destinationId: dto.destinationId ?? null,
         isActive: dto.isActive ?? true,
+        isPinned: dto.isPinned ?? false,
         displayOrder: (last?.displayOrder ?? -1) + 1,
       },
       select: POST_SELECT,
@@ -269,9 +296,9 @@ export class InstagramService {
       const ownedBySync: (keyof UpdateInstagramPostDto)[] = [
         'imageUrl',
         'imagePublicId',
+        'videoUrl',
         'permalink',
         'caption',
-        'mediaType',
         'width',
         'height',
       ];
@@ -283,6 +310,21 @@ export class InstagramService {
       }
     }
 
+    // Attaching or clearing the video flips what kind of tile this is, so
+    // mediaType is recomputed here rather than trusted from the client. Left
+    // alone when neither the video nor the badge is part of the patch (a
+    // visibility toggle must not retype the tile), and never touched on a
+    // synced row.
+    const videoUrl =
+      dto.videoUrl === undefined ? undefined : dto.videoUrl?.trim() || null;
+    const mediaType =
+      videoUrl === undefined && dto.mediaType === undefined
+        ? undefined
+        : resolveMediaType(
+            videoUrl === undefined ? existing.videoUrl : videoUrl,
+            dto.mediaType,
+          );
+
     const row = await this.prisma.instagramPost.update({
       where: { id },
       data: {
@@ -290,6 +332,8 @@ export class InstagramService {
         ...(dto.imagePublicId !== undefined && {
           imagePublicId: dto.imagePublicId.trim() || null,
         }),
+        ...(videoUrl !== undefined && { videoUrl }),
+        ...(mediaType !== undefined && { mediaType }),
         ...(dto.permalink !== undefined && {
           permalink: dto.permalink.trim(),
         }),
@@ -299,13 +343,13 @@ export class InstagramService {
         ...(dto.altText !== undefined && {
           altText: dto.altText.trim() || null,
         }),
-        ...(dto.mediaType !== undefined && { mediaType: dto.mediaType }),
         ...(dto.width !== undefined && { width: dto.width }),
         ...(dto.height !== undefined && { height: dto.height }),
         ...(dto.destinationId !== undefined && {
           destinationId: dto.destinationId,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.isPinned !== undefined && { isPinned: dto.isPinned }),
       },
       select: POST_SELECT,
     });
@@ -384,6 +428,24 @@ export class InstagramService {
 
 const INSTAGRAM_HOME = 'https://www.instagram.com/';
 
+/**
+ * The corner badge's meaning, resolved rather than trusted.
+ *
+ * VIDEO is owned by the video itself: a tile with a reel is a reel, and a tile
+ * without one cannot claim to be, however the client asks. What IS the admin's
+ * to say is whether a still tile links to a single photo or to a carousel -
+ * that fact lives in the linked post, which we cannot see from here.
+ */
+function resolveMediaType(
+  videoUrl: string | null,
+  requested?: InstagramMediaType,
+): InstagramMediaType {
+  if (videoUrl) return InstagramMediaType.VIDEO;
+  return requested === InstagramMediaType.CAROUSEL_ALBUM
+    ? InstagramMediaType.CAROUSEL_ALBUM
+    : InstagramMediaType.IMAGE;
+}
+
 function toPostResponse(row: PostRow): InstagramPostResponseDto {
   return {
     id: row.id,
@@ -391,13 +453,14 @@ function toPostResponse(row: PostRow): InstagramPostResponseDto {
     mediaType: row.mediaType,
     permalink: row.permalink || null,
     imageUrl: row.imageUrl,
-    thumbnailUrl: row.thumbnailUrl,
+    videoUrl: row.videoUrl,
     caption: row.caption,
     altText: row.altText,
     width: row.width,
     height: row.height,
     displayOrder: row.displayOrder,
     isActive: row.isActive,
+    isPinned: row.isPinned,
     destinationId: row.destinationId,
     destinationName: row.destination?.name ?? null,
     postedAt: row.postedAt,
