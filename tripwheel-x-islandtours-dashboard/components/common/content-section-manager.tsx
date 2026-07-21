@@ -59,11 +59,9 @@ const CONSOLE_TYPE_BY_BASE: Record<string, string> = {
 
 // Backend enforces heading >= 3 (<= 120) and body >= 10 characters.
 //
-// `anchor` is deliberately NOT editable here (user, 2026-07-21). The column and
-// the API still carry it, and the three seeded sections keep the jump targets
-// that make the public band's in-page links work; it is just not something an
-// admin has to think about when writing copy. A section added here has no
-// anchor and renders as plain copy.
+// There is no anchor/link control: these blocks are three columns of copy, not
+// in-page navigation (user, 2026-07-21 - the column was dropped from the schema
+// entirely rather than left as a field nothing reads).
 const sectionContentSchema = z.object({
   heading: z
     .string()
