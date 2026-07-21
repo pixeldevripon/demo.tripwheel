@@ -12,6 +12,7 @@
 
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { PageContentSectionService } from '@/common/page-content-sections/page-content-section.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -53,6 +54,9 @@ function createMockPrismaService() {
     destinationPageContent: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
+    },
+    pageContentSection: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     faq: {
       findMany: jest.fn(),
@@ -138,6 +142,16 @@ describe('DestinationService', () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: FaqGroupService,
+          useValue: {
+            getGroups: jest.fn(),
+            createGroup: jest.fn(),
+            updateGroup: jest.fn(),
+            deleteGroup: jest.fn(),
+            upsertTranslation: jest.fn(),
+          },
+        },
+        {
+          provide: PageContentSectionService,
           useValue: {
             getGroups: jest.fn(),
             createGroup: jest.fn(),
@@ -954,7 +968,7 @@ describe('DestinationService', () => {
 
       const result = await service.getPageContent('dest-1', Locale.en);
 
-      expect(result).toEqual(content);
+      expect(result).toEqual({ ...content, sections: [] });
     });
 
     it('returns null-filled placeholder when no content row exists for that locale', async () => {
@@ -969,7 +983,76 @@ describe('DestinationService', () => {
         aboutText: null,
         metaTitle: null,
         metaDescription: null,
+        sections: [],
       });
+    });
+
+    it('collapses authored sections to the requested locale, per section', async () => {
+      const dest = makeDestination();
+      prisma.destination.findUnique.mockResolvedValue(dest);
+      prisma.destinationPageContent.findUnique.mockResolvedValue(null);
+      // Section A is translated to NL; section B is English-only. Both must come
+      // back - falling back as a set would drop A's translation or B entirely.
+      prisma.pageContentSection.findMany.mockResolvedValue([
+        {
+          sectionGroupId: 'grp-a',
+          locale: Locale.en,
+          sectionKey: 'top-things',
+          heading: 'Top things to do',
+          body: 'EN body A',
+          displayOrder: 0,
+        },
+        {
+          sectionGroupId: 'grp-a',
+          locale: Locale.nl,
+          sectionKey: 'top-things',
+          heading: 'Top dingen om te doen',
+          body: 'NL body A',
+          displayOrder: 0,
+        },
+        {
+          sectionGroupId: 'grp-b',
+          locale: Locale.en,
+          sectionKey: 'planning',
+          heading: 'Planning your trip',
+          body: 'EN body B',
+          displayOrder: 1,
+        },
+      ]);
+
+      const result = await service.getPageContent('dest-1', Locale.nl);
+
+      expect(result.sections).toEqual([
+        {
+          sectionKey: 'top-things',
+          heading: 'Top dingen om te doen',
+          body: 'NL body A',
+        },
+        {
+          sectionKey: 'planning',
+          heading: 'Planning your trip',
+          body: 'EN body B',
+        },
+      ]);
+    });
+
+    it('only reads active sections in the requested locale plus English', async () => {
+      const dest = makeDestination();
+      prisma.destination.findUnique.mockResolvedValue(dest);
+      prisma.destinationPageContent.findUnique.mockResolvedValue(null);
+
+      await service.getPageContent('dest-1', Locale.nl);
+
+      expect(prisma.pageContentSection.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            pageType: FAQ_PAGE_TYPE.DESTINATION,
+            entityId: 'dest-1',
+            isActive: true,
+            locale: { in: [Locale.nl, Locale.en] },
+          }),
+        }),
+      );
     });
   });
 

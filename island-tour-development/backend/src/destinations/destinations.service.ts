@@ -3,6 +3,7 @@ import { Locale } from '@/common/constants/locales';
 import {
   applyTranslation,
   faqSelect,
+  resolveGroupedLocale,
   translationSelect,
 } from '@/common/utils/translation.util';
 import { generateSlug, RESERVED_GLOBAL_SLUGS } from '@/common/utils/slug.util';
@@ -17,6 +18,15 @@ import {
   UpdateFaqGroupDto,
   UpsertFaqTranslationDto,
 } from '@/common/faq/dto/faq-group.dto';
+import {
+  PageContentSectionService,
+  pageContentSectionSelect,
+} from '@/common/page-content-sections/page-content-section.service';
+import {
+  CreatePageContentSectionDto,
+  UpdatePageContentSectionDto,
+  UpsertPageContentSectionTranslationDto,
+} from '@/common/page-content-sections/dto/page-content-section.dto';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -45,6 +55,7 @@ export class DestinationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
+    private readonly contentSections: PageContentSectionService,
   ) {}
 
   private readonly destinationSelect = {
@@ -480,18 +491,52 @@ export class DestinationService {
   async getPageContent(id: string, locale: Locale) {
     await this.findDestinationOrThrow(id);
 
-    const row = await this.prisma.destinationPageContent.findUnique({
-      where: { destinationId_locale: { destinationId: id, locale } },
-      select: {
-        locale: true,
-        aboutText: true,
-        metaTitle: true,
-        metaDescription: true,
+    // The authored sections render inside the same About band as `aboutText`, so
+    // they ride along on this one read rather than adding a second public
+    // endpoint (and a second cache tag) for the same strip of the page.
+    const [row, sections] = await Promise.all([
+      this.prisma.destinationPageContent.findUnique({
+        where: { destinationId_locale: { destinationId: id, locale } },
+        select: {
+          locale: true,
+          aboutText: true,
+          metaTitle: true,
+          metaDescription: true,
+        },
+      }),
+      this.getPublicContentSections(id, locale),
+    ]);
+
+    return {
+      ...(row ?? {
+        locale,
+        aboutText: null,
+        metaTitle: null,
+        metaDescription: null,
+      }),
+      sections,
+    };
+  }
+
+  /**
+   * Active authored sections for the public page, collapsed to one row per
+   * section with per-section English fallback. Reading `locale` alone would blank
+   * the whole band on any island not yet translated - in six of seven locales.
+   */
+  private async getPublicContentSections(id: string, locale: Locale) {
+    const rows = await this.prisma.pageContentSection.findMany({
+      where: {
+        pageType: FAQ_PAGE_TYPE.DESTINATION,
+        entityId: id,
+        isActive: true,
+        locale: { in: [locale, Locale.en] },
       },
+      select: pageContentSectionSelect,
+      orderBy: [{ displayOrder: 'asc' }],
     });
 
-    return (
-      row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
+    return resolveGroupedLocale(rows, locale, (r) => r.sectionGroupId).map(
+      ({ sectionKey, heading, body }) => ({ sectionKey, heading, body }),
     );
   }
 
@@ -680,5 +725,76 @@ export class DestinationService {
       `Admin ${adminId} deleted FAQ ${groupId} for destination ${id}`,
     );
     return this.faqGroups.deleteGroup(FAQ_PAGE_TYPE.DESTINATION, id, groupId);
+  }
+
+  // ── Page content sections (authored About-band blocks) ───────────────────────
+  // Same shape as the grouped-FAQ wrappers above: verify the destination exists
+  // so 404s are accurate, then delegate to the shared service.
+
+  async getContentSections(id: string) {
+    await this.findDestinationOrThrow(id);
+    return this.contentSections.getGroups(FAQ_PAGE_TYPE.DESTINATION, id);
+  }
+
+  async createContentSection(
+    id: string,
+    dto: CreatePageContentSectionDto,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} created content section for destination ${id}`,
+    );
+    return this.contentSections.createGroup(FAQ_PAGE_TYPE.DESTINATION, id, dto);
+  }
+
+  async upsertContentSectionTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertPageContentSectionTranslationDto,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} upserted content section ${groupId} [${locale}] for destination ${id}`,
+    );
+    return this.contentSections.upsertTranslation(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      locale,
+      dto,
+    );
+  }
+
+  async updateContentSection(
+    id: string,
+    groupId: string,
+    dto: UpdatePageContentSectionDto,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} updated content section ${groupId} for destination ${id}`,
+    );
+    return this.contentSections.updateGroup(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      dto,
+    );
+  }
+
+  async deleteContentSection(id: string, groupId: string, adminId: string) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} deleted content section ${groupId} for destination ${id}`,
+    );
+    return this.contentSections.deleteGroup(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+    );
   }
 }

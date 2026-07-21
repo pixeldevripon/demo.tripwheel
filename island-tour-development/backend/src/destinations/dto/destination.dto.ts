@@ -215,6 +215,30 @@ export class UpsertDestinationPageContentDto {
   metaDescription?: string;
 }
 
+/**
+ * One authored About-band section as the public page receives it. Declared before
+ * DestinationPageContentResponseDto because that class references it inside an
+ * @ApiProperty decorator, which is evaluated at class-definition time.
+ */
+export class PublicPageContentSectionDto {
+  @ApiProperty({
+    example: 'top-things',
+    nullable: true,
+    description:
+      'Stable editorial slug on seeded sections; null on admin-created ones.',
+  })
+  sectionKey!: string | null;
+
+  @ApiProperty({ example: 'Top things to do' })
+  heading!: string;
+
+  @ApiProperty({
+    example:
+      'Sail to Klein Curacao at sunrise, drift over the reef at Playa Piskado, then walk the Willemstad quays after dark.',
+  })
+  body!: string;
+}
+
 export class DestinationPageContentResponseDto {
   @ApiProperty({ enum: Locale, example: Locale.nl })
   locale!: Locale;
@@ -237,6 +261,13 @@ export class DestinationPageContentResponseDto {
     nullable: true,
   })
   metaDescription!: string | null;
+
+  @ApiProperty({
+    type: [PublicPageContentSectionDto],
+    description:
+      'Active authored sections for the About band, already collapsed to the requested locale (English per section where a translation is missing) and ordered by displayOrder. Empty when the island has none - the frontend then falls back to its bundled dictionary labels.',
+  })
+  sections!: PublicPageContentSectionDto[];
 }
 
 // ── FAQ DTOs ──────────────────────────────────────────────────────────────────

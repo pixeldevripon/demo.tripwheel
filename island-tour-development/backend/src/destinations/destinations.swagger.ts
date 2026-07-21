@@ -22,6 +22,7 @@ import {
   PaginatedLocalizedDestinationsResponseDto,
 } from './dto/destination.dto';
 import { FaqGroupResponseDto } from '@/common/faq/dto/faq-group.dto';
+import { PageContentSectionResponseDto } from '@/common/page-content-sections/dto/page-content-section.dto';
 
 // ── Shared error sets ─────────────────────────────────────────────────────────
 
@@ -406,6 +407,81 @@ export function ApiUpsertFaqTranslationDocs() {
     ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
     ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
     ApiResponse({ status: 200, type: DestinationFaqResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+// ── Page content sections ─────────────────────────────────────────────────────
+
+export function ApiGetContentSectionsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Get authored page content sections for a destination (Admin/Editor)',
+      description:
+        'Returns each logical section once, with its per-locale translations nested. Same "add in English, then translate" shape as the grouped FAQ editor. The public page reads these through GET /destinations/:id/page-content.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 200, type: [PageContentSectionResponseDto] }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiCreateContentSectionDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Create a page content section (English base) for a destination (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 201, type: PageContentSectionResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateContentSectionDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Update a page content section group (order / active) (Admin/Editor)',
+      description:
+        'Group-level attributes only - they are applied to every locale row at once. Per-locale heading/body go through the translations endpoint.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'Section group UUID' }),
+    ApiResponse({ status: 200, type: PageContentSectionResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiDeleteContentSectionDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Delete a page content section and every locale row in it (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'Section group UUID' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertContentSectionTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Create or replace one locale of a page content section (Admin/Editor)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiParam({ name: 'groupId', description: 'Section group UUID' }),
+    ApiParam({ name: 'locale', enum: Locale }),
+    ApiResponse({ status: 200, type: PageContentSectionResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

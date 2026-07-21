@@ -77,7 +77,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 | 3 | `StaticFxProvider` is bound in every environment, so production never truly fails closed | Part II |
 | 4 | Nightly jobs run on in-process `@nestjs/schedule` — will double-run under a second replica | Part II |
 | 5 | No `sitemap.ts`, `robots.ts`, or JSON-LD; hreflang/canonical only on the tour-detail route | Part III |
-| 6 | Homepage CMS is built backend + dashboard, but loaders have zero callers — public copy is still static | Part III |
+| 6 | ~~Homepage CMS loaders have zero callers~~ **STALE, fixed** — `app/(frontend)/[locale]/page.tsx` calls `getHomePageContent` (verified 2026-07-21) | Part III |
 | 7 | `operator_full` specced as live in 5 docs, dropped from v1 by the 2026-07-15 locked decision | Part V |
 | 8 | Category gating built at ≥1 published tour; canonical rule is ≥3 | Part II / V |
 | 9 | Dashboard e2e suite ships ~80 checked-in failing directories — do not read as green | Part IV |

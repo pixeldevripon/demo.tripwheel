@@ -550,9 +550,11 @@ enum FilterDisplayType {
   DROPDOWN
 }
 
-// Which entity page a FAQ belongs to (polymorphic discriminator on the shared Faq
-// table). Members are lowercase to match the existing stored values and the
-// FAQ_PAGE_TYPE constant.
+// Which entity page a polymorphic content row belongs to. Despite the name it is
+// now the discriminator on TWO tables: `Faq` (faq.prisma) and `PageContentSection`
+// (page-content-sections.prisma) - the members are the same set of page types, so
+// a second identical enum would only be able to drift from this one. Members are
+// lowercase to match the existing stored values and the FAQ_PAGE_TYPE constant.
 enum FaqPageType {
   category
   hub

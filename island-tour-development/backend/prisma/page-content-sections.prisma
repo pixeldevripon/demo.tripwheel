@@ -1,0 +1,40 @@
+// Page content sections - admin-authored heading + body blocks on an entity page.
+//
+// Polymorphic on (pageType, entityId), the same shape as `Faq` (faq.prisma). It
+// deliberately does NOT copy `HubContentSection` (destinations.prisma): that model
+// has no key linking a section's per-locale rows, which is why hub editorial has to
+// fall back all-or-nothing (`resolveLocaleSet`) instead of per section. With a group
+// key, a page with two of its three sections translated still renders all three.
+//
+// The first consumer is the destination About band, whose three items are currently
+// hardcoded links reading one-line labels out of the bundled dictionary.
+model PageContentSection {
+  id       String      @id @default(uuid())
+  pageType FaqPageType // shared discriminator - see the enum's note in enums.prisma
+  entityId String // UUID of the owning entity
+
+  // Links the per-locale rows of ONE logical section; the English row is the base
+  // and carries the group-level attributes (displayOrder, isActive, sectionKey).
+  // Generated on create, so the dashboard never has to invent one.
+  // NOT nullable, unlike Faq.faqGroupId - there are no legacy rows to protect here,
+  // so per-group locale fallback works from the first row written.
+  sectionGroupId String
+  locale         Locale
+
+  // Stable editorial slug, identical on every row of a group. Its ONLY job is to
+  // let the seed find and re-upsert its own rows, and to let the frontend map a
+  // seeded section back to the bundled dictionary label it replaced. NULL for
+  // admin-created sections, which need neither.
+  sectionKey String?
+
+  heading String
+  body    String
+
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  // One row per locale within a group.
+  @@unique([pageType, entityId, sectionGroupId, locale])
+  @@index([pageType, entityId, locale, displayOrder])
+  @@map("page_content_sections")
+}

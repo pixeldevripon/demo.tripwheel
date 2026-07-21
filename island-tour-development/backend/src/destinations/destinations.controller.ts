@@ -32,6 +32,11 @@ import {
   ApiGetDestinationByIdDocs,
   ApiGetDestinationBySlugDocs,
   ApiGetFaqsDocs,
+  ApiGetContentSectionsDocs,
+  ApiCreateContentSectionDocs,
+  ApiUpdateContentSectionDocs,
+  ApiDeleteContentSectionDocs,
+  ApiUpsertContentSectionTranslationDocs,
   ApiGetFaqGroupsDocs,
   ApiGetPageContentDocs,
   ApiGetTranslationsByLocaleDocs,
@@ -47,6 +52,11 @@ import {
   UpdateFaqGroupDto,
   UpsertFaqTranslationDto,
 } from '@/common/faq/dto/faq-group.dto';
+import {
+  CreatePageContentSectionDto,
+  UpdatePageContentSectionDto,
+  UpsertPageContentSectionTranslationDto,
+} from '@/common/page-content-sections/dto/page-content-section.dto';
 import {
   CreateDestinationDto,
   CreateDestinationFaqDto,
@@ -211,6 +221,75 @@ export class DestinationController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.destinationService.upsertPageContent(id, locale, dto, user.id);
+  }
+
+  // ── Page content sections (admin only) ────────────────────────────────────────
+  // The public page reads these nested in GET :id/page-content, so there is no
+  // @Public() route here.
+
+  @Get(':id/content-sections')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiGetContentSectionsDocs()
+  getContentSections(@Param('id') id: string) {
+    return this.destinationService.getContentSections(id);
+  }
+
+  @Post(':id/content-sections')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiCreateContentSectionDocs()
+  createContentSection(
+    @Param('id') id: string,
+    @Body() dto: CreatePageContentSectionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.createContentSection(id, dto, user.id);
+  }
+
+  @Patch(':id/content-sections/:groupId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpdateContentSectionDocs()
+  updateContentSection(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdatePageContentSectionDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.updateContentSection(
+      id,
+      groupId,
+      dto,
+      user.id,
+    );
+  }
+
+  @Delete(':id/content-sections/:groupId')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiDeleteContentSectionDocs()
+  deleteContentSection(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.deleteContentSection(id, groupId, user.id);
+  }
+
+  @Put(':id/content-sections/:groupId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiUpsertContentSectionTranslationDocs()
+  upsertContentSectionTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertPageContentSectionTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.upsertContentSectionTranslation(
+      id,
+      groupId,
+      locale,
+      dto,
+      user.id,
+    );
   }
 
   // ── FAQ (public GET, admin write) ─────────────────────────────────────────────

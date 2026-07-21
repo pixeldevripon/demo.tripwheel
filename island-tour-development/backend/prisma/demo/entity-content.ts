@@ -24,6 +24,11 @@ import {
   section,
 } from './_shared';
 import { categoryName, tpl } from './i18n-templates';
+import {
+  DEST_SECTIONS,
+  DEST_SECTIONS_I18N,
+  ISLAND_FACTS,
+} from './dest-sections';
 
 // Destination-page FAQ set (Figma node 47361:19834): trust-focused questions
 // about booking with Island Tours, with the island name woven in.
@@ -321,6 +326,62 @@ async function ensureFaqs(
   return rows.length;
 }
 
+/**
+ * Seed the three About-band sections for one destination, in all 7 locales.
+ *
+ * Same grouping trick as `ensureFaqs`: one sectionGroupId per logical section
+ * links its per-locale rows, and each locale's set is INDEX-ALIGNED with
+ * DEST_SECTIONS so `sectionKey` never has to be threaded through a translation.
+ *
+ * Every locale is authored (DEST_SECTIONS_I18N covers all 7), so unlike the FAQ
+ * seed there is no English-stub fallback here - a missing locale would be a bug,
+ * not an expected gap. Islands absent from ISLAND_FACTS are SKIPPED rather than
+ * seeded with another island's landmarks; the frontend then falls back to its
+ * bundled dictionary labels, which is the correct empty state.
+ */
+async function ensureContentSections(
+  destinationId: string,
+  destinationSlug: string,
+  destinationName: string,
+): Promise<number> {
+  const facts = ISLAND_FACTS[destinationSlug];
+  if (!facts) return 0;
+
+  // Deterministic: replace this destination's section set each run (re-seed safe).
+  await prisma.pageContentSection.deleteMany({
+    where: { pageType: 'destination', entityId: destinationId },
+  });
+
+  const byLocale = new Map(
+    ALL_LOCALES.map((locale) => [
+      locale,
+      DEST_SECTIONS_I18N[locale](destinationName, facts),
+    ]),
+  );
+
+  const rows: Prisma.PageContentSectionCreateManyInput[] = [];
+  DEST_SECTIONS.forEach((section, idx) => {
+    const sectionGroupId = randomUUID();
+    ALL_LOCALES.forEach((locale) => {
+      const s = byLocale.get(locale)![idx];
+      rows.push({
+        pageType: 'destination',
+        entityId: destinationId,
+        sectionGroupId,
+        sectionKey: section.key,
+        locale,
+        heading: s.heading,
+        body: s.body,
+        displayOrder: idx,
+        isActive: true,
+      });
+    });
+  });
+
+  await prisma.pageContentSection.createMany({ data: rows });
+  return rows.length;
+}
+
 // ── Klein Curaçao: rich, Figma-matching hub content ──────────────────────────
 // Verbatim editorial from the hub design (node 48024:11145). Bound to the demo
 // Klein Curaçao tour blueprints by slug (see prisma/demo/tours.ts). Used only for
@@ -604,6 +665,7 @@ export async function seedEntityContent(): Promise<void> {
   });
   let destTr = 0;
   let destPc = 0;
+  let destSections = 0;
   let faqRows = 0;
   for (const d of destinations) {
     const content = DEST_CONTENT[d.slug];
@@ -679,6 +741,7 @@ export async function seedEntityContent(): Promise<void> {
       undefined,
       (locale) => tpl(locale)?.destFaqs(d.name) ?? [],
     );
+    destSections += await ensureContentSections(d.id, d.slug, d.name);
   }
 
   // ── Categories ──
@@ -1066,6 +1129,6 @@ export async function seedEntityContent(): Promise<void> {
   }
 
   log(
-    `Entity content: ${destTr} dest translations / ${destPc} dest page-content, ${catTr} cat translations / ${catPc} cat page-content, ${hubTr} hub translations, ${hubExtras} hub editorial rows, ${faqRows} FAQ rows.`,
+    `Entity content: ${destTr} dest translations / ${destPc} dest page-content / ${destSections} dest content-section rows, ${catTr} cat translations / ${catPc} cat page-content, ${hubTr} hub translations, ${hubExtras} hub editorial rows, ${faqRows} FAQ rows.`,
   );
 }
