@@ -664,9 +664,31 @@ rewritten from memory, then updated for everything added since.
   hand-added row was English-only, which had quietly cost every other locale a
   question - the script attaches the missing translations to the EXISTING group
   rather than making a rival copy.
+- **The bundled page copy, in all 7 locales.** Same story as the FAQ: the nine
+  copy fields rendered from the dictionaries, so Page Content showed nine empty
+  inputs describing words an admin could not reach. Filled per FIELD, never per
+  record - a locale someone half-filled gets only its holes populated.
 - **A homepage SEO title and description**, written only when empty. Without one
   the front door inherits whatever was last typed into Settings - which on this
   database was a tour title and the word "sdf".
+
+**Nothing a visitor sees changed.** Every seeded value is the text or image the
+site was already rendering, and the dictionaries and bundled files stay exactly
+where they were: clear a field in the dashboard and the fallback takes over
+again, which is the contract the whole feature is built on.
+
+### UI defects found on a live pass (fixed)
+
+- A featured card with no poster previewed the LINKED PAGE's photo, which reads
+  as "this card is done". The slot now asks for the media it is missing and says
+  what the site is doing meanwhile; the whole surface opens the media dialog, as
+  a SIBLING of the control buttons (a button inside a button breaks the inner
+  one).
+- The video picker had hand-rolled a flatter empty state than the image picker,
+  so side by side in a dialog it read as unstyled. `MediaUploadZone` is now
+  shared by both; only the icon and copy differ.
+- A single-image preview rendered inside a 3/4-column grid, so in a narrow
+  container it collapsed to a thumbnail too small to judge a photo by.
 
 ### Verification
 
