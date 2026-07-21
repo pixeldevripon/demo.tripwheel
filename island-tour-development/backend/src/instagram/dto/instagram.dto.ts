@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { InstagramMediaType, InstagramSource } from '@prisma/client';
+import {
+  InstagramLayout,
+  InstagramMediaType,
+  InstagramSource,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -35,6 +39,13 @@ export class InstagramAccountResponseDto {
       'from the username instead.',
   })
   profileUrl!: string | null;
+
+  @ApiProperty({
+    enum: InstagramLayout,
+    example: InstagramLayout.GRID,
+    description: 'Which public layout renders the tiles.',
+  })
+  layout!: InstagramLayout;
 }
 
 /** One curated tile, as the dashboard sees it. */
@@ -59,11 +70,16 @@ export class InstagramPostResponseDto {
 
   @ApiProperty({
     example: 'https://res.cloudinary.com/demo/image/upload/v1/reef.jpg',
+    description: 'On a video tile this is the poster.',
   })
   imageUrl!: string;
 
-  @ApiProperty({ example: null, nullable: true })
-  thumbnailUrl!: string | null;
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description: 'Null on a photo tile.',
+  })
+  videoUrl!: string | null;
 
   @ApiProperty({ example: 'Sunset sail off Willemstad', nullable: true })
   caption!: string | null;
@@ -82,6 +98,12 @@ export class InstagramPostResponseDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Badge only - pinning never reorders the grid.',
+  })
+  isPinned!: boolean;
 
   @ApiProperty({
     example: null,
@@ -108,9 +130,20 @@ export class PublicInstagramPostDto {
   @ApiProperty({
     example: 'https://res.cloudinary.com/demo/image/upload/v1/reef.jpg',
     description:
-      'Always a URL we control. Instagram CDN links expire, so they are never served here.',
+      'Always a URL we control. Instagram CDN links expire, so they are never ' +
+      'served here. Doubles as the poster on a video tile, so the grid always ' +
+      'has something to paint.',
   })
   imageUrl!: string;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'Set on a video/reel tile. The grid plays it muted and looped over the ' +
+      'poster, and falls back to the poster alone under reduced motion.',
+  })
+  videoUrl!: string | null;
 
   @ApiProperty({
     example: 'https://www.instagram.com/p/C8xYzAbCdEf/',
@@ -125,8 +158,17 @@ export class PublicInstagramPostDto {
   })
   alt!: string;
 
-  @ApiProperty({ enum: InstagramMediaType, example: InstagramMediaType.IMAGE })
+  @ApiProperty({
+    enum: InstagramMediaType,
+    example: InstagramMediaType.IMAGE,
+    description:
+      'Drives the corner badge: reel for VIDEO, stacked squares for ' +
+      'CAROUSEL_ALBUM, nothing for a single IMAGE (same as Instagram).',
+  })
   mediaType!: InstagramMediaType;
+
+  @ApiProperty({ example: false, description: 'Renders the pin badge.' })
+  isPinned!: boolean;
 
   @ApiProperty({ example: 1080, nullable: true })
   width!: number | null;
@@ -156,6 +198,13 @@ export class PublicInstagramFeedResponseDto {
   })
   profileUrl!: string | null;
 
+  @ApiProperty({
+    enum: InstagramLayout,
+    example: InstagramLayout.GRID,
+    description: 'Which layout the public site renders these tiles with.',
+  })
+  layout!: InstagramLayout;
+
   @ApiProperty({ type: [PublicInstagramPostDto] })
   posts!: PublicInstagramPostDto[];
 }
@@ -178,8 +227,9 @@ export class PublicInstagramFeedQueryDto {
     example: 6,
     minimum: 1,
     maximum: 24,
-    default: 6,
-    description: 'The Figma grid is 2 x 3; more than 24 is never a real ask.',
+    description:
+      'Omit to let the layout decide: 6 fills the curated 2 x 3 grid, 18 fills ' +
+      'three rows of the Instagram gallery. More than 24 is never a real ask.',
   })
   @IsOptional()
   @Type(() => Number)
@@ -209,22 +259,63 @@ export class UpdateInstagramAccountDto {
   @IsString()
   @MaxLength(300)
   profileUrl?: string;
+
+  @ApiPropertyOptional({
+    enum: InstagramLayout,
+    description:
+      'GRID = the curated band (rounded cards, generous gaps). GALLERY = the ' +
+      'Instagram profile look (4:5 portraits, hairline gaps, corner badges).',
+  })
+  @IsOptional()
+  @IsEnum(InstagramLayout)
+  layout?: InstagramLayout;
 }
 
 export class CreateInstagramPostDto {
   @ApiProperty({
     example: 'https://res.cloudinary.com/demo/image/upload/v1/reef.jpg',
-    description: 'Media-library asset URL. Required - a tile is its photo.',
+    description:
+      'Media-library asset URL. Required even for a video tile, where it is ' +
+      'the poster.',
   })
   @IsString()
   @MaxLength(600)
   imageUrl!: string;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/demo/video/upload/v1/reel.mp4',
+    description:
+      'Media-library video. Present means this is a video tile - mediaType is ' +
+      'derived from it, never sent.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  videoUrl?: string;
 
   @ApiPropertyOptional({ example: 'reef-sunset-01' })
   @IsOptional()
   @IsString()
   @MaxLength(300)
   imagePublicId?: string;
+
+  @ApiPropertyOptional({
+    enum: [InstagramMediaType.IMAGE, InstagramMediaType.CAROUSEL_ALBUM],
+    description:
+      'What the linked post is, for the corner badge. VIDEO is not accepted ' +
+      'here - attaching a video is what makes a tile a reel.',
+  })
+  @IsOptional()
+  @IsEnum(InstagramMediaType)
+  mediaType?: InstagramMediaType;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Shows the pin badge. Never affects ordering.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isPinned?: boolean;
 
   @ApiPropertyOptional({
     example: 'https://www.instagram.com/p/C8xYzAbCdEf/',
@@ -246,11 +337,6 @@ export class CreateInstagramPostDto {
   @IsString()
   @MaxLength(300)
   altText?: string;
-
-  @ApiPropertyOptional({ enum: InstagramMediaType })
-  @IsOptional()
-  @IsEnum(InstagramMediaType)
-  mediaType?: InstagramMediaType;
 
   @ApiPropertyOptional({ example: 1080 })
   @IsOptional()
@@ -287,6 +373,16 @@ export class UpdateInstagramPostDto {
   @MaxLength(600)
   imageUrl?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Empty string clears the video and turns the tile back into a photo. ' +
+      'Omit to leave it as it is.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  videoUrl?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -311,11 +407,6 @@ export class UpdateInstagramPostDto {
   @MaxLength(300)
   altText?: string;
 
-  @ApiPropertyOptional({ enum: InstagramMediaType })
-  @IsOptional()
-  @IsEnum(InstagramMediaType)
-  mediaType?: InstagramMediaType;
-
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
@@ -337,6 +428,20 @@ export class UpdateInstagramPostDto {
   @IsOptional()
   @IsUUID()
   destinationId?: string | null;
+
+  @ApiPropertyOptional({
+    enum: [InstagramMediaType.IMAGE, InstagramMediaType.CAROUSEL_ALBUM],
+    description:
+      'Badge only. VIDEO is rejected - attach or clear a video instead.',
+  })
+  @IsOptional()
+  @IsEnum(InstagramMediaType)
+  mediaType?: InstagramMediaType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPinned?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

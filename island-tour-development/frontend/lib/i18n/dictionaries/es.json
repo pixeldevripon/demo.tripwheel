@@ -159,7 +159,7 @@
       "heading": {
         "title": "Todos los tours y actividades en {destination} en {year}",
         "categoryTitle": "{category} en {destination}",
-        "subtitle": "Desde excursiones de un día a Klein Curaçao hasta aventuras en buggy. Cada tour que ofrecemos en la isla.",
+        "subtitle": "Todas las excursiones que ofrecemos en {destination}, en un solo lugar.",
         "availableCount": "{count} tours",
         "availableLabel": "disponibles"
       },
@@ -263,46 +263,6 @@
       "whyTitle": "Por qué {hub}",
       "firstTimersTitle": "Lo que les contamos a los primerizos sobre {hub}",
       "alsoWorthTitle": "También vale la pena en {destination}",
-      "faq": {
-        "items": [
-          {
-            "q": "¿Merece la pena Klein Curaçao?",
-            "a": "Sí. La mayoría de los visitantes encuentran la excursión de un día muy gratificante, una de las playas de arena blanca más largas y bonitas del Caribe. Un día entero en la arena y en el agua, perfecto para tomar el sol, nadar y hacer snorkel, con un arrecife protegido y tortugas marinas en aguas poco profundas. La isla está completamente sin urbanizar, sin multitudes más allá de los barcos del día. Aún no hemos conocido a nadie que se arrepintiera de ir."
-          },
-          {
-            "q": "¿Qué hay que hacer en Klein Curaçao?",
-            "a": "Nadar y hacer snorkel en el arrecife protegido de la costa sur, tomar el sol en más de un kilómetro de arena blanca, subir al faro rosa de 1877 y recorrer la costa norte junto a tres naufragios. Busca las tortugas carey, boba y verde que anidan aquí. No hay tiendas ni atracciones, la isla en sí es la experiencia."
-          },
-          {
-            "q": "¿Cuánto cuesta una excursión a Klein Curaçao?",
-            "a": "Las excursiones de un día desde unos 120 $ por persona y varían según el barco y lo incluido, desayuno, almuerzo, barra libre y equipo de snorkel se incluyen de forma distinta según el operador. Los chárteres privados se cobran por grupo. El precio de cada anuncio es la tarifa completa por persona."
-          },
-          {
-            "q": "¿Cuánto dura el viaje en barco a Klein Curaçao?",
-            "a": "La travesía dura aproximadamente de 1 a 2 horas por trayecto según el barco, los catamaranes de vela y los yates son más lentos que las lanchas y las semirrígidas. Se navega contra los vientos alisios a la ida y con ellos a la vuelta, por lo que el regreso suele ser más suave y rápido."
-          },
-          {
-            "q": "¿Me marearé de camino a Klein Curaçao?",
-            "a": "A la ida puede haber oleaje frente a los vientos alisios, así que es posible. Siéntate hacia la parte trasera y central del barco, mantén la vista en el horizonte y toma algo antes de zarpar si eres propenso. La mayoría de los estómagos se calman una vez en marcha."
-          },
-          {
-            "q": "¿Qué debo llevar a Klein Curaçao?",
-            "a": "Escarpines, protector solar respetuoso con el arrecife, gorra y gafas de sol, una toalla y algo de efectivo. El sol es intenso y se refleja en la arena y el agua, así que vuelve a aplicarlo a menudo. Apenas hay cobertura móvil, así que descarga lo que necesites antes de ir."
-          },
-          {
-            "q": "¿Hay baños en Klein Curaçao?",
-            "a": "Sí. La mayoría de los barcos tienen baño a bordo, y varios operadores tienen una casa de playa en la isla con baños y duchas. Las instalaciones son básicas, la isla está por lo demás sin urbanizar."
-          },
-          {
-            "q": "¿Es Klein Curaçao adecuado para familias con niños pequeños?",
-            "a": "Sí. La costa sur, tranquila, poco profunda y protegida por el arrecife, es ideal para niños, y los barcos a motor y familiares más estables facilitan la travesía. Lleva escarpines y protección solar, y ten en cuenta que no hay sombra más allá de las palapas y las casas de playa."
-          },
-          {
-            "q": "¿Qué pasa si hace mal tiempo el día de mi excursión?",
-            "a": "Si un operador cancela por el tiempo o la mar gruesa, se te reubica otro día o se te reembolsa por completo. Cada anuncio incluye además una ventana de cancelación gratuita, así que puedes cambiar tus planes sin coste dentro de ese plazo."
-          }
-        ]
-      },
       "titlePattern": "Excursiones de un día a {hub}",
       "tripsHeading": "{count} excursiones de un día a {hub}. Elige la tuya.",
       "tripsSubtitle": "Selecciona una fecha o compara primero abajo",
@@ -334,13 +294,13 @@
       "checkAvailability": "Ver disponibilidad",
       "comparison": {
         "title": "¿Qué excursión es la ideal para ti?",
-        "subtitle": "Los seis barcos van a Klein Curazao. Refrescos y un almuerzo barbacoa incluidos. Esto es lo que cambia una vez que llegas.",
+        "subtitle": "Esto es lo que realmente diferencia estas excursiones, una al lado de la otra.",
         "whatStandsOut": "Lo que destaca",
         "book": "Reservar"
       },
       "discover": {
         "titlePattern": "Descubre {hub}",
-        "subtitle": "Una isla plana y deshabitada de 1,7 km², a 10 km de la costa sureste de Curazao. Sin tiendas, sin señal, solo arena, arrecife e historia.",
+        "subtitle": "Lo que conviene saber antes de ir.",
         "bookTrip": "Reserva tu excursión"
       },
       "frequencyDaily": "Todos los días",
@@ -527,6 +487,7 @@
       }
     },
     "categoryAboutTitle": "Sobre {category} en {destination}",
+    "categorySubtitle": "Cancelación gratuita en todas las excursiones, con confirmación inmediata al reservar.",
     "faqTitle": "Preguntas frecuentes",
     "categoryTrust": {
       "builtByLocals": "Creado por locales que crecieron aquí",
@@ -557,7 +518,7 @@
     },
     "about": {
       "title": "Sobre tours en {destination}",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qu....",
+      "description": "Cada excursión en {destination} que ofrecemos está elegida por personas que viven aquí. Las hacemos nosotros mismos, escribimos cada descripción desde la experiencia y mostramos el precio completo desde el principio, sin cargos sorpresa al pagar. En la mayoría de las excursiones basta un pequeño depósito para reservar tu plaza, y todas se pueden cancelar gratis dentro del plazo indicado en su página. La reserva es inmediata, la confirmación llega al momento y, si algo no queda claro antes de viajar, respondemos por WhatsApp de 08:00 a 20:00.",
       "learnMore": "Aprende más",
       "readLess": "Leer menos",
       "topThings": "Las mejores cosas para hacer",
@@ -601,32 +562,6 @@
         "guarantees": [
           "Cancelación gratuita en la mayoría de los tours, sin formularios",
           "Paga desde solo el 20% hoy y el resto más tarde"
-        ],
-        "items": [
-          {
-            "q": "¿Cuáles son las mejores cosas que hacer en Curaçao?",
-            "a": "Las mejores cosas que hacer en Curaçao incluyen las excursiones de un día a Klein Curaçao, nadar con delfines, los Westcoast Tours, los cruceros al atardecer y los tours en buggy todoterreno. Son las experiencias emblemáticas de la isla - una mezcla de aventuras en el mar y exploración en tierra que abarca todo aquello por lo que Curaçao es conocida."
-          },
-          {
-            "q": "¿Con cuánta antelación debo reservar estos tours?",
-            "a": "Para tours populares como Klein Curaçao y el nado con delfines recomendamos reservar de 3 a 5 días antes, especialmente en temporada alta. Muchos tours aún pueden reservarse para el día siguiente cuando hay plazas disponibles."
-          },
-          {
-            "q": "¿Cuál es la mejor época para visitar Curaçao?",
-            "a": "Curaçao es un destino para todo el año que se encuentra por debajo del cinturón de huracanes, así que los días son cálidos y secos con un viento alisio refrescante. Los meses más tranquilos y con mejor precio son mayo, junio y septiembre."
-          },
-          {
-            "q": "¿Estos tours incluyen recogida en el hotel?",
-            "a": "La mayoría de los tours ofrecen recogida gratuita desde hoteles y alojamientos de toda la isla. Cada página de tour indica si la recogida está incluida y muestra el punto de encuentro cuando no lo está."
-          },
-          {
-            "q": "¿Puedo combinar varios tours en un mismo viaje?",
-            "a": "Por supuesto. Muchos viajeros combinan una excursión de un día en el mar con un tour en tierra. Añade cada tour a tu reserva y te ayudaremos a distribuirlos cómodamente durante tu estancia."
-          },
-          {
-            "q": "¿Cómo elige Island Tours qué tours destacar?",
-            "a": "Clasificamos los tours según las reseñas auténticas de los viajeros, la fiabilidad del operador y lo que nuestro equipo local reservaría por su cuenta. El orden refleja la calidad real, nunca una posición pagada."
-          }
         ]
       }
     }

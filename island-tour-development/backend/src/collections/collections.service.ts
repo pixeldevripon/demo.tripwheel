@@ -16,6 +16,7 @@ import {
 import {
   applyTranslation,
   faqSelect,
+  resolveFaqLocale,
   translationSelect,
 } from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -148,7 +149,13 @@ export class CollectionsService {
         translations: { where: { locale }, select: translationSelect },
       },
     });
-    if (!collection || !collection.isActive)
+    // Public endpoint: draft and deactivated collections must 404 here exactly
+    // as they do in `render`. Admin surfaces read collections by id, not slug.
+    if (
+      !collection ||
+      !collection.isActive ||
+      collection.status !== CollectionStatus.PUBLISHED
+    )
       throw new NotFoundException(`Collection "${slug}" not found`);
 
     const { translations, ...c } = collection;
@@ -1095,8 +1102,8 @@ export class CollectionsService {
       select: {
         ...this.collectionSelect,
         translations: {
-          where: { locale },
-          select: this.collectionTranslationSelect,
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, ...this.collectionTranslationSelect },
         },
       },
     });
@@ -1109,7 +1116,20 @@ export class CollectionsService {
     }
 
     const { translations, ...c } = collection;
-    const t = translations[0];
+    // Merge field by field, locale row first and English second. Without this
+    // an untranslated collection loses its overview, curation note, eyebrow and
+    // h1 all at once; merging per field also covers a half-filled locale row.
+    const localeT = translations.find((row) => row.locale === locale);
+    const enT = translations.find((row) => row.locale === Locale.en);
+    const t = {
+      name: localeT?.name ?? enT?.name ?? null,
+      overview: localeT?.overview ?? enT?.overview ?? null,
+      curationNote: localeT?.curationNote ?? enT?.curationNote ?? null,
+      eyebrowLabel: localeT?.eyebrowLabel ?? enT?.eyebrowLabel ?? null,
+      h1Override: localeT?.h1Override ?? enT?.h1Override ?? null,
+      breadcrumbLabel: localeT?.breadcrumbLabel ?? enT?.breadcrumbLabel ?? null,
+      isMachineTranslated: (localeT ?? enT)?.isMachineTranslated ?? false,
+    };
 
     // Resolve tours (+ per-tour rationale for MANUAL).
     const tours: Array<Record<string, unknown>> =
@@ -1123,39 +1143,64 @@ export class CollectionsService {
 
     const fastStats = this.computeFastStats(tours);
 
-    const faqs = await this.prisma.faq.findMany({
-      where: {
-        pageType: FAQ_PAGE_TYPE.COLLECTION,
-        entityId: collection.id,
-        isActive: true,
-        locale,
-      },
-      select: faqSelect,
-      orderBy: { displayOrder: 'asc' },
-    });
+    const [faqRows, relatedCollections, pageContentRows] = await Promise.all([
+      // Locale + English, resolved down in memory - see `resolveFaqLocale`.
+      this.prisma.faq.findMany({
+        where: {
+          pageType: FAQ_PAGE_TYPE.COLLECTION,
+          entityId: collection.id,
+          isActive: true,
+          locale: { in: [locale, Locale.en] },
+        },
+        select: faqSelect,
+        orderBy: { displayOrder: 'asc' },
+      }),
+      this.prisma.collection.findMany({
+        where: {
+          destinationId,
+          status: CollectionStatus.PUBLISHED,
+          isActive: true,
+          id: { not: collection.id },
+        },
+        select: { id: true, name: true, slug: true, heroImage: true },
+        orderBy: { name: 'asc' },
+        take: 3,
+      }),
+      this.prisma.collectionPageContent.findMany({
+        where: {
+          collectionId: collection.id,
+          locale: { in: [locale, Locale.en] },
+        },
+        select: {
+          locale: true,
+          aboutText: true,
+          metaTitle: true,
+          metaDescription: true,
+        },
+      }),
+    ]);
 
-    const relatedCollections = await this.prisma.collection.findMany({
-      where: {
-        destinationId,
-        status: CollectionStatus.PUBLISHED,
-        isActive: true,
-        id: { not: collection.id },
-      },
-      select: { id: true, name: true, slug: true, heroImage: true },
-      orderBy: { name: 'asc' },
-      take: 3,
-    });
+    // Authored SEO + About copy, locale first then English. Folded into the
+    // render payload so the page is one request, not two.
+    const localePc = pageContentRows.find((p) => p.locale === locale);
+    const enPc = pageContentRows.find((p) => p.locale === Locale.en);
 
     return {
       ...applyTranslation(c, t, locale),
-      overview: t?.overview ?? null,
-      h1Override: t?.h1Override ?? null,
-      breadcrumbLabel: t?.breadcrumbLabel ?? null,
-      curationNote: t?.curationNote ?? null,
-      eyebrowLabel: t?.eyebrowLabel ?? null,
+      overview: t.overview,
+      h1Override: t.h1Override,
+      breadcrumbLabel: t.breadcrumbLabel,
+      curationNote: t.curationNote,
+      eyebrowLabel: t.eyebrowLabel,
+      pageContent: {
+        aboutText: localePc?.aboutText ?? enPc?.aboutText ?? null,
+        metaTitle: localePc?.metaTitle ?? enPc?.metaTitle ?? null,
+        metaDescription:
+          localePc?.metaDescription ?? enPc?.metaDescription ?? null,
+      },
       tours,
       fastStats,
-      faqs,
+      faqs: resolveFaqLocale(faqRows, locale),
       relatedCollections,
     };
   }

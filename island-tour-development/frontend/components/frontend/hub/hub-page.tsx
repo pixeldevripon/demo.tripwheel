@@ -562,12 +562,14 @@ export async function HubPage({
               .filter(Boolean)
         : [];
 
-    // FAQs from the backend; fall back to the localized placeholder set until a
-    // hub has authored FAQs.
+    // FAQs from the backend; until a hub has authored its own, fall back to the
+    // generic site-wide set. The bundled per-hub questions this used to fall
+    // back to were written for one specific hub, so every other hub inherited
+    // answers that were simply wrong.
     const faqItems =
         render.faqs.length > 0
             ? render.faqs.map(f => ({ q: f.question, a: f.answer }))
-            : hubDict.faq.items;
+            : dict.home.faq.items;
     const faqDict = {
         ...dict.home.faq,
         title: dict.destination.faqTitle,

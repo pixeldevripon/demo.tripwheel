@@ -6,7 +6,7 @@
     "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"pnpm dev:backend\" \"pnpm dev:frontend\"",
     "dev:backend": "cd backend && pnpm start:dev",
     "dev:frontend": "cd frontend && pnpm dev",
-    "build": "pnpm build:backend && pnpm build:frontend",
+    "build": "./scripts/build-all.sh",
     "build:backend": "cd backend && pnpm build",
     "build:frontend": "cd frontend && pnpm build",
     "start:backend": "cd backend && pnpm start:prod",
@@ -24,6 +24,9 @@
     "prisma:migrate:reset": "cd backend && pnpm prisma:migrate:reset",
     "prisma:studio": "cd backend && pnpm prisma:studio",
     "prisma:seed": "cd backend && pnpm prisma:seed",
+    "prisma:seed:demo": "cd backend && pnpm prisma:seed:demo",
+    "prisma:seed:demo:clean": "cd backend && pnpm prisma:seed:demo:clean",
+    "home:media:seed": "cd backend && pnpm home:media:seed",
     "prisma:format": "cd backend && pnpm prisma:format",
     "prepare": "husky"
   },

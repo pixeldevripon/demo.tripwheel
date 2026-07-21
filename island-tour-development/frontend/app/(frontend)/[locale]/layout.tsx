@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import { CurrencyAutoDetect } from '@/components/frontend/currency-auto-detect';
 import { Footer } from '@/components/frontend/footer/footer';
 import { Navbar } from '@/components/frontend/navbar/navbar';
 import { PageTransition } from '@/components/frontend/page-transition';
@@ -38,6 +39,11 @@ export default async function LocaleLayout({
         // are passed through as children, so the shell still prerenders. Per-user
         // wishlist state is resolved inside the provider, in the browser.
         <WishlistProvider locale={locale as Locale}>
+            {/* Renders nothing, and must stay the FIRST child: it writes the
+                currency cookie on a first visit, and every other reader of that
+                cookie (nav search, wishlist, footer pill) resolves in its own
+                mount effect, which React runs after this one. */}
+            <CurrencyAutoDetect locale={locale as Locale} />
             <Navbar
                 locale={locale}
                 dict={dict.nav}

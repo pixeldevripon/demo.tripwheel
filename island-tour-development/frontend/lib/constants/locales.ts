@@ -34,9 +34,17 @@ export type Currency = 'EUR' | 'USD';
 /** All selectable currencies - order matches the footer currency switcher. */
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 
-/** Currency per locale - EUR everywhere except Chinese (USD). */
+/**
+ * Currency per locale (master §D.2, LOCKED 2026-06-10): English and Chinese
+ * default to USD, the five European locales to EUR.
+ *
+ * This is only the DEFAULT - the last resort when the visitor has neither a
+ * stored `NEXT_CURRENCY` nor a readable location. Geo (proxy country header /
+ * browser time zone) is what normally picks the opening currency, and the
+ * footer selector overrides both. Mirrored in the dashboard repo; keep in sync.
+ */
 export const LOCALE_CURRENCY: Record<Locale, Currency> = {
-  en: 'EUR',
+  en: 'USD',
   es: 'EUR',
   nl: 'EUR',
   pt: 'EUR',

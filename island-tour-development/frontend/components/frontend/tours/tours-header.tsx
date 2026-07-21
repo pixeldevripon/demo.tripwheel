@@ -1,5 +1,5 @@
-import { cacheLife } from 'next/cache';
 import { ToursDatePill } from '@/components/frontend/tours/tours-date-pill';
+import { getCurrentYear } from '@/lib/current-year';
 
 export type ToursHeaderDict = {
     /** Title template - e.g. "All {destination} tours & activities in {year}" */
@@ -10,17 +10,6 @@ export type ToursHeaderDict = {
     /** Trailing muted word - e.g. "available" */
     availableLabel: string;
 };
-
-/**
- * Current year, read inside a Cache Component so the prerender stays static
- * (Next 16 forbids bare `new Date()` in a server component). Refreshes daily,
- * so the title rolls over within a day of the new year.
- */
-async function getCurrentYear(): Promise<number> {
-    'use cache';
-    cacheLife('days');
-    return new Date().getFullYear();
-}
 
 /**
  * Tours listing heading - title, subtitle and total-count line. Shared by the
@@ -52,7 +41,10 @@ export async function ToursHeader({
         dict.title
             .replace('{destination}', destinationName)
             .replace('{year}', String(await getCurrentYear()));
-    const subtitle = subtitleOverride ?? dict.subtitle;
+    // The bundled subtitle is a template ("… on {destination}"), so it names the
+    // island it is actually rendering on. A pre-resolved override is used as-is.
+    const subtitle =
+        subtitleOverride ?? dict.subtitle.replace('{destination}', destinationName);
     const count = dict.availableCount.replace('{count}', String(total));
 
     return (

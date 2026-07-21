@@ -108,6 +108,17 @@ export class CollectionPageContentResponseDto {
   @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
 }
 
+/**
+ * Page content as it appears inside the render payload: already resolved to the
+ * requested locale with English fallback, so there is no `locale` field to
+ * report - each value may have come from a different row than its neighbours.
+ */
+export class CollectionRenderPageContentDto {
+  @ApiPropertyOptional({ nullable: true }) aboutText!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaTitle!: string | null;
+  @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
+}
+
 export class FaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
@@ -150,6 +161,12 @@ export class CollectionRenderResponseDto extends CollectionLocalizedResponseDto 
   curationNote!: string | null;
   @ApiPropertyOptional({ nullable: true, example: 'BEST THINGS TO DO' })
   eyebrowLabel!: string | null;
+  @ApiProperty({
+    type: CollectionRenderPageContentDto,
+    description:
+      'Authored About + SEO copy, locale with English fallback. Folded in here so the page needs one request, not a second call to /collections/:id/page-content.',
+  })
+  pageContent!: CollectionRenderPageContentDto;
   @ApiProperty({
     type: [Object],
     description:

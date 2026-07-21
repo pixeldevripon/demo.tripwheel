@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Locale, TourStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
+import { faqSelect, resolveFaqLocale } from '@/common/utils/translation.util';
 import type { OctoCapabilitySet } from '@/octo/common/octo-capabilities';
 import { OctoException } from '@/octo/common/octo-error';
 import { serializeSupplier } from '@/octo/serializers/octo-supplier.serializer';
@@ -91,23 +93,15 @@ export class OctoService {
 
     const rows = await this.prisma.faq.findMany({
       where: {
-        pageType: 'tour',
+        pageType: FAQ_PAGE_TYPE.TOUR,
         entityId: { in: tourIds },
         isActive: true,
         locale: { in: [locale, Locale.en] },
       },
       orderBy: { displayOrder: 'asc' },
-      select: {
-        entityId: true,
-        locale: true,
-        question: true,
-        answer: true,
-      },
+      select: { entityId: true, ...faqSelect },
     });
 
-    // Prefer the requested locale; fall back to EN only when no localized row exists
-    // for a given (entity, displayOrder) sequence. Simplest correct rule: if any row
-    // in the requested locale exists for the tour, use only those; else use EN.
     const byTour = new Map<string, typeof rows>();
     for (const r of rows) {
       const list = byTour.get(r.entityId) ?? [];
@@ -115,14 +109,16 @@ export class OctoService {
       byTour.set(r.entityId, list);
     }
 
+    // Shared resolver: falls back per faqGroupId, so a tour with three of its
+    // five questions translated exposes all five rather than dropping to English
+    // wholesale. (This replaced an all-or-nothing rule that did the latter.)
     for (const [entityId, list] of byTour) {
-      const localized = list.filter((r) => r.locale === locale);
-      const chosen = localized.length
-        ? localized
-        : list.filter((r) => r.locale === Locale.en);
       grouped.set(
         entityId,
-        chosen.map((r) => ({ question: r.question, answer: r.answer })),
+        resolveFaqLocale(list, locale).map((r) => ({
+          question: r.question,
+          answer: r.answer,
+        })),
       );
     }
     return grouped;

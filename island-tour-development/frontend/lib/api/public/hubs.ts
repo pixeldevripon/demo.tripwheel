@@ -8,7 +8,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { HubByDestination, HubPageContent, HubRender } from '@/types/hub';
+import type { HubByDestination, HubRender } from '@/types/hub';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet, publicGetStrict } from './fetch';
@@ -63,21 +63,7 @@ export async function getHubRender(
   return data;
 }
 
-/**
- * Per-locale editorial meta (metaTitle / metaDescription / aboutText) for a hub by
- * id - authored in the dashboard SEO tab, used by `generateMetadata`. Returns
- * `null` when unset or the backend is unreachable. Cached daily (tag-busted on writes); tagged
- * granularly `hub:<id>` (id is the arg) so a hub's SEO edit refreshes only it.
- */
-export async function getHubPageContent(
-  hubId: string,
-  locale: Locale = DEFAULT_LOCALE,
-): Promise<HubPageContent | null> {
-  'use cache';
-  cacheLife('days');
-  cacheTag(`hub:${hubId}`);
-
-  return publicGet<HubPageContent>(
-    `/hubs/${hubId}/page-content${buildQuery({ locale })}`,
-  );
-}
+// The hub's authored meta + About copy is no longer fetched separately: it
+// arrives on `getHubRender` as `pageContent`, already resolved locale → English.
+// `/hubs/:id/page-content` returns a single locale's row with no fallback, which
+// is what the dashboard editor wants and what a public page must not use.

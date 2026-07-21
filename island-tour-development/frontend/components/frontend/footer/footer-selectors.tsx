@@ -7,16 +7,15 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import {
     ALL_CURRENCIES,
     ALL_LOCALES,
-    CURRENCY_COOKIE,
     CURRENCY_LABELS,
     CURRENCY_NAMES,
-    isCurrency,
     LOCALE_COOKIE,
     LOCALE_CURRENCY,
     LOCALE_NATIVE_LABELS,
     type Currency,
     type Locale,
 } from '@/lib/constants/locales';
+import { persistCurrency, storedCurrency } from '@/lib/currency/current';
 import {
     dropdownUpItemMotion,
     dropdownUpMotion,
@@ -94,11 +93,13 @@ function SelectorMenu({ children }: { children: React.ReactNode }) {
 
 /**
  * Interactive currency selector - opens upward. Its initial value matches the
- * locale's default currency (what the server uses when no cookie is set), so the
- * pill and the server-rendered prices agree on first paint; a stored cookie
- * overrides it once mounted. Selecting a currency writes the cookie and calls
- * `router.refresh()` so every server component refetches currency-aware prices
- * (guide §21.2).
+ * locale's default currency (what the server uses when it has neither a cookie
+ * nor a geo signal), so the pill and the server-rendered prices agree on first
+ * paint; the stored cookie overrides it once mounted. On a first visit that
+ * cookie is written by `CurrencyAutoDetect`, which mounts above this one - so
+ * the geo-picked currency is already in place by the time this effect reads it.
+ * Selecting a currency writes the cookie and calls `router.refresh()` so every
+ * server component refetches currency-aware prices (guide §21.2).
  */
 export function CurrencySelector({
     locale,
@@ -115,14 +116,12 @@ export function CurrencySelector({
     );
     const ref = useRef<HTMLDivElement>(null);
 
-    // Restore a previously chosen currency once mounted (the initial state mirrors
-    // the server's locale default, so this only diverges when a cookie exists).
+    // Adopt the stored currency once mounted - an explicit earlier choice, or the
+    // geo pick written by CurrencyAutoDetect. The initial state mirrors the
+    // server's locale default, so this only moves the pill when a cookie exists.
     useEffect(() => {
-        const stored = document.cookie
-            .split('; ')
-            .find((row) => row.startsWith(`${CURRENCY_COOKIE}=`))
-            ?.split('=')[1];
-        if (isCurrency(stored)) setCurrency(stored);
+        const stored = storedCurrency(document.cookie);
+        if (stored) setCurrency(stored);
     }, []);
 
     useEffect(() => {
@@ -137,7 +136,7 @@ export function CurrencySelector({
         setOpen(false);
         if (next === currency) return;
         setCurrency(next);
-        document.cookie = `${CURRENCY_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        persistCurrency(next);
         // Re-run server components so every price refetches in the new currency
         // (the cookie is the source of truth read by getServerCurrency).
         startTransition(() => {

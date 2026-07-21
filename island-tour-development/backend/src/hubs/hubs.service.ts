@@ -6,7 +6,12 @@ import {
   UpdateFaqGroupDto,
   UpsertFaqTranslationDto,
 } from '@/common/faq/dto/faq-group.dto';
-import { applyTranslation, faqSelect } from '@/common/utils/translation.util';
+import {
+  applyTranslation,
+  faqSelect,
+  resolveFaqLocale,
+  resolveLocaleSet,
+} from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import {
   clearCooledDownSlugs,
@@ -556,10 +561,14 @@ export class HubService {
   async getBySlug(slug: string, query: HubBySlugQueryDto) {
     const locale = query.locale ?? Locale.en;
 
+    // Public endpoint: unpublished and deactivated hubs must 404 here exactly as
+    // they do in `render`. Admin surfaces read hubs by id, not by slug.
     const hub = await this.prisma.hub.findFirst({
       where: {
         slug,
         destination: { slug: query.destinationSlug },
+        isActive: true,
+        status: HubStatus.PUBLISHED,
       },
       select: {
         ...this.hubDetailSelect,
@@ -1595,8 +1604,10 @@ export class HubService {
         id: true,
         slug: true,
         name: true,
+        description: true,
         hubType: true,
         heroImage: true,
+        ogImage: true,
         destinationId: true,
         translations: {
           where: { locale },
@@ -1645,59 +1656,92 @@ export class HubService {
     const breadcrumbLabel =
       localeT?.breadcrumbLabel ?? enT?.breadcrumbLabel ?? null;
 
-    const [sections, ourPicks, comparison, faqs, relatedHubs, heroStats] =
-      await Promise.all([
-        this.prisma.hubContentSection.findMany({
-          where: { hubId: hub.id, locale },
-          select: this.contentSectionSelect,
-          orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
-        }),
-        this.getOurPicks(hub.id, locale, query.currency),
-        this.getComparison(hub.id, locale, query.currency),
-        this.prisma.faq.findMany({
-          where: {
-            pageType: FAQ_PAGE_TYPE.HUB,
-            entityId: hub.id,
-            isActive: true,
-            locale,
-          },
-          select: faqSelect,
-          orderBy: { displayOrder: 'asc' },
-        }),
-        this.prisma.hub.findMany({
-          where: {
-            destinationId: hub.destinationId,
-            isActive: true,
-            status: HubStatus.PUBLISHED,
-            id: { not: hub.id },
-          },
-          select: { id: true, slug: true, name: true, heroImage: true },
-          orderBy: { name: 'asc' },
-          take: 3,
-        }),
-        this.computeHeroStats(hub.id),
-      ]);
+    const [
+      sectionRows,
+      ourPicks,
+      comparison,
+      faqRows,
+      relatedHubs,
+      heroStats,
+      pageContentRows,
+    ] = await Promise.all([
+      // Sections and FAQs are fetched for the locale *and* English, then
+      // resolved down in memory - see `resolveLocaleSet` / `resolveFaqLocale`.
+      this.prisma.hubContentSection.findMany({
+        where: { hubId: hub.id, locale: { in: [locale, Locale.en] } },
+        select: this.contentSectionSelect,
+        orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
+      }),
+      this.getOurPicks(hub.id, locale, query.currency),
+      this.getComparison(hub.id, locale, query.currency),
+      this.prisma.faq.findMany({
+        where: {
+          pageType: FAQ_PAGE_TYPE.HUB,
+          entityId: hub.id,
+          isActive: true,
+          locale: { in: [locale, Locale.en] },
+        },
+        select: faqSelect,
+        orderBy: { displayOrder: 'asc' },
+      }),
+      this.prisma.hub.findMany({
+        where: {
+          destinationId: hub.destinationId,
+          isActive: true,
+          status: HubStatus.PUBLISHED,
+          id: { not: hub.id },
+        },
+        select: { id: true, slug: true, name: true, heroImage: true },
+        orderBy: { name: 'asc' },
+        take: 3,
+      }),
+      this.computeHeroStats(hub.id),
+      this.prisma.hubPageContent.findMany({
+        where: { hubId: hub.id, locale: { in: [locale, Locale.en] } },
+        select: {
+          locale: true,
+          aboutText: true,
+          metaTitle: true,
+          metaDescription: true,
+        },
+      }),
+    ]);
 
-    const fastFacts = sections.filter(
-      (s) => s.sectionType === HubSectionType.FAST_FACT,
-    );
-    const discover = sections.filter(
-      (s) => s.sectionType === HubSectionType.DISCOVER,
-    );
-    const localTips = sections.filter(
-      (s) => s.sectionType === HubSectionType.LOCAL_TIP,
-    );
+    const faqs = resolveFaqLocale(faqRows, locale);
+
+    // Each section type is an independently-rendered block, so the English
+    // fallback is applied per type - a hub with translated Discover copy but
+    // English-only Fast Facts renders both, not just the Discover block.
+    const sectionsOfType = (type: HubSectionType) =>
+      resolveLocaleSet(
+        sectionRows.filter((s) => s.sectionType === type),
+        locale,
+      );
+
+    const fastFacts = sectionsOfType(HubSectionType.FAST_FACT);
+    const discover = sectionsOfType(HubSectionType.DISCOVER);
+    const localTips = sectionsOfType(HubSectionType.LOCAL_TIP);
     // The Discover block's intro/subtitle is authored as an EDITORIAL content
     // section (dashboard-managed + per-locale); the frontend falls back to a
     // static string when a hub has none.
     const discoverIntro =
-      sections.find((s) => s.sectionType === HubSectionType.EDITORIAL)?.body ??
-      null;
+      sectionsOfType(HubSectionType.EDITORIAL)[0]?.body ?? null;
     // First-timer "tick" takeaways (green-check row) - HIGHLIGHT sections, each
     // body a single takeaway, ordered by displayOrder.
-    const highlights = sections
-      .filter((s) => s.sectionType === HubSectionType.HIGHLIGHT)
-      .map((s) => s.body);
+    const highlights = sectionsOfType(HubSectionType.HIGHLIGHT).map(
+      (s) => s.body,
+    );
+
+    // Authored SEO + About copy, locale first then English. Folded into the
+    // render payload so the page is one request, not two.
+    const localePc = pageContentRows.find((p) => p.locale === locale);
+    const enPc = pageContentRows.find((p) => p.locale === Locale.en);
+    const pageContent = {
+      aboutText: localePc?.aboutText ?? enPc?.aboutText ?? null,
+      metaTitle: localePc?.metaTitle ?? enPc?.metaTitle ?? null,
+      metaDescription:
+        localePc?.metaDescription ?? enPc?.metaDescription ?? null,
+    };
 
     return {
       id: hub.id,
@@ -1706,6 +1750,9 @@ export class HubService {
       locale,
       hubType: hub.hubType,
       breadcrumbLabel,
+      description: hub.description,
+      ogImage: hub.ogImage,
+      pageContent,
       hero: {
         heroImage: hub.heroImage,
         h1,

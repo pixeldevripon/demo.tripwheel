@@ -196,6 +196,7 @@ describe('CollectionsService', () => {
         name: 'Top 10',
         slug: 'top-10-tours',
         collectionType: CollectionType.MANUAL,
+        status: CollectionStatus.PUBLISHED,
         tourIds: ['t2', 't1'],
         filterQuery: null,
         sortOrder: 'recommended',
@@ -223,6 +224,7 @@ describe('CollectionsService', () => {
         name: 'Private Boat',
         slug: 'private-boat-tours',
         collectionType: CollectionType.DYNAMIC,
+        status: CollectionStatus.PUBLISHED,
         tourIds: [],
         sortOrder: 'rating',
         filterQuery: {
@@ -251,6 +253,32 @@ describe('CollectionsService', () => {
         { booking_type: 'private', boat_type: 'catamaran,yacht' },
       );
       expect(res.tours).toEqual([{ id: 't9' }]);
+    });
+
+    it.each([
+      ['DRAFT', { status: CollectionStatus.DRAFT, isActive: true }],
+      ['deactivated', { status: CollectionStatus.PUBLISHED, isActive: false }],
+    ])('404s on a %s collection - this route is public', async (_, state) => {
+      prisma.collection.findUnique.mockResolvedValue({
+        id: 'col-3',
+        destinationId: 'dest-1',
+        name: 'Unpublished',
+        slug: 'unpublished',
+        collectionType: CollectionType.MANUAL,
+        tourIds: [],
+        filterQuery: null,
+        sortOrder: 'recommended',
+        isSeeded: false,
+        heroImage: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        translations: [],
+        ...state,
+      });
+
+      await expect(service.getBySlug('curacao', 'unpublished')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

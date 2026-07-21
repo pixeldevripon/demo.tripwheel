@@ -8,7 +8,10 @@ import { ToursListingSection } from '@/components/frontend/tours/tours-listing-s
 import { ToursListingSkeleton } from '@/components/frontend/skeletons/tours-page-skeleton';
 import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
+import { getCurrentYear } from '@/lib/current-year';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { buildAlternates } from '@/lib/seo/alternates';
+import type { Metadata } from 'next';
 
 // Fallback slugs for static generation if the backend is unreachable at build
 // (Cache Components requires generateStaticParams to return at least one entry).
@@ -31,6 +34,51 @@ export async function generateStaticParams() {
         // backend unavailable at build - fall through to launch slugs
     }
     return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
+}
+
+/**
+ * The All Tours listing had NO metadata at all, so every island's page served
+ * the root layout's global title and had neither a canonical nor hreflang.
+ *
+ * There is no CMS row behind this page (`tours` is a reserved slug, not an
+ * entity), so the copy comes from the same localized dictionary templates the
+ * page's own H1 renders - title and `<title>` stay in step by construction, in
+ * all 7 locales. The year comes from the shared cached helper for the same
+ * reason.
+ *
+ * The canonical is deliberately the bare path: this page is driven by
+ * searchParams (filters, sort, date, party size), and without a self-referencing
+ * canonical every filter combination would be a separate indexable URL
+ * (ROUTING-AND-RESOLUTION.md §11.3).
+ */
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ locale: string; destination: string }>;
+}): Promise<Metadata> {
+    const { locale, destination } = await params;
+    if (!isLocale(locale)) return {};
+
+    const alternates = buildAlternates(locale, `/${destination}/tours`);
+
+    const [dict, dest] = await Promise.all([
+        getDictionary(locale),
+        getDestinationBySlug(destination, locale),
+    ]);
+    // Unknown or not-yet-launched island: emit only the alternates so the page's
+    // own notFound() still governs the response.
+    if (!dest || !dest.isActive) return { alternates };
+
+    const heading = dict.destination.allTours.heading;
+
+    return {
+        title: heading.title
+            .replace('{destination}', dest.name)
+            .replace('{year}', String(await getCurrentYear())),
+        description: heading.subtitle.replace('{destination}', dest.name),
+        ...(dest.ogImage && { openGraph: { images: [{ url: dest.ogImage }] } }),
+        alternates,
+    };
 }
 
 /**

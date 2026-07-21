@@ -18,7 +18,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { HubType, Locale, SlugEntityType, TourStatus } from '@prisma/client';
+import {
+  HubStatus,
+  HubType,
+  Locale,
+  SlugEntityType,
+  TourStatus,
+} from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -497,6 +503,27 @@ describe('HubService', () => {
       expect(result.overview).toBeNull();
       expect(result.h1Override).toBeNull();
       expect(result.breadcrumbLabel).toBeNull();
+    });
+
+    it('queries published + active hubs only - this route is public', async () => {
+      prisma.hub.findFirst.mockResolvedValue({
+        ...makeHubDetail(),
+        translations: [],
+      });
+
+      await service.getBySlug('klein-curacao', {
+        destinationSlug: 'curacao',
+        locale: Locale.en,
+      });
+
+      expect(prisma.hub.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            isActive: true,
+            status: HubStatus.PUBLISHED,
+          }),
+        }),
+      );
     });
   });
 

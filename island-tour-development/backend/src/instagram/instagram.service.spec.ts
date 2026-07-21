@@ -1,7 +1,11 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { InstagramMediaType, InstagramSource } from '@prisma/client';
+import {
+  InstagramLayout,
+  InstagramMediaType,
+  InstagramSource,
+} from '@prisma/client';
 import { InstagramService } from './instagram.service';
 
 function createMockPrismaService() {
@@ -10,9 +14,11 @@ function createMockPrismaService() {
       findFirst: jest.fn().mockResolvedValue({ enableInstagram: true }),
     },
     instagramAccount: {
-      findUnique: jest
-        .fn()
-        .mockResolvedValue({ username: 'island.tours_', profileUrl: '' }),
+      findUnique: jest.fn().mockResolvedValue({
+        username: 'island.tours_',
+        profileUrl: '',
+        layout: InstagramLayout.GRID,
+      }),
       upsert: jest.fn(),
     },
     instagramPost: {
@@ -37,9 +43,10 @@ function tile(overrides: Partial<Record<string, unknown>> = {}) {
     mediaType: InstagramMediaType.IMAGE,
     permalink: 'https://www.instagram.com/p/abc/',
     imageUrl: 'https://cdn.example/reef.jpg',
-    thumbnailUrl: null,
+    videoUrl: null,
     caption: 'Sunset sail',
     altText: null,
+    isPinned: false,
     width: 768,
     height: 674,
     ...overrides,
@@ -106,17 +113,22 @@ describe('InstagramService', () => {
       );
     });
 
-    it('renders a video tile from its poster - nothing plays in the grid', async () => {
+    it('serves a video tile as poster + video, so the grid can paint before the loop starts', async () => {
       prisma.instagramPost.findMany.mockResolvedValue([
         tile({
           mediaType: InstagramMediaType.VIDEO,
-          thumbnailUrl: 'https://cdn.example/poster.jpg',
+          imageUrl: 'https://cdn.example/poster.jpg',
+          videoUrl: 'https://cdn.example/reel.mp4',
         }),
       ]);
 
       const feed = await service.getPublicFeed();
 
-      expect(feed.posts[0].imageUrl).toBe('https://cdn.example/poster.jpg');
+      expect(feed.posts[0]).toMatchObject({
+        imageUrl: 'https://cdn.example/poster.jpg',
+        videoUrl: 'https://cdn.example/reel.mp4',
+        mediaType: InstagramMediaType.VIDEO,
+      });
     });
 
     describe('alt text', () => {
@@ -151,6 +163,45 @@ describe('InstagramService', () => {
         const feed = await service.getPublicFeed();
 
         expect(feed.posts[0].alt).toBe('Instagram post');
+      });
+    });
+
+    describe('layout', () => {
+      it.each([
+        [InstagramLayout.GRID, 6],
+        [InstagramLayout.GALLERY, 15],
+      ])('asks for %s-worth of tiles by default (%i)', async (layout, take) => {
+        prisma.instagramAccount.findUnique.mockResolvedValue({
+          username: 'island.tours_',
+          profileUrl: '',
+          layout,
+        });
+        prisma.instagramPost.findMany.mockResolvedValue([tile()]);
+
+        const feed = await service.getPublicFeed();
+
+        expect(feed.layout).toBe(layout);
+        expect(prisma.instagramPost.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({ take }),
+        );
+      });
+
+      it('an explicit limit still wins over the layout default', async () => {
+        prisma.instagramPost.findMany.mockResolvedValue([tile()]);
+
+        await service.getPublicFeed(undefined, 3);
+
+        expect(prisma.instagramPost.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({ take: 3 }),
+        );
+      });
+
+      it('reports the layout even when the section is switched off', async () => {
+        prisma.siteInfo.findFirst.mockResolvedValue({ enableInstagram: false });
+
+        const feed = await service.getPublicFeed();
+
+        expect(feed.layout).toBe(InstagramLayout.GRID);
       });
     });
 
@@ -199,6 +250,7 @@ describe('InstagramService', () => {
         id: 'default',
         username: 'island.tours_',
         profileUrl: '',
+        layout: InstagramLayout.GRID,
       });
     });
 
@@ -228,6 +280,9 @@ describe('InstagramService', () => {
         id: 'default',
         username: null,
         profileUrl: null,
+        // An unconfigured feed still reports a layout, so the dashboard's
+        // selector always has a value to show.
+        layout: InstagramLayout.GRID,
       });
       expect(prisma.instagramAccount.upsert).not.toHaveBeenCalled();
     });
@@ -245,13 +300,14 @@ describe('InstagramService', () => {
         permalink: '',
         imageUrl: 'https://cdn.example/a.jpg',
         imagePublicId: null,
-        thumbnailUrl: null,
+        videoUrl: null,
         caption: null,
         altText: null,
         width: null,
         height: null,
         displayOrder: 5,
         isActive: true,
+        isPinned: false,
         destinationId: null,
         postedAt: null,
         syncedAt: null,
@@ -266,6 +322,124 @@ describe('InstagramService', () => {
       expect(prisma.instagramPost.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ displayOrder: 5 }),
+        }),
+      );
+    });
+
+    it.each([
+      ['a video', 'https://cdn.example/reel.mp4', InstagramMediaType.VIDEO],
+      ['no video', undefined, InstagramMediaType.IMAGE],
+    ])(
+      'derives mediaType from %s rather than trusting the client',
+      async (_label, videoUrl, expected) => {
+        prisma.instagramPost.create.mockResolvedValue({
+          id: 'tile-9',
+          source: InstagramSource.MANUAL,
+          mediaType: expected,
+          permalink: '',
+          imageUrl: 'https://cdn.example/a.jpg',
+          imagePublicId: null,
+          videoUrl: videoUrl ?? null,
+          caption: null,
+          altText: null,
+          width: null,
+          height: null,
+          displayOrder: 0,
+          isActive: true,
+          destinationId: null,
+          postedAt: null,
+          syncedAt: null,
+          destination: null,
+        });
+
+        await service.createPost(
+          { imageUrl: 'https://cdn.example/a.jpg', videoUrl },
+          'admin-1',
+        );
+
+        expect(prisma.instagramPost.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ mediaType: expected }),
+          }),
+        );
+      },
+    );
+
+    it('honours a CAROUSEL_ALBUM badge on a still tile', async () => {
+      prisma.instagramPost.create.mockResolvedValue({
+        id: 'tile-9',
+        source: InstagramSource.MANUAL,
+        mediaType: InstagramMediaType.CAROUSEL_ALBUM,
+        permalink: '',
+        imageUrl: 'https://cdn.example/a.jpg',
+        imagePublicId: null,
+        videoUrl: null,
+        caption: null,
+        altText: null,
+        width: null,
+        height: null,
+        displayOrder: 0,
+        isActive: true,
+        isPinned: false,
+        destinationId: null,
+        postedAt: null,
+        syncedAt: null,
+        destination: null,
+      });
+
+      await service.createPost(
+        {
+          imageUrl: 'https://cdn.example/a.jpg',
+          mediaType: InstagramMediaType.CAROUSEL_ALBUM,
+        },
+        'admin-1',
+      );
+
+      expect(prisma.instagramPost.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            mediaType: InstagramMediaType.CAROUSEL_ALBUM,
+          }),
+        }),
+      );
+    });
+
+    it('a video beats a requested badge - a reel cannot be labelled a carousel', async () => {
+      prisma.instagramPost.create.mockResolvedValue({
+        id: 'tile-9',
+        source: InstagramSource.MANUAL,
+        mediaType: InstagramMediaType.VIDEO,
+        permalink: '',
+        imageUrl: 'https://cdn.example/a.jpg',
+        imagePublicId: null,
+        videoUrl: 'https://cdn.example/reel.mp4',
+        caption: null,
+        altText: null,
+        width: null,
+        height: null,
+        displayOrder: 0,
+        isActive: true,
+        isPinned: false,
+        destinationId: null,
+        postedAt: null,
+        syncedAt: null,
+        destination: null,
+      });
+
+      await service.createPost(
+        {
+          imageUrl: 'https://cdn.example/a.jpg',
+          videoUrl: 'https://cdn.example/reel.mp4',
+          mediaType: InstagramMediaType.CAROUSEL_ALBUM,
+        },
+        'admin-1',
+      );
+
+      expect(prisma.instagramPost.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            mediaType: InstagramMediaType.VIDEO,
+          }),
         }),
       );
     });
@@ -291,13 +465,14 @@ describe('InstagramService', () => {
       permalink: 'https://www.instagram.com/p/abc/',
       imageUrl: 'https://cdn.example/a.jpg',
       imagePublicId: null,
-      thumbnailUrl: null,
+      videoUrl: null,
       caption: 'from instagram',
       altText: null,
       width: null,
       height: null,
       displayOrder: 0,
       isActive: true,
+      isPinned: false,
       destinationId: null,
       postedAt: null,
       syncedAt: null,
@@ -338,6 +513,66 @@ describe('InstagramService', () => {
           }),
         }),
       );
+    });
+
+    it('retypes the tile to VIDEO when a video is attached', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue({
+        ...syncedRow,
+        source: InstagramSource.MANUAL,
+      });
+      prisma.instagramPost.update.mockResolvedValue(syncedRow);
+
+      await service.updatePost(
+        'tile-1',
+        { videoUrl: 'https://cdn.example/reel.mp4' },
+        'admin-1',
+      );
+
+      expect(prisma.instagramPost.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            videoUrl: 'https://cdn.example/reel.mp4',
+            mediaType: InstagramMediaType.VIDEO,
+          }),
+        }),
+      );
+    });
+
+    it('clearing the video turns it back into a photo tile', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue({
+        ...syncedRow,
+        source: InstagramSource.MANUAL,
+        mediaType: InstagramMediaType.VIDEO,
+        videoUrl: 'https://cdn.example/reel.mp4',
+      });
+      prisma.instagramPost.update.mockResolvedValue(syncedRow);
+
+      await service.updatePost('tile-1', { videoUrl: '' }, 'admin-1');
+
+      expect(prisma.instagramPost.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            videoUrl: null,
+            mediaType: InstagramMediaType.IMAGE,
+          }),
+        }),
+      );
+    });
+
+    it('leaves the tile type alone when the patch does not mention the video', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue({
+        ...syncedRow,
+        source: InstagramSource.MANUAL,
+        mediaType: InstagramMediaType.VIDEO,
+        videoUrl: 'https://cdn.example/reel.mp4',
+      });
+      prisma.instagramPost.update.mockResolvedValue(syncedRow);
+
+      await service.updatePost('tile-1', { isActive: false }, 'admin-1');
+
+      const patch = prisma.instagramPost.update.mock.calls[0][0].data;
+      expect(patch).not.toHaveProperty('mediaType');
+      expect(patch).not.toHaveProperty('videoUrl');
     });
 
     it('404s on an unknown tile', async () => {

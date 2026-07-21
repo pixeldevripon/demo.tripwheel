@@ -2,6 +2,7 @@
 
 import { getThankYouStatus, settleBooking } from '@/lib/api/bookings';
 import { markJustBooked } from '@/lib/traveler-booking';
+import { crossFade } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -49,6 +50,12 @@ export function CheckoutProcessing({
 }) {
     const router = useRouter();
     const [stalled, setStalled] = useState(false);
+    // Set the instant we hand off to the TYP, so the poller block fades out
+    // while Next fetches that route instead of vanishing on a hard cut. The
+    // summary shimmer beneath is NOT part of this block - it stays on screen
+    // and the TYP re-renders the same band, which is what makes the handoff
+    // read as one continuous page rather than two.
+    const [leaving, setLeaving] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -62,6 +69,10 @@ export function CheckoutProcessing({
             // /bookings visit. ~15 min, publicRef-scoped, cleared naturally (or
             // eagerly retired when the traveller logs in via /bookings).
             markJustBooked(publicRef);
+            // Navigation is issued in the same tick, so the fade costs no
+            // latency - it just plays over the RSC fetch that was happening
+            // anyway. Never `await` an animation before replacing.
+            setLeaving(true);
             router.replace(typHref);
         };
 
@@ -103,11 +114,15 @@ export function CheckoutProcessing({
     }, [publicRef, typHref, router]);
 
     return (
-        <div className='flex min-h-[60vh] items-center justify-center px-4'>
+        // No longer 60vh: the page is not empty any more - the booking-summary
+        // shimmer sits below, and a viewport-tall spacer would push it off screen.
+        <div className='flex min-h-[136px] items-center justify-center px-4'>
             <motion.div
                 initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                animate={leaving ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
+                transition={
+                    leaving ? crossFade : { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+                }
                 className='flex max-w-md flex-col items-center gap-6 text-center'>
                 <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
                 <div className='flex flex-col gap-2'>

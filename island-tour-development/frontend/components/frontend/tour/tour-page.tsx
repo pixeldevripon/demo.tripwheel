@@ -22,8 +22,14 @@ import {
  *     content sections; reviews stream in nested boundaries (`getTourReviews`)
  *   - `TourRelatedTours` (`getDestinationTours`): the two related grids
  *
+ * There is deliberately NO FAQ block here. Tours do not have FAQs at all (user
+ * decision 2026-07-21) - the question a traveller would ask is answered by the
+ * structured fields this page already renders (inclusions, exclusions, what to
+ * bring, know before you go). Do not add a section for them.
+ *
  * Component files: `tour-detail-content.tsx`, `tour-reviews-blocks.tsx`,
- * `tour-related-tours.tsx`; skeletons in `components/frontend/skeletons/tour-page-skeleton.tsx`.
+ * `tour-related-tours.tsx`; skeletons in
+ * `components/frontend/skeletons/tour-page-skeleton.tsx`.
  */
 interface TourPageProps {
     /** Destination slug from the URL (e.g. `curacao`). */

@@ -35,6 +35,10 @@ model InstagramAccount {
   /// enough on its own.
   profileUrl String? @default("")
 
+  /// Which of the two public layouts renders the tiles. Lives here rather than
+  /// on SiteInfo because it is a property of this feed, not a site-wide toggle.
+  layout InstagramLayout @default(GRID)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -50,7 +54,19 @@ model InstagramPost {
   /// the existing tile instead of duplicating it.
   igMediaId String? @unique
 
+  /// What the corner badge says the post is. VIDEO is DERIVED from videoUrl and
+  /// never client-set (a tile must not claim to be a reel with no reel); with no
+  /// video an admin picks IMAGE or CAROUSEL_ALBUM, since that badge describes
+  /// the post being linked to, which we cannot see. The phase-2 sync sets it
+  /// straight from Instagram's own media_type.
   mediaType InstagramMediaType @default(IMAGE)
+
+  /// Instagram's pinned-post marker (the badge in the tile corner). Manual rows
+  /// can set it to mirror a pinned post; the phase-2 sync fills it from the API.
+  /// It is a BADGE ONLY and never reorders the grid - displayOrder owns order,
+  /// and having two things fight over it is how a curated deck stops making
+  /// sense.
+  isPinned Boolean @default(false)
 
   /// Where the tile links. For MANUAL rows an admin pastes the post URL; empty
   /// is allowed and falls back to the account profile, so a tile is never a
@@ -59,18 +75,23 @@ model InstagramPost {
 
   caption String?
 
-  /// The rendered image, always a URL WE control (media-library asset in phase
-  /// 1, Cloudinary mirror in phase 2). Instagram's own `media_url` CDN links
-  /// expire within days and hotlinking them is against their terms, so they are
-  /// deliberately never stored here.
+  /// The still the grid paints, always a URL WE control (media-library asset in
+  /// phase 1, Cloudinary mirror in phase 2). Instagram's own `media_url` CDN
+  /// links expire within days and hotlinking them is against their terms, so
+  /// they are deliberately never stored here.
+  ///
+  /// REQUIRED even on a video tile, where it doubles as the poster: a video with
+  /// no poster flashes black before its first frame, and it is what a reduced-
+  /// motion visitor sees instead of the loop. (Same reason FeaturedExperience
+  /// carries posterUrl beside videoUrl.)
   imageUrl      String
   /// Cloudinary public id, when the asset came from our gallery/mirror. Kept so
   /// phase 2 can clean up mirrored derivatives it created.
   imagePublicId String?
 
-  /// Video poster (phase 2). Videos render as a still with a play affordance —
-  /// nothing autoplays in the grid.
-  thumbnailUrl String?
+  /// The video for a reel/video post, null on a photo tile. Phase 2 maps
+  /// Instagram's `media_url` here and its `thumbnail_url` into imageUrl.
+  videoUrl String?
 
   width  Int?
   height Int?

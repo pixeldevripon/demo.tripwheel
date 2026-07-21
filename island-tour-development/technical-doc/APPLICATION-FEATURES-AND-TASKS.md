@@ -3373,6 +3373,29 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   **persists for the session**.
 - **The nav never carries the currency selector.**
 - IP-based currency localization is roadmap, not launch.
+  - **EXECUTED 2026-07-21 (geo-preselected currency):** brought forward from roadmap on request. The
+    footer selector now **opens on the visitor's own currency instead of the locale default**, chosen
+    from location - still strictly a choice between the two supported currencies, EUR or USD, and
+    still only ever the *initial* value: a stored `NEXT_CURRENCY` (an explicit pick, or an earlier geo
+    pick) is never overwritten.
+    - **One input, one writer.** Geo writes the `NEXT_CURRENCY` cookie and nothing else;
+      `getServerCurrency` still reads only that cookie, so prices keep resolving through exactly one
+      path and the pill can never disagree with the prices next to it.
+    - **`proxy.ts`** resolves the visitor's country from the edge (`x-vercel-ip-country`, plus
+      `cf-ipcountry`/`x-country`) and sets the cookie **on the same redirect that picks the locale** -
+      so anyone arriving at `/` or `/curacao` gets a first paint already in their currency.
+    - **`CurrencyAutoDetect`** (first child of the locale layout, renders nothing) covers deep
+      landings straight onto `/{locale}/...`, which the proxy matcher deliberately excludes, and
+      hosts that report no country at all. It reads the **browser clock's time zone** - the one
+      location signal with no network round trip, no third-party lookup, and no permission prompt -
+      then refreshes once so the server re-renders prices in the new currency. Mounted first because
+      the nav/hero search, wishlist, and footer pill all read the cookie in their own mount effects.
+    - **The rule is one question** (`lib/currency/geo.ts`): is the visitor in Europe? EU 27 + EEA + UK
+      + CH + the euro microstates + the Western Balkans → EUR; everywhere else → USD, which is also
+      right for the Caribbean itself (Curaçao and Sint Maarten quote in USD, Aruba's florin is
+      dollar-pegged). Turkey and Russia sit partly or wholly in Europe but price international travel
+      in dollars, so they fall through to USD. An unreadable signal returns `undefined` rather than a
+      guess, leaving the locale default in place.
 - Locale-aware number formatting applies: `$1,234.56` vs `€1.234,56`.
 - `destination.currency` stays in the data model for operator/payout context; it does **not** drive
   display currency.
@@ -3477,6 +3500,34 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
     breaks their terms**, so a tile's photo is always a URL we control.
   - **Gates (all three collapse to "render no section"):** `SiteInfo.enableInstagram` off, zero live
     tiles, or no handle set. A handle row over an empty grid is worse than no section.
+  - **EXECUTED 2026-07-21 (phase 1b - video tiles + two layouts):** a feed of only stills could not
+    represent reels, so `InstagramPost` gained **`videoUrl`** (migration `20260721170000_instagram_video`,
+    which drops the redundant `thumbnailUrl`): `imageUrl` is now the still the grid always paints and
+    **doubles as the poster**, so a reel never flashes black and a reduced-motion visitor sees the
+    photo. **`mediaType` is DERIVED, never client-set** - VIDEO when a video is attached, otherwise the
+    admin's IMAGE/CAROUSEL_ALBUM choice (that one describes the linked post, which we cannot see).
+    Playback is `components/frontend/instagram/instagram-tile-video.tsx`: muted + `playsInline`, loaded
+    and played only within 200px of the viewport, paused on exit, and **rendered not at all under
+    `prefers-reduced-motion`**.
+  - **Two layouts, admin-chosen** (`InstagramLayout` on `InstagramAccount`, migration
+    `20260721180000_instagram_layout_and_badges`): **GRID** = the curated Figma band (2/3 columns,
+    rounded 384x337 cards, 6 tiles); **GALLERY** = the Instagram profile look (3/6 columns of 4:5
+    portraits, tight gutters, 18 tiles). The layout rides the public feed payload, so switching it is
+    a content decision, not a deploy. `getPublicFeed` takes its default tile count FROM the layout
+    (6 / 18); an explicit `limit` still wins. Frontend split: `instagram-section.tsx` (fetch + gates +
+    handle row) → `instagram-grid.tsx` | `instagram-gallery.tsx`, both rendering the shared
+    `instagram-tile.tsx`, so the two can never drift on media handling.
+  - **Dashboard:** the on/off switch MOVED off Integrations onto the Instagram tab, beside the handle,
+    layout selector and tiles it governs (a toggle three tabs from what it turns on is how the old
+    widget-ID field went unnoticed). Tile dialog gains an optional media-library **video**, a post-type
+    (photo/carousel) choice and a pin toggle. `isPinned` is **badge-only and never reorders** -
+    `displayOrder` owns order.
+  - **Corner badges DECIDED 2026-07-21: on, in both layouts.** Reel / carousel / pin glyphs
+    (`public/icons/instagram-{reel,carousel,pin}.svg`) sit top-right; **a single photo carries none**,
+    matching Instagram - a badge on every tile would only label a photo as a photo. Pin outranks the
+    media badge when a post is both. They are `pointer-events-none` LABELS: the whole tile stays one
+    outbound link. (They were briefly removed on the argument that this is Instagram's product chrome;
+    reinstated by decision - without them a still and a reel are identical until the reel plays.)
   - **PENDING (phase 2 - API sync):** Instagram Login OAuth + encrypted token (`INSTAGRAM_TOKEN_SECRET`,
     the 3-file env change), daily sync job mirroring media into Cloudinary, and the **60-day long-lived
     token refresh** (`GET /refresh_access_token`, token must be ≥24h old and unexpired; refresh at
