@@ -58,39 +58,6 @@ export function useUpsertHomePageTranslation() {
   });
 }
 
-/**
- * Save one editor tab in a single action.
- *
- * A homepage section mixes locale-agnostic fields (images, the CTA target) with
- * English copy, which live behind two different endpoints. An admin filling in
- * a Hero tab should press Save once, so this composes both and only reports
- * success when both land. Either half may be omitted.
- */
-export function useSaveHomepageSection() {
-  const updateContent = useUpdateHomePage();
-  const upsertCopy = useUpsertHomePageTranslation();
-
-  async function save({
-    base,
-    fields,
-  }: {
-    base?: UpdateHomePagePayload;
-    fields?: UpsertHomePageTranslationPayload['fields'];
-  }) {
-    // Sequential, not parallel: both write the same singleton, and a failed
-    // copy write after a successful image write is far easier to reason about
-    // than two half-applied writes racing.
-    if (base && Object.keys(base).length) {
-      await updateContent.mutateAsync(base);
-    }
-    if (fields && Object.keys(fields).length) {
-      await upsertCopy.mutateAsync({ locale: 'en', payload: { fields } });
-    }
-  }
-
-  return { save, isPending: updateContent.isPending || upsertCopy.isPending };
-}
-
 // ── Top Island Experiences ───────────────────────────────────────────────────
 
 export function useFeaturedExperiences() {

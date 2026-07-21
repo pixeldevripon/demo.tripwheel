@@ -42,6 +42,10 @@ import {
     useUpsertTranslation as useUpsertDestinationTranslation,
 } from '@/hooks/destinations/use-destinations';
 import {
+    useHomePageTranslations,
+    useUpsertHomePageTranslation,
+} from '@/hooks/home-page/use-home-page';
+import {
     useHubTranslationByLocale,
     useUpsertHubTranslation,
 } from '@/hooks/hubs/use-hubs';
@@ -53,6 +57,7 @@ import {
     CATEGORY_FIELDS,
     COLLECTION_FIELDS,
     DESTINATION_FIELDS,
+    HOMEPAGE_FIELDS,
     HUB_FIELDS,
     TOUR_FIELDS,
     type TranslatableEntityType,
@@ -124,6 +129,7 @@ function EnglishContentForm({
                             <Input
                                 id={`en-${f.name}`}
                                 maxLength={f.maxLength}
+                                placeholder={f.placeholder}
                                 disabled={disabled}
                                 {...register(f.name)}
                             />
@@ -132,6 +138,7 @@ function EnglishContentForm({
                                 id={`en-${f.name}`}
                                 rows={f.rows ?? 3}
                                 maxLength={f.maxLength}
+                                placeholder={f.placeholder}
                                 disabled={disabled}
                                 {...register(f.name)}
                             />
@@ -277,6 +284,43 @@ function HubEnglishContent({ id }: { id: string }) {
     );
 }
 
+/**
+ * The homepage singleton. Its copy lives on ONE translation record (there is no
+ * page-content record), so this single form covers every word on the page.
+ *
+ * SEO meta is filtered out for the same reason it is on tours: the SEO tab owns
+ * it, with the SERP preview and counters that make those two fields legible.
+ * `id` is unused - the singleton key is baked into the endpoint - but the
+ * signature stays uniform with the other wrappers.
+ */
+const HOMEPAGE_EN_FIELDS = HOMEPAGE_FIELDS.filter(
+    f => f.name !== 'metaTitle' && f.name !== 'metaDescription',
+);
+
+function HomepageEnglishContent() {
+    const { data, isLoading } = useHomePageTranslations();
+    const upsert = useUpsertHomePageTranslation();
+    const english = data?.find(t => t.locale === 'en');
+
+    return (
+        <EnglishContentForm
+            fields={HOMEPAGE_EN_FIELDS}
+            record={english as never}
+            isLoading={isLoading}
+            isSaving={upsert.isPending}
+            onSave={values =>
+                upsert.mutate(
+                    {
+                        locale: 'en',
+                        payload: { fields: contentFields(values) },
+                    },
+                    saveToasts,
+                )
+            }
+        />
+    );
+}
+
 function CollectionEnglishContent({ id }: { id: string }) {
     const { data, isLoading } = useCollectionTranslationByLocale(id, 'en');
     const upsert = useUpsertCollectionTranslation();
@@ -313,8 +357,9 @@ export function EnglishContentEditor({
                     English content
                 </CardTitle>
                 <CardDescription>
-                    The source every other language translates from. Required
-                    publish fields (like the tour overview) live here.
+                    {type === 'homepage'
+                        ? 'Every word on the public homepage, in the order the sections appear. Leave a field empty and the site keeps the copy it ships with - shown greyed in the box.'
+                        : 'The source every other language translates from. Required publish fields (like the tour overview) live here.'}
                 </CardDescription>
             </CardHeader>
             <CardContent className='pt-6'>
@@ -323,6 +368,7 @@ export function EnglishContentEditor({
                 {type === 'category' && <CategoryEnglishContent id={id} />}
                 {type === 'hub' && <HubEnglishContent id={id} />}
                 {type === 'collection' && <CollectionEnglishContent id={id} />}
+                {type === 'homepage' && <HomepageEnglishContent />}
             </CardContent>
         </Card>
     );

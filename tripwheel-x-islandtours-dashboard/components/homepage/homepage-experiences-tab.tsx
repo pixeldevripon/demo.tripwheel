@@ -1,16 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/status-badge';
 import { VideoSelectorField } from '@/components/common/video-selector-field';
-import { TranslationPointer } from '@/components/homepage/translation-pointer';
-import {
-  SettingsCard,
-  TextField,
-} from '@/components/settings/settings-fields';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +16,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,80 +39,27 @@ import {
   useCreateFeaturedExperience,
   useDeleteFeaturedExperience,
   useFeaturedExperiences,
-  useSaveHomepageSection,
   useUpdateFeaturedExperience,
 } from '@/hooks/home-page/use-home-page';
 import { useHubs } from '@/hooks/hubs/use-hubs';
 import {
-  describeField,
-  HOMEPAGE_DEFAULTS,
   MIN_CURATED_EXPERIENCES,
   RECOMMENDED_MAX_EXPERIENCES,
 } from '@/lib/home-page/defaults';
 import type {
   FeaturedEntityType,
   FeaturedExperience,
-  HomePageContent,
 } from '@/types/home-page';
 
-const orNull = (v: string) => (v.trim() ? v.trim() : null);
-
-export function HomepageExperiencesTab({
-  content,
-}: {
-  content: HomePageContent;
-}) {
-  return (
-    <div className='space-y-6'>
-      <ExperiencesHeadingCard content={content} />
-      <ExperiencesCurationCard />
-    </div>
-  );
-}
-
-/** Section heading copy - saved separately from the curated list below it. */
-function ExperiencesHeadingCard({ content }: { content: HomePageContent }) {
-  const { save, isPending } = useSaveHomepageSection();
-  const english = content.translations.find(t => t.locale === 'en');
-
-  const { register, handleSubmit, reset, watch } = useForm<{
-    experiencesTitle: string;
-  }>({ defaultValues: { experiencesTitle: '' } });
-
-  useEffect(() => {
-    reset({ experiencesTitle: english?.experiencesTitle ?? '' });
-  }, [english, reset]);
-
-  const values = watch();
-
-  return (
-    <SettingsCard
-      title='Section heading'
-      description='Saving publishes straight to the live site.'
-      isSaving={isPending}
-      saveLabel='Save and publish'
-      onSubmit={handleSubmit(v => {
-        void save({ fields: { experiencesTitle: orNull(v.experiencesTitle) } })
-          .then(() => toast.success('Heading published.'))
-          .catch(err =>
-            toast.error(err instanceof Error ? err.message : 'Failed to save.'),
-          );
-      })}
-    >
-      <TextField
-        label='Title'
-        registration={register('experiencesTitle')}
-        placeholder={HOMEPAGE_DEFAULTS.experiencesTitle}
-        description={describeField(
-          'The heading above the experiences carousel.',
-          values.experiencesTitle,
-          HOMEPAGE_DEFAULTS.experiencesTitle,
-        )}
-      />
-
-      <TranslationPointer />
-    </SettingsCard>
-  );
+/**
+ * Top Island Experiences - the only homepage tab that is curation rather than
+ * content, which is why it is its own tab and not part of Details.
+ *
+ * The heading ABOVE the carousel is per-locale copy and lives in Page Content
+ * with the rest of the page's words; this tab is only the list.
+ */
+export function HomepageExperiencesTab() {
+  return <ExperiencesCurationCard />;
 }
 
 /**
@@ -142,16 +89,16 @@ function ExperiencesCurationCard() {
 
   return (
     <Card>
-      <CardHeader className='border-b pb-6'>
-        <CardTitle>Featured cards</CardTitle>
-        <p className='mt-1 text-sm font-normal normal-case tracking-normal text-muted-foreground'>
+      <CardHeader className='border-b pb-4'>
+        <CardTitle className='text-lg font-semibold'>Featured Cards</CardTitle>
+        <CardDescription>
           Categories and hubs only - individual tours are never featured here.
           Each card links to that page, and takes its title and photo from it,
           so the two can never disagree.
-        </p>
+        </CardDescription>
       </CardHeader>
 
-      <CardContent className='space-y-6 pt-8'>
+      <CardContent className='space-y-6 pt-6'>
         {isLoading ? (
           <div className='space-y-3'>
             {Array.from({ length: 3 }).map((_, i) => (

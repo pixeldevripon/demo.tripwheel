@@ -22,6 +22,13 @@ export interface HomePageTranslation {
   editorialCta: string | null;
   faqTitle: string | null;
   faqSubtitle: string | null;
+  /**
+   * The search-engine listing for `/{locale}/`. It rides on the translation
+   * record rather than a page-content record because the homepage singleton has
+   * none - the SEO tab edits English here and the Console handles the rest.
+   */
+  metaTitle: string | null;
+  metaDescription: string | null;
   isMachineTranslated: boolean;
 }
 
