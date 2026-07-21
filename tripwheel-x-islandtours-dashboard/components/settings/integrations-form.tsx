@@ -85,13 +85,15 @@ function MailchimpCard() {
   );
 }
 
-// ── WhatsApp & Instagram ─────────────────────────────────────────────────--
+// ── WhatsApp ─────────────────────────────────────────────────────────────--
+//
+// Instagram is NOT here: its switch lives with the handle, layout and tiles it
+// governs, on the Instagram tab. A toggle three tabs away from the thing it
+// turns on is how the old widget-ID field went unnoticed for months.
 
 const socialWidgetsSchema = z.object({
   enableWhatsappChat: z.boolean(),
   whatsappNumber: z.string().optional(),
-  enableInstagram: z.boolean(),
-  instagramWidgetId: z.string().optional(),
 });
 type SocialWidgetsFormValues = z.infer<typeof socialWidgetsSchema>;
 
@@ -111,8 +113,6 @@ function SocialWidgetsCard() {
     defaultValues: {
       enableWhatsappChat: false,
       whatsappNumber: '',
-      enableInstagram: false,
-      instagramWidgetId: '',
     },
   });
 
@@ -121,8 +121,6 @@ function SocialWidgetsCard() {
       reset({
         enableWhatsappChat: data.enableWhatsappChat ?? false,
         whatsappNumber: data.whatsappNumber ?? '',
-        enableInstagram: data.enableInstagram ?? false,
-        instagramWidgetId: data.instagramWidgetId ?? '',
       });
     }
   }, [data, reset]);
@@ -131,8 +129,8 @@ function SocialWidgetsCard() {
 
   return (
     <SettingsCard
-      title="WhatsApp & Instagram"
-      description="Chat button and feed widget shown on the public site."
+      title="WhatsApp"
+      description="Chat button shown on the public site."
       onSubmit={handleSubmit((v) => mutate(v))}
       isSaving={isPending}
     >
@@ -144,15 +142,6 @@ function SocialWidgetsCard() {
         onChange={(c) => setValue('enableWhatsappChat', c, { shouldDirty: true })}
       />
       <TextField label="WhatsApp Number" registration={register('whatsappNumber')} error={errors.whatsappNumber?.message} placeholder="+5999 123 4567" />
-
-      <CheckboxField
-        id="enableInstagram"
-        label="Enable Instagram Feed"
-        description="Display an Instagram widget in the footer."
-        checked={watch('enableInstagram')}
-        onChange={(c) => setValue('enableInstagram', c, { shouldDirty: true })}
-      />
-      <TextField label="Instagram Widget ID" registration={register('instagramWidgetId')} error={errors.instagramWidgetId?.message} />
     </SettingsCard>
   );
 }

@@ -8,7 +8,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import type { MediaItem } from '@/types/media';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getMediaKind } from './media-kind';
+import { getMediaKind } from '@/lib/media/media-kind';
 
 /** 64px thumbnail that adapts to the media kind. */
 function ListThumb({ item }: { item: MediaItem }) {

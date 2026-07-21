@@ -183,6 +183,13 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('platform-reviews');
       break;
 
+    // Instagram grid (Settings > Instagram): the handle row and every tile
+    // write. Not `site-info` - only the kill switch lives there, and it is
+    // saved through `/settings/site`, which the case above already covers.
+    case 'instagram':
+      tags.push('instagram');
+      break;
+
     default:
       break; // media-gallery, operator-settings, wishlist, read-only lookups, ...
   }

@@ -16,6 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useUpdateHomePage } from '@/hooks/home-page/use-home-page';
 import { DEFAULT_HERO_IMAGE_LABEL } from '@/lib/home-page/defaults';
@@ -23,22 +24,40 @@ import type { HomePageContent } from '@/types/home-page';
 
 /** Radix cannot hold an empty-string item value, so each "none" needs a token. */
 const AUTO_DESTINATION = '__auto__';
-const NO_DESTINATION = '__none__';
+const NO_CATEGORY = '__none__';
 
 /** The design renders exactly three fanned cards - not a growable list. */
 const CARD_SLOTS = ['Left card', 'Middle card', 'Front card'] as const;
 
 interface CardValues {
     imageUrl: string;
-    destinationId: string;
+    categoryId: string;
     isLink: boolean;
 }
 
 const EMPTY_SLOT: CardValues = {
     imageUrl: '',
-    destinationId: NO_DESTINATION,
+    categoryId: NO_CATEGORY,
     isLink: false,
 };
+
+/**
+ * A real entity id, or null.
+ *
+ * The selects carry sentinels (`__none__`, `__auto__`) because Radix cannot
+ * hold an empty-string item value, and a form field can also simply be `''`
+ * before anything is chosen. NONE of those are ids, and the API validates the
+ * field as a UUID - so every one of them has to collapse to null here rather
+ * than being posted and rejected. Comparing against the sentinel alone is what
+ * let `''` through and produced "destinationId must be a UUID" on save.
+ *
+ * Shared by the island and the category selects - both post a UUID or nothing.
+ */
+function realId(value: string | undefined): string | null {
+    if (!value) return null;
+    if (value === NO_CATEGORY || value === AUTO_DESTINATION) return null;
+    return value;
+}
 
 /**
  * Always three slots in the form, however many cards are stored.
@@ -53,11 +72,30 @@ function toSlots(cards: HomePageContent['editorialCards']): CardValues[] {
         .sort((a, b) => a.displayOrder - b.displayOrder)
         .map(c => ({
             imageUrl: c.imageUrl,
-            destinationId: c.destinationId ?? NO_DESTINATION,
+            categoryId: c.categoryId ?? NO_CATEGORY,
             isLink: c.isLink,
         }));
 
     return CARD_SLOTS.map((_, i) => stored[i] ?? { ...EMPTY_SLOT });
+}
+
+/**
+ * Which stored slots the site is serving WITHOUT their link, because the
+ * category has nothing bookable on the banner's island. Keyed by slot index,
+ * which is the deck's own order.
+ */
+function unlinkableSlots(
+    cards: HomePageContent['editorialCards']
+): Set<number> {
+    const dead = new Set<number>();
+    [...cards]
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .forEach((card, index) => {
+            if (card.categoryId && card.isLink && !card.hasLiveTours) {
+                dead.add(index);
+            }
+        });
+    return dead;
 }
 
 interface DetailsValues {
@@ -78,6 +116,7 @@ interface DetailsValues {
 export function HomepageForm({ content }: { content: HomePageContent }) {
     const { mutate: update, isPending } = useUpdateHomePage();
     const { data: destinations = [] } = useActiveDestinations();
+    const { data: categories = [] } = useActiveCategories();
 
     const { handleSubmit, reset, watch, setValue } = useForm<DetailsValues>({
         defaultValues: {
@@ -97,6 +136,10 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
     }, [content, reset]);
 
     const values = watch();
+    // Computed from what is SAVED, not from the form: the gate is a fact about
+    // the live site, and it only changes when a save changes it.
+    const unlinkable = unlinkableSlots(content.editorialCards);
+    const islandSlug = content.resolvedDestinationSlug;
 
     function onSubmit(v: DetailsValues) {
         update(
@@ -106,28 +149,29 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                 // its bundled art for that position instead of rendering a hole.
                 editorialCards: v.editorialCards
                     .filter(c => c.imageUrl.trim())
-                    .map(c => ({
-                        imageUrl: c.imageUrl.trim(),
-                        destinationId:
-                            c.destinationId === NO_DESTINATION
-                                ? null
-                                : c.destinationId,
-                        isLink: c.isLink,
-                    })),
-                editorialDestinationId:
-                    v.editorialDestinationId === AUTO_DESTINATION
-                        ? null
-                        : v.editorialDestinationId,
+                    .map(c => {
+                        const categoryId = realId(c.categoryId);
+                        return {
+                            imageUrl: c.imageUrl.trim(),
+                            categoryId,
+                            // A link with nowhere to go is not a link. The
+                            // backend normalises this too; sending it already
+                            // consistent means the two can never disagree.
+                            isLink: categoryId ? c.isLink : false,
+                        };
+                    }),
+                editorialDestinationId: realId(v.editorialDestinationId),
             },
             {
-                onSuccess: () => toast.success('Homepage updated successfully.'),
+                onSuccess: () =>
+                    toast.success('Homepage updated successfully.'),
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to update the homepage.',
+                            : 'Failed to update the homepage.'
                     ),
-            },
+            }
         );
     }
 
@@ -157,81 +201,17 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                             />
                         </Field>
 
+                        {/* The island comes FIRST because everything below it
+                            depends on it: the cards open categories ON this
+                            island, so choosing it is the first decision. */}
                         <Field>
-                            <Label>CTA Card Photos</Label>
-                            <FieldDescription>
-                                The three angled cards in the banner near the
-                                bottom of the page, in fan order. Portrait crops
-                                work best. Each card can point at an island - it
-                                then shows that island&apos;s name, in every
-                                language, and opens its page. Empty slots are
-                                skipped and the deck keeps its built-in photo
-                                for whatever is left over.
-                            </FieldDescription>
-
-                            <div className='grid gap-4 sm:grid-cols-3'>
-                                {CARD_SLOTS.map((slotLabel, index) => {
-                                    return (
-                                        <EditorialCardSlot
-                                            key={slotLabel}
-                                            index={index}
-                                            slotLabel={slotLabel}
-                                            destinations={destinations}
-                                            value={values.editorialCards[index]}
-                                            onImageChange={url => {
-                                                setValue(
-                                                    `editorialCards.${index}.imageUrl`,
-                                                    url ?? '',
-                                                );
-                                                if (!url) {
-                                                    // An empty slot has nothing
-                                                    // to link, so it must not
-                                                    // keep a stale island.
-                                                    setValue(
-                                                        `editorialCards.${index}.destinationId`,
-                                                        NO_DESTINATION,
-                                                    );
-                                                    setValue(
-                                                        `editorialCards.${index}.isLink`,
-                                                        false,
-                                                    );
-                                                }
-                                            }}
-                                            onDestinationChange={destinationId => {
-                                                setValue(
-                                                    `editorialCards.${index}.destinationId`,
-                                                    destinationId,
-                                                );
-                                                // Choosing an island means you
-                                                // want the link; switching back
-                                                // to none cannot leave a link
-                                                // pointing nowhere.
-                                                setValue(
-                                                    `editorialCards.${index}.isLink`,
-                                                    destinationId !==
-                                                        NO_DESTINATION,
-                                                );
-                                            }}
-                                            onLinkModeChange={isLink =>
-                                                setValue(
-                                                    `editorialCards.${index}.isLink`,
-                                                    isLink,
-                                                )
-                                            }
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </Field>
-
-                        <Field>
-                            <Label>CTA Button Links To</Label>
+                            <Label>CTA Island</Label>
                             <Select
                                 value={values.editorialDestinationId}
                                 onValueChange={v =>
                                     setValue('editorialDestinationId', v)
                                 }>
-                                <SelectTrigger>
+                                <SelectTrigger className='max-w-md'>
                                     <SelectValue placeholder='Choose automatically' />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -246,12 +226,81 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                                 </SelectContent>
                             </Select>
                             <FieldDescription>
-                                Which island the big button opens - separate
-                                from the cards above. Left automatic, the site
-                                picks the launch island, then the first active
-                                one. An island you archive later falls back the
-                                same way rather than linking somewhere broken.
+                                The island this banner is about. The big button
+                                opens it, and each card below opens one of its
+                                categories. Left automatic, the site picks the
+                                launch island, then the first active one - and
+                                an island you archive later falls back the same
+                                way rather than linking somewhere broken.
                             </FieldDescription>
+                        </Field>
+
+                        <Field>
+                            <Label>CTA Card Photos</Label>
+                            <FieldDescription>
+                                The three angled cards in the banner, in fan
+                                order. Portrait crops work best. Each card can
+                                point at a category - it then shows that
+                                category&apos;s name, in every language, and
+                                opens it on the island above. Empty slots are
+                                skipped and the deck keeps its built-in photo
+                                for whatever is left over.
+                            </FieldDescription>
+
+                            <div className='grid gap-4 sm:grid-cols-3'>
+                                {CARD_SLOTS.map((slotLabel, index) => {
+                                    return (
+                                        <EditorialCardSlot
+                                            key={slotLabel}
+                                            index={index}
+                                            slotLabel={slotLabel}
+                                            categories={categories}
+                                            value={values.editorialCards[index]}
+                                            noLiveTours={unlinkable.has(index)}
+                                            islandSlug={islandSlug}
+                                            onImageChange={url => {
+                                                setValue(
+                                                    `editorialCards.${index}.imageUrl`,
+                                                    url ?? ''
+                                                );
+                                                if (!url) {
+                                                    // An empty slot has nothing
+                                                    // to link, so it must not
+                                                    // keep a stale category.
+                                                    setValue(
+                                                        `editorialCards.${index}.categoryId`,
+                                                        NO_CATEGORY
+                                                    );
+                                                    setValue(
+                                                        `editorialCards.${index}.isLink`,
+                                                        false
+                                                    );
+                                                }
+                                            }}
+                                            onCategoryChange={categoryId => {
+                                                setValue(
+                                                    `editorialCards.${index}.categoryId`,
+                                                    categoryId
+                                                );
+                                                // Choosing a category means you
+                                                // want the link; switching back
+                                                // to none cannot leave a link
+                                                // pointing nowhere.
+                                                setValue(
+                                                    `editorialCards.${index}.isLink`,
+                                                    categoryId !== NO_CATEGORY
+                                                );
+                                            }}
+                                            onLinkModeChange={isLink =>
+                                                setValue(
+                                                    `editorialCards.${index}.isLink`,
+                                                    isLink
+                                                )
+                                            }
+                                        />
+                                    );
+                                })}
+                            </div>
                         </Field>
 
                         <div className='flex justify-end pt-2'>
@@ -277,22 +326,31 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
 function EditorialCardSlot({
     index,
     slotLabel,
-    destinations,
+    categories,
     value,
+    noLiveTours,
+    islandSlug,
     onImageChange,
-    onDestinationChange,
+    onCategoryChange,
     onLinkModeChange,
 }: {
     index: number;
     slotLabel: string;
-    destinations: { id: string; name: string }[];
+    categories: { id: string; name: string }[];
     value: CardValues | undefined;
+    /** Saved state: the site is serving this card without its link. */
+    noLiveTours: boolean;
+    islandSlug: string | null;
     onImageChange: (url: string | null) => void;
-    onDestinationChange: (destinationId: string) => void;
+    onCategoryChange: (categoryId: string) => void;
     onLinkModeChange: (isLink: boolean) => void;
 }) {
-    const destinationId = value?.destinationId ?? NO_DESTINATION;
-    const hasDestination = destinationId !== NO_DESTINATION;
+    // `||`, not `??`: an empty string is "no island chosen" just as much as a
+    // null is. With `??` an empty value slipped past, so the select fell back
+    // to its placeholder while the link-mode control below it appeared - the
+    // slot claimed to link to an island it did not have.
+    const categoryId = value?.categoryId || NO_CATEGORY;
+    const hasCategory = categoryId !== NO_CATEGORY;
 
     return (
         <div className='space-y-3 rounded-md border border-line p-3'>
@@ -306,34 +364,35 @@ function EditorialCardSlot({
             />
 
             <div className='space-y-2'>
-                <Select
-                    value={destinationId}
-                    onValueChange={onDestinationChange}>
-                    <SelectTrigger>
-                        <SelectValue placeholder='No island' />
+                <Select value={categoryId} onValueChange={onCategoryChange}>
+                    {/* SelectTrigger is `w-fit`; every other select in the app
+                        stretches only because <Field> puts `*:w-full` on its
+                        children, and these two sit in a plain div. */}
+                    <SelectTrigger className='w-full'>
+                        <SelectValue placeholder='No category' />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value={NO_DESTINATION}>
-                            No island - photo only
+                        <SelectItem value={NO_CATEGORY}>
+                            No category - photo only
                         </SelectItem>
-                        {destinations.map(d => (
-                            <SelectItem key={d.id} value={d.id}>
-                                {d.name}
+                        {categories.map(c => (
+                            <SelectItem key={c.id} value={c.id}>
+                                {c.name}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
 
-                {hasDestination && (
+                {hasCategory && (
                     <Select
                         value={value?.isLink ? 'link' : 'static'}
                         onValueChange={v => onLinkModeChange(v === 'link')}>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value='link'>
-                                Clickable - opens the island
+                                Clickable - opens the category
                             </SelectItem>
                             <SelectItem value='static'>
                                 Name only - not clickable
@@ -342,16 +401,25 @@ function EditorialCardSlot({
                     </Select>
                 )}
 
+                {noLiveTours && (
+                    <p className='text-xs font-medium text-danger-fg'>
+                        Not linked - this category has no live tour
+                        {islandSlug ? ` on ${islandSlug}` : ' on that island'},
+                        so its page would not open. The card still shows.
+                    </p>
+                )}
+
                 <p className='text-xs text-content-muted'>
                     {!value?.imageUrl
                         ? 'Empty - this slot keeps its built-in photo.'
-                        : !hasDestination
+                        : !hasCategory
                           ? 'Photo only, with the built-in caption.'
                           : value.isLink
-                            ? 'Shows the island name and opens its page.'
-                            : 'Shows the island name. Not clickable.'}
+                            ? 'Shows the category name and opens it on the island above.'
+                            : 'Shows the category name. Not clickable.'}
                 </p>
             </div>
         </div>
     );
 }
+

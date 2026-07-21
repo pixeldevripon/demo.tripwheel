@@ -17,7 +17,7 @@ import {
 
 /**
  * Resolve the shopper's display currency from a raw `Cookie` header string. Falls
- * back to the locale's default currency (EUR everywhere except ZH -> USD), then EUR.
+ * back to the locale's default currency (EN/ZH -> USD, the rest EUR), then EUR.
  * Pure + testable: pass `document.cookie` on the client or the request cookie header
  * on the server (or use `getServerCurrency` which reads `cookies()` for you).
  */
@@ -38,6 +38,17 @@ export function currencyFromCookie(
 }
 
 /**
+ * Always print the bare symbol - `$1,750`, never `US$ 1.750`.
+ *
+ * Left to itself, `Intl` disambiguates the dollar in every locale that has its
+ * own: pt/nl render USD as `US$`, fr as `$US`, es as `US$`, zh as `US$`. There is
+ * only one dollar in play, so that prefix is noise that reads like part of the
+ * number. `narrowSymbol` collapses all of them to `$` and leaves `€` untouched.
+ * Matches the public frontend and the booking emails; keep the three in sync.
+ */
+const CURRENCY_DISPLAY = 'narrowSymbol' as const;
+
+/**
  * Format an already-converted amount as localized currency (guide §21.1). Use for
  * concrete totals (checkout, TYP, deposit/balance) where cents matter.
  * `formatMoney('120.00', 'EUR', 'de')` -> "120,00 €".
@@ -51,6 +62,7 @@ export function formatMoney(
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        currencyDisplay: CURRENCY_DISPLAY,
     }).format(Number.isFinite(n) ? n : 0);
 }
 
@@ -69,6 +81,7 @@ export function formatPriceFrom(
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        currencyDisplay: CURRENCY_DISPLAY,
         minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
         maximumFractionDigits: 2,
     }).format(n);

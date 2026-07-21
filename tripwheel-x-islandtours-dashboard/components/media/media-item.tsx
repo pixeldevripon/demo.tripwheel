@@ -12,7 +12,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import { useState } from 'react';
 import type { MediaItem } from '@/types/media';
-import { getMediaBadge, getMediaKind } from './media-kind';
+import { getMediaBadge, getMediaKind } from '@/lib/media/media-kind';
 
 interface MediaItemProps {
     item: MediaItem;

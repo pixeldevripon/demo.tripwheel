@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import MediaSelector from '@/components/common/media-selector';
 import { MediaUploadZone } from '@/components/common/media-upload-zone';
-import { getMediaKind } from '@/components/media/media-kind';
+import { getMediaKind } from '@/lib/media/media-kind';
 import { Button } from '@/components/ui/button';
 import type { MediaItem } from '@/types/media';
 

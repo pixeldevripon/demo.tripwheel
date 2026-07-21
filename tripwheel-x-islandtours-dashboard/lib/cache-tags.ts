@@ -85,6 +85,11 @@ export const COARSE_CACHE_TAGS = [
     'site-info',
     // Third-party platform reviews (Trustpilot/Google) - homepage testimonials.
     'platform-reviews',
+    // The brand Instagram grid (handle row + curated tiles) on destination
+    // pages. Deliberately not folded into `site-info`: that tag carries the
+    // footer and every NeedHelp surface, and curating one tile should not
+    // regenerate all of them. The kill switch still lives on `site-info`.
+    'instagram',
     // Admin-managed homepage content (hero copy/image, editorial CTA, section
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.
