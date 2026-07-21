@@ -58,6 +58,8 @@ export class SettingsService {
         whatsappNumber: true,
         enableInstagram: true,
         instagramWidgetId: true,
+        faqHostImage: true,
+        faqHostVideo: true,
       },
     });
 
@@ -72,6 +74,10 @@ export class SettingsService {
       whatsappNumber: enableWhatsappChat ? info?.whatsappNumber || null : null,
       enableInstagram: info?.enableInstagram ?? false,
       instagramWidgetId: info?.instagramWidgetId || null,
+      // Empty string is as good as unset here - the frontend falls back to its
+      // bundled avatar on null, and '' would defeat that.
+      faqHostImage: info?.faqHostImage || null,
+      faqHostVideo: info?.faqHostVideo || null,
     };
   }
 

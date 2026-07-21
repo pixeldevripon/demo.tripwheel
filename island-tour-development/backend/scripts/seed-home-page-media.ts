@@ -638,6 +638,34 @@ async function main(): Promise<void> {
       console.log('\n  Hero image set.');
     }
 
+    // The FAQ host avatar is SITE INFO, not homepage content - the block it
+    // sits in renders on the home, destination and collection pages. Seeded
+    // here anyway because its two assets are homepage assets and this is the
+    // script that publishes them.
+    const hostImage = published.get('faq-host-avatar');
+    const hostVideo = published.get('catamaran-trip_zohlkt');
+    if (hostImage && hostVideo) {
+      const site = await prisma.siteInfo.findUnique({
+        where: { id: 'default' },
+        select: { faqHostImage: true, faqHostVideo: true },
+      });
+      if (!site?.faqHostImage && !site?.faqHostVideo) {
+        await prisma.siteInfo.upsert({
+          where: { id: 'default' },
+          create: {
+            id: 'default',
+            faqHostImage: hostImage.url,
+            faqHostVideo: hostVideo.url,
+          },
+          update: {
+            faqHostImage: hostImage.url,
+            faqHostVideo: hostVideo.url,
+          },
+        });
+        console.log('  FAQ host avatar and clip set (were empty).');
+      }
+    }
+
     await seedHomepageCopy(prisma);
     await seedHomepageFaqs(prisma);
 

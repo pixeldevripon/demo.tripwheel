@@ -59,6 +59,20 @@ export class SiteInfoResponseDto {
   @ApiProperty({ example: false })
   enableInstagram!: boolean;
 
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/demo/image/upload/host.jpg',
+    nullable: true,
+    description: 'Still frame for the FAQ host avatar, and its video poster.',
+  })
+  faqHostImage!: string | null;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/demo/video/upload/host.mp4',
+    nullable: true,
+    description: 'Short loop for the FAQ host avatar.',
+  })
+  faqHostVideo!: string | null;
+
   @ApiProperty({ example: [], type: [FaqItemDto] })
   faqs!: any;
 }
@@ -107,6 +121,21 @@ export class PublicSiteInfoResponseDto {
 
   @ApiProperty({ example: 'widget_id', nullable: true })
   instagramWidgetId!: string | null;
+
+  @ApiProperty({
+    example: 'https://res.cloudinary.com/demo/image/upload/host.jpg',
+    nullable: true,
+    description:
+      'FAQ host avatar still. Null keeps the bundled avatar - the FAQ block ' +
+      'renders on the home, destination and collection pages.',
+  })
+  faqHostImage!: string | null;
+
+  @ApiProperty({
+    example: 'https://res.cloudinary.com/demo/video/upload/host.mp4',
+    nullable: true,
+  })
+  faqHostVideo!: string | null;
 }
 
 /**
@@ -469,6 +498,21 @@ export class UpdateSiteInfoDto {
   @IsOptional()
   @IsBoolean()
   enableInstagram?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "The FAQ host avatar's still frame. Empty keeps the bundled one.",
+  })
+  @IsOptional()
+  @IsString()
+  faqHostImage?: string;
+
+  @ApiPropertyOptional({
+    description: 'A short loop for the FAQ host avatar. Empty shows the still.',
+  })
+  @IsOptional()
+  @IsString()
+  faqHostVideo?: string;
 
   @ApiPropertyOptional({ type: [FaqItemDto] })
   @IsOptional()

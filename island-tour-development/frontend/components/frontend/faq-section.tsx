@@ -26,6 +26,14 @@ const payments = [
 ];
 
 /**
+ * The bundled "local host" avatar, used until an admin sets one in Settings.
+ * The clip doubles as a category reel elsewhere; it is the shipped default, not
+ * a placeholder, so it stays in the repo as the fallback.
+ */
+const FALLBACK_HOST_IMAGE = '/images/home-page/faq/host-avatar.png';
+const FALLBACK_HOST_VIDEO = '/videos/experiences/catamaran-trip.mp4';
+
+/**
  * Reads the WhatsApp number itself rather than taking it as a prop: this section
  * renders from the home, destination, category, collection, and hub pages, and
  * threading one settings value through all five only to reach one button is
@@ -43,6 +51,11 @@ export async function FaqSection({
         site.whatsappNumber,
         site.enableWhatsappChat,
     );
+    // The host avatar comes from Settings for the same reason the WhatsApp
+    // number does - it renders from five pages. Either half unset keeps the
+    // bundled asset, so this block never renders empty.
+    const hostImage = site.faqHostImage || FALLBACK_HOST_IMAGE;
+    const hostVideo = site.faqHostVideo || (site.faqHostImage ? null : FALLBACK_HOST_VIDEO);
 
     return (
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
@@ -79,16 +92,28 @@ export async function FaqSection({
                                             with a hard, aliased edge. The wrapper's clip is
                                             antialiased, so the circle stays smooth. */}
                                         <div className='size-12.5 shrink-0 overflow-hidden rounded-full transform-[translateZ(0)] lg:size-16'>
-                                            <video
-                                                src='/videos/experiences/catamaran-trip.mp4'
-                                                poster='/images/home-page/faq/host-avatar.png'
-                                                aria-label='Your local host'
-                                                autoPlay
-                                                loop
-                                                muted
-                                                playsInline
-                                                className='size-full object-cover'
-                                            />
+                                            {hostVideo ? (
+                                                <video
+                                                    src={hostVideo}
+                                                    poster={hostImage}
+                                                    aria-label='Your local host'
+                                                    autoPlay
+                                                    loop
+                                                    muted
+                                                    playsInline
+                                                    className='size-full object-cover'
+                                                />
+                                            ) : (
+                                                /* Still only. An admin who sets a
+                                                   photo and no clip gets a photo,
+                                                   not an empty <video> box. */
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={hostImage}
+                                                    alt='Your local host'
+                                                    className='size-full object-cover'
+                                                />
+                                            )}
                                         </div>
                                         {/* Master 6.6: NeedHelp is a required WhatsApp
                                             surface. Hidden entirely when Settings >

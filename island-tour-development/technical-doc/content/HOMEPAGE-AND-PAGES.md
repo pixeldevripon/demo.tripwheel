@@ -677,6 +677,28 @@ site was already rendering, and the dictionaries and bundled files stay exactly
 where they were: clear a field in the dashboard and the fallback takes over
 again, which is the contract the whole feature is built on.
 
+### The FAQ host avatar - and why it is NOT homepage content
+
+The last homepage media an admin could not swap: the round "your local host"
+avatar beside the WhatsApp button, hardcoded to
+`/videos/experiences/catamaran-trip.mp4` + `/images/home-page/faq/host-avatar.png`.
+
+**It went into Site Info settings, not the homepage record**, on the evidence:
+`FaqSection` renders on the home, destination AND collection pages (category and
+hub pass `minimal`, which hides this block), so a field on the homepage record
+would have fixed one surface and left the other two on a bundled file. The
+component is a server component that ALREADY reads `getPublicSiteInfo()` itself,
+with a comment explaining that threading one settings value through five callers
+is noise - so `faqHostImage` / `faqHostVideo` follow the WhatsApp number's exact
+path and all three surfaces got it with no prop threading at all.
+
+Fallback rules: neither set → the bundled pair; photo only → the photo alone, NOT
+the bundled clip playing under someone else's face; video only → their clip with
+the bundled poster. Edited in Settings > General beside the logo and favicon.
+
+**Verified on the running site** after busting the `site-info` tag: `/en` and
+`/en/curacao` both serve the Cloudinary avatar and poster.
+
 ### UI defects found on a live pass (fixed)
 
 - A featured card with no poster previewed the LINKED PAGE's photo, which reads
