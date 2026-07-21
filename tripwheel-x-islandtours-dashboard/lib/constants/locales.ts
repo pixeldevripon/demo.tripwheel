@@ -34,9 +34,13 @@ export const LOCALE_NATIVE_LABELS: Record<Locale, string> = {
 /** All selectable currencies - order matches the footer currency switcher. */
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 
-/** Currency per locale - EUR everywhere except Chinese (USD). */
+/**
+ * Currency per locale (master §D.2, LOCKED 2026-06-10): English and Chinese
+ * default to USD, the five European locales to EUR. Mirrored from the public
+ * frontend's copy; keep the two in sync.
+ */
 export const LOCALE_CURRENCY: Record<Locale, Currency> = {
-  en: 'EUR',
+  en: 'USD',
   es: 'EUR',
   nl: 'EUR',
   pt: 'EUR',

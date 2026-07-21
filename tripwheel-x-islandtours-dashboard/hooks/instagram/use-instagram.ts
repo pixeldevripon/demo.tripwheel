@@ -46,16 +46,39 @@ export function useInstagramPosts() {
   });
 }
 
-export function useCreateInstagramPost() {
+/**
+ * Add tiles from one media-library pick. There is no single-tile counterpart:
+ * tiles are only ever created by picking media, and picking one photo is just
+ * an array of one.
+ *
+ * Sequential on purpose, and it must stay that way: the backend sets
+ * `displayOrder` to `max(displayOrder) + 1` via a read-then-write with no lock,
+ * so N parallel POSTs would all read the same max and land on the same slot -
+ * the public order would then fall back to the id tiebreak instead of the order
+ * the admin picked them in.
+ *
+ * Invalidation is in `onSettled` rather than `onSuccess`: if the run dies on
+ * tile 7 of 10, six tiles really were created, and the grid has to show them.
+ */
+export function useCreateInstagramPosts() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreateInstagramPostPayload) =>
-      instagramApi.createPost(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: instagramKeys.posts() });
-      toast.success('Tile added');
+    mutationFn: async (payloads: CreateInstagramPostPayload[]) => {
+      const created = [];
+      for (const payload of payloads) {
+        created.push(await instagramApi.createPost(payload));
+      }
+      return created;
     },
-    onError,
+    onSuccess: (created) =>
+      toast.success(
+        created.length === 1 ? 'Tile added' : `${created.length} tiles added`,
+      ),
+    onError: (err: Error) =>
+      toast.error(
+        `${err.message || 'Failed to add the tiles'} - any tiles already added were kept.`,
+      ),
+    onSettled: () => qc.invalidateQueries({ queryKey: instagramKeys.posts() }),
   });
 }
 

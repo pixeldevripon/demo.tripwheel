@@ -84,7 +84,9 @@ function toSlots(cards: HomePageContent['editorialCards']): CardValues[] {
  * category has nothing bookable on the banner's island. Keyed by slot index,
  * which is the deck's own order.
  */
-function unlinkableSlots(cards: HomePageContent['editorialCards']): Set<number> {
+function unlinkableSlots(
+    cards: HomePageContent['editorialCards']
+): Set<number> {
     const dead = new Set<number>();
     [...cards]
         .sort((a, b) => a.displayOrder - b.displayOrder)

@@ -23,7 +23,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { MediaItem, UpdateMediaInput } from "@/types/media";
-import { getMediaKind } from "./media-kind";
+import { getMediaKind } from "@/lib/media/media-kind";
 
 /**
  * Drops a trailing file extension ("hero-shot.jpg" -> "hero-shot") so the

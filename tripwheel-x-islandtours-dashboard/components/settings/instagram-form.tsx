@@ -4,12 +4,11 @@ import {
   Alert02Icon,
   ArrowDown02Icon,
   ArrowUp02Icon,
-  Delete02Icon,
+  Cancel01Icon,
   Image02Icon,
   PencilEdit02Icon,
+  PlayIcon,
   PlusSignIcon,
-  ViewIcon,
-  ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +18,10 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { ImageSelectorField } from '@/components/common/image-selector-field';
+import MediaSelector from '@/components/common/media-selector';
 import { StatusBadge } from '@/components/common/status-badge';
+import { VideoSelectorField } from '@/components/common/video-selector-field';
+import { getMediaKind } from '@/lib/media/media-kind';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +63,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import {
-  useCreateInstagramPost,
+  useCreateInstagramPosts,
   useDeleteInstagramPost,
   useInstagramAccount,
   useInstagramPosts,
@@ -69,9 +71,15 @@ import {
   useUpdateInstagramAccount,
   useUpdateInstagramPost,
 } from '@/hooks/instagram/use-instagram';
-import { useSiteInfo } from '@/hooks/settings/use-settings';
-import type { InstagramPost } from '@/types/instagram';
+import { useSiteInfo, useUpdateSiteInfo } from '@/hooks/settings/use-settings';
+import type {
+  CreateInstagramPostPayload,
+  InstagramLayout,
+  InstagramPost,
+} from '@/types/instagram';
+import type { MediaItem } from '@/types/media';
 import {
+  CheckboxField,
   SettingsCard,
   SettingsCardSkeleton,
   TextField,
@@ -80,65 +88,110 @@ import {
 /** Brand-wide tiles carry no destination; Select needs a non-empty value. */
 const BRAND_WIDE = 'brand-wide';
 
-/** The public grid is 2 x 3. Fewer than this and the section looks half-built. */
-const GRID_SIZE = 6;
+/**
+ * How many live tiles each layout wants before the section looks finished: the
+ * curated grid is 2 x 3; the gallery is three rows of five (and five rows of
+ * three on a phone), so 15 is what fills its last row at both widths. Mirrors
+ * DEFAULT_LIMIT_BY_LAYOUT in the backend's instagram.service.ts.
+ */
+const SLOTS_BY_LAYOUT: Record<InstagramLayout, number> = {
+  GRID: 6,
+  GALLERY: 15,
+};
 
-// ── Account ───────────────────────────────────────────────────────────────--
+// ── Section settings ──────────────────────────────────────────────────────--
 
 const accountSchema = z.object({
+  enabled: z.boolean(),
   username: z.string().optional(),
   profileUrl: z.string().optional(),
+  layout: z.enum(['GRID', 'GALLERY']),
 });
 type AccountFormValues = z.infer<typeof accountSchema>;
 
+const LAYOUT_HINT: Record<InstagramLayout, string> = {
+  GRID: 'Six rounded cards in two rows, with generous spacing. Reads as part of the page.',
+  GALLERY:
+    'Fifteen 4:5 portraits packed five across with hairline gaps. Reads like the Instagram profile itself.',
+};
+
 /**
- * The handle row above the grid. The public section will not render without a
- * handle - it is the section's heading - so this card says so rather than
- * letting an admin curate six tiles into a page that shows nothing.
+ * Everything about the section except its tiles: whether it renders at all, the
+ * handle heading it, the outbound link, and which of the two layouts draws it.
+ *
+ * The on/off switch lives HERE rather than with the other integrations,
+ * because it is meaningless without the handle and tiles beside it - and the
+ * public section will not render without a handle either, which this card says
+ * out loud instead of letting an admin curate into an invisible page.
+ *
+ * Two writes on one Save (the feed's own row, and SiteInfo for the switch),
+ * with the settings write skipped unless the switch actually moved.
  */
 function AccountCard() {
   const { data, isLoading } = useInstagramAccount();
-  const { data: siteInfo } = useSiteInfo();
-  const { mutate, isPending } = useUpdateInstagramAccount();
+  const { data: siteInfo, isLoading: siteLoading } = useSiteInfo();
+  const { mutate: saveAccount, isPending } = useUpdateInstagramAccount();
+  const { mutate: saveSiteInfo, isPending: savingSite } = useUpdateSiteInfo();
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
-    defaultValues: { username: '', profileUrl: '' },
+    defaultValues: {
+      enabled: false,
+      username: '',
+      profileUrl: '',
+      layout: 'GRID',
+    },
   });
 
   useEffect(() => {
-    if (data) {
+    if (data && siteInfo) {
       reset({
+        enabled: siteInfo.enableInstagram ?? false,
         username: data.username ?? '',
         profileUrl: data.profileUrl ?? '',
+        layout: data.layout ?? 'GRID',
       });
     }
-  }, [data, reset]);
+  }, [data, siteInfo, reset]);
 
-  if (isLoading) return <SettingsCardSkeleton />;
+  if (isLoading || siteLoading) return <SettingsCardSkeleton />;
 
   const handle = watch('username')?.trim();
+  const enabled = watch('enabled');
+  const layout = watch('layout');
+
+  function onSubmit(values: AccountFormValues) {
+    saveAccount({
+      username: values.username,
+      profileUrl: values.profileUrl,
+      layout: values.layout,
+    });
+    if (values.enabled !== (siteInfo?.enableInstagram ?? false)) {
+      saveSiteInfo({ enableInstagram: values.enabled });
+    }
+  }
 
   return (
     <SettingsCard
-      title="Instagram Account"
-      description="The handle shown above the grid on every destination page."
-      onSubmit={handleSubmit((v) => mutate(v))}
-      isSaving={isPending}
+      title="Instagram Section"
+      description="The band of Instagram tiles on every destination page."
+      onSubmit={handleSubmit(onSubmit)}
+      isSaving={isPending || savingSite}
     >
-      {siteInfo && !siteInfo.enableInstagram && (
-        <p className="flex items-start gap-2 rounded-md bg-surface-inset p-3 text-xs text-content-muted">
-          <HugeiconsIcon icon={Alert02Icon} className="mt-px size-3.5 shrink-0" />
-          The Instagram section is switched off under Settings &gt; Site, so
-          nothing here reaches the public site yet.
-        </p>
-      )}
+      <CheckboxField
+        id="enableInstagram"
+        label="Show the Instagram section"
+        description="Off hides it on every destination page, tiles and all."
+        checked={enabled}
+        onChange={(c) => setValue('enabled', c, { shouldDirty: true })}
+      />
 
       <TextField
         label="Handle"
@@ -155,11 +208,30 @@ function AccountCard() {
         description="Leave empty and the link is built from the handle."
       />
 
-      {!handle && (
+      <Field>
+        <Label>Layout</Label>
+        <Select
+          value={layout}
+          onValueChange={(v) =>
+            setValue('layout', v as InstagramLayout, { shouldDirty: true })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="GRID">Curated grid</SelectItem>
+            <SelectItem value="GALLERY">Instagram gallery</SelectItem>
+          </SelectContent>
+        </Select>
+        <FieldDescription>{LAYOUT_HINT[layout]}</FieldDescription>
+      </Field>
+
+      {enabled && !handle && (
         <p className="flex items-start gap-2 text-xs text-danger-fg">
           <HugeiconsIcon icon={Alert02Icon} className="mt-px size-3.5 shrink-0" />
           Without a handle the whole section stays hidden, however many tiles are
-          added below.
+          added below - it is the heading the section is built around.
         </p>
       )}
     </SettingsCard>
@@ -170,6 +242,7 @@ function AccountCard() {
 
 interface TileDraft {
   imageUrl: string | null;
+  videoUrl: string | null;
   permalink: string;
   caption: string;
   altText: string;
@@ -178,11 +251,52 @@ interface TileDraft {
 
 const EMPTY_DRAFT: TileDraft = {
   imageUrl: null,
+  videoUrl: null,
   permalink: '',
   caption: '',
   altText: '',
   destinationId: BRAND_WIDE,
 };
+
+/**
+ * Still frame for a video picked straight from the library.
+ *
+ * Every post needs an `imageUrl` - it is what the public grid paints first and
+ * all a reduced-motion visitor ever sees - so a video cannot become a tile
+ * without a poster. Cloudinary renders one from the same public id by swapping
+ * the extension, which is what makes picking a video in the same multi-select
+ * as the photos possible at all. Returns null for anything not served from our
+ * Cloudinary video pipeline, so the caller skips it loudly rather than saving a
+ * tile whose poster is an .mp4.
+ */
+function videoPoster(url: string): string | null {
+  if (!url.includes('/video/upload/')) return null;
+  const poster = url.replace(/\.[a-z0-9]{2,5}(?:\?.*)?$/i, '.jpg');
+  return poster === url ? null : poster;
+}
+
+/**
+ * One library pick -> one tile payload. Photos go in as-is; videos go in as
+ * poster + video. Alt text rides along from the media record so a freshly added
+ * tile is already accessible before anyone opens it to edit.
+ */
+function tilePayloadFor(item: MediaItem): CreateInstagramPostPayload | null {
+  const kind = getMediaKind(item);
+  const common = {
+    imagePublicId: item.publicId || undefined,
+    altText: item.altText || undefined,
+    width: item.width,
+    height: item.height,
+  };
+
+  if (kind === 'video') {
+    const poster = videoPoster(item.url);
+    return poster ? { ...common, imageUrl: poster, videoUrl: item.url } : null;
+  }
+  // 'svg', 'audio' and 'file' are not photographs and have no business in the
+  // feed, so they are skipped rather than quietly turned into broken tiles.
+  return kind === 'image' ? { ...common, imageUrl: item.url } : null;
+}
 
 /**
  * The grid itself. Tiles are curated here rather than pulled from Instagram:
@@ -192,13 +306,14 @@ const EMPTY_DRAFT: TileDraft = {
  */
 function TilesCard() {
   const { data: posts = [], isLoading } = useInstagramPosts();
+  const { data: account } = useInstagramAccount();
   const { data: destinations = [] } = useActiveDestinations();
-  const create = useCreateInstagramPost();
+  const createMany = useCreateInstagramPosts();
   const update = useUpdateInstagramPost();
   const reorder = useReorderInstagramPosts();
   const remove = useDeleteInstagramPost();
 
-  const [addOpen, setAddOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [editing, setEditing] = useState<InstagramPost | null>(null);
   const [pendingDelete, setPendingDelete] = useState<InstagramPost | null>(null);
 
@@ -206,8 +321,8 @@ function TilesCard() {
   const ordered = [...posts].sort(
     (a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id),
   );
-  const liveCount = ordered.filter((p) => p.isActive).length;
-  const isBusy = update.isPending || reorder.isPending;
+  const slots = SLOTS_BY_LAYOUT[account?.layout ?? 'GRID'];
+  const isBusy = update.isPending || reorder.isPending || createMany.isPending;
 
   function handleMove(index: number, direction: 'up' | 'down') {
     const target = direction === 'up' ? index - 1 : index + 1;
@@ -220,8 +335,25 @@ function TilesCard() {
     });
   }
 
-  function handleToggle(post: InstagramPost) {
-    update.mutate({ id: post.id, payload: { isActive: !post.isActive } });
+  /**
+   * The whole point of the multi-select: a pick of twelve photos becomes twelve
+   * tiles in one go, in the order they were picked, each ready to open and
+   * refine. Nothing here asks for a caption or a link first - those are the
+   * per-tile details, and demanding them up front is what made adding a feed a
+   * twelve-dialog chore.
+   */
+  function handlePicked(items: MediaItem[]) {
+    const payloads = items
+      .map(tilePayloadFor)
+      .filter((p): p is CreateInstagramPostPayload => p !== null);
+
+    const skipped = items.length - payloads.length;
+    if (skipped > 0) {
+      toast.warning(
+        `Skipped ${skipped} file${skipped === 1 ? '' : 's'} - a tile needs a photo or a video from our own library.`,
+      );
+    }
+    if (payloads.length > 0) createMany.mutate(payloads);
   }
 
   return (
@@ -233,31 +365,32 @@ function TilesCard() {
               <CardTitle className="text-lg font-semibold">Feed Tiles</CardTitle>
               {!isLoading && ordered.length > 0 && (
                 <Badge variant="secondary">
-                  {liveCount} showing of {ordered.length}
+                  {ordered.length} tile{ordered.length === 1 ? '' : 's'}
                 </Badge>
               )}
             </div>
             <CardDescription>
-              The first {GRID_SIZE} live tiles fill the grid. A tile links to its
-              Instagram post; leave the link empty and it opens the profile
-              instead.
+              The first {slots} fill the{' '}
+              {account?.layout === 'GALLERY' ? 'gallery' : 'grid'}. Pick as many
+              photos and videos as you like in one go, then click any tile to
+              set its link, caption and island.
             </CardDescription>
           </div>
           <Button
             size="sm"
-            onClick={() => setAddOpen(true)}
-            disabled={create.isPending}
+            onClick={() => setPickerOpen(true)}
+            disabled={createMany.isPending}
           >
             <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-            Add tile
+            {createMany.isPending ? 'Adding...' : 'Add tiles'}
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6 pt-6">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="aspect-[384/337] w-full rounded-md" />
             ))}
           </div>
@@ -268,19 +401,23 @@ function TilesCard() {
               No tiles yet - the Instagram section is hidden on every
               destination page.
             </p>
-            <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
-              Add the first tile
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPickerOpen(true)}
+            >
+              Add the first tiles
             </Button>
           </div>
         ) : (
           <>
-            {liveCount > 0 && liveCount < GRID_SIZE && (
+            {ordered.length < slots && (
               <p className="rounded-md bg-surface-inset p-3 text-xs text-content-muted">
-                {liveCount} of {GRID_SIZE} slots filled - the grid renders short
-                until there are {GRID_SIZE}.
+                {ordered.length} of {slots} slots filled - the section renders
+                short until there are {slots}.
               </p>
             )}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {ordered.map((post, index) => (
                 <TileCard
                   key={post.id}
@@ -289,7 +426,6 @@ function TilesCard() {
                   total={ordered.length}
                   disabled={isBusy}
                   onMove={handleMove}
-                  onToggle={() => handleToggle(post)}
                   onEdit={() => setEditing(post)}
                   onDelete={() => setPendingDelete(post)}
                 />
@@ -299,35 +435,18 @@ function TilesCard() {
         )}
       </CardContent>
 
-      <TileDialog
-        open={addOpen}
-        title="Add a tile"
-        description="Pick the photo from the media library, then point it at the post it came from."
-        destinations={destinations}
-        isSaving={create.isPending}
-        onOpenChange={setAddOpen}
-        onSave={(draft) => {
-          if (!draft.imageUrl) return;
-          create.mutate(
-            {
-              imageUrl: draft.imageUrl,
-              permalink: draft.permalink || undefined,
-              caption: draft.caption || undefined,
-              altText: draft.altText || undefined,
-              destinationId:
-                draft.destinationId === BRAND_WIDE
-                  ? undefined
-                  : draft.destinationId,
-            },
-            { onSuccess: () => setAddOpen(false) },
-          );
-        }}
+      {/* Adding is a library pick, not a form: photos and videos together, as
+          many as wanted, straight into tiles. Everything else about a tile is
+          edited on the tile itself. */}
+      <MediaSelector
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onMediaSelect={handlePicked}
+        multiple
       />
 
       <TileDialog
         open={Boolean(editing)}
-        title="Edit tile"
-        description="Changes go live on the public site as soon as you save."
         post={editing}
         destinations={destinations}
         isSaving={update.isPending}
@@ -339,9 +458,18 @@ function TilesCard() {
               id: editing.id,
               payload: {
                 imageUrl: draft.imageUrl,
+                // '' clears the video, so removing it retypes the tile back to
+                // a photo instead of leaving a stale reel attached.
+                videoUrl: draft.videoUrl ?? '',
                 permalink: draft.permalink,
                 caption: draft.caption,
                 altText: draft.altText,
+                // There is no hide/show any more, so "live" is the only state a
+                // tile has. Sending it on save normalises any row left inactive
+                // by the old toggle - otherwise such a row would sit in this
+                // grid looking perfectly normal while never rendering on the
+                // site, with nothing in the UI to explain why.
+                isActive: true,
                 destinationId:
                   draft.destinationId === BRAND_WIDE
                     ? null
@@ -388,7 +516,6 @@ function TileCard({
   total,
   disabled,
   onMove,
-  onToggle,
   onEdit,
   onDelete,
 }: {
@@ -397,7 +524,6 @@ function TileCard({
   total: number;
   disabled: boolean;
   onMove: (index: number, direction: 'up' | 'down') => void;
-  onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -406,27 +532,54 @@ function TileCard({
   return (
     <div className="group overflow-hidden rounded-md border border-line">
       <div className="relative aspect-[384/337] bg-surface-inset">
+        {/* The poster, matching what the public grid paints first. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={post.thumbnailUrl || post.imageUrl}
-          alt=""
-          className={
-            post.isActive
-              ? 'size-full object-cover'
-              : 'size-full object-cover opacity-40 grayscale'
-          }
-        />
+        <img src={post.imageUrl} alt="" className="size-full object-cover" />
+
+        {/* The tile IS the edit control - a sibling of the corner actions
+            rather than a wrapper around them, so no button ends up nested
+            inside another. A pencil in the corner made editing look like one
+            more small target competing with three others, when it is the thing
+            an admin came here to do. */}
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={disabled || synced}
+          title={synced ? 'Synced from Instagram' : 'Edit tile'}
+          className="absolute inset-0 flex items-center justify-center transition-colors hover:bg-n-1000/40 disabled:cursor-not-allowed"
+        >
+          <HugeiconsIcon
+            icon={PencilEdit02Icon}
+            className="size-5 text-n-0 opacity-0 transition-opacity group-hover:opacity-100 group-disabled:opacity-0"
+          />
+          <span className="sr-only">Edit tile</span>
+        </button>
 
         {/* The number IS the position in the public grid. */}
         <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums">
           {index + 1}
         </span>
 
-        {!post.isActive && (
-          <span className="pointer-events-none absolute inset-x-2 bottom-2 rounded-md bg-n-1000/70 px-2 py-1 text-center text-2xs font-medium text-n-0">
-            Hidden from the site
+        {post.videoUrl && (
+          <span className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0">
+            <HugeiconsIcon icon={PlayIcon} className="size-3" />
+            Video
           </span>
         )}
+
+        {/* Always visible, not hover-revealed - the same corner control every
+            other media field in this dashboard uses (see ImageSelectorField),
+            so removing a tile works the way removing a picked image already
+            does. */}
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Remove tile"
+          className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center bg-black/60 text-white transition-colors hover:bg-destructive"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+          <span className="sr-only">Remove tile</span>
+        </button>
 
         <div className="absolute bottom-2 left-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           <Button
@@ -446,38 +599,6 @@ function TileCard({
             title="Move later"
           >
             <HugeiconsIcon icon={ArrowDown02Icon} className="size-3" />
-          </Button>
-        </div>
-
-        <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-          <Button
-            size="icon-sm"
-            variant="secondary"
-            onClick={onEdit}
-            disabled={disabled || synced}
-            title={synced ? 'Synced from Instagram' : 'Edit tile'}
-          >
-            <HugeiconsIcon icon={PencilEdit02Icon} className="size-3" />
-          </Button>
-          <Button
-            size="icon-sm"
-            variant="secondary"
-            onClick={onToggle}
-            disabled={disabled}
-            title={post.isActive ? 'Hide from the site' : 'Show on the site'}
-          >
-            <HugeiconsIcon
-              icon={post.isActive ? ViewOffIcon : ViewIcon}
-              className="size-3"
-            />
-          </Button>
-          <Button
-            size="icon-sm"
-            variant="destructive"
-            onClick={onDelete}
-            title="Remove tile"
-          >
-            <HugeiconsIcon icon={Delete02Icon} className="size-3" />
           </Button>
         </div>
       </div>
@@ -502,10 +623,13 @@ function TileCard({
   );
 }
 
+/**
+ * Everything about one tile. Reached by clicking the tile itself - tiles are
+ * created straight from a media pick, so this is where a photo becomes an
+ * actual post: where it links, what it says, which island it belongs to.
+ */
 function TileDialog({
   open,
-  title,
-  description,
   post,
   destinations,
   isSaving,
@@ -513,8 +637,6 @@ function TileDialog({
   onSave,
 }: {
   open: boolean;
-  title: string;
-  description: string;
   post?: InstagramPost | null;
   destinations: { id: string; name: string }[];
   isSaving: boolean;
@@ -531,6 +653,7 @@ function TileDialog({
       post
         ? {
             imageUrl: post.imageUrl,
+            videoUrl: post.videoUrl,
             permalink: post.permalink ?? '',
             caption: post.caption ?? '',
             altText: post.altText ?? '',
@@ -544,8 +667,10 @@ function TileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle>Edit tile</DialogTitle>
+          <DialogDescription>
+            Changes go live on the public site as soon as you save.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -553,11 +678,24 @@ function TileDialog({
             <Label>Photo</Label>
             <FieldDescription>
               Served from our media library, never hotlinked from Instagram -
-              their image links expire.
+              their image links expire. On a reel this is the poster.
             </FieldDescription>
             <ImageSelectorField
               value={draft.imageUrl}
               onChange={(url) => setDraft((d) => ({ ...d, imageUrl: url }))}
+            />
+          </Field>
+
+          <Field>
+            <Label>Video (optional)</Label>
+            <FieldDescription>
+              For a reel or video post. It plays muted and looped over the
+              poster, and visitors who ask for reduced motion see the poster
+              alone - so the photo above is still required.
+            </FieldDescription>
+            <VideoSelectorField
+              value={draft.videoUrl}
+              onChange={(url) => setDraft((d) => ({ ...d, videoUrl: url }))}
             />
           </Field>
 
@@ -603,6 +741,12 @@ function TileDialog({
               placeholder="Catamaran at sunset"
             />
           </Field>
+
+          {/* No "post type" or "pinned" control. Both existed only to drive
+              corner badges (carousel stack, reel, pin), and the public tiles no
+              longer draw any - that glyph set is Instagram's product chrome, not
+              ours. The columns still exist on the row, so a badge could come
+              back as a design decision without a migration. */}
 
           <Field>
             <Label>Show on</Label>
