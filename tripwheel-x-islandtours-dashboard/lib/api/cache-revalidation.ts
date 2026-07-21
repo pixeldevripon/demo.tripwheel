@@ -13,9 +13,19 @@
  * `lib/api/public/*` are tagged `type:<id>` to match; aggregate/embedding reads
  * keep the coarse tag. The entity id is read straight from the mutation path.
  *
- * Path segments with no mapping (media library, per-user wishlist, read-only
- * slug-registry lookups) trigger no revalidation. Settings is a partial
- * exception: only `/settings/site` backs a public read (see that case).
+ * Path segments with no mapping (per-user wishlist, operator settings,
+ * read-only slug-registry lookups) trigger no revalidation.
+ *
+ * THE RULE: every mutation busts the tags its DATA backs - including page
+ * content, homepage and settings. A write that busts nothing is invisible on
+ * the public site for a full `cacheLife` (usually days) with no error anywhere:
+ * the save succeeds, the dashboard shows the new value, the site serves the old
+ * one. Never lean on a short `cacheLife` as the freshness mechanism.
+ *
+ * When adding an endpoint, map it by following the DATA, not the URL. A field
+ * can live on one entity and surface in another entity's cached payload -
+ * `SiteInfo.enableInstagram` is written at `/settings/site` but gates the
+ * `instagram`-tagged feed, so that case emits both tags.
  */
 import type { CacheTag } from '@/lib/cache-tags';
 import { enqueueRevalidation } from './revalidation-throttle';
@@ -160,6 +170,25 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       ) {
         tags.push('site-info');
       }
+      // SiteInfo also stores `enableInstagram` (+ `instagramWidgetId`), and the
+      // public Instagram section reads that kill switch as `enabled` on
+      // `/instagram/public/feed`, which is cached under `instagram` - a
+      // different tag on a different endpoint. Busting only `site-info` left the
+      // section rendering (or hidden) for a full cacheLife('days') after an
+      // admin flipped the toggle. Follow the DATA, not the URL.
+      if (seg1 === 'site') {
+        tags.push('instagram');
+      }
+      break;
+
+    // Media library. `excludeFromIndexing` on any attachment changes the
+    // platform-wide exclusion list behind `getExcludedMediaUrls`, which decides
+    // what may appear in og:image, structured data and sitemaps. That loader
+    // used to rely on `cacheLife('hours')` alone, so a toggle could sit
+    // unapplied for an hour; every write here now busts it. Uploads count too -
+    // a new attachment can be created already flagged.
+    case 'media-gallery':
+      tags.push('media-indexing');
       break;
 
     // Homepage editorial content (hero copy/image, editorial CTA, section
@@ -191,7 +220,7 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       break;
 
     default:
-      break; // media-gallery, operator-settings, wishlist, read-only lookups, ...
+      break; // operator-settings, wishlist, read-only lookups, ...
   }
 
   // De-dupe (e.g. a POST already pushed 'slug-registry' once).
