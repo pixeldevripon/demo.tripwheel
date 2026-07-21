@@ -699,6 +699,42 @@ the bundled poster. Edited in Settings > General beside the logo and favicon.
 **Verified on the running site** after busting the `site-info` tag: `/en` and
 `/en/curacao` both serve the Cloudinary avatar and poster.
 
+### Model correction: a CTA card advertises a CATEGORY, not an island
+
+**Reviewed and corrected 2026-07-21.** The first cut had each fan card pointing
+at an ISLAND. Wrong: the banner is themed to ONE island (the CTA button's
+target), and the three cards are the categories on it - which is exactly what
+the bundled deck has always shown (buggy, snorkel, catamaran).
+
+`HomePageEditorialCard.destinationId` became `categoryId` (migration
+`20260721094903`). The island is deliberately NOT stored per card: with one
+island on the banner and another on a card, the button and the card beside it
+could open different islands. So the public payload returns the category's
+translated name plus its **slug only**, and the page joins that slug to the
+island it already resolved for the button. One island resolution, used by both -
+they cannot disagree by construction.
+
+The editor reflects the dependency: the island select moved ABOVE the deck,
+because every card below it opens a category on that island, so it is the first
+decision rather than a footnote after them.
+
+Known and accepted: a category page 404s unless that (category, island) pair has
+a live tour, and this deck does not check that - unlike the Top Experiences
+resolver, which does. The check needs the island, which is only resolved on the
+frontend when the admin left it automatic.
+
+### The save that produced "destinationId must be a UUID"
+
+The payload mapped the select's `__none__` sentinel to null but compared with
+`===` only, so an empty-string form value sailed past it, was posted, and was
+rejected by `@IsUUID`. `realId()` now collapses both sentinels AND `''` to null.
+
+The same `''` explained the visible oddity in the screenshot - the island select
+showing its placeholder while the link-mode control below it was visible: the
+slot read its value with `??`, which does not catch `''`, so an empty value
+masqueraded as a selection. It reads with `||` now. The lesson is the one this
+whole feature is built on: `||`, not `??`, wherever empty means unset.
+
 ### Fallback audit - "no section, no content, no video can be empty"
 
 Every section was walked for a path that renders blank. Nine of ten guard
