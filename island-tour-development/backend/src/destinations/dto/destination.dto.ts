@@ -229,14 +229,6 @@ export class PublicPageContentSectionDto {
   })
   sectionKey!: string | null;
 
-  @ApiProperty({
-    example: 'experiences',
-    nullable: true,
-    description:
-      'In-page jump target without the leading "#". Null renders plain copy instead of a link.',
-  })
-  anchor!: string | null;
-
   @ApiProperty({ example: 'Top things to do' })
   heading!: string;
 

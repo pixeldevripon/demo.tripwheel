@@ -55,9 +55,12 @@ export class ResolvedExperienceResponseDto {
 
   @ApiProperty({
     example: '/curacao/snorkeling',
-    description: 'Locale-less path; the frontend localizes it.',
+    nullable: true,
+    description:
+      'Locale-less path; the frontend localizes it. Null when the card is ' +
+      'marked not-clickable - it still renders, it just does not link.',
   })
-  href!: string;
+  href!: string | null;
 }
 
 /** The admin row - raw stored values plus a readable label. */
@@ -87,6 +90,12 @@ export class FeaturedExperienceResponseDto {
       '(see `entityImage`).',
   })
   posterUrl!: string | null;
+
+  @ApiProperty({
+    example: true,
+    description: 'False = the card shows but is not clickable.',
+  })
+  isLink!: boolean;
 
   @ApiProperty({ example: 0 })
   displayOrder!: number;
@@ -170,6 +179,18 @@ export class CreateFeaturedExperienceDto {
   @Min(0)
   displayOrder?: number;
 
+  @ApiPropertyOptional({
+    example: true,
+    default: true,
+    description:
+      'Whether the card opens its target page. False = the card still shows, ' +
+      'with its title, but is not clickable. Distinct from `isActive`, which ' +
+      'removes the card from the carousel entirely.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isLink?: boolean;
+
   @ApiPropertyOptional({ example: true, default: true })
   @IsOptional()
   @IsBoolean()
@@ -213,6 +234,18 @@ export class UpdateFeaturedExperienceDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    default: true,
+    description:
+      'Whether the card opens its target page. False = the card still shows, ' +
+      'with its title, but is not clickable. Distinct from `isActive`, which ' +
+      'removes the card from the carousel entirely.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isLink?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

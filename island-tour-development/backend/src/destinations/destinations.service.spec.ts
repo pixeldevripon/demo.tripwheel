@@ -998,7 +998,6 @@ describe('DestinationService', () => {
           sectionGroupId: 'grp-a',
           locale: Locale.en,
           sectionKey: 'top-things',
-          anchor: 'experiences',
           heading: 'Top things to do',
           body: 'EN body A',
           displayOrder: 0,
@@ -1007,7 +1006,6 @@ describe('DestinationService', () => {
           sectionGroupId: 'grp-a',
           locale: Locale.nl,
           sectionKey: 'top-things',
-          anchor: 'experiences',
           heading: 'Top dingen om te doen',
           body: 'NL body A',
           displayOrder: 0,
@@ -1016,7 +1014,6 @@ describe('DestinationService', () => {
           sectionGroupId: 'grp-b',
           locale: Locale.en,
           sectionKey: 'planning',
-          anchor: 'planning',
           heading: 'Planning your trip',
           body: 'EN body B',
           displayOrder: 1,
@@ -1028,13 +1025,11 @@ describe('DestinationService', () => {
       expect(result.sections).toEqual([
         {
           sectionKey: 'top-things',
-          anchor: 'experiences',
           heading: 'Top dingen om te doen',
           body: 'NL body A',
         },
         {
           sectionKey: 'planning',
-          anchor: 'planning',
           heading: 'Planning your trip',
           body: 'EN body B',
         },

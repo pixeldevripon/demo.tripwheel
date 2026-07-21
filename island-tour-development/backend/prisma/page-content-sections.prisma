@@ -7,15 +7,15 @@
 // key, a page with two of its three sections translated still renders all three.
 //
 // The first consumer is the destination About band, whose three items are currently
-// hardcoded anchor links reading one-line labels out of the bundled dictionary.
+// hardcoded links reading one-line labels out of the bundled dictionary.
 model PageContentSection {
   id       String      @id @default(uuid())
   pageType FaqPageType // shared discriminator - see the enum's note in enums.prisma
   entityId String // UUID of the owning entity
 
   // Links the per-locale rows of ONE logical section; the English row is the base
-  // and carries the group-level attributes (displayOrder, isActive, anchor,
-  // sectionKey). Generated on create, so the dashboard never has to invent one.
+  // and carries the group-level attributes (displayOrder, isActive, sectionKey).
+  // Generated on create, so the dashboard never has to invent one.
   // NOT nullable, unlike Faq.faqGroupId - there are no legacy rows to protect here,
   // so per-group locale fallback works from the first row written.
   sectionGroupId String
@@ -29,10 +29,6 @@ model PageContentSection {
 
   heading String
   body    String
-  // In-page jump target, WITHOUT the leading '#' (e.g. 'experiences'). The About
-  // band's three items are navigation, not decoration - a section with no anchor
-  // renders as plain copy instead of a link.
-  anchor  String?
 
   displayOrder Int     @default(0)
   isActive     Boolean @default(true)

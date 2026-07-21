@@ -39,6 +39,8 @@ function featuredRow(over: Partial<Record<string, unknown>> = {}) {
     destinationId: null,
     videoUrl: null,
     posterUrl: null,
+    // Mirrors the column default: a card links unless an admin says otherwise.
+    isLink: true,
     displayOrder: 0,
     ...over,
   };
@@ -116,6 +118,36 @@ describe('FeaturedExperiencesService', () => {
 
       expect(card.href).toBe('/curacao/snorkeling');
       expect(card.title).toBe('Snorkeling');
+    });
+
+    it('keeps the card but drops its href when isLink is false', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ isLink: false }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([categoryRow()]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 2),
+      );
+
+      const cards = await service.resolvePublic(Locale.en);
+
+      // Not-clickable is NOT the same as hidden: the card still renders with
+      // its title and image, it just does not link anywhere.
+      expect(cards).toHaveLength(1);
+      expect(cards[0].href).toBeNull();
+      expect(cards[0].title).toBe('Snorkeling');
+    });
+
+    it('still applies the live-tour gate when isLink is false', async () => {
+      // A non-linking card must not become a way to advertise a dead page:
+      // the gate runs first, so a target with no live tour is dropped either way.
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ isLink: false }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([categoryRow()]);
+      prisma.tourCategory.findMany.mockResolvedValue([]);
+
+      expect(await service.resolvePublic(Locale.en)).toEqual([]);
     });
 
     it('prefers the locale translation for the title', async () => {

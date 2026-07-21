@@ -446,9 +446,9 @@ export function ApiUpdateContentSectionDocs() {
   return applyDecorators(
     ApiOperation({
       summary:
-        'Update a page content section group (anchor / order / active) (Admin/Editor)',
+        'Update a page content section group (order / active) (Admin/Editor)',
       description:
-        'Group-level attributes only - they are applied to every locale row at once. Send an empty string for `anchor` to clear it. Per-locale heading/body go through the translations endpoint.',
+        'Group-level attributes only - they are applied to every locale row at once. Per-locale heading/body go through the translations endpoint.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiParam({ name: 'groupId', description: 'Section group UUID' }),

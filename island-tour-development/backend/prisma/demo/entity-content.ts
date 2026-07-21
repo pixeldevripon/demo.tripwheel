@@ -23,13 +23,12 @@ import {
   prisma,
   section,
 } from './_shared';
+import { categoryName, tpl } from './i18n-templates';
 import {
-  categoryName,
-  tpl,
   DEST_SECTIONS,
-  DEST_SECTIONS_EN,
+  DEST_SECTIONS_I18N,
   ISLAND_FACTS,
-} from './i18n-templates';
+} from './dest-sections';
 
 // Destination-page FAQ set (Figma node 47361:19834): trust-focused questions
 // about booking with Island Tours, with the island name woven in.
@@ -331,11 +330,14 @@ async function ensureFaqs(
  * Seed the three About-band sections for one destination, in all 7 locales.
  *
  * Same grouping trick as `ensureFaqs`: one sectionGroupId per logical section
- * links its per-locale rows, and the localized sets are INDEX-ALIGNED with
- * DEST_SECTIONS so `sectionKey`/`anchor` never have to be threaded through each
- * translation. Islands with no entry in ISLAND_FACTS are skipped rather than
- * seeded with placeholder landmarks - the frontend falls back to its bundled
- * dictionary labels, which is the correct empty state.
+ * links its per-locale rows, and each locale's set is INDEX-ALIGNED with
+ * DEST_SECTIONS so `sectionKey` never has to be threaded through a translation.
+ *
+ * Every locale is authored (DEST_SECTIONS_I18N covers all 7), so unlike the FAQ
+ * seed there is no English-stub fallback here - a missing locale would be a bug,
+ * not an expected gap. Islands absent from ISLAND_FACTS are SKIPPED rather than
+ * seeded with another island's landmarks; the frontend then falls back to its
+ * bundled dictionary labels, which is the correct empty state.
  */
 async function ensureContentSections(
   destinationId: string,
@@ -350,28 +352,26 @@ async function ensureContentSections(
     where: { pageType: 'destination', entityId: destinationId },
   });
 
-  const en = DEST_SECTIONS_EN(destinationName, facts);
-  const localized = new Map<Locale, { heading: string; body: string }[]>();
-  for (const locale of NON_EN_LOCALES) {
-    const t = tpl(locale);
-    if (t) localized.set(locale, t.destSections(destinationName, facts));
-  }
+  const byLocale = new Map(
+    ALL_LOCALES.map((locale) => [
+      locale,
+      DEST_SECTIONS_I18N[locale](destinationName, facts),
+    ]),
+  );
 
   const rows: Prisma.PageContentSectionCreateManyInput[] = [];
   DEST_SECTIONS.forEach((section, idx) => {
     const sectionGroupId = randomUUID();
     ALL_LOCALES.forEach((locale) => {
-      const loc =
-        locale === Locale.en ? undefined : localized.get(locale)?.[idx];
+      const s = byLocale.get(locale)![idx];
       rows.push({
         pageType: 'destination',
         entityId: destinationId,
         sectionGroupId,
         sectionKey: section.key,
-        anchor: section.anchor,
         locale,
-        heading: loc?.heading ?? en[idx].heading,
-        body: loc?.body ?? en[idx].body,
+        heading: s.heading,
+        body: s.body,
         displayOrder: idx,
         isActive: true,
       });

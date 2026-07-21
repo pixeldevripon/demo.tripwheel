@@ -308,6 +308,12 @@ model FeaturedExperience {
   // enough that curation needs a per-card override. It doubles as the <video>
   // poster, so a card with a video no longer flashes black before it plays.
   posterUrl     String?
+  // Whether the card opens its target page. Off = the card still shows, with its
+  // title, but is not clickable - the same editorial choice the homepage CTA
+  // cards already offer via `EditorialCard.isLink` (naming a page you are not
+  // ready to send traffic to). Distinct from `isActive`, which removes the card
+  // from the carousel altogether.
+  isLink        Boolean            @default(true)
   displayOrder  Int                @default(0)
   isActive      Boolean            @default(true)
 

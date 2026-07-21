@@ -7,7 +7,9 @@
  * is the card's own poster when an admin set one, falling back to the entity's
  * photo - already resolved here, so there is nothing to choose between at render
  * time. The backend drops any row that fails the target page's own visibility
- * gate, so every card returned here is a link that resolves.
+ * gate, so every card returned here with an `href` is a link that resolves - and
+ * a card an admin marked not-clickable arrives with `href: null` having passed
+ * that same gate, so "not linked" never becomes a way to advertise a dead page.
  *
  * `publicGet` (soft null) rather than strict: an outage should cost the homepage
  * its carousel content, not the page. The component falls back to its bundled
@@ -29,8 +31,14 @@ export interface PublicExperience {
     /** Poster if set, else the entity photo. Also the `<video poster>`. */
     image: string | null;
     videoUrl: string | null;
-    /** Locale-less path (`/curacao/snorkeling`) - localize before rendering. */
-    href: string;
+    /**
+     * Locale-less path (`/curacao/snorkeling`) - localize before rendering.
+     * NULL when an admin marked the card not-clickable: it still renders, with
+     * its title, it just does not link. `top-experiences` already treats a null
+     * href that way (the bundled fallback cards use it), so nothing downstream
+     * needed changing.
+     */
+    href: string | null;
 }
 
 /**

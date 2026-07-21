@@ -14,7 +14,6 @@ export const pageContentSectionSelect = {
   id: true,
   heading: true,
   body: true,
-  anchor: true,
   sectionKey: true,
   sectionGroupId: true,
   displayOrder: true,
@@ -26,7 +25,6 @@ type SectionRow = {
   id: string;
   heading: string;
   body: string;
-  anchor: string | null;
   sectionKey: string | null;
   sectionGroupId: string;
   displayOrder: number;
@@ -42,7 +40,7 @@ type SectionRow = {
  *
  * A logical section = one `sectionGroupId` whose per-locale rows are translations
  * of each other. The English row is the base and carries the group-level
- * attributes (displayOrder, isActive, anchor, sectionKey); the other locale rows
+ * attributes (displayOrder, isActive, sectionKey); the other locale rows
  * mirror them so any row can be read standalone.
  *
  * Dependencies: PrismaService (@Global).
@@ -61,7 +59,6 @@ export class PageContentSectionService {
     return {
       sectionGroupId: base.sectionGroupId,
       sectionKey: base.sectionKey,
-      anchor: base.anchor,
       displayOrder: base.displayOrder,
       isActive: base.isActive,
       // English first, then the remaining locales.
@@ -125,7 +122,6 @@ export class PageContentSectionService {
         locale: Locale.en,
         heading: dto.heading,
         body: dto.body,
-        anchor: dto.anchor || null,
         displayOrder: dto.displayOrder ?? 0,
       },
       select: pageContentSectionSelect,
@@ -165,7 +161,6 @@ export class PageContentSectionService {
             // Group-level attributes are mirrored so every locale row stays in
             // sync and can be read standalone.
             sectionKey: base.sectionKey,
-            anchor: base.anchor,
             displayOrder: base.displayOrder,
             isActive: base.isActive,
           },
@@ -186,12 +181,10 @@ export class PageContentSectionService {
   ) {
     await this.getGroupRowsOrThrow(pageType, entityId, groupId);
 
-    // anchor / displayOrder / isActive are group-level: apply to every locale row
-    // at once. An empty-string anchor clears it.
+    // displayOrder / isActive are group-level: apply to every locale row at once.
     await this.prisma.pageContentSection.updateMany({
       where: { pageType, entityId, sectionGroupId: groupId },
       data: {
-        ...(dto.anchor !== undefined && { anchor: dto.anchor || null }),
         ...(dto.displayOrder !== undefined && {
           displayOrder: dto.displayOrder,
         }),

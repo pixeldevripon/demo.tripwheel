@@ -65,8 +65,6 @@ export interface DestinationTranslation {
 export interface DestinationContentSection {
   /** Stable slug on seeded sections; null on admin-created ones. */
   sectionKey: string | null;
-  /** In-page jump target WITHOUT the leading '#'. Null renders plain copy. */
-  anchor: string | null;
   heading: string;
   body: string;
 }

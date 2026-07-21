@@ -536,12 +536,7 @@ export class DestinationService {
     });
 
     return resolveGroupedLocale(rows, locale, (r) => r.sectionGroupId).map(
-      ({ sectionKey, anchor, heading, body }) => ({
-        sectionKey,
-        anchor,
-        heading,
-        body,
-      }),
+      ({ sectionKey, heading, body }) => ({ sectionKey, heading, body }),
     );
   }
 

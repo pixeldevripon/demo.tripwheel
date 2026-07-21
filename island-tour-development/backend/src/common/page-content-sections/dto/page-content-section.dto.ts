@@ -14,7 +14,7 @@ import {
 // Page content section DTOs - shared across every entity that owns authored
 // heading + body blocks. A logical section is one sectionGroupId whose per-locale
 // rows are translations of each other; the English row is the base and carries the
-// group-level attributes (displayOrder, isActive, anchor, sectionKey). Same
+// group-level attributes (displayOrder, isActive, sectionKey). Same
 // "author in English, then translate" editor shape as the grouped FAQ DTOs.
 
 // ── Response ────────────────────────────────────────────────────────────────────
@@ -48,14 +48,6 @@ export class PageContentSectionResponseDto {
   })
   sectionKey!: string | null;
 
-  @ApiProperty({
-    example: 'experiences',
-    nullable: true,
-    description:
-      'In-page jump target without the leading "#". Null renders the section as plain copy instead of a link.',
-  })
-  anchor!: string | null;
-
   @ApiProperty({ example: 0 })
   displayOrder!: number;
 
@@ -86,20 +78,6 @@ export class CreatePageContentSectionDto {
   @MinLength(10)
   body!: string;
 
-  @ApiPropertyOptional({
-    example: 'experiences',
-    description:
-      'In-page jump target WITHOUT the leading "#". Lowercase letters, digits and hyphens only.',
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message:
-      'anchor must be a slug (lowercase letters, digits and hyphens) with no leading "#"',
-  })
-  @MaxLength(60)
-  anchor?: string;
-
   @ApiPropertyOptional({ example: 0, default: 0 })
   @IsOptional()
   @IsInt()
@@ -124,19 +102,6 @@ export class UpsertPageContentSectionTranslationDto {
 }
 
 export class UpdatePageContentSectionDto {
-  @ApiPropertyOptional({
-    example: 'experiences',
-    description: 'Send an empty string to clear the anchor.',
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(/^(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/, {
-    message:
-      'anchor must be a slug (lowercase letters, digits and hyphens) with no leading "#"',
-  })
-  @MaxLength(60)
-  anchor?: string;
-
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
   @IsInt()

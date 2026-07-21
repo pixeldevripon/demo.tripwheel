@@ -33,8 +33,13 @@ export interface ResolvedExperience {
   title: string;
   image: string | null;
   videoUrl: string | null;
-  /** Locale-less path (`/curacao/snorkeling`); the frontend localizes it. */
-  href: string;
+  /**
+   * Locale-less path (`/curacao/snorkeling`); the frontend localizes it. NULL
+   * when the admin marked the card not-clickable: the card still renders with
+   * its title, it just does not link. The gate below still runs either way, so
+   * a card is only shown at all if its target page WOULD resolve.
+   */
+  href: string | null;
 }
 
 @Injectable()
@@ -94,6 +99,7 @@ export class FeaturedExperiencesService {
         destinationId: true,
         videoUrl: true,
         posterUrl: true,
+        isLink: true,
         displayOrder: true,
       },
       orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
@@ -206,7 +212,7 @@ export class FeaturedExperiencesService {
       title: hub.translations[0]?.name || hub.name,
       image: cardImage(row.posterUrl, hub.heroImage, hub.ogImage),
       videoUrl: row.videoUrl,
-      href: `/${hub.destination.slug}/${hub.slug}`,
+      href: row.isLink ? `/${hub.destination.slug}/${hub.slug}` : null,
     };
   }
 
@@ -246,7 +252,7 @@ export class FeaturedExperiencesService {
       title: category.translations[0]?.name || category.name,
       image: cardImage(row.posterUrl, category.heroImage, category.ogImage),
       videoUrl: row.videoUrl,
-      href: `/${destination.slug}/${category.slug}`,
+      href: row.isLink ? `/${destination.slug}/${category.slug}` : null,
     };
   }
 
@@ -602,6 +608,7 @@ const FEATURED_SELECT = {
   destinationId: true,
   videoUrl: true,
   posterUrl: true,
+  isLink: true,
   displayOrder: true,
   isActive: true,
 } satisfies Prisma.FeaturedExperienceSelect;
@@ -655,6 +662,7 @@ type FeaturedRow = {
   id: string;
   videoUrl: string | null;
   posterUrl: string | null;
+  isLink: boolean;
   destinationId: string | null;
 };
 
