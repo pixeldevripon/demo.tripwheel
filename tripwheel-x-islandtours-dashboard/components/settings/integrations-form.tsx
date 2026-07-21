@@ -91,7 +91,6 @@ const socialWidgetsSchema = z.object({
   enableWhatsappChat: z.boolean(),
   whatsappNumber: z.string().optional(),
   enableInstagram: z.boolean(),
-  instagramWidgetId: z.string().optional(),
 });
 type SocialWidgetsFormValues = z.infer<typeof socialWidgetsSchema>;
 
@@ -112,7 +111,6 @@ function SocialWidgetsCard() {
       enableWhatsappChat: false,
       whatsappNumber: '',
       enableInstagram: false,
-      instagramWidgetId: '',
     },
   });
 
@@ -122,7 +120,6 @@ function SocialWidgetsCard() {
         enableWhatsappChat: data.enableWhatsappChat ?? false,
         whatsappNumber: data.whatsappNumber ?? '',
         enableInstagram: data.enableInstagram ?? false,
-        instagramWidgetId: data.instagramWidgetId ?? '',
       });
     }
   }, [data, reset]);
@@ -132,7 +129,7 @@ function SocialWidgetsCard() {
   return (
     <SettingsCard
       title="WhatsApp & Instagram"
-      description="Chat button and feed widget shown on the public site."
+      description="Chat button and Instagram grid shown on the public site."
       onSubmit={handleSubmit((v) => mutate(v))}
       isSaving={isPending}
     >
@@ -147,12 +144,11 @@ function SocialWidgetsCard() {
 
       <CheckboxField
         id="enableInstagram"
-        label="Enable Instagram Feed"
-        description="Display an Instagram widget in the footer."
+        label="Enable Instagram Grid"
+        description="Show the Instagram grid on destination pages. Curate the handle and tiles under Settings > Instagram."
         checked={watch('enableInstagram')}
         onChange={(c) => setValue('enableInstagram', c, { shouldDirty: true })}
       />
-      <TextField label="Instagram Widget ID" registration={register('instagramWidgetId')} error={errors.instagramWidgetId?.message} />
     </SettingsCard>
   );
 }

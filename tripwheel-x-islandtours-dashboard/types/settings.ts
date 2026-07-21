@@ -11,7 +11,6 @@ export interface SiteInfo {
   favicon: string | null;
   enableWhatsappChat: boolean;
   whatsappNumber: string | null;
-  instagramWidgetId: string | null;
   enableInstagram: boolean;
   /**
    * "Your local host" - the looping avatar beside the WhatsApp button in the
@@ -32,7 +31,6 @@ export interface UpdateSiteInfoPayload {
   favicon?: string;
   enableWhatsappChat?: boolean;
   whatsappNumber?: string;
-  instagramWidgetId?: string;
   enableInstagram?: boolean;
   faqHostImage?: string;
   faqHostVideo?: string;
