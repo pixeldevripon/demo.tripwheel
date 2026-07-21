@@ -10,6 +10,7 @@ import { EnglishContentEditor } from '@/components/common/english-content-editor
 import { DestinationPageContentForm } from './destination-page-content-form';
 import { DestinationSeoTab } from '@/components/common/entity-seo-tab';
 import { FaqManager } from '@/components/common/faq-manager';
+import { ContentSectionManager } from '@/components/common/content-section-manager';
 
 interface DestinationEditViewProps {
   id: string;
@@ -63,6 +64,20 @@ export function DestinationEditView({ id, initialTab }: DestinationEditViewProps
               <div className="space-y-6">
                 <EnglishContentEditor type="destination" id={id} />
                 <DestinationPageContentForm destinationId={id} />
+                {/* Lives inside Page Content rather than as a fifth tab: these
+                    blocks render in the same About band as the copy above, and
+                    the entity tab set (Details / Page Content / SEO / FAQs) is
+                    shared across every module. */}
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-lg font-semibold">
+                      About Sections
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <ContentSectionManager basePath="/destinations" entityId={id} />
+                  </CardContent>
+                </Card>
               </div>
             ),
           },

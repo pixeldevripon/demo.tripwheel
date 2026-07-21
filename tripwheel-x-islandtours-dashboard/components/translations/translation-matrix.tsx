@@ -44,6 +44,7 @@ import { ALL_LOCALES, localeFlag, LOCALE_LABELS } from '@/lib/constants/locales'
 import {
     ENTITY_FIELDS,
     ENTITY_TYPE_LABELS,
+    TRANSLATABLE_ENTITY_PERMISSIONS,
     TRANSLATABLE_ENTITY_TYPES,
     type TranslatableEntityType,
 } from '@/lib/translatable-schema';
@@ -283,19 +284,46 @@ function EmptyRow({ label }: { label: string }) {
 /* ── The matrix shell ────────────────────────────────────────────────────── */
 
 export function TranslationMatrix() {
-    const [type, setType] = useState<TranslatableEntityType>('tour');
+    const [requestedType, setRequestedType] =
+        useState<TranslatableEntityType>('tour');
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [destinationSlug, setDestinationSlug] = useState<string | undefined>();
 
+    // Only the entity types this session may WRITE. An operator holds none of the
+    // Curate permissions, so Destinations / Hubs / Categories / Collections /
+    // Homepage vanish and only their own Tours remain - the same filtering the
+    // sidebar already applies to those modules.
+    const { canAny } = useRole();
+    const allowedTypes = TRANSLATABLE_ENTITY_TYPES.filter(t =>
+        canAny(TRANSLATABLE_ENTITY_PERMISSIONS[t]),
+    );
+
+    // 'tour' is the initial state and is not guaranteed to be permitted, so fall
+    // through to the first allowed tab rather than render a table whose every
+    // save would 403.
+    const type = allowedTypes.includes(requestedType)
+        ? requestedType
+        : (allowedTypes[0] ?? requestedType);
+
     const { data: destinations } = useActiveDestinations();
 
     function switchType(t: string) {
-        setType(t as TranslatableEntityType);
+        const next = t as TranslatableEntityType;
+        if (!allowedTypes.includes(next)) return;
+        setRequestedType(next);
         setPage(1);
         setTotal(0);
         setSearch('');
+    }
+
+    if (allowedTypes.length === 0) {
+        return (
+            <p className='rounded-md border border-line bg-surface-sunken px-4 py-8 text-center text-sm text-content-muted'>
+                You do not have permission to translate any content.
+            </p>
+        );
     }
 
     // Collections render every row; the homepage is a single fixed row.
@@ -306,7 +334,7 @@ export function TranslationMatrix() {
             <div className='flex flex-wrap items-center justify-between gap-3'>
                 <Tabs value={type} onValueChange={switchType}>
                     <TabsList>
-                        {TRANSLATABLE_ENTITY_TYPES.map(t => (
+                        {allowedTypes.map(t => (
                             <TabsTrigger key={t} value={t}>
                                 {ENTITY_TYPE_LABELS[t]}
                             </TabsTrigger>

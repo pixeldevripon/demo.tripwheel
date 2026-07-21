@@ -6,6 +6,7 @@
  *
  * FULL coverage per entity (user mandate: no per-locale field left behind):
  * - all four: core translation fields + PAGE CONTENT (aboutText/meta) + FAQs
+ * - destination: + About-band content sections (heading/body per section)
  * - collection: + per-tour rationales (per-item upsert)
  * - hub: our-picks, comparison and page-sections translations are handled
  *   by their entity-page managers (user decision 2026-07-17) - they save via
@@ -53,6 +54,10 @@ import {
     useHomePageTranslations,
     useUpsertHomePageTranslation,
 } from '@/hooks/home-page/use-home-page';
+import {
+    usePageContentSections,
+    useUpsertPageContentSectionTranslation,
+} from '@/hooks/page-content-sections/use-page-content-sections';
 import { HOME_ID } from '@/lib/api/home-page';
 import { type Locale } from '@/lib/constants/locales';
 import {
@@ -128,8 +133,82 @@ export function DestinationWorkspace({ id, locale }: { id: string; locale: Local
     const { data: target, isLoading: l3 } = useDestinationTranslationByLocale(id, locale);
     const { data: pageSource } = useDestinationPageContent(id, 'en');
     const { data: pageTarget } = useDestinationPageContent(id, locale);
+    const { data: sections } = usePageContentSections('/destinations', id);
     const upsert = useUpsertDestinationTranslation();
     const upsertPage = useUpsertDestinationPageContent();
+    const upsertSection = useUpsertPageContentSectionTranslation('/destinations', id);
+
+    // The About-band blocks. Two translatable fields per section, and the upsert
+    // endpoint replaces the whole locale row, so a heading-only edit still has to
+    // send a body - `save` below fills the untouched field from the target row,
+    // falling back to English when the locale has no row yet.
+    const extraSections = useMemo<ExtraSection[]>(() => {
+        if (!sections || sections.length === 0) return [];
+
+        const valueOf = (
+            group: (typeof sections)[number],
+            loc: Locale,
+            field: 'heading' | 'body',
+        ) => group.translations.find(t => t.locale === loc)?.[field] ?? '';
+
+        return [
+            {
+                key: 'about-sections',
+                label: 'About sections',
+                rows: sections.flatMap(group =>
+                    (['heading', 'body'] as const).map(field => ({
+                        itemId: group.sectionGroupId,
+                        fieldKey: field,
+                        label: `${valueOf(group, 'en', 'heading') || 'Untitled section'} - ${field}`,
+                        source: valueOf(group, 'en', field),
+                        existing: valueOf(group, locale, field),
+                        kind: (field === 'body' ? 'textarea' : 'input') as
+                            | 'input'
+                            | 'textarea',
+                    })),
+                ),
+                save: async changes => {
+                    // One PUT per section, not per field: both edited fields of a
+                    // section belong to the same row.
+                    const byGroup = new Map<string, Record<string, string>>();
+                    for (const c of changes) {
+                        const held = byGroup.get(c.itemId) ?? {};
+                        held[c.fieldKey] = c.value;
+                        byGroup.set(c.itemId, held);
+                    }
+
+                    const results = await Promise.allSettled(
+                        [...byGroup.entries()].map(([groupId, edited]) => {
+                            const group = sections.find(
+                                g => g.sectionGroupId === groupId,
+                            );
+                            if (!group)
+                                return Promise.reject(
+                                    new Error(`Section ${groupId} no longer exists`),
+                                );
+                            const heading =
+                                edited.heading ??
+                                valueOf(group, locale, 'heading') ??
+                                valueOf(group, 'en', 'heading');
+                            const body =
+                                edited.body ??
+                                valueOf(group, locale, 'body') ??
+                                valueOf(group, 'en', 'body');
+                            return upsertSection.mutateAsync({
+                                groupId,
+                                locale,
+                                payload: { heading, body },
+                            });
+                        }),
+                    );
+                    const failed = results.filter(r => r.status === 'rejected');
+                    if (failed.length > 0)
+                        throw new Error(`${failed.length} section(s) failed to save`);
+                    return results;
+                },
+            },
+        ];
+    }, [sections, locale, upsertSection]);
 
     return (
         <ContentWorkspace
@@ -143,9 +222,12 @@ export function DestinationWorkspace({ id, locale }: { id: string; locale: Local
             target={target as never}
             pageSource={pageSource as never}
             pageTarget={pageTarget as never}
+            extraSections={extraSections}
             isLoading={l1 || l2 || (locale !== 'en' && l3)}
             isMachineTranslated={target?.isMachineTranslated}
-            isSaving={upsert.isPending || upsertPage.isPending}
+            isSaving={
+                upsert.isPending || upsertPage.isPending || upsertSection.isPending
+            }
             onSave={values =>
                 upsert.mutateAsync({ id, locale, payload: { fields: toFields(values) } })
             }

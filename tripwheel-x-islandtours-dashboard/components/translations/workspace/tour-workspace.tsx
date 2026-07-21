@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 import { CollapsibleCard } from '@/components/common/collapsible-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WorkspaceSkeleton } from './workspace-skeleton';
 import {
     useExclusions,
     useFeatures,
@@ -330,14 +331,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
     }
 
     if (isLoading) {
-        return (
-            <div className='space-y-4'>
-                <Skeleton className='h-8 w-64' />
-                {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className='h-20 w-full' />
-                ))}
-            </div>
-        );
+        return <WorkspaceSkeleton />;
     }
 
     return (

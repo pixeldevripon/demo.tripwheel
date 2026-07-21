@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 
 import { CollapsibleCard } from '@/components/common/collapsible-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WorkspaceSkeleton } from './workspace-skeleton';
 import { useFaqGroups, useUpsertFaqTranslation } from '@/hooks/faq/use-faq-groups';
 import { LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import {
@@ -320,14 +321,7 @@ export function ContentWorkspace({
     }
 
     if (isLoading || faqLoading) {
-        return (
-            <div className='space-y-4'>
-                <Skeleton className='h-8 w-64' />
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className='h-20 w-full' />
-                ))}
-            </div>
-        );
+        return <WorkspaceSkeleton />;
     }
 
     const sourceHidden = locale === 'en';
