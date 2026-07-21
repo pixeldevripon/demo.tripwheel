@@ -224,7 +224,15 @@ function AccountCard() {
             <SelectItem value="GALLERY">Instagram gallery</SelectItem>
           </SelectContent>
         </Select>
-        <FieldDescription>{LAYOUT_HINT[layout]}</FieldDescription>
+        {/* The cap is the part that surprises people: switching to Grid does
+            not delete anything, it just stops drawing past the sixth tile. Read
+            straight off SLOTS_BY_LAYOUT so the copy cannot drift from the
+            backend's own per-layout limit. */}
+        <FieldDescription>
+          {LAYOUT_HINT[layout]} Shows the first {SLOTS_BY_LAYOUT[layout]} tiles
+          on every destination page - any beyond that stay saved here but never
+          reach the page.
+        </FieldDescription>
       </Field>
 
       {enabled && !handle && (
@@ -263,16 +271,28 @@ const EMPTY_DRAFT: TileDraft = {
  *
  * Every post needs an `imageUrl` - it is what the public grid paints first and
  * all a reduced-motion visitor ever sees - so a video cannot become a tile
- * without a poster. Cloudinary renders one from the same public id by swapping
- * the extension, which is what makes picking a video in the same multi-select
- * as the photos possible at all. Returns null for anything not served from our
- * Cloudinary video pipeline, so the caller skips it loudly rather than saving a
- * tile whose poster is an .mp4.
+ * without a poster. Cloudinary renders one from the same public id by asking for
+ * `.jpg` off the video resource, which is what makes picking a video in the same
+ * multi-select as the photos possible at all. Returns null for anything not
+ * served from our Cloudinary video pipeline, so the caller skips it loudly
+ * rather than saving a tile whose poster is an .mp4.
  */
+const VIDEO_EXTENSION = /\.(mp4|mov|webm|m4v|avi|mkv|ogv|m3u8)$/i;
+
 function videoPoster(url: string): string | null {
   if (!url.includes('/video/upload/')) return null;
-  const poster = url.replace(/\.[a-z0-9]{2,5}(?:\?.*)?$/i, '.jpg');
-  return poster === url ? null : poster;
+
+  // Our delivery URLs carry no file extension - the backend builds them with
+  // `cloudinary.url()`, which emits `/video/upload/f_auto,q_auto/v1/<id>` plus an
+  // `?_a=` analytics token. So append `.jpg` when there is nothing to swap, and
+  // swap only a KNOWN video extension: a public id like `boat.v2` must not lose
+  // its tail to a greedy "any short suffix" match.
+  const [path, query] = url.split('?');
+  const poster = VIDEO_EXTENSION.test(path)
+    ? path.replace(VIDEO_EXTENSION, '.jpg')
+    : `${path}.jpg`;
+
+  return query ? `${poster}?${query}` : poster;
 }
 
 /**
@@ -370,10 +390,11 @@ function TilesCard() {
               )}
             </div>
             <CardDescription>
-              The first {slots} fill the{' '}
-              {account?.layout === 'GALLERY' ? 'gallery' : 'grid'}. Pick as many
-              photos and videos as you like in one go, then click any tile to
-              set its link, caption and island.
+              The first {slots} reach the page - that is the cap for the{' '}
+              {account?.layout === 'GALLERY' ? 'gallery' : 'grid'} layout
+              (grid {SLOTS_BY_LAYOUT.GRID}, gallery {SLOTS_BY_LAYOUT.GALLERY}).
+              Pick as many photos and videos as you like in one go, then click
+              any tile to set its link, caption and island.
             </CardDescription>
           </div>
           <Button
@@ -417,6 +438,19 @@ function TilesCard() {
                 short until there are {slots}.
               </p>
             )}
+
+            {/* The over-fill case. Silence here reads as "all 15 are live",
+                which is wrong the moment the layout is Grid - so name the number
+                that actually renders and where the line falls. */}
+            {ordered.length > slots && (
+              <p className="rounded-md bg-surface-inset p-3 text-xs text-content-muted">
+                {ordered.length} tiles, but the{' '}
+                {account?.layout === 'GALLERY' ? 'gallery' : 'grid'} layout
+                draws only the first {slots}. The greyed-out tiles from #
+                {slots + 1} down stay saved here - move one up to put it on the
+                page.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {ordered.map((post, index) => (
                 <TileCard
@@ -424,12 +458,28 @@ function TilesCard() {
                   post={post}
                   index={index}
                   total={ordered.length}
+                  hidden={index >= slots}
                   disabled={isBusy}
                   onMove={handleMove}
                   onEdit={() => setEditing(post)}
                   onDelete={() => setPendingDelete(post)}
                 />
               ))}
+            </div>
+
+            {/* Repeated below the grid: with fifteen gallery tiles the header
+                button is off-screen by the time you have finished looking at
+                what is already there, which is exactly when you decide to add
+                more. */}
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setPickerOpen(true)}
+                disabled={createMany.isPending}
+              >
+                <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+                {createMany.isPending ? 'Adding...' : 'Add tiles'}
+              </Button>
             </div>
           </>
         )}
@@ -514,6 +564,7 @@ function TileCard({
   post,
   index,
   total,
+  hidden,
   disabled,
   onMove,
   onEdit,
@@ -522,6 +573,8 @@ function TileCard({
   post: InstagramPost;
   index: number;
   total: number;
+  /** Past the layout's cap: saved, but never drawn on the public page. */
+  hidden: boolean;
   disabled: boolean;
   onMove: (index: number, direction: 'up' | 'down') => void;
   onEdit: () => void;
@@ -530,7 +583,9 @@ function TileCard({
   const synced = post.source === 'API';
 
   return (
-    <div className="group overflow-hidden rounded-md border border-line">
+    <div
+      className={`group overflow-hidden rounded-md border ${hidden ? 'border-dashed border-line opacity-60' : 'border-line'}`}
+    >
       <div className="relative aspect-[384/337] bg-surface-inset">
         {/* The poster, matching what the public grid paints first. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -555,9 +610,12 @@ function TileCard({
           <span className="sr-only">Edit tile</span>
         </button>
 
-        {/* The number IS the position in the public grid. */}
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums">
+        {/* The number IS the position in the public grid. Past the cap it
+            carries the reason it is greyed out, so the state is legible without
+            counting tiles against the notice above. */}
+        <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums">
           {index + 1}
+          {hidden && <span className="font-normal">· not shown</span>}
         </span>
 
         {post.videoUrl && (
