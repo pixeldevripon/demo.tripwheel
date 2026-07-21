@@ -211,6 +211,20 @@ const CTA_DECK: { assetKey: string; destinationSlug: string }[] = [
 /** The bundled hero, now a library asset. */
 const HERO_ASSET_KEY = 'hero-powerboat';
 
+/**
+ * A starting search-engine listing for the homepage, written ONLY when the
+ * field is still empty - an admin's own words are never overwritten.
+ *
+ * Without this the front door inherits the site-wide defaults from Settings,
+ * which on a fresh install are whatever was typed there last. A homepage with
+ * no listing of its own is the one page where that matters most.
+ */
+const SEO_FALLBACK = {
+  metaTitle: 'Caribbean Tours & Activities, Chosen by Locals',
+  metaDescription:
+    'Book boat trips, snorkelling and island tours across Curaçao, Aruba and Sint Maarten.',
+};
+
 interface PublishedAsset {
   url: string;
   publicId: string;
@@ -372,6 +386,20 @@ async function main(): Promise<void> {
         update: { heroImage: hero.url },
       });
       console.log('\n  Hero image set.');
+    }
+
+    const english = await prisma.homePageTranslation.findUnique({
+      where: { homeId_locale: { homeId: HOME_ID, locale: 'en' } },
+      select: { metaTitle: true, metaDescription: true },
+    });
+
+    if (!english?.metaTitle && !english?.metaDescription) {
+      await prisma.homePageTranslation.upsert({
+        where: { homeId_locale: { homeId: HOME_ID, locale: 'en' } },
+        create: { homeId: HOME_ID, locale: 'en', ...SEO_FALLBACK },
+        update: SEO_FALLBACK,
+      });
+      console.log('  SEO title and description set (were empty).');
     }
 
     // The deck is a wholesale replace, exactly like the dashboard's save.

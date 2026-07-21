@@ -18,14 +18,17 @@ type EditorialDict = {
 export function EditorialBanner({
     dict,
     ctaHref,
-    images,
+    cards,
 }: {
     dict: EditorialDict;
     // Destination the banner is themed to (the copy names the launch island);
     // resolved in the page so this stays presentational.
     ctaHref: string;
-    /** Admin-chosen fan card photos; short/absent keeps the bundled images. */
-    images?: string[];
+    /**
+     * Admin-configured fan cards (photo, island name, link); short or absent
+     * keeps the bundled photos and labels.
+     */
+    cards?: { image: string; name: string | null; href: string | null }[];
 }) {
     return (
         <section className='it-section bg-it-white overflow-x-clip'>
@@ -74,7 +77,7 @@ export function EditorialBanner({
                             desktop). Click brings a card to the front - the client leaf. */}
                         <EditorialCardFan
                             labels={dict.categories}
-                            images={images}
+                            cards={cards}
                         />
                     </div>
                 </Reveal>
