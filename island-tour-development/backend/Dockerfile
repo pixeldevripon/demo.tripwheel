@@ -71,6 +71,18 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/tsconfig.build.json ./tsconfig.build.json
 # Source is required only because prisma/seed.ts imports ../src/* via ts-node.
 COPY --from=builder /app/src ./src
+# Seed images for `home:media:seed`, vendored here because the frontend repo is
+# NOT in this build context and the VPS runs no frontend (it is on Vercel).
+# ~7MB, uploaded to Cloudinary once and then never read again at runtime.
+COPY --from=builder /app/assets ./assets
+# Maintenance scripts, so `docker compose exec backend pnpm <script>` works:
+#   pnpm media:backfill      backfill media-gallery metadata
+#   pnpm email:icons:upload  push the email icon set to Cloudinary
+#   pnpm email:preview       render a booking email to HTML
+#   pnpm home:media:seed     homepage media + copy  (ALSO needs the frontend
+#                            tree mounted at /frontend - see docker-compose.yml)
+# They import ../src/* via ts-node, which is why src/ above is not optional.
+COPY --from=builder /app/scripts ./scripts
 # Entrypoint: migrate (+ optional seed) then start.
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh

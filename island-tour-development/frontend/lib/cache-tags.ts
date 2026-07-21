@@ -88,12 +88,24 @@ export const COARSE_CACHE_TAGS = [
     // The brand Instagram grid (handle row + curated tiles) on destination
     // pages. Deliberately not folded into `site-info`: that tag carries the
     // footer and every NeedHelp surface, and curating one tile should not
-    // regenerate all of them. The kill switch still lives on `site-info`.
+    // regenerate all of them.
+    //
+    // The kill switch (`SiteInfo.enableInstagram`) is stored on site-info but
+    // SURFACES here: `/instagram/public/feed` returns it as `enabled`, the single
+    // gate the section obeys. So a `/settings/site` write must bust BOTH tags -
+    // it did not, which is why toggling the section off left it rendering for a
+    // full cacheLife('days'). Following the URL instead of the data is the bug.
     'instagram',
     // Admin-managed homepage content (hero copy/image, editorial CTA, section
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.
     'homepage',
+    // Platform-wide list of media URLs flagged `excludeFromIndexing`, read by
+    // `getExcludedMediaUrls` to keep them out of og:image, structured data and
+    // sitemaps. It used to lean on `cacheLife('hours')` alone ("propagates
+    // without a revalidation bridge"), which meant a toggle could sit unapplied
+    // for an hour; media-gallery writes now bust it outright.
+    'media-indexing',
     // VESTIGIAL, AND KNOWINGLY KEPT. Nothing calls `cacheTag('user-profile')` in
     // either repo: it belonged to the dashboard's `getUserProfile`, which was
     // deliberately moved off `'use cache'` onto React `cache()` (caching a

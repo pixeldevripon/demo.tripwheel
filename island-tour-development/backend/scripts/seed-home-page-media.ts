@@ -44,8 +44,40 @@ dotenv.config();
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-/** Where the public site keeps its bundled assets. */
-const PUBLIC_DIR = path.join(__dirname, '..', '..', 'frontend', 'public');
+/**
+ * Where the seed images live, in priority order:
+ *
+ *   1. $HOME_MEDIA_ASSET_ROOT - explicit override (a mount, a scratch dir).
+ *   2. backend/assets         - VENDORED, and the only one that exists inside
+ *                               the Docker image. The backend is its own repo
+ *                               with `./backend` as its build context, and the
+ *                               VPS runs no frontend at all (it is on Vercel),
+ *                               so reaching across into `frontend/public` can
+ *                               never work in production.
+ *   3. frontend/public        - the monorepo checkout, kept as a fallback so a
+ *                               clone without `assets/` still runs locally.
+ *
+ * Vendored wins over the frontend copy on purpose: dev and production then
+ * publish byte-identical images. The trade is that `backend/assets` is now the
+ * canonical source for what gets published - if a homepage image changes in
+ * `frontend/public`, copy it across or the two drift apart silently.
+ */
+function resolveAssetRoot(): string {
+  const candidates = [
+    process.env.HOME_MEDIA_ASSET_ROOT,
+    path.join(__dirname, '..', 'assets'),
+    path.join(__dirname, '..', '..', 'frontend', 'public'),
+  ].filter((dir): dir is string => !!dir);
+
+  const found = candidates.find((dir) =>
+    fs.existsSync(path.join(dir, 'images')),
+  );
+  // No hit still resolves to the last candidate: every upload then reports
+  // "SKIP (not found)" by name, which says more than an early throw.
+  return found ?? candidates[candidates.length - 1];
+}
+
+const PUBLIC_DIR = resolveAssetRoot();
 
 const HOME_ID = 'default';
 
@@ -236,16 +268,19 @@ interface PublishedAsset {
   publicId: string;
 }
 
-/** The i18n dictionaries the public site ships with, one per supported locale. */
-const DICTIONARY_DIR = path.join(
-  __dirname,
-  '..',
-  '..',
-  'frontend',
-  'lib',
-  'i18n',
-  'dictionaries',
-);
+/**
+ * The i18n dictionaries the public site ships with, one per supported locale.
+ *
+ * These are NOT vendored the way the images are, so they exist only in a
+ * monorepo checkout - inside the Docker image this directory is absent and the
+ * copy step no-ops (loudly, see seedHomepageCopy). That is deliberate: the
+ * dictionary is the frontend's own fallback, duplicating it here would give it
+ * two sources that drift, and an admin can author the copy in the dashboard.
+ * Override with $HOME_MEDIA_DICTIONARY_DIR if you do want to seed copy remotely.
+ */
+const DICTIONARY_DIR =
+  process.env.HOME_MEDIA_DICTIONARY_DIR ??
+  path.join(__dirname, '..', '..', 'frontend', 'lib', 'i18n', 'dictionaries');
 
 const DICTIONARY_LOCALES: Locale[] = [
   Locale.en,
@@ -298,6 +333,17 @@ function readDictionary(locale: Locale): HomeDictionary | null {
  * empty fields populated, and a field they wrote is never overwritten.
  */
 async function seedHomepageCopy(prisma: PrismaClient): Promise<void> {
+  if (!fs.existsSync(DICTIONARY_DIR)) {
+    // Never fail silently: with no dictionaries every locale is skipped, and the
+    // usual "left alone" summary would read as "nothing needed doing".
+    console.log(
+      `  Copy: SKIPPED - no dictionaries at ${DICTIONARY_DIR}. Expected inside` +
+        ' the Docker image (they live in the frontend repo). Author the copy in' +
+        ' the dashboard, or set $HOME_MEDIA_DICTIONARY_DIR.',
+    );
+    return;
+  }
+
   const existing = await prisma.homePageTranslation.findMany({
     where: { homeId: HOME_ID },
   });
