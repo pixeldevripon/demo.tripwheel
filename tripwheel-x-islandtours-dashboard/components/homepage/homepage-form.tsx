@@ -334,7 +334,10 @@ function EditorialCardSlot({
 
             <div className='space-y-2'>
                 <Select value={categoryId} onValueChange={onCategoryChange}>
-                    <SelectTrigger>
+                    {/* SelectTrigger is `w-fit`; every other select in the app
+                        stretches only because <Field> puts `*:w-full` on its
+                        children, and these two sit in a plain div. */}
+                    <SelectTrigger className='w-full'>
                         <SelectValue placeholder='No category' />
                     </SelectTrigger>
                     <SelectContent>
@@ -353,7 +356,7 @@ function EditorialCardSlot({
                     <Select
                         value={value?.isLink ? 'link' : 'static'}
                         onValueChange={v => onLinkModeChange(v === 'link')}>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
