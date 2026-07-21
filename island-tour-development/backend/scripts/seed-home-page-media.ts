@@ -28,8 +28,9 @@
  * place and never duplicates a row or an asset.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { FaqPageType, Locale, PrismaClient } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
+import { createHash } from 'crypto';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -230,6 +231,173 @@ interface PublishedAsset {
   publicId: string;
 }
 
+/** The i18n dictionaries the public site ships with, one per supported locale. */
+const DICTIONARY_DIR = path.join(
+  __dirname,
+  '..',
+  '..',
+  'frontend',
+  'lib',
+  'i18n',
+  'dictionaries',
+);
+
+const DICTIONARY_LOCALES: Locale[] = [
+  Locale.en,
+  Locale.nl,
+  Locale.de,
+  Locale.fr,
+  Locale.es,
+  Locale.pt,
+  Locale.zh,
+];
+
+interface DictionaryFaq {
+  q: string;
+  a: string;
+}
+
+/**
+ * A stable id for a seeded FAQ group.
+ *
+ * `faqGroupId` is what ties one question's seven locale rows together, and the
+ * service normally mints a random uuid per group. Seeding needs the id to be
+ * derivable instead, so a re-run recognises what it already wrote rather than
+ * creating a second set of five questions.
+ */
+function stableGroupId(seed: string): string {
+  const h = createHash('sha1').update(seed).digest('hex');
+  return [
+    h.slice(0, 8),
+    h.slice(8, 12),
+    `5${h.slice(13, 16)}`,
+    `a${h.slice(17, 20)}`,
+    h.slice(20, 32),
+  ].join('-');
+}
+
+/**
+ * Publish the homepage FAQ the site has been rendering from its bundled
+ * dictionaries, in all 7 locales, as real FAQ rows.
+ *
+ * These questions have existed since before the CMS - they were simply
+ * unreachable from the dashboard, so an admin could not edit, reorder or
+ * translate them. Seeding them makes the block editable without changing a word
+ * a visitor sees, and it does it for every locale at once because each
+ * dictionary already carries its own translation.
+ *
+ * Deduplicated on the ENGLISH QUESTION TEXT, not on "are there any FAQs yet":
+ * an admin may already have added one of these by hand (and had, on the first
+ * run), so a wholesale skip would strand the other four while a blind insert
+ * would duplicate the one. Matching the text adds exactly what is missing, and
+ * a second run adds nothing.
+ */
+async function seedHomepageFaqs(prisma: PrismaClient): Promise<void> {
+  const existing = await prisma.faq.findMany({
+    where: { pageType: FaqPageType.homepage, entityId: HOME_ID },
+    select: { question: true, locale: true, faqGroupId: true },
+  });
+
+  // English question text -> the group it belongs to, so a question added by
+  // hand is recognised and EXTENDED rather than duplicated or skipped.
+  const groupByQuestion = new Map<string, string | null>();
+  for (const row of existing) {
+    if (row.locale === Locale.en) {
+      groupByQuestion.set(row.question.trim().toLowerCase(), row.faqGroupId);
+    }
+  }
+  const localesInGroup = new Map<string, Set<Locale>>();
+  for (const row of existing) {
+    const key = row.faqGroupId ?? '';
+    const set = localesInGroup.get(key) ?? new Set<Locale>();
+    set.add(row.locale);
+    localesInGroup.set(key, set);
+  }
+
+  const byLocale = new Map<Locale, DictionaryFaq[]>();
+  for (const locale of DICTIONARY_LOCALES) {
+    const file = path.join(DICTIONARY_DIR, `${locale}.json`);
+    if (!fs.existsSync(file)) continue;
+    const dict = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+      home?: { faq?: { items?: DictionaryFaq[] } };
+    };
+    const items = dict.home?.faq?.items;
+    if (items?.length) byLocale.set(locale, items);
+  }
+
+  const base = byLocale.get(Locale.en);
+  if (!base?.length) {
+    console.warn('  FAQs: no English dictionary questions found - skipped.');
+    return;
+  }
+
+  const rows: {
+    pageType: FaqPageType;
+    entityId: string;
+    faqGroupId: string;
+    locale: Locale;
+    question: string;
+    answer: string;
+    displayOrder: number;
+    isActive: boolean;
+  }[] = [];
+
+  let added = 0;
+  let extended = 0;
+
+  base.forEach((englishItem, index) => {
+    const key = englishItem.q.trim().toLowerCase();
+    const known = groupByQuestion.has(key);
+
+    // Reuse the existing group when this question is already published, so the
+    // translations attach to it instead of creating a rival copy.
+    const faqGroupId = known
+      ? (groupByQuestion.get(key) ?? stableGroupId(`homepage-faq-${index}`))
+      : stableGroupId(`homepage-faq-${index}`);
+
+    const present = localesInGroup.get(faqGroupId ?? '') ?? new Set<Locale>();
+    let addedHere = 0;
+
+    for (const [locale, items] of byLocale) {
+      if (present.has(locale)) continue;
+      // Locales are matched BY INDEX - each dictionary lists the same questions
+      // in the same order. A locale that is short simply contributes fewer
+      // rows; the group still exists via English.
+      const item = items[index];
+      if (!item?.q || !item?.a) continue;
+      rows.push({
+        pageType: FaqPageType.homepage,
+        entityId: HOME_ID,
+        faqGroupId,
+        locale,
+        question: item.q,
+        answer: item.a,
+        displayOrder: index,
+        isActive: true,
+      });
+      addedHere += 1;
+    }
+
+    if (!addedHere) return;
+    if (known) extended += 1;
+    else added += 1;
+  });
+
+  if (!rows.length) {
+    console.log('  FAQs: already published - nothing to add.');
+    return;
+  }
+
+  await prisma.faq.createMany({ data: rows });
+  console.log(
+    `  FAQs: ${added} new question${added === 1 ? '' : 's'}` +
+      (extended
+        ? `, ${extended} existing one${extended === 1 ? '' : 's'} translated`
+        : '') +
+      ` (${rows.length} rows across ${byLocale.size} locales).`,
+  );
+}
+
 async function main(): Promise<void> {
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } =
     process.env;
@@ -387,6 +555,8 @@ async function main(): Promise<void> {
       });
       console.log('\n  Hero image set.');
     }
+
+    await seedHomepageFaqs(prisma);
 
     const english = await prisma.homePageTranslation.findUnique({
       where: { homeId_locale: { homeId: HOME_ID, locale: 'en' } },

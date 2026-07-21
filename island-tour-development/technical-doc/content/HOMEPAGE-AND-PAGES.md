@@ -10,7 +10,13 @@ Two related but deliberately separate systems:
 
 ---
 
-## PUBLIC HOMEPAGE IS REVERTED - do not re-wire it yet (user, 2026-07-20)
+## PUBLIC HOMEPAGE IS WIRED (user, 2026-07-21) - the revert below is HISTORY
+
+The block was lifted once the dashboard and backend were signed off. The page
+was RESTORED from `ee2106f` (not rewritten) and updated for the contracts added
+since - see Phase 4d. The section below is kept for the reasoning it records.
+
+## ~~PUBLIC HOMEPAGE IS REVERTED - do not re-wire it yet (user, 2026-07-20)~~
 
 `frontend/app/(frontend)/[locale]/page.tsx` was restored to its pre-CMS state
 (`ee2106f^`). The public homepage renders bundled dictionary copy and bundled
@@ -622,6 +628,54 @@ the three cards with translated names and hrefs, and
 Dashboard `tsc`, 0 lint errors, `next build` green; public frontend `tsc` clean.
 
 **Unverified, as before: the rendered dashboard UI** (no session, no browser).
+
+## Phase 4d - The public homepage goes live on the CMS `[x]`
+
+**EXECUTED 2026-07-21.** The user lifted the do-not-wire block. The page was
+**restored from `ee2106f`** (the version reverted on 2026-07-20) rather than
+rewritten from memory, then updated for everything added since.
+
+### What changed against the restored version
+
+- **`editorialCards` replaces `editorialImages`.** A fan card is a photo, an
+  island name and a link. Linked cards render as a real `<a>` (`MotionLink`, so
+  client-side navigation and the page transition survive) - they must be
+  crawlable and middle-clickable. They GIVE UP click-to-front, which is the
+  point of linking them; unlinked cards keep it. The element type is fixed per
+  card, so nothing remounts mid-shuffle.
+- **`generateMetadata`** now serves the homepage's own meta title, description
+  and OG image, omitting whatever is unset so the site-wide Settings defaults
+  apply. It reuses the same cached loader as the page, so it costs no request.
+- An unrenderable card photo **drops the card** rather than rendering an empty
+  slot - the deck then keeps its bundled art for that position.
+
+### Seeded so the page has something to serve
+
+`pnpm home:media:seed` gained two jobs beyond the media:
+
+- **The bundled FAQ, published in all 7 locales.** Those five questions had been
+  rendering from the i18n dictionaries since before the CMS - unreachable from
+  the dashboard, so nobody could edit, reorder or translate them. They are now
+  real grouped FAQ rows, and because every dictionary already carried its own
+  translation, all 7 locales landed at once with no translation work.
+  Deduplicated on the ENGLISH QUESTION TEXT, not on "are there any FAQs yet":
+  an admin had already added one of them by hand, so a wholesale skip would have
+  stranded the other four and a blind insert would have duplicated the one. That
+  hand-added row was English-only, which had quietly cost every other locale a
+  question - the script attaches the missing translations to the EXISTING group
+  rather than making a rival copy.
+- **A homepage SEO title and description**, written only when empty. Without one
+  the front door inherits whatever was last typed into Settings - which on this
+  database was a tour title and the word "sdf".
+
+### Verification
+
+Checked against the RUNNING site, not just the build: `/en` serves the CMS hero,
+all three island cards with their links, and the experience posters; `/nl` serves
+the Dutch FAQ from the database. The metadata override was confirmed after a
+cache bust - worth knowing that a direct DB write does NOT show up until the
+`homepage` tag is invalidated, which is what the dashboard does on save.
+Backend 1342/1342, dashboard and frontend `tsc` + build green.
 
 ## Phase 5 - Pages system `[ ]`
 
